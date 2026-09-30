@@ -67,8 +67,10 @@ the distribution ever disagree.
 
 ## Affection
 
-`feed` adds 1 to an encrypted counter. At reveal, `affection > 10` turns the accessory
-golden and adds 250 to the revealed score. Tiers are computed before that bonus.
+`feed` adds a hidden uniform amount between 0 and 3 to an encrypted counter. How often
+a box was fed is public; how much that earned is not. At reveal, `affection > 10` turns
+the accessory golden (a cat with none gets a golden bell collar) and adds 250 to the
+revealed score. Tiers and duels use the score before that bonus.
 
 ## Mechanics and events
 

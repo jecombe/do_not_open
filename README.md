@@ -12,8 +12,8 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | ----- | --------------------------------------------------------------------- | ----------- |
 | 1     | Game spec, generator, art direction, sealed box + shake, five cats    | **Done**    |
 | 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, CLI demo | **Done**, live on Sepolia |
-| 3     | duel, entangle, feed, paidShake and their 3D effects                  | Next        |
-| 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render|             |
+| 3     | duel, entangle, feed, paidShake and their 3D effects                  | **Done** (not yet redeployed) |
+| 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render| Next        |
 | 5     | Full docs, Solana porting map, audit checklist                        |             |
 
 ## Layout
@@ -40,7 +40,7 @@ the `ChainAdapter` interface.
 
 ```bash
 pnpm install
-pnpm test        # generator: 22 tests, contracts: 28 tests on the FHEVM mock
+pnpm test        # generator: 22 tests, contracts: 53 tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173, mock mode, no chain
 ```

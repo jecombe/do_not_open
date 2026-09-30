@@ -470,6 +470,7 @@ export function createCat(spec: CatSpec): CatObject {
   const mode = spec.render.ghost ? "ghost" : "toon";
   const kits: Kit[] = [];
   const forms: Form[] = [];
+  const worldPos = new Vector3();
 
   for (const body of spec.altBody ? [spec.body, spec.altBody] : [spec.body]) {
     const kit = new Kit(mode, body.outline, spec.render.opacity);
@@ -482,7 +483,16 @@ export function createCat(spec: CatSpec): CatObject {
   return {
     group,
     update(time) {
-      for (const kit of kits) for (const g of kit.ghostMaterials) g.uniforms.uTime!.value = time;
+      if (mode === "ghost") {
+        // Wisps fray towards wherever this cat's floor is, wherever it has been placed.
+        const floor = group.getWorldPosition(worldPos).y;
+        for (const kit of kits) {
+          for (const g of kit.ghostMaterials) {
+            g.uniforms.uTime!.value = time;
+            g.uniforms.uFloor!.value = floor;
+          }
+        }
+      }
       if (forms.length === 2) {
         // Quantum flicker: mostly form A, with irregular bursts of form B.
         const slow = Math.sin(time * 0.9) + Math.sin(time * 2.3 + 1.7);

@@ -80,6 +80,93 @@ export class ShakeSound {
     osc.stop(now + 0.4);
   }
 
+  /** Tape tearing off cardboard: a rising band of noise. */
+  rip(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.noise || this.muted) return;
+    const now = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    src.loop = true;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.Q.value = 1.4;
+    band.frequency.setValueAtTime(900, now);
+    band.frequency.exponentialRampToValueAtTime(4200, now + 0.45);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.4, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    src.connect(band).connect(gain).connect(ctx.destination);
+    src.start(now);
+    src.stop(now + 0.55);
+  }
+
+  /** A soft two-note chime for whatever comes out of the box. `bright` false for ghosts. */
+  reveal(bright = true): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = ctx.currentTime;
+    const notes = bright ? [523.25, 783.99, 1046.5] : [311.13, 369.99, 466.16];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = bright ? "triangle" : "sine";
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      const start = now + i * 0.09;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.14, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.1);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 1.2);
+    });
+  }
+
+  /** Kibble landing on cardboard. */
+  tick(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(900 + Math.random() * 500, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.07, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.07);
+  }
+
+  /** Contented rumble from inside. */
+  purr(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = 27;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 24;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.12;
+    const low = ctx.createBiquadFilter();
+    low.type = "lowpass";
+    low.frequency.value = 220;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.3);
+    lfo.connect(lfoGain).connect(gain.gain);
+    osc.connect(low).connect(gain).connect(ctx.destination);
+    osc.start(now);
+    lfo.start(now);
+    osc.stop(now + 1.4);
+    lfo.stop(now + 1.4);
+  }
+
   dispose(): void {
     void this.ctx?.close();
     this.ctx = null;

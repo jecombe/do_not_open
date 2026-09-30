@@ -53,7 +53,8 @@ export interface GameSpec {
   rarity: { formula: string; maxScore: number; tiers: TierDef[] };
   affection: {
     initial: number;
-    perFeed: number;
+    perFeedMin: number;
+    perFeedMax: number;
     goldenThreshold: number;
     goldenRule: string;
     goldenScoreBonus: number;

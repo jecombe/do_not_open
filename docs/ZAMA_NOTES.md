@@ -123,6 +123,50 @@ Box state is one enum (`Sealed`, `Observing`, `Revealed`); `revealed(tokenId)` r
 No receiver callback during mint, so no re-entrancy surface there. A contract that
 cannot handle ERC-721 tokens can still mint to itself; that is the minter's risk.
 
+## Decisions taken in Phase 3
+
+### Feeding adds a hidden amount, not 1
+
+The brief says feed "increments affection in encrypted form". If each feed added
+exactly 1, anyone could count `Fed` events and know the affection: the encryption would
+hide nothing. Each feed therefore adds an encrypted uniform draw in 0..3
+(`FHE.randEuint8(4)`). The number of feeds is public; what they earned is not. The
+golden threshold stays at "affection > 10", about seven feeds on average.
+
+A cat with no accessory that crosses the threshold gets a golden bell collar.
+
+### Duel: three values become public, in one round
+
+Accepting a duel computes, under encryption, `scoreA > scoreB`, a uniform trait pick, and
+`select(aWins, rollOfB, rollOfA)`: the loser's roll for the picked trait. Only those three
+ciphertexts are made publicly decryptable, so one `finalizeDuel` settles everything and
+the winner's trait is never decryptable by anyone.
+
+Each box's encrypted score is computed once (about 1.35M HCU) and cached. The challenger
+pays for their box at `challengeDuel`, the accepter for theirs at `acceptDuel`.
+
+### Consent is two transactions
+
+`proposeEntangle` / `acceptEntangle` and `challengeDuel` / `acceptDuel`. A proposal or a
+challenge is void if the proposer's box changes hands before it is accepted. One holder
+may entangle or duel two of their own boxes.
+
+### Entanglement is permanent and follows the token
+
+There is no way to untangle. Whoever buys an entangled box can have it opened by the
+partner's holder; marketplaces should show `partnerOf`.
+
+### Paid shake earnings are pulled, not pushed
+
+The holder's 70% is credited and withdrawn with `claim()`. Nothing is sent to a holder
+in the middle of `paidShake`, so a holder contract that reverts cannot block shakes, and
+there is no re-entrancy path. `withdraw` excludes unclaimed credits.
+
+### Contract size
+
+`DoNotOpen` is 20.3 KB of deployed bytecode against the 24.6 KB limit. The next sizeable
+feature should move logic to a library.
+
 ### Sepolia deployment (2026-09-30)
 
 | Contract          | Address                                      |
@@ -135,6 +179,7 @@ price 0.002 ETH, observe fee 0.0005 ETH. `pnpm demo:sepolia` was run end to end 
 the real coprocessor and KMS: mint, two shakes with private decryption, `proveAlive` and
 `observe` with public decryption and on-chain proof verification. Token 0 is revealed.
 
-This is a Phase 2 deployment. Phase 3 changes the contract, so it will be redeployed.
+This is the Phase 2 contract. It does NOT include feed, paidShake, entangle or duel;
+the Phase 3 contract has to be redeployed to replace it.
 Artifacts are in `packages/contracts-evm/deployments/sepolia`. Not yet verified on
 Etherscan (needs `ETHERSCAN_API_KEY`).

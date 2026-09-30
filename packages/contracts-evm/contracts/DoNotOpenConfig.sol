@@ -26,18 +26,26 @@ contract DoNotOpenConfig {
         bytes[5] variantWidths;
         uint32 goldenThreshold;
         uint16 goldenScoreBonus;
+        /// A feed adds a uniform encrypted amount in [0, feedBound). Must be a power of two.
+        uint8 feedBound;
+        /// Share of a paid shake that goes to the holder, in basis points.
+        uint16 paidShakeHolderBps;
     }
 
     error InvalidStateThresholds();
     error InvalidTraitOffset(uint8 trait);
     error InvalidVariantWidths(uint8 trait);
     error UnknownTrait(uint8 trait);
+    error InvalidFeedBound();
+    error InvalidShare();
 
     bytes32 public immutable specHash;
     uint16 public immutable maxSupply;
     uint8 public immutable maxPerTx;
     uint32 public immutable goldenThreshold;
     uint16 public immutable goldenScoreBonus;
+    uint8 public immutable feedBound;
+    uint16 public immutable paidShakeHolderBps;
 
     uint16[3] private _stateRollBelow;
     uint16[4] private _stateScoreBonus;
@@ -58,11 +66,16 @@ contract DoNotOpenConfig {
             if (total != 256) revert InvalidVariantWidths(i);
         }
 
+        if (p.feedBound < 2 || (p.feedBound & (p.feedBound - 1)) != 0) revert InvalidFeedBound();
+        if (p.paidShakeHolderBps > 10_000) revert InvalidShare();
+
         specHash = p.specHash;
         maxSupply = p.maxSupply;
         maxPerTx = p.maxPerTx;
         goldenThreshold = p.goldenThreshold;
         goldenScoreBonus = p.goldenScoreBonus;
+        feedBound = p.feedBound;
+        paidShakeHolderBps = p.paidShakeHolderBps;
         _stateRollBelow = p.stateRollBelow;
         _stateScoreBonus = p.stateScoreBonus;
         _traitOffset = p.traitOffset;

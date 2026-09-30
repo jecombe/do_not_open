@@ -25,6 +25,8 @@ export interface ConfigParams {
   variantWidths: Five<string>;
   goldenThreshold: number;
   goldenScoreBonus: number;
+  feedBound: number;
+  paidShakeHolderBps: number;
 }
 
 export function loadSpec() {
@@ -59,6 +61,8 @@ export function configParamsFromSpec(overrides: Partial<ConfigParams> = {}): Con
     ),
     goldenThreshold: spec.affection.goldenThreshold,
     goldenScoreBonus: spec.affection.goldenScoreBonus,
+    feedBound: spec.affection.perFeedMax + 1,
+    paidShakeHolderBps: spec.mechanics.paidShake.holderShareBps,
     ...overrides,
   };
 }

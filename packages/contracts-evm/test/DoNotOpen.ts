@@ -3,27 +3,12 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
 import { buildCatSpec, FIXTURE_SEEDS, mulberry32 } from "@dno/generator";
-import { configParamsFromSpec, loadSpec, type ConfigParams } from "../lib/specParams";
+import { configParamsFromSpec, loadSpec } from "../lib/specParams";
+import { deploy, expectDenied, FEES, finalizeObserve, peekSeed as peek, shakeAndDecrypt as shakeFor, STATE_IDS, TRAIT_KEYS } from "./helpers";
 import { DoNotOpen, DoNotOpenConfig } from "../types";
 
-const MINT_PRICE = ethers.parseEther("0.002");
-const OBSERVE_FEE = ethers.parseEther("0.0005");
-const STATE_IDS = { alive: 0, asleep: 1, ghost: 2, quantum: 3 } as const;
-const TRAIT_KEYS = ["breed", "mood", "accessory", "brokenThing", "room"] as const;
-
-async function deploy(overrides: Partial<ConfigParams> = {}) {
-  const [deployer] = await ethers.getSigners();
-  const config = (await (await ethers.getContractFactory("DoNotOpenConfig")).deploy(
-    configParamsFromSpec(overrides),
-  )) as unknown as DoNotOpenConfig;
-  const dno = (await (await ethers.getContractFactory("DoNotOpen")).deploy(
-    await config.getAddress(),
-    MINT_PRICE,
-    OBSERVE_FEE,
-    deployer!.address,
-  )) as unknown as DoNotOpen;
-  return { config, dno, address: await dno.getAddress() };
-}
+const MINT_PRICE = FEES.mint;
+const OBSERVE_FEE = FEES.observe;
 
 describe("DoNotOpenConfig", function () {
   let config: DoNotOpenConfig;
@@ -78,6 +63,11 @@ describe("DoNotOpenConfig", function () {
       factory,
       "InvalidTraitOffset",
     );
+    await expect(factory.deploy(configParamsFromSpec({ feedBound: 3 }))).to.be.revertedWithCustomError(factory, "InvalidFeedBound");
+    await expect(factory.deploy(configParamsFromSpec({ paidShakeHolderBps: 10001 }))).to.be.revertedWithCustomError(
+      factory,
+      "InvalidShare",
+    );
   });
 });
 
@@ -89,28 +79,8 @@ describe("DoNotOpen", function () {
   let dno: DoNotOpen;
   let address: string;
 
-  /** Mock only: reads the seed straight from the local coprocessor. Impossible on a real network. */
-  const peekSeed = async (tokenId: number) => fhevm.debugger.decryptEuint(FhevmType.euint64, await dno.seedHandle(tokenId));
-
-  const shakeAndDecrypt = async (tokenId: number, who: HardhatEthersSigner) => {
-    await (await dno.connect(who).shake(tokenId)).wait();
-    const [pick, roll] = await dno.lastShake(tokenId, who.address);
-    return {
-      pick: Number(await fhevm.userDecryptEuint(FhevmType.euint8, pick, address, who)),
-      roll: Number(await fhevm.userDecryptEuint(FhevmType.euint8, roll, address, who)),
-      handles: { pick, roll },
-    };
-  };
-
-  const expectDenied = async (p: Promise<unknown>) => {
-    let failed = false;
-    try {
-      await p;
-    } catch {
-      failed = true;
-    }
-    expect(failed, "decryption should have been refused").to.eq(true);
-  };
+  const peekSeed = (tokenId: number) => peek(dno, tokenId);
+  const shakeAndDecrypt = (tokenId: number, who: HardhatEthersSigner) => shakeFor(dno, tokenId, who);
 
   before(async function () {
     [deployer, alice, bob, carol] = (await ethers.getSigners()) as [
@@ -244,18 +214,13 @@ describe("DoNotOpen", function () {
       await dno.connect(alice).mint(2, { value: MINT_PRICE * 2n });
     });
 
-    const finalize = async (tokenId: number, sender: HardhatEthersSigner = carol) => {
-      const result = await fhevm.publicDecrypt([await dno.seedHandle(tokenId)]);
-      return dno.connect(sender).finalizeObserve(tokenId, result.abiEncodedClearValues, result.decryptionProof);
-    };
+    const finalize = (tokenId: number, sender: HardhatEthersSigner = carol) => finalizeObserve(dno, tokenId, sender);
 
     it("opens the box in two steps and stores what the generator predicts", async function () {
       const seed = await peekSeed(0);
       const cat = buildCatSpec({ seed });
 
-      await expect(dno.connect(alice).observe(0, { value: OBSERVE_FEE }))
-        .to.emit(dno, "ObserveRequested")
-        .withArgs(0, await dno.seedHandle(0));
+      await expect(dno.connect(alice).observe(0, { value: OBSERVE_FEE })).to.emit(dno, "ObserveRequested").withArgs(0);
       expect(await dno.status(0)).to.eq(1);
       expect(await dno.revealed(0)).to.eq(false);
 

@@ -78,8 +78,8 @@ width at the bottom and the camera frames the subject in the upper half.
 | Arrival          | One dolly from the aisle to the bench. The only unprompted motion |
 | Idle             | Free orbit and zoom, clamped above the floor                       |
 | Shake            | Camera holds still. The box moves; the camera must not            |
-| Observe (P3)     | Push in over the lid, cut the fog, tilt down into the box         |
-| Duel (P3)        | Low two-shot, slow lateral track, snap to the winner              |
+| Observe          | Push in and rise over the lid, so the reveal happens under the camera |
+| Duel             | Drop to a low two-shot for the fight                              |
 | Specimen select  | Short glide to the chosen diorama                                 |
 
 ## Rendering style
@@ -112,14 +112,18 @@ those objects with `<primitive>`.
 | Box rock and hop, lid bulge     | shake        | Phase 1  | Decaying wobble, seeded per box               |
 | Thump and rattle, muffled mrrp  | shake        | Phase 1  | Synthesised with WebAudio, no files           |
 | Dust in lamp cone, lamp sway    | ambient      | Phase 1  | Point sprites, one draw call                  |
-| Ghost fresnel and ripple        | ghost state  | Phase 1  | Basic version; refined in Phase 3             |
+| Ghost fresnel and ripple        | ghost state  | Phase 1  |                                               |
 | Quantum flicker between forms   | quantum      | Phase 1  | Two built forms, irregular switching          |
 | Glitch wireframe echoes         | glitch breed | Phase 1  | Quantised jitter                              |
-| Tape rip, flaps open, burst     | observe      | Phase 3  | Flaps and tape are already separate, hinged   |
-| Spotlight face-off              | duel         | Phase 3  |                                               |
-| Glowing thread                  | entangle     | Phase 3  | Spectral colour                               |
-| Food drop with bounce           | feed         | Phase 3  |                                               |
-| Room props                      | reveal       | Phase 3  | Rooms are colour-only in Phase 1              |
+| Ghost wisps fraying to the floor | ghost state | Phase 3  | Follows the cat wherever it is placed         |
+| Tape rip, flaps open, burst, cat rises | observe | Phase 3 | `BoxOpener`; light takes the room's colour, spectral for ghosts |
+| Kibble drop, lid gap, happy hop | feed         | Phase 3  | `FeedEffect`; two pieces always miss and rattle off |
+| Spotlight face-off              | duel         | Phase 3  | `DuelArena`; loser left leaning in the dark   |
+| Glowing thread                  | entangle     | Phase 3  | `EntanglementThread`; one mesh, curve in the vertex shader |
+| Room props                      | reveal       | Not done | Rooms are still colour-only; moved to Phase 4 |
+
+Sounds are all synthesised (`ShakeSound`): thump, rattle, muffled complaint, tape rip,
+reveal chime (a darker one for ghosts), kibble tick, purr.
 
 ## Performance budget
 

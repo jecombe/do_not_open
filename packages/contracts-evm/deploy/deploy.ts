@@ -11,15 +11,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const params = configParamsFromSpec();
   const config = await deploy("DoNotOpenConfig", { from: deployer, args: [params], log: true });
 
-  const mintPrice = parseEther(process.env.MINT_PRICE_ETH || "0.002");
-  const observeFee = parseEther(process.env.OBSERVE_FEE_ETH || "0.0005");
+  const eth = (name: string, fallback: string) => parseEther(process.env[name] || fallback);
+  const fees = {
+    mint: eth("MINT_PRICE_ETH", "0.002"),
+    observe: eth("OBSERVE_FEE_ETH", "0.0005"),
+    feed: eth("FEED_FEE_ETH", "0.0002"),
+    paidShake: eth("PAID_SHAKE_FEE_ETH", "0.001"),
+  };
   const owner = process.env.COLLECTION_OWNER || deployer;
 
-  const dno = await deploy("DoNotOpen", {
-    from: deployer,
-    args: [config.address, mintPrice, observeFee, owner],
-    log: true,
-  });
+  const dno = await deploy("DoNotOpen", { from: deployer, args: [config.address, fees, owner], log: true });
 
   console.log(`spec hash       : ${params.specHash}`);
   console.log(`DoNotOpenConfig : ${config.address}`);

@@ -12,7 +12,9 @@
     "deploy:sepolia": "hardhat deploy --network sepolia",
     "verify:sepolia": "hardhat etherscan-verify --network sepolia",
     "demo:localhost": "hardhat --network localhost dno:demo",
-    "demo:sepolia": "hardhat --network sepolia dno:demo"
+    "demo:sepolia": "hardhat --network sepolia dno:demo",
+    "demo2:localhost": "hardhat --network localhost dno:demo2",
+    "demo2:sepolia": "hardhat --network sepolia dno:demo2"
   },
   "dependencies": {
     "@fhevm/mock-utils": "^0.4.2",

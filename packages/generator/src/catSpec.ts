@@ -263,7 +263,8 @@ export function buildCatSpec(input: CatSpecInput): CatSpec {
     pose,
     animation,
     accessory: {
-      key: traits.accessory.variant,
+      // A well-loved cat with nothing to gild still gets something golden.
+      key: golden && traits.accessory.variant === "none" ? "bellCollar" : traits.accessory.variant,
       golden,
       color: golden ? GOLD : lookup(ACCESSORY_COLORS, traits.accessory.variant, "accessory"),
     },

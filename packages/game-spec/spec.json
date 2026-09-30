@@ -122,9 +122,10 @@
   },
   "affection": {
     "initial": 0,
-    "perFeed": 1,
+    "perFeedMin": 0,
+    "perFeedMax": 3,
     "goldenThreshold": 10,
-    "goldenRule": "at reveal, affection > goldenThreshold turns the accessory golden",
+    "goldenRule": "at reveal, affection > goldenThreshold turns the accessory golden; a cat with no accessory gets a golden bell collar",
     "goldenScoreBonus": 250
   },
   "mechanics": {
@@ -152,7 +153,7 @@
     "duel": {
       "paid": false,
       "caller": "both holders (two-step: challenge, accept)",
-      "rule": "Publicly decrypts the single bit (scoreA > scoreB). Ties go to B (the challenged box). Winner's win counter increments. Loser gets one trait roll publicly revealed, never the state."
+      "rule": "Challenge, accept, finalise. Accepting computes three encrypted values and makes them publicly decryptable: the bit (scoreA > scoreB), a uniformly picked trait offset, and the loser's roll for that trait. Ties go to B (the challenged box). Winner's win counter increments. The loser's picked trait becomes public, never the state."
     },
     "entangle": {
       "paid": false,
@@ -162,7 +163,7 @@
     "feed": {
       "paid": true,
       "caller": "anyone",
-      "rule": "Adds affection.perFeed to the encrypted affection counter."
+      "rule": "Adds an encrypted uniform amount between perFeedMin and perFeedMax to the encrypted affection counter. Cats are fickle: the number of feeds is public, the affection it earned is not. Sealed boxes only."
     },
     "paidShake": {
       "paid": true,
@@ -174,12 +175,15 @@
   "events": {
     "Minted": { "fields": ["tokenId", "owner"] },
     "Shaken": { "fields": ["tokenId", "viewer", "paid"], "note": "The trait index is NOT emitted; it stays encrypted-side knowledge of the viewer." },
-    "ObserveRequested": { "fields": ["tokenId", "seedHandle"] },
+    "ObserveRequested": { "fields": ["tokenId"] },
     "Observed": { "fields": ["tokenId", "seed", "state", "rarityScore", "golden"] },
     "AliveCheckRequested": { "fields": ["tokenId", "aliveHandle"] },
     "AliveProven": { "fields": ["tokenId", "alive"] },
     "DuelChallenged": { "fields": ["duelId", "tokenIdA", "tokenIdB"] },
+    "DuelAccepted": { "fields": ["duelId"] },
+    "DuelCancelled": { "fields": ["duelId"] },
     "DuelResolved": { "fields": ["duelId", "winnerTokenId", "loserTokenId", "revealedTraitIndex", "revealedTraitRoll"] },
+    "EntangleProposed": { "fields": ["tokenIdA", "tokenIdB"] },
     "Entangled": { "fields": ["tokenIdA", "tokenIdB"] },
     "Fed": { "fields": ["tokenId", "feeder"] }
   }

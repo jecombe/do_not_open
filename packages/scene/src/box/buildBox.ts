@@ -22,8 +22,10 @@ export interface BoxObject {
   body: Group;
   /** Lid flaps, hinged on their outer edge: two major (front, back), two minor (left, right). */
   flaps: { major: [Group, Group]; minor: [Group, Group] };
-  /** Tape strips, kept apart so the opening sequence can rip them off. */
+  /** Tape strips and the lid stamp printed across them, kept apart so the opening sequence can rip them off. */
   tape: Group;
+  /** Dark plane just under the lid. The opening sequence drops it to the bottom. */
+  interior: Mesh;
   spec: BoxSpec;
   dispose(): void;
 }
@@ -118,7 +120,7 @@ export function createBox(spec: BoxSpec, opts: TextureOptions = {}): BoxObject {
 
   // --- The stamp: once across the lid (over the tape), once on the front ---
   const stampTex = stampTexture(spec.noiseSeed, spec.wear, opts);
-  const lidStamp = decal(stampTex, 0.96, 0.36, body);
+  const lidStamp = decal(stampTex, 0.96, 0.36, tape);
   lidStamp.rotation.x = -Math.PI / 2;
   lidStamp.rotation.z = spec.stampRotation;
   lidStamp.position.set(spec.stampOffset[0], H + T + 0.006, 0.02 + spec.stampOffset[1]);
@@ -166,6 +168,7 @@ export function createBox(spec: BoxSpec, opts: TextureOptions = {}): BoxObject {
     body,
     flaps: { major: [majorF, majorB], minor: [minorL, minorR] },
     tape,
+    interior: dark,
     spec,
     dispose() {
       for (const g of geometries) g.dispose();

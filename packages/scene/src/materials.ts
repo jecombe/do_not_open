@@ -57,18 +57,20 @@ export function ghostMaterial(color: string, opacity: number): ShaderMaterial {
     depthWrite: false,
     side: DoubleSide,
     blending: AdditiveBlending,
-    uniforms: { uColor: { value: new Color(color) }, uOpacity: { value: opacity }, uTime: { value: 0 } },
+    uniforms: { uColor: { value: new Color(color) }, uOpacity: { value: opacity }, uTime: { value: 0 }, uFloor: { value: 0 } },
     vertexShader: /* glsl */ `
       uniform float uTime;
       varying vec3 vNormal;
       varying vec3 vView;
       varying float vHeight;
+      varying vec3 vWorld;
       void main() {
         vec4 world = modelMatrix * vec4(position, 1.0);
         // Slow vertical ripple so the silhouette never sits still.
         world.x += sin(world.y * 6.0 + uTime * 1.7) * 0.012;
         world.z += cos(world.y * 5.0 + uTime * 1.3) * 0.012;
         vHeight = world.y;
+        vWorld = world.xyz;
         vec4 mv = viewMatrix * world;
         vNormal = normalize(normalMatrix * normal);
         vView = normalize(-mv.xyz);
@@ -78,15 +80,20 @@ export function ghostMaterial(color: string, opacity: number): ShaderMaterial {
       uniform vec3 uColor;
       uniform float uOpacity;
       uniform float uTime;
+      uniform float uFloor;
       varying vec3 vNormal;
       varying vec3 vView;
       varying float vHeight;
+      varying vec3 vWorld;
       void main() {
         float rim = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.0);
         float scan = 0.85 + 0.15 * sin(vHeight * 40.0 - uTime * 3.0);
         vec3 spectral = vec3(0.49, 0.89, 0.82);
         vec3 col = mix(uColor * 0.55, spectral, rim);
-        gl_FragColor = vec4(col * scan, (0.22 + rim * 0.9) * uOpacity);
+        // The lower body frays into drifting wisps instead of ending at the floor.
+        float wisp = sin(vWorld.x * 23.0 + uTime * 1.9) * sin(vWorld.z * 19.0 - uTime * 1.4) * 0.5 + 0.5;
+        float ground = smoothstep(uFloor + 0.12, uFloor + 0.7, vHeight + wisp * 0.22);
+        gl_FragColor = vec4(col * scan, (0.22 + rim * 0.9) * uOpacity * ground);
       }`,
   });
 }
