@@ -18,8 +18,12 @@ interface Props {
   sound: ShakeSound;
   /** Boxes to start on. A second id of -1 means "pick any other box". */
   initial: [number, number] | null;
+  intent: PairIntent | null;
   onInspect: (tokenId: number) => void;
 }
+
+/** What the holder came to do. Unset, both actions are offered. */
+export type PairIntent = "duel" | "entangle";
 
 /** The pickers list this many of the most recent boxes, plus the account's own. */
 const PICK_LIMIT = 200;
@@ -38,7 +42,7 @@ const DECIDE: PlannedStep[] = [
 ];
 const OPEN_PLAN: PlannedStep[] = [...SIGN_AND_MINE("track.sign"), { step: "decrypting", label: "track.decryptPublic" }, { step: "proving", label: "track.proof" }];
 
-export function PairView({ quality, sound, initial, onInspect }: Props) {
+export function PairView({ quality, sound, initial, intent, onInspect }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect } = useChain();
   const t = useT();
   const scene = useRef<PairSceneHandle>(null);
@@ -50,18 +54,24 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
   const [outcome, setOutcome] = useState<DuelResult | null>(null);
   const [playing, setPlaying] = useState<null | "duel" | "open">(null);
   const [note, setNote] = useState<Note | null>(null);
+  const [focus, setFocus] = useState<PairIntent | null>(intent);
+  const offerDuel = focus !== "entangle";
+  const offerLink = focus !== "duel";
   const [plan, setPlan] = useState<PlannedStep[] | null>(null);
   const [txs, setTxs] = useState<LoggedTx[]>([]);
   const locale = useLocale();
   const contract = collection?.address ?? "";
 
   // First pair: the requested box (or the account's first) against any other one.
+  // Coming to propose something, the other box is preferably someone else's.
   useEffect(() => {
     if (picked || minted < 2) return;
     const a = initial?.[0] ?? myBoxes[0] ?? 0;
-    const b = myBoxes.find((id) => id !== a) ?? (a === 0 ? 1 : 0);
+    let stranger = -1;
+    if (intent) for (let id = minted - 1; id >= 0 && stranger < 0; id--) if (id !== a && !myBoxes.includes(id)) stranger = id;
+    const b = stranger >= 0 ? stranger : (myBoxes.find((id) => id !== a) ?? (a === 0 ? 1 : 0));
     setPicked([a, b]);
-  }, [picked, minted, initial, myBoxes]);
+  }, [picked, minted, initial, intent, myBoxes]);
 
   const [a, b] = picked ?? [0, 1];
 
@@ -340,20 +350,24 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
         ) : (
           opened.length < 2 && (
             <div className="actions">
-              <button type="button" className="stamp-button" onClick={() => void runDuel()} disabled={!!busy || !duelStep || duelStep === "waiting"}>
-                {busy === "duel"
-                  ? t("pair.fighting")
-                  : duelStep === "accept"
-                    ? t("pair.acceptDuel")
-                    : duelStep === "reveal"
-                      ? t("pair.reveal")
-                      : duelStep === "waiting"
-                        ? t("pair.challengeSent")
-                        : t("pair.startDuel")}
-              </button>
-              <button type="button" className="plain-button" onClick={() => void runEntangle()} disabled={!!busy || !linkStep || linkStep === "waiting"}>
-                {busy === "entangle" ? t("pair.linking") : entangled ? t("pair.entangled") : linkStep === "accept" ? t("pair.acceptLink") : linkStep === "waiting" ? t("pair.linkProposed") : t("pair.entangle")}
-              </button>
+              {offerDuel && (
+                <button type="button" className="stamp-button" onClick={() => void runDuel()} disabled={!!busy || !duelStep || duelStep === "waiting"}>
+                  {busy === "duel"
+                    ? t("pair.fighting")
+                    : duelStep === "accept"
+                      ? t("pair.acceptDuel")
+                      : duelStep === "reveal"
+                        ? t("pair.reveal")
+                        : duelStep === "waiting"
+                          ? t("pair.challengeSent")
+                          : t("pair.startDuel")}
+                </button>
+              )}
+              {offerLink && (
+                <button type="button" className={focus === "entangle" ? "stamp-button" : "plain-button"} onClick={() => void runEntangle()} disabled={!!busy || !linkStep || linkStep === "waiting"}>
+                  {busy === "entangle" ? t("pair.linking") : entangled ? t("pair.entangled") : linkStep === "accept" ? t("pair.acceptLink") : linkStep === "waiting" ? t("pair.linkProposed") : t("pair.entangle")}
+                </button>
+              )}
               <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy || !openable}>
                 {busy === "open"
                   ? t("box.opening")
@@ -392,7 +406,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
             <p className="fine">{opened.length === 2 && entangled ? t("pair.bothOpenedEntangled") : opened.length === 2 ? t("pair.bothOpen") : t("pair.otherSealed")}</p>
           ) : !boxes ? null : !account ? (
             <p className="fine">{t("pair.duelConnect")}</p>
-          ) : duelStep === "waiting" && duel ? (
+          ) : offerDuel && duelStep === "waiting" && duel ? (
             <p className="fine">
               {t("pair.waiting", { a: serial(duel.tokenA), b: serial(duel.tokenB) })}
               {sameAddress(duel.challenger, account) && (
@@ -401,20 +415,27 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
                 </button>
               )}
             </p>
-          ) : duelStep === "accept" && duel ? (
+          ) : offerDuel && duelStep === "accept" && duel ? (
             <p className="fine">{t("pair.acceptExplain", { a: serial(duel.tokenA), b: serial(duel.tokenB) })}</p>
-          ) : duelStep === "reveal" ? (
+          ) : offerDuel && duelStep === "reveal" ? (
             <p className="fine">{t("pair.revealExplain")}</p>
-          ) : linkStep === "accept" && proposal ? (
+          ) : offerLink && linkStep === "accept" && proposal ? (
             <p className="fine">{t("pair.linkExplain", { from: serial(proposal.from), to: serial(proposal.to) })}</p>
           ) : entangled ? (
             <p className="fine">{t("pair.entangledExplain", { fee: fee(collection?.fees.observe ?? 0n, collection) })}</p>
-          ) : taken ? (
+          ) : taken && offerLink ? (
             <p className="fine">{t("pair.taken")}</p>
           ) : challenger === null ? (
             <p className="fine">{t("pair.neither")}</p>
           ) : (
-            <p className="fine">{t("pair.duelExplain")}</p>
+            <p className="fine">{t(focus === "entangle" ? "pair.entangleExplain" : focus === "duel" ? "pair.duelOnlyExplain" : "pair.duelExplain")}</p>
+          )}
+          {focus && !action.busy && (
+            <p className="fine">
+              <button type="button" className="link" onClick={() => setFocus(focus === "duel" ? "entangle" : "duel")}>
+                {t(focus === "duel" ? "pair.ratherEntangle" : "pair.ratherDuel")}
+              </button>
+            </p>
           )}
         </div>
 

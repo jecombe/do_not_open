@@ -6,7 +6,7 @@ import { useT } from "./i18n/app";
 import { Masthead, type View } from "./Masthead";
 import { BoxView } from "./views/BoxView";
 import { LeaderboardView } from "./views/LeaderboardView";
-import { PairView } from "./views/PairView";
+import { PairView, type PairIntent } from "./views/PairView";
 import { ShelfView } from "./views/ShelfView";
 import { SpecimensView } from "./views/SpecimensView";
 import { WarehouseView } from "./views/WarehouseView";
@@ -21,6 +21,7 @@ export function App() {
   // The box the warehouse opens in front of: the one last looked at, when coming from it.
   const [focus, setFocus] = useState<number | null>(null);
   const [pair, setPair] = useState<[number, number] | null>(null);
+  const [intent, setIntent] = useState<PairIntent | null>(null);
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
@@ -44,8 +45,9 @@ export function App() {
     setFocus(tokenId);
     setView("warehouse");
   };
-  const showPair = (a: number, b?: number) => {
+  const showPair = (a: number, b?: number, wanted: PairIntent | null = null) => {
     setPair(b === undefined ? [a, -1] : [a, b]);
+    setIntent(wanted);
     setView("pair");
   };
 
@@ -53,14 +55,21 @@ export function App() {
 
   return (
     <div className="app">
-      {view === "shelf" && <ShelfView quality={quality} sound={sound} onSelect={showBox} />}
+      {view === "shelf" && <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} />}
       {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onOverview={showWarehouse} />}
       {view === "warehouse" && <WarehouseView quality={quality} focus={focus} onInspect={showBox} />}
-      {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} onInspect={showBox} />}
+      {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}
 
-      <Masthead view={view} onView={setView} />
+      <Masthead
+        view={view}
+        onView={(v) => {
+          // From the menu, the pair view offers both actions again.
+          if (v === "pair") setIntent(null);
+          setView(v);
+        }}
+      />
 
       <footer className="notice">
         <span>

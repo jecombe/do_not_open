@@ -82,6 +82,10 @@ export const en = {
   "shelf.connectHint": "Connect one to see the boxes you hold and to order new ones.",
   "shelf.empty": "Nothing on your shelf yet.",
   "shelf.boxes": "Your boxes",
+  "shelf.boxActions": "What to do with {serial}",
+  "shelf.duel": "Duel",
+  "shelf.entangle": "Entangle",
+  "shelf.linked": "entangled",
   "status.open": "open",
   "status.opening": "opening",
   "status.sealed": "sealed",
@@ -221,6 +225,10 @@ export const en = {
   "pair.taken": "One of these boxes is already entangled with another. They can still duel.",
   "pair.neither": "You hold neither box. Pick one of yours on either side to duel or entangle.",
   "pair.duelExplain": "A duel compares two hidden rarity scores and publishes only who won. Both holders have to agree to it, and to an entanglement.",
+  "pair.duelOnlyExplain": "A duel compares two hidden rarity scores and publishes only who won. The other holder has to accept it; you can withdraw until then.",
+  "pair.entangleExplain": "Entangling links two sealed boxes for good: opening one opens both. The other holder has to accept it.",
+  "pair.ratherEntangle": "Entangle them instead",
+  "pair.ratherDuel": "Duel them instead",
 
   // --- the game's own names
   "state.alive": "Alive",

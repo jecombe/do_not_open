@@ -514,6 +514,28 @@ button {
   color: var(--manifest);
 }
 
+.tags li {
+  display: flex;
+  align-items: stretch;
+}
+
+/* Duel and entangle, offered next to each sealed box. */
+.tag-options {
+  display: flex;
+}
+
+.tags .tag-options button {
+  padding: 3px 6px;
+  border-left: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tags .tag-options button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .order {
   display: grid;
   grid-template-columns: auto 1fr;

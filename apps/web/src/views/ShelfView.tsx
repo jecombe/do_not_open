@@ -6,18 +6,21 @@ import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, stepCopy } from "../chain/copy";
 import { useT } from "../i18n/app";
 import { SHELF_CAPACITY, ShelfScene, type ShelfBox } from "../scenes/Scenes";
+import type { PairIntent } from "./PairView";
 import { Stage } from "./Stage";
 
 interface Props {
   quality: QualitySettings;
   sound: ShakeSound;
   onSelect: (tokenId: number) => void;
+  /** Takes a box to the pair view to propose a duel or an entanglement with it. */
+  onPair: (tokenId: number, intent: PairIntent) => void;
 }
 
 /** How many of the account's boxes are read and listed. The newest come first. */
 const LIST_LIMIT = 40;
 
-export function ShelfView({ quality, sound, onSelect }: Props) {
+export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect, mode } = useChain();
   const t = useT();
   const action = useAction();
@@ -92,12 +95,28 @@ export function ShelfView({ quality, sound, onSelect }: Props) {
               <p className="state-note">{t("shelf.empty")}</p>
             ) : (
               <ul className="tags" aria-label={t("shelf.boxes")}>
-                {(infos.length ? infos : listed.map((tokenId) => ({ tokenId, status: null }))).map((b) => (
+                {(infos.length ? infos : listed.map((tokenId) => ({ tokenId, status: null, partner: null }))).map((b) => (
                   <li key={b.tokenId}>
                     <button type="button" onClick={() => onSelect(b.tokenId)} className={b.status === "revealed" ? "is-open" : ""}>
                       {buildBoxSpec(b.tokenId).serial}
-                      <span>{b.status === null ? "…" : b.status === "revealed" ? t("status.open") : b.status === "opening" ? t("status.opening") : t("status.sealed")}</span>
+                      <span>
+                        {b.status === null ? "…" : b.status === "revealed" ? t("status.open") : b.status === "opening" ? t("status.opening") : t("status.sealed")}
+                        {b.partner !== null ? `, ${t("shelf.linked")}` : ""}
+                      </span>
                     </button>
+                    {/* Both are opt-in, and only while the box is sealed: the contract refuses them after. */}
+                    {b.status === "sealed" && (
+                      <span className="tag-options" role="group" aria-label={t("shelf.boxActions", { serial: buildBoxSpec(b.tokenId).serial })}>
+                        <button type="button" onClick={() => onPair(b.tokenId, "duel")} disabled={!!action.busy}>
+                          {t("shelf.duel")}
+                        </button>
+                        {b.partner === null && (
+                          <button type="button" onClick={() => onPair(b.tokenId, "entangle")} disabled={!!action.busy}>
+                            {t("shelf.entangle")}
+                          </button>
+                        )}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
