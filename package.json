@@ -1,0 +1,14 @@
+{
+  "name": "do-not-open",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DO NOT OPEN — a confidential NFT collection on Zama FHEVM",
+  "packageManager": "pnpm@9.9.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm --filter @dno/web dev",
+    "build": "pnpm --filter @dno/web build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck"
+  }
+}

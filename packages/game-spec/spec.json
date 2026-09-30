@@ -1,0 +1,185 @@
+{
+  "version": "1.0.0",
+  "collection": {
+    "name": "DO NOT OPEN",
+    "symbol": "DNO",
+    "maxSupply": 5000
+  },
+  "seed": {
+    "bits": 64,
+    "layout": [
+      { "field": "stateRoll", "offset": 0, "bits": 16 },
+      { "field": "breed", "offset": 16, "bits": 8 },
+      { "field": "mood", "offset": 24, "bits": 8 },
+      { "field": "accessory", "offset": 32, "bits": 8 },
+      { "field": "brokenThing", "offset": 40, "bits": 8 },
+      { "field": "room", "offset": 48, "bits": 8 },
+      { "field": "cosmetic", "offset": 56, "bits": 8 }
+    ]
+  },
+  "states": [
+    { "id": 0, "key": "alive", "name": "Alive", "rollBelow": 45875, "scoreBonus": 0 },
+    { "id": 1, "key": "asleep", "name": "Asleep", "rollBelow": 58982, "scoreBonus": 100 },
+    { "id": 2, "key": "ghost", "name": "Ghost", "rollBelow": 64225, "scoreBonus": 400 },
+    { "id": 3, "key": "quantum", "name": "Quantum", "rollBelow": 65536, "scoreBonus": 1000 }
+  ],
+  "traits": [
+    {
+      "index": 0,
+      "key": "breed",
+      "name": "Breed",
+      "weight": 3,
+      "variants": [
+        { "key": "tabby", "name": "Tabby", "width": 56 },
+        { "key": "tuxedo", "name": "Tuxedo", "width": 48 },
+        { "key": "orange", "name": "Orange", "width": 40 },
+        { "key": "calico", "name": "Calico", "width": 32 },
+        { "key": "siamese", "name": "Siamese", "width": 28 },
+        { "key": "void", "name": "Void", "width": 20 },
+        { "key": "sphynx", "name": "Sphynx", "width": 14 },
+        { "key": "maineCoon", "name": "Maine Coon", "width": 10 },
+        { "key": "loaf", "name": "Loaf", "width": 6 },
+        { "key": "glitch", "name": "Glitch", "width": 2 }
+      ]
+    },
+    {
+      "index": 1,
+      "key": "mood",
+      "name": "Mood",
+      "weight": 1,
+      "variants": [
+        { "key": "unbothered", "name": "Unbothered", "width": 64 },
+        { "key": "judging", "name": "Judging", "width": 52 },
+        { "key": "zoomies", "name": "Zoomies", "width": 44 },
+        { "key": "hungry", "name": "Hungry", "width": 36 },
+        { "key": "smug", "name": "Smug", "width": 28 },
+        { "key": "betrayed", "name": "Betrayed", "width": 18 },
+        { "key": "plotting", "name": "Plotting", "width": 10 },
+        { "key": "enlightened", "name": "Enlightened", "width": 4 }
+      ]
+    },
+    {
+      "index": 2,
+      "key": "accessory",
+      "name": "Accessory",
+      "weight": 2,
+      "variants": [
+        { "key": "none", "name": "None", "width": 80 },
+        { "key": "bellCollar", "name": "Bell collar", "width": 40 },
+        { "key": "bowTie", "name": "Bow tie", "width": 34 },
+        { "key": "bandana", "name": "Bandana", "width": 28 },
+        { "key": "sunglasses", "name": "Sunglasses", "width": 24 },
+        { "key": "partyHat", "name": "Party hat", "width": 18 },
+        { "key": "monocle", "name": "Monocle", "width": 14 },
+        { "key": "wizardHat", "name": "Wizard hat", "width": 10 },
+        { "key": "crown", "name": "Crown", "width": 6 },
+        { "key": "halo", "name": "Halo", "width": 2 }
+      ]
+    },
+    {
+      "index": 3,
+      "key": "brokenThing",
+      "name": "Thing it broke",
+      "weight": 1,
+      "variants": [
+        { "key": "nothing", "name": "Nothing (yet)", "width": 60 },
+        { "key": "mug", "name": "Coffee mug", "width": 50 },
+        { "key": "vase", "name": "Flower vase", "width": 44 },
+        { "key": "plant", "name": "House plant", "width": 38 },
+        { "key": "wineGlass", "name": "Wine glass", "width": 30 },
+        { "key": "laptop", "name": "Laptop", "width": 20 },
+        { "key": "tv", "name": "Television", "width": 10 },
+        { "key": "mingVase", "name": "Priceless Ming vase", "width": 4 }
+      ]
+    },
+    {
+      "index": 4,
+      "key": "room",
+      "name": "Room",
+      "weight": 1,
+      "variants": [
+        { "key": "livingRoom", "name": "Living room", "width": 60 },
+        { "key": "kitchen", "name": "Kitchen", "width": 50 },
+        { "key": "bedroom", "name": "Bedroom", "width": 44 },
+        { "key": "bathroom", "name": "Bathroom", "width": 36 },
+        { "key": "attic", "name": "Attic", "width": 28 },
+        { "key": "serverRoom", "name": "Server room", "width": 20 },
+        { "key": "laboratory", "name": "Laboratory", "width": 12 },
+        { "key": "theVoid", "name": "The Void", "width": 6 }
+      ]
+    }
+  ],
+  "rarity": {
+    "formula": "rarityScore = sum(trait[i].weight * traitRoll[i]) + state.scoreBonus",
+    "maxScore": 3040,
+    "tiers": [
+      { "key": "common", "name": "Common", "minScore": 0, "topPercent": 100 },
+      { "key": "uncommon", "name": "Uncommon", "minScore": 1078, "topPercent": 50 },
+      { "key": "rare", "name": "Rare", "minScore": 1367, "topPercent": 20 },
+      { "key": "epic", "name": "Epic", "minScore": 1657, "topPercent": 5 },
+      { "key": "legendary", "name": "Legendary", "minScore": 2057, "topPercent": 1 }
+    ]
+  },
+  "affection": {
+    "initial": 0,
+    "perFeed": 1,
+    "goldenThreshold": 10,
+    "goldenRule": "at reveal, affection > goldenThreshold turns the accessory golden",
+    "goldenScoreBonus": 250
+  },
+  "mechanics": {
+    "mint": {
+      "paid": true,
+      "maxPerTx": 5,
+      "rule": "Draw one 64-bit encrypted seed per box. Derive stateRoll and the five trait rolls from the seed layout, compute state and rarityScore. Only the program may compute on these values: the holder gets NO blanket decryption right, otherwise shake and observe would be pointless."
+    },
+    "shake": {
+      "paid": false,
+      "caller": "holder",
+      "rule": "The program picks one of the five traits pseudo-randomly and grants the holder a private decryption of that trait roll only. Never reveals state or rarityScore. Unlimited."
+    },
+    "observe": {
+      "paid": true,
+      "caller": "holder",
+      "irreversible": true,
+      "rule": "Seed, state and trait rolls become publicly decryptable. Once the verified cleartexts are submitted, revealed = true and plaintext values are stored. Entangled partner is observed too."
+    },
+    "proveAlive": {
+      "paid": false,
+      "caller": "holder",
+      "rule": "Publicly decrypts the single bit (state == alive). If true, grants the Vet Certified badge. Nothing else leaks."
+    },
+    "duel": {
+      "paid": false,
+      "caller": "both holders (two-step: challenge, accept)",
+      "rule": "Publicly decrypts the single bit (scoreA > scoreB). Ties go to B (the challenged box). Winner's win counter increments. Loser gets one trait roll publicly revealed, never the state."
+    },
+    "entangle": {
+      "paid": false,
+      "caller": "both holders (two-step: propose, accept)",
+      "rule": "Links two unrevealed boxes. A box has at most one partner. Observing one observes the other."
+    },
+    "feed": {
+      "paid": true,
+      "caller": "anyone",
+      "rule": "Adds affection.perFeed to the encrypted affection counter."
+    },
+    "paidShake": {
+      "paid": true,
+      "caller": "anyone but the holder",
+      "holderShareBps": 7000,
+      "rule": "Same trait pick as shake, but the decryption right goes to the payer only. 70% of the fee goes to the holder."
+    }
+  },
+  "events": {
+    "Minted": { "fields": ["tokenId", "owner"] },
+    "Shaken": { "fields": ["tokenId", "viewer", "paid"], "note": "The trait index is NOT emitted; it stays encrypted-side knowledge of the viewer." },
+    "ObserveRequested": { "fields": ["tokenId"] },
+    "Observed": { "fields": ["tokenId", "seed", "state", "rarityScore", "golden"] },
+    "AliveProven": { "fields": ["tokenId", "alive"] },
+    "DuelChallenged": { "fields": ["duelId", "tokenIdA", "tokenIdB"] },
+    "DuelResolved": { "fields": ["duelId", "winnerTokenId", "loserTokenId", "revealedTraitIndex", "revealedTraitRoll"] },
+    "Entangled": { "fields": ["tokenIdA", "tokenIdB"] },
+    "Fed": { "fields": ["tokenId", "feeder"] }
+  }
+}

@@ -1,0 +1,192 @@
+import { describe, expect, it } from "vitest";
+import { spec, TRAIT_KEYS } from "@dno/game-spec";
+import {
+  buildBoxSpec,
+  buildCatSpec,
+  decodeSeed,
+  encodeSeed,
+  FIXTURE_SEEDS,
+  minScoreForTopPercent,
+  mulberry32,
+  rarityScore,
+  resolveTrait,
+  scoreDistribution,
+  stateFromRoll,
+  tierForScore,
+} from "../src";
+
+describe("game spec integrity", () => {
+  it("seed layout tiles all 64 bits without overlap", () => {
+    let next = 0;
+    for (const s of spec.seed.layout) {
+      expect(s.offset).toBe(next);
+      next += s.bits;
+    }
+    expect(next).toBe(spec.seed.bits);
+  });
+
+  it("every trait table covers exactly 256 rolls", () => {
+    for (const t of spec.traits) {
+      expect(t.variants.reduce((n, v) => n + v.width, 0), t.key).toBe(256);
+    }
+  });
+
+  it("variants are ordered common to rare", () => {
+    for (const t of spec.traits) {
+      const widths = t.variants.map((v) => v.width);
+      expect(widths, t.key).toEqual([...widths].sort((a, b) => b - a));
+    }
+  });
+
+  it("state thresholds give 70 / 20 / 8 / 2 percent", () => {
+    const target = [0.7, 0.2, 0.08, 0.02];
+    let lower = 0;
+    spec.states.forEach((s, i) => {
+      expect((s.rollBelow - lower) / 65536).toBeCloseTo(target[i]!, 4);
+      lower = s.rollBelow;
+    });
+    expect(lower).toBe(65536);
+  });
+
+  it("maxScore matches the formula", () => {
+    const max = spec.traits.reduce((n, t) => n + t.weight * 255, 0) + Math.max(...spec.states.map((s) => s.scoreBonus));
+    expect(spec.rarity.maxScore).toBe(max);
+  });
+
+  it("tier thresholds match the exact score distribution", () => {
+    for (const tier of spec.rarity.tiers.slice(1)) {
+      expect(tier.minScore, tier.key).toBe(minScoreForTopPercent(tier.topPercent));
+    }
+  });
+
+  it("score distribution sums to the whole seed space", () => {
+    const { counts, total } = scoreDistribution();
+    expect(counts.reduce((a, b) => a + b, 0n)).toBe(total);
+  });
+});
+
+describe("seed decoding", () => {
+  it("round-trips", () => {
+    const rand = mulberry32(7);
+    for (let i = 0; i < 200; i++) {
+      const parts = {
+        stateRoll: Math.floor(rand() * 65536),
+        rolls: Object.fromEntries(TRAIT_KEYS.map((k) => [k, Math.floor(rand() * 256)])) as ReturnType<typeof decodeSeed>["rolls"],
+        cosmetic: Math.floor(rand() * 256),
+      };
+      expect(decodeSeed(encodeSeed(parts))).toEqual(parts);
+    }
+  });
+
+  it("rejects seeds wider than 64 bits", () => {
+    expect(() => decodeSeed(1n << 64n)).toThrow(RangeError);
+    expect(() => decodeSeed(-1n)).toThrow(RangeError);
+  });
+
+  it("resolves boundaries of the variant table", () => {
+    expect(resolveTrait("breed", 0).variant).toBe("tabby");
+    expect(resolveTrait("breed", 55).variant).toBe("tabby");
+    expect(resolveTrait("breed", 56).variant).toBe("tuxedo");
+    expect(resolveTrait("breed", 253).variant).toBe("loaf");
+    expect(resolveTrait("breed", 254).variant).toBe("glitch");
+    expect(resolveTrait("breed", 255).variant).toBe("glitch");
+  });
+
+  it("resolves state boundaries", () => {
+    expect(stateFromRoll(0).key).toBe("alive");
+    expect(stateFromRoll(45874).key).toBe("alive");
+    expect(stateFromRoll(45875).key).toBe("asleep");
+    expect(stateFromRoll(58982).key).toBe("ghost");
+    expect(stateFromRoll(64225).key).toBe("quantum");
+    expect(stateFromRoll(65535).key).toBe("quantum");
+  });
+});
+
+describe("rarity", () => {
+  it("computes the weighted sum", () => {
+    const rolls = { breed: 10, mood: 20, accessory: 30, brokenThing: 40, room: 50 };
+    expect(rarityScore(rolls, 400)).toBe(3 * 10 + 20 + 2 * 30 + 40 + 50 + 400);
+  });
+
+  it("maps scores to tiers", () => {
+    expect(tierForScore(0).key).toBe("common");
+    expect(tierForScore(1077).key).toBe("common");
+    expect(tierForScore(1078).key).toBe("uncommon");
+    expect(tierForScore(spec.rarity.maxScore).key).toBe("legendary");
+  });
+});
+
+describe("CatSpec", () => {
+  it("is deterministic", () => {
+    for (const { seed } of FIXTURE_SEEDS) {
+      expect(buildCatSpec({ seed })).toEqual(buildCatSpec({ seed }));
+    }
+  });
+
+  it("fixtures cover the expected cats", () => {
+    const summary = FIXTURE_SEEDS.map(({ seed }) => {
+      const c = buildCatSpec({ seed });
+      return `${c.state} ${c.traits.breed.variant} ${c.traits.mood.variant} ${c.traits.accessory.variant} ${c.traits.brokenThing.variant} ${c.traits.room.variant} ${c.rarity.score} ${c.rarity.tier}`;
+    });
+    expect(summary).toEqual([
+      "alive tabby unbothered bellCollar mug livingRoom 395 common",
+      "asleep orange betrayed none vase bedroom 986 common",
+      "ghost siamese judging crown tv serverRoom 2045 epic",
+      "quantum glitch zoomies partyHat laptop theVoid 2807 legendary",
+      "alive void plotting sunglasses wineGlass laboratory 1715 epic",
+    ]);
+  });
+
+  it("fixtures match their snapshot", () => {
+    expect(FIXTURE_SEEDS.map(({ seed }) => buildCatSpec({ seed }))).toMatchSnapshot();
+  });
+
+  it("applies state overrides", () => {
+    const [, asleep, ghost, quantum] = FIXTURE_SEEDS.map(({ seed }) => buildCatSpec({ seed }));
+    expect(asleep!.pose).toBe("curl");
+    expect(asleep!.face.eyeShape).toBe("closed");
+    expect(ghost!.render.ghost).toBe(true);
+    expect(ghost!.render.opacity).toBeLessThan(1);
+    expect(quantum!.animation.flicker).toBe(true);
+    expect(quantum!.altBody).not.toBeNull();
+    expect(quantum!.altBody!.pattern).not.toBe(quantum!.body.pattern);
+  });
+
+  it("turns the accessory golden only above the affection threshold", () => {
+    const seed = FIXTURE_SEEDS[0]!.seed;
+    const at = buildCatSpec({ seed, affection: spec.affection.goldenThreshold });
+    const above = buildCatSpec({ seed, affection: spec.affection.goldenThreshold + 1 });
+    expect(at.accessory.golden).toBe(false);
+    expect(above.accessory.golden).toBe(true);
+    expect(above.rarity.score - at.rarity.score).toBe(spec.affection.goldenScoreBonus);
+    expect(above.rarity.tier).toBe(at.rarity.tier);
+  });
+
+  it("rejects a state that contradicts the seed", () => {
+    expect(() => buildCatSpec({ seed: FIXTURE_SEEDS[0]!.seed, state: "ghost" })).toThrow();
+    expect(() => buildCatSpec({ seed: FIXTURE_SEEDS[0]!.seed, state: 0 })).not.toThrow();
+  });
+
+  it("builds a valid spec for random seeds", () => {
+    const rand = mulberry32(99);
+    for (let i = 0; i < 2000; i++) {
+      const seed = (BigInt(Math.floor(rand() * 2 ** 32)) << 32n) | BigInt(Math.floor(rand() * 2 ** 32));
+      const c = buildCatSpec({ seed });
+      expect(c.rarity.score).toBeLessThanOrEqual(spec.rarity.maxScore);
+      expect(c.body.girth).toBeGreaterThan(0.7);
+    }
+  });
+});
+
+describe("BoxSpec", () => {
+  it("is deterministic and depends on the token id only", () => {
+    expect(buildBoxSpec(42)).toEqual(buildBoxSpec(42));
+    expect(buildBoxSpec(42)).not.toEqual(buildBoxSpec(43));
+    expect(buildBoxSpec(7).serial).toBe("DNO-0007");
+  });
+
+  it("rejects ids outside the supply", () => {
+    expect(() => buildBoxSpec(-1)).toThrow(RangeError);
+    expect(() => buildBoxSpec(spec.collection.maxSupply)).toThrow(RangeError);
+  });
+});

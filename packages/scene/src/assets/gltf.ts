@@ -1,0 +1,80 @@
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D } from "three";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+
+/**
+ * A model too organic to build in code. Each entry is mirrored in
+ * assets/BLENDER_TODO.md with the modelling spec.
+ */
+export interface GltfAssetDef {
+  id: string;
+  /** Path relative to the library base URL. */
+  file: string;
+  /** Shown until the real file exists, and whenever loading fails. */
+  placeholder: () => Object3D;
+}
+
+/** Magenta box: impossible to miss, so a missing asset never ships unnoticed. */
+export function placeholderBox(size: [number, number, number]): Object3D {
+  const mesh = new Mesh(new BoxGeometry(...size), new MeshBasicMaterial({ color: "#FF2BD6", wireframe: true }));
+  mesh.position.y = size[1] / 2;
+  mesh.name = "placeholder";
+  return mesh;
+}
+
+/** Registry of Blender-made assets. Empty in Phase 1: everything so far is procedural. */
+export const GLTF_ASSETS: Record<string, GltfAssetDef> = {};
+
+export interface AssetLibraryOptions {
+  /** Where the .glb files are served from. */
+  baseUrl?: string;
+  /** Where the Draco decoder (draco_decoder.wasm and friends) is served from. */
+  dracoDecoderPath?: string;
+}
+
+/** Loads Draco- or meshopt-compressed glTF, caches by id, falls back to the placeholder. */
+export class AssetLibrary {
+  private loader: GLTFLoader | null = null;
+  private draco: DRACOLoader | null = null;
+  private readonly cache = new Map<string, Promise<Object3D>>();
+  private readonly baseUrl: string;
+  private readonly dracoDecoderPath: string;
+
+  constructor(opts: AssetLibraryOptions = {}, private readonly registry: Record<string, GltfAssetDef> = GLTF_ASSETS) {
+    this.baseUrl = opts.baseUrl ?? "/models/";
+    this.dracoDecoderPath = opts.dracoDecoderPath ?? "/draco/";
+  }
+
+  /** Decoders are only created when the first asset is requested. */
+  private getLoader(): GLTFLoader {
+    if (!this.loader) {
+      this.draco = new DRACOLoader().setDecoderPath(this.dracoDecoderPath);
+      this.loader = new GLTFLoader().setDRACOLoader(this.draco).setMeshoptDecoder(MeshoptDecoder);
+    }
+    return this.loader;
+  }
+
+  /** Resolves to a fresh clone every call, so callers can mutate what they get. */
+  async load(id: string): Promise<Object3D> {
+    const def = this.registry[id];
+    if (!def) throw new Error(`unknown glTF asset "${id}"`);
+    let pending = this.cache.get(id);
+    if (!pending) {
+      pending = this.getLoader()
+        .loadAsync(this.baseUrl + def.file)
+        .then((gltf) => gltf.scene as Object3D)
+        .catch((err: unknown) => {
+          console.warn(`[scene] asset "${id}" not available, using placeholder`, err);
+          return def.placeholder();
+        });
+      this.cache.set(id, pending);
+    }
+    return (await pending).clone(true);
+  }
+
+  dispose(): void {
+    this.draco?.dispose();
+    this.cache.clear();
+  }
+}

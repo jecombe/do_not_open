@@ -1,0 +1,11 @@
+{
+  "name": "@dno/game-spec",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "exports": { ".": "./index.ts", "./spec.json": "./spec.json" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "devDependencies": { "typescript": "~5.9.3" }
+}

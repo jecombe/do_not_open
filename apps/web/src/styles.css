@@ -1,0 +1,406 @@
+:root {
+  --dock-shadow: #17130f;
+  --kraft: #b8895a;
+  --tape: #d9c28a;
+  --ink-red: #c2261d;
+  --manifest: #e9dfc8;
+  --sodium: #ffb454;
+  --spectral: #7de3d0;
+  --ink: #1c1814;
+
+  --stencil: "Stardos Stencil", "Arial Black", sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", sans-serif;
+
+  --gutter: clamp(12px, 2.4vw, 28px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--dock-shadow);
+  color: var(--manifest);
+  font-family: var(--label);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sodium);
+  outline-offset: 2px;
+}
+
+.app {
+  position: relative;
+  height: 100%;
+}
+
+.stage {
+  position: absolute !important;
+  inset: 0;
+  touch-action: none;
+}
+
+/* --- Masthead: the stamp itself is the logo --- */
+.masthead {
+  position: absolute;
+  inset: var(--gutter) var(--gutter) auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.masthead > * {
+  pointer-events: auto;
+}
+
+.wordmark {
+  margin: 0;
+  padding: 0.18em 0.5em 0.08em;
+  font-family: var(--stencil);
+  font-size: clamp(22px, 3.4vw, 40px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-red);
+  border: 0.12em solid var(--ink-red);
+  outline: 0.04em solid var(--ink-red);
+  outline-offset: -0.26em;
+  transform: rotate(-3deg);
+  transform-origin: left top;
+  mix-blend-mode: screen;
+}
+
+.views {
+  display: flex;
+  gap: 6px;
+}
+
+.views button {
+  padding: 8px 16px 8px 26px;
+  background: var(--tape);
+  color: var(--ink);
+  border: 0;
+  font-size: 17px;
+  font-weight: 600;
+  /* Manila tag with a clipped corner and an eyelet. */
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 70%, 0 30%);
+  background-image: radial-gradient(circle at 14px 50%, var(--dock-shadow) 3.5px, transparent 4px);
+  opacity: 0.62;
+}
+
+.views button[aria-pressed="true"] {
+  opacity: 1;
+  background-color: var(--manifest);
+}
+
+.views button:hover {
+  opacity: 1;
+}
+
+/* --- The slip: a shipping label laid on top of the scene --- */
+.slip {
+  position: absolute;
+  left: var(--gutter);
+  bottom: calc(var(--gutter) + 34px);
+  width: min(340px, calc(100vw - 2 * var(--gutter)));
+  padding: 14px 16px 16px;
+  background: var(--manifest);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 5px var(--manifest), 0 18px 40px rgb(0 0 0 / 0.55);
+  transform: rotate(-0.6deg);
+}
+
+.slip.declaration {
+  left: auto;
+  right: var(--gutter);
+  transform: rotate(0.5deg);
+}
+
+.slip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.serial {
+  margin: 2px 0 8px;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.serial.small {
+  font-size: 30px;
+  margin-top: 8px;
+  word-break: break-all;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: space-between;
+  margin: 0 0 14px;
+  padding: 8px 0;
+  border-block: 2px solid var(--ink);
+}
+
+.fields dt {
+  font-size: 15px;
+}
+
+.fields dd {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stepper {
+  display: flex;
+  gap: 4px;
+}
+
+.stepper button {
+  width: 44px;
+  height: 32px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stepper button:hover {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.stamp-button {
+  display: block;
+  width: 100%;
+  padding: 12px 12px 8px;
+  background: transparent;
+  color: var(--ink-red);
+  border: 4px solid var(--ink-red);
+  font-family: var(--stencil);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: transform 80ms ease-out;
+}
+
+.stamp-button:hover:not(:disabled) {
+  background: var(--ink-red);
+  color: var(--manifest);
+}
+
+.stamp-button:active:not(:disabled) {
+  transform: translateY(2px) rotate(-0.8deg);
+}
+
+.stamp-button:disabled {
+  cursor: progress;
+  opacity: 0.55;
+}
+
+.felt {
+  min-height: 84px;
+  margin-top: 12px;
+}
+
+.felt-line {
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.felt-line strong {
+  font-weight: 700;
+}
+
+.fine {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+  max-width: 44ch;
+}
+
+/* --- Declaration --- */
+.tier {
+  padding: 1px 8px;
+  border: 2px solid var(--ink);
+  font-weight: 700;
+}
+
+.tier-epic,
+.tier-legendary {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.state-note {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.traits {
+  width: 100%;
+  border-collapse: collapse;
+  border-block: 2px solid var(--ink);
+  font-size: 18px;
+}
+
+.traits th,
+.traits td {
+  padding: 3px 0;
+  text-align: left;
+  font-weight: 500;
+  border-bottom: 1px solid rgb(28 24 20 / 0.25);
+}
+
+.traits td {
+  font-weight: 700;
+}
+
+.traits .roll {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.traits .total th,
+.traits .total td {
+  border-bottom: 0;
+  font-weight: 700;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink-red);
+}
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.picker button {
+  padding: 4px 9px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.picker button[aria-pressed="true"],
+.picker button:hover {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+/* --- Footer notice --- */
+.notice {
+  position: absolute;
+  inset: auto var(--gutter) var(--gutter);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 15px;
+  color: rgb(233 223 200 / 0.72);
+  pointer-events: none;
+}
+
+.link {
+  padding: 0;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  pointer-events: auto;
+}
+
+.link:hover {
+  color: var(--sodium);
+}
+
+@media (max-width: 700px) {
+  .masthead {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .slip,
+  .slip.declaration {
+    left: var(--gutter);
+    right: var(--gutter);
+    width: auto;
+    padding: 10px 12px 12px;
+    transform: none;
+  }
+
+  .serial {
+    font-size: 44px;
+  }
+
+  .serial.small {
+    font-size: 22px;
+  }
+
+  .felt {
+    min-height: 0;
+  }
+
+  .notice span {
+    display: none;
+  }
+
+  .notice {
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp-button {
+    transition: none;
+  }
+}
