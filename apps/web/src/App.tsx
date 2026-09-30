@@ -66,6 +66,7 @@ export function App() {
               {v.label}
             </button>
           ))}
+          <a href="/docs.html">Manual</a>
           {mode !== "mock" &&
             (account ? (
               <button type="button" className="wallet" onClick={() => void chain.disconnect()} title="Disconnect this wallet">

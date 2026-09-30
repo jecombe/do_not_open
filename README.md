@@ -97,7 +97,11 @@ what is open before a mainnet deployment.
 
 ## Read next
 
-Start at [`docs/README.md`](docs/README.md). In short:
+The app carries its own illustrated manual at `/docs.html` (the "Manual" tag in the
+navigation): the seed, the flows and the package layout as interactive three.js diagrams.
+Its source is `apps/web/src/docs`.
+
+For the reference documents, start at [`docs/README.md`](docs/README.md). In short:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): packages, data flow, 3D pipeline
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md): what is encrypted, who can read what, ACL on transfer

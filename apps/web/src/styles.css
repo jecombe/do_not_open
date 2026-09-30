@@ -96,7 +96,8 @@ button {
   gap: 6px;
 }
 
-.views button {
+.views button,
+.views a {
   padding: 8px 16px 8px 26px;
   background: var(--tape);
   color: var(--ink);
@@ -114,8 +115,14 @@ button {
   background-color: var(--manifest);
 }
 
-.views button:hover {
+.views button:hover,
+.views a:hover {
   opacity: 1;
+}
+
+.views a {
+  line-height: 1.3;
+  text-decoration: none;
 }
 
 /* --- The slip: a shipping label laid on top of the scene --- */

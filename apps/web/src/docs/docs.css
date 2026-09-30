@@ -1,0 +1,775 @@
+:root {
+  --dock-shadow: #17130f;
+  --kraft: #b8895a;
+  --tape: #d9c28a;
+  --ink-red: #c2261d;
+  --stamp-red: #e0473c;
+  --manifest: #e9dfc8;
+  --sodium: #ffb454;
+  --spectral: #7de3d0;
+  --ink: #1c1814;
+
+  --stencil: "Stardos Stencil", "Arial Black", sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --gutter: clamp(16px, 3vw, 40px);
+  --measure: 64ch;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
+
+body {
+  margin: 0;
+  /* One lamp, top right, like the depot. */
+  background:
+    radial-gradient(900px 520px at 78% -60px, rgb(255 180 84 / 0.13), transparent 70%),
+    var(--dock-shadow);
+  background-attachment: fixed;
+  color: var(--manifest);
+  font-family: var(--label);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.42;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--sodium);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--manifest);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sodium);
+  outline-offset: 2px;
+}
+
+.manual {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: var(--gutter);
+}
+
+/* --- Top: the same stamp and tags as the app --- */
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.wordmark {
+  display: inline-block;
+  padding: 0.18em 0.5em 0.08em;
+  font-family: var(--stencil);
+  font-size: clamp(22px, 3.4vw, 40px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink-red);
+  border: 0.12em solid var(--ink-red);
+  outline: 0.04em solid var(--ink-red);
+  outline-offset: -0.26em;
+  transform: rotate(-3deg);
+  transform-origin: left top;
+  mix-blend-mode: screen;
+}
+
+.wordmark:hover {
+  color: var(--stamp-red);
+}
+
+.views {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.views a {
+  padding: 8px 16px 8px 26px;
+  background: var(--tape);
+  background-image: radial-gradient(circle at 14px 50%, var(--dock-shadow) 3.5px, transparent 4px);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 70%, 0 30%);
+  opacity: 0.72;
+}
+
+.views a:hover {
+  opacity: 1;
+  color: var(--ink);
+}
+
+/* --- Hero --- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  align-items: center;
+  gap: 0 var(--gutter);
+  padding: clamp(32px, 6vw, 76px) 0 clamp(24px, 5vw, 64px);
+}
+
+h1 {
+  grid-column: 1 / -1;
+  margin: 0 0 0.3em;
+  font-family: var(--stencil);
+  font-size: clamp(44px, 7.4vw, 100px);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--manifest);
+}
+
+.lede {
+  max-width: 34ch;
+  margin: 0 0 1.2em;
+  font-size: clamp(22px, 2.3vw, 29px);
+  line-height: 1.28;
+}
+
+.hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin: 0;
+}
+
+.stamp-link {
+  padding: 12px 18px 8px;
+  border: 4px solid var(--stamp-red);
+  color: var(--stamp-red);
+  font-family: var(--stencil);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.stamp-link:hover {
+  background: var(--ink-red);
+  border-color: var(--ink-red);
+  color: var(--manifest);
+}
+
+/* --- Layout: routing slip on the left, the manual on the right --- */
+.layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 56px);
+  align-items: start;
+}
+
+.toc {
+  position: sticky;
+  top: 24px;
+}
+
+.toc ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc a {
+  display: block;
+  padding: 6px 12px 6px 26px;
+  background: var(--tape);
+  background-image: radial-gradient(circle at 14px 50%, var(--dock-shadow) 3.5px, transparent 4px);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 70%, 0 30%);
+  opacity: 0.5;
+}
+
+.toc a:hover,
+.toc a[aria-current] {
+  opacity: 1;
+}
+
+.toc a[aria-current] {
+  background-color: var(--manifest);
+}
+
+main > section {
+  padding: clamp(36px, 6vw, 72px) 0;
+  /* A tear line between sections. */
+  border-top: 2px dashed rgb(233 223 200 / 0.22);
+}
+
+h2 {
+  margin: 0 0 0.5em;
+  font-family: var(--stencil);
+  font-size: clamp(30px, 4.2vw, 52px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  color: var(--tape);
+}
+
+.prose {
+  max-width: var(--measure);
+}
+
+.prose p {
+  margin: 0 0 0.85em;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Figures: a dark stage and a paper slip laid next to it --- */
+.figure {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: center;
+  margin: clamp(20px, 3vw, 36px) 0;
+}
+
+.stage {
+  position: relative;
+  height: 420px;
+  min-width: 0;
+}
+
+.stage.tall {
+  height: 450px;
+}
+
+.stage.short {
+  height: 330px;
+}
+
+.hero-stage {
+  height: clamp(280px, 36vw, 460px);
+}
+
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+}
+
+.stage.no-webgl {
+  display: none;
+}
+
+.stage-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stage-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--manifest);
+  text-shadow: 0 1px 0 var(--dock-shadow), 0 0 8px var(--dock-shadow), 0 0 8px var(--dock-shadow);
+  will-change: transform;
+}
+
+.stage-label.seed-hex {
+  font-family: var(--mono);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--sodium);
+}
+
+.stage-label.seed-hex.is-sealed {
+  color: rgb(233 223 200 / 0.5);
+}
+
+.stage-label.crate.is-active {
+  color: var(--sodium);
+}
+
+.stage-label.packet {
+  padding: 3px 7px 2px;
+  border: 2px solid var(--packet, var(--tape));
+  background: var(--dock-shadow);
+  font-size: 15px;
+  text-shadow: none;
+}
+
+.stage-label.packet:empty {
+  display: none;
+}
+
+.slip {
+  padding: 14px 16px 16px;
+  background: var(--manifest);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 5px var(--manifest), 0 18px 40px rgb(0 0 0 / 0.55);
+  transform: rotate(0.5deg);
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.slip p {
+  margin: 0 0 10px;
+}
+
+.slip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.slip .lead {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.slip .fine {
+  font-size: 16px;
+}
+
+.slip .detail {
+  min-height: 118px;
+  padding: 8px 0;
+  border-block: 2px solid var(--ink);
+  margin-bottom: 10px;
+}
+
+.slip .detail p {
+  margin: 0;
+}
+
+.hex {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hex span {
+  padding: 1px 0;
+  margin-left: 2px;
+  border-bottom: 4px solid;
+}
+
+.hex span.is-focus {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.picker button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.picker button i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--ink);
+}
+
+.picker button[aria-pressed="true"],
+.picker button:hover {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.picker.tabs button {
+  flex: 1;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.plain-button {
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.plain-button.small {
+  padding: 2px 9px;
+  font-size: 16px;
+}
+
+.plain-button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.plain-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+/* The steps are a real sequence, so they are numbered. */
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  border-block: 2px solid var(--ink);
+}
+
+.steps li {
+  counter-increment: step;
+}
+
+.steps li + li {
+  border-top: 1px solid rgb(28 24 20 / 0.25);
+}
+
+.steps button {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  column-gap: 6px;
+  width: 100%;
+  padding: 5px 4px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.steps button::before {
+  content: counter(step);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.steps strong {
+  font-weight: 600;
+}
+
+.steps span {
+  grid-column: 2;
+  padding-top: 2px;
+  font-size: 17px;
+}
+
+.steps .is-done button {
+  opacity: 0.55;
+}
+
+.steps .is-current button {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.steps .is-current strong {
+  font-weight: 700;
+}
+
+.steps button:hover {
+  opacity: 1;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+
+.legend li::before {
+  content: "";
+  display: inline-block;
+  width: 11px;
+  height: 9px;
+  margin-right: 5px;
+  border: 1px solid var(--ink);
+  background: var(--tape);
+}
+
+.legend [data-kind="cipher"]::before {
+  background: var(--spectral);
+}
+
+.legend [data-kind="plain"]::before {
+  background: #fff;
+}
+
+.legend [data-kind="proof"]::before {
+  background: var(--ink-red);
+}
+
+.legend [data-kind="sign"]::before {
+  background: var(--sodium);
+}
+
+/* --- Forms: tables printed on the same paper as the slips --- */
+.form {
+  max-width: 900px;
+  margin: clamp(18px, 3vw, 30px) 0;
+  padding: 6px 16px 8px;
+  background: var(--manifest);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 5px var(--manifest), 0 18px 40px rgb(0 0 0 / 0.5);
+  overflow-x: auto;
+}
+
+.form table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.form th,
+.form td {
+  padding: 7px 14px 7px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgb(28 24 20 / 0.28);
+}
+
+.form thead th {
+  font-size: 16px;
+  font-weight: 600;
+  border-bottom: 2px solid var(--ink);
+}
+
+.form tbody th {
+  font-weight: 700;
+}
+
+.form tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+/* --- Timeline of a sale --- */
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  max-width: 1000px;
+  margin: clamp(18px, 3vw, 30px) 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: t;
+}
+
+.timeline li {
+  position: relative;
+  padding: 22px 14px 0 0;
+  border-top: 3px solid var(--tape);
+  counter-increment: t;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.timeline li::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 0;
+  width: 15px;
+  height: 15px;
+  background: var(--tape);
+  transform: rotate(45deg);
+}
+
+.timeline li:nth-child(3)::before {
+  background: var(--stamp-red);
+}
+
+.timeline strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 20px;
+  color: var(--tape);
+}
+
+/* --- Findings and references --- */
+.findings,
+.refs {
+  max-width: var(--measure);
+  margin: clamp(14px, 2vw, 22px) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.findings li {
+  padding: 9px 0 9px 22px;
+  border-bottom: 1px solid rgb(233 223 200 / 0.18);
+  background: linear-gradient(var(--stamp-red), var(--stamp-red)) 0 1em / 10px 4px no-repeat;
+}
+
+.findings strong {
+  color: var(--manifest);
+  font-weight: 700;
+}
+
+.refs li {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgb(233 223 200 / 0.18);
+}
+
+.refs a {
+  font-weight: 700;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 28px 0 8px;
+  border-top: 2px dashed rgb(233 223 200 / 0.22);
+  font-size: 16px;
+  color: rgb(233 223 200 / 0.72);
+}
+
+@media (max-width: 1080px) {
+  .figure {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .slip {
+    transform: none;
+  }
+
+  .slip .detail {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 860px) {
+  body {
+    font-size: 19px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-stage {
+    height: 260px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The routing slip becomes a row of tags that scrolls sideways. */
+  .toc {
+    position: static;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 0 var(--gutter);
+    overflow-x: auto;
+  }
+
+  .toc ol {
+    display: flex;
+    gap: 6px;
+    width: max-content;
+  }
+
+  .stage,
+  .stage.tall,
+  .stage.short {
+    height: 340px;
+  }
+
+  .timeline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .timeline li {
+    padding: 0 0 16px 24px;
+    border-top: 0;
+    border-left: 3px solid var(--tape);
+  }
+
+  .timeline li::before {
+    top: 4px;
+    left: -9px;
+  }
+
+  .refs li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
