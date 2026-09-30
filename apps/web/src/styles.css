@@ -861,6 +861,75 @@ button {
   margin-top: 12px;
 }
 
+.box-steps .overview {
+  grid-column: 1 / -1;
+}
+
+/* --- Warehouse: find a box, and what the marks on the racks mean --- */
+.find {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  margin-top: 12px;
+}
+
+.find label {
+  grid-column: 1 / -1;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.find input {
+  min-width: 0;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.find .plain-button {
+  padding-inline: 18px;
+}
+
+.legend {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 8px;
+  padding: 10px 0 0;
+  list-style: none;
+  border-top: 2px solid var(--ink);
+  font-size: 15px;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  flex-shrink: 0;
+  width: 18px;
+  height: 14px;
+  background: var(--kraft);
+  border: 1.5px solid var(--ink);
+}
+
+.swatch-sealed {
+  background: linear-gradient(90deg, var(--kraft) 38%, var(--tape) 38% 62%, var(--kraft) 62%);
+}
+
+.swatch-open {
+  background: linear-gradient(var(--dock-shadow) 45%, var(--kraft) 45%);
+}
+
+.swatch-mine {
+  width: 10px;
+  background: var(--ink-red);
+}
+
 /* --- Specimens: arrows and a counter above the picker --- */
 .specimen-nav {
   display: flex;

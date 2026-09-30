@@ -6,12 +6,14 @@ import { LangSwitch } from "./i18n/LangSwitch";
 
 export const VIEWS = [
   { key: "shelf", label: "nav.shelf" },
-  { key: "box", label: "nav.box" },
+  { key: "warehouse", label: "nav.boxes" },
   { key: "pair", label: "nav.pair" },
   { key: "leaderboard", label: "nav.leaderboard" },
   { key: "specimens", label: "nav.specimens" },
 ] as const satisfies readonly { key: string; label: AppKey }[];
-export type View = (typeof VIEWS)[number]["key"];
+/** "box" is one box looked at closely: it sits under "See boxes" in the menu. */
+export type View = (typeof VIEWS)[number]["key"] | "box";
+const menuKey = (view: View) => (view === "box" ? "warehouse" : view);
 
 /**
  * The stamp on the left; on the right, a small wallet tag and one manila tag
@@ -34,7 +36,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
   useDismiss(open, root, closeMenu, toggle);
   useDismiss(!!picking, root, closePicker, walletButton);
 
-  const current = VIEWS.find((v) => v.key === view)!;
+  const current = VIEWS.find((v) => v.key === menuKey(view))!;
   const { account, mode } = chain;
 
   return (
@@ -99,7 +101,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
                 <li key={v.key}>
                   <button
                     type="button"
-                    aria-current={view === v.key ? "page" : undefined}
+                    aria-current={menuKey(view) === v.key ? "page" : undefined}
                     onClick={() => {
                       onView(v.key);
                       setOpen(false);

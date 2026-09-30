@@ -7,6 +7,7 @@ import {
   type AliveCheck,
   type BoxInfo,
   type BoxStatus,
+  type BoxSummary,
   type ChainAdapter,
   type CollectionInfo,
   type DuelInfo,
@@ -128,6 +129,10 @@ export class MockAdapter implements ChainAdapter {
 
   async boxesOf(owner: Address): Promise<number[]> {
     return this.boxes.flatMap((b, id) => (b.owner === owner ? [id] : []));
+  }
+
+  async boxSummaries(from: number, to: number): Promise<BoxSummary[]> {
+    return this.boxes.slice(from, to).map((b, i) => ({ tokenId: from + i, owner: b.owner, status: b.status }));
   }
 
   async pair(tokenA: number, tokenB: number): Promise<PairInfo> {

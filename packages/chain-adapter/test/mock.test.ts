@@ -25,6 +25,15 @@ describe("MockAdapter", () => {
     expect((await chain.collection()).totalMinted).toBe(6);
   });
 
+  it("summarises a range of boxes with their holder and status", async () => {
+    const chain = await fresh();
+    const rows = await chain.boxSummaries(2, 5);
+    expect(rows.map((r) => r.tokenId)).toEqual([2, 3, 4]);
+    expect(rows.map((r) => r.owner)).toEqual([MOCK_YOU, MOCK_NIGHT_SHIFT, MOCK_NIGHT_SHIFT]);
+    expect(rows.every((r) => r.status === "sealed")).toBe(true);
+    expect(await chain.boxSummaries(6, 10)).toEqual([]);
+  });
+
   it("needs an account for actions but not for reads", async () => {
     const chain = new MockAdapter({ latency: 0 });
     expect((await chain.box(0)).status).toBe("sealed");

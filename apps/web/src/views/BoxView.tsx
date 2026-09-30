@@ -18,6 +18,7 @@ interface Props {
   onTokenChange: (tokenId: number) => void;
   onPair: (tokenId: number) => void;
   onShelf: () => void;
+  onOverview: () => void;
 }
 
 const ANGLES: InspectAngle[] = ["front", "left", "back", "right", "above"];
@@ -41,7 +42,7 @@ const cue = (opts: ActionOptions, at: Step, then: () => void): ActionOptions => 
 /** A note is stored as a message key, so it follows a language change. */
 type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive">;
 
-export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf }: Props) {
+export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview }: Props) {
   const { adapter, account, collection, refresh, connect } = useChain();
   const t = useT();
   const scene = useRef<BoxSceneHandle>(null);
@@ -87,6 +88,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const onOpened = useCallback(() => setOpening(false), []);
   const steps = (
     <div className="box-steps">
+      <button type="button" className="plain-button overview" onClick={onOverview} disabled={!!busy}>
+        {t("box.overview")}
+      </button>
       <button type="button" className="plain-button" onClick={() => step(-1)} disabled={!!busy || minted < 2}>
         {t("box.prev")}
       </button>

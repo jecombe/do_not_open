@@ -13,4 +13,5 @@ export * from "./effects/duel";
 export * from "./box/sound";
 export * from "./box/textures";
 export * from "./depot/buildDepot";
+export * from "./depot/buildWarehouse";
 export * from "./assets/gltf";

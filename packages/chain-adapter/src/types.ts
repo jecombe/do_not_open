@@ -132,6 +132,13 @@ export class ChainError extends Error {
   }
 }
 
+/** What the warehouse needs to shelve a box: who holds it and whether it is open. */
+export interface BoxSummary {
+  tokenId: number;
+  owner: Address;
+  status: BoxStatus;
+}
+
 /** A wallet the browser offers, as shown in a picker. */
 export interface WalletOption {
   id: string;
@@ -158,6 +165,8 @@ export interface ChainAdapter {
   collection(): Promise<CollectionInfo>;
   box(tokenId: number): Promise<BoxInfo>;
   boxesOf(owner: Address): Promise<number[]>;
+  /** Owner and status of tokens `from` to `to` (exclusive), cheaper than `box` for each. */
+  boxSummaries(from: number, to: number): Promise<BoxSummary[]>;
   pair(tokenA: number, tokenB: number): Promise<PairInfo>;
   /** What `owner` earned from paid shakes and has not claimed yet. */
   credits(owner: Address): Promise<bigint>;

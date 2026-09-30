@@ -3,7 +3,7 @@ export const en = {
   // --- masthead and footer
   "nav.views": "Views",
   "nav.shelf": "Your shelf",
-  "nav.box": "One box",
+  "nav.boxes": "See boxes",
   "nav.pair": "Two boxes",
   "nav.leaderboard": "Leaderboard",
   "nav.specimens": "Specimens",
@@ -284,6 +284,22 @@ export const en = {
   "vice.none": "Sober",
   "vice.stoned": "Stoned",
   "vice.drunk": "Drunk",
+  "box.overview": "Overview",
+  "wh.title": "Warehouse",
+  "wh.count_one": "{count} box, {open} open",
+  "wh.count_other": "{count} boxes, {open} open",
+  "wh.state": "State",
+  "wh.inspect": "Inspect {serial}",
+  "wh.empty": "No box has been minted yet. The racks are waiting.",
+  "wh.pick": "Every box ever minted is on these racks. Point at one to read its label, click it to pick it.",
+  "wh.find": "Go to box",
+  "wh.go": "Go",
+  "wh.legendSealed": "Taped shut: sealed",
+  "wh.legendOpen": "Flaps out: opened",
+  "wh.legendMine_one": "Red tag: yours ({count})",
+  "wh.legendMine_other": "Red tag: yours ({count})",
+  "wh.hint": "Drag to look around, WASD or the arrow keys to walk, scroll to step closer.",
+  "wh.hintTouch": "One finger to look around, two to move and zoom. Tap a box to pick it.",
 } as const satisfies Record<string, string>;
 
 export type AppKey = keyof typeof en;
