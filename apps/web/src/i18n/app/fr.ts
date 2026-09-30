@@ -13,6 +13,7 @@ export const fr: Record<AppKey, string> = {
   "nav.language": "Langue",
   "footer.offline": "La chaîne est injoignable. {reason}",
   "footer.mock": "Dépôt factice. Aucune chaîne connectée ; les graines sont des doublures locales.",
+  "footer.unavailable": "{mode} n'est pas encore disponible : cette version tourne sur le dépôt factice. Les graines sont des doublures locales.",
   "footer.chain.before": "Testnet {chain}. Contrat ",
   "footer.chain.after": ". Le contenu est chiffré avec Zama FHEVM.",
   "footer.reading": "Lecture de la chaîne…",

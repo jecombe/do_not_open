@@ -90,6 +90,8 @@ export function App() {
             t("footer.offline", { reason: chain.offline })
           ) : chain.connectError ? (
             chain.connectError
+          ) : chain.unavailable ? (
+            t("footer.unavailable", { mode: chain.unavailable })
           ) : mode === "mock" ? (
             t("footer.mock")
           ) : collection ? (

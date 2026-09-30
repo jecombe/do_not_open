@@ -13,6 +13,7 @@ export const en = {
   "nav.language": "Language",
   "footer.offline": "Cannot reach the chain. {reason}",
   "footer.mock": "Mock depot. No chain connected; seeds are local stand-ins.",
+  "footer.unavailable": "{mode} is not available yet: this build runs the mock depot. Seeds are local stand-ins.",
   "footer.chain.before": "{chain} testnet. Contract ",
   "footer.chain.after": ". Contents are encrypted with Zama FHEVM.",
   "footer.reading": "Reading the chain…",

@@ -11,6 +11,8 @@ interface ChainState {
   myBoxes: number[];
   /** Set when the chain could not be read at all. */
   offline: string | null;
+  /** The mode the build asked for when it is not available yet (e.g. "solana-mainnet"). The app then runs in mock mode. */
+  unavailable: string | null;
   /** Re-reads the collection and the account's boxes. */
   refresh(): Promise<void>;
   connect(): Promise<void>;
@@ -20,14 +22,20 @@ interface ChainState {
 
 const ChainContext = createContext<ChainState | null>(null);
 
+/** Modes announced in `.env.example` that no adapter implements yet. */
+const PLANNED_MODES = ["mainnet", "solana-devnet", "solana-mainnet"];
+
 /** `?chain=mock` or `?chain=sepolia` in the URL wins over the build-time setting. */
-function chainMode(): ChainMode {
-  const wanted = new URLSearchParams(window.location.search).get("chain") ?? import.meta.env.VITE_CHAIN_MODE;
-  return wanted === "sepolia" ? "sepolia" : "mock";
+function chainMode(): { mode: ChainMode; unavailable: string | null } {
+  const wanted = new URLSearchParams(window.location.search).get("chain") ?? import.meta.env.VITE_CHAIN_MODE ?? "mock";
+  if (wanted === "sepolia") return { mode: "sepolia", unavailable: null };
+  if (PLANNED_MODES.includes(wanted)) return { mode: "mock", unavailable: wanted };
+  if (wanted !== "mock") console.warn(`[chain] unknown VITE_CHAIN_MODE "${wanted}", running the mock`);
+  return { mode: "mock", unavailable: null };
 }
 
 export function ChainProvider({ children }: { children: ReactNode }) {
-  const mode = useMemo(chainMode, []);
+  const { mode, unavailable } = useMemo(chainMode, []);
   const [adapter, setAdapter] = useState<ChainAdapter | null>(null);
   const [account, setAccount] = useState<Address | null>(null);
   const [collection, setCollection] = useState<CollectionInfo | null>(null);
@@ -82,7 +90,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
 
   if (!adapter) return <p className="boot">Unlocking the depot…</p>;
   return (
-    <ChainContext.Provider value={{ adapter, mode, account, collection, myBoxes, offline, refresh, connect, disconnect, connectError }}>
+    <ChainContext.Provider value={{ adapter, mode, account, collection, myBoxes, offline, unavailable, refresh, connect, disconnect, connectError }}>
       {children}
     </ChainContext.Provider>
   );

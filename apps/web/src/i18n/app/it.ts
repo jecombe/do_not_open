@@ -13,6 +13,7 @@ export const it: Record<AppKey, string> = {
   "nav.language": "Lingua",
   "footer.offline": "Impossibile raggiungere la chain. {reason}",
   "footer.mock": "Deposito fittizio. Nessuna chain collegata; i seed sono controfigure locali.",
+  "footer.unavailable": "{mode} non è ancora disponibile: questa versione usa il deposito fittizio. I seed sono controfigure locali.",
   "footer.chain.before": "Testnet {chain}. Contratto ",
   "footer.chain.after": ". Il contenuto è cifrato con Zama FHEVM.",
   "footer.reading": "Lettura della chain…",

@@ -13,6 +13,7 @@ export const es: Record<AppKey, string> = {
   "nav.language": "Idioma",
   "footer.offline": "No se puede llegar a la cadena. {reason}",
   "footer.mock": "Depósito simulado. Sin cadena conectada; las semillas son sustitutos locales.",
+  "footer.unavailable": "{mode} aún no está disponible: esta versión usa el depósito simulado. Las semillas son sustitutos locales.",
   "footer.chain.before": "Testnet {chain}. Contrato ",
   "footer.chain.after": ". El contenido está cifrado con Zama FHEVM.",
   "footer.reading": "Leyendo la cadena…",
