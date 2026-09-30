@@ -112,9 +112,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     }
   }, [adapter, tokenId]);
 
-  // The box shows the wait too: restless while a shake is pending, building up to the lid while an open is.
+  // The box shows the wait too: restless for a shake, a heartbeat for the vet, building up to the lid for an open.
   useEffect(() => {
-    const kind = action.busy === "open" ? "open" : action.busy === "shake" || action.busy === "alive" ? "peek" : null;
+    const kind = action.busy === "open" ? "open" : action.busy === "shake" ? "peek" : action.busy === "alive" ? "vet" : null;
     scene.current?.wait(kind ? action.step : null, kind ?? "open");
   }, [action.busy, action.step]);
 
@@ -184,6 +184,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     const alive = await action.run("alive", (o) => (info?.aliveCheck === "pending" ? adapter.finishProveAlive(tokenId, o) : adapter.proveAlive(tokenId, o)));
     void load();
     if (alive === undefined) return;
+    scene.current?.certify(alive);
     setNote(alive ? "box.noteAlive" : "box.noteNotAlive");
   };
 
@@ -215,7 +216,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   return (
     <>
       <Stage quality={quality}>
-        <BoxScene ref={scene} tokenId={tokenId} opened={cat} quality={quality} sound={sound} onShakeDone={noop} onFed={noop} onOpened={onOpened} />
+        <BoxScene
+          ref={scene}
+          tokenId={tokenId}
+          opened={cat}
+          vet={info?.aliveCheck === "alive" || info?.aliveCheck === "notAlive" ? info.aliveCheck : null}
+          quality={quality}
+          sound={sound}
+          onShakeDone={noop}
+          onFed={noop}
+          onOpened={onOpened}
+        />
       </Stage>
 
       <section className="slip" aria-label={t("box.aria", { serial: box.serial })}>

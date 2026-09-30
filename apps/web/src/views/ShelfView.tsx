@@ -41,7 +41,11 @@ export function ShelfView({ quality, sound, onSelect }: Props) {
   }, [adapter, account, listed]);
 
   const onBench: ShelfBox[] = useMemo(
-    () => infos.slice(0, SHELF_CAPACITY).map((b) => ({ tokenId: b.tokenId, cat: b.revealed ? catFromRevealed(b.revealed) : null })),
+    () => infos.slice(0, SHELF_CAPACITY).map((b) => ({
+        tokenId: b.tokenId,
+        cat: b.revealed ? catFromRevealed(b.revealed) : null,
+        vet: b.aliveCheck === "alive" || b.aliveCheck === "notAlive" ? b.aliveCheck : null,
+      })),
     [infos],
   );
 

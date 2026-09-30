@@ -8,8 +8,11 @@ import { BOX_SIZE, type BoxObject } from "./buildBox";
  */
 export type WaitStage = "wallet" | "confirming" | "decrypting" | "proving";
 
-/** "open" builds up to the lid opening; "peek" (a shake) only makes the cat restless. */
-export type WaitKind = "open" | "peek";
+/**
+ * "open" builds up to the lid opening; "peek" (a shake) only makes the cat restless;
+ * "vet" (the alive check) is a heartbeat through the cardboard, whatever the answer.
+ */
+export type WaitKind = "open" | "peek" | "vet";
 
 /** How far each stage pushes the box, and how restless the cat gets. */
 const STAGES: Record<WaitStage, { lid: number; tape: number; glow: number; unrest: number }> = {
@@ -38,6 +41,8 @@ export class BoxAnticipation {
   onRattle: ((strength: number) => void) | null = null;
   /** The cat complains. */
   onMutter: (() => void) | null = null;
+  /** One heartbeat, while the vet listens. */
+  onBeat: (() => void) | null = null;
 
   private stage: WaitStage | null = null;
   private kind: WaitKind = "open";
@@ -45,6 +50,7 @@ export class BoxAnticipation {
   private time = 0;
   private nextFidget = 1.5;
   private fidget = 0;
+  private beatClock = 0;
   private releasing: { left: number; then: (() => void) | null } | null = null;
   /** Everything is back at rest and written once: stop touching the box, the opener may own it. */
   private settled = true;
@@ -109,8 +115,9 @@ export class BoxAnticipation {
     dt = Math.min(dt, 0.1);
     this.time += dt;
     const want = this.stage ? STAGES[this.stage] : REST;
-    const peek = this.kind === "peek";
-    const goal = peek ? { ...want, lid: 0, tape: 0, glow: 0 } : want;
+    const vet = this.kind === "vet";
+    // A shake or a check never touches the lid; the vet also wants the cat calm.
+    const goal = this.kind === "open" ? want : { ...want, lid: 0, tape: 0, glow: 0, unrest: vet ? want.unrest * 0.3 : want.unrest };
 
     // Releasing: everything drops back fast, the lid with a thump at the end.
     const rate = this.releasing ? 14 : 1.4;
@@ -133,7 +140,18 @@ export class BoxAnticipation {
     }
     this.fidget = Math.max(0, this.fidget - dt * 3.2);
     const jolt = this.fidget * this.fidget * calm;
-    group.scale.set(1 - breathe * 0.5, 1 + breathe, 1 - breathe * 0.5);
+    // The vet listening: lub-dub, about seventy a minute, from the moment the chain has it.
+    let beat = 0;
+    if (vet && this.stage && this.stage !== "wallet") {
+      const period = 0.86;
+      const before = this.beatClock;
+      this.beatClock = (this.beatClock + dt) % period;
+      if (this.beatClock < before) this.onBeat?.();
+      const lub = Math.exp(-(((this.beatClock - 0.04) / 0.05) ** 2));
+      const dub = 0.6 * Math.exp(-(((this.beatClock - 0.26) / 0.05) ** 2));
+      beat = (lub + dub) * 0.018 * calm;
+    }
+    group.scale.set(1 - breathe * 0.5 + beat * 0.6, 1 + breathe + beat, 1 - breathe * 0.5 + beat * 0.6);
     group.rotation.z = Math.sin(this.time * 38) * 0.02 * jolt;
     group.position.x = Math.sin(this.time * 51) * 0.012 * jolt;
     group.position.y = Math.abs(Math.sin(this.time * 24)) * 0.018 * jolt;

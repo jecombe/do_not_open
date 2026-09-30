@@ -23,6 +23,7 @@ import {
   type CatObject,
   type QualitySettings,
   type ShakeSound,
+  VetMark,
   type WaitKind,
   type WaitStage,
 } from "@dno/scene";
@@ -71,6 +72,8 @@ export interface BoxSceneHandle {
   feed(): void;
   /** Keeps the box busy while a chain action is pending; `null` lets it settle. */
   wait(stage: WaitStage | null, kind: WaitKind): void;
+  /** The vet's stamp comes down on the box: green if alive, grey if not. */
+  certify(alive: boolean): void;
   /** Plays the opening sequence. */
   open(cat: CatSpec): void;
   /** Takes the cat out onto the bench, or puts it back. Only once the box is open. */
@@ -84,6 +87,8 @@ interface BoxSceneProps {
   tokenId: number;
   /** Set when the box is already open: it is shown open, with no sequence. */
   opened: CatSpec | null;
+  /** The vet's verdict, if the box was checked: its stamp is on the box, visible to all. */
+  vet: "alive" | "notAlive" | null;
   quality: QualitySettings;
   sound: ShakeSound;
   onShakeDone: () => void;
@@ -100,9 +105,10 @@ const ANGLES: Record<InspectAngle, [azimuth: number, polar: number]> = {
 };
 
 /** The mail room with one box on the bench: shake it, feed it, open it, take the cat out. */
-export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
+export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
   const controls = useRef<CameraControls>(null);
   const opening = useRef<Opening | null>(null);
+  const vetMark = useRef<VetMark | null>(null);
   const inspector = useRef<CatInspector | null>(null);
 
   const depot = useMemo(() => createDepot(quality), [quality]);
@@ -126,11 +132,20 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
       if (opening.current) disposeOpening(opening.current);
       opening.current = null;
       depot.benchAnchor.remove(rig.box.group);
+      vetMark.current?.dispose();
+      vetMark.current = null;
       rig.feeder.dispose();
       rig.waiter.dispose();
       rig.box.dispose();
     };
   }, [depot, rig]);
+
+  // A box certified earlier simply carries the stamp.
+  useEffect(() => {
+    if (!vet || vetMark.current) return;
+    vetMark.current = new VetMark(rig.box, vet === "alive", { reducedMotion: reducedMotion() });
+    vetMark.current.showInstant();
+  }, [rig, vet]);
 
   // A box that was opened earlier is simply shown open.
   useEffect(() => {
@@ -147,6 +162,7 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
     };
     rig.waiter.onRattle = (strength) => sound.impact(strength);
     rig.waiter.onMutter = () => sound.complaint();
+    rig.waiter.onBeat = () => sound.heartbeat();
     rig.feeder.onTick = () => sound.tick();
     rig.feeder.onEaten = () => {
       sound.purr();
@@ -169,6 +185,13 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
       shake: () => rig.shaker.shake(),
       feed: () => rig.feeder.drop(),
       wait: (stage, kind) => rig.waiter.set(stage, kind),
+      certify: (alive) => {
+        if (vetMark.current) return;
+        const mark = new VetMark(rig.box, alive, { reducedMotion: reducedMotion() });
+        mark.onThud = () => sound.stamp();
+        vetMark.current = mark;
+        mark.stamp();
+      },
       open: (cat) => {
         if (opening.current) return;
         const made = makeOpener(rig.box, cat, sound);
@@ -228,6 +251,7 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
     rig.shaker.update(step);
     rig.feeder.update(step);
     rig.waiter.update(step);
+    vetMark.current?.update(step);
     opening.current?.opener.update(step);
     opening.current?.content.update(state.clock.elapsedTime);
     inspector.current?.update(step);
@@ -381,6 +405,8 @@ export interface ShelfBox {
   tokenId: number;
   /** Set when the box is open. */
   cat: CatSpec | null;
+  /** The vet's verdict, if it was checked. */
+  vet?: "alive" | "notAlive" | null;
 }
 
 interface ShelfSceneProps {
@@ -407,14 +433,16 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: S
   const depot = useMemo(() => createDepot(quality), [quality]);
   useEffect(() => () => depot.dispose(), [depot]);
 
-  const key = boxes.map((b) => `${b.tokenId}${b.cat ? "o" : "s"}`).join(",");
+  const key = boxes.map((b) => `${b.tokenId}${b.cat ? "o" : "s"}${b.vet ?? ""}`).join(",");
   const items = useMemo(
     () =>
       boxes.slice(0, SHELF_CAPACITY).map((b) => {
         const box = createBox(buildBoxSpec(b.tokenId));
         const opening = b.cat ? makeOpener(box, b.cat, sound) : null;
         opening?.opener.openInstant();
-        return { tokenId: b.tokenId, box, opening };
+        const vet = b.vet ? new VetMark(box, b.vet === "alive") : null;
+        vet?.showInstant();
+        return { tokenId: b.tokenId, box, opening, vet };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key, sound],
@@ -423,6 +451,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: S
     () => () => {
       for (const item of items) {
         if (item.opening) disposeOpening(item.opening);
+        item.vet?.dispose();
         item.box.dispose();
       }
     },

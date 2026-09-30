@@ -82,7 +82,7 @@ export function cardboardTexture(seed: number, wear: number, opts: TextureOption
 }
 
 /** Knocks holes in fresh ink so a stamp reads as rubber on cardboard. */
-function distress(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number, amount: number) {
+export function distress(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number, amount: number) {
   ctx.globalCompositeOperation = "destination-out";
   for (let i = 0; i < 500 + amount * 1800; i++) {
     ctx.fillStyle = `rgba(0,0,0,${0.3 + rand() * 0.7})`;

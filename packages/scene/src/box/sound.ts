@@ -96,6 +96,46 @@ export class ShakeSound {
     scuff.start(now, Math.random() * 0.2, 0.14);
   }
 
+  /** A heartbeat through cardboard: a low lub, then a softer dub. */
+  heartbeat(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = ctx.currentTime;
+    for (const [delay, vol] of [[0, 0.5], [0.22, 0.32]] as const) {
+      const start = now + delay;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(70, start);
+      osc.frequency.exponentialRampToValueAtTime(42, start + 0.12);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(vol, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.18);
+    }
+  }
+
+  /** The vet's rubber stamp hitting the box. */
+  stamp(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.noise || this.muted) return;
+    const now = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.frequency.value = 1400;
+    band.Q.value = 0.9;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.5, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+    src.connect(band).connect(gain).connect(ctx.destination);
+    src.start(now, Math.random() * 0.2, 0.08);
+    this.impact(0.25);
+  }
+
   /** A muffled "mrrp" heard through cardboard. */
   complaint(): void {
     const ctx = this.ctx;
