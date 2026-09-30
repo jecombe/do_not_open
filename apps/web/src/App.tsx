@@ -16,7 +16,7 @@ export function App() {
   const t = useT();
   const quality = useMemo(detectQuality, []);
   const sound = useMemo(() => new ShakeSound(), []);
-  const [view, setView] = useState<View>("box");
+  const [view, setView] = useState<View>("shelf");
   const [tokenId, setTokenId] = useState(0);
   // The box the warehouse opens in front of: the one last looked at, when coming from it.
   const [focus, setFocus] = useState<number | null>(null);
@@ -29,7 +29,7 @@ export function App() {
   }, [sound, muted]);
   useEffect(() => () => sound.dispose(), [sound]);
 
-  // Start on one of the account's own boxes, once, when they are first known.
+  // The box view opens on one of the account's own boxes, once they are first known.
   const landed = useRef(false);
   useEffect(() => {
     if (landed.current || !chain.myBoxes.length) return;
