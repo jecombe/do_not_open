@@ -89,7 +89,8 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
   const target = useMemo(() => new Vector3(), []);
   const forward = useMemo(() => new Vector3(), []);
   const right = useMemo(() => new Vector3(), []);
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
+    warehouse.update(state.clock.elapsedTime, dt);
     const c = controls.current;
     if (!c || !held.current.size) return;
     let ahead = 0;

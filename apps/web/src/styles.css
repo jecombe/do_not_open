@@ -944,7 +944,8 @@ button {
 }
 
 .swatch-open {
-  background: linear-gradient(var(--dock-shadow) 45%, var(--kraft) 45%);
+  height: 4px;
+  background: var(--kraft);
 }
 
 .swatch-mine {

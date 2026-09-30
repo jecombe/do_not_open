@@ -9,6 +9,7 @@ export * from "./box/opener";
 export * from "./box/anticipation";
 export * from "./box/vet";
 export * from "./box/inspector";
+export * from "./box/unbox";
 export * from "./effects/feed";
 export * from "./effects/thread";
 export * from "./effects/duel";

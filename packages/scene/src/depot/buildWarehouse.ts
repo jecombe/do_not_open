@@ -18,8 +18,10 @@ import {
   MeshLambertMaterial,
   Object3D,
   PlaneGeometry,
+  Quaternion,
   SRGBColorSpace,
   Texture,
+  Euler,
   Vector3,
 } from "three";
 import { buildBoxSpec } from "@dno/generator";
@@ -47,6 +49,8 @@ const RACK_H = 3.75;
 const BW = BOX_SIZE.width * SCALE;
 const BH = BOX_SIZE.height * SCALE;
 const BD = BOX_SIZE.depth * SCALE;
+/** How thick an opened box is once crushed flat. */
+const FLAT = 0.05;
 
 export type WarehouseBoxState = "sealed" | "opening" | "revealed";
 
@@ -63,6 +67,8 @@ export interface WarehouseObject {
   setState(tokenId: number, state: WarehouseBoxState, mine: boolean): void;
   hover(tokenId: number | null): void;
   select(tokenId: number | null): void;
+  /** Moves the hovered and selected boxes: call once per frame. */
+  update(time: number, dt: number): void;
   dispose(): void;
 }
 
@@ -213,17 +219,8 @@ export function createWarehouse(count: number, quality: QualitySettings = QUALIT
     mat(new MeshBasicMaterial({ map: stampTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })),
     slots,
   );
-  const hollow = new InstancedMesh(own(new PlaneGeometry(BW - 0.03, BD - 0.03)), mat(new MeshBasicMaterial({ color: "#1E140C" })), slots);
-  // Open boxes: the front flap hangs down over the label, the back one stands up. Both read from the aisle.
-  const flapMat = mat(new MeshLambertMaterial({ map: cardTex, side: DoubleSide }));
-  const hangGeo = own(new PlaneGeometry(BW, BD / 2));
-  hangGeo.translate(0, -BD / 4, 0);
-  const standGeo = own(new PlaneGeometry(BW, BD / 2));
-  standGeo.translate(0, BD / 4, 0);
-  const flapsFront = new InstancedMesh(hangGeo, flapMat, slots);
-  const flapsBack = new InstancedMesh(standGeo, flapMat, slots);
   const tags = new InstancedMesh(own(new PlaneGeometry(0.1, 0.16)), mat(new MeshBasicMaterial({ color: "#C2261D", side: DoubleSide })), slots);
-  const parts = [bodies, tape, labels, stamps, hollow, flapsFront, flapsBack, tags];
+  const parts = [bodies, tape, labels, stamps, tags];
   instanced.push(...parts);
   for (const m of parts) group.add(m);
   bodies.castShadow = quality.shadows;
@@ -231,36 +228,61 @@ export function createWarehouse(count: number, quality: QualitySettings = QUALIT
   const hidden = new Matrix4().makeScale(0, 0, 0);
   const tint = new Color();
   const base = (tokenId: number) => tint.setHSL(0.08, 0.1, 0.72 + ((tokenId * 0.6180339) % 1) * 0.28);
-  const place = (m: InstancedMesh, i: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) => {
+  // Each part is placed relative to its box's centre, then carried by the box's pose:
+  // at rest on the shelf, or lifted and rocking when hovered or picked.
+  const boxMatrix = new Matrix4();
+  const partMatrix = new Matrix4();
+  const poseQ = new Quaternion();
+  const poseE = new Euler();
+  const one = new Vector3(1, 1, 1);
+  const place = (m: InstancedMesh, i: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, sy = 1, sxz = 1) => {
     dummy.position.set(x, y, z);
     dummy.rotation.set(rx, ry, rz);
-    dummy.scale.setScalar(1);
+    dummy.scale.set(sxz, sy, sxz);
     dummy.updateMatrix();
-    m.setMatrixAt(i, dummy.matrix);
+    m.setMatrixAt(i, partMatrix.multiplyMatrices(boxMatrix, dummy.matrix));
   };
 
   const states: { state: WarehouseBoxState; mine: boolean }[] = [];
+  /** How a box sits right now: lifted `y`, pulled out `z`, tipped `rx`/`rz`, turned `ry`. */
+  interface Pose {
+    y: number;
+    z: number;
+    rx: number;
+    ry: number;
+    rz: number;
+  }
+  const REST: Pose = { y: 0, z: 0, rx: 0, ry: 0, rz: 0 };
+  const poses = new Map<number, Pose>();
+  const poseMatrix = (tokenId: number, out: Matrix4) => {
+    const c = slotCentre(tokenId);
+    const p = poses.get(tokenId) ?? REST;
+    // Rocks about the bottom edge, like a box lifted by one hand: pivot under the centre.
+    poseQ.setFromEuler(poseE.set(p.rx, p.ry, p.rz));
+    out.compose(new Vector3(c.x, c.y + p.y - BH / 2, c.z + p.z), poseQ, one);
+    return out.multiply(partMatrix.makeTranslation(0, BH / 2, 0));
+  };
+
   const draw = (tokenId: number) => {
     const { state, mine } = states[tokenId]!;
-    const c = slotCentre(tokenId);
-    const top = c.y + BH / 2;
-    const front = c.z + BD / 2 + 0.003;
-    place(bodies, tokenId, c.x, c.y, c.z);
-    place(labels, tokenId, c.x - BW * 0.18, c.y + BH * 0.05, front);
-    place(stamps, tokenId, c.x + BW * 0.22, c.y - BH * 0.22, front, 0, 0, -0.18);
+    poseMatrix(tokenId, boxMatrix);
+    const top = BH / 2;
+    const front = BD / 2 + 0.003;
     const open = state === "revealed";
+    // Once opened, the cat is out and the box was crushed flat: the flattened carton is what is left.
     if (open) {
+      place(bodies, tokenId, 0, -BH / 2 + FLAT / 2, 0, 0, 0, 0, FLAT / BH, 1.1);
+      labels.setMatrixAt(tokenId, hidden);
       tape.setMatrixAt(tokenId, hidden);
-      place(hollow, tokenId, c.x, top + 0.002, c.z, -Math.PI / 2);
-      place(flapsFront, tokenId, c.x, top, front + 0.004, -0.28);
-      place(flapsBack, tokenId, c.x, top, c.z - BD / 2, -0.35);
+      // The stamp, lying face up on the flattened carton.
+      place(stamps, tokenId, 0, -BH / 2 + FLAT + 0.003, 0, -Math.PI / 2, 0, -0.18);
     } else {
-      place(tape, tokenId, c.x, top + 0.006, c.z);
-      hollow.setMatrixAt(tokenId, hidden);
-      flapsFront.setMatrixAt(tokenId, hidden);
-      flapsBack.setMatrixAt(tokenId, hidden);
+      place(bodies, tokenId, 0, 0, 0);
+      place(labels, tokenId, -BW * 0.18, BH * 0.05, front);
+      place(stamps, tokenId, BW * 0.22, -BH * 0.22, front, 0, 0, -0.18);
+      place(tape, tokenId, 0, top + 0.006, 0);
     }
-    if (mine) place(tags, tokenId, c.x - BW / 2 + 0.07, c.y + BH * 0.18, front + 0.01, 0, 0, 0.2);
+    if (mine) place(tags, tokenId, -BW / 2 + 0.07, open ? -BH / 2 + FLAT + 0.06 : BH * 0.18, front + 0.01, 0, 0, 0.2);
     else tags.setMatrixAt(tokenId, hidden);
     // An opening in progress is lit up a little, like a box someone is working on.
     bodies.setColorAt(tokenId, state === "opening" ? tint.set("#FFD39A") : base(tokenId));
@@ -288,10 +310,27 @@ export function createWarehouse(count: number, quality: QualitySettings = QUALIT
   };
   const hoverLine = outline("#E9DFC8");
   const selectLine = outline("#FFB454");
+  const marked = new Map<LineSegments, number | null>();
   const mark = (line: LineSegments, tokenId: number | null) => {
-    line.visible = tokenId !== null && tokenId < count;
-    if (line.visible) line.position.copy(slotCentre(tokenId!));
+    const id = tokenId !== null && tokenId < count ? tokenId : null;
+    marked.set(line, id);
+    line.visible = id !== null;
+    line.matrixAutoUpdate = false;
+    if (id !== null) poseMatrix(id, line.matrix);
   };
+
+  // --- Lifting: a hovered box rises a little; the picked one is pulled out, rocks, and floats ---
+  let hovered: number | null = null;
+  let selected: number | null = null;
+  /** 0 at rest, 1 fully lifted; and when it was picked, for the wobble. */
+  const lifts = new Map<number, { k: number; since: number }>();
+  let clock = 0;
+  const HOVER_LIFT = 0.35;
+  const lift = (tokenId: number | null) => {
+    if (tokenId === null || tokenId >= count) return;
+    if (!lifts.has(tokenId)) lifts.set(tokenId, { k: 0, since: clock });
+  };
+  const liftGoal = (tokenId: number) => (tokenId === selected ? 1 : tokenId === hovered ? HOVER_LIFT : 0);
 
   // Far enough back to take in the whole first row.
   const back = Math.max(8.5, halfWidth * 1.5);
@@ -317,8 +356,47 @@ export function createWarehouse(count: number, quality: QualitySettings = QUALIT
       draw(tokenId);
       touch();
     },
-    hover: (tokenId) => mark(hoverLine, tokenId),
-    select: (tokenId) => mark(selectLine, tokenId),
+    hover(tokenId) {
+      hovered = tokenId;
+      lift(tokenId);
+      mark(hoverLine, tokenId);
+    },
+    select(tokenId) {
+      selected = tokenId;
+      lift(tokenId);
+      // A fresh pick rocks again, even if it was already up.
+      if (tokenId !== null && lifts.has(tokenId)) lifts.get(tokenId)!.since = clock;
+      mark(selectLine, tokenId);
+    },
+    update(time, dt) {
+      clock = time;
+      if (!lifts.size) return;
+      const step = Math.min(dt, 0.1);
+      for (const [id, l] of lifts) {
+        const goal = liftGoal(id);
+        l.k = goal + (l.k - goal) * Math.exp(-9 * step);
+        if (goal === 0 && l.k < 0.002) {
+          lifts.delete(id);
+          poses.delete(id);
+        } else {
+          const since = time - l.since;
+          const picked = id === selected;
+          // A few quick rocks when picked, settling into a slow float.
+          const rock = picked ? Math.sin(since * 13) * 0.09 * Math.exp(-since * 2.6) : 0;
+          const float = picked ? Math.sin(time * 2.4) : 0;
+          poses.set(id, {
+            y: l.k * 0.13 + float * 0.012,
+            z: l.k * 0.26,
+            rx: -l.k * 0.06 + float * 0.01,
+            ry: rock * 0.6 + (picked ? Math.sin(time * 1.3) * 0.03 : 0),
+            rz: rock,
+          });
+        }
+        draw(id);
+      }
+      touch();
+      for (const [line, id] of marked) if (id !== null) poseMatrix(id, line.matrix);
+    },
     dispose() {
       for (const g of geometries) g.dispose();
       for (const m of materials) m.dispose();

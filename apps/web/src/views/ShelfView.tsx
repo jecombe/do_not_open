@@ -28,6 +28,8 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
   const [infos, setInfos] = useState<BoxInfo[]>([]);
   const [owed, setOwed] = useState(0n);
   const [arrived, setArrived] = useState<number[]>([]);
+  // The box whose tag is pointed at in the slip: it lifts on the bench.
+  const [pointed, setPointed] = useState<number | null>(null);
 
   const listed = useMemo(() => [...myBoxes].reverse().slice(0, LIST_LIMIT), [myBoxes]);
 
@@ -72,7 +74,7 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
   return (
     <>
       <Stage quality={quality}>
-        <ShelfScene boxes={onBench} arrivals={arrived} quality={quality} sound={sound} onSelect={onSelect} />
+        <ShelfScene boxes={onBench} arrivals={arrived} quality={quality} sound={sound} highlight={pointed} onSelect={onSelect} />
       </Stage>
 
       <section className="slip" aria-label={t("shelf.title")}>
@@ -96,7 +98,7 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
             ) : (
               <ul className="tags" aria-label={t("shelf.boxes")}>
                 {(infos.length ? infos : listed.map((tokenId) => ({ tokenId, status: null, partner: null }))).map((b) => (
-                  <li key={b.tokenId}>
+                  <li key={b.tokenId} onPointerEnter={() => setPointed(b.tokenId)} onPointerLeave={() => setPointed(null)} onFocus={() => setPointed(b.tokenId)} onBlur={() => setPointed(null)}>
                     <button type="button" onClick={() => onSelect(b.tokenId)} className={b.status === "revealed" ? "is-open" : ""}>
                       {buildBoxSpec(b.tokenId).serial}
                       <span>

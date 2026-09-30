@@ -9,7 +9,6 @@ import {
   BoxAnticipation,
   BoxOpener,
   BoxShaker,
-  CatInspector,
   createBox,
   createCat,
   createDepot,
@@ -23,6 +22,7 @@ import {
   type CatObject,
   type QualitySettings,
   type ShakeSound,
+  Unboxing,
   VetMark,
   type WaitKind,
   type WaitStage,
@@ -43,23 +43,48 @@ function Backdrop() {
 
 interface Opening {
   opener: BoxOpener;
+  /** Once open, the cat jumps out and the box is gone. */
+  unbox: Unboxing;
   content: CatObject;
-  /** What the opener and the inspector move. The cat animates inside it. */
+  /** What the opener and the unboxing move. The cat animates inside it. */
   holder: Group;
+  /** Called when the whole thing is over: the box opened, the cat out on the bench. */
+  onDone: (() => void) | null;
 }
 
-/** Builds the opening sequence for one box and wires its sounds. */
-function makeOpener(box: BoxObject, cat: CatSpec, sound: ShakeSound): Opening {
+/** Builds the opening sequence for one box, then the cat's jump out of it, and wires their sounds. */
+function makeOpener(box: BoxObject, cat: CatSpec, sound: ShakeSound, opts: { lamp?: boolean } = {}): Opening {
   const content = createCat(cat);
   const holder = new Group();
   holder.add(content.group);
   const opener = new BoxOpener(box, { content: holder, glow: glowFor(cat), reducedMotion: reducedMotion() });
+  const unbox = new Unboxing(box, holder, { reducedMotion: reducedMotion(), lamp: opts.lamp });
+  const made: Opening = { opener, unbox, content, holder, onDone: null };
   opener.onRip = () => sound.rip();
   opener.onBurst = () => sound.reveal(cat.state !== "ghost");
-  return { opener, content, holder };
+  opener.onDone = () => unbox.start();
+  unbox.onCrush = () => sound.impact(0.4);
+  unbox.onLand = () => {
+    sound.impact(0.2);
+    made.onDone?.();
+  };
+  return made;
+}
+
+/** A box opened some other day: just the cat, standing where the box was. */
+function showOpened(o: Opening) {
+  o.opener.openInstant();
+  o.unbox.finishInstant();
+}
+
+function updateOpening(o: Opening, step: number, time: number) {
+  o.opener.update(step);
+  o.unbox.update(step);
+  o.content.update(time);
 }
 
 function disposeOpening(o: Opening) {
+  o.unbox.dispose();
   o.holder.removeFromParent();
   o.opener.dispose();
   o.content.dispose();
@@ -109,7 +134,8 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
   const controls = useRef<CameraControls>(null);
   const opening = useRef<Opening | null>(null);
   const vetMark = useRef<VetMark | null>(null);
-  const inspector = useRef<CatInspector | null>(null);
+  /** Looking closely at the cat, once it is out. */
+  const inspecting = useRef(false);
 
   const depot = useMemo(() => createDepot(quality), [quality]);
   useEffect(() => () => depot.dispose(), [depot]);
@@ -127,8 +153,7 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
   useEffect(() => {
     depot.benchAnchor.add(rig.box.group);
     return () => {
-      inspector.current?.dispose();
-      inspector.current = null;
+      inspecting.current = false;
       if (opening.current) disposeOpening(opening.current);
       opening.current = null;
       depot.benchAnchor.remove(rig.box.group);
@@ -150,8 +175,8 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
   // A box that was opened earlier is simply shown open.
   useEffect(() => {
     if (!opened || opening.current) return;
-    opening.current = makeOpener(rig.box, opened, sound);
-    opening.current.opener.openInstant();
+    opening.current = makeOpener(rig.box, opened, sound, { lamp: true });
+    showOpened(opening.current);
   }, [rig, opened, sound]);
 
   useEffect(() => {
@@ -194,8 +219,12 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
       },
       open: (cat) => {
         if (opening.current) return;
-        const made = makeOpener(rig.box, cat, sound);
-        made.opener.onDone = onOpened;
+        const made = makeOpener(rig.box, cat, sound, { lamp: true });
+        made.onDone = () => {
+          // The box is gone: step back to see the cat on the bench.
+          frame(false, !reducedMotion());
+          onOpened();
+        };
         opening.current = made;
         // Scripted move: push in over the lid so the reveal happens under the camera.
         frame(true, !reducedMotion());
@@ -206,26 +235,21 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
       inspect: (out) => {
         const o = opening.current;
         const c = controls.current;
-        if (!o?.opener.opened || !c) return;
-        if (!inspector.current) {
-          inspector.current = new CatInspector(rig.box, o.holder, { reducedMotion: reducedMotion() });
-          inspector.current.onLand = () => sound.impact(0.25);
-        }
+        if (!o?.unbox.done || !c) return;
+        inspecting.current = out;
         if (!out) {
-          inspector.current.putBack();
-          frame(true, !reducedMotion());
+          frame(false, !reducedMotion());
           return;
         }
-        inspector.current.takeOut();
         // Orbit around the cat from now on, and let the camera come much closer.
-        const f = inspector.current.focus().add(depot.benchAnchor.position);
+        const f = o.unbox.focus().add(depot.benchAnchor.position);
         const n = isNarrow();
         c.minDistance = 0.9;
         // On a phone the slip covers the lower third: aim below the cat so it sits above it.
         void c.setLookAt(f.x + (n ? 0.5 : 0.9), f.y + (n ? 0.9 : 0.5), f.z + (n ? 4.6 : 3.2), f.x, f.y - (n ? 0.55 : 0), f.z, !reducedMotion());
       },
       lookFrom: (angle) => {
-        if (!inspector.current?.out) return;
+        if (!inspecting.current) return;
         const [azimuth, polar] = ANGLES[angle];
         void controls.current?.rotateTo(azimuth, polar, !reducedMotion());
       },
@@ -252,9 +276,7 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
     rig.feeder.update(step);
     rig.waiter.update(step);
     vetMark.current?.update(step);
-    opening.current?.opener.update(step);
-    opening.current?.content.update(state.clock.elapsedTime);
-    inspector.current?.update(step);
+    if (opening.current) updateOpening(opening.current, step, state.clock.elapsedTime);
   });
 
   return (
@@ -333,8 +355,8 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
 
   useEffect(() => {
     const o = openings.current;
-    if (openedA && !o.a) (o.a = makeOpener(rig.boxA, openedA, sound)).opener.openInstant();
-    if (openedB && !o.b) (o.b = makeOpener(rig.boxB, openedB, sound)).opener.openInstant();
+    if (openedA && !o.a) showOpened((o.a = makeOpener(rig.boxA, openedA, sound)));
+    if (openedB && !o.b) showOpened((o.b = makeOpener(rig.boxB, openedB, sound)));
   }, [rig, openedA, openedB, sound]);
 
   const frame = (above: boolean, animate: boolean) => {
@@ -368,7 +390,7 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
           onOpened();
           return;
         }
-        fresh[fresh.length - 1]!.opener.onDone = onOpened;
+        fresh[fresh.length - 1]!.onDone = onOpened;
         // Back on their marks, then look down into both boxes.
         rig.arena.reset();
         frame(true, !reducedMotion());
@@ -386,10 +408,7 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
     depot.update(t);
     rig.arena.update(step);
     thread.current?.update(t, step);
-    for (const o of Object.values(openings.current)) {
-      o.opener.update(step);
-      o.content.update(t);
-    }
+    for (const o of Object.values(openings.current)) updateOpening(o, step, t);
   });
 
   return (
@@ -415,10 +434,15 @@ interface ShelfSceneProps {
   arrivals?: number[];
   quality: QualitySettings;
   sound: ShakeSound;
+  /** A box pointed at from outside the scene (its tag in the slip): it lifts as if hovered. */
+  highlight?: number | null;
   onSelect: (tokenId: number) => void;
 }
 
 export const SHELF_CAPACITY = 8;
+/** How high a hovered box rises off the bench, and how long a picked one hops before it is taken. */
+const LIFT_HEIGHT = 0.14;
+const PICK_TIME = 0.42;
 const SHELF_SCALE = 0.44;
 /** A new box falls from this high above the bench, one after the other. */
 const DROP_HEIGHT = 1.4;
@@ -428,7 +452,7 @@ const BOUNCE_HEIGHT = 0.07;
 const BOUNCE_TIME = 0.2;
 
 /** The bench with the account's boxes laid out on it, up to eight. Click one to pick it up. */
-export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: ShelfSceneProps) {
+export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = null, onSelect }: ShelfSceneProps) {
   const controls = useRef<CameraControls>(null);
   const depot = useMemo(() => createDepot(quality), [quality]);
   useEffect(() => () => depot.dispose(), [depot]);
@@ -439,7 +463,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: S
       boxes.slice(0, SHELF_CAPACITY).map((b) => {
         const box = createBox(buildBoxSpec(b.tokenId));
         const opening = b.cat ? makeOpener(box, b.cat, sound) : null;
-        opening?.opener.openInstant();
+        if (opening) showOpened(opening);
         const vet = b.vet ? new VetMark(box, b.vet === "alive") : null;
         vet?.showInstant();
         return { tokenId: b.tokenId, box, opening, vet };
@@ -469,12 +493,53 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: S
   const dropped = useRef(new Set<number>());
   const waiting = (tokenId: number) => arrivals.includes(tokenId) && !dropped.current.has(tokenId);
 
+  // Hover lifts a box off the bench and sways it; a click makes it hop, then it is taken.
+  const lifters = useRef(new Map<number, Group>());
+  const hovered = useRef<number | null>(null);
+  const lifts = useRef(new Map<number, number>());
+  const picking = useRef<{ tokenId: number; start: number } | null>(null);
+  const clock = useRef(0);
+  const pick = (tokenId: number) => {
+    if (picking.current) return;
+    if (reducedMotion()) {
+      onSelect(tokenId);
+      return;
+    }
+    sound.impact(0.18);
+    picking.current = { tokenId, start: clock.current };
+  };
+
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
+    clock.current = t;
     depot.update(t);
+    for (const item of items) if (item.opening) updateOpening(item.opening, Math.min(dt, 0.1), t);
+
+    const calm = reducedMotion() ? 0 : 1;
     for (const item of items) {
-      item.opening?.opener.update(Math.min(dt, 0.1));
-      item.opening?.content.update(t);
+      const g = lifters.current.get(item.tokenId);
+      if (!g) continue;
+      const goal = item.tokenId === hovered.current || item.tokenId === highlight ? 1 : 0;
+      const k = goal + ((lifts.current.get(item.tokenId) ?? 0) - goal) * Math.exp(-10 * Math.min(dt, 0.1));
+      lifts.current.set(item.tokenId, k);
+      // Lifted, it floats and turns a little towards the viewer.
+      let y = k * LIFT_HEIGHT * (1 + 0.12 * Math.sin(t * 2.6) * calm);
+      let rz = k * Math.sin(t * 3.1 + item.tokenId) * 0.035 * calm;
+      let ry = k * Math.sin(t * 1.7 + item.tokenId) * 0.08 * calm;
+      const p = picking.current;
+      if (p?.tokenId === item.tokenId) {
+        // The hop: up and a quick shake from side to side, then off to its own page.
+        const u = Math.min(1, (t - p.start) / PICK_TIME);
+        y += Math.sin(Math.PI * u) * 0.22;
+        rz += Math.sin(u * Math.PI * 4) * 0.12 * (1 - u);
+        ry += u * 0.5;
+        if (u >= 1) {
+          picking.current = null;
+          onSelect(item.tokenId);
+        }
+      }
+      g.position.y = y;
+      g.rotation.set(0, ry, rz);
     }
 
     let queued = 0;
@@ -512,10 +577,12 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: S
   });
 
   const perRow = Math.min(4, Math.max(1, Math.ceil(items.length / (items.length > 4 ? 2 : 1))));
-  const hover = (on: boolean) => () => {
-    document.body.style.cursor = on ? "pointer" : "";
+  const hover = (tokenId: number | null) => () => {
+    if (tokenId === null && hovered.current === null) return;
+    hovered.current = tokenId;
+    document.body.style.cursor = tokenId !== null ? "pointer" : "";
   };
-  useEffect(() => hover(false), []);
+  useEffect(() => () => void (document.body.style.cursor = ""), []);
 
   return (
     <>
@@ -538,15 +605,26 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: S
               scale={SHELF_SCALE}
               rotation-y={buildBoxSpec(item.tokenId).labelSkew * 3}
             >
-              <primitive
-                object={item.box.group}
-                onPointerOver={hover(true)}
-                onPointerOut={hover(false)}
+              {/* The handlers sit on the lifter: an open box is only its cat, which lives here too. */}
+              <group
+                ref={(g) => {
+                  if (g) lifters.current.set(item.tokenId, g);
+                  else lifters.current.delete(item.tokenId);
+                }}
+                onPointerOver={(e: { stopPropagation: () => void }) => {
+                  e.stopPropagation();
+                  hover(item.tokenId)();
+                }}
+                onPointerOut={() => {
+                  if (hovered.current === item.tokenId) hover(null)();
+                }}
                 onClick={(e: { stopPropagation: () => void }) => {
                   e.stopPropagation();
-                  onSelect(item.tokenId);
+                  pick(item.tokenId);
                 }}
-              />
+              >
+                <primitive object={item.box.group} />
+              </group>
             </group>
           );
         })}
