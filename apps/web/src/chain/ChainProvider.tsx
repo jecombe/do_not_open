@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { createAdapter, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step } from "@dno/chain-adapter";
+import { createAdapter, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step, type WalletOption } from "@dno/chain-adapter";
 import { errorCopy } from "./copy";
 
 interface ChainState {
@@ -15,9 +15,13 @@ interface ChainState {
   unavailable: string | null;
   /** Re-reads the collection and the account's boxes. */
   refresh(): Promise<void>;
-  connect(): Promise<void>;
+  /** Without `walletId`, opens the wallet picker when the browser offers more than one. */
+  connect(walletId?: string): Promise<void>;
   disconnect(): Promise<void>;
   connectError: string | null;
+  /** Set while the wallet picker is open: the wallets to choose from. */
+  picking: WalletOption[] | null;
+  closePicker(): void;
 }
 
 const ChainContext = createContext<ChainState | null>(null);
@@ -78,19 +82,32 @@ export function ChainProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => void refresh(), [refresh]);
 
-  const connect = useCallback(async () => {
-    setConnectError(null);
-    try {
-      await adapter?.connect();
-    } catch (error) {
-      setConnectError(errorCopy(error));
-    }
-  }, [adapter]);
+  const [picking, setPicking] = useState<WalletOption[] | null>(null);
+  const closePicker = useCallback(() => setPicking(null), []);
+
+  const connect = useCallback(
+    async (walletId?: string) => {
+      if (!adapter) return;
+      setConnectError(null);
+      const wallets = adapter.wallets();
+      if (walletId === undefined && wallets.length > 1) {
+        setPicking(wallets);
+        return;
+      }
+      setPicking(null);
+      try {
+        await adapter.connect(walletId);
+      } catch (error) {
+        setConnectError(errorCopy(error));
+      }
+    },
+    [adapter],
+  );
   const disconnect = useCallback(async () => adapter?.disconnect(), [adapter]);
 
   if (!adapter) return <p className="boot">Unlocking the depot…</p>;
   return (
-    <ChainContext.Provider value={{ adapter, mode, account, collection, myBoxes, offline, unavailable, refresh, connect, disconnect, connectError }}>
+    <ChainContext.Provider value={{ adapter, mode, account, collection, myBoxes, offline, unavailable, refresh, connect, disconnect, connectError, picking, closePicker }}>
       {children}
     </ChainContext.Provider>
   );

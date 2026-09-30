@@ -25,6 +25,7 @@ import {
   type Fees,
   type PairInfo,
   type TraitRoll,
+  type WalletOption,
 } from "../types";
 import type { ChainParams, WalletSource } from "./wallet";
 
@@ -95,8 +96,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.address_;
   }
 
-  async connect(): Promise<Address> {
-    const signer = await this.opts.wallet.connect();
+  wallets(): WalletOption[] {
+    return this.opts.wallet.options();
+  }
+
+  async connect(walletId?: string): Promise<Address> {
+    const signer = await this.opts.wallet.connect(walletId);
     await this.adopt(signer);
     return this.address_!;
   }

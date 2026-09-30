@@ -796,6 +796,33 @@ button {
   border-top: 2px solid var(--ink);
 }
 
+.menu-title {
+  margin: 0 16px 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.menu li .wallet-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wallet-option img,
+.wallet-blank {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
+
+.wallet-blank {
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
 /* Language tags: four small stamps along the bottom of the list. */
 .lang {
   display: flex;

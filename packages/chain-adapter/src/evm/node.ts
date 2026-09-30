@@ -29,7 +29,7 @@ export function createSepoliaNodeAdapter(opts: NodeEvmOptions = {}): EvmFhevmAda
     readProvider: provider,
     wallet: signer
       ? new StaticWallet(signer)
-      : { current: () => null, connect: () => Promise.reject(new Error("no signer configured")), disconnect: async () => undefined, onChange: () => () => undefined },
+      : { current: () => null, options: () => [], connect: () => Promise.reject(new Error("no signer configured")), disconnect: async () => undefined, onChange: () => () => undefined },
     loadRelayer: async () => {
       const { createInstance, SepoliaConfig } = await import("@zama-fhe/relayer-sdk/node");
       return createInstance({ ...SepoliaConfig, network: chain.rpcUrl });

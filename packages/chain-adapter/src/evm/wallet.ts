@@ -1,11 +1,13 @@
 import { BrowserProvider, type Eip1193Provider, type Signer } from "ethers";
-import { ChainError } from "../types";
+import { ChainError, type WalletOption } from "../types";
 
 /** Where signatures come from: a browser wallet, or a fixed signer in scripts and tests. */
 export interface WalletSource {
   current(): Signer | null;
-  /** May prompt the user. */
-  connect(): Promise<Signer>;
+  /** The wallets the user can pick from. Empty when there is nothing to pick. */
+  options(): WalletOption[];
+  /** May prompt the user. `id` picks one of `options()`; without it, the last one used or the only one. */
+  connect(id?: string): Promise<Signer>;
   disconnect(): Promise<void>;
   onChange(listener: (signer: Signer | null) => void): () => void;
 }
@@ -14,6 +16,7 @@ export interface WalletSource {
 export class StaticWallet implements WalletSource {
   constructor(private readonly signer: Signer) {}
   current = () => this.signer;
+  options = () => [];
   connect = async () => this.signer;
   disconnect = async () => undefined;
   onChange = () => () => undefined;
@@ -33,21 +36,42 @@ type Eip1193 = Eip1193Provider & {
 };
 
 const REMEMBER_KEY = "dno:wallet-connected";
+/** Stands for `window.ethereum` when no wallet announces itself through EIP-6963. */
+const LEGACY_ID = "injected";
 
-/** An injected browser wallet (EIP-1193), kept on one chain. */
+interface Announced {
+  info: { rdns: string; name: string; icon?: string };
+  provider: Eip1193;
+}
+
+/**
+ * Browser wallets, kept on one chain. Every extension that implements EIP-6963 announces
+ * itself, so the user can pick one even when another has taken `window.ethereum`.
+ */
 export class InjectedWallet implements WalletSource {
   private signer: Signer | null = null;
+  private active: { id: string; ethereum: Eip1193 } | null = null;
+  private readonly found = new Map<string, Announced>();
   private readonly listeners = new Set<(signer: Signer | null) => void>();
 
+  private readonly onAccounts = ((accounts: string[]) => void this.adopt(accounts)) as never;
+  // Wallets recommend a reload on chain change; dropping the signer is enough here,
+  // the next connect asks to switch back.
+  private readonly onChain = (() => void this.restore()) as never;
+
   constructor(
-    private readonly ethereum: Eip1193 | undefined,
+    private readonly legacy: Eip1193 | undefined,
     private readonly chain: ChainParams,
   ) {
-    if (!ethereum) return;
-    ethereum.on?.("accountsChanged", ((accounts: string[]) => void this.adopt(accounts)) as never);
-    // Wallets recommend a reload on chain change; dropping the signer is enough here,
-    // the next action asks to switch back.
-    ethereum.on?.("chainChanged", (() => void this.restore()) as never);
+    if (typeof window === "undefined") return;
+    window.addEventListener("eip6963:announceProvider", ((event: CustomEvent<Announced>) => {
+      const { info, provider } = event.detail;
+      if (this.found.has(info.rdns)) return;
+      this.found.set(info.rdns, { info, provider });
+      // The wallet used last time may announce after start-up: pick the session back up then.
+      if (!this.active && remembered() === info.rdns) void this.restore();
+    }) as EventListener);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
     void this.restore();
   }
 
@@ -55,14 +79,20 @@ export class InjectedWallet implements WalletSource {
     return this.signer;
   }
 
-  async connect(): Promise<Signer> {
-    const ethereum = this.require();
+  options(): WalletOption[] {
+    const announced = [...this.found.values()].map(({ info }) => ({ id: info.rdns, name: info.name, icon: info.icon ?? null }));
+    if (announced.length || !this.legacy) return announced;
+    return [{ id: LEGACY_ID, name: "Browser wallet", icon: null }];
+  }
+
+  async connect(id?: string): Promise<Signer> {
+    const ethereum = this.use(id ?? this.options()[0]?.id);
     try {
       const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
-      await this.ensureChain();
+      await this.ensureChain(ethereum);
       const signer = await this.adopt(accounts);
       if (!signer) throw new ChainError("rejected", "The wallet did not share an account.");
-      remember(true);
+      remember(this.active!.id);
       return signer;
     } catch (error) {
       if (error instanceof ChainError) throw error;
@@ -73,7 +103,7 @@ export class InjectedWallet implements WalletSource {
 
   async disconnect(): Promise<void> {
     // EIP-1193 has no disconnect: forget the account on this side.
-    remember(false);
+    remember(null);
     this.set(null);
   }
 
@@ -82,12 +112,31 @@ export class InjectedWallet implements WalletSource {
     return () => this.listeners.delete(listener);
   }
 
+  /** Makes `id` the wallet in use, moving the event listeners over to it. */
+  private use(id: string | undefined): Eip1193 {
+    const ethereum = id === LEGACY_ID ? this.legacy : id ? this.found.get(id)?.provider : undefined;
+    if (!id || !ethereum) throw new ChainError("no-wallet", "No wallet found in this browser.");
+    if (this.active?.ethereum !== ethereum) {
+      this.active?.ethereum.removeListener?.("accountsChanged", this.onAccounts);
+      this.active?.ethereum.removeListener?.("chainChanged", this.onChain);
+      ethereum.on?.("accountsChanged", this.onAccounts);
+      ethereum.on?.("chainChanged", this.onChain);
+    }
+    this.active = { id, ethereum };
+    return ethereum;
+  }
+
   /** Picks the session back up without prompting, if the user connected before. */
   private async restore(): Promise<void> {
-    if (!this.ethereum || !remembered()) return;
+    const id = remembered();
+    if (!id) return;
+    // Sessions saved before the picker existed only say "connected".
+    const known = id === "1" ? this.options()[0]?.id : id;
+    if (!known || !(known === LEGACY_ID ? this.legacy : this.found.has(known))) return;
     try {
-      const accounts = (await this.ethereum.request({ method: "eth_accounts" })) as string[];
-      const chainId = Number(await this.ethereum.request({ method: "eth_chainId" }));
+      const ethereum = this.use(known);
+      const accounts = (await ethereum.request({ method: "eth_accounts" })) as string[];
+      const chainId = Number(await ethereum.request({ method: "eth_chainId" }));
       await this.adopt(chainId === this.chain.chainId ? accounts : []);
     } catch {
       this.set(null);
@@ -96,17 +145,16 @@ export class InjectedWallet implements WalletSource {
 
   private async adopt(accounts: string[]): Promise<Signer | null> {
     const account = accounts[0];
-    if (!account || !this.ethereum) {
+    if (!account || !this.active) {
       this.set(null);
       return null;
     }
-    const signer = await new BrowserProvider(this.ethereum, this.chain.chainId).getSigner(account);
+    const signer = await new BrowserProvider(this.active.ethereum, this.chain.chainId).getSigner(account);
     this.set(signer);
     return signer;
   }
 
-  private async ensureChain(): Promise<void> {
-    const ethereum = this.require();
+  private async ensureChain(ethereum: Eip1193): Promise<void> {
     const hex = "0x" + this.chain.chainId.toString(16);
     if (Number(await ethereum.request({ method: "eth_chainId" })) === this.chain.chainId) return;
     try {
@@ -131,28 +179,24 @@ export class InjectedWallet implements WalletSource {
     }
   }
 
-  private require(): Eip1193 {
-    if (!this.ethereum) throw new ChainError("no-wallet", "No wallet found in this browser.");
-    return this.ethereum;
-  }
-
   private set(signer: Signer | null): void {
     this.signer = signer;
     for (const l of this.listeners) l(signer);
   }
 }
 
-function remembered(): boolean {
+/** Id of the wallet the user connected with last, if they did not disconnect since. */
+function remembered(): string | null {
   try {
-    return localStorage.getItem(REMEMBER_KEY) === "1";
+    return localStorage.getItem(REMEMBER_KEY);
   } catch {
-    return false;
+    return null;
   }
 }
 
-function remember(on: boolean): void {
+function remember(id: string | null): void {
   try {
-    if (on) localStorage.setItem(REMEMBER_KEY, "1");
+    if (id) localStorage.setItem(REMEMBER_KEY, id);
     else localStorage.removeItem(REMEMBER_KEY);
   } catch {
     // Private windows may refuse storage; the user just reconnects next time.

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { shortAddress } from "@dno/chain-adapter";
 import { useChain } from "./chain/ChainProvider";
 import { useT, type AppKey } from "./i18n/app";
@@ -16,33 +16,23 @@ export type View = (typeof VIEWS)[number]["key"];
 /**
  * The stamp on the left; on the right, a small wallet tag and one manila tag
  * naming the current view. The tag opens a packing list with the other views,
- * the manual and the languages.
+ * the manual and the languages; the wallet tag opens a list of the browser's
+ * wallets when there is more than one.
  */
 export function Masthead({ view, onView }: { view: View; onView: (v: View) => void }) {
   const chain = useChain();
   const t = useT();
   const [open, setOpen] = useState(false);
   const menuId = useId();
+  const pickerId = useId();
   const root = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
+  const walletButton = useRef<HTMLButtonElement>(null);
+  const { picking, closePicker } = chain;
 
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      toggle.current?.focus();
-    };
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const closeMenu = useCallback(() => setOpen(false), []);
+  useDismiss(open, root, closeMenu, toggle);
+  useDismiss(!!picking, root, closePicker, walletButton);
 
   const current = VIEWS.find((v) => v.key === view)!;
   const { account, mode } = chain;
@@ -57,7 +47,19 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
               {shortAddress(account)}
             </button>
           ) : (
-            <button type="button" className="wallet" onClick={() => void chain.connect()} title={t("nav.connect")}>
+            <button
+              type="button"
+              ref={walletButton}
+              className="wallet"
+              aria-expanded={!!picking}
+              aria-controls={picking ? pickerId : undefined}
+              onClick={() => {
+                setOpen(false);
+                if (picking) closePicker();
+                else void chain.connect();
+              }}
+              title={t("nav.connect")}
+            >
               {t("nav.connectShort")}
             </button>
           ))}
@@ -67,11 +69,29 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
           className="menu-toggle"
           aria-expanded={open}
           aria-controls={menuId}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            closePicker();
+            setOpen((o) => !o);
+          }}
         >
           {t(current.label)}
           <span className="caret" aria-hidden="true" />
         </button>
+        {picking && (
+          <div className="menu" id={pickerId} role="group" aria-label={t("nav.pickWallet")}>
+            <p className="menu-title">{t("nav.pickWallet")}</p>
+            <ul>
+              {picking.map((w) => (
+                <li key={w.id}>
+                  <button type="button" className="wallet-option" onClick={() => void chain.connect(w.id)}>
+                    {w.icon ? <img src={w.icon} alt="" width={22} height={22} /> : <span className="wallet-blank" aria-hidden="true" />}
+                    {w.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {open && (
           <nav className="menu" id={menuId} aria-label={t("nav.views")}>
             <ul>
@@ -99,4 +119,25 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
       </div>
     </header>
   );
+}
+
+/** Closes a pop-over on a click outside `root` or on Escape, which also hands focus back. */
+function useDismiss(open: boolean, root: RefObject<HTMLElement | null>, close: () => void, back: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      close();
+      back.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, root, close, back]);
 }

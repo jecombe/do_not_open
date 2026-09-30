@@ -132,14 +132,24 @@ export class ChainError extends Error {
   }
 }
 
+/** A wallet the browser offers, as shown in a picker. */
+export interface WalletOption {
+  id: string;
+  name: string;
+  /** Data URI announced by the wallet, if any. */
+  icon: string | null;
+}
+
 export interface ChainAdapter {
   readonly kind: "mock" | "evm" | "solana";
 
   // --- account ---
   /** Connected account, or null. */
   account(): Address | null;
-  /** Asks the wallet for an account and moves it to the right network. */
-  connect(): Promise<Address>;
+  /** Wallets the user can pick from. Empty when there is only one way in (the mock). */
+  wallets(): WalletOption[];
+  /** Asks the wallet for an account and moves it to the right network. `walletId` picks one of `wallets()`. */
+  connect(walletId?: string): Promise<Address>;
   disconnect(): Promise<void>;
   /** Fires when the account changes or disconnects. Returns the unsubscribe function. */
   onAccountChange(listener: (account: Address | null) => void): () => void;

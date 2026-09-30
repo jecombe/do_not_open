@@ -15,6 +15,7 @@ import {
   type PairInfo,
   type RevealedContents,
   type TraitRoll,
+  type WalletOption,
 } from "../types";
 
 /** The account the mock signs you in as, and the one that holds the other boxes. */
@@ -84,6 +85,10 @@ export class MockAdapter implements ChainAdapter {
 
   account(): Address | null {
     return this.me;
+  }
+
+  wallets(): WalletOption[] {
+    return [];
   }
 
   async connect(): Promise<Address> {

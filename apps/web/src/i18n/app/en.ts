@@ -10,6 +10,7 @@ export const en = {
   "nav.manual": "Manual",
   "nav.connect": "Connect wallet",
   "nav.connectShort": "Connect",
+  "nav.pickWallet": "Choose a wallet",
   "nav.disconnect": "Disconnect this wallet",
   "nav.language": "Language",
   "footer.offline": "Cannot reach the chain. {reason}",
