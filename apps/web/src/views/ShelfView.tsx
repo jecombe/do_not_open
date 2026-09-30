@@ -65,7 +65,7 @@ export function ShelfView({ quality, sound, onSelect }: Props) {
   return (
     <>
       <Stage quality={quality}>
-        <ShelfScene boxes={onBench} quality={quality} sound={sound} onSelect={onSelect} />
+        <ShelfScene boxes={onBench} arrivals={arrived} quality={quality} sound={sound} onSelect={onSelect} />
       </Stage>
 
       <section className="slip" aria-label={t("shelf.title")}>

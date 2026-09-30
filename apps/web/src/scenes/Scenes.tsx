@@ -368,6 +368,8 @@ export interface ShelfBox {
 
 interface ShelfSceneProps {
   boxes: ShelfBox[];
+  /** Token ids just minted: they drop onto the bench, once, with a thud. */
+  arrivals?: number[];
   quality: QualitySettings;
   sound: ShakeSound;
   onSelect: (tokenId: number) => void;
@@ -375,9 +377,15 @@ interface ShelfSceneProps {
 
 export const SHELF_CAPACITY = 8;
 const SHELF_SCALE = 0.44;
+/** A new box falls from this high above the bench, one after the other. */
+const DROP_HEIGHT = 1.4;
+const DROP_GRAVITY = 9;
+const DROP_STAGGER = 0.22;
+const BOUNCE_HEIGHT = 0.07;
+const BOUNCE_TIME = 0.2;
 
 /** The bench with the account's boxes laid out on it, up to eight. Click one to pick it up. */
-export function ShelfScene({ boxes, quality, sound, onSelect }: ShelfSceneProps) {
+export function ShelfScene({ boxes, arrivals = [], quality, sound, onSelect }: ShelfSceneProps) {
   const controls = useRef<CameraControls>(null);
   const depot = useMemo(() => createDepot(quality), [quality]);
   useEffect(() => () => depot.dispose(), [depot]);
@@ -409,12 +417,51 @@ export function ShelfScene({ boxes, quality, sound, onSelect }: ShelfSceneProps)
     void controls.current?.setLookAt(n ? 0.6 : 0.9, n ? 4.2 : 2.7, n ? 6.4 : 3.6, n ? 0 : -0.5, n ? 0.3 : 1.05, 0, false);
   }, []);
 
+  // Drops in flight, by token id: when each started and how far it has got. A token drops once.
+  const slots = useRef(new Map<number, Group>());
+  const drops = useRef(new Map<number, { start: number; landed: boolean; bounced: boolean }>());
+  const dropped = useRef(new Set<number>());
+  const waiting = (tokenId: number) => arrivals.includes(tokenId) && !dropped.current.has(tokenId);
+
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
     depot.update(t);
     for (const item of items) {
       item.opening?.opener.update(Math.min(dt, 0.1));
       item.opening?.content.update(t);
+    }
+
+    let queued = 0;
+    for (const item of items) {
+      if (!waiting(item.tokenId)) continue;
+      dropped.current.add(item.tokenId);
+      if (reducedMotion()) sound.land();
+      else drops.current.set(item.tokenId, { start: t + queued++ * DROP_STAGGER, landed: false, bounced: false });
+    }
+    const fall = Math.sqrt((2 * DROP_HEIGHT) / DROP_GRAVITY);
+    for (const [tokenId, d] of drops.current) {
+      const slot = slots.current.get(tokenId);
+      if (!slot) continue;
+      const s = Math.max(0, t - d.start);
+      if (s < fall) {
+        slot.position.y = DROP_HEIGHT - 0.5 * DROP_GRAVITY * s * s;
+        continue;
+      }
+      if (!d.landed) {
+        d.landed = true;
+        sound.land();
+      }
+      const b = s - fall;
+      if (b < BOUNCE_TIME) {
+        slot.position.y = BOUNCE_HEIGHT * Math.sin((Math.PI * b) / BOUNCE_TIME);
+        continue;
+      }
+      slot.position.y = 0;
+      if (!d.bounced) {
+        d.bounced = true;
+        sound.impact(0.12);
+      }
+      drops.current.delete(tokenId);
     }
   });
 
@@ -435,7 +482,16 @@ export function ShelfScene({ boxes, quality, sound, onSelect }: ShelfSceneProps)
           const x = (i % perRow - (inRow - 1) / 2) * 0.66;
           const z = items.length > perRow ? (row === 0 ? -0.32 : 0.32) : 0;
           return (
-            <group key={item.tokenId} position={[x, 0, z]} scale={SHELF_SCALE} rotation-y={buildBoxSpec(item.tokenId).labelSkew * 3}>
+            <group
+              key={item.tokenId}
+              ref={(g) => {
+                if (g) slots.current.set(item.tokenId, g);
+                else slots.current.delete(item.tokenId);
+              }}
+              position={[x, waiting(item.tokenId) || drops.current.has(item.tokenId) ? DROP_HEIGHT : 0, z]}
+              scale={SHELF_SCALE}
+              rotation-y={buildBoxSpec(item.tokenId).labelSkew * 3}
+            >
               <primitive
                 object={item.box.group}
                 onPointerOver={hover(true)}

@@ -53,6 +53,49 @@ export class ShakeSound {
     osc.stop(now + 0.18);
   }
 
+  /** A full box set down hard on a shelf: a heavy thud, a cardboard slap and a scuff. */
+  land(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.noise || this.muted) return;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(95, now);
+    osc.frequency.exponentialRampToValueAtTime(38, now + 0.22);
+    const thud = ctx.createGain();
+    thud.gain.setValueAtTime(0.6, now);
+    thud.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    osc.connect(thud).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
+
+    const slap = ctx.createBufferSource();
+    slap.buffer = this.noise;
+    slap.playbackRate.value = 0.6;
+    const low = ctx.createBiquadFilter();
+    low.type = "lowpass";
+    low.frequency.value = 700;
+    const slapGain = ctx.createGain();
+    slapGain.gain.setValueAtTime(0.35, now);
+    slapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    slap.connect(low).connect(slapGain).connect(ctx.destination);
+    slap.start(now, Math.random() * 0.2, 0.2);
+
+    const scuff = ctx.createBufferSource();
+    scuff.buffer = this.noise;
+    const high = ctx.createBiquadFilter();
+    high.type = "bandpass";
+    high.frequency.value = 2500;
+    high.Q.value = 1.2;
+    const scuffGain = ctx.createGain();
+    scuffGain.gain.setValueAtTime(0.0001, now + 0.02);
+    scuffGain.gain.exponentialRampToValueAtTime(0.08, now + 0.04);
+    scuffGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    scuff.connect(high).connect(scuffGain).connect(ctx.destination);
+    scuff.start(now, Math.random() * 0.2, 0.14);
+  }
+
   /** A muffled "mrrp" heard through cardboard. */
   complaint(): void {
     const ctx = this.ctx;
