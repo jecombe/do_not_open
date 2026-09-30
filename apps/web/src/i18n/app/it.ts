@@ -306,7 +306,7 @@ export const it: Record<AppKey, string> = {
   "wh.legendMine_one": "Etichetta rossa: la tua ({count})",
   "wh.legendMine_other": "Etichetta rossa: le tue ({count})",
   "wh.hint": "Trascina per guardarti intorno, WASD o le frecce per camminare, rotella per avvicinarti.",
-  "wh.hintTouch": "Un dito per guardare, due per muoverti e zoomare. Tocca una scatola per sceglierla.",
+  "wh.hintTouch": "Scorri un dito lungo gli scaffali, pizzica per avanzare, gira con due dita. Tocca una scatola per sceglierla.",
   "track.sign": "Firma nel tuo wallet",
   "track.chain": "Scrittura sulla catena",
   "track.permit": "Firma il permesso di decifrazione",
@@ -337,4 +337,9 @@ export const it: Record<AppKey, string> = {
   "tx.failed": "fallita",
   "tx.gas": "{gas} gas",
   "tx.note": "Inviate da questo browser per queste due scatole. Conservate solo su questo dispositivo.",
+  // --- the stage and the slip
+  "stage.recenter": "Ricentra",
+  "stage.recenterHint": "Riporta la vista com'era",
+  "slip.fold": "Chiudi",
+  "slip.unfold": "Apri",
 };

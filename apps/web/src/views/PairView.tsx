@@ -12,6 +12,7 @@ import { PairScene, type PairSceneHandle } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 import { StepTracker, type PlannedStep } from "./StepTracker";
 import { TxJournal } from "./TxJournal";
+import { useFold } from "./useFold";
 
 interface Props {
   quality: QualitySettings;
@@ -46,6 +47,7 @@ const OPEN_PLAN: PlannedStep[] = [...SIGN_AND_MINE("track.sign"), { step: "decry
 export function PairView({ quality, sound, initial, intent, onInspect }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect } = useChain();
   const t = useT();
+  const { foldClass, foldButton } = useFold();
   const scene = useRef<PairSceneHandle>(null);
   const action = useAction();
   const minted = collection?.totalMinted ?? 0;
@@ -329,7 +331,8 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
         />
       </Stage>
 
-      <section className="slip" aria-label={t("pair.aria")}>
+      <section className={`slip${foldClass}`} aria-label={t("pair.aria")}>
+        {foldButton}
         <div className="slip-head">
           <span>{t("pair.title")}</span>
           {entangled && <span className="tier tier-entangled">{t("pair.entangled")}</span>}

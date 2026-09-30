@@ -7,6 +7,7 @@ import { holderCopy } from "../chain/copy";
 import { useT } from "../i18n/app";
 import { WarehouseScene, type WarehouseBox } from "../scenes/Warehouse";
 import { Stage } from "./Stage";
+import { useFold } from "./useFold";
 
 interface Props {
   quality: QualitySettings;
@@ -21,6 +22,7 @@ const CHUNK = 96;
 export function WarehouseView({ quality, focus, onInspect }: Props) {
   const { adapter, account, collection } = useChain();
   const t = useT();
+  const { foldClass, foldButton } = useFold();
   const count = collection?.totalMinted ?? 0;
   const [rows, setRows] = useState<Map<number, BoxSummary>>(new Map());
   const [hovered, setHovered] = useState<number | null>(null);
@@ -84,7 +86,8 @@ export function WarehouseView({ quality, focus, onInspect }: Props) {
         <WarehouseScene count={count} boxes={boxes} quality={quality} selected={selected} flight={flight} onHover={setHovered} onPick={pick} />
       </Stage>
 
-      <section className="slip" aria-label={t("wh.title")}>
+      <section className={`slip${foldClass}`} aria-label={t("wh.title")}>
+        {foldButton}
         <div className="slip-head">
           <span>{t("wh.title")}</span>
           <span>{t("wh.count", { count, open: opened })}</span>

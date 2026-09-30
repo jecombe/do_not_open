@@ -13,6 +13,7 @@ import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scen
 import { Declaration } from "./Declaration";
 import { Stage } from "./Stage";
 import { StepTracker, type PlannedStep } from "./StepTracker";
+import { useFold } from "./useFold";
 
 interface Props {
   quality: QualitySettings;
@@ -83,6 +84,7 @@ type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive"
 export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview }: Props) {
   const { adapter, account, collection, refresh, connect } = useChain();
   const t = useT();
+  const { foldClass, foldButton } = useFold();
   const scene = useRef<BoxSceneHandle>(null);
   const action = useAction();
   const [loaded, setInfo] = useState<BoxInfo | null>(null);
@@ -229,7 +231,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
         />
       </Stage>
 
-      <section className="slip" aria-label={t("box.aria", { serial: box.serial })}>
+      <section className={`slip${foldClass}`} aria-label={t("box.aria", { serial: box.serial })}>
+        {foldButton}
         {missing ? (
           <>
             <div className="slip-head">

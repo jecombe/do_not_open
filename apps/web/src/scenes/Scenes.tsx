@@ -27,9 +27,14 @@ import {
   type WaitKind,
   type WaitStage,
 } from "@dno/scene";
+import { useLeash, type Leash } from "./leash";
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const isNarrow = () => window.innerWidth < 700;
+/** The bench and what stands on it: the view may slide about it, never off into the racks. */
+const BENCH_LEASH: Leash = { min: [-1.0, 0.6, -0.8], max: [1.0, 1.9, 1.0], touch: "orbit" };
+/** How far round the bench the camera may swing: the front and both ends, never behind the racks. */
+const BENCH_AZIMUTH = { minAzimuthAngle: -1.15, maxAzimuthAngle: 1.3 };
 const glowFor = (cat: CatSpec) => (cat.state === "ghost" || cat.state === "quantum" ? SPECTRAL : cat.room.light);
 
 function Backdrop() {
@@ -200,9 +205,30 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
     if (!c) return;
     const n = isNarrow();
     c.minDistance = 1.8;
-    if (close) void c.setLookAt(n ? 1.5 : 1.3, n ? 4.6 : 3.5, n ? 5.0 : 3.1, n ? 0 : -0.35, n ? 0.5 : 1.45, 0, animate);
-    else void c.setLookAt(n ? 2.6 : 2.3, n ? 4.4 : 3.3, n ? 5.6 : 3.7, n ? 0 : -0.45, n ? 0.2 : 1.15, 0, animate);
+    c.minAzimuthAngle = BENCH_AZIMUTH.minAzimuthAngle;
+    c.maxAzimuthAngle = BENCH_AZIMUTH.maxAzimuthAngle;
+    // On a phone the stage keeps what the camera looks at above the slip: aim at the box itself.
+    if (close) void c.setLookAt(n ? 1.4 : 1.3, n ? 5.3 : 3.5, n ? 4.6 : 3.1, n ? 0 : -0.35, 1.45, 0, animate);
+    else void c.setLookAt(n ? 2.5 : 2.3, n ? 4.3 : 3.3, n ? 6.6 : 3.7, n ? 0 : -0.45, n ? 1.2 : 1.15, 0, animate);
   };
+
+  // Orbit all the way round the cat, and let the camera come much closer.
+  const closeUp = (o: Opening) => {
+    const c = controls.current;
+    if (!c) return;
+    const f = o.unbox.focus().add(depot.benchAnchor.position);
+    const n = isNarrow();
+    c.minDistance = 0.9;
+    c.minAzimuthAngle = -Infinity;
+    c.maxAzimuthAngle = Infinity;
+    void c.setLookAt(f.x + (n ? 0.6 : 0.9), f.y + (n ? 0.8 : 0.5), f.z + (n ? 4.4 : 3.2), f.x, f.y, f.z, !reducedMotion());
+  };
+
+  useLeash(controls, BENCH_LEASH, () => {
+    const o = opening.current;
+    if (inspecting.current && o) closeUp(o);
+    else frame(false, !reducedMotion());
+  });
 
   useImperativeHandle(
     ref,
@@ -241,12 +267,7 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
           frame(false, !reducedMotion());
           return;
         }
-        // Orbit around the cat from now on, and let the camera come much closer.
-        const f = o.unbox.focus().add(depot.benchAnchor.position);
-        const n = isNarrow();
-        c.minDistance = 0.9;
-        // On a phone the slip covers the lower third: aim below the cat so it sits above it.
-        void c.setLookAt(f.x + (n ? 0.5 : 0.9), f.y + (n ? 0.9 : 0.5), f.z + (n ? 4.6 : 3.2), f.x, f.y - (n ? 0.55 : 0), f.z, !reducedMotion());
+        closeUp(o);
       },
       lookFrom: (angle) => {
         if (!inspecting.current) return;
@@ -283,7 +304,7 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
     <>
       <Backdrop />
       <primitive object={depot.group} />
-      <CameraControls ref={controls} makeDefault smoothTime={0.9} minDistance={1.8} maxDistance={9} minPolarAngle={0.2} maxPolarAngle={Math.PI / 2 - 0.08} />
+      <CameraControls ref={controls} makeDefault smoothTime={0.9} minDistance={1.8} maxDistance={8.5} {...BENCH_AZIMUTH} minPolarAngle={0.2} maxPolarAngle={Math.PI / 2 - 0.08} />
     </>
   );
 }
@@ -363,8 +384,9 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
     const c = controls.current;
     if (!c) return;
     const n = isNarrow();
-    if (above) void c.setLookAt(n ? 0 : 0.3, n ? 6.2 : 4.4, n ? 7.4 : 4.0, n ? 0 : -0.55, n ? 0.2 : 1.35, 0, animate);
-    else void c.setLookAt(n ? 0 : 0.4, n ? 4.6 : 3.1, n ? 8.2 : 5.0, n ? 0 : -0.55, n ? 0.0 : 1.15, 0, animate);
+    // A phone is narrow: stand further back to take in both boxes, aimed at them (the stage keeps them above the slip).
+    if (above) void c.setLookAt(n ? 0 : 0.3, n ? 6.6 : 4.4, n ? 6.6 : 4.0, n ? 0 : -0.55, n ? 1.3 : 1.35, 0, animate);
+    else void c.setLookAt(n ? 0 : 0.4, n ? 4.4 : 3.1, n ? 8.2 : 5.0, n ? 0 : -0.55, 1.15, 0, animate);
   };
 
   useEffect(() => {
@@ -401,6 +423,7 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
   );
 
   useEffect(() => frame(!!(openedA || openedB), false), [tokenA, tokenB]);
+  useLeash(controls, BENCH_LEASH, () => frame(!!(openings.current.a || openings.current.b), !reducedMotion()));
 
   useFrame((state, dt) => {
     const step = Math.min(dt, 0.1);
@@ -415,7 +438,7 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
     <>
       <Backdrop />
       <primitive object={depot.group} />
-      <CameraControls ref={controls} makeDefault smoothTime={0.8} minDistance={2} maxDistance={10} minPolarAngle={0.3} maxPolarAngle={Math.PI / 2 - 0.08} />
+      <CameraControls ref={controls} makeDefault smoothTime={0.8} minDistance={2} maxDistance={10.5} {...BENCH_AZIMUTH} minPolarAngle={0.3} maxPolarAngle={Math.PI / 2 - 0.08} />
     </>
   );
 }
@@ -482,10 +505,12 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
     [items],
   );
 
-  useEffect(() => {
+  const frame = (animate: boolean) => {
     const n = isNarrow();
-    void controls.current?.setLookAt(n ? 0.6 : 0.9, n ? 4.2 : 2.7, n ? 6.4 : 3.6, n ? 0 : -0.5, n ? 0.3 : 1.05, 0, false);
-  }, []);
+    void controls.current?.setLookAt(n ? 0.6 : 0.9, n ? 4.3 : 2.7, n ? 6.6 : 3.6, n ? 0 : -0.5, 1.05, 0, animate);
+  };
+  useEffect(() => frame(false), []);
+  useLeash(controls, BENCH_LEASH, () => frame(!reducedMotion()));
 
   // Drops in flight, by token id: when each started and how far it has got. A token drops once.
   const slots = useRef(new Map<number, Group>());
@@ -629,7 +654,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
           );
         })}
       </group>
-      <CameraControls ref={controls} makeDefault smoothTime={0.8} minDistance={1.8} maxDistance={9} minPolarAngle={0.3} maxPolarAngle={Math.PI / 2 - 0.08} />
+      <CameraControls ref={controls} makeDefault smoothTime={0.8} minDistance={1.8} maxDistance={8.5} {...BENCH_AZIMUTH} minPolarAngle={0.3} maxPolarAngle={Math.PI / 2 - 0.08} />
     </>
   );
 }
@@ -651,8 +676,8 @@ const focusOn = (i: number, n: number) => {
   const [x, , z] = slot(i, n);
   const narrow = isNarrow();
   return {
-    eye: [x + 0.5, narrow ? 2.4 : 1.25, z + (narrow ? 6.2 : 3.7)] as const,
-    target: [x + (narrow ? 0 : 0.45), narrow ? -0.9 : 0.62, z] as const,
+    eye: [x + 0.5, narrow ? 1.8 : 1.25, z + (narrow ? 5.2 : 3.7)] as const,
+    target: [x + (narrow ? 0 : 0.45), 0.62, z] as const,
   };
 };
 
@@ -684,6 +709,13 @@ export function SpecimenScene({ specs, selected, onSelect }: SpecimenSceneProps)
     const { eye, target } = focusOn(selected, count);
     void controls.current?.setLookAt(...eye, ...target, !reducedMotion());
   }, [selected, count]);
+
+  // The row and the rooms along it; the button puts the picked cat back in view.
+  const reach = ((count - 1) / 2) * SPACING + 1;
+  useLeash(controls, { min: [-reach, -1.2, -Math.abs(reach) * 0.2 - 2], max: [reach, 2.4, 1.5], touch: "row" }, () => {
+    const { eye, target } = focusOn(latest.current.selected, latest.current.count);
+    void controls.current?.setLookAt(...eye, ...target, !reducedMotion());
+  });
 
   const step = (delta: number) => {
     const { selected: i, onSelect: pick, count: n } = latest.current;

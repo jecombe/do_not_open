@@ -314,7 +314,7 @@ export const en = {
   "wh.legendMine_one": "Red tag: yours ({count})",
   "wh.legendMine_other": "Red tag: yours ({count})",
   "wh.hint": "Drag to look around, WASD or the arrow keys to walk, scroll to step closer.",
-  "wh.hintTouch": "One finger to look around, two to move and zoom. Tap a box to pick it.",
+  "wh.hintTouch": "Slide one finger along the racks, pinch to walk in, turn with two fingers. Tap a box to pick it.",
   "track.sign": "Sign in your wallet",
   "track.chain": "Written on-chain",
   "track.permit": "Sign the decryption permit",
@@ -345,6 +345,11 @@ export const en = {
   "tx.failed": "failed",
   "tx.gas": "{gas} gas",
   "tx.note": "Sent from this browser about these two boxes. Kept on this device only.",
+  // --- the stage and the slip
+  "stage.recenter": "Recenter",
+  "stage.recenterHint": "Put the view back where it was",
+  "slip.fold": "Fold",
+  "slip.unfold": "Unfold",
 } as const satisfies Record<string, string>;
 
 export type AppKey = keyof typeof en;

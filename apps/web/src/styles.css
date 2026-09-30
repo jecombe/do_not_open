@@ -1159,3 +1159,59 @@ button {
     animation: none;
   }
 }
+
+/* --- Getting back: the camera's way home, and a slip folded out of the way on a phone --- */
+.recenter {
+  position: absolute;
+  top: calc(var(--gutter) + 64px);
+  right: var(--gutter);
+  padding: 7px 12px;
+  background: var(--manifest);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+}
+
+.fold {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .fold {
+    display: block;
+    width: calc(100% + 24px);
+    margin: -10px -12px 6px;
+    padding: 4px 0 5px;
+    background: none;
+    color: var(--ink);
+    border: 0;
+    border-bottom: 1px dashed rgb(0 0 0 / 0.3);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .slip.folded {
+    overflow: hidden;
+  }
+
+  /* Unfolded, a slip still leaves the upper part of the scene in view. */
+  .slip {
+    max-height: 52dvh;
+  }
+
+  .slip.folded > :not(.fold):not(.slip-head):not(.keep) {
+    display: none;
+  }
+
+  .slip.folded .fold {
+    margin-bottom: 4px;
+  }
+}

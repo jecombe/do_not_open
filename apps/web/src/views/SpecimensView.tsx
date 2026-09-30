@@ -7,6 +7,7 @@ import { cap, catNames, viceName } from "../i18n/names";
 import { SpecimenScene } from "../scenes/Scenes";
 import { Declaration } from "./Declaration";
 import { Stage } from "./Stage";
+import { useFold } from "./useFold";
 
 /**
  * The fixtures, plus two cats with a vice. Vices are rare (about 1% of cats) and none of
@@ -21,6 +22,7 @@ const SPECIMENS: readonly { label: string; seed: bigint }[] = [
 
 export function SpecimensView({ quality }: { quality: QualitySettings }) {
   const t = useT();
+  const { foldClass, foldButton } = useFold({ startFolded: true });
   const [selected, setSelected] = useState(0);
   const [wellFed, setWellFed] = useState(false);
   const affection = wellFed ? gameSpec.affection.goldenThreshold + 1 : 0;
@@ -31,13 +33,14 @@ export function SpecimensView({ quality }: { quality: QualitySettings }) {
       <Stage quality={quality}>
         <SpecimenScene specs={cats} selected={selected} onSelect={setSelected} />
       </Stage>
-      <section className="slip declaration" aria-label={t("specimens.aria")}>
+      <section className={`slip declaration${foldClass}`} aria-label={t("specimens.aria")}>
+        {foldButton}
         <Declaration cat={cats[selected]!}>
           <label className="check">
             <input type="checkbox" checked={wellFed} onChange={(e) => setWellFed(e.target.checked)} />
             {t("specimens.wellFed", { n: gameSpec.affection.goldenThreshold })}
           </label>
-          <div className="specimen-nav">
+          <div className="specimen-nav keep">
             <div className="stepper">
               <button type="button" onClick={() => setSelected((i) => Math.max(0, i - 1))} disabled={selected === 0} aria-label={t("specimens.prev")}>
                 ‹

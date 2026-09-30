@@ -8,6 +8,7 @@ import { useT } from "../i18n/app";
 import { SHELF_CAPACITY, ShelfScene, type ShelfBox } from "../scenes/Scenes";
 import type { PairIntent } from "./PairView";
 import { Stage } from "./Stage";
+import { useFold } from "./useFold";
 
 interface Props {
   quality: QualitySettings;
@@ -23,6 +24,7 @@ const LIST_LIMIT = 40;
 export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect, mode } = useChain();
   const t = useT();
+  const { foldClass, foldButton } = useFold();
   const action = useAction();
   const [quantity, setQuantity] = useState(1);
   const [infos, setInfos] = useState<BoxInfo[]>([]);
@@ -77,7 +79,8 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
         <ShelfScene boxes={onBench} arrivals={arrived} quality={quality} sound={sound} highlight={pointed} onSelect={onSelect} />
       </Stage>
 
-      <section className="slip" aria-label={t("shelf.title")}>
+      <section className={`slip${foldClass}`} aria-label={t("shelf.title")}>
+        {foldButton}
         <div className="slip-head">
           <span>{t("shelf.title")}</span>
           {collection && <span>{t("shelf.shipped", { minted: collection.totalMinted, max: collection.maxSupply })}</span>}

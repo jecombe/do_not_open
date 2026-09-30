@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { Vector3 } from "three";
 import { createWarehouse, DEPOT_COLORS, type QualitySettings, type WarehouseBoxState } from "@dno/scene";
+import { useLeash } from "./leash";
 
 export interface WarehouseBox {
   state: WarehouseBoxState;
@@ -47,23 +48,38 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
 
   useEffect(() => warehouse.select(selected), [warehouse, selected]);
 
-  // Enter by the door, once per warehouse. A narrow screen stands further back to take in the row.
-  useEffect(() => {
+  // At the door. A narrow screen stands further back to take in the row.
+  const enter = (animate: boolean) => {
     const { position: p, target: t } = warehouse.entrance;
     const back = Math.min(1.9, Math.max(1, 1.6 / (window.innerWidth / window.innerHeight)));
-    // On a phone the slip covers the lower half: aim under the rack so it sits above the slip.
-    const drop = (back - 1) * 1.6;
-    void controls.current?.setLookAt(p.x, p.y + (back - 1) * 0.6, t.z + (p.z - t.z) * back, t.x, t.y - drop, t.z, false);
-  }, [warehouse]);
+    void controls.current?.setLookAt(p.x, p.y + (back - 1) * 0.6, t.z + (p.z - t.z) * back, t.x, t.y, t.z, animate);
+  };
+  // In the aisle in front of a box, a little above it so an opened one shows it is flat.
+  const face = (tokenId: number, animate: boolean) => {
+    const b = warehouse.positionOf(tokenId);
+    // A phone is narrow: back off so the neighbours show on either side.
+    const back = window.innerWidth < 700 ? 1.9 : 1;
+    void controls.current?.setLookAt(b.x, b.y + 1.1 * back, b.z + 3.4 * back, b.x, b.y, b.z, animate);
+  };
 
-  // Fly to the picked box: stand in the aisle in front of it.
+  // Enter by the door, once per warehouse.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => enter(false), [warehouse]);
+
+  // Fly to the picked box.
   useEffect(() => {
     if (selected === null || selected >= count) return;
-    const b = warehouse.positionOf(selected);
-    // A little above it, so an open box shows its flaps.
-    void controls.current?.setLookAt(b.x, b.y + 1.1, b.z + 3.4, b.x, b.y, b.z, !reducedMotion());
+    face(selected, !reducedMotion());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [warehouse, flight]);
+
+  // Between the racks: one finger slides along them, two pinch forward and turn. The button goes back
+  // to the picked box, or to the door.
+  const { minX, maxX, minZ, maxZ } = warehouse.bounds;
+  useLeash(controls, { min: [minX, 0.1, minZ], max: [maxX, 3.8, maxZ], touch: "walk" }, () => {
+    if (selected !== null && selected < count) face(selected, !reducedMotion());
+    else enter(!reducedMotion());
+  });
 
   // Keys held down, walked on every frame.
   const held = useRef(new Set<string>());

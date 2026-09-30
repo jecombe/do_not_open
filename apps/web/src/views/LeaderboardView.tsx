@@ -8,6 +8,7 @@ import { useT } from "../i18n/app";
 import { catNames } from "../i18n/names";
 import { SHELF_CAPACITY, ShelfScene, SpecimenScene } from "../scenes/Scenes";
 import { Stage } from "./Stage";
+import { useFold } from "./useFold";
 
 interface Props {
   quality: QualitySettings;
@@ -25,6 +26,7 @@ type Board = "opened" | "sealed";
 export function LeaderboardView({ quality, sound, onSelect }: Props) {
   const { adapter, account, collection } = useChain();
   const t = useT();
+  const { foldClass, foldButton } = useFold();
   const [boxes, setBoxes] = useState<BoxInfo[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [board, setBoard] = useState<Board>("opened");
@@ -73,7 +75,8 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
         )}
       </Stage>
 
-      <section className={showCats ? "slip declaration" : "slip"} aria-label={t("lb.title")}>
+      <section className={`${showCats ? "slip declaration" : "slip"}${foldClass}`} aria-label={t("lb.title")}>
+        {foldButton}
         <div className="slip-head">
           <span>{t("lb.title")}</span>
           <div className="picker" role="group" aria-label={t("lb.ranking")}>
