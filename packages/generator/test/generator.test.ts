@@ -190,3 +190,31 @@ describe("BoxSpec", () => {
     expect(() => buildBoxSpec(spec.collection.maxSupply)).toThrow(RangeError);
   });
 });
+
+describe("metadata and SVG fallback", () => {
+  it("builds sealed metadata from the token id and public facts only", async () => {
+    const { sealedMetadata, renderBoxSvg, buildBoxSpec } = await import("../src");
+    const meta = sealedMetadata(42, "42.png", { feeds: 3, vetCertified: true });
+    expect(meta.name).toBe("DO NOT OPEN DNO-0042");
+    expect(meta.attributes.map((a) => a.trait_type)).toEqual(["Status", "Times fed", "Vet Certified"]);
+    const svg = renderBoxSvg(buildBoxSpec(42));
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg).toContain("DNO-0042");
+    expect(renderBoxSvg(buildBoxSpec(42))).toBe(svg);
+  });
+
+  it("lists every revealed trait and draws every fixture", async () => {
+    const { revealedMetadata, renderCatSvg, buildCatSpec, FIXTURE_SEEDS } = await import("../src");
+    for (const { seed } of FIXTURE_SEEDS) {
+      const cat = buildCatSpec({ seed, affection: 11 });
+      const meta = revealedMetadata(7, cat, "7.png");
+      const value = (t: string) => meta.attributes.find((a) => a.trait_type === t)?.value;
+      expect(value("Breed")).toBe(cat.traits.breed.name);
+      expect(value("Rarity score")).toBe(cat.rarity.score);
+      expect(String(value("Accessory"))).toMatch(/^Golden /);
+      const svg = renderCatSvg(cat);
+      expect(svg).not.toContain("undefined");
+      expect(svg).not.toContain("NaN");
+    }
+  });
+});

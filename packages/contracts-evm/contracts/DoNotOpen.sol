@@ -186,6 +186,8 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
     mapping(uint256 tokenIdA => mapping(uint256 tokenIdB => address proposer)) private _entangleProposal;
     mapping(uint256 duelId => Duel) private _duels;
     mapping(uint256 tokenId => uint32) public wins;
+    /// @notice How many times each box was fed. Public; what the feeding earned is not.
+    mapping(uint256 tokenId => uint32) public feedCount;
     /// @dev Traits made public by lost duels: bit i set means trait i is known.
     mapping(uint256 tokenId => uint8) private _publicTraitMask;
     mapping(uint256 tokenId => uint8[5]) private _publicTraitRoll;
@@ -334,6 +336,7 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
         euint32 affection = FHE.add(_affection[tokenId], FHE.asEuint32(FHE.randEuint8(_feedBound)));
         FHE.allowThis(affection);
         _affection[tokenId] = affection;
+        feedCount[tokenId] += 1;
         emit Fed(tokenId, msg.sender);
     }
 
@@ -487,6 +490,12 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
         _requireOwned(tokenIdB);
         if (status[tokenIdA] != BoxStatus.Sealed || status[tokenIdB] != BoxStatus.Sealed) revert NotSealed();
         if (_partner[tokenIdA] != 0 || _partner[tokenIdB] != 0) revert AlreadyEntangled();
+    }
+
+    /// @notice Who proposed to entangle A with B, or zero. The proposal is only good while
+    ///         that address still holds A.
+    function entangleProposer(uint256 tokenIdA, uint256 tokenIdB) external view returns (address) {
+        return _entangleProposal[tokenIdA][tokenIdB];
     }
 
     /// @notice The box `tokenId` is entangled with, if any.

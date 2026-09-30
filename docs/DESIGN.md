@@ -120,7 +120,8 @@ those objects with `<primitive>`.
 | Kibble drop, lid gap, happy hop | feed         | Phase 3  | `FeedEffect`; two pieces always miss and rattle off |
 | Spotlight face-off              | duel         | Phase 3  | `DuelArena`; loser left leaning in the dark   |
 | Glowing thread                  | entangle     | Phase 3  | `EntanglementThread`; one mesh, curve in the vertex shader |
-| Room props                      | reveal       | Not done | Rooms are still colour-only; moved to Phase 4 |
+| Take the cat out                | inspection   | Phase 4  | `CatInspector`; the box slides aside, the cat hops onto a mat under its own lamp, the camera orbits it |
+| Room props                      | reveal       | Not done | Rooms are still colour-only. Listed in `assets/BLENDER_TODO.md` |
 
 Sounds are all synthesised (`ShakeSound`): thump, rattle, muffled complaint, tape rip,
 reveal chime (a darker one for ghosts), kibble tick, purr.
@@ -138,9 +139,11 @@ reveal chime (a darker one for ghosts), kibble tick, purr.
 
 `detectQuality()` picks the tier from pointer type, screen size, core count, device
 memory and `prefers-reduced-motion`. Every box on the shelves is one `InstancedMesh`
-(plus one for their stamps): two draw calls for the whole wall. The "My boxes" shelf
-in Phase 4 reuses that path, with per-instance tint and a shared texture atlas for
-labels; LOD switches a box to a bare instanced cube beyond a few metres.
+(plus one for their stamps): two draw calls for the whole wall. The "Your shelf" view
+puts the account's eight newest boxes on the bench as full boxes, each with its own
+label texture, and lists the rest as text. Eight is what the bench holds and what a
+phone draws comfortably; an instanced, atlas-backed shelf is the path if holders end
+up with hundreds.
 
 ## Privacy rule for rendering
 
@@ -149,10 +152,24 @@ the seed. If the box's dents, tape or stamp depended on the encrypted seed, the 
 would leak it. The cat, room and broken object exist only in `CatSpec`, which can only
 be built once the seed is public.
 
-## Metadata image (Phase 4)
+## Metadata image
 
 Canonical image = the same builders rendered offscreen at a fixed camera, fixed time
-and fixed size, in a headless browser. Canvas textures accept an injected
-`createCanvas`, so the builders do not depend on a DOM being present. A lightweight
-SVG fallback (kraft rectangle, tape, stamp, serial) ships next to it for marketplaces
-that reject large images.
+and fixed size (1024 x 1024), in headless Chrome with software GL, so it runs on a
+machine with no GPU. `apps/web/render.html` draws one frame; `scripts/render-metadata.cts`
+drives it and writes `<id>.json`, `<id>.png` and `<id>.svg`.
+
+The SVG fallback (`renderBoxSvg`, `renderCatSvg` in the generator) is a flat drawing
+built from the same `BoxSpec` / `CatSpec`. It needs no browser (`--svg-only`) and is
+what to serve where a large PNG is unwelcome.
+
+The privacy rule holds here too: a sealed token's three files depend on the token id
+and on public chain facts (times fed, duels won, Vet Certified, entangled partner).
+
+## Inspection
+
+Once a box is open, "Take the cat out" lifts it onto the bench. The point is to look
+at it properly: the camera target moves to the cat, the minimum distance drops from
+1.8 to 0.9, five preset angles (front, left, back, right, above) are one click away,
+and drag and pinch do the rest. "Put it back" reverses the move. The cat is
+re-parented from the box to the bench with its world transform kept, so nothing jumps.

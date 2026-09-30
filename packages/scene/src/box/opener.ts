@@ -41,6 +41,7 @@ export class BoxOpener {
   onDone: (() => void) | null = null;
 
   private time = -1;
+  private silent = false;
   private fired = { rip: false, burst: false, done: false };
   private readonly duration: number;
   private readonly light: PointLight;
@@ -122,6 +123,19 @@ export class BoxOpener {
   open(): void {
     if (this.time >= 0) return;
     this.time = 0;
+  }
+
+  /**
+   * Jumps straight to the opened state, with no sequence, no sound and no callback:
+   * for a box that was opened some other day.
+   */
+  openInstant(): void {
+    if (this.time >= 0) return;
+    this.fired.rip = true;
+    this.fired.burst = true;
+    this.silent = true;
+    this.time = this.duration;
+    this.update(0);
   }
 
   update(dt: number): void {
@@ -206,7 +220,7 @@ export class BoxOpener {
       this.beam.visible = false;
       this.dust.visible = false;
       this.light.intensity = 3;
-      this.onDone?.();
+      if (!this.silent) this.onDone?.();
     }
   }
 

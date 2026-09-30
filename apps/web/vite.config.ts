@@ -5,4 +5,5 @@ export default defineConfig({
   plugins: [react()],
   envDir: "../..",
   server: { port: 5173 },
+  build: { rollupOptions: { input: { main: "index.html", render: "render.html" } } },
 });

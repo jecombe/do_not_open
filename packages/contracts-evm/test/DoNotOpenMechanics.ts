@@ -67,6 +67,9 @@ describe("DoNotOpen mechanics", function () {
       }
       // Ten identical draws out of four values would be a one-in-260,000 coincidence.
       expect(gains.size).to.be.greaterThan(1);
+      // The number of feeds is public, unlike what they earned.
+      expect(await dno.feedCount(0)).to.eq(10n);
+      expect(await dno.feedCount(1)).to.eq(0n);
     });
 
     it("keeps affection unreadable, even for the feeder and the holder", async function () {
@@ -180,8 +183,11 @@ describe("DoNotOpen mechanics", function () {
     it("links two boxes with both holders' consent and opens them together", async function () {
       await expect(dno.connect(alice).proposeEntangle(0, 3)).to.emit(dno, "EntangleProposed").withArgs(0, 3);
       expect((await dno.partnerOf(0)).entangled).to.eq(false);
+      expect(await dno.entangleProposer(0, 3)).to.eq(alice.address);
+      expect(await dno.entangleProposer(3, 0)).to.eq(ethers.ZeroAddress);
 
       await expect(dno.connect(bob).acceptEntangle(0, 3)).to.emit(dno, "Entangled").withArgs(0, 3);
+      expect(await dno.entangleProposer(0, 3)).to.eq(ethers.ZeroAddress);
       expect(await dno.partnerOf(0)).to.deep.eq([true, 3n]);
       expect(await dno.partnerOf(3)).to.deep.eq([true, 0n]);
 

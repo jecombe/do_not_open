@@ -474,3 +474,195 @@ button {
     font-size: 28px;
   }
 }
+
+/* --- Phase 4: the chain --- */
+.boot {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  font-size: 22px;
+  color: rgb(233 223 200 / 0.72);
+}
+
+.views {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* The wallet is a different kind of tag: inked, not manila. */
+.views .wallet {
+  background-color: var(--ink-red);
+  color: var(--manifest);
+  opacity: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.views .wallet:hover {
+  background-color: #a81f17;
+}
+
+.slip .link {
+  color: var(--ink-red);
+  font-weight: 700;
+}
+
+.slip .link:hover {
+  color: var(--ink);
+}
+
+.notice a.link {
+  color: inherit;
+}
+
+.problem {
+  padding: 6px 8px;
+  border-left: 4px solid var(--ink-red);
+  background: rgb(194 38 29 / 0.1);
+  font-weight: 600;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 132px;
+  margin: 8px 0 12px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.tags button {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tags button span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tags button.is-open {
+  border-style: dashed;
+}
+
+.tags button:hover {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.order {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: stretch;
+  padding-top: 12px;
+  border-top: 2px solid var(--ink);
+}
+
+.order .stepper {
+  align-items: stretch;
+}
+
+.order .stepper button {
+  height: auto;
+  width: 38px;
+}
+
+.order .stepper output {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.marks {
+  margin: -6px 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.marks li::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  background: var(--ink);
+  transform: rotate(45deg) translateY(-1px);
+}
+
+.marks .mark-good::before {
+  background: #2f7d3a;
+}
+
+.marks .mark-entangled::before {
+  background: #1f7d6d;
+}
+
+.pair-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+.pair-pick label {
+  display: grid;
+  gap: 2px;
+  font-size: 15px;
+}
+
+.pair-pick select {
+  width: 100%;
+  padding: 4px 6px;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.order .stamp-button {
+  font-size: 22px;
+}
+
+.results + .actions,
+.results + .felt {
+  margin-top: 12px;
+}
+
+.picker + .fine {
+  margin-top: 10px;
+}
+
+@media (max-width: 700px) {
+  .views button {
+    padding: 6px 10px 6px 22px;
+    font-size: 15px;
+  }
+
+  .views {
+    justify-content: flex-start;
+  }
+
+  .tags {
+    max-height: 76px;
+  }
+}

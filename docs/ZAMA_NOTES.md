@@ -169,6 +169,21 @@ feature should move logic to a library.
 
 ### Sepolia deployment (2026-09-30)
 
+Current (Phase 3 mechanics plus the two Phase 4 views):
+
+| Contract          | Address                                      |
+| ----------------- | -------------------------------------------- |
+| `DoNotOpen`       | `0x6C6210E9CB6CC5218F479806258E86B176aA5BD0` |
+| `DoNotOpenConfig` | `0xEA573173eB2f781E89346f007717cFA803413957` |
+
+Deployed at block 11815596, 4,666,157 gas. `packages/chain-adapter/scripts/smoke.ts`
+ran every mechanic against it through the real coprocessor, relayer and KMS: mint,
+two shakes on one permit, feed, proveAlive, a duel, an entanglement, and an observe
+that opened both entangled boxes; both reveals matched the generator. The browser
+app then minted, shook and opened a box against the same contract.
+
+Superseded Phase 2 deployment, kept for the record:
+
 | Contract          | Address                                      |
 | ----------------- | -------------------------------------------- |
 | `DoNotOpen`       | `0x2abE00CF08422Aa221680423F5A8C5D9cb53c2FD` |
@@ -179,7 +194,74 @@ price 0.002 ETH, observe fee 0.0005 ETH. `pnpm demo:sepolia` was run end to end 
 the real coprocessor and KMS: mint, two shakes with private decryption, `proveAlive` and
 `observe` with public decryption and on-chain proof verification. Token 0 is revealed.
 
-This is the Phase 2 contract. It does NOT include feed, paidShake, entangle or duel;
-the Phase 3 contract has to be redeployed to replace it.
+That first deployment does not include feed, paidShake, entangle or duel.
 Artifacts are in `packages/contracts-evm/deployments/sepolia`. Not yet verified on
 Etherscan (needs `ETHERSCAN_API_KEY`).
+
+## Phase 4: the frontend and the relayer
+
+### Which SDK
+
+The brief asks for the Relayer SDK. `EvmFhevmAdapter` uses `@zama-fhe/relayer-sdk`
+**0.4.1**, the exact version the Hardhat plugin pins and the one the Phase 2 and 3 CLI
+already ran against Sepolia. In the browser it is imported from
+`@zama-fhe/relayer-sdk/web` (ES module, WASM resolved by Vite); in Node from `/node`.
+The docs' web-app page still shows `/bundle` with a CDN script tag pinned to 0.2.0;
+`/bundle` expects that global and is not what a bundled app wants.
+
+Zama now also publishes a higher-level `@zama-fhe/sdk` (3.6.0 on npm, built on
+`@fhevm/sdk` 0.13.2, with React hooks, signer abstractions and a v2 to v3 migration
+guide). It was not adopted here: it tracks the 0.13 contract line while this project is
+on `@fhevm/solidity` 0.11.1, and swapping SDK under a working deployment buys nothing.
+Because the app only sees `ChainAdapter`, moving to it later is a change inside one file.
+
+### What differs from the docs' examples
+
+- `createEIP712` and `userDecrypt` take the start timestamp and duration as **numbers**
+  in 0.4.1. The docs' snippets pass strings.
+- This app never encrypts an input: every secret is drawn on-chain. So the adapter only
+  uses `generateKeypair`, `createEIP712`, `userDecrypt` and `publicDecrypt`, and the
+  multi-threading setup (cross-origin isolation headers) that input proofs benefit from
+  is not needed.
+- `createInstance` is given the read RPC URL, not `window.ethereum`, so decryption of
+  public values works before any wallet is connected.
+
+### Decisions
+
+- **One permit per session.** A shake needs a user decryption, which needs an EIP-712
+  signature over a fresh keypair. The adapter signs once (valid one day, this contract
+  only) and keeps the keypair in memory, so the wallet prompts once, not at every shake.
+  Nothing is written to storage: a reload asks again.
+- **Retries on decryption.** The coprocessor computes a ciphertext a few seconds after
+  the transaction that requested it. Asking the relayer too early fails, so decryptions
+  are retried up to five times with a growing pause.
+- **Two-step actions can be resumed.** observe, proveAlive and duel each end with a
+  proof transaction. If the user closes the tab in between, the box stays "opening" (or
+  the check or duel "pending"); the app then shows "Finish opening" and anyone can send
+  the proof. The adapter exposes `finishObserve`, `finishProveAlive` and `finishDuel`.
+- **Reads do not need a wallet.** They go to a public RPC endpoint. After each
+  transaction the adapter waits until that endpoint has seen the block, because public
+  endpoints are load-balanced and can answer from a node that is one block late.
+- **No enumeration on-chain.** The contract is a plain ERC-721. `boxesOf` checks the
+  balance, then walks `ownerOf` from the newest token down until it has found them all.
+  Fine on a testnet; a mainnet front end should read an indexer instead.
+- **Two views added to the contract** for the front end: `feedCount(tokenId)` (the
+  number of feeds was already public through events) and `entangleProposer(a, b)`.
+  Deployed bytecode is now 20,468 bytes.
+
+### Mainnet
+
+The Sepolia relayer is open. The Zama-hosted **mainnet relayer needs an API key**, which
+must not reach the browser: the documented pattern is a small backend proxy that adds
+the `x-api-key` header. That proxy does not exist in this repo yet; it is a mainnet task.
+
+### Not verified
+
+- A real browser wallet extension. The browser run used a local signing proxy behind an
+  injected EIP-1193 object, which exercises the same adapter code (`eth_requestAccounts`,
+  `eth_sendTransaction`, `eth_signTypedData_v4`) but not MetaMask's own prompts, its
+  network switching, or account change events.
+- The two-holder flows in the browser (accepting someone else's duel or entanglement).
+  They are covered by the mock adapter's tests and by the contract tests, and the smoke
+  script ran them on Sepolia with one account holding both boxes.
+- `paidShake` and `claim` on Sepolia: they need a second funded account.

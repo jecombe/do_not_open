@@ -14,3 +14,4 @@ fhevmTemp/
 .playwright-mcp/
 deployments/localhost/
 deployments/hardhat/
+out/

@@ -5,7 +5,7 @@ reach the art direction in `docs/DESIGN.md`. Each entry gets a magenta wireframe
 placeholder in `packages/scene/src/assets/gltf.ts` (`GLTF_ASSETS`) so the app runs
 before the model exists.
 
-## Status after Phase 3
+## Status after Phase 4
 
 **Nothing needs Blender yet.** Box, tape, label, stamp, depot, all 10 breeds, 8 moods,
 9 accessories, 7 broken objects and every effect (opening, feeding, duel, thread) are
@@ -17,7 +17,7 @@ Decisions on the Phase 1 candidates:
 | -------------------- | ------------------------------------------------------------------- |
 | Torn tape strips     | Stays procedural: the strips fly off and fade in under a second, a modelled curl would not be seen |
 | Maine Coon mane      | Stays procedural for now; revisit if close-up metadata renders show it |
-| Room props (8 rooms) | Still open. Rooms are colour-only. To be decided in Phase 4 with the metadata renders |
+| Room props (8 rooms) | Still open after Phase 4. The metadata renders and the inspection view both show a room that is a coloured floor and wall and nothing else. Decide in Phase 5: procedural props per room, or one modelled set |
 
 ## Spec template
 

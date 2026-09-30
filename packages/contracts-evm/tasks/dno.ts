@@ -277,3 +277,20 @@ withAddress("dno:demo", "Full walkthrough: mint, shake twice, prove alive, obser
   console.log("");
   await observe(hre, args, tokenId!);
 });
+
+task("dno:export", "Writes the address and ABI of this network's deployment where the chain adapter reads them").setAction(
+  async (_args, hre) => {
+    const { writeFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const deployment = await hre.deployments.get("DoNotOpen");
+    const out = resolve(__dirname, `../../chain-adapter/src/evm/deployments/${hre.network.name}.json`);
+    const slim = {
+      chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
+      address: deployment.address,
+      deployBlock: deployment.receipt?.blockNumber ?? 0,
+      abi: deployment.abi,
+    };
+    writeFileSync(out, JSON.stringify(slim, null, 2) + "\n");
+    console.log(`wrote ${out}`);
+  },
+);
