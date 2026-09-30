@@ -6,6 +6,7 @@ export * from "./cat/diorama";
 export * from "./box/buildBox";
 export * from "./box/shaker";
 export * from "./box/opener";
+export * from "./box/anticipation";
 export * from "./box/inspector";
 export * from "./effects/feed";
 export * from "./effects/thread";

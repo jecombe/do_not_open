@@ -6,6 +6,7 @@ import { buildBoxSpec, type CatSpec } from "@dno/generator";
 import {
   BENCH_HEIGHT,
   BOX_SIZE,
+  BoxAnticipation,
   BoxOpener,
   BoxShaker,
   CatInspector,
@@ -22,6 +23,8 @@ import {
   type CatObject,
   type QualitySettings,
   type ShakeSound,
+  type WaitKind,
+  type WaitStage,
 } from "@dno/scene";
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -66,6 +69,8 @@ export type InspectAngle = "front" | "left" | "back" | "right" | "above";
 export interface BoxSceneHandle {
   shake(): void;
   feed(): void;
+  /** Keeps the box busy while a chain action is pending; `null` lets it settle. */
+  wait(stage: WaitStage | null, kind: WaitKind): void;
   /** Plays the opening sequence. */
   open(cat: CatSpec): void;
   /** Takes the cat out onto the bench, or puts it back. Only once the box is open. */
@@ -105,7 +110,12 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
 
   const rig = useMemo(() => {
     const box = createBox(buildBoxSpec(tokenId));
-    return { box, shaker: new BoxShaker(box, { reducedMotion: reducedMotion() }), feeder: new FeedEffect(box, reducedMotion()) };
+    return {
+      box,
+      shaker: new BoxShaker(box, { reducedMotion: reducedMotion() }),
+      feeder: new FeedEffect(box, reducedMotion()),
+      waiter: new BoxAnticipation(box, reducedMotion()),
+    };
   }, [tokenId]);
 
   useEffect(() => {
@@ -117,6 +127,7 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
       opening.current = null;
       depot.benchAnchor.remove(rig.box.group);
       rig.feeder.dispose();
+      rig.waiter.dispose();
       rig.box.dispose();
     };
   }, [depot, rig]);
@@ -134,6 +145,8 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
       if (Math.random() < 0.6) sound.complaint();
       onShakeDone();
     };
+    rig.waiter.onRattle = (strength) => sound.impact(strength);
+    rig.waiter.onMutter = () => sound.complaint();
     rig.feeder.onTick = () => sound.tick();
     rig.feeder.onEaten = () => {
       sound.purr();
@@ -155,14 +168,17 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
     () => ({
       shake: () => rig.shaker.shake(),
       feed: () => rig.feeder.drop(),
+      wait: (stage, kind) => rig.waiter.set(stage, kind),
       open: (cat) => {
         if (opening.current) return;
         const made = makeOpener(rig.box, cat, sound);
         made.opener.onDone = onOpened;
         opening.current = made;
-        made.opener.open();
         // Scripted move: push in over the lid so the reveal happens under the camera.
         frame(true, !reducedMotion());
+        // After a long wait the lid is cracked and glowing: it slams shut for a beat, then bursts open.
+        if (rig.waiter.active) rig.waiter.release(0.35, () => made.opener.open());
+        else made.opener.open();
       },
       inspect: (out) => {
         const o = opening.current;
@@ -211,6 +227,7 @@ export function BoxScene({ ref, tokenId, opened, quality, sound, onShakeDone, on
     depot.update(state.clock.elapsedTime);
     rig.shaker.update(step);
     rig.feeder.update(step);
+    rig.waiter.update(step);
     opening.current?.opener.update(step);
     opening.current?.content.update(state.clock.elapsedTime);
     inspector.current?.update(step);

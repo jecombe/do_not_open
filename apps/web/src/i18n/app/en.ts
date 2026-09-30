@@ -300,6 +300,14 @@ export const en = {
   "wh.legendMine_other": "Red tag: yours ({count})",
   "wh.hint": "Drag to look around, WASD or the arrow keys to walk, scroll to step closer.",
   "wh.hintTouch": "One finger to look around, two to move and zoom. Tap a box to pick it.",
+  "track.sign": "Sign in your wallet",
+  "track.chain": "Written on-chain",
+  "track.permit": "Sign the decryption permit",
+  "track.decryptPublic": "Zama decrypts it",
+  "track.decryptPrivate": "Decrypting, for you only",
+  "track.proof": "Sign the proof",
+  "track.seconds": "{n} s",
+  "track.slow": "Decryption runs on Zama's network. It usually takes 10 to 60 seconds; the box will not leave.",
 } as const satisfies Record<string, string>;
 
 export type AppKey = keyof typeof en;

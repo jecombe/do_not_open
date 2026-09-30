@@ -10,6 +10,7 @@ import { cap, catNames } from "../i18n/names";
 import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scenes";
 import { Declaration } from "./Declaration";
 import { Stage } from "./Stage";
+import { StepTracker, type PlannedStep } from "./StepTracker";
 
 interface Props {
   quality: QualitySettings;
@@ -23,6 +24,34 @@ interface Props {
 
 const ANGLES: InspectAngle[] = ["front", "left", "back", "right", "above"];
 const noop = () => {};
+/** What each slow action goes through, in order, as the tracker lists it. */
+const PLANS: Record<string, PlannedStep[]> = {
+  open: [
+    { step: "wallet", label: "track.sign" },
+    { step: "confirming", label: "track.chain" },
+    { step: "decrypting", label: "track.decryptPublic" },
+    { step: "proving", label: "track.proof" },
+  ],
+  alive: [
+    { step: "wallet", label: "track.sign" },
+    { step: "confirming", label: "track.chain" },
+    { step: "decrypting", label: "track.decryptPublic" },
+    { step: "proving", label: "track.proof" },
+  ],
+  shake: [
+    { step: "wallet", label: "track.sign" },
+    { step: "confirming", label: "track.chain" },
+    { step: "wallet", label: "track.permit" },
+    { step: "decrypting", label: "track.decryptPrivate" },
+  ],
+  feed: [
+    { step: "wallet", label: "track.sign" },
+    { step: "confirming", label: "track.chain" },
+  ],
+};
+/** Finishing a half-done open or check starts at the decryption. */
+const resumed = (plan: PlannedStep[]) => plan.slice(2);
+
 const HOLDER_SHARE = Number(gameSpec.mechanics.paidShake?.holderShareBps ?? 7000) / 100;
 
 /** Runs `then` the first time an action reaches `at`: the moment the scene should react. */
@@ -70,6 +99,12 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
       setMissingId(tokenId);
     }
   }, [adapter, tokenId]);
+
+  // The box shows the wait too: restless while a shake is pending, building up to the lid while an open is.
+  useEffect(() => {
+    const kind = action.busy === "open" ? "open" : action.busy === "shake" || action.busy === "alive" ? "peek" : null;
+    scene.current?.wait(kind ? action.step : null, kind ?? "open");
+  }, [action.busy, action.step]);
 
   const { reset } = action;
   useEffect(() => {
@@ -289,7 +324,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               {action.error ? (
                 <p className="fine problem">{action.error}</p>
               ) : action.busy ? (
-                <p className="fine">{stepCopy(action.step, action.busy === "shake")}</p>
+                <>
+                  {PLANS[action.busy] && (
+                    <StepTracker
+                      key={action.busy}
+                      plan={(action.busy === "open" && info?.status === "opening") || (action.busy === "alive" && info?.aliveCheck === "pending") ? resumed(PLANS[action.busy]!) : PLANS[action.busy]!}
+                      step={action.step}
+                    />
+                  )}
+                  <p className="fine">{stepCopy(action.step, action.busy === "shake")}</p>
+                  {action.step === "decrypting" && <p className="fine">{t("track.slow")}</p>}
+                </>
               ) : felt ? (
                 <>
                   <p className="felt-line">

@@ -292,4 +292,12 @@ export const it: Record<AppKey, string> = {
   "wh.legendMine_other": "Etichetta rossa: le tue ({count})",
   "wh.hint": "Trascina per guardarti intorno, WASD o le frecce per camminare, rotella per avvicinarti.",
   "wh.hintTouch": "Un dito per guardare, due per muoverti e zoomare. Tocca una scatola per sceglierla.",
+  "track.sign": "Firma nel tuo wallet",
+  "track.chain": "Scrittura sulla catena",
+  "track.permit": "Firma il permesso di decifrazione",
+  "track.decryptPublic": "Zama la decifra",
+  "track.decryptPrivate": "Decifrazione, solo per te",
+  "track.proof": "Firma la prova",
+  "track.seconds": "{n} s",
+  "track.slow": "La decifrazione passa dalla rete di Zama. Di solito ci vogliono da 10 a 60 secondi; la scatola non scappa.",
 };

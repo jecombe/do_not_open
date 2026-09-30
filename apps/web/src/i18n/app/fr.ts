@@ -292,4 +292,12 @@ export const fr: Record<AppKey, string> = {
   "wh.legendMine_other": "Étiquette rouge : les vôtres ({count})",
   "wh.hint": "Glissez pour regarder autour, ZQSD ou les flèches pour marcher, molette pour avancer.",
   "wh.hintTouch": "Un doigt pour regarder, deux pour bouger et zoomer. Touchez une boîte pour la choisir.",
+  "track.sign": "Signer dans votre wallet",
+  "track.chain": "Inscription sur la chaîne",
+  "track.permit": "Signer l'autorisation de déchiffrement",
+  "track.decryptPublic": "Zama déchiffre",
+  "track.decryptPrivate": "Déchiffrement, pour vous seul",
+  "track.proof": "Signer la preuve",
+  "track.seconds": "{n} s",
+  "track.slow": "Le déchiffrement passe par le réseau de Zama. Comptez 10 à 60 secondes ; la boîte ne bouge pas d’ici.",
 };
