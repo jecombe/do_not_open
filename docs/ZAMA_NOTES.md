@@ -123,8 +123,18 @@ Box state is one enum (`Sealed`, `Observing`, `Revealed`); `revealed(tokenId)` r
 No receiver callback during mint, so no re-entrancy surface there. A contract that
 cannot handle ERC-721 tokens can still mint to itself; that is the minter's risk.
 
-### Not yet deployed to Sepolia
+### Sepolia deployment (2026-09-30)
 
-Deployment needs a funded key, which is never stored in this repository. The deploy
-script, the CLI demo and an optional Sepolia integration test are ready; they have been
-run end to end against a local FHEVM node only.
+| Contract          | Address                                      |
+| ----------------- | -------------------------------------------- |
+| `DoNotOpen`       | `0x2abE00CF08422Aa221680423F5A8C5D9cb53c2FD` |
+| `DoNotOpenConfig` | `0x2763aFa89982882E9D367B37Bd61F30FE6d3E27C` |
+
+Spec hash `0x9bcb0e62d37833de4112a1a4c03c988c1ed1911bcc0a7081a8f460ef1ef7af9a`, mint
+price 0.002 ETH, observe fee 0.0005 ETH. `pnpm demo:sepolia` was run end to end against
+the real coprocessor and KMS: mint, two shakes with private decryption, `proveAlive` and
+`observe` with public decryption and on-chain proof verification. Token 0 is revealed.
+
+This is a Phase 2 deployment. Phase 3 changes the contract, so it will be redeployed.
+Artifacts are in `packages/contracts-evm/deployments/sepolia`. Not yet verified on
+Etherscan (needs `ETHERSCAN_API_KEY`).

@@ -34,7 +34,7 @@ const config: HardhatUserConfig = {
     sepolia: {
       accounts: sepoliaAccounts,
       chainId: 11155111,
-      url: process.env.SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com",
+      url: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
     },
   },
   paths: { artifacts: "./artifacts", cache: "./cache", sources: "./contracts", tests: "./test" },

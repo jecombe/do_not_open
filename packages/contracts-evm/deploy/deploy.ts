@@ -11,8 +11,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const params = configParamsFromSpec();
   const config = await deploy("DoNotOpenConfig", { from: deployer, args: [params], log: true });
 
-  const mintPrice = parseEther(process.env.MINT_PRICE_ETH ?? "0.002");
-  const observeFee = parseEther(process.env.OBSERVE_FEE_ETH ?? "0.0005");
+  const mintPrice = parseEther(process.env.MINT_PRICE_ETH || "0.002");
+  const observeFee = parseEther(process.env.OBSERVE_FEE_ETH || "0.0005");
   const owner = process.env.COLLECTION_OWNER || deployer;
 
   const dno = await deploy("DoNotOpen", {

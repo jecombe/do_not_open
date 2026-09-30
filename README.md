@@ -11,7 +11,7 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | Phase | Scope                                                                 | State       |
 | ----- | --------------------------------------------------------------------- | ----------- |
 | 1     | Game spec, generator, art direction, sealed box + shake, five cats    | **Done**    |
-| 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, CLI demo | **Done** (Sepolia deploy needs your key) |
+| 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, CLI demo | **Done**, live on Sepolia |
 | 3     | duel, entangle, feed, paidShake and their 3D effects                  | Next        |
 | 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render|             |
 | 5     | Full docs, Solana porting map, audit checklist                        |             |
