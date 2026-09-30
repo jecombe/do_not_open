@@ -15,5 +15,7 @@ scene only ever see `ChainAdapter`. The interface was written with that port in 
   error name.
 - Trait picks are reported as indexes into `spec.traits`, never as bit offsets.
 
-What is missing is on Zama's side: a confidential-computation SDK for Solana. The porting
-plan, account layout and open questions are in `docs/` (Phase 5).
+What is missing is on Zama's side: a confidential-computation SDK for Solana (on the
+roadmap for H2 2026, nothing published as of 2026-09-30). The porting map, the account
+layout, the member-by-member plan for this adapter and the open questions are in
+[`docs/SOLANA_PORTING.md`](../../../../docs/SOLANA_PORTING.md).

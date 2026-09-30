@@ -14,7 +14,7 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, CLI demo | **Done**, live on Sepolia |
 | 3     | duel, entangle, feed, paidShake and their 3D effects                  | **Done**, live on Sepolia |
 | 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render| **Done**    |
-| 5     | Full docs, Solana porting map, audit checklist                        | Next        |
+| 5     | Full docs, Solana porting map, audit checklist                        | **Done**    |
 
 ## Layout
 
@@ -65,11 +65,45 @@ pnpm --filter @dno/web render:metadata --source sepolia   # every minted token
 Requires Node 20+ and pnpm 9. Copy `.env.example` to `.env` when a phase needs secrets.
 No private key is ever committed.
 
+## How a box is opened
+
+Every reveal follows this shape: a request on-chain, a decryption off-chain, a proof
+back on-chain. There is no decryption callback on the current protocol.
+
+```mermaid
+sequenceDiagram
+  actor Holder
+  participant App
+  participant Contract as DoNotOpen
+  participant KMS as Zama relayer + KMS
+  Holder->>App: Open the box
+  App->>Contract: observe(tokenId)
+  Contract->>Contract: status = Observing, seed marked publicly decryptable
+  App->>KMS: publicDecrypt(handles)
+  KMS-->>App: seed + proof
+  App->>Contract: finalizeObserve(tokenId, seed, proof)
+  Contract->>Contract: verify proof, decode seed, status = Revealed
+  App->>App: seed to CatSpec to 3D cat
+```
+
+The other mechanics are in [`docs/FLOWS.md`](docs/FLOWS.md).
+
+## Live on Sepolia
+
+`DoNotOpen` is at
+[`0x6C6210E9CB6CC5218F479806258E86B176aA5BD0`](https://sepolia.etherscan.io/address/0x6C6210E9CB6CC5218F479806258E86B176aA5BD0).
+It has not been audited. See [`docs/AUDIT_CHECKLIST.md`](docs/AUDIT_CHECKLIST.md) for
+what is open before a mainnet deployment.
+
 ## Read next
 
-- [`docs/DESIGN.md`](docs/DESIGN.md) — art direction, effect catalogue, performance budget
-- [`docs/ZAMA_NOTES.md`](docs/ZAMA_NOTES.md) — verified FHEVM versions and where the protocol differs from the original brief
-- [`packages/contracts-evm/README.md`](packages/contracts-evm/README.md) — contracts, cost per function, deploy and CLI
-- [`packages/chain-adapter/README.md`](packages/chain-adapter/README.md) — the `ChainAdapter` interface and its three implementations
-- [`packages/game-spec/README.md`](packages/game-spec/README.md) — seed layout, odds, rarity formula
-- [`assets/BLENDER_TODO.md`](assets/BLENDER_TODO.md) — assets that need modelling (none yet)
+Start at [`docs/README.md`](docs/README.md). In short:
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): packages, data flow, 3D pipeline
+- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md): what is encrypted, who can read what, ACL on transfer
+- [`docs/FLOWS.md`](docs/FLOWS.md): sequence diagrams for every mechanic
+- [`docs/SOLANA_PORTING.md`](docs/SOLANA_PORTING.md): the porting map
+- [`docs/AUDIT_CHECKLIST.md`](docs/AUDIT_CHECKLIST.md): checks done and findings open
+- [`docs/DESIGN.md`](docs/DESIGN.md): art direction, effect catalogue, performance budget
+- [`docs/ZAMA_NOTES.md`](docs/ZAMA_NOTES.md): verified FHEVM versions and deviations from the brief
+- [`assets/BLENDER_TODO.md`](assets/BLENDER_TODO.md): asset backlog and specs
