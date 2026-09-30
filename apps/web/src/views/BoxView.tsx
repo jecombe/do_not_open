@@ -82,6 +82,16 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const isHolder = !!info && sameAddress(info.owner, account);
   const busy = action.busy ?? (opening ? "open" : null);
   const onOpened = useCallback(() => setOpening(false), []);
+  const steps = (
+    <div className="box-steps">
+      <button type="button" className="plain-button" onClick={() => step(-1)} disabled={!!busy || minted < 2}>
+        {t("box.prev")}
+      </button>
+      <button type="button" className="plain-button" onClick={() => step(1)} disabled={!!busy || minted < 2}>
+        {t("box.next")}
+      </button>
+    </div>
+  );
 
   const start = () => {
     sound.resume();
@@ -191,26 +201,13 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               <button type="button" className="stamp-button" onClick={() => inspect(true)}>
                 {t("box.takeOut")}
               </button>
-              <button type="button" className="plain-button" onClick={() => step(-1)}>
-                {t("box.prev")}
-              </button>
-              <button type="button" className="plain-button" onClick={() => step(1)}>
-                {t("box.next")}
-              </button>
             </div>
+            {steps}
           </Declaration>
         ) : (
           <>
             <div className="slip-head">
               <span>{t("box.consignment")}</span>
-              <div className="stepper">
-                <button type="button" onClick={() => step(-1)} aria-label={t("box.prev")} disabled={!!busy || minted < 2}>
-                  ‹
-                </button>
-                <button type="button" onClick={() => step(1)} aria-label={t("box.next")} disabled={!!busy || minted < 2}>
-                  ›
-                </button>
-              </div>
             </div>
             <p className="serial">{box.serial}</p>
             <dl className="fields">
@@ -307,6 +304,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 </p>
               )}
             </div>
+            {steps}
           </>
         )}
       </section>
