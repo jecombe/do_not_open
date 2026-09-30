@@ -3,6 +3,7 @@ import { shortAddress } from "@dno/chain-adapter";
 import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
 import { BoxView } from "./views/BoxView";
+import { LeaderboardView } from "./views/LeaderboardView";
 import { PairView } from "./views/PairView";
 import { ShelfView } from "./views/ShelfView";
 import { SpecimensView } from "./views/SpecimensView";
@@ -11,6 +12,7 @@ const VIEWS = [
   { key: "shelf", label: "Your shelf" },
   { key: "box", label: "One box" },
   { key: "pair", label: "Two boxes" },
+  { key: "leaderboard", label: "Leaderboard" },
   { key: "specimens", label: "Specimens" },
 ] as const;
 type View = (typeof VIEWS)[number]["key"];
@@ -53,6 +55,7 @@ export function App() {
       {view === "shelf" && <ShelfView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} />}
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} onInspect={showBox} />}
+      {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}
 
       <header className="masthead">

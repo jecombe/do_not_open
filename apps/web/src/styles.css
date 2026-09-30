@@ -666,3 +666,64 @@ button {
     max-height: 76px;
   }
 }
+
+/* --- Leaderboard --- */
+.slip-head .picker button {
+  padding: 1px 8px;
+}
+
+.ranking {
+  max-height: min(46vh, 380px);
+  margin: 10px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border-block: 2px solid var(--ink);
+}
+
+.ranking li + li {
+  border-top: 1px solid rgb(28 24 20 / 0.25);
+}
+
+.ranking button {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 4px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.ranking button:hover,
+.ranking button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.ranking .rank {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ranking small {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ranking .roll {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .ranking {
+    max-height: 30vh;
+  }
+}

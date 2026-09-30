@@ -124,22 +124,26 @@ flowchart TB
   app --> shelf["ShelfView<br/>mint, boxes held, claim"]
   app --> box["BoxView<br/>shake, feed, alive check, open, take the cat out"]
   app --> pair["PairView<br/>duel, entangle, open"]
+  app --> board["LeaderboardView<br/>opened boxes by score, sealed ones by duel wins"]
   app --> spec["SpecimensView<br/>fixture cats, no chain"]
   shelf & box & pair --> action["useAction()<br/>one action at a time, step, error copy"]
   shelf --> s1["ShelfScene"]
   box --> s2["BoxScene"]
   pair --> s3["PairScene"]
   spec --> s4["SpecimenScene"]
+  board --> s4
+  board --> s1
 ```
 
 `VITE_CHAIN_MODE` (or `?chain=` in the URL) picks the adapter. In mock mode the EVM
 adapter, ethers and the Relayer SDK are never downloaded: they sit behind a dynamic import.
 
+The leaderboard ranks only what is public: opened boxes by rarity score, sealed boxes
+by duels won (a sealed box has no public score). It reads the 250 most recent boxes
+one by one through `box()`; past that size it needs an indexer, like `boxesOf`.
+
 ### Gaps against the original brief
 
-- **No leaderboard view.** The brief lists one. Every input it needs is already public
-  and readable through the adapter (`box().wins`, revealed scores); the view itself was
-  not built.
 - **No event subscription.** The brief's interface lists `subscribeEvents`. The adapter
   re-reads state after each action instead. Another holder's action (a challenge, a
   paid shake) shows up on the next read, not live.
