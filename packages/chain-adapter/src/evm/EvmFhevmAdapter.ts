@@ -26,6 +26,7 @@ import {
   type Fees,
   type PairInfo,
   type TraitRoll,
+  type TxRecord,
   type WalletOption,
 } from "../types";
 import type { ChainParams, WalletSource } from "./wallet";
@@ -365,15 +366,21 @@ export class EvmFhevmAdapter implements ChainAdapter {
     announce = true,
   ): Promise<ContractTransactionReceipt> {
     const signer = this.signer();
+    let sent: TxRecord | null = null;
     try {
       if (announce) opts?.onStep?.("wallet");
       const tx = await call(this.contract.connect(signer) as Contract);
       if (announce) opts?.onStep?.("confirming");
+      const explorer = this.opts.chain.explorerUrl;
+      sent = { hash: tx.hash, call: this.iface.parseTransaction({ data: tx.data })?.name ?? "?", status: "sent", url: explorer ? `${explorer}/tx/${tx.hash}` : null };
+      opts?.onTx?.(sent);
       const receipt = await tx.wait();
       if (!receipt || receipt.status !== 1) throw new ChainError("reverted", "The transaction failed on-chain.");
+      opts?.onTx?.({ ...sent, status: "confirmed", block: receipt.blockNumber, gasUsed: receipt.gasUsed });
       await this.caughtUp(receipt.blockNumber);
       return receipt;
     } catch (error) {
+      if (sent) opts?.onTx?.({ ...sent, status: "failed" });
       throw this.toChainError(error);
     }
   }

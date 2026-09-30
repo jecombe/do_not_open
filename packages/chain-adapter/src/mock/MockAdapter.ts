@@ -16,6 +16,7 @@ import {
   type PairInfo,
   type RevealedContents,
   type TraitRoll,
+  type TxRecord,
   type WalletOption,
 } from "../types";
 
@@ -75,6 +76,8 @@ export class MockAdapter implements ChainAdapter {
   private readonly owed = new Map<Address, bigint>();
   private readonly listeners = new Set<(account: Address | null) => void>();
   private readonly latency: number;
+  private block = 5_000_000;
+  private txCount = 0;
 
   constructor(opts: MockOptions = {}) {
     this.latency = opts.latency ?? 450;
@@ -161,7 +164,7 @@ export class MockAdapter implements ChainAdapter {
     const max = Number(spec.mechanics.mint?.maxPerTx ?? 10);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > max) throw revert("InvalidQuantity");
     if (this.boxes.length + quantity > spec.collection.maxSupply) throw revert("SoldOut");
-    await this.send(opts);
+    await this.send(opts, "mint");
     const first = this.boxes.length;
     for (let i = 0; i < quantity; i++) this.boxes.push(this.newBox(me));
     return Array.from({ length: quantity }, (_, i) => first + i);
@@ -171,7 +174,7 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     const box = this.sealed(tokenId);
     if (box.owner !== me) throw revert("NotHolder");
-    await this.send(opts);
+    await this.send(opts, "shake");
     return this.decryptShake(tokenId, opts);
   }
 
@@ -179,7 +182,7 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     const box = this.sealed(tokenId);
     if (box.owner === me) throw revert("HolderShakesForFree");
-    await this.send(opts);
+    await this.send(opts, "paidShake");
     const share = (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
     this.owed.set(box.owner, (this.owed.get(box.owner) ?? 0n) + share);
     return this.decryptShake(tokenId, opts);
@@ -188,7 +191,7 @@ export class MockAdapter implements ChainAdapter {
   async feed(tokenId: number, opts?: ActionOptions): Promise<void> {
     this.signer();
     const box = this.sealed(tokenId);
-    await this.send(opts);
+    await this.send(opts, "feed");
     box.feeds += 1;
     const rand = mulberry32(Math.imul(tokenId + 7, 0x9e3779b1) + box.feeds * 31337);
     box.affection += Math.floor(rand() * (spec.affection.perFeedMax + 1));
@@ -199,7 +202,7 @@ export class MockAdapter implements ChainAdapter {
     const box = this.sealed(tokenId);
     if (box.owner !== me) throw revert("NotHolder");
     if (box.aliveCheck !== "none") throw revert("AliveCheckAlreadyRequested");
-    await this.send(opts);
+    await this.send(opts, "proveAlive");
     box.aliveCheck = "pending";
     return this.finishProveAlive(tokenId, opts);
   }
@@ -207,7 +210,7 @@ export class MockAdapter implements ChainAdapter {
   async finishProveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean> {
     const box = this.get(tokenId);
     if (box.aliveCheck !== "pending") throw revert("AliveCheckNotPending");
-    await this.publish(opts);
+    await this.publish(opts, "finalizeProveAlive");
     const alive = buildCatSpec({ seed: mockSeedForToken(tokenId) }).state === "alive";
     box.aliveCheck = alive ? "alive" : "notAlive";
     return alive;
@@ -217,7 +220,7 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     const box = this.sealed(tokenId);
     if (box.owner !== me) throw revert("NotHolder");
-    await this.send(opts);
+    await this.send(opts, "observe");
     box.status = "opening";
     if (box.partner !== null && this.get(box.partner).status === "sealed") this.get(box.partner).status = "opening";
     return this.finishObserve(tokenId, opts);
@@ -230,7 +233,7 @@ export class MockAdapter implements ChainAdapter {
     for (const id of ids) {
       const b = this.get(id);
       if (b.status !== "opening") continue;
-      await this.publish(opts);
+      await this.publish(opts, "finalizeObserve");
       const cat = buildCatSpec({ seed: mockSeedForToken(id), affection: b.affection });
       b.revealed = {
         seed: mockSeedForToken(id),
@@ -249,7 +252,7 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     if (this.get(tokenA).owner !== me) throw revert("NotHolder");
     this.checkEntangleable(tokenA, tokenB);
-    await this.send(opts);
+    await this.send(opts, "proposeEntangle");
     this.proposals.set(`${tokenA}:${tokenB}`, me);
     // The night shift says yes to everything.
     if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT) this.entangle(tokenA, tokenB);
@@ -261,7 +264,7 @@ export class MockAdapter implements ChainAdapter {
     const proposer = this.proposals.get(`${tokenA}:${tokenB}`);
     if (!proposer || proposer !== this.get(tokenA).owner) throw revert("NoSuchProposal");
     this.checkEntangleable(tokenA, tokenB);
-    await this.send(opts);
+    await this.send(opts, "acceptEntangle");
     this.entangle(tokenA, tokenB);
   }
 
@@ -270,7 +273,7 @@ export class MockAdapter implements ChainAdapter {
     if (this.get(tokenA).owner !== me) throw revert("NotHolder");
     if (tokenA === tokenB) throw revert("SameBox");
     if (this.get(tokenA).status !== "sealed" || this.get(tokenB).status !== "sealed") throw revert("NotSealed");
-    await this.send(opts);
+    await this.send(opts, "challengeDuel");
     const duel: MockDuel = { tokenA, tokenB, challenger: me, status: "challenged" };
     this.duels.push(duel);
     if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT) duel.status = "pending";
@@ -282,7 +285,7 @@ export class MockAdapter implements ChainAdapter {
     const duel = this.duel(duelId);
     if (duel.status !== "challenged") throw revert("WrongDuelStatus");
     if (duel.challenger !== me) throw revert("NotHolder");
-    await this.send(opts);
+    await this.send(opts, "cancelDuel");
     duel.status = "cancelled";
   }
 
@@ -292,14 +295,14 @@ export class MockAdapter implements ChainAdapter {
     if (duel.status !== "challenged") throw revert("WrongDuelStatus");
     if (this.get(duel.tokenB).owner !== me) throw revert("NotHolder");
     if (this.get(duel.tokenA).owner !== duel.challenger) throw revert("ChallengerNoLongerHolds");
-    await this.send(opts);
+    await this.send(opts, "acceptDuel");
     duel.status = "pending";
   }
 
   async finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult> {
     const duel = this.duel(duelId);
     if (duel.status !== "pending") throw revert("WrongDuelStatus");
-    await this.publish(opts);
+    await this.publish(opts, "finalizeDuel");
     const score = (id: number) => buildCatSpec({ seed: mockSeedForToken(id) }).rarity.score;
     // Strictly higher wins; ties go to B.
     const aWins = score(duel.tokenA) > score(duel.tokenB);
@@ -314,7 +317,7 @@ export class MockAdapter implements ChainAdapter {
   async claim(opts?: ActionOptions): Promise<void> {
     const me = this.signer();
     if (!this.owed.get(me)) throw revert("NothingToClaim");
-    await this.send(opts);
+    await this.send(opts, "claim");
     this.owed.set(me, 0n);
   }
 
@@ -391,19 +394,30 @@ export class MockAdapter implements ChainAdapter {
   }
 
   /** One transaction: a wallet prompt, then inclusion. */
-  private async send(opts?: ActionOptions): Promise<void> {
-    opts?.onStep?.("wallet");
+  private async send(opts: ActionOptions | undefined, call: string, announce = true): Promise<void> {
+    if (announce) opts?.onStep?.("wallet");
     await this.wait(0.6);
-    opts?.onStep?.("confirming");
+    if (announce) opts?.onStep?.("confirming");
+    const tx: TxRecord = { hash: this.fakeHash(), call, status: "sent", url: null };
+    opts?.onTx?.(tx);
     await this.wait(1);
+    this.block += 1;
+    opts?.onTx?.({ ...tx, status: "confirmed", block: this.block, gasUsed: 90_000n + BigInt(this.block % 7) * 11_000n });
+  }
+
+  /** A made-up but well-formed transaction hash. */
+  private fakeHash(): string {
+    this.txCount += 1;
+    const rand = mulberry32(this.txCount * 7907);
+    return "0x" + Array.from({ length: 64 }, () => Math.floor(rand() * 16).toString(16)).join("");
   }
 
   /** A public decryption followed by the transaction that carries its proof. */
-  private async publish(opts?: ActionOptions): Promise<void> {
+  private async publish(opts: ActionOptions | undefined, call: string): Promise<void> {
     opts?.onStep?.("decrypting");
     await this.wait(1.4);
     opts?.onStep?.("proving");
-    await this.wait(1);
+    await this.send(opts, call, false);
   }
 
   private wait(factor: number): Promise<void> {

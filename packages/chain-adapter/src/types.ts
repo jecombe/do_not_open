@@ -21,8 +21,22 @@ export type Step =
   /** Sending a decrypted value back to the chain with its proof. */
   | "proving";
 
+/** A transaction an action sent, as it goes from the wallet to a block. */
+export interface TxRecord {
+  hash: string;
+  /** The contract function it called, e.g. "challengeDuel". */
+  call: string;
+  status: "sent" | "confirmed" | "failed";
+  /** Where to look it up, if the chain has an explorer. */
+  url: string | null;
+  block?: number;
+  gasUsed?: bigint;
+}
+
 export interface ActionOptions {
   onStep?: (step: Step) => void;
+  /** Called when a transaction is sent, then again once it is mined (or failed). */
+  onTx?: (tx: TxRecord) => void;
 }
 
 export interface Fees {

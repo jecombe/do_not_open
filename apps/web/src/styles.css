@@ -1056,3 +1056,83 @@ button {
     display: inline;
   }
 }
+
+/* --- Transaction journal: what a pair's actions sent, block and gas once mined --- */
+.tx-journal {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1.5px dashed rgb(28 24 20 / 0.5);
+}
+
+.tx-journal summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.tx-journal ol {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+}
+
+.tx-journal li {
+  padding-left: 8px;
+  border-left: 3px solid #2f7d3a;
+}
+
+.tx-journal li.tx-sent {
+  border-left-color: rgb(28 24 20 / 0.4);
+}
+
+.tx-journal li.tx-failed {
+  border-left-color: var(--ink-red);
+}
+
+.tx-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.tx-line .tx-status,
+.tx-line .tx-time {
+  margin-left: auto;
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.tx-hash {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+}
+
+.tx-journal li.tx-sent .tx-status::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: tx-blink 1s ease-in-out infinite;
+}
+
+@keyframes tx-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tx-journal li.tx-sent .tx-status::before {
+    animation: none;
+  }
+}

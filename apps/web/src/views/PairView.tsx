@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sameAddress, type BoxInfo, type DuelResult, type PairInfo } from "@dno/chain-adapter";
+import { sameAddress, type ActionOptions, type BoxInfo, type DuelResult, type PairInfo } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
+import { logTx, recallTxs, type LoggedTx } from "../chain/txLog";
 import { useT, type AppKey } from "../i18n/app";
+import { useLocale } from "../i18n/locale";
 import { catNames } from "../i18n/names";
 import { PairScene, type PairSceneHandle } from "../scenes/Scenes";
 import { Stage } from "./Stage";
+import { StepTracker, type PlannedStep } from "./StepTracker";
+import { TxJournal } from "./TxJournal";
 
 interface Props {
   quality: QualitySettings;
@@ -24,6 +28,16 @@ const serial = (id: number) => buildBoxSpec(id).serial;
 /** A note is stored as a message key, so it follows a language change. */
 type Note = Extract<AppKey, "pair.noteChallenge" | "pair.noteProposal">;
 
+const SIGN_AND_MINE = (label: AppKey): PlannedStep[] => [
+  { step: "wallet", label },
+  { step: "confirming", label: "track.chain" },
+];
+const DECIDE: PlannedStep[] = [
+  { step: "decrypting", label: "track.decryptDuel" },
+  { step: "proving", label: "track.proof" },
+];
+const OPEN_PLAN: PlannedStep[] = [...SIGN_AND_MINE("track.sign"), { step: "decrypting", label: "track.decryptPublic" }, { step: "proving", label: "track.proof" }];
+
 export function PairView({ quality, sound, initial, onInspect }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect } = useChain();
   const t = useT();
@@ -32,11 +46,14 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
   const minted = collection?.totalMinted ?? 0;
 
   const [picked, setPicked] = useState<[number, number] | null>(initial && initial[1] >= 0 ? initial : null);
-  const [boxes, setBoxes] = useState<[BoxInfo, BoxInfo] | null>(null);
-  const [standing, setStanding] = useState<PairInfo | null>(null);
+  const [loaded, setLoaded] = useState<{ boxes: [BoxInfo, BoxInfo]; standing: PairInfo } | null>(null);
   const [outcome, setOutcome] = useState<DuelResult | null>(null);
   const [playing, setPlaying] = useState<null | "duel" | "open">(null);
   const [note, setNote] = useState<Note | null>(null);
+  const [plan, setPlan] = useState<PlannedStep[] | null>(null);
+  const [txs, setTxs] = useState<LoggedTx[]>([]);
+  const locale = useLocale();
+  const contract = collection?.address ?? "";
 
   // First pair: the requested box (or the account's first) against any other one.
   useEffect(() => {
@@ -51,24 +68,33 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
   const load = useCallback(async () => {
     if (!picked) return;
     try {
-      const [boxA, boxB, pair] = await Promise.all([adapter.box(picked[0]), adapter.box(picked[1]), adapter.pair(picked[0], picked[1])]);
-      setBoxes([boxA, boxB]);
-      setStanding(pair);
+      const [boxA, boxB, standing] = await Promise.all([adapter.box(picked[0]), adapter.box(picked[1]), adapter.pair(picked[0], picked[1])]);
+      setLoaded({ boxes: [boxA, boxB], standing });
     } catch {
-      setBoxes(null);
+      setLoaded(null);
     }
   }, [adapter, picked]);
 
   const { reset } = action;
   useEffect(() => {
-    setBoxes(null);
-    setStanding(null);
+    setLoaded(null);
     setOutcome(null);
     setPlaying(null);
     setNote(null);
     reset();
     void load();
   }, [load, reset]);
+
+  useEffect(() => setTxs(contract ? recallTxs(contract, a, b) : []), [contract, a, b]);
+
+  /** Passes the action's transactions to the pair's journal as they go through. */
+  const logged = (o: ActionOptions): ActionOptions => ({
+    ...o,
+    onTx: (tx) => {
+      o.onTx?.(tx);
+      if (contract) setTxs(logTx(contract, a, b, tx));
+    },
+  });
 
   const options = useMemo(() => {
     const ids = new Set<number>([...myBoxes, a, b]);
@@ -77,6 +103,11 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
   }, [myBoxes, minted, a, b]);
 
   const mine = (id: number) => myBoxes.includes(id);
+  // Only what was read for the boxes on screen: right after a pick, the last pair's boxes
+  // (and their cats) are still in state, and must not be dressed onto the new ones.
+  const current = loaded && loaded.boxes[0].tokenId === a && loaded.boxes[1].tokenId === b ? loaded : null;
+  const boxes = current?.boxes ?? null;
+  const standing = current?.standing ?? null;
   const [boxA, boxB] = boxes ?? [null, null];
   const catA = useMemo(() => (boxA?.revealed ? catFromRevealed(boxA.revealed) : null), [boxA]);
   const catB = useMemo(() => (boxB?.revealed ? catFromRevealed(boxB.revealed) : null), [boxB]);
@@ -110,7 +141,14 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
 
   const runDuel = async () => {
     start();
-    const result = await action.run("duel", async (o) => {
+    const iHoldBoth = mine(a) && mine(b);
+    setPlan([
+      ...(duelStep === "challenge" ? SIGN_AND_MINE("track.challenge") : []),
+      ...(duelStep === "accept" || (duelStep === "challenge" && iHoldBoth) ? SIGN_AND_MINE("track.acceptDuel") : []),
+      ...DECIDE,
+    ]);
+    const result = await action.run("duel", async (o0) => {
+      const o = logged(o0);
       let d = (await adapter.pair(a, b)).openDuel;
       if (!d) {
         const from = challenger!;
@@ -140,7 +178,8 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
   const cancelDuel = async () => {
     if (!duel) return;
     start();
-    await action.run("cancel", (o) => adapter.cancelDuel(duel.duelId, o));
+    setPlan(SIGN_AND_MINE("track.withdraw"));
+    await action.run("cancel", (o) => adapter.cancelDuel(duel.duelId, logged(o)));
     void load();
   };
 
@@ -151,7 +190,12 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
 
   const runEntangle = async () => {
     start();
-    const linked = await action.run("entangle", async (o) => {
+    setPlan([
+      ...(linkStep === "propose" ? SIGN_AND_MINE("track.propose") : []),
+      ...(linkStep === "accept" || (mine(a) && mine(b)) ? SIGN_AND_MINE("track.acceptLink") : []),
+    ]);
+    const linked = await action.run("entangle", async (o0) => {
+      const o = logged(o0);
       let p = (await adapter.pair(a, b)).entangleProposal;
       if (!p) {
         const from = challenger!;
@@ -177,7 +221,8 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
     if (!openable) return;
     start();
     const id = openable.tokenId;
-    const opened = await action.run("open", (o) => (openable.status === "opening" ? adapter.finishObserve(id, o) : adapter.observe(id, o)));
+    setPlan(openable.status === "opening" ? OPEN_PLAN.slice(2) : OPEN_PLAN);
+    const opened = await action.run("open", (o) => (openable.status === "opening" ? adapter.finishObserve(id, logged(o)) : adapter.observe(id, logged(o))));
     if (!opened) {
       void load();
       return;
@@ -324,7 +369,11 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
           {action.error ? (
             <p className="fine problem">{action.error}</p>
           ) : action.busy ? (
-            <p className="fine">{stepCopy(action.step)}</p>
+            <>
+              {plan && plan.length > 0 && <StepTracker key={action.busy} plan={plan} step={action.step} />}
+              <p className="fine">{stepCopy(action.step)}</p>
+              {action.step === "decrypting" && <p className="fine">{t("track.slow")}</p>}
+            </>
           ) : outcome && playing !== "duel" ? (
             <>
               <p className="felt-line">
@@ -368,6 +417,8 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
             <p className="fine">{t("pair.duelExplain")}</p>
           )}
         </div>
+
+        <TxJournal txs={txs} locale={locale} />
       </section>
     </>
   );
