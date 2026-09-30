@@ -308,6 +308,7 @@ export const en = {
   "track.proof": "Sign the proof",
   "track.seconds": "{n} s",
   "track.slow": "Decryption runs on Zama's network. It usually takes 10 to 60 seconds; the box will not leave.",
+  "box.feltLog": "What you felt (kept 24 h, on this device only)",
 } as const satisfies Record<string, string>;
 
 export type AppKey = keyof typeof en;

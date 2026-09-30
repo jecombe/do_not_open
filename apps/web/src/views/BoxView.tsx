@@ -5,6 +5,8 @@ import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
+import { recallFelt, rememberFelt, type Felt } from "../chain/feltCache";
+import { useLocale } from "../i18n/locale";
 import { useT, type AppKey } from "../i18n/app";
 import { cap, catNames } from "../i18n/names";
 import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scenes";
@@ -68,6 +70,13 @@ const cue = (opts: ActionOptions, at: Step, then: () => void): ActionOptions => 
   };
 };
 
+/** "3 hours ago", in the reader's language. */
+const ago = (at: number, locale: string) => {
+  const minutes = Math.round((Date.now() - at) / 60_000);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  return minutes < 60 ? rtf.format(-minutes, "minute") : rtf.format(-Math.round(minutes / 60), "hour");
+};
+
 /** A note is stored as a message key, so it follows a language change. */
 type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive">;
 
@@ -82,6 +91,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const [note, setNote] = useState<Note | null>(null);
   const [opening, setOpening] = useState(false);
   const [out, setOut] = useState(false);
+  // Shakes answered in the last 24 hours, kept in this browser for whoever shook.
+  const [remembered, setRemembered] = useState<Felt[]>([]);
+  const locale = useLocale();
 
   // Right after a step, and while a slow read lands late, the state can still hold the
   // previous box. Only what belongs to the box on screen counts: otherwise its cat opens here.
@@ -105,6 +117,11 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     const kind = action.busy === "open" ? "open" : action.busy === "shake" || action.busy === "alive" ? "peek" : null;
     scene.current?.wait(kind ? action.step : null, kind ?? "open");
   }, [action.busy, action.step]);
+
+  const contract = collection?.address ?? null;
+  useEffect(() => {
+    setRemembered(contract && account ? recallFelt(contract, account, tokenId) : []);
+  }, [contract, account, tokenId]);
 
   const { reset } = action;
   useEffect(() => {
@@ -148,6 +165,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     if (!result) return;
     rattle();
     setFelt(result);
+    if (contract && account) setRemembered(rememberFelt(contract, account, tokenId, result));
   };
 
   const feed = async () => {
@@ -278,6 +296,23 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   return <li key={r.traitIndex}>{t("box.markLost", { trait: c.trait.toLowerCase(), variant: c.variant })}</li>;
                 })}
               </ul>
+            )}
+
+            {remembered.length > 0 && (
+              <div className="felt-log">
+                <p className="felt-log-head">{t("box.feltLog")}</p>
+                <ul>
+                  {remembered.map((f) => {
+                    const c = traitCopy(f);
+                    return (
+                      <li key={f.traitIndex}>
+                        {c.trait}: <strong>{c.variant}</strong>
+                        <span>{ago(f.at, locale)}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             )}
 
             <div className="actions">

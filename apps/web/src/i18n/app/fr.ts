@@ -300,4 +300,5 @@ export const fr: Record<AppKey, string> = {
   "track.proof": "Signer la preuve",
   "track.seconds": "{n} s",
   "track.slow": "Le déchiffrement passe par le réseau de Zama. Comptez 10 à 60 secondes ; la boîte ne bouge pas d’ici.",
+  "box.feltLog": "Ce que vous avez senti (gardé 24 h, sur cet appareil seulement)",
 };

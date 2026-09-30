@@ -930,6 +930,43 @@ button {
   background: var(--ink-red);
 }
 
+/* --- Shakes remembered for a day --- */
+.felt-log {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border: 1.5px dashed rgb(28 24 20 / 0.5);
+}
+
+.felt-log-head {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.felt-log ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+}
+
+.felt-log li {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.felt-log li span {
+  margin-left: auto;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
 /* --- Step tracker: a slow chain action, one line per step --- */
 .tracker {
   display: grid;

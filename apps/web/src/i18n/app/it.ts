@@ -300,4 +300,5 @@ export const it: Record<AppKey, string> = {
   "track.proof": "Firma la prova",
   "track.seconds": "{n} s",
   "track.slow": "La decifrazione passa dalla rete di Zama. Di solito ci vogliono da 10 a 60 secondi; la scatola non scappa.",
+  "box.feltLog": "Cosa hai sentito (tenuto 24 h, solo su questo dispositivo)",
 };
