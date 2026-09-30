@@ -31,7 +31,16 @@ describe("MockAdapter", () => {
     expect(rows.map((r) => r.tokenId)).toEqual([2, 3, 4]);
     expect(rows.map((r) => r.owner)).toEqual([MOCK_YOU, MOCK_NIGHT_SHIFT, MOCK_NIGHT_SHIFT]);
     expect(rows.every((r) => r.status === "sealed")).toBe(true);
+    expect(rows.every((r) => r.partner === null)).toBe(true);
     expect(await chain.boxSummaries(6, 10)).toEqual([]);
+  });
+
+  it("tells, in a summary, which sealed boxes are already entangled", async () => {
+    const chain = await fresh();
+    // The night shift accepts at once.
+    await chain.proposeEntangle(0, 3);
+    const rows = await chain.boxSummaries(0, 4);
+    expect(rows.map((r) => r.partner)).toEqual([3, null, null, 0]);
   });
 
   it("needs an account for actions but not for reads", async () => {

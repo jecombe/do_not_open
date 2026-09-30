@@ -135,7 +135,7 @@ export class MockAdapter implements ChainAdapter {
   }
 
   async boxSummaries(from: number, to: number): Promise<BoxSummary[]> {
-    return this.boxes.slice(from, to).map((b, i) => ({ tokenId: from + i, owner: b.owner, status: b.status }));
+    return this.boxes.slice(from, to).map((b, i) => ({ tokenId: from + i, owner: b.owner, status: b.status, partner: b.status === "sealed" ? b.partner : null }));
   }
 
   async pair(tokenA: number, tokenB: number): Promise<PairInfo> {

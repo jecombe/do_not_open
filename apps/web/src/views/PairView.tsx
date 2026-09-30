@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sameAddress, type ActionOptions, type BoxInfo, type DuelResult, type PairInfo } from "@dno/chain-adapter";
+import { sameAddress, shortAddress, type ActionOptions, type BoxInfo, type BoxSummary, type DuelResult, type PairInfo } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -25,8 +25,9 @@ interface Props {
 /** What the holder came to do. Unset, both actions are offered. */
 export type PairIntent = "duel" | "entangle";
 
-/** The pickers list this many of the most recent boxes, plus the account's own. */
+/** The pickers draw from this many of the most recent boxes, plus the account's own. */
 const PICK_LIMIT = 200;
+const summaryOf = (x: BoxInfo): BoxSummary => ({ tokenId: x.tokenId, owner: x.owner, status: x.status, partner: x.status === "sealed" ? x.partner : null });
 const serial = (id: number) => buildBoxSpec(id).serial;
 
 /** A note is stored as a message key, so it follows a language change. */
@@ -55,6 +56,8 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
   const [playing, setPlaying] = useState<null | "duel" | "open">(null);
   const [note, setNote] = useState<Note | null>(null);
   const [focus, setFocus] = useState<PairIntent | null>(intent);
+  // The menu clears the intent while this view is still on screen.
+  useEffect(() => setFocus(intent), [intent]);
   const offerDuel = focus !== "entangle";
   const offerLink = focus !== "duel";
   const [plan, setPlan] = useState<PlannedStep[] | null>(null);
@@ -62,16 +65,45 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
   const locale = useLocale();
   const contract = collection?.address ?? "";
 
-  // First pair: the requested box (or the account's first) against any other one.
-  // Coming to propose something, the other box is preferably someone else's.
+  // The boxes the pickers draw from: the newest ones, and every one the account holds.
+  const [pool, setPool] = useState<BoxSummary[] | null>(null);
+  useEffect(() => {
+    if (minted < 2) return;
+    let live = true;
+    const lo = Math.max(0, minted - PICK_LIMIT);
+    const older = myBoxes.filter((id) => id < lo).slice(0, PICK_LIMIT);
+    void Promise.all([adapter.boxSummaries(lo, minted), Promise.all(older.map((id) => adapter.box(id).then(summaryOf)))])
+      .then(([recent, mineOlder]) => live && setPool([...mineOlder, ...recent]))
+      .catch(() => live && setPool([]));
+    return () => {
+      live = false;
+    };
+  }, [adapter, minted, myBoxes]);
+
+  const mine = (id: number) => myBoxes.includes(id);
+  // A box can take part while it is sealed; an entanglement also needs it unattached.
+  const [yours, theirs] = useMemo(() => {
+    const usable = (pool ?? []).filter((x) => x.status === "sealed" && (focus !== "entangle" || x.partner === null));
+    return [usable.filter((x) => myBoxes.includes(x.tokenId)), usable.filter((x) => !myBoxes.includes(x.tokenId))];
+  }, [pool, myBoxes, focus]);
+
+  // First pair. Connected: one of the account's usable boxes on the left (the requested one
+  // if it is), the newest usable box of another holder on the right. A requested box held
+  // by someone else goes on the right. Not connected: any two boxes.
   useEffect(() => {
     if (picked || minted < 2) return;
-    const a = initial?.[0] ?? myBoxes[0] ?? 0;
-    let stranger = -1;
-    if (intent) for (let id = minted - 1; id >= 0 && stranger < 0; id--) if (id !== a && !myBoxes.includes(id)) stranger = id;
-    const b = stranger >= 0 ? stranger : (myBoxes.find((id) => id !== a) ?? (a === 0 ? 1 : 0));
+    const asked = initial?.[0];
+    if (!account) {
+      const a = asked ?? 0;
+      setPicked([a, a === 0 ? 1 : 0]);
+      return;
+    }
+    if (!pool) return;
+    const foreign = asked !== undefined && !myBoxes.includes(asked);
+    const a = asked !== undefined && !foreign ? asked : (yours[0]?.tokenId ?? myBoxes[0] ?? 0);
+    const b = foreign ? asked : (theirs.at(-1)?.tokenId ?? (pool.find((x) => x.tokenId !== a)?.tokenId ?? (a === 0 ? 1 : 0)));
     setPicked([a, b]);
-  }, [picked, minted, initial, intent, myBoxes]);
+  }, [picked, minted, initial, account, pool, yours, theirs, myBoxes]);
 
   const [a, b] = picked ?? [0, 1];
 
@@ -106,13 +138,17 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
     },
   });
 
-  const options = useMemo(() => {
-    const ids = new Set<number>([...myBoxes, a, b]);
-    for (let id = minted - 1; id >= 0 && ids.size < PICK_LIMIT; id--) ids.add(id);
-    return [...ids].filter((id) => id < minted).sort((x, y) => x - y);
-  }, [myBoxes, minted, a, b]);
-
-  const mine = (id: number) => myBoxes.includes(id);
+  // Connected, each side only lists what can be used there: the account's boxes on the
+  // left, other holders' on the right. The boxes on screen stay listed either way.
+  const options = useMemo((): [number[], number[]] => {
+    const sorted = (ids: Iterable<number>) => [...new Set(ids)].filter((id) => id < minted).sort((x, y) => x - y);
+    if (!account) {
+      const all = (pool ?? []).map((x) => x.tokenId);
+      return [sorted([...all, a, b]), sorted([...all, a, b])];
+    }
+    return [sorted([...yours.map((x) => x.tokenId), a]), sorted([...theirs.map((x) => x.tokenId), b])];
+  }, [account, pool, yours, theirs, minted, a, b]);
+  const holderOf = useMemo(() => new Map((pool ?? []).map((x) => [x.tokenId, x.owner])), [pool]);
   // Only what was read for the boxes on screen: right after a pick, the last pair's boxes
   // (and their cats) are still in state, and must not be dressed onto the new ones.
   const current = loaded && loaded.boxes[0].tokenId === a && loaded.boxes[1].tokenId === b ? loaded : null;
@@ -124,6 +160,13 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
   const entangled = !!boxA && boxA.partner === b;
   const bothSealed = boxA?.status === "sealed" && boxB?.status === "sealed";
   const busy = action.busy ?? playing;
+
+  // What was just read for the two boxes on screen is fresher than the pool.
+  useEffect(() => {
+    if (!boxA || !boxB) return;
+    const fresh = new Map([boxA, boxB].map((x) => [x.tokenId, summaryOf(x)]));
+    setPool((p) => p && p.map((x) => fresh.get(x.tokenId) ?? x));
+  }, [boxA, boxB]);
 
   const onDuelDone = useCallback(() => setPlaying(null), []);
   const onOpened = useCallback(() => setPlaying(null), []);
@@ -295,7 +338,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
         <div className="pair-pick">
           {([0, 1] as const).map((slot) => (
             <label key={slot}>
-              {slot === 0 ? t("pair.left") : t("pair.right")}
+              {account ? t(slot === 0 ? "pair.yourSide" : "pair.theirSide") : slot === 0 ? t("pair.left") : t("pair.right")}
               <select
                 value={slot === 0 ? a : b}
                 disabled={!!busy}
@@ -306,10 +349,10 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
                   setPicked(slot === 0 ? [id, id === other ? a : other] : [id === other ? b : other, id]);
                 }}
               >
-                {options.map((id) => (
+                {options[slot].map((id) => (
                   <option key={id} value={id}>
                     {serial(id)}
-                    {mine(id) ? t("pair.yours") : ""}
+                    {mine(id) ? t("pair.yours") : account && holderOf.has(id) ? ` · ${shortAddress(holderOf.get(id)!)}` : ""}
                   </option>
                 ))}
               </select>
@@ -320,6 +363,9 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
                   return t("pair.status", { holder: holderCopy(x.owner, account), state: status(x) }) + (x.wins ? t("pair.won", { n: x.wins }) : "");
                 })()}
               </span>
+              {account && pool && (slot === 0 ? yours : theirs).length === 0 && (
+                <span className="fine problem">{t(slot === 0 ? (focus === "entangle" ? "pair.noneYoursFree" : "pair.noneYours") : focus === "entangle" ? "pair.noneTheirsFree" : "pair.noneTheirs")}</span>
+              )}
             </label>
           ))}
         </div>

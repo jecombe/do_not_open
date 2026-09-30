@@ -146,11 +146,14 @@ export class ChainError extends Error {
   }
 }
 
-/** What the warehouse needs to shelve a box: who holds it and whether it is open. */
+/** What the warehouse needs to shelve a box, and the pair view to offer it: who holds it,
+ *  whether it is open, and whether it is already entangled. */
 export interface BoxSummary {
   tokenId: number;
   owner: Address;
   status: BoxStatus;
+  /** Entangled partner of a sealed box. Not read for the others, where it is always null. */
+  partner: number | null;
 }
 
 /** A wallet the browser offers, as shown in a picker. */

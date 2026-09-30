@@ -214,11 +214,19 @@ export class EvmFhevmAdapter implements ChainAdapter {
   async boxSummaries(from: number, to: number): Promise<BoxSummary[]> {
     const c = this.contract;
     const out: BoxSummary[] = [];
-    // Two reads per box, a chunk at a time so a public endpoint is not flooded.
+    // Two reads per box, plus the partner of the sealed ones (only they can still be
+    // entangled), a chunk at a time so a public endpoint is not flooded.
     for (let lo = from; lo < to; lo += OWNER_SCAN_CHUNK) {
       const ids = Array.from({ length: Math.min(OWNER_SCAN_CHUNK, to - lo) }, (_, i) => lo + i);
       const rows = await this.reading(Promise.all(ids.map((id) => Promise.all([c.ownerOf!(id), c.status!(id)]))));
-      rows.forEach(([owner, status], i) => out.push({ tokenId: ids[i]!, owner, status: BOX_STATUS[Number(status)]! }));
+      const statuses = rows.map(([, status]) => BOX_STATUS[Number(status)]!);
+      const partners = await this.reading(
+        Promise.all(ids.map((id, i) => (statuses[i] === "sealed" ? c.partnerOf!(id) : null))),
+      );
+      rows.forEach(([owner], i) => {
+        const p = partners[i];
+        out.push({ tokenId: ids[i]!, owner, status: statuses[i]!, partner: p && p[0] ? Number(p[1]) : null });
+      });
     }
     return out;
   }
