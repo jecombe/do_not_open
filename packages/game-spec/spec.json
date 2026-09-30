@@ -130,24 +130,24 @@
   "mechanics": {
     "mint": {
       "paid": true,
-      "maxPerTx": 5,
+      "maxPerTx": 10,
       "rule": "Draw one 64-bit encrypted seed per box. Derive stateRoll and the five trait rolls from the seed layout, compute state and rarityScore. Only the program may compute on these values: the holder gets NO blanket decryption right, otherwise shake and observe would be pointless."
     },
     "shake": {
       "paid": false,
       "caller": "holder",
-      "rule": "The program picks one of the five traits pseudo-randomly and grants the holder a private decryption of that trait roll only. Never reveals state or rarityScore. Unlimited."
+      "rule": "The program picks one of the five traits with an encrypted uniform draw and grants the holder a private decryption of two fresh values: the picked trait's seed offset and its roll. Never reveals state or rarityScore. Unlimited."
     },
     "observe": {
       "paid": true,
       "caller": "holder",
       "irreversible": true,
-      "rule": "Seed, state and trait rolls become publicly decryptable. Once the verified cleartexts are submitted, revealed = true and plaintext values are stored. Entangled partner is observed too."
+      "rule": "Two steps. Request: the seed becomes publicly decryptable. Finalise: anyone submits the decrypted seed with its proof; the program verifies it, derives state, traits and score in the clear, and stores them. Entangled partner is observed too."
     },
     "proveAlive": {
       "paid": false,
       "caller": "holder",
-      "rule": "Publicly decrypts the single bit (state == alive). If true, grants the Vet Certified badge. Nothing else leaks."
+      "rule": "Two steps, once per box. Request: computes the single encrypted bit (state == alive) and makes it publicly decryptable. Finalise: anyone submits the verified bit. If true, grants the Vet Certified badge. Nothing else leaks; the bit is public whichever way it falls."
     },
     "duel": {
       "paid": false,
@@ -174,8 +174,9 @@
   "events": {
     "Minted": { "fields": ["tokenId", "owner"] },
     "Shaken": { "fields": ["tokenId", "viewer", "paid"], "note": "The trait index is NOT emitted; it stays encrypted-side knowledge of the viewer." },
-    "ObserveRequested": { "fields": ["tokenId"] },
+    "ObserveRequested": { "fields": ["tokenId", "seedHandle"] },
     "Observed": { "fields": ["tokenId", "seed", "state", "rarityScore", "golden"] },
+    "AliveCheckRequested": { "fields": ["tokenId", "aliveHandle"] },
     "AliveProven": { "fields": ["tokenId", "alive"] },
     "DuelChallenged": { "fields": ["duelId", "tokenIdA", "tokenIdB"] },
     "DuelResolved": { "fields": ["duelId", "winnerTokenId", "loserTokenId", "revealedTraitIndex", "revealedTraitRoll"] },

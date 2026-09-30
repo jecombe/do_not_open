@@ -1,0 +1,512 @@
+{
+  "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "specHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint16",
+              "name": "maxSupply",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint8",
+              "name": "maxPerTx",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint16[3]",
+              "name": "stateRollBelow",
+              "type": "uint16[3]"
+            },
+            {
+              "internalType": "uint16[4]",
+              "name": "stateScoreBonus",
+              "type": "uint16[4]"
+            },
+            {
+              "internalType": "uint8[5]",
+              "name": "traitOffset",
+              "type": "uint8[5]"
+            },
+            {
+              "internalType": "uint8[5]",
+              "name": "traitWeight",
+              "type": "uint8[5]"
+            },
+            {
+              "internalType": "bytes[5]",
+              "name": "variantWidths",
+              "type": "bytes[5]"
+            },
+            {
+              "internalType": "uint32",
+              "name": "goldenThreshold",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint16",
+              "name": "goldenScoreBonus",
+              "type": "uint16"
+            }
+          ],
+          "internalType": "struct DoNotOpenConfig.Params",
+          "name": "p",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidStateThresholds",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "trait",
+          "type": "uint8"
+        }
+      ],
+      "name": "InvalidTraitOffset",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "trait",
+          "type": "uint8"
+        }
+      ],
+      "name": "InvalidVariantWidths",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "trait",
+          "type": "uint8"
+        }
+      ],
+      "name": "UnknownTrait",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "STATE_COUNT",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "TRAIT_COUNT",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "aliveBelow",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint64",
+          "name": "seed",
+          "type": "uint64"
+        }
+      ],
+      "name": "decode",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "state",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8[5]",
+          "name": "rolls",
+          "type": "uint8[5]"
+        },
+        {
+          "internalType": "uint16",
+          "name": "score",
+          "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "goldenScoreBonus",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "goldenThreshold",
+      "outputs": [
+        {
+          "internalType": "uint32",
+          "name": "",
+          "type": "uint32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "maxPerTx",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "maxSupply",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "specHash",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "stateRollBelow",
+      "outputs": [
+        {
+          "internalType": "uint16[3]",
+          "name": "",
+          "type": "uint16[3]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "stateScoreBonus",
+      "outputs": [
+        {
+          "internalType": "uint16[4]",
+          "name": "",
+          "type": "uint16[4]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "traitOffsets",
+      "outputs": [
+        {
+          "internalType": "uint8[5]",
+          "name": "",
+          "type": "uint8[5]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "traitWeights",
+      "outputs": [
+        {
+          "internalType": "uint8[5]",
+          "name": "",
+          "type": "uint8[5]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "trait",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "roll",
+          "type": "uint8"
+        }
+      ],
+      "name": "variantOf",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "trait",
+          "type": "uint8"
+        }
+      ],
+      "name": "variantWidths",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x6b343365b749c88376ae750afd43f740ed0bbdd34f17ad56b96884693cc5f939",
+  "receipt": {
+    "to": null,
+    "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "contractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "transactionIndex": 0,
+    "gasUsed": "888352",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x6c57bc19d8acd48523aa0ba9564543f4db14b29d075927ea843e5e3448b1af54",
+    "transactionHash": "0x6b343365b749c88376ae750afd43f740ed0bbdd34f17ad56b96884693cc5f939",
+    "logs": [],
+    "blockNumber": 3,
+    "cumulativeGasUsed": "888352",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    {
+      "specHash": "0x45e93f97b15f53cfa6b371e1159557d528b49cd8db7308eefb263378b8c0f8e7",
+      "maxSupply": 5000,
+      "maxPerTx": 10,
+      "stateRollBelow": [
+        45875,
+        58982,
+        64225
+      ],
+      "stateScoreBonus": [
+        0,
+        100,
+        400,
+        1000
+      ],
+      "traitOffset": [
+        16,
+        24,
+        32,
+        40,
+        48
+      ],
+      "traitWeight": [
+        3,
+        1,
+        2,
+        1,
+        1
+      ],
+      "variantWidths": [
+        "0x383028201c140e0a0602",
+        "0x40342c241c120a04",
+        "0x5028221c18120e0a0602",
+        "0x3c322c261e140a04",
+        "0x3c322c241c140c06"
+      ],
+      "goldenThreshold": 10,
+      "goldenScoreBonus": 250
+    }
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "b11dcb6d59031c44cf226e0291eb8a86",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.27+commit.40a35a09\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"specHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint16\",\"name\":\"maxSupply\",\"type\":\"uint16\"},{\"internalType\":\"uint8\",\"name\":\"maxPerTx\",\"type\":\"uint8\"},{\"internalType\":\"uint16[3]\",\"name\":\"stateRollBelow\",\"type\":\"uint16[3]\"},{\"internalType\":\"uint16[4]\",\"name\":\"stateScoreBonus\",\"type\":\"uint16[4]\"},{\"internalType\":\"uint8[5]\",\"name\":\"traitOffset\",\"type\":\"uint8[5]\"},{\"internalType\":\"uint8[5]\",\"name\":\"traitWeight\",\"type\":\"uint8[5]\"},{\"internalType\":\"bytes[5]\",\"name\":\"variantWidths\",\"type\":\"bytes[5]\"},{\"internalType\":\"uint32\",\"name\":\"goldenThreshold\",\"type\":\"uint32\"},{\"internalType\":\"uint16\",\"name\":\"goldenScoreBonus\",\"type\":\"uint16\"}],\"internalType\":\"struct DoNotOpenConfig.Params\",\"name\":\"p\",\"type\":\"tuple\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"InvalidStateThresholds\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"trait\",\"type\":\"uint8\"}],\"name\":\"InvalidTraitOffset\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"trait\",\"type\":\"uint8\"}],\"name\":\"InvalidVariantWidths\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"trait\",\"type\":\"uint8\"}],\"name\":\"UnknownTrait\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"STATE_COUNT\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"TRAIT_COUNT\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"aliveBelow\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"seed\",\"type\":\"uint64\"}],\"name\":\"decode\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"state\",\"type\":\"uint8\"},{\"internalType\":\"uint8[5]\",\"name\":\"rolls\",\"type\":\"uint8[5]\"},{\"internalType\":\"uint16\",\"name\":\"score\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"goldenScoreBonus\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"goldenThreshold\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"maxPerTx\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"maxSupply\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"specHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"stateRollBelow\",\"outputs\":[{\"internalType\":\"uint16[3]\",\"name\":\"\",\"type\":\"uint16[3]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"stateScoreBonus\",\"outputs\":[{\"internalType\":\"uint16[4]\",\"name\":\"\",\"type\":\"uint16[4]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"traitOffsets\",\"outputs\":[{\"internalType\":\"uint8[5]\",\"name\":\"\",\"type\":\"uint8[5]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"traitWeights\",\"outputs\":[{\"internalType\":\"uint8[5]\",\"name\":\"\",\"type\":\"uint8[5]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"trait\",\"type\":\"uint8\"},{\"internalType\":\"uint8\",\"name\":\"roll\",\"type\":\"uint8\"}],\"name\":\"variantOf\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"trait\",\"type\":\"uint8\"}],\"name\":\"variantWidths\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"Holds no FHE logic. Everything here is public by design: the secret is the seed,      never the rules. Immutable after construction.\",\"kind\":\"dev\",\"methods\":{\"decode(uint64)\":{\"returns\":{\"rolls\":\"the five trait bytes\",\"score\":\"weighted sum of the rolls plus the state bonus (no golden bonus)\",\"state\":\"0 alive, 1 asleep, 2 ghost, 3 quantum\"}}},\"title\":\"DoNotOpenConfig\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"aliveBelow()\":{\"notice\":\"State rolls below this value mean \\\"alive\\\".\"},\"decode(uint64)\":{\"notice\":\"Everything a revealed seed determines. Mirrors `decodeSeed`, `stateFromRoll`         and `rarityScore` in the TypeScript generator; a test keeps the two in step.\"},\"variantOf(uint8,uint8)\":{\"notice\":\"Index of the variant a trait roll maps to.\"}},\"notice\":\"The numbers of the game, loaded once at deploy from `packages/game-spec/spec.json`,         and the plaintext rules that turn a revealed seed into a cat.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/DoNotOpenConfig.sol\":\"DoNotOpenConfig\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"none\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":800},\"remappings\":[]},\"sources\":{\"contracts/DoNotOpenConfig.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.24;\\n\\n/// @title DoNotOpenConfig\\n/// @notice The numbers of the game, loaded once at deploy from `packages/game-spec/spec.json`,\\n///         and the plaintext rules that turn a revealed seed into a cat.\\n/// @dev Holds no FHE logic. Everything here is public by design: the secret is the seed,\\n///      never the rules. Immutable after construction.\\ncontract DoNotOpenConfig {\\n    uint8 public constant TRAIT_COUNT = 5;\\n    uint8 public constant STATE_COUNT = 4;\\n\\n    struct Params {\\n        /// keccak256 of the spec.json these values were read from.\\n        bytes32 specHash;\\n        uint16 maxSupply;\\n        uint8 maxPerTx;\\n        /// Exclusive upper bound of the 16-bit state roll for states 0, 1 and 2.\\n        /// State 3 owns everything above the last bound.\\n        uint16[3] stateRollBelow;\\n        uint16[4] stateScoreBonus;\\n        /// Bit offset of each trait byte inside the 64-bit seed.\\n        uint8[5] traitOffset;\\n        uint8[5] traitWeight;\\n        /// Per trait, one byte per variant: how many of the 256 rolls map to it.\\n        bytes[5] variantWidths;\\n        uint32 goldenThreshold;\\n        uint16 goldenScoreBonus;\\n    }\\n\\n    error InvalidStateThresholds();\\n    error InvalidTraitOffset(uint8 trait);\\n    error InvalidVariantWidths(uint8 trait);\\n    error UnknownTrait(uint8 trait);\\n\\n    bytes32 public immutable specHash;\\n    uint16 public immutable maxSupply;\\n    uint8 public immutable maxPerTx;\\n    uint32 public immutable goldenThreshold;\\n    uint16 public immutable goldenScoreBonus;\\n\\n    uint16[3] private _stateRollBelow;\\n    uint16[4] private _stateScoreBonus;\\n    uint8[5] private _traitOffset;\\n    uint8[5] private _traitWeight;\\n    bytes[5] private _variantWidths;\\n\\n    constructor(Params memory p) {\\n        if (p.stateRollBelow[0] == 0 || p.stateRollBelow[0] >= p.stateRollBelow[1] || p.stateRollBelow[1] >= p.stateRollBelow[2]) {\\n            revert InvalidStateThresholds();\\n        }\\n        for (uint8 i = 0; i < TRAIT_COUNT; i++) {\\n            // A trait byte must sit above the 16-bit state roll and inside the 64-bit seed.\\n            if (p.traitOffset[i] < 16 || p.traitOffset[i] > 56) revert InvalidTraitOffset(i);\\n            uint256 total;\\n            bytes memory widths = p.variantWidths[i];\\n            for (uint256 v = 0; v < widths.length; v++) total += uint8(widths[v]);\\n            if (total != 256) revert InvalidVariantWidths(i);\\n        }\\n\\n        specHash = p.specHash;\\n        maxSupply = p.maxSupply;\\n        maxPerTx = p.maxPerTx;\\n        goldenThreshold = p.goldenThreshold;\\n        goldenScoreBonus = p.goldenScoreBonus;\\n        _stateRollBelow = p.stateRollBelow;\\n        _stateScoreBonus = p.stateScoreBonus;\\n        _traitOffset = p.traitOffset;\\n        _traitWeight = p.traitWeight;\\n        _variantWidths = p.variantWidths;\\n    }\\n\\n    /// @notice State rolls below this value mean \\\"alive\\\".\\n    function aliveBelow() external view returns (uint16) {\\n        return _stateRollBelow[0];\\n    }\\n\\n    function stateRollBelow() external view returns (uint16[3] memory) {\\n        return _stateRollBelow;\\n    }\\n\\n    function stateScoreBonus() external view returns (uint16[4] memory) {\\n        return _stateScoreBonus;\\n    }\\n\\n    function traitOffsets() external view returns (uint8[5] memory) {\\n        return _traitOffset;\\n    }\\n\\n    function traitWeights() external view returns (uint8[5] memory) {\\n        return _traitWeight;\\n    }\\n\\n    function variantWidths(uint8 trait) external view returns (bytes memory) {\\n        if (trait >= TRAIT_COUNT) revert UnknownTrait(trait);\\n        return _variantWidths[trait];\\n    }\\n\\n    /// @notice Index of the variant a trait roll maps to.\\n    function variantOf(uint8 trait, uint8 roll) external view returns (uint8) {\\n        if (trait >= TRAIT_COUNT) revert UnknownTrait(trait);\\n        bytes storage widths = _variantWidths[trait];\\n        uint256 upper;\\n        for (uint256 v = 0; v < widths.length; v++) {\\n            upper += uint8(widths[v]);\\n            if (roll < upper) return uint8(v);\\n        }\\n        // Unreachable: widths are validated to sum to 256.\\n        revert InvalidVariantWidths(trait);\\n    }\\n\\n    /// @notice Everything a revealed seed determines. Mirrors `decodeSeed`, `stateFromRoll`\\n    ///         and `rarityScore` in the TypeScript generator; a test keeps the two in step.\\n    /// @return state 0 alive, 1 asleep, 2 ghost, 3 quantum\\n    /// @return rolls the five trait bytes\\n    /// @return score weighted sum of the rolls plus the state bonus (no golden bonus)\\n    function decode(uint64 seed) public view returns (uint8 state, uint8[5] memory rolls, uint16 score) {\\n        uint16 stateRoll = uint16(seed);\\n        if (stateRoll >= _stateRollBelow[2]) state = 3;\\n        else if (stateRoll >= _stateRollBelow[1]) state = 2;\\n        else if (stateRoll >= _stateRollBelow[0]) state = 1;\\n\\n        score = _stateScoreBonus[state];\\n        for (uint8 i = 0; i < TRAIT_COUNT; i++) {\\n            rolls[i] = uint8(seed >> _traitOffset[i]);\\n            score += uint16(_traitWeight[i]) * rolls[i];\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xf3a1343f8101fe942ad4986c465e8a208ab6c50628073c8628d4e783aea00128\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x610120604052348015610010575f5ffd5b506040516112ee3803806112ee83398101604081905261002f91610674565b60608101515161ffff161580610057575060608101516020810151905161ffff918216911610155b8061007a57506060810151604081015161ffff16906001602002015161ffff1610155b1561009857604051637d52bfa560e01b815260040160405180910390fd5b5f5b600560ff821610156101aa5760108260a001518260ff16600581106100c1576100c161077c565b602002015160ff1610806100f5575060388260a001518260ff16600581106100eb576100eb61077c565b602002015160ff16115b1561011d5760405163040c0b5360e51b815260ff821660048201526024015b60405180910390fd5b5f5f8360e001518360ff16600581106101385761013861077c565b602002015190505f5b81518110156101785781818151811061015c5761015c61077c565b016020015161016e9060f81c84610790565b9250600101610141565b5081610100146101a057604051634fed2e3560e11b815260ff84166004820152602401610114565b505060010161009a565b508051608052602081015161ffff90811660a052604082015160ff1660c0526101008083015163ffffffff1660e052610120830151909116905260608101516101f6905f90600361024d565b50608081015161020a90600190600461024d565b5060a081015161021e9060029060056102e2565b5060c08101516102329060039060056102e2565b5060e0810151610246906004906005610360565b50506108f3565b6001830191839082156102d2579160200282015f5b838211156102a257835183826101000a81548161ffff021916908361ffff1602179055509260200192600201602081600101049283019260010302610262565b80156102d05782816101000a81549061ffff02191690556002016020816001010492830192600103026102a2565b505b506102de9291506103a5565b5090565b6001830191839082156102d2579160200282015f5b8382111561033457835183826101000a81548160ff021916908360ff16021790555092602001926001016020815f010492830192600103026102f7565b80156102d05782816101000a81549060ff02191690556001016020815f01049283019260010302610334565b8260058101928215610399579160200282015b8281111561039957825182906103899082610839565b5091602001919060010190610373565b506102de9291506103b9565b5b808211156102de575f81556001016103a6565b808211156102de575f6103cc82826103d5565b506001016103b9565b5080546103e1906107b5565b5f825580601f106103f0575050565b601f0160209004905f5260205f209081019061040c91906103a5565b50565b634e487b7160e01b5f52604160045260245ffd5b60405161014081016001600160401b03811182821017156104465761044661040f565b60405290565b604051601f8201601f191681016001600160401b03811182821017156104745761047461040f565b604052919050565b805161ffff8116811461048d575f5ffd5b919050565b805160ff8116811461048d575f5ffd5b5f82601f8301126104b1575f5ffd5b5f6104bc606061044c565b90508060608401858111156104cf575f5ffd5b845b818110156104f0576104e28161047c565b8352602092830192016104d1565b509195945050505050565b5f82601f83011261050a575f5ffd5b5f610515608061044c565b9050806080840185811115610528575f5ffd5b845b818110156104f05761053b8161047c565b83526020928301920161052a565b5f82601f830112610558575f5ffd5b61056260a061044c565b8060a0840185811115610573575f5ffd5b845b818110156105945761058681610492565b845260209384019301610575565b509095945050505050565b5f82601f8301126105ae575f5ffd5b6105b860a061044c565b8060a08401858111156105c9575f5ffd5b845b818110156105945780516001600160401b038111156105e8575f5ffd5b8601601f810188136105f8575f5ffd5b80516001600160401b038111156106115761061161040f565b610624601f8201601f191660200161044c565b818152896020838501011115610638575f5ffd5b8160208401602083015e5f602083830101528087525050506020840193506020810190506105cb565b805163ffffffff8116811461048d575f5ffd5b5f60208284031215610684575f5ffd5b81516001600160401b03811115610699575f5ffd5b82016102e081850312156106ab575f5ffd5b6106b3610423565b815181526106c36020830161047c565b60208201526106d460408301610492565b60408201526106e685606084016104a2565b60608201526106f88560c084016104fb565b608082015261070b856101408401610549565b60a082015261071e856101e08401610549565b60c08201526102808201516001600160401b0381111561073c575f5ffd5b6107488682850161059f565b60e08301525061075b6102a08301610661565b61010082015261076e6102c0830161047c565b610120820152949350505050565b634e487b7160e01b5f52603260045260245ffd5b808201808211156107af57634e487b7160e01b5f52601160045260245ffd5b92915050565b600181811c908216806107c957607f821691505b6020821081036107e757634e487b7160e01b5f52602260045260245ffd5b50919050565b601f82111561083457805f5260205f20601f840160051c810160208510156108125750805b601f840160051c820191505b81811015610831575f815560010161081e565b50505b505050565b81516001600160401b038111156108525761085261040f565b6108668161086084546107b5565b846107ed565b6020601f821160018114610898575f83156108815750848201515b5f19600385901b1c1916600184901b178455610831565b5f84815260208120601f198516915b828110156108c757878501518255602094850194600190920191016108a7565b50848210156108e457868401515f19600387901b60f8161c191681555b50505050600190811b01905550565b60805160a05160c05160e051610100516109be6109305f395f6101ad01525f6101e701525f61029d01525f61023601525f61017001526109be5ff3fe608060405234801561000f575f5ffd5b50600436106100f0575f3560e01c80639d472ee111610093578063dd1636ca11610063578063dd1636ca14610258578063de8e8e6e14610263578063f6572e8314610283578063f968adbe14610298575f5ffd5b80639d472ee1146101a8578063c5769eed146101e2578063c5cf8d581461021e578063d5abeb0114610231575f5ffd5b80636da81ec6116100ce5780636da81ec61461014157806377bacdf614610149578063839ea7761461016b57806396405abd146101a0575f5ffd5b806302ca3704146100f45780630eaa29f014610112578063134bf6e814610127575b5f5ffd5b6100fc6102bf565b604051610109919061077d565b60405180910390f35b61011a610320565b60405161010991906107dc565b61012f600481565b60405160ff9091168152602001610109565b61012f600581565b61015c6101573660046107ea565b610377565b60405161010993929190610818565b6101927f000000000000000000000000000000000000000000000000000000000000000081565b604051908152602001610109565b61011a6104e8565b6101cf7f000000000000000000000000000000000000000000000000000000000000000081565b60405161ffff9091168152602001610109565b6102097f000000000000000000000000000000000000000000000000000000000000000081565b60405163ffffffff9091168152602001610109565b61012f61022c366004610856565b610524565b6101cf7f000000000000000000000000000000000000000000000000000000000000000081565b5f5461ffff166101cf565b610276610271366004610887565b610617565b60405161010991906108a0565b61028b6106e7565b60405161010991906108d5565b61012f7f000000000000000000000000000000000000000000000000000000000000000081565b6102c7610723565b60408051608081019182905290600190600490825f855b82829054906101000a900461ffff1661ffff16815260200190600201906020826001010492830192600103820291508084116102de5790505050505050905090565b610328610741565b6040805160a081019182905290600390600590825f855b825461010083900a900460ff1681526020600192830181810494850194909303909202910180841161033f5790505050505050905090565b5f610380610741565b5f8054849061ffff6401000000009091048116908216106103a457600393506103d8565b5f5461ffff620100009091048116908216106103c357600293506103d8565b5f5461ffff908116908216106103d857600193505b60018460ff16600481106103ee576103ee610900565b601081049190910154600f9091166002026101000a900461ffff1691505f5b600560ff821610156104df5760028160ff166005811061042f5761042f610900565b602081049091015467ffffffffffffffff881660ff601f9093166101000a90910482161c90859083166005811061046857610468610900565b602002019060ff16908160ff1681525050838160ff166005811061048e5761048e610900565b602002015160ff1660038260ff16600581106104ac576104ac610900565b6020810491909101546104cb9291601f166101000a900460ff16610928565b6104d5908461094c565b925060010161040d565b50509193909250565b6104f0610741565b6040805160a08101918290526002805460ff16825290916005908260016020860180841161033f5790505050505050905090565b5f600560ff841610610553576040516306578bd760e31b815260ff841660048201526024015b60405180910390fd5b5f60048460ff166005811061056a5761056a610900565b0190505f805b82805461057c90610966565b90508110156105f2578281815461059290610966565b81106105a0576105a0610900565b8154600116156105bd57905f5260205f2090602091828204019190065b90546105d3911a600160f81b0260f81c8361099e565b9150818560ff1610156105ea579250610611915050565b600101610570565b50604051634fed2e3560e11b815260ff8616600482015260240161054a565b92915050565b6060600560ff831610610642576040516306578bd760e31b815260ff8316600482015260240161054a565b60048260ff166005811061065857610658610900565b01805461066490610966565b80601f016020809104026020016040519081016040528092919081815260200182805461069090610966565b80156106db5780601f106106b2576101008083540402835291602001916106db565b820191905f5260205f20905b8154815290600101906020018083116106be57829003601f168201915b50505050509050919050565b6106ef61075f565b6040805160608101918290525f805461ffff1682529091600390826002602086018084116102de5790505050505050905090565b60405180608001604052806004906020820280368337509192915050565b6040518060a001604052806005906020820280368337509192915050565b60405180606001604052806003906020820280368337509192915050565b6080810181835f5b60048110156107a857815161ffff16835260209283019290910190600101610785565b50505092915050565b805f5b60058110156107d657815160ff168452602093840193909101906001016107b4565b50505050565b60a0810161061182846107b1565b5f602082840312156107fa575f5ffd5b813567ffffffffffffffff81168114610811575f5ffd5b9392505050565b60ff8416815260e0810161082f60208301856107b1565b61ffff831660c0830152949350505050565b803560ff81168114610851575f5ffd5b919050565b5f5f60408385031215610867575f5ffd5b61087083610841565b915061087e60208401610841565b90509250929050565b5f60208284031215610897575f5ffd5b61081182610841565b602081525f82518060208401528060208501604085015e5f604082850101526040601f19601f83011684010191505092915050565b6060810181835f5b60038110156107a857815161ffff168352602092830192909101906001016108dd565b634e487b7160e01b5f52603260045260245ffd5b634e487b7160e01b5f52601160045260245ffd5b61ffff818116838216029081169081811461094557610945610914565b5092915050565b61ffff818116838216019081111561061157610611610914565b600181811c9082168061097a57607f821691505b60208210810361099857634e487b7160e01b5f52602260045260245ffd5b50919050565b808201808211156106115761061161091456fea164736f6c634300081b000a",
+  "deployedBytecode": "0x608060405234801561000f575f5ffd5b50600436106100f0575f3560e01c80639d472ee111610093578063dd1636ca11610063578063dd1636ca14610258578063de8e8e6e14610263578063f6572e8314610283578063f968adbe14610298575f5ffd5b80639d472ee1146101a8578063c5769eed146101e2578063c5cf8d581461021e578063d5abeb0114610231575f5ffd5b80636da81ec6116100ce5780636da81ec61461014157806377bacdf614610149578063839ea7761461016b57806396405abd146101a0575f5ffd5b806302ca3704146100f45780630eaa29f014610112578063134bf6e814610127575b5f5ffd5b6100fc6102bf565b604051610109919061077d565b60405180910390f35b61011a610320565b60405161010991906107dc565b61012f600481565b60405160ff9091168152602001610109565b61012f600581565b61015c6101573660046107ea565b610377565b60405161010993929190610818565b6101927f000000000000000000000000000000000000000000000000000000000000000081565b604051908152602001610109565b61011a6104e8565b6101cf7f000000000000000000000000000000000000000000000000000000000000000081565b60405161ffff9091168152602001610109565b6102097f000000000000000000000000000000000000000000000000000000000000000081565b60405163ffffffff9091168152602001610109565b61012f61022c366004610856565b610524565b6101cf7f000000000000000000000000000000000000000000000000000000000000000081565b5f5461ffff166101cf565b610276610271366004610887565b610617565b60405161010991906108a0565b61028b6106e7565b60405161010991906108d5565b61012f7f000000000000000000000000000000000000000000000000000000000000000081565b6102c7610723565b60408051608081019182905290600190600490825f855b82829054906101000a900461ffff1661ffff16815260200190600201906020826001010492830192600103820291508084116102de5790505050505050905090565b610328610741565b6040805160a081019182905290600390600590825f855b825461010083900a900460ff1681526020600192830181810494850194909303909202910180841161033f5790505050505050905090565b5f610380610741565b5f8054849061ffff6401000000009091048116908216106103a457600393506103d8565b5f5461ffff620100009091048116908216106103c357600293506103d8565b5f5461ffff908116908216106103d857600193505b60018460ff16600481106103ee576103ee610900565b601081049190910154600f9091166002026101000a900461ffff1691505f5b600560ff821610156104df5760028160ff166005811061042f5761042f610900565b602081049091015467ffffffffffffffff881660ff601f9093166101000a90910482161c90859083166005811061046857610468610900565b602002019060ff16908160ff1681525050838160ff166005811061048e5761048e610900565b602002015160ff1660038260ff16600581106104ac576104ac610900565b6020810491909101546104cb9291601f166101000a900460ff16610928565b6104d5908461094c565b925060010161040d565b50509193909250565b6104f0610741565b6040805160a08101918290526002805460ff16825290916005908260016020860180841161033f5790505050505050905090565b5f600560ff841610610553576040516306578bd760e31b815260ff841660048201526024015b60405180910390fd5b5f60048460ff166005811061056a5761056a610900565b0190505f805b82805461057c90610966565b90508110156105f2578281815461059290610966565b81106105a0576105a0610900565b8154600116156105bd57905f5260205f2090602091828204019190065b90546105d3911a600160f81b0260f81c8361099e565b9150818560ff1610156105ea579250610611915050565b600101610570565b50604051634fed2e3560e11b815260ff8616600482015260240161054a565b92915050565b6060600560ff831610610642576040516306578bd760e31b815260ff8316600482015260240161054a565b60048260ff166005811061065857610658610900565b01805461066490610966565b80601f016020809104026020016040519081016040528092919081815260200182805461069090610966565b80156106db5780601f106106b2576101008083540402835291602001916106db565b820191905f5260205f20905b8154815290600101906020018083116106be57829003601f168201915b50505050509050919050565b6106ef61075f565b6040805160608101918290525f805461ffff1682529091600390826002602086018084116102de5790505050505050905090565b60405180608001604052806004906020820280368337509192915050565b6040518060a001604052806005906020820280368337509192915050565b60405180606001604052806003906020820280368337509192915050565b6080810181835f5b60048110156107a857815161ffff16835260209283019290910190600101610785565b50505092915050565b805f5b60058110156107d657815160ff168452602093840193909101906001016107b4565b50505050565b60a0810161061182846107b1565b5f602082840312156107fa575f5ffd5b813567ffffffffffffffff81168114610811575f5ffd5b9392505050565b60ff8416815260e0810161082f60208301856107b1565b61ffff831660c0830152949350505050565b803560ff81168114610851575f5ffd5b919050565b5f5f60408385031215610867575f5ffd5b61087083610841565b915061087e60208401610841565b90509250929050565b5f60208284031215610897575f5ffd5b61081182610841565b602081525f82518060208401528060208501604085015e5f604082850101526040601f19601f83011684010191505092915050565b6060810181835f5b60038110156107a857815161ffff168352602092830192909101906001016108dd565b634e487b7160e01b5f52603260045260245ffd5b634e487b7160e01b5f52601160045260245ffd5b61ffff818116838216029081169081811461094557610945610914565b5092915050565b61ffff818116838216019081111561061157610611610914565b600181811c9082168061097a57607f821691505b60208210810361099857634e487b7160e01b5f52602260045260245ffd5b50919050565b808201808211156106115761061161091456fea164736f6c634300081b000a",
+  "devdoc": {
+    "details": "Holds no FHE logic. Everything here is public by design: the secret is the seed,      never the rules. Immutable after construction.",
+    "kind": "dev",
+    "methods": {
+      "decode(uint64)": {
+        "returns": {
+          "rolls": "the five trait bytes",
+          "score": "weighted sum of the rolls plus the state bonus (no golden bonus)",
+          "state": "0 alive, 1 asleep, 2 ghost, 3 quantum"
+        }
+      }
+    },
+    "title": "DoNotOpenConfig",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "aliveBelow()": {
+        "notice": "State rolls below this value mean \"alive\"."
+      },
+      "decode(uint64)": {
+        "notice": "Everything a revealed seed determines. Mirrors `decodeSeed`, `stateFromRoll`         and `rarityScore` in the TypeScript generator; a test keeps the two in step."
+      },
+      "variantOf(uint8,uint8)": {
+        "notice": "Index of the variant a trait roll maps to."
+      }
+    },
+    "notice": "The numbers of the game, loaded once at deploy from `packages/game-spec/spec.json`,         and the plaintext rules that turn a revealed seed into a cat.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 50784,
+        "contract": "contracts/DoNotOpenConfig.sol:DoNotOpenConfig",
+        "label": "_stateRollBelow",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_array(t_uint16)3_storage"
+      },
+      {
+        "astId": 50788,
+        "contract": "contracts/DoNotOpenConfig.sol:DoNotOpenConfig",
+        "label": "_stateScoreBonus",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_array(t_uint16)4_storage"
+      },
+      {
+        "astId": 50792,
+        "contract": "contracts/DoNotOpenConfig.sol:DoNotOpenConfig",
+        "label": "_traitOffset",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_array(t_uint8)5_storage"
+      },
+      {
+        "astId": 50796,
+        "contract": "contracts/DoNotOpenConfig.sol:DoNotOpenConfig",
+        "label": "_traitWeight",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_array(t_uint8)5_storage"
+      },
+      {
+        "astId": 50800,
+        "contract": "contracts/DoNotOpenConfig.sol:DoNotOpenConfig",
+        "label": "_variantWidths",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_array(t_bytes_storage)5_storage"
+      }
+    ],
+    "types": {
+      "t_array(t_bytes_storage)5_storage": {
+        "base": "t_bytes_storage",
+        "encoding": "inplace",
+        "label": "bytes[5]",
+        "numberOfBytes": "160"
+      },
+      "t_array(t_uint16)3_storage": {
+        "base": "t_uint16",
+        "encoding": "inplace",
+        "label": "uint16[3]",
+        "numberOfBytes": "32"
+      },
+      "t_array(t_uint16)4_storage": {
+        "base": "t_uint16",
+        "encoding": "inplace",
+        "label": "uint16[4]",
+        "numberOfBytes": "32"
+      },
+      "t_array(t_uint8)5_storage": {
+        "base": "t_uint8",
+        "encoding": "inplace",
+        "label": "uint8[5]",
+        "numberOfBytes": "32"
+      },
+      "t_bytes_storage": {
+        "encoding": "bytes",
+        "label": "bytes",
+        "numberOfBytes": "32"
+      },
+      "t_uint16": {
+        "encoding": "inplace",
+        "label": "uint16",
+        "numberOfBytes": "2"
+      },
+      "t_uint8": {
+        "encoding": "inplace",
+        "label": "uint8",
+        "numberOfBytes": "1"
+      }
+    }
+  }
+}

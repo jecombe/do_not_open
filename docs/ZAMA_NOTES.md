@@ -76,8 +76,8 @@ already learned from their own shakes, which no system could take back.
 - an encrypted index from `FHE.randEuint8(8)`: the pick itself is hidden and cannot be
   ground. Costs five encrypted equality checks and four selects.
 
-Phase 2 implements the encrypted pick and packs `(index, roll)` into one `euint16`, so
-the viewer learns both the trait and its value from a single decryption.
+Phase 2 implements the encrypted pick. The viewer is allowed on two fresh `euint8`
+handles: the picked trait's bit offset inside the seed, and its roll.
 
 ### 5. Randomness bounds are powers of two
 
@@ -87,11 +87,44 @@ thresholds. State odds are exact to 1/65536 (see `packages/game-spec/README.md`)
 
 ### 6. HCU limit per transaction
 
-A transaction is capped at 20M HCU (5M sequential depth). `mint(quantity)` is capped at
-5 per transaction in the spec until Phase 2 measures the real cost per box; the
-per-function HCU table will be documented there.
+A transaction is capped at 20M HCU (5M sequential depth). Measured costs are in
+`packages/contracts-evm/README.md`. Mint is 24,000 HCU per box, so the batch limit
+(10 per transaction) is set by EVM gas, not by HCU.
 
 ### 7. Solana
 
 Zama's SVM support is announced, not shipped; nothing can be verified yet.
 `packages/chain-adapter/solana` stays a documented stub until the SDK exists.
+
+## Decisions taken in Phase 2
+
+### One ciphertext per box instead of eight
+
+The brief lists `state` (euint8), five traits (euint8), `rarityScore` (euint32) as
+stored encrypted fields. The contract stores **only the seed** and derives the rest
+when a function needs it:
+
+- `mint` is a single FHE operation per box instead of roughly twenty;
+- `shake` cuts the picked byte out of the seed with one encrypted shift;
+- `proveAlive` compares the low 16 bits of the seed with one threshold;
+- `observe` decrypts one handle, and state, traits and score are then computed in plain
+  Solidity by `DoNotOpenConfig.decode`, which a test pins to the TypeScript generator.
+
+Phase 3's `duel` needs an encrypted score: it will be computed on first use and cached.
+The score fits 16 bits (maximum 3040), so it will be a `euint16`, not the `euint32` of
+the brief: smaller types are cheaper to compare.
+
+### `revealed` is a view
+
+Box state is one enum (`Sealed`, `Observing`, `Revealed`); `revealed(tokenId)` reads it.
+
+### `_mint`, not `_safeMint`
+
+No receiver callback during mint, so no re-entrancy surface there. A contract that
+cannot handle ERC-721 tokens can still mint to itself; that is the minter's risk.
+
+### Not yet deployed to Sepolia
+
+Deployment needs a funded key, which is never stored in this repository. The deploy
+script, the CLI demo and an optional Sepolia integration test are ready; they have been
+run end to end against a local FHEVM node only.

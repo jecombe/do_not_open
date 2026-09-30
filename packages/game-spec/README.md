@@ -34,7 +34,9 @@ and at or above the previous one.
 | Ghost   | 58982 – 64224 | 8.0002 %    | 400         |
 | Quantum | 64225 – 65535 | 2.0004 %    | 1000        |
 
-On-chain this is three encrypted comparisons against plaintext thresholds.
+On-chain the state is never computed while the box is sealed. `proveAlive` needs a
+single encrypted comparison (`stateRoll < 45875`); after `observe` the state is derived
+in the clear.
 
 ## Traits
 
@@ -49,7 +51,7 @@ the program never needs an encrypted table lookup.
 rarityScore = 3*breed + 1*mood + 2*accessory + 1*brokenThing + 1*room + stateBonus
 ```
 
-Five scalar multiplications and five additions on-chain. Maximum 3040.
+Maximum 3040, so it fits 16 bits.
 
 Tier thresholds are fixed in advance from the exact distribution of that formula over a
 uniform seed (`scoreDistribution()` in the generator). A test fails if `spec.json` and

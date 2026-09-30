@@ -11,8 +11,8 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | Phase | Scope                                                                 | State       |
 | ----- | --------------------------------------------------------------------- | ----------- |
 | 1     | Game spec, generator, art direction, sealed box + shake, five cats    | **Done**    |
-| 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, Sepolia  | Next        |
-| 3     | duel, entangle, feed, paidShake and their 3D effects                  |             |
+| 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, CLI demo | **Done** (Sepolia deploy needs your key) |
+| 3     | duel, entangle, feed, paidShake and their 3D effects                  | Next        |
 | 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render|             |
 | 5     | Full docs, Solana porting map, audit checklist                        |             |
 
@@ -24,7 +24,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>(Phase 2)"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM"]
   adapter["packages/chain-adapter<br/>(Phase 4)"]
 
   spec --> gen --> scene --> web
@@ -40,7 +40,7 @@ the `ChainAdapter` interface.
 
 ```bash
 pnpm install
-pnpm test        # generator: 22 tests
+pnpm test        # generator: 22 tests, contracts: 28 tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173, mock mode, no chain
 ```
@@ -52,5 +52,6 @@ No private key is ever committed.
 
 - [`docs/DESIGN.md`](docs/DESIGN.md) — art direction, effect catalogue, performance budget
 - [`docs/ZAMA_NOTES.md`](docs/ZAMA_NOTES.md) — verified FHEVM versions and where the protocol differs from the original brief
+- [`packages/contracts-evm/README.md`](packages/contracts-evm/README.md) — contracts, cost per function, deploy and CLI
 - [`packages/game-spec/README.md`](packages/game-spec/README.md) — seed layout, odds, rarity formula
 - [`assets/BLENDER_TODO.md`](assets/BLENDER_TODO.md) — assets that need modelling (none yet)

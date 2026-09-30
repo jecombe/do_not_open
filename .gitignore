@@ -12,3 +12,5 @@ types/
 fhevmTemp/
 .vite/
 .playwright-mcp/
+deployments/localhost/
+deployments/hardhat/
