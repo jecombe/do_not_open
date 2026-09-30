@@ -24,13 +24,11 @@ export function Declaration({ cat, children }: { cat: CatSpec; children?: ReactN
               <td className="roll">{r.roll}</td>
             </tr>
           ))}
-          {cat.vice !== "none" && (
-            <tr>
-              <th scope="row">{t("decl.condition")}</th>
-              <td>{viceName(cat.vice)}</td>
-              <td className="roll" />
-            </tr>
-          )}
+          <tr>
+            <th scope="row">{t("decl.condition")}</th>
+            <td>{viceName(cat.vice)}</td>
+            <td className="roll" />
+          </tr>
           <tr className="total">
             <th scope="row">{t("decl.score")}</th>
             <td />

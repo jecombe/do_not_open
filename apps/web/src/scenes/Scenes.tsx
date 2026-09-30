@@ -1,5 +1,5 @@
 import { CameraControls } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useImperativeHandle, useMemo, useRef, type Ref } from "react";
 import { Group, Vector3 } from "three";
 import { buildBoxSpec, type CatSpec } from "@dno/generator";
@@ -466,19 +466,103 @@ const slot = (i: number, n: number): [number, number, number] => {
   return [k * SPACING, 0, -Math.abs(k) * 0.55];
 };
 
-/** Revealed cats on display, each in its own room. */
+/** Where the camera looks when a specimen is picked. */
+const focusOn = (i: number, n: number) => {
+  const [x, , z] = slot(i, n);
+  const narrow = isNarrow();
+  return {
+    eye: [x + 0.5, narrow ? 2.4 : 1.25, z + (narrow ? 6.2 : 3.7)] as const,
+    target: [x + (narrow ? 0 : 0.45), narrow ? -0.9 : 0.62, z] as const,
+  };
+};
+
+/** The slot nearest to a point on the row. */
+const nearestSlot = (x: number, n: number) => Math.max(0, Math.min(n - 1, Math.round(x / SPACING + (n - 1) / 2)));
+
+/** A sideways trackpad swipe this long (in wheel pixels) moves to the next specimen. */
+const SWIPE_DISTANCE = 80;
+/** After a swipe, ignore the rest of the gesture's momentum for this long. */
+const SWIPE_COOLDOWN_MS = 450;
+
+/**
+ * Revealed cats on display, each in its own room. Moving along the row: arrow keys,
+ * a sideways trackpad swipe, or a right-drag / two-finger drag that snaps to the
+ * nearest cat when released. Left-drag still turns around the current one.
+ */
 export function SpecimenScene({ specs, selected, onSelect }: SpecimenSceneProps) {
   const controls = useRef<CameraControls>(null);
+  const canvas = useThree((s) => s.gl.domElement);
   const dioramas = useMemo(() => specs.map((s) => createDiorama(s)), [specs]);
   useEffect(() => () => dioramas.forEach((d) => d.dispose()), [dioramas]);
+  const count = specs.length;
 
+  // The listeners below outlive renders; they read the latest values from here.
+  const latest = useRef({ selected, onSelect, count });
+  latest.current = { selected, onSelect, count };
+
+  useEffect(() => {
+    const { eye, target } = focusOn(selected, count);
+    void controls.current?.setLookAt(...eye, ...target, !reducedMotion());
+  }, [selected, count]);
+
+  const step = (delta: number) => {
+    const { selected: i, onSelect: pick, count: n } = latest.current;
+    const next = Math.max(0, Math.min(n - 1, i + delta));
+    if (next !== i) pick(next);
+  };
+
+  // Arrow keys, unless the visitor is typing in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))) return;
+      if (e.key === "ArrowLeft") step(-1);
+      else if (e.key === "ArrowRight") step(1);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // A sideways swipe on a trackpad walks the row. Vertical scrolling still zooms.
+  useEffect(() => {
+    let travelled = 0;
+    let quietUntil = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      if (performance.now() < quietUntil) return;
+      travelled += e.deltaX;
+      if (Math.abs(travelled) < SWIPE_DISTANCE) return;
+      step(Math.sign(travelled));
+      travelled = 0;
+      quietUntil = performance.now() + SWIPE_COOLDOWN_MS;
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, [canvas]);
+
+  // Dragging the view sideways (right button, or two fingers) lands on the nearest cat.
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
-    const [x, , z] = slot(selected, specs.length);
-    const n = isNarrow();
-    void c.setLookAt(x + 0.5, n ? 2.4 : 1.25, z + (n ? 6.2 : 3.7), x + (n ? 0 : 0.45), n ? -0.9 : 0.62, z, true);
-  }, [selected, specs.length]);
+    const at = new Vector3();
+    const onEnd = () => {
+      const { selected: i, onSelect: pick, count: n } = latest.current;
+      c.getTarget(at);
+      const nearest = nearestSlot(at.x, n);
+      if (nearest !== i) return pick(nearest);
+      // Still on the same cat but pushed off it: slide back.
+      const { target } = focusOn(i, n);
+      if (Math.abs(at.x - target[0]) > 0.4 || Math.abs(at.y - target[1]) > 0.6) {
+        const cam = c.camera.position;
+        void c.setLookAt(cam.x + target[0] - at.x, cam.y, cam.z, ...target, !reducedMotion());
+      }
+    };
+    c.addEventListener("controlend", onEnd);
+    return () => c.removeEventListener("controlend", onEnd);
+  }, []);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -510,7 +594,7 @@ export function SpecimenScene({ specs, selected, onSelect }: SpecimenSceneProps)
           </group>
         );
       })}
-      <CameraControls ref={controls} makeDefault smoothTime={0.5} minDistance={1.6} maxDistance={9} maxPolarAngle={Math.PI / 2 - 0.05} />
+      <CameraControls ref={controls} makeDefault smoothTime={0.5} minDistance={1.6} maxDistance={9} minAzimuthAngle={-1.2} maxAzimuthAngle={1.2} maxPolarAngle={Math.PI / 2 - 0.05} />
     </>
   );
 }

@@ -63,6 +63,11 @@ export const it: Record<AppKey, string> = {
   "specimens.wellFed": "Affetto sopra {n} prima dell'apertura",
   "specimens.picker": "Esemplari",
   "specimens.label": "{breed} {state}",
+  "specimens.prev": "Esemplare precedente",
+  "specimens.next": "Esemplare successivo",
+  "specimens.count": "{n} di {total}",
+  "specimens.hint": "Le frecce della tastiera o uno scorrimento laterale passano da un gatto all'altro. Trascina con il tasto destro o con due dita per percorrere la fila. Trascina per girare intorno a un gatto, rotella per avvicinarti.",
+  "specimens.hintTouch": "Scorri con due dita per percorrere la fila, oppure usa ‹ ›. Un dito gira intorno al gatto, pizzica per avvicinarti.",
 
   "shelf.title": "Il tuo scaffale",
   "shelf.shipped": "{minted} su {max} spedite",

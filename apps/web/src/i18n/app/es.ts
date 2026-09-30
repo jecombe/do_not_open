@@ -63,6 +63,11 @@ export const es: Record<AppKey, string> = {
   "specimens.wellFed": "Afecto por encima de {n} antes de abrir",
   "specimens.picker": "Especímenes",
   "specimens.label": "{breed} {state}",
+  "specimens.prev": "Espécimen anterior",
+  "specimens.next": "Espécimen siguiente",
+  "specimens.count": "{n} de {total}",
+  "specimens.hint": "Las flechas del teclado o un deslizamiento lateral pasan de un gato a otro. Arrastra con el botón derecho o con dos dedos para recorrer la fila. Arrastra para girar alrededor de un gato, rueda para acercarte.",
+  "specimens.hintTouch": "Desliza con dos dedos para recorrer la fila, o usa ‹ ›. Un dedo gira alrededor del gato, pellizca para acercarte.",
 
   "shelf.title": "Tu estantería",
   "shelf.shipped": "{minted} de {max} enviadas",

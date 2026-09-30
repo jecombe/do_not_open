@@ -63,6 +63,11 @@ export const fr: Record<AppKey, string> = {
   "specimens.wellFed": "Affection supérieure à {n} avant l'ouverture",
   "specimens.picker": "Spécimens",
   "specimens.label": "{breed} {state}",
+  "specimens.prev": "Spécimen précédent",
+  "specimens.next": "Spécimen suivant",
+  "specimens.count": "{n} sur {total}",
+  "specimens.hint": "Les flèches du clavier ou un balayage latéral passent d'un chat à l'autre. Clic droit glissé ou deux doigts pour longer la rangée. Glissez pour tourner autour d'un chat, molette pour vous approcher.",
+  "specimens.hintTouch": "Glissez à deux doigts pour longer la rangée, ou utilisez ‹ ›. Un doigt pour tourner autour du chat, pincez pour vous approcher.",
 
   "shelf.title": "Votre étagère",
   "shelf.shipped": "{minted} sur {max} expédiées",

@@ -762,3 +762,32 @@ button {
 .lang button:hover {
   opacity: 1;
 }
+
+/* --- Specimens: arrows and a counter above the picker --- */
+.specimen-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 6px;
+}
+
+/* --- A tall slip scrolls instead of climbing under the masthead --- */
+.slip {
+  max-height: calc(100dvh - var(--gutter) * 2 - 34px - 118px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Mouse and keyboard help on desktops, touch help on phones and tablets. */
+.hint-touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .hint-pointer {
+    display: none;
+  }
+  .hint-touch {
+    display: inline;
+  }
+}
