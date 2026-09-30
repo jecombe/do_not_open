@@ -409,10 +409,13 @@ export function ShelfScene({ boxes, quality, sound, onSelect }: ShelfSceneProps)
     void controls.current?.setLookAt(n ? 0.6 : 0.9, n ? 4.2 : 2.7, n ? 6.4 : 3.6, n ? 0 : -0.5, n ? 0.3 : 1.05, 0, false);
   }, []);
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
     depot.update(t);
-    for (const item of items) item.opening?.content.update(t);
+    for (const item of items) {
+      item.opening?.opener.update(Math.min(dt, 0.1));
+      item.opening?.content.update(t);
+    }
   });
 
   const perRow = Math.min(4, Math.max(1, Math.ceil(items.length / (items.length > 4 ? 2 : 1))));
