@@ -55,6 +55,9 @@ async function render() {
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.081;
     scene.add(key, lamp, floor, diorama.group);
+    // The cat's meshes load from the kit; a canonical image must never show the placeholder.
+    await diorama.ready;
+    if (diorama.group.getObjectByName("placeholder")) throw new Error("cat kit failed to load");
     diorama.update(1);
     camera.position.set(0.5, 1.3, 3.5);
     camera.lookAt(0, 0.66, 0);

@@ -207,6 +207,7 @@ export function createDiorama(spec: CatSpec): DioramaObject {
   return {
     group,
     cat,
+    ready: cat.ready,
     update: (time) => cat.update(time),
     dispose() {
       cat.dispose();

@@ -89,6 +89,21 @@ width at the bottom and the camera frames the subject in the upper half.
   the normal in the vertex shader. Reasons: it costs no extra render target, it works
   per object (ghosts simply skip it), it survives instancing, and it renders the same
   in the headless metadata renderer.
+- **Cats are a modular kit**, not five thousand models: one head, two ears, one tail
+  and five posed bodies per breed, plus shared face parts and accessories hung on
+  named anchors, so any accessory fits any breed in any pose. Big head, big eyes,
+  expressions pushed hard: a cat has to read at 64 px and be worth a screenshot at
+  full screen. Breeds differ by silhouette before colour: the sphynx is wrinkles and
+  bat ears, the loaf is a tin loaf whose end slice has a face, the void is a puddle
+  with two lamps.
+- **Vices.** A little over 1% of cats are stoned and as many are drunk
+  (`CatSpec.vice`, read from the cosmetic byte of the seed like odd eyes, so trait
+  tables, rarity and contracts are untouched). Stoned: pink eyes under heavy lids, a
+  lit joint, smoke. Drunk: eyes that disagree, flushed cheeks, a mouth that lost its
+  line, hiccups, a bottle on the floor. The mood trait still decides the pose.
+- **Colours stay in code.** Kit meshes carry smooth zone masks in their vertex colours
+  (secondary, tertiary, belly, skin); the toon material thresholds them per pixel and
+  paints the palette from `CatSpec`. Flat colours with clean edges, no textures.
 - **Post-processing** (desktop only): bloom for emissive things, film grain, vignette.
 - Environment uses plain Lambert so the toon ramp stays reserved for characters and
   the hero box.

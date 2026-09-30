@@ -1,6 +1,7 @@
 export * from "./materials";
 export * from "./capability";
 export * from "./cat/buildCat";
+export { breedOf, catAssetLibrary, setCatAssetLibrary, type CatBreed } from "./cat/kitParts";
 export * from "./cat/diorama";
 export * from "./box/buildBox";
 export * from "./box/shaker";

@@ -9,6 +9,7 @@
     "dev": "pnpm --filter @dno/web dev",
     "build": "pnpm --filter @dno/web build",
     "test": "pnpm -r --if-present test",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "assets:cats": "blender -b --factory-startup --python assets/blender/build.py --"
   }
 }

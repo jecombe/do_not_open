@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { spec as gameSpec } from "@dno/game-spec";
-import type { CatSpec } from "@dno/generator";
+import { VICE_NAMES, type CatSpec } from "@dno/generator";
 
 const STATE_NOTES: Record<string, string> = {
   alive: "Alive. Annoyed about the box.",
@@ -33,6 +33,13 @@ export function Declaration({ cat, children }: { cat: CatSpec; children?: ReactN
               <td className="roll">{t.roll}</td>
             </tr>
           ))}
+          {cat.vice !== "none" && (
+            <tr>
+              <th scope="row">Condition</th>
+              <td>{VICE_NAMES[cat.vice]}</td>
+              <td className="roll" />
+            </tr>
+          )}
           <tr className="total">
             <th scope="row">Rarity score</th>
             <td />

@@ -15,4 +15,4 @@ fhevmTemp/
 deployments/localhost/
 deployments/hardhat/
 out/
-.vercel/
+__pycache__/

@@ -1,6 +1,6 @@
 import { spec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildBoxSpec } from "./boxSpec";
-import type { CatSpec } from "./catSpec";
+import { VICE_NAMES, type CatSpec } from "./catSpec";
 import { stateDef, traitDef } from "./traits";
 
 export interface MetadataAttribute {
@@ -60,6 +60,7 @@ export function revealedMetadata(tokenId: number, cat: CatSpec, image: string, f
       { trait_type: "Status", value: "Opened" },
       { trait_type: "State", value: stateDef(cat.state).name },
       ...TRAIT_KEYS.map((key) => ({ trait_type: traitDef(key).name, value: key === "accessory" ? accessory : cat.traits[key].name })),
+      { trait_type: "Condition", value: VICE_NAMES[cat.vice] },
       { trait_type: "Rarity", value: cat.rarity.tierName },
       { trait_type: "Rarity score", value: cat.rarity.score, display_type: "number" as const },
       { trait_type: "Golden", value: cat.rarity.golden ? "Yes" : "No" },

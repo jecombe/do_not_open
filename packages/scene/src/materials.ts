@@ -50,6 +50,50 @@ export function outlineMaterial(color: string, thickness: number): MeshBasicMate
   return m;
 }
 
+/** The colours a kit mesh paints over its zone masks. */
+export interface ZonePalette {
+  base: string;
+  secondary: string;
+  tertiary: string;
+  belly: string;
+  skin: string;
+}
+
+/**
+ * Toon material for kit meshes. The mesh carries one smooth mask per colour zone in its
+ * `zone` attribute (secondary, tertiary, belly, skin); thresholding the masks per pixel
+ * gives flat colours with clean edges from very few vertices, and no textures.
+ */
+export function zoneToon(palette: ZonePalette): MeshToonMaterial {
+  const m = toon(palette.base);
+  const uniforms = {
+    zoneSecondary: { value: new Color(palette.secondary) },
+    zoneTertiary: { value: new Color(palette.tertiary) },
+    zoneBelly: { value: new Color(palette.belly) },
+    zoneSkin: { value: new Color(palette.skin) },
+  };
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader =
+      "attribute vec4 zone;\nvarying vec4 vZone;\n" +
+      shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nvZone = zone;");
+    shader.fragmentShader =
+      "uniform vec3 zoneSecondary;\nuniform vec3 zoneTertiary;\nuniform vec3 zoneBelly;\nuniform vec3 zoneSkin;\nvarying vec4 vZone;\n" +
+      shader.fragmentShader.replace(
+        "#include <color_fragment>",
+        /* glsl */ `#include <color_fragment>
+        vec4 zoneEdge = max(fwidth(vZone), vec4(0.0005));
+        vec4 zoneIn = smoothstep(0.5 - zoneEdge, 0.5 + zoneEdge, vZone);
+        diffuseColor.rgb = mix(diffuseColor.rgb, zoneBelly, zoneIn.b);
+        diffuseColor.rgb = mix(diffuseColor.rgb, zoneSecondary, zoneIn.r);
+        diffuseColor.rgb = mix(diffuseColor.rgb, zoneTertiary, zoneIn.g);
+        diffuseColor.rgb = mix(diffuseColor.rgb, zoneSkin, zoneIn.a);`,
+      );
+  };
+  m.customProgramCacheKey = () => "zoneToon";
+  return m;
+}
+
 /** Translucent fresnel material for ghost cats. `uTime` is advanced by the owner. */
 export function ghostMaterial(color: string, opacity: number): ShaderMaterial {
   return new ShaderMaterial({
@@ -132,6 +176,18 @@ export class Kit {
     return m;
   }
 
+  /** Lit material for a kit mesh with colour zones. Ghosts keep a single spectral tint. */
+  zoned(palette: ZonePalette): Material {
+    if (this.mode === "ghost") return this.fur(palette.base);
+    const key = `zone:${palette.base}:${palette.secondary}:${palette.tertiary}:${palette.belly}:${palette.skin}`;
+    let m = this.cache.get(key);
+    if (!m) {
+      m = zoneToon(palette);
+      this.track(key, m);
+    }
+    return m;
+  }
+
   /** Unlit flat colour. Used for eyes and glowing bits. */
   flat(color: string, opts: { doubleSide?: boolean; opacity?: number } = {}): Material {
     const opacity = (opts.opacity ?? 1) * (this.mode === "ghost" ? 0.8 : 1);
@@ -155,14 +211,17 @@ export class Kit {
     this.materials.push(m);
   }
 
-  /** Adds a mesh to `parent`. Outlined by default in toon mode. */
+  /**
+   * Adds a mesh to `parent`. Outlined by default in toon mode. A `shared` geometry
+   * belongs to the asset library and is left alone on dispose.
+   */
   add(
     parent: Object3D,
     geometry: BufferGeometry,
     material: Material,
-    opts: { outline?: boolean; thickness?: number; shadow?: boolean } = {},
+    opts: { outline?: boolean; thickness?: number; shadow?: boolean; shared?: boolean } = {},
   ): Mesh {
-    this.geometries.push(geometry);
+    if (!opts.shared) this.geometries.push(geometry);
     const mesh = new Mesh(geometry, material);
     mesh.castShadow = opts.shadow ?? this.mode === "toon";
     parent.add(mesh);

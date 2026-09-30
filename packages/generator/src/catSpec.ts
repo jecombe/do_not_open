@@ -10,6 +10,19 @@ export type EyeShape = "round" | "half" | "narrow" | "wide" | "closed" | "happy"
 export type PupilShape = "slit" | "round" | "huge";
 export type MouthShape = "neutral" | "frown" | "smirk" | "open" | "smile";
 export type Pose = "sit" | "loaf" | "crouch" | "curl" | "float";
+/** What the cat got into before it was found. Cosmetic: it never affects rarity. */
+export type Vice = "none" | "stoned" | "drunk";
+
+export const VICE_NAMES: Record<Vice, string> = { none: "Sober", stoned: "Stoned", drunk: "Drunk" };
+
+/**
+ * Three cosmetic bytes in 256 each, a little over 1% of cats. Read from the cosmetic
+ * byte like odd eyes, so trait tables, rarity scores and the contracts are untouched.
+ */
+export function viceFromCosmetic(cosmetic: number): Vice {
+  const r = cosmetic % 85;
+  return r === 42 ? "stoned" : r === 13 ? "drunk" : "none";
+}
 
 export interface CatBody {
   pattern: FurPattern;
@@ -69,6 +82,7 @@ export interface CatSpec {
   altBody: CatBody | null;
   face: CatFace;
   pose: Pose;
+  vice: Vice;
   animation: CatAnimation;
   accessory: { key: string; golden: boolean; color: string };
   brokenThing: { key: string };
@@ -216,6 +230,17 @@ export function buildCatSpec(input: CatSpecInput): CatSpec {
     flicker: false,
   };
 
+  // A vice takes over the face and slows the cat down. The mood trait keeps the pose.
+  const vice = viceFromCosmetic(decoded.cosmetic);
+  if (vice === "stoned") {
+    Object.assign(face, { eyeShape: "half", pupil: "huge", mouth: "smile", browTilt: 0.18, earsFlat: false });
+    Object.assign(animation, { tailSpeed: 0.4, tailAmplitude: 0.2, bounce: 0 });
+  } else if (vice === "drunk") {
+    Object.assign(face, { eyeShape: "half", pupil: "round", mouth: "smile", browTilt: 0.3, earsFlat: false });
+    face.headTilt = round(face.headTilt < 0 ? -0.24 : 0.24);
+    Object.assign(animation, { tailSpeed: 0.7, tailAmplitude: 0.45, bounce: 0 });
+  }
+
   let altBody: CatBody | null = null;
   const render = { ghost: false, quantum: false, opacity: 1 };
 
@@ -261,6 +286,7 @@ export function buildCatSpec(input: CatSpecInput): CatSpec {
     altBody,
     face,
     pose,
+    vice,
     animation,
     accessory: {
       // A well-loved cat with nothing to gild still gets something golden.

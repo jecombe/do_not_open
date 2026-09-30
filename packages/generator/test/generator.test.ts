@@ -152,6 +152,23 @@ describe("CatSpec", () => {
     expect(quantum!.altBody!.pattern).not.toBe(quantum!.body.pattern);
   });
 
+  it("reads vices from the cosmetic byte without touching traits or rarity", () => {
+    const at = (cosmetic: number) => buildCatSpec({ seed: encodeSeed({ ...decodeSeed(FIXTURE_SEEDS[0]!.seed), cosmetic }) });
+    const sober = at(1);
+    const stoned = at(42);
+    const drunk = at(13);
+    expect([sober.vice, stoned.vice, drunk.vice]).toEqual(["none", "stoned", "drunk"]);
+    expect(stoned.face.eyeShape).toBe("half");
+    for (const cat of [stoned, drunk]) {
+      expect(cat.traits).toEqual(sober.traits);
+      expect(cat.rarity).toEqual(sober.rarity);
+      expect(cat.pose).toBe(sober.pose);
+    }
+    const counts = { none: 0, stoned: 0, drunk: 0 };
+    for (let c = 0; c < 256; c++) counts[at(c).vice]++;
+    expect(counts).toEqual({ none: 250, stoned: 3, drunk: 3 });
+  });
+
   it("turns the accessory golden only above the affection threshold", () => {
     const seed = FIXTURE_SEEDS[0]!.seed;
     const at = buildCatSpec({ seed, affection: spec.affection.goldenThreshold });
