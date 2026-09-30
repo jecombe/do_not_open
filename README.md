@@ -43,13 +43,13 @@ Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
 pnpm install
 pnpm test        # generator 24, chain adapter 12, contracts 53 on the FHEVM mock
 pnpm typecheck
-pnpm dev         # http://localhost:5173, mock mode, no chain
+pnpm dev         # http://localhost:5173: home page; the game is at /app.html (mock mode, no chain)
 ```
 
 The same app on Sepolia, against the live contract and Zama's relayer:
 
 ```bash
-VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/?chain=sepolia
+VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app.html?chain=sepolia
 ```
 
 You need a browser wallet with a little Sepolia ETH. `?chain=mock` and `?chain=sepolia`
@@ -97,7 +97,7 @@ what is open before a mainnet deployment.
 
 ## Read next
 
-The app carries its own illustrated manual at `/docs.html` (the "Manual" tag in the
+The site opens on a cartoon home page at `/` (source `apps/web/src/home`): the pitch in four steps, a box to shake until a random cat jumps out, and every kind of cat on a three.js turntable. The app carries its own illustrated manual at `/docs.html` (the "Manual" tag in the
 navigation): the seed, the flows and the package layout as interactive three.js diagrams.
 Its source is `apps/web/src/docs`.
 

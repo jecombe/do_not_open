@@ -8,6 +8,7 @@ export const fr: Record<AppKey, string> = {
   "nav.leaderboard": "Classement",
   "nav.specimens": "Spécimens",
   "nav.manual": "Manuel",
+  "nav.home": "Accueil",
   "nav.connect": "Connecter un wallet",
   "nav.connectShort": "Connecter",
   "nav.pickWallet": "Choisir un wallet",

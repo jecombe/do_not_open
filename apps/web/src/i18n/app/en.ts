@@ -8,6 +8,7 @@ export const en = {
   "nav.leaderboard": "Leaderboard",
   "nav.specimens": "Specimens",
   "nav.manual": "Manual",
+  "nav.home": "Home",
   "nav.connect": "Connect wallet",
   "nav.connectShort": "Connect",
   "nav.pickWallet": "Choose a wallet",

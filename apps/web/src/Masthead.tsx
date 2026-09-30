@@ -114,6 +114,9 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
               <li className="menu-rule">
                 <a href="/docs.html">{t("nav.manual")}</a>
               </li>
+              <li>
+                <a href="/">{t("nav.home")}</a>
+              </li>
             </ul>
             <LangSwitch label={t("nav.language")} />
           </nav>

@@ -1,0 +1,686 @@
+/* The home page: the depot's cardboard and red stamp, turned into a Saturday-morning
+   cartoon. Thick ink lines, hard offset shadows, everything a little crooked. */
+:root {
+  --ink: #1c1814;
+  --paper: #f6eedb;
+  --sun: #ffd66b;
+  --orange: #ffb454;
+  --red: #c2261d;
+  --kraft: #b8895a;
+  --mint: #7de3d0;
+  --pink: #f7a8c4;
+  --sky: #9cc7f0;
+  --dock: #17130f;
+
+  --stencil: "Stardos Stencil", "Arial Black", sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --gutter: clamp(16px, 3vw, 40px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: clip;
+  scroll-behavior: smooth;
+  scroll-padding-top: 20px;
+}
+
+body {
+  margin: 0;
+  overflow-x: clip;
+  background-color: var(--sun);
+  /* Comic-book halftone. */
+  background-image: radial-gradient(rgb(28 24 20 / 0.13) 1.6px, transparent 2px);
+  background-size: 18px 18px;
+  color: var(--ink);
+  font-family: var(--label);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--red);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
+}
+
+.home {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--gutter);
+}
+
+/* --- Buttons: fat, bouncy, pressable --- */
+.btn {
+  display: inline-block;
+  padding: 14px 26px 11px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: var(--red);
+  color: var(--paper);
+  font-family: var(--stencil);
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  text-transform: uppercase;
+  box-shadow: 6px 6px 0 var(--ink);
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+
+.btn:hover {
+  color: var(--paper);
+  transform: translate(-2px, -3px) rotate(-2deg);
+  box-shadow: 9px 9px 0 var(--ink);
+}
+
+.btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.btn-paper {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.btn-paper:hover {
+  color: var(--ink);
+}
+
+.btn-small {
+  padding: 9px 16px 7px;
+  font-size: 18px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+/* --- Top --- */
+.home-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.home-stamp {
+  display: inline-block;
+  padding: 0.18em 0.5em 0.08em;
+  border: 0.12em solid var(--red);
+  outline: 0.04em solid var(--red);
+  outline-offset: -0.26em;
+  color: var(--red);
+  font-family: var(--stencil);
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+  background: var(--paper);
+}
+
+.home-top nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.home-top nav > a:not(.btn) {
+  color: var(--ink);
+  font-size: 19px;
+  text-decoration: none;
+}
+
+.home-top nav > a:not(.btn):hover {
+  text-decoration: underline wavy var(--red);
+}
+
+.lang {
+  display: flex;
+  gap: 4px;
+}
+
+.lang button {
+  padding: 3px 7px 1px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.lang button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--sun);
+}
+
+/* --- Hero --- */
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: 24px var(--gutter);
+  padding: clamp(28px, 5vw, 64px) 0 clamp(28px, 4vw, 48px);
+}
+
+.kicker {
+  display: inline-block;
+  margin: 0 0 18px;
+  padding: 4px 14px 2px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+}
+
+h1,
+h2 {
+  margin: 0 0 0.35em;
+  font-family: var(--stencil);
+  font-weight: 700;
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--paper);
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  text-shadow:
+    4px 4px 0 var(--ink),
+    5px 5px 0 var(--ink);
+}
+
+h1 {
+  font-size: clamp(48px, 7.6vw, 104px);
+}
+
+h1::after {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-left: 0.15em;
+  vertical-align: 0.05em;
+  /* A paw print, drawn with four toes and a pad. */
+  background:
+    radial-gradient(circle at 50% 70%, var(--red) 28%, transparent 29%),
+    radial-gradient(circle at 18% 38%, var(--red) 11%, transparent 12%),
+    radial-gradient(circle at 38% 18%, var(--red) 11%, transparent 12%),
+    radial-gradient(circle at 62% 18%, var(--red) 11%, transparent 12%),
+    radial-gradient(circle at 82% 38%, var(--red) 11%, transparent 12%);
+  transform: rotate(18deg);
+}
+
+h2 {
+  font-size: clamp(38px, 5.2vw, 70px);
+}
+
+.hero-lede {
+  max-width: 32ch;
+  margin: 0 0 26px;
+  font-size: clamp(22px, 2.2vw, 28px);
+  line-height: 1.3;
+}
+
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+}
+
+/* --- The toy box --- */
+.toy {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.stage {
+  position: relative;
+  min-width: 0;
+}
+
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+}
+
+.stage.no-webgl {
+  display: none;
+}
+
+.stage-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stage-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+}
+
+.toy-stage {
+  width: 100%;
+  aspect-ratio: 1 / 0.92;
+  max-height: 520px;
+  border: 4px solid var(--ink);
+  border-radius: 50% 46% 48% 50% / 50% 50% 46% 48%;
+  /* Cartoon sunburst behind the box. */
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 0.55), transparent 62%),
+    repeating-conic-gradient(from 0deg, var(--orange) 0deg 12deg, #ffc56e 12deg 24deg);
+  box-shadow: 8px 8px 0 var(--ink);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.toy-stage canvas {
+  cursor: pointer;
+}
+
+.pop-bubble {
+  padding: 10px 16px 7px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: #fff;
+  font-family: var(--stencil);
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0;
+  scale: 0.4;
+  transition:
+    opacity 0.15s,
+    scale 0.25s cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+
+.pop-bubble::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  bottom: -14px;
+  border: 7px solid transparent;
+  border-top: 10px solid var(--ink);
+}
+
+.pop-bubble.on {
+  opacity: 1;
+  scale: 1;
+}
+
+.toy-caption {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  justify-items: center;
+  min-height: 7.2em;
+  text-align: center;
+}
+
+.toy-caption p {
+  margin: 0;
+}
+
+.toy-hint,
+.toy-out {
+  padding: 6px 16px 4px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 22px;
+  font-weight: 700;
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: rotate(-1.5deg);
+}
+
+.toy-hint {
+  animation: nudge 1.6s ease-in-out infinite;
+}
+
+.toy-note {
+  max-width: 36ch;
+  font-size: 16px;
+  opacity: 0.75;
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg) translateY(-3px);
+  }
+}
+
+/* --- Ticker tape --- */
+.ticker {
+  margin: 8px calc(-1 * var(--gutter)) 24px;
+  padding: 12px 0 8px;
+  overflow: hidden;
+  border-block: 4px solid var(--ink);
+  background: var(--ink);
+  color: var(--sun);
+  font-family: var(--stencil);
+  font-size: 24px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(-1.5deg);
+}
+
+.ticker > div {
+  display: inline-flex;
+  animation: ticker 36s linear infinite;
+}
+
+.ticker span {
+  padding-right: 1ch;
+}
+
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* --- Sections --- */
+.home-section {
+  padding: clamp(40px, 6vw, 84px) 0 0;
+}
+
+.section-lede {
+  max-width: 44ch;
+  margin: -6px 0 28px;
+  font-size: clamp(21px, 2vw, 26px);
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 26px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 20px 18px;
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 8px 8px 0 var(--ink);
+  transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.panel:nth-child(1) {
+  background: var(--pink);
+  transform: rotate(-1.6deg);
+}
+
+.panel:nth-child(2) {
+  background: var(--mint);
+  transform: rotate(1.2deg);
+}
+
+.panel:nth-child(3) {
+  background: var(--paper);
+  transform: rotate(-0.8deg);
+}
+
+.panel:nth-child(4) {
+  background: var(--sky);
+  transform: rotate(1.8deg);
+}
+
+.panel:hover {
+  transform: rotate(0) scale(1.04);
+}
+
+.panel-n {
+  position: absolute;
+  top: -20px;
+  left: -14px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--ink);
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--paper);
+  font-family: var(--stencil);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.panel h3 {
+  margin: 4px 0 6px;
+  font-family: var(--stencil);
+  font-size: 28px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.panel p {
+  flex: 1;
+  margin: 0 0 12px;
+  font-size: 19px;
+  line-height: 1.35;
+}
+
+.panel a {
+  color: var(--ink);
+}
+
+.doodle {
+  width: 112px;
+  height: 112px;
+  align-self: center;
+  margin-bottom: 4px;
+  overflow: visible;
+}
+
+.doodle.big {
+  width: min(100%, 300px);
+  height: auto;
+}
+
+.panel:hover .doodle,
+.doodle.wobble {
+  animation: wobble 0.9s ease-in-out infinite;
+}
+
+@keyframes wobble {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg) translateY(-4px);
+  }
+}
+
+/* --- The secret --- */
+.secret {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 24px var(--gutter);
+}
+
+.secret > div:last-child {
+  padding: 28px 28px 30px;
+  border: 4px solid var(--ink);
+  border-radius: 24px;
+  background: var(--paper);
+  box-shadow: 10px 10px 0 var(--ink);
+}
+
+.secret h2 {
+  font-size: clamp(32px, 4vw, 52px);
+}
+
+.secret p {
+  max-width: 52ch;
+  margin: 0 0 16px;
+}
+
+.secret-doodle {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
+.secret-doodle .doodle {
+  animation: bob 3s ease-in-out infinite;
+}
+
+.speech {
+  position: absolute;
+  top: -8px;
+  right: 6%;
+  padding: 8px 14px 5px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  font-family: var(--stencil);
+  font-size: 26px;
+  line-height: 1;
+  transform: rotate(8deg);
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* --- The cats: a dark little theatre so the 3D cats light up --- */
+.parade-frame {
+  padding: 22px clamp(14px, 2.4vw, 30px) 26px;
+  border: 4px solid var(--ink);
+  border-radius: 28px;
+  background:
+    radial-gradient(700px 380px at 38% 20%, rgb(255 180 84 / 0.28), transparent 70%),
+    var(--dock);
+  box-shadow: 10px 10px 0 var(--ink);
+  color: var(--paper);
+}
+
+.parade-frame .parade {
+  margin: 0;
+}
+
+/* --- The end --- */
+.home-end {
+  padding-bottom: 20px;
+  text-align: center;
+}
+
+.home-end .section-lede {
+  margin-inline: auto;
+}
+
+.home-end .hero-ctas {
+  justify-content: center;
+}
+
+.home-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 24px;
+  margin-top: clamp(48px, 7vw, 90px);
+  padding-top: 18px;
+  border-top: 4px dashed var(--ink);
+  font-size: 17px;
+}
+
+/* --- Narrow screens --- */
+@media (max-width: 1000px) {
+  .panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 34px;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-hero,
+  .secret {
+    grid-template-columns: 1fr;
+  }
+
+  .home-top nav > a:not(.btn) {
+    font-size: 17px;
+  }
+
+  .secret-doodle .doodle {
+    width: 200px;
+  }
+}
+
+@media (max-width: 520px) {
+  .panels {
+    grid-template-columns: 1fr;
+  }
+
+  .ticker {
+    font-size: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .ticker > div,
+  .toy-hint,
+  .doodle,
+  .panel:hover .doodle,
+  .secret-doodle .doodle {
+    animation: none;
+  }
+
+  .btn,
+  .panel {
+    transition: none;
+  }
+}

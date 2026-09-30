@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { spec } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
+import { CatParade } from "./CatParade";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 
@@ -9,7 +10,7 @@ const REPO = "https://github.com/jecombe/do_not_open";
 const DOCS = `${REPO}/blob/dev/docs`;
 const CONTRACT = "0x6C6210E9CB6CC5218F479806258E86B176aA5BD0";
 
-const SECTIONS = ["box", "seed", "privacy", "flows", "mechanics", "transfer", "code", "solana", "mainnet", "more"] as const;
+const SECTIONS = ["box", "cats", "seed", "privacy", "flows", "mechanics", "transfer", "code", "solana", "mainnet", "more"] as const;
 
 /** Highlights the section being read in the routing slip. */
 function useCurrentSection(): string {
@@ -78,11 +79,12 @@ export function Manual() {
   return (
     <div className="manual">
       <header className="top">
-        <a className="wordmark" href="/" aria-label={t("docs.backAria")}>
+        <a className="wordmark" href="/" aria-label={t("docs.homeAria")}>
           Do not open
         </a>
         <nav className="views" aria-label={t("docs.site")}>
-          <a href="/">{t("docs.back")}</a>
+          <a href="/">{t("docs.home")}</a>
+          <a href="/app.html">{t("docs.back")}</a>
           <a href={REPO}>{t("docs.source")}</a>
           <LangSwitch label={t("nav.language")} />
         </nav>
@@ -96,7 +98,7 @@ export function Manual() {
             <a className="stamp-link" href="#seed">
               {t("docs.hero.seed")}
             </a>
-            <a href="/">{t("docs.hero.shake")}</a>
+            <a href="/app.html">{t("docs.hero.shake")}</a>
           </p>
         </div>
         <HeroFigure />
@@ -122,6 +124,17 @@ export function Manual() {
               <p>{t("docs.box.p1", { supply })}</p>
               <p>{t("docs.box.p2")}</p>
               <p>{t("docs.box.p3")}</p>
+            </div>
+          </section>
+
+          <section id="cats">
+            <h2>{t("docs.section.cats")}</h2>
+            <div className="prose">
+              <p>{t("docs.cats.p1")}</p>
+            </div>
+            <CatParade />
+            <div className="prose">
+              <p>{t("docs.cats.p2")}</p>
             </div>
           </section>
 
@@ -317,7 +330,7 @@ export function Manual() {
 
       <footer className="foot">
         <span>{t("docs.foot")}</span>
-        <a href="/">{t("docs.back")}</a>
+        <a href="/app.html">{t("docs.back")}</a>
       </footer>
     </div>
   );

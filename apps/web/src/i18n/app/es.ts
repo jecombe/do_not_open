@@ -8,6 +8,7 @@ export const es: Record<AppKey, string> = {
   "nav.leaderboard": "Clasificación",
   "nav.specimens": "Especímenes",
   "nav.manual": "Manual",
+  "nav.home": "Inicio",
   "nav.connect": "Conectar wallet",
   "nav.connectShort": "Conectar",
   "nav.pickWallet": "Elige un wallet",

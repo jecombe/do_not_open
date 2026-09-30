@@ -1,0 +1,166 @@
+/* The cat turntable: shared by the manual (dark) and the home page (light). The card
+   carries its own paper and ink, so it reads the same on either. */
+.parade {
+  --p-ink: #1c1814;
+  --p-paper: #f6eedb;
+  --p-red: #c2261d;
+  --p-sun: #ffb454;
+  margin: 8px 0 28px;
+}
+
+.parade-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.parade-tabs button,
+.parade-picker button,
+.parade-nav button {
+  border: 3px solid var(--p-ink);
+  background: var(--p-paper);
+  color: var(--p-ink);
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--p-ink);
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s,
+    background 0.12s;
+}
+
+.parade-tabs button {
+  padding: 8px 18px 6px;
+  border-radius: 999px;
+  font-family: var(--stencil, "Arial Black", sans-serif);
+  font-size: 20px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.parade-tabs button:hover,
+.parade-picker button:hover,
+.parade-nav button:hover {
+  transform: translate(-1px, -2px) rotate(-1.5deg);
+  box-shadow: 5px 5px 0 var(--p-ink);
+}
+
+.parade-tabs button[aria-selected="true"],
+.parade-picker button[aria-pressed="true"] {
+  background: var(--p-red);
+  color: var(--p-paper);
+}
+
+.parade-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+
+.parade-stage.stage {
+  height: clamp(320px, 38vw, 470px);
+}
+
+.parade-stage canvas {
+  cursor: grab;
+}
+
+.parade-card {
+  position: relative;
+  padding: 22px 22px 18px;
+  border: 3px solid var(--p-ink);
+  border-radius: 18px;
+  background: var(--p-paper);
+  color: var(--p-ink);
+  box-shadow: 7px 7px 0 var(--p-ink);
+  transform: rotate(1.2deg);
+}
+
+.parade-card h3 {
+  margin: 0 0 6px;
+  font-family: var(--stencil, "Arial Black", sans-serif);
+  font-size: clamp(30px, 3.4vw, 42px);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--p-red);
+}
+
+.parade-count {
+  position: absolute;
+  top: -16px;
+  right: 18px;
+  margin: 0;
+  padding: 4px 12px 2px;
+  border: 3px solid var(--p-ink);
+  border-radius: 999px;
+  background: var(--p-sun);
+  font-size: 16px;
+  font-weight: 700;
+  transform: rotate(4deg);
+}
+
+.parade-odds {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 2px 10px;
+  background: var(--p-ink);
+  color: var(--p-sun);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transform: rotate(-1.5deg);
+}
+
+.parade-blurb {
+  margin: 0 0 16px;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.parade-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.parade-nav button {
+  width: 48px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.parade-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.parade-picker button {
+  padding: 5px 12px 3px;
+  border-width: 2px;
+  border-radius: 999px;
+  font-size: 16px;
+  box-shadow: 2px 2px 0 var(--p-ink);
+}
+
+@media (max-width: 760px) {
+  .parade-body {
+    grid-template-columns: 1fr;
+  }
+
+  .parade-card {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parade-tabs button,
+  .parade-picker button,
+  .parade-nav button {
+    transition: none;
+  }
+}
