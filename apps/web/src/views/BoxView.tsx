@@ -46,13 +46,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const t = useT();
   const scene = useRef<BoxSceneHandle>(null);
   const action = useAction();
-  const [info, setInfo] = useState<BoxInfo | null>(null);
-  const [missing, setMissing] = useState(false);
+  const [loaded, setInfo] = useState<BoxInfo | null>(null);
+  const [missingId, setMissingId] = useState<number | null>(null);
   const [felt, setFelt] = useState<TraitRoll | null>(null);
   const [note, setNote] = useState<Note | null>(null);
   const [opening, setOpening] = useState(false);
   const [out, setOut] = useState(false);
 
+  // Right after a step, and while a slow read lands late, the state can still hold the
+  // previous box. Only what belongs to the box on screen counts: otherwise its cat opens here.
+  const info = loaded?.tokenId === tokenId ? loaded : null;
+  const missing = missingId === tokenId;
   const box = useMemo(() => buildBoxSpec(tokenId), [tokenId]);
   const minted = collection?.totalMinted ?? 0;
   const cat = useMemo(() => (info?.revealed ? catFromRevealed(info.revealed) : null), [info]);
@@ -60,10 +64,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const load = useCallback(async () => {
     try {
       setInfo(await adapter.box(tokenId));
-      setMissing(false);
+      setMissingId((m) => (m === tokenId ? null : m));
     } catch {
-      setInfo(null);
-      setMissing(true);
+      setMissingId(tokenId);
     }
   }, [adapter, tokenId]);
 
