@@ -4,6 +4,8 @@ import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useChain } from "../chain/ChainProvider";
 import { catFromRevealed, holderCopy } from "../chain/copy";
+import { useT } from "../i18n/app";
+import { catNames } from "../i18n/names";
 import { SHELF_CAPACITY, ShelfScene, SpecimenScene } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 
@@ -22,6 +24,7 @@ type Board = "opened" | "sealed";
 
 export function LeaderboardView({ quality, sound, onSelect }: Props) {
   const { adapter, account, collection } = useChain();
+  const t = useT();
   const [boxes, setBoxes] = useState<BoxInfo[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [board, setBoard] = useState<Board>("opened");
@@ -70,52 +73,56 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
         )}
       </Stage>
 
-      <section className={showCats ? "slip declaration" : "slip"} aria-label="Leaderboard">
+      <section className={showCats ? "slip declaration" : "slip"} aria-label={t("lb.title")}>
         <div className="slip-head">
-          <span>Leaderboard</span>
-          <div className="picker" role="group" aria-label="Ranking">
+          <span>{t("lb.title")}</span>
+          <div className="picker" role="group" aria-label={t("lb.ranking")}>
             <button type="button" aria-pressed={board === "opened"} onClick={() => setBoard("opened")}>
-              Opened
+              {t("lb.opened")}
             </button>
             <button type="button" aria-pressed={board === "sealed"} onClick={() => setBoard("sealed")}>
-              Sealed
+              {t("lb.sealed")}
             </button>
           </div>
         </div>
 
         {failed ? (
-          <p className="fine problem">The ranking could not be read from the chain. Reload to try again.</p>
+          <p className="fine problem">{t("lb.failed")}</p>
         ) : !boxes ? (
-          <p className="state-note">Reading every box…</p>
+          <p className="state-note">{t("lb.reading")}</p>
         ) : board === "opened" ? (
           opened.length === 0 ? (
-            <p className="state-note">No box has been opened yet. There is nothing to rank until someone looks.</p>
+            <p className="state-note">{t("lb.noneOpened")}</p>
           ) : (
             <ol className="ranking">
-              {opened.map(({ box, cat }, i) => (
-                <li key={box.tokenId}>
-                  <button
-                    type="button"
-                    onClick={() => (i < podium.length ? setSelected(i) : onSelect(box.tokenId))}
-                    onDoubleClick={() => onSelect(box.tokenId)}
-                    aria-pressed={showCats && i === selected}
-                  >
-                    <span className="rank">{i + 1}</span>
-                    <span className="who">
-                      <strong>{buildBoxSpec(box.tokenId).serial}</strong> {cat.state} {cat.traits.breed.name.toLowerCase()}
-                      <small>
-                        {cat.rarity.tierName}
-                        {cat.rarity.golden ? ", golden" : ""}, held by {holderCopy(box.owner, account)}
-                      </small>
-                    </span>
-                    <span className="roll">{box.revealed!.score}</span>
-                  </button>
-                </li>
-              ))}
+              {opened.map(({ box, cat }, i) => {
+                const names = catNames(cat);
+                return (
+                  <li key={box.tokenId}>
+                    <button
+                      type="button"
+                      onClick={() => (i < podium.length ? setSelected(i) : onSelect(box.tokenId))}
+                      onDoubleClick={() => onSelect(box.tokenId)}
+                      aria-pressed={showCats && i === selected}
+                    >
+                      <span className="rank">{i + 1}</span>
+                      <span className="who">
+                        <strong>{buildBoxSpec(box.tokenId).serial}</strong> {t("lb.cat", { state: names.state.toLowerCase(), breed: names.breed.toLowerCase() })}
+                        <small>
+                          {names.tier}
+                          {cat.rarity.golden ? t("lb.golden") : ""}
+                          {t("lb.heldBy", { holder: holderCopy(box.owner, account) })}
+                        </small>
+                      </span>
+                      <span className="roll">{box.revealed!.score}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
           )
         ) : sealed.length === 0 ? (
-          <p className="state-note">Every box has been opened.</p>
+          <p className="state-note">{t("lb.allOpened")}</p>
         ) : (
           <ol className="ranking">
             {sealed.map((box, i) => (
@@ -125,14 +132,12 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
                   <span className="who">
                     <strong>{buildBoxSpec(box.tokenId).serial}</strong>
                     <small>
-                      held by {holderCopy(box.owner, account)}
-                      {box.aliveCheck === "alive" ? ", Vet Certified" : ""}
-                      {box.feeds ? `, fed ${box.feeds} ×` : ""}
+                      {t("lb.heldBySealed", { holder: holderCopy(box.owner, account) })}
+                      {box.aliveCheck === "alive" ? t("lb.vet") : ""}
+                      {box.feeds ? t("lb.fed", { n: box.feeds }) : ""}
                     </small>
                   </span>
-                  <span className="roll">
-                    {box.wins} {box.wins === 1 ? "win" : "wins"}
-                  </span>
+                  <span className="roll">{t("lb.wins", { count: box.wins })}</span>
                 </button>
               </li>
             ))}
@@ -141,12 +146,8 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
 
         {boxes && !failed && (board === "opened" ? opened : sealed).length > 0 && (
           <p className="fine after-table">
-            {board === "opened"
-              ? showCats
-                ? `Ranked by rarity score. Pick one of the top ${podium.length} to look at it; double-click any row to go to its box.`
-                : "Ranked by rarity score."
-              : "A sealed box has no public score. These are ranked by duels won; pick one to go to it."}
-            {minted !== undefined && minted > READ_LIMIT ? ` Only the ${READ_LIMIT} most recent boxes are read.` : ""}
+            {board === "opened" ? (showCats ? t("lb.rankedPodium", { n: podium.length }) : t("lb.ranked")) : t("lb.rankedSealed")}
+            {minted !== undefined && minted > READ_LIMIT ? t("lb.onlyRecent", { n: READ_LIMIT }) : ""}
           </p>
         )}
       </section>

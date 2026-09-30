@@ -4,6 +4,7 @@ import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, stepCopy } from "../chain/copy";
+import { useT } from "../i18n/app";
 import { SHELF_CAPACITY, ShelfScene, type ShelfBox } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 
@@ -18,6 +19,7 @@ const LIST_LIMIT = 40;
 
 export function ShelfView({ quality, sound, onSelect }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect, mode } = useChain();
+  const t = useT();
   const action = useAction();
   const [quantity, setQuantity] = useState(1);
   const [infos, setInfos] = useState<BoxInfo[]>([]);
@@ -66,54 +68,50 @@ export function ShelfView({ quality, sound, onSelect }: Props) {
         <ShelfScene boxes={onBench} quality={quality} sound={sound} onSelect={onSelect} />
       </Stage>
 
-      <section className="slip" aria-label="Your shelf">
+      <section className="slip" aria-label={t("shelf.title")}>
         <div className="slip-head">
-          <span>Your shelf</span>
-          {collection && (
-            <span>
-              {collection.totalMinted.toLocaleString("en")} of {collection.maxSupply.toLocaleString("en")} shipped
-            </span>
-          )}
+          <span>{t("shelf.title")}</span>
+          {collection && <span>{t("shelf.shipped", { minted: collection.totalMinted, max: collection.maxSupply })}</span>}
         </div>
 
         {!account ? (
           <>
-            <p className="state-note">No wallet connected.</p>
-            <p className="fine after-table">Connect one to see the boxes you hold and to order new ones.</p>
+            <p className="state-note">{t("shelf.noWallet")}</p>
+            <p className="fine after-table">{t("shelf.connectHint")}</p>
             <button type="button" className="stamp-button" onClick={() => void connect()}>
-              Connect wallet
+              {t("nav.connect")}
             </button>
           </>
         ) : (
           <>
             {myBoxes.length === 0 ? (
-              <p className="state-note">Nothing on your shelf yet.</p>
+              <p className="state-note">{t("shelf.empty")}</p>
             ) : (
-              <ul className="tags" aria-label="Your boxes">
+              <ul className="tags" aria-label={t("shelf.boxes")}>
                 {(infos.length ? infos : listed.map((tokenId) => ({ tokenId, status: null }))).map((b) => (
                   <li key={b.tokenId}>
                     <button type="button" onClick={() => onSelect(b.tokenId)} className={b.status === "revealed" ? "is-open" : ""}>
                       {buildBoxSpec(b.tokenId).serial}
-                      <span>{b.status === null ? "…" : b.status === "revealed" ? "open" : b.status === "opening" ? "opening" : "sealed"}</span>
+                      <span>{b.status === null ? "…" : b.status === "revealed" ? t("status.open") : b.status === "opening" ? t("status.opening") : t("status.sealed")}</span>
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-            {myBoxes.length > LIST_LIMIT && <p className="fine">Showing your {LIST_LIMIT} newest boxes of {myBoxes.length}.</p>}
+            {myBoxes.length > LIST_LIMIT && <p className="fine">{t("shelf.showing", { limit: LIST_LIMIT, total: myBoxes.length })}</p>}
 
             <div className="order">
-              <div className="stepper" role="group" aria-label="How many boxes">
-                <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={!!action.busy || quantity <= 1} aria-label="One fewer">
+              <div className="stepper" role="group" aria-label={t("shelf.howMany")}>
+                <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={!!action.busy || quantity <= 1} aria-label={t("shelf.fewer")}>
                   −
                 </button>
                 <output aria-live="polite">{quantity}</output>
-                <button type="button" onClick={() => setQuantity((q) => Math.min(maxPerTx, left, q + 1))} disabled={!!action.busy || quantity >= Math.min(maxPerTx, left)} aria-label="One more">
+                <button type="button" onClick={() => setQuantity((q) => Math.min(maxPerTx, left, q + 1))} disabled={!!action.busy || quantity >= Math.min(maxPerTx, left)} aria-label={t("shelf.more")}>
                   +
                 </button>
               </div>
               <button type="button" className="stamp-button" onClick={() => void mint()} disabled={!!action.busy || !collection || left === 0}>
-                {action.busy === "mint" ? "Ordering…" : left === 0 ? "Sold out" : `Mint ${quantity} box${quantity > 1 ? "es" : ""}`}
+                {action.busy === "mint" ? t("shelf.ordering") : left === 0 ? t("shelf.soldOut") : t("shelf.mint", { count: quantity })}
               </button>
             </div>
 
@@ -123,20 +121,18 @@ export function ShelfView({ quality, sound, onSelect }: Props) {
               ) : action.busy ? (
                 <p className="fine">{stepCopy(action.step)}</p>
               ) : arrived.length ? (
-                <p className="fine">
-                  {arrived.map((id) => buildBoxSpec(id).serial).join(", ")} arrived sealed. Nobody knows what is inside, the depot included.
-                </p>
+                <p className="fine">{t("shelf.arrived", { serials: arrived.map((id) => buildBoxSpec(id).serial).join(", ") })}</p>
               ) : (
                 <p className="fine">
-                  {fee(total, collection)} for {quantity > 1 ? `${quantity} boxes` : "one box"}. Each arrives sealed, its contents drawn and encrypted on-chain.
-                  {mode === "mock" ? " Nothing is charged in the mock depot." : ""}
+                  {t("shelf.price", { count: quantity, fee: fee(total, collection) })}
+                  {mode === "mock" ? t("shelf.mockFree") : ""}
                 </p>
               )}
               {owed > 0n && !action.busy && (
                 <p className="fine">
-                  Strangers paid to shake your boxes: {fee(owed, collection)} is waiting.{" "}
+                  {t("shelf.owed", { fee: fee(owed, collection) })}{" "}
                   <button type="button" className="link" onClick={() => void claim()}>
-                    Claim it
+                    {t("shelf.claim")}
                   </button>
                 </p>
               )}

@@ -4,6 +4,8 @@ import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
+import { useT, type AppKey } from "../i18n/app";
+import { catNames } from "../i18n/names";
 import { PairScene, type PairSceneHandle } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 
@@ -19,8 +21,12 @@ interface Props {
 const PICK_LIMIT = 200;
 const serial = (id: number) => buildBoxSpec(id).serial;
 
+/** A note is stored as a message key, so it follows a language change. */
+type Note = Extract<AppKey, "pair.noteChallenge" | "pair.noteProposal">;
+
 export function PairView({ quality, sound, initial, onInspect }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect } = useChain();
+  const t = useT();
   const scene = useRef<PairSceneHandle>(null);
   const action = useAction();
   const minted = collection?.totalMinted ?? 0;
@@ -30,7 +36,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
   const [standing, setStanding] = useState<PairInfo | null>(null);
   const [outcome, setOutcome] = useState<DuelResult | null>(null);
   const [playing, setPlaying] = useState<null | "duel" | "open">(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNote] = useState<Note | null>(null);
 
   // First pair: the requested box (or the account's first) against any other one.
   useEffect(() => {
@@ -119,7 +125,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
       return d ? adapter.finishDuel(d.duelId, o) : ("waiting" as const);
     });
     if (result === undefined || result === "waiting") {
-      if (result === "waiting") setNote("Challenge sent. The duel starts when the other holder accepts it.");
+      if (result === "waiting") setNote("pair.noteChallenge");
       void load();
       return;
     }
@@ -160,7 +166,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
       return true;
     });
     if (linked) sound.reveal(false);
-    if (linked === false) setNote("Proposal sent. The link forms when the other holder accepts it.");
+    if (linked === false) setNote("pair.noteProposal");
     void load();
   };
 
@@ -194,11 +200,11 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
         <Stage quality={quality}>
           <PairScene ref={scene} tokenA={0} tokenB={1} openedA={null} openedB={null} entangled={false} quality={quality} sound={sound} onDuelDone={onDuelDone} onOpened={onOpened} />
         </Stage>
-        <section className="slip" aria-label="Two boxes">
+        <section className="slip" aria-label={t("pair.aria")}>
           <div className="slip-head">
-            <span>Two consignments</span>
+            <span>{t("pair.title")}</span>
           </div>
-          <p className="state-note">{collection ? "Duels and entanglement need two minted boxes." : "Reading the chain…"}</p>
+          <p className="state-note">{collection ? t("pair.needTwo") : t("footer.reading")}</p>
         </section>
       </>
     );
@@ -206,6 +212,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
 
   const opened = [boxA, boxB].filter((x): x is BoxInfo => !!x?.revealed);
   const showResults = opened.length > 0 && playing !== "open";
+  const status = (x: BoxInfo) => (x.status === "revealed" ? t("status.open") : x.status === "opening" ? t("status.opening") : t("status.sealed"));
 
   return (
     <>
@@ -224,16 +231,16 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
         />
       </Stage>
 
-      <section className="slip" aria-label="Two boxes">
+      <section className="slip" aria-label={t("pair.aria")}>
         <div className="slip-head">
-          <span>Two consignments</span>
-          {entangled && <span className="tier tier-entangled">Entangled</span>}
+          <span>{t("pair.title")}</span>
+          {entangled && <span className="tier tier-entangled">{t("pair.entangled")}</span>}
         </div>
 
         <div className="pair-pick">
           {([0, 1] as const).map((slot) => (
             <label key={slot}>
-              {slot === 0 ? "Left" : "Right"}
+              {slot === 0 ? t("pair.left") : t("pair.right")}
               <select
                 value={slot === 0 ? a : b}
                 disabled={!!busy}
@@ -247,7 +254,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
                 {options.map((id) => (
                   <option key={id} value={id}>
                     {serial(id)}
-                    {mine(id) ? " (yours)" : ""}
+                    {mine(id) ? t("pair.yours") : ""}
                   </option>
                 ))}
               </select>
@@ -255,8 +262,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
                 {(() => {
                   const x = slot === 0 ? boxA : boxB;
                   if (!x) return "…";
-                  const state = x.status === "revealed" ? "open" : x.status === "opening" ? "opening" : "sealed";
-                  return `${holderCopy(x.owner, account)}, ${state}${x.wins ? `, ${x.wins} won` : ""}`;
+                  return t("pair.status", { holder: holderCopy(x.owner, account), state: status(x) }) + (x.wins ? t("pair.won", { n: x.wins }) : "");
                 })()}
               </span>
             </label>
@@ -266,12 +272,13 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
         {showResults && (
           <ul className="results">
             {opened.map((x) => {
-              const cat = catFromRevealed(x.revealed!);
+              const names = catNames(catFromRevealed(x.revealed!));
               return (
                 <li key={x.tokenId}>
-                  <strong>{serial(x.tokenId)}</strong>: {cat.state} {cat.traits.breed.name.toLowerCase()}, {cat.rarity.tierName.toLowerCase()} ({cat.rarity.score}).{" "}
+                  <strong>{serial(x.tokenId)}</strong>
+                  {t("pair.result", { state: names.state.toLowerCase(), breed: names.breed.toLowerCase(), tier: names.tier.toLowerCase(), score: x.revealed!.score })}
                   <button type="button" className="link" onClick={() => onInspect(x.tokenId)}>
-                    Take it out
+                    {t("pair.takeOut")}
                   </button>
                 </li>
               );
@@ -282,7 +289,7 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
         {!account ? (
           <div className="actions">
             <button type="button" className="stamp-button" onClick={() => void connect()}>
-              Connect wallet
+              {t("nav.connect")}
             </button>
           </div>
         ) : (
@@ -290,20 +297,24 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
             <div className="actions">
               <button type="button" className="stamp-button" onClick={() => void runDuel()} disabled={!!busy || !duelStep || duelStep === "waiting"}>
                 {busy === "duel"
-                  ? "Fighting…"
+                  ? t("pair.fighting")
                   : duelStep === "accept"
-                    ? "Accept the duel"
+                    ? t("pair.acceptDuel")
                     : duelStep === "reveal"
-                      ? "Reveal the result"
+                      ? t("pair.reveal")
                       : duelStep === "waiting"
-                        ? "Challenge sent"
-                        : "Start a duel"}
+                        ? t("pair.challengeSent")
+                        : t("pair.startDuel")}
               </button>
               <button type="button" className="plain-button" onClick={() => void runEntangle()} disabled={!!busy || !linkStep || linkStep === "waiting"}>
-                {busy === "entangle" ? "Linking…" : entangled ? "Entangled" : linkStep === "accept" ? "Accept the link" : linkStep === "waiting" ? "Link proposed" : "Entangle them"}
+                {busy === "entangle" ? t("pair.linking") : entangled ? t("pair.entangled") : linkStep === "accept" ? t("pair.acceptLink") : linkStep === "waiting" ? t("pair.linkProposed") : t("pair.entangle")}
               </button>
               <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy || !openable}>
-                {busy === "open" ? "Opening…" : openable ? `${openable.status === "opening" ? "Finish" : "Open"} ${serial(openable.tokenId)}` : "Open"}
+                {busy === "open"
+                  ? t("box.opening")
+                  : openable
+                    ? t(openable.status === "opening" ? "pair.finish" : "pair.openSerial", { serial: serial(openable.tokenId) })
+                    : t("pair.open")}
               </button>
             </div>
           )
@@ -317,45 +328,44 @@ export function PairView({ quality, sound, initial, onInspect }: Props) {
           ) : outcome && playing !== "duel" ? (
             <>
               <p className="felt-line">
-                <strong>{serial(outcome.winner)}</strong> wins.
+                <strong>{serial(outcome.winner)}</strong>
+                {t("pair.wins")}
               </p>
               <p className="fine">
-                {serial(outcome.loser)} has to show one trait to everyone. {traitCopy(outcome.shown).trait}: <strong>{traitCopy(outcome.shown).variant}</strong>. The winner shows nothing.
+                {t("pair.loserShows", { loser: serial(outcome.loser), trait: traitCopy(outcome.shown).trait })}
+                <strong>{traitCopy(outcome.shown).variant}</strong>
+                {t("pair.winnerNothing")}
               </p>
             </>
           ) : note ? (
-            <p className="fine">{note}</p>
+            <p className="fine">{t(note)}</p>
           ) : showResults ? (
-            <p className="fine">{opened.length === 2 && entangled ? "One holder looked, and both boxes opened. That was the deal." : opened.length === 2 ? "Both boxes are open." : "The other box is still sealed."}</p>
+            <p className="fine">{opened.length === 2 && entangled ? t("pair.bothOpenedEntangled") : opened.length === 2 ? t("pair.bothOpen") : t("pair.otherSealed")}</p>
           ) : !boxes ? null : !account ? (
-            <p className="fine">A duel compares two hidden rarity scores and publishes only who won. Connect a wallet to start one.</p>
+            <p className="fine">{t("pair.duelConnect")}</p>
           ) : duelStep === "waiting" && duel ? (
             <p className="fine">
-              {serial(duel.tokenA)} challenged {serial(duel.tokenB)}. Waiting for the other holder.{" "}
+              {t("pair.waiting", { a: serial(duel.tokenA), b: serial(duel.tokenB) })}
               {sameAddress(duel.challenger, account) && (
                 <button type="button" className="link" onClick={() => void cancelDuel()}>
-                  Withdraw the challenge
+                  {t("pair.withdraw")}
                 </button>
               )}
             </p>
           ) : duelStep === "accept" && duel ? (
-            <p className="fine">
-              {serial(duel.tokenA)} challenged your {serial(duel.tokenB)}. If you accept, the loser has to show one trait to everyone.
-            </p>
+            <p className="fine">{t("pair.acceptExplain", { a: serial(duel.tokenA), b: serial(duel.tokenB) })}</p>
           ) : duelStep === "reveal" ? (
-            <p className="fine">Both holders agreed and the duel is decided, still encrypted. Anyone can reveal the result.</p>
+            <p className="fine">{t("pair.revealExplain")}</p>
           ) : linkStep === "accept" && proposal ? (
-            <p className="fine">
-              The holder of {serial(proposal.from)} wants to entangle it with your {serial(proposal.to)}. It is permanent: opening one will open both.
-            </p>
+            <p className="fine">{t("pair.linkExplain", { from: serial(proposal.from), to: serial(proposal.to) })}</p>
           ) : entangled ? (
-            <p className="fine">Both holders agreed. Opening either box now opens both, for {fee(collection?.fees.observe ?? 0n, collection)}.</p>
+            <p className="fine">{t("pair.entangledExplain", { fee: fee(collection?.fees.observe ?? 0n, collection) })}</p>
           ) : taken ? (
-            <p className="fine">One of these boxes is already entangled with another. They can still duel.</p>
+            <p className="fine">{t("pair.taken")}</p>
           ) : challenger === null ? (
-            <p className="fine">You hold neither box. Pick one of yours on either side to duel or entangle.</p>
+            <p className="fine">{t("pair.neither")}</p>
           ) : (
-            <p className="fine">A duel compares two hidden rarity scores and publishes only who won. Both holders have to agree to it, and to an entanglement.</p>
+            <p className="fine">{t("pair.duelExplain")}</p>
           )}
         </div>
       </section>

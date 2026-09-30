@@ -1,6 +1,7 @@
 import { BoxGeometry, BufferGeometry, CatmullRomCurve3, EdgesGeometry, Group, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, TubeGeometry, Vector3 } from "three";
 import { outlineMaterial, toon } from "@dno/scene";
 import { damp, PALETTE, Stage } from "./stage";
+import { lookup } from "../i18n";
 
 export interface ArchNode {
   id: string;
@@ -11,18 +12,20 @@ export interface ArchNode {
   color: string;
   /** Not written yet: drawn as a wireframe. */
   ghost?: boolean;
-  text: string;
 }
 
+/** What a crate holds, in the current language. */
+export const archText = (id: string): string => lookup(`arch.${id}`) ?? id;
+
 export const ARCH_NODES: ArchNode[] = [
-  { id: "spec", name: "game-spec", shelf: "portable", slot: 0, color: PALETTE.manifest, text: "One JSON file with every number of the game: trait tables, odds, the score formula, the rules of each mechanic. The contract, the generator and the mock all read it, and the contract stores its hash." },
-  { id: "generator", name: "generator", shelf: "portable", slot: 1, color: PALETTE.tape, text: "Pure TypeScript. Turns a seed into a CatSpec and a token id into a BoxSpec: plain data describing colours, shapes and animation. Also draws the SVG fallback and writes token metadata." },
-  { id: "scene", name: "scene", shelf: "portable", slot: 2, color: PALETTE.kraft, text: "three.js builders and effects. Takes a spec, returns an object with update and dispose. No React, no chain. The app and the metadata renderer use the same builders." },
-  { id: "adapter", name: "ChainAdapter", shelf: "portable", slot: 3, color: PALETTE.sodium, text: "The only door to a chain: one interface for accounts, reads and every mechanic, plus an in-memory implementation with the contract's rules. Nothing in it names a chain or a wallet library." },
-  { id: "web", name: "apps/web", shelf: "portable", slot: 4, color: PALETTE.red, text: "The React Three Fiber app you are in. It depends on the interface and on nothing chain-specific: ethers and the Relayer SDK are not even installed here." },
-  { id: "contracts", name: "contracts-evm", shelf: "chain", slot: 0.5, color: PALETTE.cold, text: "DoNotOpen.sol and its config contract, on Hardhat with Zama's FHEVM. Loaded at deploy with the numbers from game-spec. Live on Sepolia." },
-  { id: "evm", name: "EvmFhevmAdapter", shelf: "chain", slot: 2, color: PALETTE.cold, text: "Implements the interface with ethers and Zama's Relayer SDK: transactions, private decryption with a session permit, public decryption with a proof sent back on-chain." },
-  { id: "solana", name: "SolanaAdapter", shelf: "chain", slot: 3.5, color: PALETTE.spectral, ghost: true, text: "Not written. Zama has announced Solana support and published no SDK yet. When it ships, this adapter and a Solana program replace the bottom shelf; the top shelf does not change." },
+  { id: "spec", name: "game-spec", shelf: "portable", slot: 0, color: PALETTE.manifest },
+  { id: "generator", name: "generator", shelf: "portable", slot: 1, color: PALETTE.tape },
+  { id: "scene", name: "scene", shelf: "portable", slot: 2, color: PALETTE.kraft },
+  { id: "adapter", name: "ChainAdapter", shelf: "portable", slot: 3, color: PALETTE.sodium },
+  { id: "web", name: "apps/web", shelf: "portable", slot: 4, color: PALETTE.red },
+  { id: "contracts", name: "contracts-evm", shelf: "chain", slot: 0.5, color: PALETTE.cold },
+  { id: "evm", name: "EvmFhevmAdapter", shelf: "chain", slot: 2, color: PALETTE.cold },
+  { id: "solana", name: "SolanaAdapter", shelf: "chain", slot: 3.5, color: PALETTE.spectral, ghost: true },
 ];
 
 /** from depends on to. */

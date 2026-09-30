@@ -773,3 +773,32 @@ h2 {
     scroll-behavior: auto;
   }
 }
+
+/* --- Language tags: four small stamps at the end of the nav --- */
+.lang {
+  display: flex;
+  gap: 3px;
+  margin-left: 4px;
+}
+
+.lang button {
+  padding: 8px 9px;
+  background: var(--tape);
+  color: var(--ink);
+  border: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.lang button[aria-pressed="true"] {
+  opacity: 1;
+  background: var(--manifest);
+}
+
+.lang button:hover {
+  opacity: 1;
+}

@@ -13,7 +13,7 @@ import {
 } from "three";
 import { buildBoxSpec } from "@dno/generator";
 import { createBox, outlineMaterial, toon } from "@dno/scene";
-import { PACKET_NAMES, STATION_NAMES, type FlowStep, type PacketKind, type StationId } from "../flows";
+import { packetName, stationName, type FlowStep, type PacketKind, type StationId } from "../flows";
 import { damp, PALETTE, Stage } from "./stage";
 
 const PACKET_COLORS: Record<PacketKind, string> = {
@@ -138,7 +138,7 @@ export class FlowScene {
       ring.position.set(x, 0.01, z);
       stage.scene.add(ring);
       const label = stage.addLabel("station", new Vector3(x, -0.22, z + 0.62));
-      label.textContent = STATION_NAMES[id];
+      label.textContent = stationName(id);
       this.stations.set(id, { id, group, top: new Vector3(x, height, z), pulse: 0, ring, label, shown: 1 });
     }
 
@@ -161,6 +161,12 @@ export class FlowScene {
     stage.onFrame((time, dt) => this.update(time, dt));
   }
 
+  /** Rewrites the station labels, after a language change. */
+  relabel(): void {
+    for (const s of this.stations.values()) s.label.textContent = stationName(s.id);
+    if (this.step) this.packetLabel.textContent = packetName(this.step.kind);
+  }
+
   /** Which parties this flow involves. The others step back into the dark. */
   setParties(ids: StationId[]): void {
     this.used = new Set(ids);
@@ -181,7 +187,7 @@ export class FlowScene {
     (this.trail.material as LineDashedMaterial).color.set(color);
     const from = this.stations.get(step.from)!;
     const to = this.stations.get(step.to)!;
-    this.packetLabel.textContent = PACKET_NAMES[step.kind];
+    this.packetLabel.textContent = packetName(step.kind);
     this.packetLabel.style.setProperty("--packet", color);
 
     if (step.from === step.to) {

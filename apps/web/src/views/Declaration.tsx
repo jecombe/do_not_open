@@ -1,47 +1,38 @@
 import type { ReactNode } from "react";
-import { spec as gameSpec } from "@dno/game-spec";
-import { VICE_NAMES, type CatSpec } from "@dno/generator";
-
-const STATE_NOTES: Record<string, string> = {
-  alive: "Alive. Annoyed about the box.",
-  asleep: "Asleep. Slept through the whole shipment.",
-  ghost: "Ghost. The box was sealed a long time.",
-  quantum: "Quantum. Both, until you looked. Still both.",
-};
-
-const accessoryName = (cat: CatSpec) => {
-  const base = gameSpec.traits.find((t) => t.key === "accessory")!.variants.find((v) => v.key === cat.accessory.key)!.name;
-  return cat.accessory.golden ? `Golden ${base.toLowerCase()}` : base;
-};
+import type { CatSpec } from "@dno/generator";
+import { useT } from "../i18n/app";
+import { tierName, traitName, variantName, viceName } from "../i18n/names";
 
 /** The customs form for an opened box: everything that is now public. */
 export function Declaration({ cat, children }: { cat: CatSpec; children?: ReactNode }) {
+  const t = useT();
+  const accessory = variantName("accessory", cat.accessory.key);
   return (
     <>
       <div className="slip-head">
-        <span>Declaration of contents</span>
-        <span className={`tier tier-${cat.rarity.tier}`}>{cat.rarity.tierName}</span>
+        <span>{t("decl.title")}</span>
+        <span className={`tier tier-${cat.rarity.tier}`}>{tierName(cat.rarity.tier)}</span>
       </div>
       <p className="serial small">{cat.seed}</p>
-      <p className="state-note">{STATE_NOTES[cat.state]}</p>
+      <p className="state-note">{t(`decl.note.${cat.state}`)}</p>
       <table className="traits">
         <tbody>
-          {Object.values(cat.traits).map((t) => (
-            <tr key={t.key}>
-              <th scope="row">{gameSpec.traits.find((d) => d.key === t.key)!.name}</th>
-              <td>{t.key === "accessory" ? accessoryName(cat) : t.name}</td>
-              <td className="roll">{t.roll}</td>
+          {Object.values(cat.traits).map((r) => (
+            <tr key={r.key}>
+              <th scope="row">{traitName(r.key)}</th>
+              <td>{r.key === "accessory" && cat.accessory.golden ? t("decl.golden", { name: accessory.toLowerCase() }) : variantName(r.key, r.variant)}</td>
+              <td className="roll">{r.roll}</td>
             </tr>
           ))}
           {cat.vice !== "none" && (
             <tr>
-              <th scope="row">Condition</th>
-              <td>{VICE_NAMES[cat.vice]}</td>
+              <th scope="row">{t("decl.condition")}</th>
+              <td>{viceName(cat.vice)}</td>
               <td className="roll" />
             </tr>
           )}
           <tr className="total">
-            <th scope="row">Rarity score</th>
+            <th scope="row">{t("decl.score")}</th>
             <td />
             <td className="roll">{cat.rarity.score}</td>
           </tr>

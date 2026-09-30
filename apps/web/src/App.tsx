@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { shortAddress } from "@dno/chain-adapter";
 import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
+import { useT, type AppKey } from "./i18n/app";
+import { LangSwitch } from "./i18n/LangSwitch";
 import { BoxView } from "./views/BoxView";
 import { LeaderboardView } from "./views/LeaderboardView";
 import { PairView } from "./views/PairView";
@@ -9,16 +11,17 @@ import { ShelfView } from "./views/ShelfView";
 import { SpecimensView } from "./views/SpecimensView";
 
 const VIEWS = [
-  { key: "shelf", label: "Your shelf" },
-  { key: "box", label: "One box" },
-  { key: "pair", label: "Two boxes" },
-  { key: "leaderboard", label: "Leaderboard" },
-  { key: "specimens", label: "Specimens" },
-] as const;
+  { key: "shelf", label: "nav.shelf" },
+  { key: "box", label: "nav.box" },
+  { key: "pair", label: "nav.pair" },
+  { key: "leaderboard", label: "nav.leaderboard" },
+  { key: "specimens", label: "nav.specimens" },
+] as const satisfies readonly { key: string; label: AppKey }[];
 type View = (typeof VIEWS)[number]["key"];
 
 export function App() {
   const chain = useChain();
+  const t = useT();
   const quality = useMemo(detectQuality, []);
   const sound = useMemo(() => new ShakeSound(), []);
   const [view, setView] = useState<View>("box");
@@ -60,37 +63,38 @@ export function App() {
 
       <header className="masthead">
         <h1 className="wordmark">Do not open</h1>
-        <nav className="views" aria-label="Views">
+        <nav className="views" aria-label={t("nav.views")}>
           {VIEWS.map((v) => (
             <button type="button" key={v.key} aria-pressed={view === v.key} onClick={() => setView(v.key)}>
-              {v.label}
+              {t(v.label)}
             </button>
           ))}
-          <a href="/docs.html">Manual</a>
+          <a href="/docs.html">{t("nav.manual")}</a>
           {mode !== "mock" &&
             (account ? (
-              <button type="button" className="wallet" onClick={() => void chain.disconnect()} title="Disconnect this wallet">
+              <button type="button" className="wallet" onClick={() => void chain.disconnect()} title={t("nav.disconnect")}>
                 {shortAddress(account)}
               </button>
             ) : (
               <button type="button" className="wallet" onClick={() => void chain.connect()}>
-                Connect wallet
+                {t("nav.connect")}
               </button>
             ))}
+          <LangSwitch label={t("nav.language")} />
         </nav>
       </header>
 
       <footer className="notice">
         <span>
           {chain.offline ? (
-            `Cannot reach the chain. ${chain.offline}`
+            t("footer.offline", { reason: chain.offline })
           ) : chain.connectError ? (
             chain.connectError
           ) : mode === "mock" ? (
-            "Mock depot. No chain connected; seeds are local stand-ins."
+            t("footer.mock")
           ) : collection ? (
             <>
-              {collection.chain} testnet. Contract{" "}
+              {t("footer.chain.before", { chain: collection.chain })}
               {collection.explorerUrl ? (
                 <a className="link" href={collection.explorerUrl} target="_blank" rel="noreferrer">
                   {shortAddress(collection.address)}
@@ -98,14 +102,14 @@ export function App() {
               ) : (
                 shortAddress(collection.address)
               )}
-              . Contents are encrypted with Zama FHEVM.
+              {t("footer.chain.after")}
             </>
           ) : (
-            "Reading the chain…"
+            t("footer.reading")
           )}
         </span>
         <button type="button" className="link" onClick={() => setMuted((m) => !m)} aria-pressed={muted}>
-          {muted ? "Sound is off" : "Sound is on"}
+          {muted ? t("footer.soundOff") : t("footer.soundOn")}
         </button>
       </footer>
     </div>

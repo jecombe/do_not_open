@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { spec, type SeedField } from "@dno/game-spec";
 import { buildCatSpec, decodeSeed, FIXTURE_SEEDS, resolveTrait, seedToHex, stateFromRoll } from "@dno/generator";
-import { FLOWS, PACKET_NAMES, type PacketKind, type StationId } from "./flows";
-import { ARCH_NODES, ArchScene } from "./three/arch";
+import { useLocale } from "../i18n/locale";
+import { catNames, stateName, variantName } from "../i18n/names";
+import { flows, packetName, type PacketKind, type StationId } from "./flows";
+import { useT } from "./i18n";
+import { ARCH_NODES, ArchScene, archText } from "./three/arch";
 import { FlowScene } from "./three/flow";
 import { HeroScene } from "./three/hero";
 import { FIELD_COLORS, SEED_FIELDS, SeedScene } from "./three/seed";
@@ -36,21 +39,12 @@ function useScene<T extends { dispose(): void }>(make: (host: HTMLElement) => T)
 }
 
 export function HeroFigure() {
+  const t = useT();
   const { host } = useScene((el) => new HeroScene(el, 42));
-  return <div ref={host} className="stage hero-stage" title="Click the box to shake it" />;
+  return <div ref={host} className="stage hero-stage" title={t("docs.hero.figure")} />;
 }
 
 // ------------------------------------------------------------------ seed
-
-const FIELD_NAMES: Record<SeedField, string> = {
-  stateRoll: "State roll",
-  breed: "Breed",
-  mood: "Mood",
-  accessory: "Accessory",
-  brokenThing: "Thing it broke",
-  room: "Room",
-  cosmetic: "Cosmetic",
-};
 
 const percent = (n: number, of: number) => `${((n / of) * 100).toFixed(n / of < 0.1 ? 1 : 0)}%`;
 
@@ -60,22 +54,23 @@ function randomSeed(): bigint {
 }
 
 function FieldDetail({ field, seed, sealed }: { field: SeedField; seed: bigint; sealed: boolean }) {
+  const t = useT();
   const slice = spec.seed.layout.find((l) => l.field === field)!;
-  const range = `Bits ${slice.offset} to ${slice.offset + slice.bits - 1}.`;
+  const range = t("fig.bits", { from: slice.offset, to: slice.offset + slice.bits - 1 });
   const decoded = decodeSeed(seed);
 
   if (field === "stateRoll") {
     const bounds = spec.states.map((s, i) => ({ s, share: s.rollBelow - (spec.states[i - 1]?.rollBelow ?? 0) }));
+    const list = bounds.map(({ s, share }) => `${stateName(s.key).toLowerCase()} ${percent(share, 65536)}`).join(", ");
     return (
       <p>
-        {range} Sixteen bits decide the state: {bounds.map(({ s, share }, i) => `${i ? ", " : ""}${s.name.toLowerCase()} ${percent(share, 65536)}`)}.{" "}
+        {range} {t("fig.state.intro", { list })}{" "}
         {sealed ? (
-          <>
-            The alive check compares them with {spec.states[0]!.rollBelow.toLocaleString("en")} under encryption and publishes the one-bit answer. A shake can never return these bits.
-          </>
+          t("fig.state.sealed", { n: spec.states[0]!.rollBelow })
         ) : (
           <>
-            This one rolled {decoded.stateRoll.toLocaleString("en")}: <strong>{stateFromRoll(decoded.stateRoll).name.toLowerCase()}</strong>.
+            {t("fig.rolled", { n: decoded.stateRoll })}
+            <strong>{stateName(stateFromRoll(decoded.stateRoll).key).toLowerCase()}</strong>.
           </>
         )}
       </p>
@@ -84,23 +79,24 @@ function FieldDetail({ field, seed, sealed }: { field: SeedField; seed: bigint; 
   if (field === "cosmetic") {
     return (
       <p>
-        {range} Looks only: small variations such as odd eyes. It never counts towards rarity, so there is nothing in it worth knowing early.
-        {!sealed && ` This one is ${decoded.cosmetic}.`}
+        {range} {t("fig.cosmetic")}
+        {!sealed && t("fig.cosmetic.this", { n: decoded.cosmetic })}
       </p>
     );
   }
-  const def = spec.traits.find((t) => t.key === field)!;
+  const def = spec.traits.find((d) => d.key === field)!;
   const trait = resolveTrait(field, decoded.rolls[field]);
   const variant = def.variants.find((v) => v.key === trait.variant);
   return (
     <p>
-      {range} One byte, {def.variants.length} variants, rarer ones higher up. Counts {def.weight === 1 ? "once" : `${def.weight} times`} in the rarity score.{" "}
+      {range} {t("fig.trait", { n: def.variants.length, times: def.weight === 1 ? t("fig.once") : t("fig.times", { n: def.weight }) })}{" "}
       {sealed ? (
-        <>A shake may hand this byte to whoever shook, and only to them.</>
+        t("fig.trait.sealed")
       ) : (
         <>
-          This one rolled {trait.roll}: <strong>{trait.name}</strong>
-          {variant ? `, which ${variant.width} rolls in 256 give` : ""}.
+          {t("fig.rolled", { n: trait.roll })}
+          <strong>{variantName(field, trait.variant)}</strong>
+          {variant ? t("fig.trait.width", { n: variant.width }) : ""}.
         </>
       )}
     </p>
@@ -108,6 +104,7 @@ function FieldDetail({ field, seed, sealed }: { field: SeedField; seed: bigint; 
 }
 
 export function SeedFigure() {
+  const t = useT();
   const [seed, setSeed] = useState(FIXTURE_SEEDS[2]!.seed);
   const [sealed, setSealed] = useState(true);
   const [picked, setPicked] = useState<SeedField>("stateRoll");
@@ -126,6 +123,7 @@ export function SeedFigure() {
   useEffect(() => scene.current?.setActive(focus), [scene, ready, focus]);
 
   const cat = useMemo(() => buildCatSpec({ seed }), [seed]);
+  const names = catNames(cat);
   const hex = seedToHex(seed).slice(2);
 
   return (
@@ -133,12 +131,12 @@ export function SeedFigure() {
       <div ref={host} className="stage short" />
       <figcaption className="slip">
         <div className="slip-head">
-          <span>{sealed ? "A sealed seed" : "The same seed, opened"}</span>
+          <span>{sealed ? t("fig.seed.sealedTitle") : t("fig.seed.openTitle")}</span>
           <button type="button" className="plain-button small" onClick={() => setSealed((s) => !s)}>
-            {sealed ? "Open it" : "Seal it again"}
+            {sealed ? t("fig.seed.open") : t("fig.seed.seal")}
           </button>
         </div>
-        <p className="hex" aria-label={sealed ? "Encrypted" : `Seed ${seedToHex(seed)}`}>
+        <p className="hex" aria-label={sealed ? t("fig.seed.encrypted") : t("fig.seed.aria", { hex: seedToHex(seed) })}>
           0x
           {SEED_FIELDS.map((f) => {
             const digits = f.bits / 4;
@@ -150,11 +148,11 @@ export function SeedFigure() {
             );
           })}
         </p>
-        <div className="picker" role="group" aria-label="Fields of the seed">
+        <div className="picker" role="group" aria-label={t("fig.seed.fields")}>
           {SEED_FIELDS.map((f) => (
             <button type="button" key={f.field} aria-pressed={picked === f.field} onClick={() => setPicked(f.field)} onMouseEnter={() => setHovered(f.field)} onMouseLeave={() => setHovered(null)}>
               <i style={{ background: FIELD_COLORS[f.field] }} />
-              {FIELD_NAMES[f.field]}
+              {t(`fig.field.${f.field}`)}
             </button>
           ))}
         </div>
@@ -162,13 +160,9 @@ export function SeedFigure() {
           <FieldDetail field={focus} seed={seed} sealed={sealed} />
         </div>
         <p className="fine">
-          {sealed ? (
-            "On-chain it stays like this: a ciphertext that reads as noise. The contract computes on it without decrypting it."
-          ) : (
-            <>
-              Decoded: a {cat.state} {cat.traits.breed.name.toLowerCase()}, {cat.traits.mood.name.toLowerCase()}, score {cat.rarity.score} ({cat.rarity.tierName.toLowerCase()}).
-            </>
-          )}
+          {sealed
+            ? t("fig.seed.noise")
+            : t("fig.seed.decoded", { state: names.state.toLowerCase(), breed: names.breed.toLowerCase(), mood: names.mood.toLowerCase(), score: cat.rarity.score, tier: names.tier.toLowerCase() })}
         </p>
         <button
           type="button"
@@ -178,7 +172,7 @@ export function SeedFigure() {
             setSealed(false);
           }}
         >
-          Draw another seed
+          {t("fig.seed.draw")}
         </button>
       </figcaption>
     </figure>
@@ -191,6 +185,9 @@ export function SeedFigure() {
 const STEP_SECONDS = 4.2;
 
 export function FlowFigure() {
+  const t = useT();
+  const locale = useLocale();
+  const FLOWS = useMemo(flows, [locale]);
   const [flowIndex, setFlowIndex] = useState(2);
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -204,6 +201,7 @@ export function FlowFigure() {
     scene.current?.setParties([...parties]);
   }, [scene, ready, flow]);
   useEffect(() => scene.current?.setStep(step), [scene, ready, step]);
+  useEffect(() => scene.current?.relabel(), [scene, ready, locale]);
 
   useEffect(() => {
     if (!playing) return;
@@ -226,7 +224,7 @@ export function FlowFigure() {
     <figure className="figure">
       <div ref={host} className="stage tall" />
       <figcaption className="slip">
-        <div className="picker tabs" role="group" aria-label="Which flow">
+        <div className="picker tabs" role="group" aria-label={t("fig.flow.which")}>
           {FLOWS.map((f, i) => (
             <button type="button" key={f.key} aria-pressed={i === flowIndex} onClick={() => choose(i)}>
               {f.name}
@@ -236,7 +234,7 @@ export function FlowFigure() {
         <p className="lead">{flow.summary}</p>
         <ol className="steps">
           {flow.steps.map((s, i) => (
-            <li key={s.title} className={i === stepIndex ? "is-current" : i < stepIndex ? "is-done" : ""}>
+            <li key={i} className={i === stepIndex ? "is-current" : i < stepIndex ? "is-done" : ""}>
               <button
                 type="button"
                 aria-current={i === stepIndex ? "step" : undefined}
@@ -260,16 +258,16 @@ export function FlowFigure() {
               setPlaying((p) => !p);
             }}
           >
-            {playing ? "Pause" : atEnd ? "Play again" : "Play"}
+            {playing ? t("fig.flow.pause") : atEnd ? t("fig.flow.playAgain") : t("fig.flow.play")}
           </button>
           <button type="button" className="plain-button" disabled={atEnd} onClick={() => (setStepIndex(stepIndex + 1), setPlaying(false))}>
-            Next step
+            {t("fig.flow.next")}
           </button>
         </div>
-        <ul className="legend" aria-label="What the parcels are">
+        <ul className="legend" aria-label={t("fig.flow.legend")}>
           {kinds.map((k: PacketKind) => (
             <li key={k} data-kind={k}>
-              {PACKET_NAMES[k]}
+              {packetName(k)}
             </li>
           ))}
         </ul>
@@ -281,6 +279,7 @@ export function FlowFigure() {
 // ---------------------------------------------------------- architecture
 
 export function ArchFigure() {
+  const t = useT();
   const [picked, setPicked] = useState("adapter");
   const [hovered, setHovered] = useState<string | null>(null);
   const { host, scene, ready } = useScene((el) => new ArchScene(el));
@@ -302,7 +301,7 @@ export function ArchFigure() {
         {(["portable", "chain"] as const).map((shelf) => (
           <div key={shelf}>
             <div className="slip-head">
-              <span>{shelf === "portable" ? "Top shelf: runs on any chain" : "Bottom shelf: one chain each"}</span>
+              <span>{shelf === "portable" ? t("fig.arch.top") : t("fig.arch.bottom")}</span>
             </div>
             <div className="picker" role="group">
               {ARCH_NODES.filter((n) => n.shelf === shelf).map((n) => (
@@ -315,10 +314,10 @@ export function ArchFigure() {
         ))}
         <div className="detail" aria-live="polite">
           <p>
-            <strong>{node.name}.</strong> {node.text}
+            <strong>{node.name}.</strong> {archText(node.id)}
           </p>
         </div>
-        <p className="fine">A thread means "depends on". Pick a crate to see what it needs and what needs it.</p>
+        <p className="fine">{t("fig.arch.thread")}</p>
       </figcaption>
     </figure>
   );
