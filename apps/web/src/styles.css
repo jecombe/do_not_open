@@ -91,40 +91,6 @@ button {
   mix-blend-mode: screen;
 }
 
-.views {
-  display: flex;
-  gap: 6px;
-}
-
-.views button,
-.views a {
-  padding: 8px 16px 8px 26px;
-  background: var(--tape);
-  color: var(--ink);
-  border: 0;
-  font-size: 17px;
-  font-weight: 600;
-  /* Manila tag with a clipped corner and an eyelet. */
-  clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 70%, 0 30%);
-  background-image: radial-gradient(circle at 14px 50%, var(--dock-shadow) 3.5px, transparent 4px);
-  opacity: 0.62;
-}
-
-.views button[aria-pressed="true"] {
-  opacity: 1;
-  background-color: var(--manifest);
-}
-
-.views button:hover,
-.views a:hover {
-  opacity: 1;
-}
-
-.views a {
-  line-height: 1.3;
-  text-decoration: none;
-}
-
 /* --- The slip: a shipping label laid on top of the scene --- */
 .slip {
   position: absolute;
@@ -372,8 +338,7 @@ button {
 
 @media (max-width: 700px) {
   .masthead {
-    flex-direction: column;
-    gap: 14px;
+    align-items: center;
   }
 
   .slip,
@@ -490,23 +455,6 @@ button {
   margin: 0;
   font-size: 22px;
   color: rgb(233 223 200 / 0.72);
-}
-
-.views {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-/* The wallet is a different kind of tag: inked, not manila. */
-.views .wallet {
-  background-color: var(--ink-red);
-  color: var(--manifest);
-  opacity: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.views .wallet:hover {
-  background-color: #a81f17;
 }
 
 .slip .link {
@@ -660,15 +608,6 @@ button {
 }
 
 @media (max-width: 700px) {
-  .views button {
-    padding: 6px 10px 6px 22px;
-    font-size: 15px;
-  }
-
-  .views {
-    justify-content: flex-start;
-  }
-
   .tags {
     max-height: 76px;
   }
@@ -735,32 +674,156 @@ button {
   }
 }
 
-/* --- Language tags: four small stamps at the end of the nav --- */
+/* --- Controls: a wallet tag and one manila tag that opens the packing list --- */
+.controls {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 26px;
+  background: var(--manifest);
+  color: var(--ink);
+  border: 0;
+  font-size: 17px;
+  font-weight: 700;
+  /* Manila tag with a clipped corner and an eyelet. */
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 70%, 0 30%);
+  background-image: radial-gradient(circle at 14px 50%, var(--dock-shadow) 3.5px, transparent 4px);
+}
+
+.menu-toggle:hover,
+.menu-toggle[aria-expanded="true"] {
+  background-color: var(--tape);
+}
+
+.caret {
+  width: 7px;
+  height: 7px;
+  margin-top: -4px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+
+.menu-toggle[aria-expanded="true"] .caret {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+/* The wallet is inked, not manila: a small stamp outline beside the tag. */
+.wallet {
+  padding: 6px 12px;
+  background: rgb(23 19 15 / 0.55);
+  color: var(--manifest);
+  border: 2px solid var(--ink-red);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet:hover {
+  background: var(--ink-red);
+}
+
+/* The packing list: a slip of paper hanging under the tag. */
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  width: 220px;
+  padding: 8px 0 10px;
+  background: var(--manifest);
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.5);
+  transform: rotate(0.6deg);
+  transform-origin: right top;
+  animation: menu-drop 0.14s ease-out;
+}
+
+@keyframes menu-drop {
+  from {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+
+.menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu li button,
+.menu li a {
+  display: block;
+  width: 100%;
+  padding: 7px 16px;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.menu li button:hover,
+.menu li a:hover {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.menu li button[aria-current="page"] {
+  font-weight: 700;
+  box-shadow: inset 4px 0 0 var(--ink-red);
+}
+
+.menu-rule {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 2px solid var(--ink);
+}
+
+/* Language tags: four small stamps along the bottom of the list. */
 .lang {
   display: flex;
-  gap: 3px;
-  margin-left: 4px;
+  gap: 4px;
+  margin: 8px 16px 0;
+  padding-top: 10px;
+  border-top: 1px dashed rgb(28 24 20 / 0.4);
 }
 
 .lang button {
-  padding: 8px 9px;
-  background: var(--tape);
+  flex: 1;
+  padding: 4px 0;
+  background: none;
   color: var(--ink);
-  border: 0;
+  border: 1.5px solid rgb(28 24 20 / 0.35);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.55;
 }
 
 .lang button[aria-pressed="true"] {
-  opacity: 1;
-  background: var(--manifest);
+  border-color: var(--ink-red);
+  color: var(--ink-red);
 }
 
 .lang button:hover {
-  opacity: 1;
+  border-color: var(--ink);
 }
 
 /* --- Specimens: arrows and a counter above the picker --- */

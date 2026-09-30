@@ -2,22 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { shortAddress } from "@dno/chain-adapter";
 import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
-import { useT, type AppKey } from "./i18n/app";
-import { LangSwitch } from "./i18n/LangSwitch";
+import { useT } from "./i18n/app";
+import { Masthead, type View } from "./Masthead";
 import { BoxView } from "./views/BoxView";
 import { LeaderboardView } from "./views/LeaderboardView";
 import { PairView } from "./views/PairView";
 import { ShelfView } from "./views/ShelfView";
 import { SpecimensView } from "./views/SpecimensView";
-
-const VIEWS = [
-  { key: "shelf", label: "nav.shelf" },
-  { key: "box", label: "nav.box" },
-  { key: "pair", label: "nav.pair" },
-  { key: "leaderboard", label: "nav.leaderboard" },
-  { key: "specimens", label: "nav.specimens" },
-] as const satisfies readonly { key: string; label: AppKey }[];
-type View = (typeof VIEWS)[number]["key"];
 
 export function App() {
   const chain = useChain();
@@ -51,7 +42,7 @@ export function App() {
     setView("pair");
   };
 
-  const { collection, account, mode } = chain;
+  const { collection, mode } = chain;
 
   return (
     <div className="app">
@@ -61,28 +52,7 @@ export function App() {
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}
 
-      <header className="masthead">
-        <h1 className="wordmark">Do not open</h1>
-        <nav className="views" aria-label={t("nav.views")}>
-          {VIEWS.map((v) => (
-            <button type="button" key={v.key} aria-pressed={view === v.key} onClick={() => setView(v.key)}>
-              {t(v.label)}
-            </button>
-          ))}
-          <a href="/docs.html">{t("nav.manual")}</a>
-          {mode !== "mock" &&
-            (account ? (
-              <button type="button" className="wallet" onClick={() => void chain.disconnect()} title={t("nav.disconnect")}>
-                {shortAddress(account)}
-              </button>
-            ) : (
-              <button type="button" className="wallet" onClick={() => void chain.connect()}>
-                {t("nav.connect")}
-              </button>
-            ))}
-          <LangSwitch label={t("nav.language")} />
-        </nav>
-      </header>
+      <Masthead view={view} onView={setView} />
 
       <footer className="notice">
         <span>

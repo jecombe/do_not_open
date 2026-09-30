@@ -9,6 +9,7 @@ export const it: Record<AppKey, string> = {
   "nav.specimens": "Esemplari",
   "nav.manual": "Manuale",
   "nav.connect": "Collega un wallet",
+  "nav.connectShort": "Collega",
   "nav.disconnect": "Scollega questo wallet",
   "nav.language": "Lingua",
   "footer.offline": "Impossibile raggiungere la chain. {reason}",
