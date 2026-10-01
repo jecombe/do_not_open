@@ -860,7 +860,29 @@ button {
 
 /* The wallet slip: the full address in small type, the balance stamped beneath it. */
 .wallet-slip {
-  width: 260px;
+  width: min(320px, calc(100vw - 32px));
+  max-height: calc(100dvh - 110px);
+  overflow-y: auto;
+}
+
+.slip-section {
+  margin: 4px 16px 0;
+  white-space: normal;
+}
+
+.slip-section .find {
+  margin-top: 8px;
+}
+
+.slip-heading {
+  margin: 12px 0 0;
+  padding-top: 8px;
+  border-top: 2px solid var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
 }
 
 .slip-address {
@@ -886,6 +908,12 @@ button {
   font-size: 20px;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* A decrypted figure the chain has moved past since: kept, but plainly out of date. */
+.slip-balance strong.is-stale {
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 
 /* Language tags: four small stamps along the bottom of the list. */

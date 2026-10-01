@@ -149,6 +149,8 @@ export class MockAdapter implements ChainAdapter {
   private readonly usdc = new Map<Address, bigint>();
   /** cUSDC: encrypted on a real chain, readable by its holder only. */
   private readonly cUsdc = new Map<Address, bigint>();
+  /** Bumped on every cUSDC move, standing in for the fresh ciphertext a real transfer makes. */
+  private readonly cUsdcMoves = new Map<Address, number>();
   private readonly listeners = new Set<(account: Address | null) => void>();
   private readonly latency: number;
   private block = 5_000_000;
@@ -265,6 +267,10 @@ export class MockAdapter implements ChainAdapter {
 
   async usdcBalance(owner: Address): Promise<bigint> {
     return this.usdc.get(owner) ?? 0n;
+  }
+
+  async confidentialUsdcHandle(owner: Address): Promise<string> {
+    return `mock-cusdc:${owner}:${this.cUsdcMoves.get(owner) ?? 0}`;
   }
 
   async confidentialUsdcBalance(opts?: ActionOptions): Promise<bigint> {
@@ -761,6 +767,7 @@ export class MockAdapter implements ChainAdapter {
 
   private credit(book: Map<Address, bigint>, who: Address, delta: bigint): void {
     book.set(who, (book.get(who) ?? 0n) + delta);
+    if (book === this.cUsdc) this.cUsdcMoves.set(who, (this.cUsdcMoves.get(who) ?? 0) + 1);
   }
 
   private get(tokenId: number): MockBox {
