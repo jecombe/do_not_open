@@ -181,8 +181,18 @@ adapter, ethers and the Relayer SDK are never downloaded: they sit behind a dyna
 
 The leaderboard ranks only what is public: opened cats by rarity score, and the players
 who opened them (`Observed` names the opener, the only holder that is ever public). It
-reads every `Observed` event through `openedCats()`; at mainnet scale that wants an
-indexer. `boxesOf` cannot use one: only the account itself can decrypt its receipts.
+reads every `Observed` event through `openedCats()`, served by the backend's index
+([`apps/api`](../apps/api/README.md)) when `VITE_API_URL` is set. `boxesOf` gets its receipts
+from the index too, but only the account itself can decrypt them: the backend never knows
+who holds what.
+
+## The backend
+
+`apps/api` follows the protocol's logs into Postgres and serves the app's reads (box lists,
+leaderboard, duels, pending requests, receipts, economy, token metadata), so visitors do not
+each hit a public RPC. The EVM adapter reads it first and falls back on the RPC when it is
+down, or behind the account's own last transaction. Duels are kept there, so an account finds
+its open duels from any device. Deployment: [`deploy/README.md`](../deploy/README.md).
 
 ### Gaps against the original brief
 

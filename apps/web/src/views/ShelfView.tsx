@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { BoxInfo, PendingRequest } from "@dno/chain-adapter";
+import { sameAddress, type BoxInfo, type DuelInfo, type PendingRequest } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -19,12 +19,14 @@ interface Props {
   onSelect: (tokenId: number) => void;
   /** Takes a box to the pair view to propose a duel or an entanglement with it. */
   onPair: (tokenId: number, intent: PairIntent) => void;
+  /** Opens the pair view on two boxes, to answer or finish the duel between them. */
+  onOpenPair: (tokenA: number, tokenB: number) => void;
 }
 
 /** How many of the account's boxes are read and listed. The newest come first. */
 const LIST_LIMIT = 40;
 
-export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
+export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, findMyBoxes, refresh, connect, mode } = useChain();
   const t = useT();
   const { foldClass, foldButton } = useFold();
@@ -36,6 +38,7 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
   const among = Math.max(quantity, ids ?? maxPerTx);
   const [infos, setInfos] = useState<BoxInfo[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
+  const [duels, setDuels] = useState<DuelInfo[]>([]);
   const [earned, setEarned] = useState<bigint | null>(null);
   const pay = usePayment();
   const [arrived, setArrived] = useState<number[]>([]);
@@ -55,6 +58,24 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
       live = false;
     };
   }, [adapter, account, listed]);
+
+  // Open duels the account challenged, and those on its boxes once it found them: kept by the
+  // API, so they follow the account from one device to another.
+  useEffect(() => {
+    let live = true;
+    if (!account) setDuels([]);
+    else
+      void adapter
+        .duels({ account, tokenIds: boxesKnown ? myBoxes : undefined, open: true })
+        .then((list) => live && setDuels(list))
+        .catch(() => live && setDuels([]));
+    return () => {
+      live = false;
+    };
+  }, [adapter, account, boxesKnown, myBoxes]);
+
+  const duelState = (d: DuelInfo) =>
+    d.status === "pending" ? t("shelf.duelToFinish") : sameAddress(d.challenger, account) ? t("shelf.duelTheirMove") : t("shelf.duelYourMove");
 
   const onBench: ShelfBox[] = useMemo(
     () => infos.slice(0, SHELF_CAPACITY).map((b) => ({
@@ -160,6 +181,22 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
             )}
             {myBoxes.length > LIST_LIMIT && <p className="fine">{t("shelf.showing", { limit: LIST_LIMIT, total: myBoxes.length })}</p>}
             {boxesKnown && myBoxes.length > 0 && <p className="fine">{t("shelf.private")}</p>}
+
+            {duels.length > 0 && (
+              <>
+                <ul className="tags" aria-label={t("shelf.duels")}>
+                  {duels.map((d) => (
+                    <li key={d.duelId}>
+                      <button type="button" onClick={() => onOpenPair(d.tokenA, d.tokenB)}>
+                        {t("shelf.duelVs", { a: buildBoxSpec(d.tokenA).serial, b: buildBoxSpec(d.tokenB).serial })}
+                        <span>{duelState(d)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="fine">{t("shelf.duelsHint")}</p>
+              </>
+            )}
 
             <div className="order">
               <div className="stepper" role="group" aria-label={t("shelf.howMany")}>

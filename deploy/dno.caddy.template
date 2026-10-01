@@ -1,0 +1,6 @@
+# DO NOT OPEN API. Rendered by deploy.sh into /opt/edge/sites/dno.caddy.
+__API_DOMAIN__ {
+	encode zstd gzip
+	reverse_proxy dno-api:8080
+	header -Server
+}

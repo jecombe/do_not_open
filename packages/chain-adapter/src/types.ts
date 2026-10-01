@@ -349,6 +349,10 @@ export interface ChainAdapter {
   pair(tokenA: number, tokenB: number): Promise<PairInfo>;
   /** Every opened box, with who opened it. */
   openedCats(): Promise<OpenedCat[]>;
+  /** Duels `account` challenged or accepted, and those that involve any of `tokenIds` (the
+   *  account's boxes, as `boxesOf` found them), newest first. With `open`, only those still
+   *  waiting for someone. The same list from any device. */
+  duels(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]>;
   /** Native coin `owner` holds, in the smallest unit (wei on EVM). */
   balance(owner: Address): Promise<bigint>;
   /** Plain USDC `owner` holds. Public. */

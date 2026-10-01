@@ -12,6 +12,8 @@ export interface AdapterConfig {
   /** sepolia: read endpoint, and an optional contract address override. */
   rpcUrl?: string;
   address?: string;
+  /** sepolia: the DO NOT OPEN API, read first when set. */
+  apiUrl?: string;
   mock?: MockOptions;
 }
 
@@ -22,7 +24,7 @@ export interface AdapterConfig {
 export async function createAdapter(config: AdapterConfig): Promise<ChainAdapter> {
   if (config.mode === "sepolia") {
     const { createSepoliaBrowserAdapter } = await import("./evm/browser");
-    return createSepoliaBrowserAdapter({ rpcUrl: config.rpcUrl, address: config.address });
+    return createSepoliaBrowserAdapter({ rpcUrl: config.rpcUrl, address: config.address, apiUrl: config.apiUrl });
   }
   return new MockAdapter(config.mock);
 }

@@ -66,6 +66,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       mode,
       rpcUrl: import.meta.env.VITE_SEPOLIA_RPC_URL,
       address: import.meta.env.VITE_DNO_ADDRESS,
+      apiUrl: import.meta.env.VITE_API_URL,
     }).then((a) => {
       if (!live) return;
       unsubscribe = a.onAccountChange(setAccount);

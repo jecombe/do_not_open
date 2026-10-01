@@ -9,4 +9,6 @@ interface ImportMetaEnv {
   readonly VITE_SEPOLIA_RPC_URL?: string;
   /** Overrides the committed DoNotOpen address. */
   readonly VITE_DNO_ADDRESS?: string;
+  /** The DO NOT OPEN API (apps/api). Reads go there first; the RPC answers when it lags or is away. */
+  readonly VITE_API_URL?: string;
 }

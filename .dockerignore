@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+.git
+.github
+assets
+docs
+packages/contracts-evm/artifacts
+packages/contracts-evm/cache
+packages/contracts-evm/types
+packages/contracts-evm/fhevmTemp
+**/coverage

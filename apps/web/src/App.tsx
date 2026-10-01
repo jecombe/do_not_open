@@ -74,7 +74,7 @@ export function App() {
 
   return (
     <div className="app">
-      {view === "shelf" && <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} />}
+      {view === "shelf" && <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} onOpenPair={(a, b) => showPair(a, b, "duel")} />}
       {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onOverview={showWarehouse} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
       {view === "warehouse" && <WarehouseView quality={quality} focus={focus} onInspect={showBox} />}
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} />}

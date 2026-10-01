@@ -1,0 +1,53 @@
+# DO NOT OPEN backend: Postgres and the API (indexer included). No port is published: the
+# shared edge proxy (deploy/edge) reaches the API over the `edge` network, so other projects
+# on the same server keep ports 80 and 443 through it. Values come from .env next to this file.
+name: dno
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dno
+      POSTGRES_DB: dno
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dno -d dno"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 1g
+    networks: [internal]
+
+  api:
+    image: ${API_IMAGE:?set API_IMAGE}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://dno:${POSTGRES_PASSWORD}@postgres:5432/dno
+      PUBLIC_URL: https://${API_DOMAIN}
+      TRUST_PROXY: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+    networks:
+      internal: {}
+      edge:
+        # The name the edge proxy routes to. Unique across projects on this server.
+        aliases: [dno-api]
+
+networks:
+  # Postgres is only on this one: nothing from another project can reach it.
+  internal: {}
+  edge:
+    external: true
+
+volumes:
+  pgdata:

@@ -1,0 +1,30 @@
+# The server's front door, shared by every project on it: one Caddy owns ports 80 and 443,
+# gets certificates, and routes each domain to its project over the `edge` network.
+# A project adds itself by dropping /opt/edge/sites/<project>.caddy and reloading Caddy.
+name: edge
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: edge-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+
+networks:
+  # Created once by deploy.sh (`docker network create edge`), shared by every project.
+  edge:
+    name: edge
+    external: true
+
+volumes:
+  caddy_data:
+  caddy_config:
