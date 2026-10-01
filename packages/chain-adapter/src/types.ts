@@ -353,6 +353,9 @@ export interface ChainAdapter {
   balance(owner: Address): Promise<bigint>;
   /** Plain USDC `owner` holds. Public. */
   usdcBalance(owner: Address): Promise<bigint>;
+  /** The ciphertext handle of `owner`'s cUSDC balance. Public, and new after every transfer in
+   *  or out: a decrypted balance is still right as long as the handle it came from is. */
+  confidentialUsdcHandle(owner: Address): Promise<string>;
   /** Decrypts the connected account's cUSDC balance, for its eyes only. */
   confidentialUsdcBalance(opts?: ActionOptions): Promise<bigint>;
   /** The connected account's openings, alive checks and entanglements waiting for their proof. */

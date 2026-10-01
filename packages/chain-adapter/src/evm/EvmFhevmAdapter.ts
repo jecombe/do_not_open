@@ -449,6 +449,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.reading(this.at(usdc).balanceOf!(owner));
   }
 
+  async confidentialUsdcHandle(owner: Address): Promise<string> {
+    const { cUsdc } = await this.payment();
+    return String(await this.reading(this.at(cUsdc).confidentialBalanceOf!(owner)));
+  }
+
   async confidentialUsdcBalance(opts?: ActionOptions): Promise<bigint> {
     const { cUsdc } = await this.payment();
     const account = await this.signer().getAddress();

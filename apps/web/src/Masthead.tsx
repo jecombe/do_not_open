@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { formatAmount, shortAddress, type Address } from "@dno/chain-adapter";
-import { useChain } from "./chain/ChainProvider";
+import { useAction, useChain } from "./chain/ChainProvider";
+import { stepCopy } from "./chain/copy";
+import { usePayment } from "./chain/payment";
+import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
+import { parseAmount } from "./views/PantryView";
+
+/** Any view may open the wallet slip, to send the user where tokens are bought and shielded. */
+const openers = new Set<() => void>();
+export function openWallet(): void {
+  for (const o of openers) o();
+}
 
 export const VIEWS = [
   { key: "shelf", label: "nav.shelf" },
@@ -41,6 +51,16 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
   useDismiss(open, root, closeMenu, toggle);
   useDismiss(!!picking, root, closePicker, walletButton);
   useDismiss(slip, root, closeSlip, walletButton);
+
+  useEffect(() => {
+    const open = () => {
+      setOpen(false);
+      closePicker();
+      setSlip(true);
+    };
+    openers.add(open);
+    return () => void openers.delete(open);
+  }, [closePicker]);
 
   const current = VIEWS.find((v) => v.key === menuKey(view))!;
   const { account, mode } = chain;
@@ -159,35 +179,163 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
   );
 }
 
-/** The connected account up close: its full address, what it holds, and the way out. */
+/** The connected account up close: its full address, what it holds, ways to get USDC and cUSDC, and the way out. */
 function WalletSlip({ id, account, onDisconnect }: { id: string; account: Address; onDisconnect: () => void }) {
   const { adapter, collection } = useChain();
   const t = useT();
+  const own = useAction();
+  const shielded = useShielded(own.busy);
   const [balance, setBalance] = useState<bigint | null | "unread">(null);
+  const [usdc, setUsdc] = useState<bigint | null>(null);
+  const [shieldText, setShieldText] = useState("");
+  const [buyText, setBuyText] = useState("");
+  const pay = usePayment();
+  const [buyShielded, setBuyShielded] = useState(pay === "cusdc");
+  const [quote, setQuote] = useState<{ usdcOut: bigint; fee: bigint } | null>(null);
+  const payment = collection?.payment;
+  // Anything but a decryption may have moved money.
+  const moving = own.busy === "reveal" ? null : own.busy;
 
-  // Read on every opening: the balance moves with each paid action.
+  // Read on every opening, and again after each action taken from here.
   useEffect(() => {
+    if (moving) return;
     let live = true;
     adapter.balance(account).then(
       (wei) => live && setBalance(wei),
       () => live && setBalance("unread"),
     );
+    if (payment) void adapter.usdcBalance(account).then((b) => live && setUsdc(b), () => live && setUsdc(null));
     return () => {
       live = false;
     };
-  }, [adapter, account]);
+  }, [adapter, account, payment, moving]);
 
   const currency = collection?.currency ?? { symbol: "ETH", decimals: 18 };
+  const coinIn = parseAmount(buyText, currency.decimals);
+  const hasRamp = !!payment?.ramp;
+  useEffect(() => {
+    setQuote(null);
+    if (!coinIn || !hasRamp) return;
+    let live = true;
+    const timer = setTimeout(() => void adapter.quoteUsdc(coinIn).then((q) => live && setQuote(q), () => undefined), 250);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [adapter, coinIn, hasRamp]);
+
+  const amount = (v: bigint) => (payment ? formatAmount(v, payment.decimals) : "");
+  const shieldAmount = payment ? parseAmount(shieldText, payment.decimals) : null;
+  const shieldTooMuch = !!shieldAmount && usdc !== null && shieldAmount > usdc;
+  const working = !!own.busy;
+
+  const shield = async () => {
+    if (!shieldAmount || shieldTooMuch) return;
+    // `run` answers undefined on failure: return something on success to tell them apart.
+    if (!(await own.run("shield", (o) => adapter.shieldUsdc(shieldAmount, o).then(() => true)))) return;
+    setShieldText("");
+  };
+  const buy = async () => {
+    if (!coinIn) return;
+    if (!(await own.run("buy", (o) => adapter.buyUsdc(coinIn, buyShielded, o).then(() => true)))) return;
+    setBuyText("");
+  };
+  const { known, stale } = shielded;
+
   return (
     <div className="menu wallet-slip" id={id} role="group" aria-label={t("nav.yourWallet")}>
       <p className="menu-title">{t("nav.yourWallet")}</p>
       <p className="slip-address">{account}</p>
       <p className="slip-balance">
-        <span>{t("nav.balance")}</span>
+        <span>{currency.symbol}</span>
         <strong aria-live="polite">
-          {balance === null ? "…" : balance === "unread" ? t("nav.balanceUnread") : `${roundAmount(balance, currency.decimals)} ${currency.symbol}`}
+          {balance === null ? "…" : balance === "unread" ? t("nav.balanceUnread") : roundAmount(balance, currency.decimals)}
         </strong>
       </p>
+      {payment && (
+        <>
+          <p className="slip-balance">
+            <span>{payment.symbol}</span>
+            <strong aria-live="polite">{usdc === null ? "…" : amount(usdc)}</strong>
+          </p>
+          <p className="slip-balance">
+            <span>{payment.confidentialSymbol}</span>
+            <strong aria-live="polite" className={stale ? "is-stale" : undefined}>
+              {known ? amount(known.value) : t("nav.encrypted")}
+            </strong>
+          </p>
+          <div className="slip-section">
+            <p className="fine">
+              <button type="button" className="link" onClick={() => void own.run("reveal", shielded.reveal)} disabled={working}>
+                {known ? t("nav.decryptAgain") : t("nav.decrypt")}
+              </button>{" "}
+              {stale ? t("nav.decryptStale") : known ? t("nav.decryptKept") : t("nav.decryptHint")}
+            </p>
+
+            <p className="slip-heading">{t("nav.getTokens")}</p>
+            {payment.ramp && (
+              <>
+                <form
+                  className="find"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void buy();
+                  }}
+                >
+                  <label htmlFor={`${id}-buy`}>{t("pay.buyLabel", { coin: currency.symbol, symbol: buyShielded ? payment.confidentialSymbol : payment.symbol })}</label>
+                  <input id={`${id}-buy`} inputMode="decimal" autoComplete="off" value={buyText} onChange={(e) => setBuyText(e.target.value)} placeholder="0.01" disabled={working} />
+                  <button type="submit" className="plain-button" disabled={working || !coinIn}>
+                    {own.busy === "buy" ? t("pay.buying") : t("pay.buyGo")}
+                  </button>
+                </form>
+                <p className="fine">
+                  <label>
+                    <input type="checkbox" checked={buyShielded} onChange={(e) => setBuyShielded(e.target.checked)} disabled={working} />{" "}
+                    {t("pay.buyShielded", { cSymbol: payment.confidentialSymbol })}
+                  </label>
+                </p>
+                <p className="fine">
+                  {quote
+                    ? t("pay.buyQuote", {
+                        out: amount(quote.usdcOut),
+                        symbol: buyShielded ? payment.confidentialSymbol : payment.symbol,
+                        fee: formatAmount(quote.fee, currency.decimals),
+                        coin: currency.symbol,
+                        pct: payment.ramp.feeBps / 100,
+                      })
+                    : t("pay.buyHint", { pct: payment.ramp.feeBps / 100, coin: currency.symbol })}
+                </p>
+              </>
+            )}
+
+            <form
+              className="find"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void shield();
+              }}
+            >
+              <label htmlFor={`${id}-shield`}>{t("pay.shieldLabel", { symbol: payment.symbol, cSymbol: payment.confidentialSymbol })}</label>
+              <input id={`${id}-shield`} inputMode="decimal" autoComplete="off" value={shieldText} onChange={(e) => setShieldText(e.target.value)} placeholder={usdc ? amount(usdc) : "1"} disabled={working} />
+              <button type="submit" className="plain-button" disabled={working || !shieldAmount || shieldTooMuch}>
+                {own.busy === "shield" ? t("pay.shielding") : t("pay.shieldGo")}
+              </button>
+            </form>
+            <p className="fine">{shieldTooMuch ? t("pay.short", { need: amount(shieldAmount!), symbol: payment.symbol }) : t("pay.shieldFree")}</p>
+
+            {payment.faucet !== null && (
+              <p className="fine">
+                <button type="button" className="link" onClick={() => void own.run("faucet", (o) => adapter.faucetUsdc(o))} disabled={working}>
+                  {t("pay.faucet", { amount: amount(payment.faucet), symbol: payment.symbol })}
+                </button>
+              </p>
+            )}
+            <div aria-live="polite">
+              {own.error ? <p className="fine problem">{own.error}</p> : own.busy ? <p className="fine">{stepCopy(own.step, own.busy === "reveal")}</p> : null}
+            </div>
+          </div>
+        </>
+      )}
       <ul>
         <li className="menu-rule">
           <button type="button" onClick={onDisconnect}>
