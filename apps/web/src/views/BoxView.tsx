@@ -13,6 +13,7 @@ import { cap, catNames } from "../i18n/names";
 import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scenes";
 import { Declaration } from "./Declaration";
 import { PayWith } from "./PayWith";
+import { ShareBox } from "./ShareBox";
 import { Stage } from "./Stage";
 import { PAYMENT_STEPS, StepTracker, type PlannedStep } from "./StepTracker";
 import { parseAmount } from "./PantryView";
@@ -300,6 +301,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
 
   const revealed = cat && !opening;
   const names = cat ? catNames(cat) : null;
+  const share = info && (
+    <ShareBox
+      key={`${tokenId}-${revealed ? cat.seed : "sealed"}`}
+      tokenId={tokenId}
+      serial={box.serial}
+      cat={revealed ? cat : null}
+      mine={isHolder}
+      shakeFee={fee(collection?.fees.paidShake ?? 0n, collection, pay)}
+      holderShare={HOLDER_SHARE}
+    />
+  );
 
   return (
     <>
@@ -380,6 +392,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
             ) : note === "box.noteWeighed" ? (
               <p className="fine">{t(note)}</p>
             ) : null}
+            {share}
             {steps}
           </Declaration>
         ) : (
@@ -551,6 +564,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 </p>
               )}
             </div>
+            {share}
             {steps}
           </>
         )}
