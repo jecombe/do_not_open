@@ -1,6 +1,6 @@
 import { BrowserProvider, type Eip1193Provider, type Signer } from "ethers";
 import { ChainError, type WalletOption } from "../types";
-import { loadWalletConnect, type WalletConnectProvider } from "./walletconnect";
+import { approvesChain, loadWalletConnect, type WalletConnectProvider } from "./walletconnect";
 
 /** Where signatures come from: a browser wallet, or a fixed signer in scripts and tests. */
 export interface WalletSource {
@@ -153,6 +153,8 @@ export class InjectedWallet implements WalletSource {
       // The session lives in WalletConnect's own storage: the provider has to load to find it.
       const walletConnect = await this.loadWalletConnect().catch(() => null);
       if (!walletConnect?.session) return;
+      // The session may come back on another of its chains; moving to an approved one prompts nobody.
+      if (approvesChain(walletConnect, this.chain.chainId)) await this.ensureChain(walletConnect).catch(() => undefined);
     } else if (!known || !(known === LEGACY_ID ? this.legacy : this.found.has(known))) return;
     try {
       const ethereum = this.use(known);
