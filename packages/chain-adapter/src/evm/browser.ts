@@ -11,9 +11,11 @@ export interface BrowserEvmOptions {
   address?: string;
   /** The DO NOT OPEN API, which indexes the committed deployment. Reads go to the RPC without it. */
   apiUrl?: string;
+  /** Reown (WalletConnect) project id. Without it, only wallets injected in the browser are offered. */
+  walletConnectProjectId?: string;
 }
 
-/** Sepolia through the injected wallet and the Relayer SDK's browser build. */
+/** Sepolia through an injected wallet or WalletConnect, and the Relayer SDK's browser build. */
 export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFhevmAdapter {
   const chain = { ...SEPOLIA, rpcUrl: opts.rpcUrl || SEPOLIA.rpcUrl };
   const ethereum = (globalThis as { ethereum?: ConstructorParameters<typeof InjectedWallet>[0] }).ethereum;
@@ -32,7 +34,7 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     // The API indexes the committed deployment only: another address reads the chain.
     indexer: opts.apiUrl && !opts.address ? new IndexerClient(opts.apiUrl) : undefined,
     readProvider: new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true }),
-    wallet: new InjectedWallet(ethereum, chain),
+    wallet: new InjectedWallet(ethereum, chain, opts.walletConnectProjectId || undefined),
     loadRelayer: async () => {
       // Several megabytes of WASM: loaded on the first decryption, never before.
       const { initSDK, createInstance, SepoliaConfig } = await import("@zama-fhe/relayer-sdk/web");
