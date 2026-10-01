@@ -62,6 +62,21 @@ curl -s https://<api-domain>/health | jq
 docker compose exec postgres psql -U dno          # the database
 ```
 
+A `logdno` shell function is normally set up in the local `~/.zshrc` to stream these logs from
+your machine over SSH, without logging in by hand first:
+
+```zsh
+# ~/.zshrc
+logdno () {
+    local service="${1:-api}"
+    local lines="${2:-200}"
+    ssh vps_zama "cd /opt/dno && docker compose logs -f --tail ${lines} ${service}"
+}
+```
+
+`logdno` follows the API, `logdno postgres` the database, `logdno api 500` the last 500 lines.
+It relies on a `vps_zama` host in `~/.ssh/config` pointing at the server.
+
 Rolling back is deploying an older image: `bash /opt/dno/deploy.sh ghcr.io/jecombe/do_not_open-api:<older-sha>`
 (after `docker login ghcr.io`).
 
