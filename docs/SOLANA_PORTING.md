@@ -161,8 +161,8 @@ Sepolia one. Nothing in `apps/web` changes except the wallet button's label.
    one has (`decodes seeds exactly like the TypeScript generator`).
 6. proveAlive, feed, entangle, duel. Re-measure costs and re-decide the batch size.
    The croquette economy comes after: a confidential SPL token (or Zama's equivalent of
-   ERC-7984) next to a plain SPL mint for markets, and a Pantry program with one stash
-   account per box.
+   ERC-7984) next to a plain SPL mint for markets, and a Pantry program with one weight
+   account per box (encrypted weight, today's meals and amount, the weigh-in).
 7. `SolanaAdapter`, then run the app in a third mode.
 8. Port the test suite: the 80 contract tests are written against behaviour, not against
    Solidity, and their names read as a specification.

@@ -1,5 +1,5 @@
 import { spec, TRAIT_KEYS } from "@dno/game-spec";
-import { buildCatSpec, mulberry32, stateDef } from "@dno/generator";
+import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
 import {
   ChainError,
   type ActionOptions,
@@ -21,6 +21,7 @@ import {
   type TraitRoll,
   type TxRecord,
   type WalletOption,
+  type WeighIn,
 } from "../types";
 
 /** The account the mock signs you in as, and the one that holds the other boxes. */
@@ -41,12 +42,16 @@ interface MockBox {
   shakes: number;
   publicTraits: Map<number, number>;
   revealed: RevealedContents | null;
-  /** Croquettes in the box's stash. Encrypted on a real chain: nobody can read it. */
-  stash: bigint;
+  /** Croquettes the cat ate in its life. Encrypted on a real chain until it is weighed. */
+  weight: bigint;
   meals: number;
+  /** Mock day of the last meal, with that day's meals and croquettes. */
+  mealDay: number;
+  mealsToday: number;
+  eatenToday: bigint;
   /** Mock milliseconds of the last purr; null until the welcome bag is paid. */
   lastPurr: number | null;
-  settled: boolean;
+  weighIn: WeighIn | null;
 }
 
 const ECONOMY = spec.economy;
@@ -82,6 +87,25 @@ export function mockSeedForToken(tokenId: number): bigint {
 }
 
 /**
+ * The weigh-in, by the Pantry's rules. The contract draws the tolerance from keccak256 of the
+ * seed; the mock stands in with a seeded PRNG, just as deterministic and as unknown before opening.
+ */
+export function mockWeighIn(weight: bigint, seed: bigint): WeighIn {
+  const { sick: s, diseases } = ECONOMY.weight;
+  const rand = mulberry32(fold32(seed) ^ 0x5eed7a11);
+  const tolerance = BigInt(s.minWeight) + (BigInt(Math.floor(rand() * 2 ** 32)) % BigInt(s.weightSpread));
+  const roll = Math.floor(rand() * 65_536);
+  const sick = weight >= tolerance;
+  return {
+    weight,
+    build: buildForWeight(weight).key,
+    sick,
+    disease: sick ? diseases.find((d) => roll < d.rollBelow)!.key : null,
+    tolerance,
+  };
+}
+
+/**
  * The whole game in memory, with the same rules and the same refusals as the contract.
  * The other holder (the night shift) accepts every duel and every entanglement at once,
  * so each flow can be played alone.
@@ -105,6 +129,8 @@ export class MockAdapter implements ChainAdapter {
   private readonly hidden = new Map<Address, bigint>();
   private reserve = allocation("gameReserve") + allocation("welcomeBags");
   private burnt = 0n;
+  /** The treasury's uncollected share of the meals. */
+  private treasury = 0n;
   private wrapped = allocation("gameReserve") + allocation("welcomeBags");
   private pool = { croq: allocation("liquidity"), native: ETH / 50n };
   private purrs = 0;
@@ -374,8 +400,10 @@ export class MockAdapter implements ChainAdapter {
       purrMaxDays: purr.maxDays,
       halvings: this.halvings(),
       halvingPeriod: (purr.halvingDays * this.dayMs) / 1000,
+      mealsPerDay: ECONOMY.meal.mealsPerDay,
+      maxEatenPerDay: BigInt(ECONOMY.meal.maxEatenPerDay),
+      mealTreasuryBps: ECONOMY.meal.treasuryBps,
       mealBurnBps: ECONOMY.meal.burnBps,
-      payoutBps: [...spec.states].sort((a, b) => a.id - b.id).map((s) => ECONOMY.settlement.payoutBps[s.key]),
       maxBoxesPerClaim: 10,
       links: { croq: null, cCroq: null, pantry: null },
       market: { name: "Mock pool", poolUrl: null, appUrl: null, croqReserve: this.pool.croq, nativeReserve: this.pool.native },
@@ -385,7 +413,14 @@ export class MockAdapter implements ChainAdapter {
   async boxPantry(tokenId: number): Promise<BoxPantry> {
     const b = this.get(tokenId);
     const next = b.lastPurr === null ? this.now() : b.lastPurr + this.dayMs;
-    return { meals: b.meals, welcomed: b.lastPurr !== null, nextClaimAt: Math.floor(next / 1000), settled: b.settled };
+    return {
+      meals: b.meals,
+      mealsToday: b.mealDay === this.day() ? b.mealsToday : 0,
+      welcomed: b.lastPurr !== null,
+      nextClaimAt: Math.floor(next / 1000),
+      weighing: b.weighIn ? "done" : "none",
+      weighIn: b.weighIn,
+    };
   }
 
   async croqBalance(owner: Address): Promise<bigint> {
@@ -438,30 +473,47 @@ export class MockAdapter implements ChainAdapter {
 
   async feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void> {
     const me = this.signer();
-    const box = this.sealed(tokenId);
+    const box = this.get(tokenId);
+    if (box.owner !== me) throw revert("NotHolder");
+    if (box.status !== "sealed") throw revert("NotSealed");
+    const today = this.day();
+    if (box.mealDay !== today) Object.assign(box, { mealDay: today, mealsToday: 0, eatenToday: 0n });
+    if (box.mealsToday >= ECONOMY.meal.mealsPerDay) throw revert("NoMoreMealsToday");
     if (amount < 0n) throw revert("InvalidAmount");
     await this.send(opts, "feed");
-    // Like the contract: too little moves nothing, and says nothing.
-    const moved = (this.hidden.get(me) ?? 0n) >= amount ? amount : 0n;
+    // Like the contract: past the day's allowance the offer is cut down, too little moves nothing.
+    const room = BigInt(ECONOMY.meal.maxEatenPerDay) - box.eatenToday;
+    const capped = amount < room ? amount : room;
+    const moved = (this.hidden.get(me) ?? 0n) >= capped ? capped : 0n;
     this.credit(this.hidden, me, -moved);
-    const burnt = (moved * BigInt(ECONOMY.meal.burnBps)) / BPS;
-    box.stash += moved - burnt;
-    this.burnt += burnt;
+    const toTreasury = (moved * BigInt(ECONOMY.meal.treasuryBps)) / BPS;
+    const toFire = (moved * BigInt(ECONOMY.meal.burnBps)) / BPS;
+    this.treasury += toTreasury;
+    this.burnt += toFire;
+    this.reserve += moved - toTreasury - toFire;
+    box.weight += moved;
+    box.eatenToday += moved;
+    box.mealsToday += 1;
     box.meals += 1;
   }
 
-  async settle(tokenId: number, opts?: ActionOptions): Promise<void> {
+  async eatenToday(tokenId: number, opts?: ActionOptions): Promise<bigint> {
     this.signer();
     const box = this.get(tokenId);
-    if (box.settled) throw revert("AlreadySettled");
+    opts?.onStep?.("decrypting");
+    await this.wait(1);
+    return box.mealDay === this.day() ? box.eatenToday : 0n;
+  }
+
+  async weigh(tokenId: number, opts?: ActionOptions): Promise<WeighIn> {
+    this.signer();
+    const box = this.get(tokenId);
     if (box.status !== "revealed" || !box.revealed) throw revert("NotRevealed");
-    await this.send(opts, "settle");
-    const state = spec.states.find((s) => s.id === box.revealed!.state)!;
-    const payout = (box.stash * BigInt(ECONOMY.settlement.payoutBps[state.key])) / BPS;
-    this.burnt += box.stash - payout;
-    this.credit(this.hidden, box.owner, payout);
-    box.stash = 0n;
-    box.settled = true;
+    if (box.weighIn) throw revert("AlreadyWeighed");
+    await this.send(opts, "weigh");
+    if (box.weight > 0n) await this.publish(opts, "finalizeWeigh");
+    box.weighIn = mockWeighIn(box.weight, BigInt(box.revealed.seed));
+    return box.weighIn;
   }
 
   async wrap(amount: bigint, opts?: ActionOptions): Promise<void> {
@@ -528,11 +580,19 @@ export class MockAdapter implements ChainAdapter {
       shakes: 0,
       publicTraits: new Map(),
       revealed: null,
-      stash: 0n,
+      weight: 0n,
       meals: 0,
+      mealDay: -1,
+      mealsToday: 0,
+      eatenToday: 0n,
       lastPurr: null,
-      settled: false,
+      weighIn: null,
     };
+  }
+
+  /** The mock's "UTC day": one per `dayMs`. */
+  private day(): number {
+    return Math.floor(this.now() / this.dayMs);
   }
 
   private halvings(): number {

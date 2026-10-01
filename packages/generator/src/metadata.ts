@@ -34,6 +34,17 @@ function publicAttributes(facts: PublicBoxFacts): MetadataAttribute[] {
   return out;
 }
 
+/** What the weigh-in made public. Nothing until the cat is weighed. */
+function weightAttributes(cat: CatSpec): MetadataAttribute[] {
+  if (!cat.weight) return [];
+  const out: MetadataAttribute[] = [
+    { trait_type: "Build", value: cat.weight.buildName },
+    { trait_type: "Weight", value: cat.weight.weight, display_type: "number" },
+  ];
+  if (cat.weight.sick && cat.weight.diseaseName) out.push({ trait_type: "Disease", value: cat.weight.diseaseName });
+  return out;
+}
+
 /**
  * Metadata of a sealed box. It is a function of the token id and of public chain facts
  * only: anything else would leak what the box is there to hide.
@@ -64,6 +75,7 @@ export function revealedMetadata(tokenId: number, cat: CatSpec, image: string, f
       { trait_type: "Rarity", value: cat.rarity.tierName },
       { trait_type: "Rarity score", value: cat.rarity.score, display_type: "number" as const },
       { trait_type: "Golden", value: cat.rarity.golden ? "Yes" : "No" },
+      ...weightAttributes(cat),
       ...publicAttributes(facts),
     ],
   };

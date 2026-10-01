@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { spec } from "@dno/game-spec";
 import { buildCatSpec } from "@dno/generator";
-import { ChainError, formatAmount, MOCK_NIGHT_SHIFT, MOCK_YOU, MockAdapter, mockSeedForToken, shortAddress, type Step } from "../src";
+import { ChainError, formatAmount, MOCK_NIGHT_SHIFT, MOCK_YOU, MockAdapter, mockSeedForToken, mockWeighIn, shortAddress, type Step } from "../src";
 
 const fresh = async () => {
   const chain = new MockAdapter({ latency: 0 });
@@ -150,7 +150,7 @@ describe("MockAdapter croquettes", () => {
     const e = await chain.economy();
     expect(e.totalSupply).toBe(BigInt(spec.economy.token.totalSupply));
     expect(e.welcomeBag).toBe(spec.economy.welcomeBag.amount);
-    expect(e.payoutBps).toEqual([10_000, 10_000, 0, 5_000]);
+    expect([e.mealsPerDay, e.maxEatenPerDay, e.mealTreasuryBps, e.mealBurnBps]).toEqual([2, 1_000n, 2_000, 2_000]);
     expect(e.market?.croqReserve).toBe(4_000_000n);
   });
 
@@ -169,22 +169,58 @@ describe("MockAdapter croquettes", () => {
     expect(await refusal(chain.claimCroquettes([3]))).toBe("NotHolder");
   });
 
-  it("burns a tenth of each meal, moves nothing when short, and settles by state", async () => {
+  it("lets the holder feed twice a day, up to 1,000, and splits each meal", async () => {
+    const { chain, tick } = await clocked();
+    const youHold = async (n: bigint) => {
+      await chain.trade("buy", 10n ** 16n);
+      await chain.wrap(await chain.croqBalance(MOCK_YOU));
+      expect(await chain.confidentialBalance()).toBeGreaterThanOrEqual(n);
+    };
+    await youHold(3_000n);
+    const start = await chain.confidentialBalance();
+
+    await chain.feedCroquettes(0, 700n);
+    await chain.feedCroquettes(0, 700n); // only 300 left today: cut down, silently
+    expect(await chain.eatenToday(0)).toBe(1_000n);
+    expect(await chain.confidentialBalance()).toBe(start - 1_000n);
+    expect(await refusal(chain.feedCroquettes(0, 1n))).toBe("NoMoreMealsToday");
+    expect(await refusal(chain.feedCroquettes(3, 1n))).toBe("NotHolder");
+    expect((await chain.boxPantry(0)).mealsToday).toBe(2);
+
+    tick(DAY);
+    expect(await chain.eatenToday(0)).toBe(0n);
+    await chain.feedCroquettes(0, 10n ** 9n); // a new day: cut down to 1,000
+    expect(await chain.confidentialBalance()).toBe(start - 2_000n);
+    await chain.sendCroquettes(MOCK_NIGHT_SHIFT, await chain.confidentialBalance());
+    await chain.feedCroquettes(1, 50n); // more than held: moves nothing
+    expect(await chain.eatenToday(1)).toBe(0n);
+    expect((await chain.boxPantry(0)).meals).toBe(3);
+  });
+
+  it("weighs an opened cat once, by the spec's builds", async () => {
     const { chain } = await clocked();
     await chain.claimCroquettes([0, 1, 2]);
-    await chain.feedCroquettes(0, 200n);
-    await chain.feedCroquettes(0, 5_000n); // more than held: moves nothing
-    expect(await chain.confidentialBalance()).toBe(100n);
-    expect((await chain.boxPantry(0)).meals).toBe(2);
-
-    expect(await refusal(chain.settle(0))).toBe("NotRevealed");
-    const [opened] = await chain.observe(0);
-    await chain.settle(0);
-    const state = spec.states.find((s) => s.id === opened!.revealed!.state)!.key;
-    const payout = (180n * BigInt(spec.economy.settlement.payoutBps[state])) / 10_000n;
-    expect(await chain.confidentialBalance()).toBe(100n + payout);
-    expect(await refusal(chain.settle(0))).toBe("AlreadySettled");
+    await chain.feedCroquettes(0, 100n);
+    expect(await refusal(chain.weigh(0))).toBe("NotRevealed");
+    await chain.observe(0);
+    const w = await chain.weigh(0);
+    expect([w.weight, w.build, w.sick, w.disease]).toEqual([100n, "normal", false, null]);
+    expect(w.tolerance).toBeGreaterThanOrEqual(BigInt(spec.economy.weight.sick.minWeight));
+    expect((await chain.boxPantry(0)).weighIn).toEqual(w);
+    expect(await refusal(chain.weigh(0))).toBe("AlreadyWeighed");
     expect(await refusal(chain.feedCroquettes(0, 1n))).toBe("NotSealed");
+
+    await chain.observe(1);
+    expect((await chain.weigh(1)).build).toBe("thin");
+  });
+
+  it("makes a cat sick at its own tolerance", () => {
+    const seed = 0x1234_5678_9abc_def0n;
+    const { tolerance } = mockWeighIn(0n, seed);
+    expect(mockWeighIn(tolerance - 1n, seed)).toMatchObject({ build: "huge", sick: false, disease: null });
+    const sick = mockWeighIn(tolerance, seed);
+    expect(sick.sick).toBe(true);
+    expect(spec.economy.weight.diseases.map((d) => d.key)).toContain(sick.disease);
   });
 
   it("buys on the market, wraps, unwraps and sells back", async () => {

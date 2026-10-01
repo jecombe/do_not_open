@@ -3,7 +3,7 @@ import { spec } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { CatParade } from "./CatParade";
-import { AllocationBar, LeakTable, SettlementTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
+import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 
@@ -54,7 +54,7 @@ const MECHANICS = [
   { key: "m6", cost: "docs.gasOnly" },
   { key: "m7", who: "docs.mech.m6.who", cost: "docs.gasOnly" },
   { key: "m8", who: "docs.mech.m2.who", cost: "0.0005 ETH" },
-  { key: "m9", who: "docs.mech.m4.who", cost: "docs.mech.m9.cost" },
+  { key: "m9", who: "docs.mech.m2.who", cost: "docs.mech.m9.cost" },
   { key: "m10", who: "docs.mech.m2.who", cost: "docs.gasOnly" },
   { key: "m11", who: "docs.mech.m4.who", cost: "docs.gasOnly" },
 ] as const;
@@ -218,7 +218,7 @@ export function Manual() {
                     <tr key={row.key}>
                       <th scope="row">{t(`docs.mech.${row.key}`)}</th>
                       <td>{"who" in row ? t(row.who) : t(`docs.mech.${row.key}.who`, { n: Number(spec.mechanics.mint?.maxPerTx ?? 10) })}</td>
-                      <td>{row.cost.startsWith("docs.") ? t(row.cost as "docs.gasOnly", { burn: economy.meal.burnBps / 100 }) : row.cost}</td>
+                      <td>{row.cost.startsWith("docs.") ? t(row.cost as "docs.gasOnly", { cap: economy.meal.maxEatenPerDay.toLocaleString(locale), burn: economy.meal.burnBps / 100 }) : row.cost}</td>
                       <td>{t(`docs.mech.${row.key}.public`)}</td>
                     </tr>
                   ))}
@@ -270,10 +270,18 @@ export function Manual() {
             </div>
             <TokenFlowFigure />
             <div className="prose">
-              <p>{t("docs.croq.p4", { burn: economy.meal.burnBps / 100 })}</p>
+              <p>
+                {t("docs.croq.p4", {
+                  meals: economy.meal.mealsPerDay,
+                  cap: economy.meal.maxEatenPerDay.toLocaleString(locale),
+                  treasury: economy.meal.treasuryBps / 100,
+                  reserve: (10_000 - economy.meal.treasuryBps - economy.meal.burnBps) / 100,
+                  burn: economy.meal.burnBps / 100,
+                })}
+              </p>
               <p>{t("docs.croq.p5")}</p>
             </div>
-            <SettlementTable />
+            <BuildTable />
             <div className="prose">
               <p>{t("docs.croq.p6")}</p>
               <p>{t("docs.croq.p7")}</p>

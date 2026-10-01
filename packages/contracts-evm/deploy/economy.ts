@@ -40,7 +40,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: [croq.address, process.env.CROQ_CONTRACT_URI || ""],
     log: true,
   });
-  const pantry = await deploy("Pantry", { from: deployer, args: [dno.address, cCroq.address, pantryParamsFromSpec()], log: true });
+  // The treasury's share of every meal goes to the collection owner.
+  const treasury = process.env.COLLECTION_OWNER || deployer;
+  const pantry = await deploy("Pantry", {
+    from: deployer,
+    args: [dno.address, cCroq.address, treasury, pantryParamsFromSpec()],
+    log: true,
+  });
 
   if (pantry.newlyDeployed) {
     const reserve = allocation.gameReserve + allocation.welcomeBags;
@@ -86,7 +92,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log(`Croq            : ${croq.address}`);
   console.log(`ConfidentialCroq: ${cCroq.address}`);
-  console.log(`Pantry          : ${pantry.address}`);
+  console.log(`Pantry          : ${pantry.address} (treasury ${treasury})`);
 };
 export default func;
 func.id = "deploy_economy";

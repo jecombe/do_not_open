@@ -305,14 +305,23 @@ for the Pantry, and the Pantry does:
 
 ```solidity
 euint64 offered = FHE.fromExternal(amount, inputProof); // proof for (Pantry, msg.sender)
-FHE.allowTransient(offered, address(cCroq));            // let cCROQ compute on it
-euint64 moved = cCroq.confidentialTransferFrom(msg.sender, address(this), offered);
+euint64 capped = FHE.min(offered, maxEatenPerDay);      // the daily cap, never a revert
+FHE.allowTransient(capped, address(cCroq));             // let cCROQ compute on it
+euint64 moved = cCroq.confidentialTransferFrom(msg.sender, address(this), capped);
 ```
 
 The `euint64` overload of `confidentialTransferFrom` requires the caller (the Pantry)
 to be allowed on the handle, which `fromExternal` gives transiently, and returns the
-amount actually moved with a transient grant back to the Pantry. Payouts use the same
-pattern: `allowTransient(amount, cCroq)`, then `confidentialTransfer(to, amount)`.
+amount actually moved with a transient grant back to the Pantry. Purrs and the
+treasury's `collect` use the same pattern: `allowTransient(amount, cCroq)`, then
+`confidentialTransfer(to, amount)`.
+
+### A cap on an encrypted amount
+
+The Pantry cannot revert on an amount it cannot read. The daily cap of 1,000 per cat is
+applied with `FHE.min(offered, maxEatenPerDay - eatenToday)` before the transfer: an offer
+past the day's allowance is cut down silently, and only what was eaten leaves the
+wallet. The meal count, which is public, is capped with a plain revert.
 
 ### ERC-7984 operators, not allowances
 
@@ -333,11 +342,13 @@ the best possible purr, `purrMaxPerDay × days × multiplier`, survives the shif
 does not, it skips the draw; if no box in the claim pays anything, it skips the
 `min`, the `sub` and the transfer too. Such a claim costs 0 HCU and only moves the clock.
 
-### Settlement reads the box contract, it does not change it
+### The weigh-in reads the box contract, it does not change it
 
-`DoNotOpen` was not modified. The Pantry reads `status`, `contentsOf(tokenId).state`,
-`ownerOf` and `vetCertified` through a small interface. Payout shares of 0% and 100%
-skip the `mul` and `div`: a ghost costs one `add`, an alive cat one transfer.
+`DoNotOpen` was not modified. The Pantry reads `status`, `ownerOf`, `vetCertified` and,
+after the reveal, `contentsOf(tokenId).seed` through a small interface. A cat's weight is
+made public with `makePubliclyDecryptable` and proved back with `checkSignatures`, like
+an opening. Its tolerance needs no FHE at all: it is `keccak256(seed)`, computed in the
+clear once the seed is public, and secret until then because the seed is.
 
 ### Burning is locking
 
@@ -349,9 +360,10 @@ balance under an encrypted total and has no code path that moves them.
 
 | Function | HCU |
 | --- | --- |
-| `feed` | ~2,152,000 |
+| `feed` | ~2,790,000 (first meal of the day), ~3,180,000 (second) |
 | `claim`, 10 boxes | ~6,800,000 (depth ~2,800,000) |
-| `settle` | 0 to ~1,990,000 depending on the state |
+| `weigh` + `finalizeWeigh` | ~0: one public decryption request |
+| `collect` | ~590,000 |
 
 `maxBoxesPerClaim` is 10 so a full claim stays far from both limits. 20 boxes measured
 13.6M HCU with a depth of 4.4M, too close to the 5M depth limit.

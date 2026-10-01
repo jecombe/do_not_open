@@ -50,7 +50,7 @@ flowchart LR
   json["spec.json"]
   json --> ts["generator (TypeScript)<br/>decodeSeed, resolveTraits, rarityScore"]
   json -- "configParamsFromSpec()<br/>+ keccak256 of the file" --> cfg["DoNotOpenConfig (Solidity)<br/>decode(seed)"]
-  json -- "pantryParamsFromSpec()<br/>economyFromSpec()" --> pantry["Pantry + Croq (Solidity)<br/>bag, purr, burn, payouts, supply split"]
+  json -- "pantryParamsFromSpec()<br/>economyFromSpec()" --> pantry["Pantry + Croq (Solidity)<br/>bag, purr, meal split, daily cap,<br/>builds, tolerance, supply split"]
   json --> mock["MockAdapter"]
   ts <-- "test: same state, rolls and score<br/>for random seeds" --> cfg
   ts <-- "smoke test: every reveal on Sepolia<br/>matches the generator" --> cfg
@@ -58,8 +58,8 @@ flowchart LR
 
 The config contract stores the hash of the spec file it was built from
 (`specHash`), so anyone can check which rules a deployment runs. The Pantry keeps its
-numbers as public immutables (`welcomeBag`, `purrMaxPerDay`, `mealBurnBps`,
-`payoutBps(state)`...).
+numbers as public immutables (`welcomeBag`, `purrMaxPerDay`, `mealsPerDay`,
+`maxEatenPerDay`, `mealTreasuryBps`, `mealBurnBps`, `buildFloors()`, `sickMinWeight`...).
 
 ## Contracts
 
@@ -67,15 +67,16 @@ numbers as public immutables (`welcomeBag`, `purrMaxPerDay`, `mealBurnBps`,
 flowchart LR
   cfg["DoNotOpenConfig<br/>rules, decode(seed)"] --> dno["DoNotOpen<br/>ERC-721, seeds, shake, observe, duel"]
   croq["Croq<br/>ERC-20, 20M fixed"] -- "underlying" --> ccroq["ConfidentialCroq<br/>ERC-7984 wrapper, cCROQ"]
-  pantry["Pantry<br/>reserve, stashes, burnt pile"] -- "reads ownerOf, status,<br/>vetCertified, contentsOf" --> dno
+  pantry["Pantry<br/>reserve, weights, treasury share,<br/>burnt pile, weigh-ins"] -- "reads ownerOf, status,<br/>vetCertified, contentsOf" --> dno
   pantry -- "confidentialTransferFrom,<br/>confidentialTransfer, wrap" --> ccroq
   croq -- "4M + ETH" --> pair["Uniswap V2 pair<br/>CROQ/WETH"]
 ```
 
 `DoNotOpen` does not know the Pantry exists. The economy was added next to it, and
 could be replaced without touching a box. The Pantry holds all its croquettes as one
-cCROQ balance and splits it into encrypted buckets: the reserve, one stash per box, and
-the burnt pile. See [CROQ.md](CROQ.md).
+cCROQ balance and splits it into encrypted buckets: the reserve, the treasury's
+uncollected share, and the burnt pile. A cat's weight is a counter, not a bucket: the
+croquettes it ate have already been split. See [CROQ.md](CROQ.md).
 
 ## Data flow at run time
 

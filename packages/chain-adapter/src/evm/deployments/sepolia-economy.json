@@ -1358,6 +1358,11 @@
             "type": "address"
           },
           {
+            "internalType": "address",
+            "name": "treasury_",
+            "type": "address"
+          },
+          {
             "components": [
               {
                 "internalType": "uint64",
@@ -1385,14 +1390,44 @@
                 "type": "uint32"
               },
               {
+                "internalType": "uint8",
+                "name": "mealsPerDay",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint64",
+                "name": "maxEatenPerDay",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint16",
+                "name": "mealTreasuryBps",
+                "type": "uint16"
+              },
+              {
                 "internalType": "uint16",
                 "name": "mealBurnBps",
                 "type": "uint16"
               },
               {
-                "internalType": "uint16[4]",
-                "name": "payoutBps",
-                "type": "uint16[4]"
+                "internalType": "uint64[4]",
+                "name": "buildFloors",
+                "type": "uint64[4]"
+              },
+              {
+                "internalType": "uint64",
+                "name": "sickMinWeight",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "sickWeightSpread",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint16[2]",
+                "name": "diseaseRollBelow",
+                "type": "uint16[2]"
               },
               {
                 "internalType": "uint8",
@@ -1410,7 +1445,7 @@
       },
       {
         "inputs": [],
-        "name": "AlreadySettled",
+        "name": "AlreadyWeighed",
         "type": "error"
       },
       {
@@ -1420,7 +1455,17 @@
       },
       {
         "inputs": [],
+        "name": "InvalidKMSSignatures",
+        "type": "error"
+      },
+      {
+        "inputs": [],
         "name": "InvalidParams",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NoMoreMealsToday",
         "type": "error"
       },
       {
@@ -1441,6 +1486,11 @@
       {
         "inputs": [],
         "name": "NothingToClaim",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NothingToCollect",
         "type": "error"
       },
       {
@@ -1472,8 +1522,26 @@
       },
       {
         "inputs": [],
+        "name": "WeighInNotPending",
+        "type": "error"
+      },
+      {
+        "inputs": [],
         "name": "ZamaProtocolUnsupported",
         "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "treasury",
+            "type": "address"
+          }
+        ],
+        "name": "Collected",
+        "type": "event"
       },
       {
         "anonymous": false,
@@ -1523,6 +1591,25 @@
         "anonymous": false,
         "inputs": [
           {
+            "indexed": false,
+            "internalType": "bytes32[]",
+            "name": "handlesList",
+            "type": "bytes32[]"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes",
+            "name": "abiEncodedCleartexts",
+            "type": "bytes"
+          }
+        ],
+        "name": "PublicDecryptionVerified",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
             "indexed": true,
             "internalType": "address",
             "name": "holder",
@@ -1548,25 +1635,50 @@
             "type": "uint256"
           },
           {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "weightHandle",
+            "type": "bytes32"
+          }
+        ],
+        "name": "WeighInRequested",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
             "indexed": true,
-            "internalType": "address",
-            "name": "holder",
-            "type": "address"
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "weight",
+            "type": "uint64"
           },
           {
             "indexed": false,
             "internalType": "uint8",
-            "name": "state",
+            "name": "build",
             "type": "uint8"
           },
           {
             "indexed": false,
-            "internalType": "uint16",
-            "name": "payoutBps",
-            "type": "uint16"
+            "internalType": "bool",
+            "name": "sick",
+            "type": "bool"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint8",
+            "name": "disease",
+            "type": "uint8"
           }
         ],
-        "name": "Settled",
+        "name": "Weighed",
         "type": "event"
       },
       {
@@ -1590,12 +1702,83 @@
       },
       {
         "inputs": [],
+        "name": "NOT_WEIGHED",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "WEIGHED",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "WEIGH_PENDING",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "boxes",
         "outputs": [
           {
             "internalType": "contract IDoNotOpen",
             "name": "",
             "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "buildFloors",
+        "outputs": [
+          {
+            "internalType": "uint64[4]",
+            "name": "",
+            "type": "uint64[4]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "weight",
+            "type": "uint64"
+          }
+        ],
+        "name": "buildOf",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
           }
         ],
         "stateMutability": "view",
@@ -1642,6 +1825,13 @@
       },
       {
         "inputs": [],
+        "name": "collect",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "confidentialProtocolId",
         "outputs": [
           {
@@ -1672,6 +1862,25 @@
             "internalType": "uint256",
             "name": "tokenId",
             "type": "uint256"
+          }
+        ],
+        "name": "eatenTodayHandle",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
             "internalType": "externalEuint64",
@@ -1685,6 +1894,29 @@
           }
         ],
         "name": "feed",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes",
+            "name": "abiEncodedWeight",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes",
+            "name": "decryptionProof",
+            "type": "bytes"
+          }
+        ],
+        "name": "finalizeWeigh",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -1762,7 +1994,33 @@
       },
       {
         "inputs": [],
+        "name": "maxEatenPerDay",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "mealBurnBps",
+        "outputs": [
+          {
+            "internalType": "uint16",
+            "name": "",
+            "type": "uint16"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "mealTreasuryBps",
         "outputs": [
           {
             "internalType": "uint16",
@@ -1793,6 +2051,38 @@
         "type": "function"
       },
       {
+        "inputs": [],
+        "name": "mealsPerDay",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "mealsToday",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
         "inputs": [
           {
             "internalType": "uint256",
@@ -1806,25 +2096,6 @@
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint8",
-            "name": "state",
-            "type": "uint8"
-          }
-        ],
-        "name": "payoutBps",
-        "outputs": [
-          {
-            "internalType": "uint16",
-            "name": "",
-            "type": "uint16"
           }
         ],
         "stateMutability": "view",
@@ -1870,32 +2141,26 @@
         "type": "function"
       },
       {
-        "inputs": [
+        "inputs": [],
+        "name": "sickMinWeight",
+        "outputs": [
           {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
-        "name": "settle",
-        "outputs": [],
-        "stateMutability": "nonpayable",
+        "stateMutability": "view",
         "type": "function"
       },
       {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "settled",
+        "inputs": [],
+        "name": "sickWeightSpread",
         "outputs": [
           {
-            "internalType": "bool",
+            "internalType": "uint64",
             "name": "",
-            "type": "bool"
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -1915,14 +2180,21 @@
         "type": "function"
       },
       {
-        "inputs": [
+        "inputs": [],
+        "name": "treasury",
+        "outputs": [
           {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
+            "internalType": "address",
+            "name": "",
+            "type": "address"
           }
         ],
-        "name": "stashHandle",
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "treasuryShareHandle",
         "outputs": [
           {
             "internalType": "bytes32",
@@ -1941,6 +2213,89 @@
             "internalType": "uint8",
             "name": "",
             "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "weigh",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "weighIn",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint8",
+                "name": "status",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "build",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bool",
+                "name": "sick",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint8",
+                "name": "disease",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint64",
+                "name": "weight",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "tolerance",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct Pantry.WeighIn",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "weightHandle",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
           }
         ],
         "stateMutability": "view",

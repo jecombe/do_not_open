@@ -73,8 +73,14 @@ export interface PantryParams {
   vetMultiplier: number;
   purrMaxDays: number;
   halvingPeriod: number;
+  mealsPerDay: number;
+  maxEatenPerDay: number;
+  mealTreasuryBps: number;
   mealBurnBps: number;
-  payoutBps: [number, number, number, number];
+  buildFloors: [number, number, number, number];
+  sickMinWeight: number;
+  sickWeightSpread: number;
+  diseaseRollBelow: [number, number];
   maxBoxesPerClaim: number;
 }
 
@@ -85,20 +91,29 @@ export const MAX_BOXES_PER_CLAIM = 10;
 export function pantryParamsFromSpec(overrides: Partial<PantryParams> = {}): PantryParams {
   const { spec } = loadSpec();
   const e = spec.economy;
-  const states = [...spec.states].sort((a: { id: number }, b: { id: number }) => a.id - b.id);
-  const payout = states.map((s: { key: string }) => {
-    const bps = e.settlement.payoutBps[s.key];
-    if (typeof bps !== "number") throw new Error(`economy.settlement has no payout for state "${s.key}"`);
-    return bps;
-  });
+  const builds: { key: string; minWeight: number }[] = e.weight.builds;
+  const order = ["thin", "normal", "chubby", "fat", "huge"];
+  if (builds.map((b) => b.key).join() !== order.join() || builds[0]!.minWeight !== 0) {
+    throw new Error(`economy.weight.builds must be ${order.join(", ")}, from a minWeight of 0`);
+  }
+  const diseases: { rollBelow: number }[] = e.weight.diseases;
+  if (diseases.length !== 3 || diseases[2]!.rollBelow !== 65_536) {
+    throw new Error("economy.weight.diseases must list 3 diseases, the last one up to 65536");
+  }
   return {
     welcomeBag: e.welcomeBag.amount,
     purrMaxPerDay: e.purr.maxPerDay,
     vetMultiplier: e.purr.vetMultiplier,
     purrMaxDays: e.purr.maxDays,
     halvingPeriod: e.purr.halvingDays * 86_400,
+    mealsPerDay: e.meal.mealsPerDay,
+    maxEatenPerDay: e.meal.maxEatenPerDay,
+    mealTreasuryBps: e.meal.treasuryBps,
     mealBurnBps: e.meal.burnBps,
-    payoutBps: payout as [number, number, number, number],
+    buildFloors: builds.slice(1).map((b) => b.minWeight) as [number, number, number, number],
+    sickMinWeight: e.weight.sick.minWeight,
+    sickWeightSpread: e.weight.sick.weightSpread,
+    diseaseRollBelow: [diseases[0]!.rollBelow, diseases[1]!.rollBelow],
     maxBoxesPerClaim: MAX_BOXES_PER_CLAIM,
     ...overrides,
   };

@@ -250,6 +250,153 @@ export class ShakeSound {
     lfo.stop(now + 1.4);
   }
 
+  /**
+   * A meow in the open air, not through cardboard: "mi-a-ou" from a sawtooth through a
+   * formant that opens then closes. `pitch` around 1; heavy cats meow lower. `weak` for a
+   * cat that is not feeling well.
+   */
+  meow(pitch = 1, weak = false): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = ctx.currentTime;
+    const p = pitch * (0.94 + Math.random() * 0.12);
+    const length = weak ? 0.7 : 0.55;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(520 * p, now);
+    osc.frequency.linearRampToValueAtTime(780 * p, now + 0.14);
+    osc.frequency.exponentialRampToValueAtTime((weak ? 330 : 430) * p, now + length);
+    // A little wobble in the voice.
+    const vibrato = ctx.createOscillator();
+    vibrato.frequency.value = weak ? 9 : 6;
+    const depth = ctx.createGain();
+    depth.gain.value = (weak ? 22 : 10) * p;
+    vibrato.connect(depth).connect(osc.frequency);
+    const formant = ctx.createBiquadFilter();
+    formant.type = "bandpass";
+    formant.Q.value = 3;
+    formant.frequency.setValueAtTime(800, now);
+    formant.frequency.linearRampToValueAtTime(1700, now + 0.15);
+    formant.frequency.exponentialRampToValueAtTime(700, now + length);
+    const gain = ctx.createGain();
+    const peak = weak ? 0.16 : 0.26;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(peak, now + 0.05);
+    gain.gain.setValueAtTime(peak, now + length * 0.55);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    osc.connect(formant).connect(gain).connect(ctx.destination);
+    osc.start(now);
+    vibrato.start(now);
+    osc.stop(now + length + 0.05);
+    vibrato.stop(now + length + 0.05);
+  }
+
+  /** A ghost's moan: a slow, wavering "oooOOOooo" with a cold echo. */
+  wail(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(260, now);
+    osc.frequency.exponentialRampToValueAtTime(480, now + 0.6);
+    osc.frequency.exponentialRampToValueAtTime(230, now + 1.5);
+    const vibrato = ctx.createOscillator();
+    vibrato.frequency.value = 5;
+    const depth = ctx.createGain();
+    depth.gain.value = 14;
+    vibrato.connect(depth).connect(osc.frequency);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.35);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.55);
+    const echo = ctx.createDelay(1);
+    echo.delayTime.value = 0.22;
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.4;
+    echo.connect(feedback).connect(echo);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.connect(echo).connect(ctx.destination);
+    osc.start(now);
+    vibrato.start(now);
+    osc.stop(now + 1.6);
+    vibrato.stop(now + 1.6);
+  }
+
+  /** A quantum cat between two states: a burst of digital blips. */
+  glitch(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = ctx.currentTime;
+    for (let i = 0; i < 9; i++) {
+      const start = now + i * 0.045 + Math.random() * 0.02;
+      const osc = ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(300 + Math.random() * 1800, start);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.06, start);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.035);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.04);
+    }
+  }
+
+  /** A sick cat's cough: two rough, low bursts. */
+  cough(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.noise || this.muted) return;
+    const now = ctx.currentTime;
+    for (const [delay, vol] of [[0, 0.4], [0.2, 0.28]] as const) {
+      const start = now + delay;
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      const low = ctx.createBiquadFilter();
+      low.type = "bandpass";
+      low.frequency.value = 650;
+      low.Q.value = 0.9;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(vol, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.13);
+      src.connect(low).connect(gain).connect(ctx.destination);
+      src.start(start, Math.random() * 0.2, 0.15);
+      const chest = ctx.createOscillator();
+      chest.type = "sine";
+      chest.frequency.setValueAtTime(170, start);
+      chest.frequency.exponentialRampToValueAtTime(90, start + 0.1);
+      const thump = ctx.createGain();
+      thump.gain.setValueAtTime(vol * 0.6, start);
+      thump.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
+      chest.connect(thump).connect(ctx.destination);
+      chest.start(start);
+      chest.stop(start + 0.13);
+    }
+  }
+
+  /** Air rushing past a falling box. */
+  whoosh(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.noise || this.muted) return;
+    const now = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    src.loop = true;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.Q.value = 0.7;
+    band.frequency.setValueAtTime(2400, now);
+    band.frequency.exponentialRampToValueAtTime(500, now + 0.45);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.25);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    src.connect(band).connect(gain).connect(ctx.destination);
+    src.start(now);
+    src.stop(now + 0.55);
+  }
+
   dispose(): void {
     void this.ctx?.close();
     this.ctx = null;

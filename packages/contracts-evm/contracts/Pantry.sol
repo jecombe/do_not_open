@@ -26,40 +26,58 @@ interface IDoNotOpen {
 
 /// @title Pantry
 /// @notice Runs the croquette economy next to DO NOT OPEN, without touching it.
-///         Feed a sealed box cCROQ and the croquettes pile up in its encrypted stash. Nobody can
-///         read or withdraw a stash while the box is sealed. Once the box is opened, the cat
-///         decides: the living and the sleeping pay the stash to the holder, a ghost burns it
-///         all, a quantum cat burns half. Holders also collect a welcome bag and a daily purr.
+///         A holder feeds their sealed cat cCROQ. The croquettes are eaten: the cat puts on an
+///         encrypted weight, and the meal is split between the collection's treasury, the game
+///         reserve (which pays the daily purr, so croquettes go round) and the fire. Once the
+///         box is opened, anyone weighs the cat: its weight becomes public and sets its build,
+///         from thin to huge. Past a tolerance of its own, drawn from its seed and unknown to
+///         all until then, the cat is sick: an ultra-rare trophy. Holders also collect a
+///         welcome bag and a daily purr.
 ///
 /// @dev Design notes.
 ///
 ///  1. Every croquette the Pantry holds belongs to exactly one encrypted bucket: the reserve
-///     (welcome bags and purrs), a box's stash, or the burnt pile. Buckets only move between
-///     each other or out to a player, so the Pantry's cCROQ balance always covers them.
+///     (welcome bags and purrs), the treasury's share, or the burnt pile. A meal leaves nothing
+///     behind: its croquettes all go to one of the three. The Pantry's cCROQ balance always
+///     equals the three buckets.
 ///
-///  2. NOBODY is allowed on a stash, the reserve or the burnt pile, holder and deployer
-///     included. FHE.allow grants are permanent, so a stash readable by its holder would stay
-///     readable by every past holder after a sale. The only amounts a player can decrypt are
-///     their own transfers, which cCROQ grants them.
+///  2. NOBODY is allowed on a weight, the reserve or the burnt pile, holder and deployer
+///     included. FHE.allow grants are permanent, so a weight readable by its holder would stay
+///     readable by every past holder after a sale. The weight is made public only once the box
+///     is opened. A feeder may read what their own meals added today, and the treasury its share.
 ///
-///  3. "Burnt" means locked here for good: no function moves the burnt pile. Real burning would
+///  3. A cat eats at most `mealsPerDay` meals and `maxEatenPerDay` croquettes per UTC day,
+///     however they are spread. The amount is encrypted, so an offer past what is left of the
+///     day is cut down to it, silently: the meal never reverts on the amount. Only the holder
+///     feeds: with a daily meal limit, anyone else could fill a cat's meals with empty bowls.
+///
+///  4. A feeder who holds less than the (capped) offer moves 0. The meal still counts, still
+///     costs gas, and nothing on-chain tells it apart from a real one.
+///
+///  5. The tolerance is keccak256 of the seed, folded into [sickMinWeight, +sickWeightSpread).
+///     The seed is encrypted until the box is opened, and by then the weight is final: nobody,
+///     the holder included, can feed a cat up to just its tolerance.
+///
+///  6. "Burnt" means locked here for good: no function moves the burnt pile. Real burning would
 ///     strand the same ERC-20 inside the wrapper anyway, at a higher FHE cost.
 ///
-///  4. A feeder who holds less than they offer moves 0. The meal still counts, still costs
-///     gas, and nothing on-chain tells it apart from a real one.
-///
 ///  HCU per function (protocol limit 20,000,000 per transaction), measured in tests:
-///    feed            ~2,152,000   confidential transferFrom, mul + div for the burn
+///    feed            ~2,790,000 first meal of the day, ~3,180,000 the second (one more sub)
+///                    confidential transferFrom, the daily cap, two mul + div for the split
 ///    claim           ~680,000 per purring box, ~6.8M for the 10-box maximum
 ///                    0 once the purr has halved to nothing
-///    settle          0 (never fed), ~162,000 (ghost), ~586,000 (alive, asleep),
-///                    ~1,990,000 (quantum: mul + div for the half)
+///    weigh           0: one public decryption request, the rest is plain arithmetic
+///    collect         ~590,000     one confidential transfer
 contract Pantry is ZamaEthereumConfig {
     using SafeERC20 for IERC20;
 
     uint16 private constant BPS = 10_000;
     uint8 private constant SEALED = 0;
     uint8 private constant REVEALED = 2;
+
+    uint8 public constant NOT_WEIGHED = 0;
+    uint8 public constant WEIGH_PENDING = 1;
+    uint8 public constant WEIGHED = 2;
 
     struct Params {
         /// Paid once per box, on its first claim.
@@ -72,31 +90,66 @@ contract Pantry is ZamaEthereumConfig {
         uint8 purrMaxDays;
         /// The purr halves every `halvingPeriod` seconds after deployment.
         uint32 halvingPeriod;
-        /// Share of each meal that is burnt.
+        /// Meals one cat may eat per UTC day.
+        uint8 mealsPerDay;
+        /// Croquettes one cat may eat per UTC day, across all its meals.
+        uint64 maxEatenPerDay;
+        /// Share of each meal paid to the treasury.
+        uint16 mealTreasuryBps;
+        /// Share of each meal that is burnt. The rest goes back to the game reserve.
         uint16 mealBurnBps;
-        /// Share of the stash paid to the holder at settlement, by state id.
-        uint16[4] payoutBps;
+        /// Lowest weight of each build past "thin": normal, chubby, fat, huge. Increasing.
+        uint64[4] buildFloors;
+        /// A cat's tolerance is drawn in [sickMinWeight, sickMinWeight + sickWeightSpread).
+        uint64 sickMinWeight;
+        uint64 sickWeightSpread;
+        /// Upper bounds, out of 65,536, of every disease but the last.
+        uint16[2] diseaseRollBelow;
         /// Boxes one claim may cover, to keep it under the HCU limit.
         uint8 maxBoxesPerClaim;
+    }
+
+    /// @notice What the scales said, once a box is opened and weighed.
+    struct WeighIn {
+        uint8 status;
+        /// 0 thin (never ate), 1 normal, 2 chubby, 3 fat, 4 huge.
+        uint8 build;
+        bool sick;
+        /// Index into the spec's diseases. Meaningful only when `sick`.
+        uint8 disease;
+        uint64 weight;
+        uint64 tolerance;
+    }
+
+    struct Day {
+        uint32 day;
+        uint8 meals;
     }
 
     error InvalidParams();
     error NotHolder();
     error NotSealed();
     error NotRevealed();
-    error AlreadySettled();
+    error NoMoreMealsToday();
+    error AlreadyWeighed();
+    error WeighInNotPending();
     error NothingToClaim();
+    error NothingToCollect();
     error InvalidBoxCount();
 
     event Funded(address indexed from, uint64 amount);
     event MealServed(uint256 indexed tokenId, address indexed feeder, uint32 meals);
     event WelcomeBag(uint256 indexed tokenId, address indexed holder);
     event Purred(address indexed holder, uint256 boxes);
-    event Settled(uint256 indexed tokenId, address indexed holder, uint8 state, uint16 payoutBps);
+    event WeighInRequested(uint256 indexed tokenId, bytes32 weightHandle);
+    event Weighed(uint256 indexed tokenId, uint64 weight, uint8 build, bool sick, uint8 disease);
+    event Collected(address indexed treasury);
 
     IDoNotOpen public immutable boxes;
     ConfidentialCroq public immutable cCroq;
     IERC20 public immutable croq;
+    /// @notice Receives the treasury's share of every meal, through `collect`.
+    address public immutable treasury;
     uint256 public immutable startedAt;
 
     uint64 public immutable welcomeBag;
@@ -104,48 +157,75 @@ contract Pantry is ZamaEthereumConfig {
     uint8 public immutable vetMultiplier;
     uint8 public immutable purrMaxDays;
     uint32 public immutable halvingPeriod;
+    uint8 public immutable mealsPerDay;
+    uint64 public immutable maxEatenPerDay;
+    uint16 public immutable mealTreasuryBps;
     uint16 public immutable mealBurnBps;
+    uint64 public immutable sickMinWeight;
+    uint64 public immutable sickWeightSpread;
     uint8 public immutable maxBoxesPerClaim;
-    uint16 private immutable _payoutAlive;
-    uint16 private immutable _payoutAsleep;
-    uint16 private immutable _payoutGhost;
-    uint16 private immutable _payoutQuantum;
+    uint64 private immutable _floorNormal;
+    uint64 private immutable _floorChubby;
+    uint64 private immutable _floorFat;
+    uint64 private immutable _floorHuge;
+    uint16 private immutable _disease1;
+    uint16 private immutable _disease2;
 
     euint64 private _reserve;
     euint64 private _burnt;
-    mapping(uint256 tokenId => euint64) private _stash;
+    euint64 private _treasuryShare;
+    mapping(uint256 tokenId => euint64) private _weight;
+    mapping(uint256 tokenId => euint64) private _eatenToday;
+    mapping(uint256 tokenId => Day) private _days;
     /// @notice How many meals each box was served. Public; what they held is not.
     mapping(uint256 tokenId => uint32) public meals;
     /// @notice When a box last purred. Zero until its welcome bag is collected.
     mapping(uint256 tokenId => uint64) public lastPurr;
-    mapping(uint256 tokenId => bool) public settled;
+    mapping(uint256 tokenId => WeighIn) private _weighIns;
 
-    constructor(IDoNotOpen boxes_, ConfidentialCroq cCroq_, Params memory p) {
+    constructor(IDoNotOpen boxes_, ConfidentialCroq cCroq_, address treasury_, Params memory p) {
         if (
+            treasury_ == address(0) ||
             p.purrMaxPerDay == type(uint8).max ||
             p.vetMultiplier == 0 ||
             p.purrMaxDays == 0 ||
             p.halvingPeriod == 0 ||
-            p.mealBurnBps > BPS ||
+            p.mealsPerDay == 0 ||
+            p.maxEatenPerDay == 0 ||
+            uint256(p.mealTreasuryBps) + p.mealBurnBps > BPS ||
+            p.buildFloors[0] == 0 ||
+            p.buildFloors[1] <= p.buildFloors[0] ||
+            p.buildFloors[2] <= p.buildFloors[1] ||
+            p.buildFloors[3] <= p.buildFloors[2] ||
+            p.sickMinWeight <= p.buildFloors[3] ||
+            p.sickWeightSpread == 0 ||
+            p.diseaseRollBelow[1] <= p.diseaseRollBelow[0] ||
             p.maxBoxesPerClaim == 0
         ) revert InvalidParams();
-        for (uint256 i = 0; i < 4; i++) if (p.payoutBps[i] > BPS) revert InvalidParams();
 
         boxes = boxes_;
         cCroq = cCroq_;
         croq = IERC20(cCroq_.underlying());
+        treasury = treasury_;
         startedAt = block.timestamp;
         welcomeBag = p.welcomeBag;
         purrMaxPerDay = p.purrMaxPerDay;
         vetMultiplier = p.vetMultiplier;
         purrMaxDays = p.purrMaxDays;
         halvingPeriod = p.halvingPeriod;
+        mealsPerDay = p.mealsPerDay;
+        maxEatenPerDay = p.maxEatenPerDay;
+        mealTreasuryBps = p.mealTreasuryBps;
         mealBurnBps = p.mealBurnBps;
+        sickMinWeight = p.sickMinWeight;
+        sickWeightSpread = p.sickWeightSpread;
         maxBoxesPerClaim = p.maxBoxesPerClaim;
-        _payoutAlive = p.payoutBps[0];
-        _payoutAsleep = p.payoutBps[1];
-        _payoutGhost = p.payoutBps[2];
-        _payoutQuantum = p.payoutBps[3];
+        _floorNormal = p.buildFloors[0];
+        _floorChubby = p.buildFloors[1];
+        _floorFat = p.buildFloors[2];
+        _floorHuge = p.buildFloors[3];
+        _disease1 = p.diseaseRollBelow[0];
+        _disease2 = p.diseaseRollBelow[1];
     }
 
     // ------------------------------------------------------------------ fund
@@ -163,31 +243,73 @@ contract Pantry is ZamaEthereumConfig {
         emit Funded(msg.sender, amount);
     }
 
+
     // ------------------------------------------------------------------ feed
 
-    /// @notice Serves a sealed box an encrypted amount of the caller's cCROQ. A share is burnt,
-    ///         the rest joins the box's stash. The caller must have made the Pantry an operator
-    ///         on cCROQ (`setOperator`).
+    /// @notice The holder feeds their sealed cat an encrypted amount of cCROQ. The cat eats it
+    ///         all: its hidden weight goes up, and the croquettes are split between the
+    ///         treasury, the game reserve and the fire. At most `mealsPerDay` meals and
+    ///         `maxEatenPerDay` croquettes a day; an offer past what is left of the day is cut
+    ///         down to it. The caller must have made the Pantry an operator on cCROQ.
     /// @param amount encrypted amount, made for this contract and the caller with the Relayer SDK
     /// @param inputProof the proof that comes with it
     function feed(uint256 tokenId, externalEuint64 amount, bytes calldata inputProof) external {
-        boxes.ownerOf(tokenId); // reverts for a box that does not exist
+        if (boxes.ownerOf(tokenId) != msg.sender) revert NotHolder();
         if (boxes.status(tokenId) != SEALED) revert NotSealed();
 
-        euint64 offered = FHE.fromExternal(amount, inputProof);
-        FHE.allowTransient(offered, address(cCroq));
-        // Moves `offered` if the caller holds it, 0 otherwise.
-        euint64 moved = cCroq.confidentialTransferFrom(msg.sender, address(this), offered);
+        uint32 today = uint32(block.timestamp / 1 days);
+        Day memory d = _days[tokenId];
+        bool firstToday = d.day != today;
+        if (firstToday) d = Day(today, 0);
+        if (d.meals >= mealsPerDay) revert NoMoreMealsToday();
+        d.meals += 1;
+        _days[tokenId] = d;
 
-        euint64 burnt = _share(moved, mealBurnBps);
-        euint64 stash = FHE.add(_stash[tokenId], FHE.sub(moved, burnt));
-        FHE.allowThis(stash);
-        _stash[tokenId] = stash;
-        _addBurnt(burnt);
+        euint64 offered = FHE.fromExternal(amount, inputProof);
+        euint64 capped = firstToday
+            ? FHE.min(offered, maxEatenPerDay)
+            : FHE.min(offered, FHE.sub(maxEatenPerDay, _eatenToday[tokenId]));
+        FHE.allowTransient(capped, address(cCroq));
+        // Moves `capped` if the caller holds it, 0 otherwise.
+        euint64 moved = cCroq.confidentialTransferFrom(msg.sender, address(this), capped);
+
+        euint64 eaten = firstToday ? moved : FHE.add(_eatenToday[tokenId], moved);
+        FHE.allowThis(eaten);
+        FHE.allow(eaten, msg.sender);
+        _eatenToday[tokenId] = eaten;
+
+        euint64 weight = FHE.add(_weight[tokenId], moved);
+        FHE.allowThis(weight);
+        _weight[tokenId] = weight;
+
+        _split(moved);
 
         uint32 served = meals[tokenId] + 1;
         meals[tokenId] = served;
         emit MealServed(tokenId, msg.sender, served);
+    }
+
+    /// @notice Meals `tokenId` has eaten so far today (UTC).
+    function mealsToday(uint256 tokenId) public view returns (uint8) {
+        Day memory d = _days[tokenId];
+        return d.day == uint32(block.timestamp / 1 days) ? d.meals : 0;
+    }
+
+    /// @notice Handle of what `tokenId` ate today, readable by whoever fed it. Zero on a new day.
+    function eatenTodayHandle(uint256 tokenId) external view returns (bytes32) {
+        return mealsToday(tokenId) == 0 ? bytes32(0) : FHE.toBytes32(_eatenToday[tokenId]);
+    }
+
+    /// @notice Sends the treasury its share of every meal so far. Anyone may call it.
+    function collect() external {
+        euint64 owed = _treasuryShare;
+        if (!FHE.isInitialized(owed)) revert NothingToCollect();
+        euint64 zero = FHE.asEuint64(0);
+        FHE.allowThis(zero);
+        FHE.allow(zero, treasury);
+        _treasuryShare = zero;
+        _pay(treasury, owed);
+        emit Collected(treasury);
     }
 
     // ----------------------------------------------------------------- claim
@@ -261,48 +383,72 @@ contract Pantry is ZamaEthereumConfig {
         if (era != 0) draw = FHE.shr(draw, era);
     }
 
-    // ---------------------------------------------------------------- settle
+    // ----------------------------------------------------------------- weigh
 
-    /// @notice Settles an opened box's stash. Anyone may call it, once, after DoNotOpen has
-    ///         finalized the reveal. Pays the holder of the moment their share and burns the rest.
-    function settle(uint256 tokenId) external {
-        if (settled[tokenId]) revert AlreadySettled();
+    /// @notice Weighs an opened cat. Anyone may, once. A cat that never ate is weighed on the
+    ///         spot; otherwise this makes its weight publicly decryptable, and `finalizeWeigh`
+    ///         records it with the KMS proof.
+    function weigh(uint256 tokenId) external {
         if (boxes.status(tokenId) != REVEALED) revert NotRevealed();
-        settled[tokenId] = true;
+        if (_weighIns[tokenId].status != NOT_WEIGHED) revert AlreadyWeighed();
 
-        uint8 state = boxes.contentsOf(tokenId).state;
-        address holder = boxes.ownerOf(tokenId);
-        uint16 bps = payoutBps(state);
-
-        euint64 stash = _stash[tokenId];
-        if (FHE.isInitialized(stash)) {
-            if (bps == 0) {
-                _addBurnt(stash);
-            } else if (bps == BPS) {
-                _pay(holder, stash);
-            } else {
-                euint64 payout = _share(stash, bps);
-                _addBurnt(FHE.sub(stash, payout));
-                _pay(holder, payout);
-            }
+        euint64 weight = _weight[tokenId];
+        if (!FHE.isInitialized(weight)) {
+            _record(tokenId, 0);
+            return;
         }
-        emit Settled(tokenId, holder, state, bps);
+        _weighIns[tokenId].status = WEIGH_PENDING;
+        FHE.makePubliclyDecryptable(weight);
+        emit WeighInRequested(tokenId, FHE.toBytes32(weight));
     }
 
-    /// @notice Share of the stash a cat in `state` pays its holder, in basis points.
-    function payoutBps(uint8 state) public view returns (uint16) {
-        if (state == 0) return _payoutAlive;
-        if (state == 1) return _payoutAsleep;
-        if (state == 2) return _payoutGhost;
-        return _payoutQuantum;
+    /// @notice Step 2 of 2. Anyone may submit the decrypted weight with its KMS proof.
+    function finalizeWeigh(uint256 tokenId, bytes calldata abiEncodedWeight, bytes calldata decryptionProof) external {
+        if (_weighIns[tokenId].status != WEIGH_PENDING) revert WeighInNotPending();
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = FHE.toBytes32(_weight[tokenId]);
+        FHE.checkSignatures(handles, abiEncodedWeight, decryptionProof);
+        _record(tokenId, abi.decode(abiEncodedWeight, (uint64)));
+    }
+
+    function _record(uint256 tokenId, uint64 weight) internal {
+        // The seed is public once the box is open; until then nobody could compute this.
+        uint256 h = uint256(keccak256(abi.encode(boxes.contentsOf(tokenId).seed)));
+        uint64 tolerance = sickMinWeight + uint64(h % sickWeightSpread);
+        bool sick = weight >= tolerance;
+        uint8 disease;
+        if (sick) {
+            uint16 roll = uint16(h >> 128);
+            disease = roll < _disease1 ? 0 : roll < _disease2 ? 1 : 2;
+        }
+        uint8 build = buildOf(weight);
+        _weighIns[tokenId] = WeighIn(WEIGHED, build, sick, disease, weight, tolerance);
+        emit Weighed(tokenId, weight, build, sick, disease);
+    }
+
+    /// @notice The build a weight gives: 0 thin, 1 normal, 2 chubby, 3 fat, 4 huge.
+    function buildOf(uint64 weight) public view returns (uint8) {
+        if (weight >= _floorHuge) return 4;
+        if (weight >= _floorFat) return 3;
+        if (weight >= _floorChubby) return 2;
+        if (weight >= _floorNormal) return 1;
+        return 0;
+    }
+
+    function weighIn(uint256 tokenId) external view returns (WeighIn memory) {
+        return _weighIns[tokenId];
+    }
+
+    function buildFloors() external view returns (uint64[4] memory) {
+        return [_floorNormal, _floorChubby, _floorFat, _floorHuge];
     }
 
     // ----------------------------------------------------------------- views
 
-    /// @notice Handle of a box's encrypted stash. A handle is an identifier, not the value:
-    ///         nobody is allowed to decrypt it.
-    function stashHandle(uint256 tokenId) external view returns (bytes32) {
-        return FHE.toBytes32(_stash[tokenId]);
+    /// @notice Handle of a cat's encrypted weight. A handle is an identifier, not the value:
+    ///         nobody may decrypt it until `weigh` makes it public.
+    function weightHandle(uint256 tokenId) external view returns (bytes32) {
+        return FHE.toBytes32(_weight[tokenId]);
     }
 
     function reserveHandle() external view returns (bytes32) {
@@ -311,6 +457,11 @@ contract Pantry is ZamaEthereumConfig {
 
     function burntHandle() external view returns (bytes32) {
         return FHE.toBytes32(_burnt);
+    }
+
+    /// @notice Handle of the treasury's uncollected share, readable by the treasury.
+    function treasuryShareHandle() external view returns (bytes32) {
+        return FHE.toBytes32(_treasuryShare);
     }
 
     /// @notice When `tokenId` can next claim something: now for a box that never claimed.
@@ -326,15 +477,29 @@ contract Pantry is ZamaEthereumConfig {
 
     // -------------------------------------------------------------- internal
 
+    /// @dev Treasury and fire take their share, rounded down; the reserve gets the rest, so the
+    ///      three always add up to the meal.
+    function _split(euint64 moved) internal {
+        euint64 toTreasury = _share(moved, mealTreasuryBps);
+        euint64 toFire = mealBurnBps == mealTreasuryBps ? toTreasury : _share(moved, mealBurnBps);
+
+        euint64 share = FHE.add(_treasuryShare, toTreasury);
+        FHE.allowThis(share);
+        FHE.allow(share, treasury);
+        _treasuryShare = share;
+
+        euint64 burnt = FHE.add(_burnt, toFire);
+        FHE.allowThis(burnt);
+        _burnt = burnt;
+
+        euint64 reserve = FHE.add(_reserve, FHE.sub(FHE.sub(moved, toTreasury), toFire));
+        FHE.allowThis(reserve);
+        _reserve = reserve;
+    }
+
     function _share(euint64 amount, uint16 bps) internal returns (euint64) {
         // Amounts are whole croquettes bounded by the 20M supply: amount * bps cannot overflow.
         return FHE.div(FHE.mul(amount, uint64(bps)), BPS);
-    }
-
-    function _addBurnt(euint64 amount) internal {
-        euint64 burnt = FHE.add(_burnt, amount);
-        FHE.allowThis(burnt);
-        _burnt = burnt;
     }
 
     function _pay(address to, euint64 amount) internal {

@@ -1,6 +1,6 @@
 import { spec, type AllocationKey } from "@dno/game-spec";
 import { useLocale } from "../i18n/locale";
-import { stateName } from "../i18n/names";
+import { buildName } from "../i18n/names";
 import { useT } from "./i18n";
 
 /**
@@ -54,7 +54,7 @@ function Pipe({ d, label, lx, ly, color = C.tape, anchor = "middle" }: { d: stri
 function Heads() {
   return (
     <defs>
-      {[C.tape, C.sodium, C.spectral, C.red].map((color) => (
+      {[C.tape, C.sodium, C.spectral, C.red, C.kraft].map((color) => (
         <marker key={color} id={`croq-head-${color.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 Z" fill={color} />
         </marker>
@@ -143,12 +143,14 @@ export function AllocationBar() {
   );
 }
 
-/** Where croquettes go: reserve to players, players to stashes, stashes back or to the fire. */
+/** Where croquettes go: reserve to players, players into their cat, and every meal split three ways. */
 export function TokenFlowFigure() {
   const t = useT();
   const locale = useLocale();
   const reserve = economy.allocation.filter((a) => a.key === "gameReserve" || a.key === "welcomeBags").reduce((n, a) => n + a.amount, 0);
+  const treasury = pct(economy.meal.treasuryBps);
   const burn = pct(economy.meal.burnBps);
+  const back = pct(BPS - economy.meal.treasuryBps - economy.meal.burnBps);
   return (
     <figure className="diagram">
       <div className="diagram-scroll">
@@ -156,17 +158,21 @@ export function TokenFlowFigure() {
           <Heads />
           <Crate x={20} y={50} w={230} h={100} fill={C.tape} title={t("fig.croq.flow.reserve")} sub={t("fig.croq.flow.reserveSub", { n: reserve.toLocaleString(locale) })} />
           <Crate x={365} y={50} w={230} h={100} fill={C.spectral} title={t("fig.croq.flow.balance")} sub={t("fig.croq.flow.balanceSub")} />
-          <Crate x={710} y={50} w={230} h={100} fill={C.paper} dashed title={t("fig.croq.flow.stash")} sub={t("fig.croq.flow.stashSub")} />
+          <Crate x={710} y={50} w={230} h={100} fill={C.paper} dashed title={t("fig.croq.flow.cat")} sub={t("fig.croq.flow.catSub")} />
+          <Crate x={710} y={300} w={230} h={100} fill={C.kraft} title={t("fig.croq.flow.treasury")} sub={t("fig.croq.flow.treasurySub")} />
           <Crate x={365} y={300} w={230} h={100} fill={C.red} title={t("fig.croq.flow.burnt")} sub={t("fig.croq.flow.burntSub")} />
 
           <Pipe d="M254 92 L361 92" label={t("fig.croq.flow.claim")} lx={307} ly={36} />
           <text x={135} y={176} textAnchor="middle" className="croq-svg-note">
             {t("fig.croq.flow.claimNote", { bag: economy.welcomeBag.amount, max: economy.purr.maxPerDay })}
           </text>
-          <Pipe d="M599 82 L706 82" label={t("fig.croq.flow.meal", { keep: 100 - burn })} lx={652} ly={36} color={C.spectral} />
-          <Pipe d="M706 124 L599 124" label={t("fig.croq.flow.settlePay")} lx={652} ly={176} color={C.sodium} />
-          <Pipe d="M450 154 L450 296" label={t("fig.croq.flow.mealBurn", { burn })} lx={440} ly={232} color={C.red} anchor="end" />
-          <Pipe d="M800 154 Q800 350 599 350" label={t("fig.croq.flow.settleBurn")} lx={812} ly={262} color={C.red} anchor="start" />
+          <Pipe d="M599 100 L706 100" label={t("fig.croq.flow.meal", { cap: economy.meal.maxEatenPerDay.toLocaleString(locale) })} lx={652} ly={36} color={C.spectral} />
+          <text x={825} y={176} textAnchor="middle" className="croq-svg-note">
+            {t("fig.croq.flow.weightNote")}
+          </text>
+          <Pipe d="M560 154 L760 296" label={t("fig.croq.flow.toTreasury", { pct: treasury })} lx={690} ly={240} color={C.kraft} anchor="start" />
+          <Pipe d="M480 154 L480 296" label={t("fig.croq.flow.mealBurn", { burn })} lx={470} ly={232} color={C.red} anchor="end" />
+          <Pipe d="M400 154 Q300 250 135 154" label={t("fig.croq.flow.back", { pct: back })} lx={250} ly={262} color={C.tape} />
         </svg>
       </div>
       <figcaption>{t("fig.croq.flow.caption")}</figcaption>
@@ -174,32 +180,42 @@ export function TokenFlowFigure() {
   );
 }
 
-/** One row per state: what the stash pays the holder, and what burns. */
-export function SettlementTable() {
+/** One row per build: how much a cat must have eaten, and how long that takes at the daily cap. */
+export function BuildTable() {
   const t = useT();
+  const locale = useLocale();
+  const { weight, meal } = economy;
+  const days = (n: number) => Math.ceil(n / meal.maxEatenPerDay);
+  const heaviest = weight.sick.minWeight + weight.sick.weightSpread;
   return (
     <div className="form">
       <table>
         <thead>
           <tr>
-            <th scope="col">{t("fig.croq.settle.h.state")}</th>
-            <th scope="col">{t("fig.croq.settle.h.holder")}</th>
-            <th scope="col">{t("fig.croq.settle.h.burnt")}</th>
+            <th scope="col">{t("fig.croq.build.h.build")}</th>
+            <th scope="col">{t("fig.croq.build.h.weight")}</th>
+            <th scope="col">{t("fig.croq.build.h.days")}</th>
+            <th scope="col">{t("fig.croq.build.h.bonus")}</th>
           </tr>
         </thead>
         <tbody>
-          {spec.states.map((s) => {
-            const bps = economy.settlement.payoutBps[s.key];
+          {weight.builds.map((b, i) => {
+            const next = weight.builds[i + 1];
             return (
-              <tr key={s.key}>
-                <th scope="row">{stateName(s.key)}</th>
-                <td>{pct(bps)}%</td>
-                <td>
-                  {pct(BPS - bps)}%{bps === 0 ? ` ${t("fig.croq.settle.ghost")}` : ""}
-                </td>
+              <tr key={b.key}>
+                <th scope="row">{buildName(b.key)}</th>
+                <td>{next ? `${b.minWeight.toLocaleString(locale)} – ${(next.minWeight - 1).toLocaleString(locale)}` : `${b.minWeight.toLocaleString(locale)}+`}</td>
+                <td>{b.minWeight === 0 ? "–" : days(b.minWeight)}</td>
+                <td>+{b.scoreBonus}</td>
               </tr>
             );
           })}
+          <tr>
+            <th scope="row">{t("fig.croq.build.sick")}</th>
+            <td>{`${weight.sick.minWeight.toLocaleString(locale)} – ${heaviest.toLocaleString(locale)}`}</td>
+            <td>{`${days(weight.sick.minWeight)} – ${days(heaviest)}`}</td>
+            <td>+{weight.sick.scoreBonus}</td>
+          </tr>
         </tbody>
       </table>
     </div>

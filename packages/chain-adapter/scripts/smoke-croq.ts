@@ -1,7 +1,8 @@
 /**
  * End-to-end check of the croquette calls of EvmFhevmAdapter against the live Sepolia
  * Pantry, cCROQ and Uniswap V2 pool, through the real coprocessor, relayer and KMS.
- * Spends testnet ETH: one mint, a small market buy and gas for about ten transactions.
+ * Spends testnet ETH: one mint, one opening, a small market buy and gas for about fifteen
+ * transactions. Needs the Pantry with weigh-ins: redeploy the economy first.
  *
  *   pnpm --filter @dno/chain-adapter smoke:croq
  *
@@ -41,10 +42,16 @@ async function main() {
   check(afterBag - before === BigInt(spec.economy.welcomeBag.amount), `welcome bag of ${spec.economy.welcomeBag.amount} arrived`);
   check((await chain.boxPantry(box)).welcomed, "box marked as welcomed");
 
-  console.log(`serve box ${box} 40 cCROQ`);
+  console.log(`feed box ${box} 40 cCROQ`);
   await chain.feedCroquettes(box, 40n, { onStep });
   check((await chain.boxPantry(box)).meals === 1, "one meal counted");
   check((await chain.confidentialBalance({ onStep })) === afterBag - 40n, "40 cCROQ left the wallet");
+  check((await chain.eatenToday(box, { onStep })) === 40n, "the feeder reads 40 eaten today");
+
+  console.log(`open box ${box} and weigh it`);
+  await chain.observe(box, { onStep });
+  const w = await chain.weigh(box, { onStep });
+  check(w.weight === 40n && w.build === "normal" && !w.sick, "weighed 40, normal build");
 
   const ethIn = 10n ** 14n;
   const quoted = await chain.quote("buy", ethIn);

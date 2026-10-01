@@ -74,7 +74,8 @@ export async function finalizeDuel(dno: DoNotOpen, duelId: number | bigint, send
 export const traitByte = (seed: bigint, offset: number) => Number((seed >> BigInt(offset)) & 0xffn);
 
 /** Croq, its confidential wrapper and a Pantry around `dno`, with the reserve funded. */
-export async function deployEconomy(dno: DoNotOpen, overrides: Partial<PantryParams> = {}, reserve?: bigint) {
+/** The CROQ economy next to `dno`. The deployer is the treasury unless `treasury` says otherwise. */
+export async function deployEconomy(dno: DoNotOpen, overrides: Partial<PantryParams> = {}, reserve?: bigint, treasury?: string) {
   const [deployer] = await ethers.getSigners();
   const { totalSupply, allocation } = economyFromSpec();
   const croq = (await (await ethers.getContractFactory("Croq")).deploy(totalSupply, deployer!.address)) as unknown as Croq;
@@ -85,6 +86,7 @@ export async function deployEconomy(dno: DoNotOpen, overrides: Partial<PantryPar
   const pantry = (await (await ethers.getContractFactory("Pantry")).deploy(
     await dno.getAddress(),
     await cCroq.getAddress(),
+    treasury ?? deployer!.address,
     pantryParamsFromSpec(overrides),
   )) as unknown as Pantry;
   const funded = reserve ?? allocation.gameReserve + allocation.welcomeBags;

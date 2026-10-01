@@ -4,9 +4,10 @@ import type { CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { catNames, stateName } from "../i18n/names";
+import { buildName, catNames } from "../i18n/names";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
+import { pageSound, setMuted } from "./sound";
 
 const REPO = "https://github.com/jecombe/do_not_open";
 const APP = "/app.html";
@@ -126,10 +127,12 @@ export function Home() {
   );
 }
 
-/** What the stash of a box pays its holder, state by state, as the spec sets it. */
-const OUTCOMES = spec.states.map((s) => ({ key: s.key, bps: spec.economy.settlement.payoutBps[s.key] }));
+const { weight: WEIGHT, meal: MEAL } = spec.economy;
+const HEAVIEST = WEIGHT.sick.minWeight + WEIGHT.sick.weightSpread;
+/** What the scales can say once a box is opened. The gauge is a square root, or chubby would not show. */
+const BUILDS = WEIGHT.builds.slice(2).map((b) => ({ key: b.key, from: b.minWeight, fill: Math.round(Math.sqrt(b.minWeight / HEAVIEST) * 100) }));
 
-/** The croquette economy in one panel: the hidden stash, the four ways it ends, the market. */
+/** The croquette economy in one panel: hidden meals, the scales at the end, the market. */
 function Croquettes() {
   const t = useT();
   const locale = useLocale();
@@ -148,19 +151,24 @@ function Croquettes() {
           <div className="croq-card">
             <h3>{t("home.croq.outcomes")}</h3>
             <ul className="outcomes">
-              {OUTCOMES.map(({ key, bps }) => (
+              {BUILDS.map(({ key, from, fill }) => (
                 <li key={key} className={`outcome outcome-${key}`}>
-                  <span className="outcome-state">{stateName(key)}</span>
-                  <span className="outcome-bar" aria-hidden="true">
-                    <i style={{ width: `${bps / 100}%` }} />
+                  <span className="outcome-state">{buildName(key)}</span>
+                  <span className="outcome-bar outcome-scale" aria-hidden="true">
+                    <i style={{ width: `${fill}%` }} />
                   </span>
-                  <span className="outcome-text">
-                    {bps === 10_000 ? t("home.croq.all", { pct: 100 }) : bps === 0 ? t("home.croq.none") : t("home.croq.split", { pct: bps / 100 })}
-                  </span>
+                  <span className="outcome-text">{t("home.croq.from", { n: from.toLocaleString(locale), days: Math.ceil(from / MEAL.maxEatenPerDay) })}</span>
                 </li>
               ))}
+              <li className="outcome outcome-sick">
+                <span className="outcome-state">{t("home.croq.sick")}</span>
+                <span className="outcome-bar outcome-scale" aria-hidden="true">
+                  <i style={{ width: "100%" }} />
+                </span>
+                <span className="outcome-text">{t("home.croq.sickText", { min: WEIGHT.sick.minWeight.toLocaleString(locale), max: HEAVIEST.toLocaleString(locale) })}</span>
+              </li>
             </ul>
-            <p>{t("home.croq.p2")}</p>
+            <p>{t("home.croq.p2", { cap: MEAL.maxEatenPerDay.toLocaleString(locale), meals: MEAL.mealsPerDay, treasury: MEAL.treasuryBps / 100, reserve: (10_000 - MEAL.treasuryBps - MEAL.burnBps) / 100, burn: MEAL.burnBps / 100 })}</p>
             <p>{t("home.croq.p3", { bag: welcomeBag.amount })}</p>
             <a className="btn btn-paper" href={`${DOCS}#croquettes`}>
               {t("home.croq.link")} →
@@ -180,6 +188,7 @@ function Toy() {
   const [shakes, setShakes] = useState(0);
   const [cat, setCat] = useState<CatSpec | null>(null);
   const [webgl, setWebgl] = useState(true);
+  const [muted, setMutedState] = useState(pageSound.muted);
   const lines = useRef<string[]>([]);
   lines.current = [t("home.toy.say1"), t("home.toy.say2"), t("home.toy.opening")];
 
@@ -234,6 +243,21 @@ function Toy() {
           <p className="toy-hint">{shakes === 0 ? t("home.toy.hint") : left > 0 ? t("home.toy.left", { count: left }) : "…"}</p>
         )}
         <p className="toy-note">{t("home.toy.note")}</p>
+        <button
+          type="button"
+          className="toy-sound"
+          aria-pressed={!muted}
+          onClick={() => {
+            setMuted(!muted);
+            setMutedState(!muted);
+            if (muted) {
+              pageSound.resume();
+              pageSound.complaint();
+            }
+          }}
+        >
+          {muted ? t("home.toy.soundOff") : t("home.toy.soundOn")}
+        </button>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import type { ChainAdapter } from "./types";
 
 export * from "./types";
 export { traitIndexAtOffset } from "./layout";
-export { MockAdapter, mockSeedForToken, MOCK_YOU, MOCK_NIGHT_SHIFT, type MockOptions } from "./mock/MockAdapter";
+export { MockAdapter, mockSeedForToken, mockWeighIn, MOCK_YOU, MOCK_NIGHT_SHIFT, type MockOptions } from "./mock/MockAdapter";
 
 export type ChainMode = "mock" | "sepolia";
 

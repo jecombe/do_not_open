@@ -3,6 +3,7 @@ import { spec } from "@dno/game-spec";
 import { buildBoxSpec, buildCatSpec, type CatSpec } from "@dno/generator";
 import { BOX_SIZE, BoxOpener, BoxShaker, createBox, createCat, Unboxing, type BoxObject, type CatObject } from "@dno/scene";
 import { PALETTE, Stage } from "../docs/three/stage";
+import { catVoice, pageSound } from "./sound";
 
 /** Shakes it takes before the box gives in. */
 export const SHAKES_TO_OPEN = 3;
@@ -28,7 +29,8 @@ interface Round {
 
 /**
  * The home page's toy: a box that drops onto the floor with a bounce. Click it and it
- * rattles; the third click is one too many and a random cat jumps out.
+ * rattles; the third click is one too many and a random cat jumps out. Every step has its
+ * sound: the fall, the thud, the rattle and the grumbling inside, the tape, the cat's voice.
  */
 export class PopBoxScene {
   onShake: ((count: number) => void) | null = null;
@@ -41,6 +43,8 @@ export class PopBoxScene {
   private opening = false;
   private sayUntil = 0;
   private now = 0;
+  /** Set once the cat is out: clicking it then gets a meow, not a shake. */
+  private out = false;
 
   constructor(host: HTMLElement) {
     const stage = (this.stage = new Stage(host));
@@ -51,7 +55,7 @@ export class PopBoxScene {
     stage.scene.add(lamp, lamp.target);
 
     this.bubble = stage.addLabel("pop-bubble", new Vector3(0.1, BOX_SIZE.height + 0.75, 0));
-    stage.onSelect = () => this.poke();
+    stage.onSelect = (id) => (id === "cat" && this.out ? this.pet() : this.poke());
     stage.onLayout = () => stage.frame(new Vector3(0, BOX_SIZE.height * 0.7, 0), 2.7, 2.6, new Vector3(0.45, 0.5, 1));
     stage.onLayout(1);
     stage.onFrame((time, dt) => this.update(time, dt));
@@ -60,8 +64,11 @@ export class PopBoxScene {
 
   /** A shake, or the last straw. */
   poke(): void {
+    pageSound.resume();
     const r = this.round;
-    if (!r || this.opening || r.y > 0.01) return;
+    if (!r) return;
+    if (this.out) return this.pet();
+    if (this.opening || r.y > 0.01) return;
     this.shakes++;
     this.onShake?.(this.shakes);
     if (this.shakes >= SHAKES_TO_OPEN) {
@@ -69,8 +76,16 @@ export class PopBoxScene {
       r.opener.open();
     } else {
       r.shaker.shake({ strength: 0.7 + this.shakes * 0.25, duration: 1.1 });
+      // Whoever is inside does not like it, and says so the second time.
+      if (this.shakes === SHAKES_TO_OPEN - 1) setTimeout(() => pageSound.complaint(), 500);
     }
     this.stage.wake();
+  }
+
+  /** The cat is out: a click gets its voice. */
+  pet(): void {
+    pageSound.resume();
+    if (this.round) catVoice(this.round.spec);
   }
 
   /** Clears the floor and drops a fresh box. */
@@ -86,14 +101,26 @@ export class PopBoxScene {
     const reduced = this.stage.reduced;
     const opener = new BoxOpener(box, { content: holder, glow: spec.state === "ghost" || spec.state === "quantum" ? PALETTE.spectral : spec.room.light, reducedMotion: reduced });
     const unbox = new Unboxing(box, holder, { reducedMotion: reduced, lamp: true });
+    const shaker = new BoxShaker(box, { reducedMotion: reduced });
+    shaker.onImpact = (strength) => pageSound.impact(strength);
+    opener.onRip = () => pageSound.rip();
+    opener.onBurst = () => pageSound.reveal(spec.state !== "ghost");
     opener.onDone = () => unbox.start();
-    unbox.onLand = () => this.onOpened?.(spec);
+    unbox.onCrush = () => pageSound.impact(0.4);
+    unbox.onLand = () => {
+      pageSound.impact(0.2);
+      this.out = true;
+      setTimeout(() => catVoice(spec), 250);
+      this.onOpened?.(spec);
+    };
     this.stage.scene.add(box.group);
     this.stage.pickables.push(box.group, holder);
     holder.userData.pick = "cat";
-    this.round = { box, shaker: new BoxShaker(box, { reducedMotion: reduced }), opener, unbox, cat, spec, holder, y: reduced ? 0 : 3, vy: 0 };
+    this.round = { box, shaker, opener, unbox, cat, spec, holder, y: reduced ? 0 : 3, vy: 0 };
     this.shakes = 0;
     this.opening = false;
+    this.out = false;
+    if (!reduced) pageSound.whoosh();
     this.stage.wake();
   }
 
@@ -134,7 +161,11 @@ export class PopBoxScene {
       r.y += r.vy * dt;
       if (r.y <= 0) {
         r.y = 0;
-        r.vy = Math.abs(r.vy) > 1.5 ? -r.vy * 0.38 : 0;
+        // The first hit is the full box landing; the bounces are lighter knocks.
+        const speed = Math.abs(r.vy);
+        if (speed > 5) pageSound.land();
+        else if (speed > 1.5) pageSound.impact(Math.min(0.5, speed / 10));
+        r.vy = speed > 1.5 ? -r.vy * 0.38 : 0;
       }
       r.box.group.position.y = r.y;
     } else if (!this.opening && !this.stage.reduced) {

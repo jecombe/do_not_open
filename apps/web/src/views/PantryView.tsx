@@ -5,6 +5,7 @@ import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { stepCopy } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
+import { buildName } from "../i18n/names";
 import { ShelfScene, SHELF_CAPACITY } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
@@ -23,7 +24,7 @@ const TABS: { key: Tab; label: AppKey }[] = [
   { key: "rules", label: "pantry.tabRules" },
 ];
 
-const STATE_KEYS = [...gameSpec.states].sort((a, b) => a.id - b.id).map((s) => s.key);
+const { weight: WEIGHT } = gameSpec.economy;
 
 /** "0.005" to 5000000000000000n at 18 decimals; null for anything that is not a plain positive number. */
 export function parseAmount(text: string, decimals: number): bigint | null {
@@ -413,6 +414,11 @@ function Rules({ economy }: { economy: EconomyInfo }) {
   const t = useT();
   const pct = (bps: number) => `${bps / 100}%`;
   const parts = gameSpec.economy.allocation;
+  const meal = [
+    { key: "treasury" as const, bps: economy.mealTreasuryBps },
+    { key: "reserve" as const, bps: 10_000 - economy.mealTreasuryBps - economy.mealBurnBps },
+    { key: "burn" as const, bps: economy.mealBurnBps },
+  ];
   const total = Number(economy.totalSupply);
   return (
     <>
@@ -429,17 +435,34 @@ function Rules({ economy }: { economy: EconomyInfo }) {
         <li>{t("pantry.ruleBag", { n: economy.welcomeBag })}</li>
         <li>{t("pantry.rulePurr", { max: economy.purrMaxPerDay, vet: economy.vetMultiplier, days: economy.purrMaxDays })}</li>
         <li>{economy.halvings > 0 ? t("pantry.ruleHalvedCount", { count: economy.halvings }) : t("pantry.ruleHalving")}</li>
-        <li>{t("pantry.ruleMeal", { burn: pct(economy.mealBurnBps), keep: pct(10_000 - economy.mealBurnBps) })}</li>
+        <li>{t("pantry.ruleMeal", { meals: economy.mealsPerDay, cap: Number(economy.maxEatenPerDay).toLocaleString() })}</li>
+      </ul>
+      <ul className="pantry-split" aria-label={t("pantry.mealSplit")}>
+        {meal.map((p) => (
+          <li key={p.key} style={{ flexGrow: p.bps }}>
+            <span>{t(`pantry.meal.${p.key}`)}</span>
+            <strong>{pct(p.bps)}</strong>
+          </li>
+        ))}
       </ul>
       <table className="pantry-payouts">
-        <caption>{t("pantry.payouts")}</caption>
+        <caption>{t("pantry.builds")}</caption>
         <tbody>
-          {STATE_KEYS.map((key, id) => (
-            <tr key={key}>
-              <th scope="row">{t(`state.${key}` as AppKey)}</th>
-              <td>{economy.payoutBps[id] === 0 ? t("pantry.allBurnt") : t("pantry.paid", { pct: pct(economy.payoutBps[id]!) })}</td>
+          {WEIGHT.builds.slice(2).map((b) => (
+            <tr key={b.key}>
+              <th scope="row">{buildName(b.key)}</th>
+              <td>{t("pantry.buildFrom", { n: b.minWeight.toLocaleString(), days: Math.ceil(b.minWeight / Number(economy.maxEatenPerDay)) })}</td>
             </tr>
           ))}
+          <tr>
+            <th scope="row">{t("pantry.sick")}</th>
+            <td>
+              {t("pantry.sickFrom", {
+                min: WEIGHT.sick.minWeight.toLocaleString(),
+                max: (WEIGHT.sick.minWeight + WEIGHT.sick.weightSpread).toLocaleString(),
+              })}
+            </td>
+          </tr>
         </tbody>
       </table>
       <p className="fine after-table">

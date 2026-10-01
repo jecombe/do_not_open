@@ -57,9 +57,15 @@ const PLANS: Record<string, PlannedStep[]> = {
     { step: "wallet", label: "track.sign" },
     { step: "confirming", label: "track.chain" },
   ],
-  settle: [
+  weigh: [
     { step: "wallet", label: "track.sign" },
     { step: "confirming", label: "track.chain" },
+    { step: "decrypting", label: "track.decryptPublic" },
+    { step: "proving", label: "track.proof" },
+  ],
+  today: [
+    { step: "wallet", label: "track.permit" },
+    { step: "decrypting", label: "track.decryptPrivate" },
   ],
 };
 /** Finishing a half-done open or check starts at the decryption. */
@@ -89,10 +95,10 @@ const ago = (at: number, locale: string) => {
 };
 
 /** A note is stored as a message key, so it follows a language change. */
-type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive" | "box.noteServed" | "box.noteSettled">;
+type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive" | "box.noteServed" | "box.noteWeighed">;
 
-/** Share of the stash a cat in each state pays its holder, by state id. */
-const PAYOUT_BPS = [...gameSpec.states].sort((a, b) => a.id - b.id).map((s) => gameSpec.economy.settlement.payoutBps[s.key]);
+const { meal } = gameSpec.economy;
+const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
 export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview }: Props) {
   const { adapter, account, collection, refresh, connect } = useChain();
@@ -104,6 +110,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const [pantry, setPantry] = useState<{ tokenId: number; at: BoxPantry } | null>(null);
   const [serving, setServing] = useState(false);
   const [croq, setCroq] = useState("");
+  // What the holder fed this cat today, decrypted for them: the input stops at what is left.
+  const [eaten, setEaten] = useState<{ tokenId: number; value: bigint } | null>(null);
   const [missingId, setMissingId] = useState<number | null>(null);
   const [felt, setFelt] = useState<TraitRoll | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -119,7 +127,6 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const missing = missingId === tokenId;
   const box = useMemo(() => buildBoxSpec(tokenId), [tokenId]);
   const minted = collection?.totalMinted ?? 0;
-  const cat = useMemo(() => (info?.revealed ? catFromRevealed(info.revealed) : null), [info]);
 
   const load = useCallback(async () => {
     try {
@@ -129,13 +136,18 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
       setMissingId(tokenId);
       return;
     }
-    // The stash lives next door, in the Pantry. Without it the box still works.
+    // The cat's meals and weigh-in live next door, in the Pantry. Without it the box still works.
     adapter.boxPantry(tokenId).then(
       (at) => setPantry({ tokenId, at }),
       () => setPantry(null),
     );
   }, [adapter, tokenId]);
-  const stash = pantry?.tokenId === tokenId ? pantry.at : null;
+  const kitchen = pantry?.tokenId === tokenId ? pantry.at : null;
+  const weighIn = kitchen?.weighIn ?? null;
+  const cat = useMemo(() => (info?.revealed ? catFromRevealed(info.revealed, weighIn) : null), [info, weighIn]);
+  const fullToday = !!kitchen && kitchen.mealsToday >= meal.mealsPerDay;
+  const eatenToday = kitchen?.mealsToday === 0 ? 0n : eaten?.tokenId === tokenId ? eaten.value : null;
+  const leftToday = eatenToday === null ? null : DAILY_CAP - eatenToday;
 
   // The box shows the wait too: restless for a shake, a heartbeat for the vet, building up to the lid for an open.
   useEffect(() => {
@@ -158,6 +170,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     setOut(false);
     setServing(false);
     setCroq("");
+    setEaten(null);
     reset();
     void load();
   }, [load, reset]);
@@ -208,8 +221,22 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   };
 
   const croqAmount = parseAmount(croq, 0);
+  const tooMuch = !!croqAmount && leftToday !== null && croqAmount > leftToday;
+
+  /** Opens the bowl form, and reads what the cat already ate today if it ate at all. */
+  const toggleServing = async () => {
+    if (serving) {
+      setServing(false);
+      return;
+    }
+    setServing(true);
+    if (!kitchen || kitchen.mealsToday === 0 || eaten?.tokenId === tokenId) return;
+    const value = await action.run("today", (o) => adapter.eatenToday(tokenId, o));
+    if (value !== undefined) setEaten({ tokenId, value });
+  };
+
   const serve = async () => {
-    if (!croqAmount) return;
+    if (!croqAmount || tooMuch) return;
     start();
     const done = await action.run("serve", async (o) => {
       await adapter.feedCroquettes(tokenId, croqAmount, cue(o, "confirming", () => scene.current?.feed()));
@@ -218,19 +245,21 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     if (!done) return;
     setServing(false);
     setCroq("");
+    // A meal can be cut down, or move nothing: read the day again rather than guess.
+    setEaten(null);
     setNote("box.noteServed");
     void load();
   };
 
-  const settle = async () => {
+  const weigh = async () => {
     start();
-    const done = await action.run("settle", async (o) => {
-      await adapter.settle(tokenId, o);
-      return true;
-    });
-    if (!done) return;
-    setNote("box.noteSettled");
-    void load();
+    const result = await action.run("weigh", (o) => adapter.weigh(tokenId, o));
+    if (!result) {
+      void load();
+      return;
+    }
+    if (kitchen) setPantry({ tokenId, at: { ...kitchen, weighing: "done", weighIn: result } });
+    setNote("box.noteWeighed");
   };
 
   const checkAlive = async () => {
@@ -323,24 +352,29 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               {info!.aliveCheck === "alive" ? t("box.vetBefore") : ""}
               {info!.partner !== null ? t("box.entangledWith", { serial: buildBoxSpec(info!.partner).serial }) : ""}
             </p>
-            {stash && stash.meals > 0 && (
-              <p className="fine">
-                {stash.settled
-                  ? t("box.stashSettled", { count: stash.meals })
-                  : t("box.stashWaiting", { count: stash.meals, pct: PAYOUT_BPS[info!.revealed!.state]! / 100 })}
-              </p>
+            {kitchen && !weighIn && (
+              <p className="fine">{kitchen.meals > 0 ? t("box.weighPrompt", { count: kitchen.meals }) : t("box.weighPromptNever")}</p>
             )}
             <div className="actions">
               <button type="button" className="stamp-button" onClick={() => inspect(true)}>
                 {t("box.takeOut")}
               </button>
-              {stash && stash.meals > 0 && !stash.settled && account && (
-                <button type="button" className="plain-button" onClick={() => void settle()} disabled={!!busy}>
-                  {busy === "settle" ? t("box.settling") : t("box.settle")}
+              {kitchen && !weighIn && account && (
+                <button type="button" className="plain-button" onClick={() => void weigh()} disabled={!!busy}>
+                  {busy === "weigh" ? t("box.weighing") : kitchen.weighing === "pending" ? t("box.finishWeigh") : t("box.weigh")}
                 </button>
               )}
             </div>
-            {action.error ? <p className="fine problem">{action.error}</p> : note === "box.noteSettled" ? <p className="fine">{t(note)}</p> : null}
+            {action.error ? (
+              <p className="fine problem">{action.error}</p>
+            ) : action.busy === "weigh" ? (
+              <>
+                <StepTracker key="weigh" plan={kitchen?.weighing === "pending" ? resumed(PLANS.weigh!) : PLANS.weigh!} step={action.step} />
+                <p className="fine">{stepCopy(action.step)}</p>
+              </>
+            ) : note === "box.noteWeighed" ? (
+              <p className="fine">{t(note)}</p>
+            ) : null}
             {steps}
           </Declaration>
         ) : (
@@ -364,9 +398,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               </div>
             </dl>
 
-            {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0 || (stash?.meals ?? 0) > 0) && (
+            {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0 || (kitchen?.meals ?? 0) > 0) && (
               <ul className="marks">
-                {stash && stash.meals > 0 && <li>{t("box.markStash", { count: stash.meals })}</li>}
+                {kitchen && kitchen.meals > 0 && <li>{t("box.markMeals", { count: kitchen.meals })}</li>}
                 {info.aliveCheck === "alive" && <li className="mark-good">{t("box.markVet")}</li>}
                 {info.aliveCheck === "notAlive" && <li>{t("box.markNotAlive")}</li>}
                 {info.partner !== null && <li className="mark-entangled">{t("box.markEntangled", { serial: buildBoxSpec(info.partner).serial })}</li>}
@@ -416,9 +450,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   <button type="button" className="plain-button" onClick={() => void feed()} disabled={!!busy}>
                     {busy === "feed" ? t("box.feeding") : t("box.feed")}
                   </button>
-                  {stash && (
-                    <button type="button" className="plain-button" onClick={() => setServing((s) => !s)} disabled={!!busy} aria-expanded={serving}>
-                      {busy === "serve" ? t("box.serving") : t("box.serve")}
+                  {kitchen && isHolder && (
+                    <button type="button" className="plain-button" onClick={() => void toggleServing()} disabled={!!busy || fullToday} aria-expanded={serving}>
+                      {busy === "serve" ? t("box.serving") : fullToday ? t("box.fullToday") : t("box.serve")}
                     </button>
                   )}
                   {isHolder && (
@@ -440,7 +474,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               )}
             </div>
 
-            {serving && info?.status === "sealed" && account && (
+            {serving && info?.status === "sealed" && isHolder && !fullToday && (
               <form
                 className="find pantry-form"
                 onSubmit={(e) => {
@@ -449,8 +483,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 }}
               >
                 <label htmlFor="serve-amount">{t("box.serveLabel")}</label>
-                <input id="serve-amount" inputMode="numeric" autoComplete="off" value={croq} onChange={(e) => setCroq(e.target.value)} placeholder="50" disabled={!!busy} />
-                <button type="submit" className="plain-button" disabled={!!busy || !croqAmount}>
+                <input id="serve-amount" inputMode="numeric" autoComplete="off" value={croq} onChange={(e) => setCroq(e.target.value)} placeholder={String(leftToday ?? DAILY_CAP)} disabled={!!busy} />
+                <button type="submit" className="plain-button" disabled={!!busy || !croqAmount || tooMuch}>
                   {t("box.serveGo")}
                 </button>
               </form>
@@ -468,7 +502,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                       step={action.step}
                     />
                   )}
-                  <p className="fine">{stepCopy(action.step, action.busy === "shake")}</p>
+                  <p className="fine">{stepCopy(action.step, action.busy === "shake" || action.busy === "today")}</p>
                   {action.step === "decrypting" && <p className="fine">{t("track.slow")}</p>}
                 </>
               ) : felt ? (
@@ -479,7 +513,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   <p className="fine">{t("box.shakeOnlyYou")}</p>
                 </>
               ) : serving ? (
-                <p className="fine">{t("box.serveHint", { burn: gameSpec.economy.meal.burnBps / 100 })}</p>
+                <>
+                  <p className="fine">
+                    {leftToday === null
+                      ? t("box.todayMeals", { meals: kitchen?.mealsToday ?? 0, max: meal.mealsPerDay })
+                      : t("box.today", { meals: kitchen?.mealsToday ?? 0, max: meal.mealsPerDay, eaten: String(eatenToday), cap: meal.maxEatenPerDay })}
+                    {tooMuch ? ` ${t("box.tooMuchToday", { left: String(leftToday) })}` : ""}
+                  </p>
+                  <p className="fine">
+                    {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
+                  </p>
+                </>
               ) : note ? (
                 <p className="fine">{t(note)}</p>
               ) : !info ? null : !account ? (

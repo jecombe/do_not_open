@@ -372,6 +372,28 @@ h2 {
   opacity: 0.75;
 }
 
+.toy-sound {
+  padding: 6px 12px 4px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--ink);
+  cursor: pointer;
+}
+
+.toy-sound[aria-pressed="false"] {
+  opacity: 0.7;
+}
+
+.toy-sound:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
 @keyframes nudge {
   0%,
   100% {
@@ -782,6 +804,15 @@ h2 {
 
 .outcome-text {
   font-weight: 700;
+}
+
+/* A weight gauge: the empty part is just paper, nothing burns. */
+.outcome-scale {
+  background: var(--paper);
+}
+
+.outcome-sick .outcome-bar i {
+  background: repeating-linear-gradient(-45deg, var(--red) 0 6px, var(--orange) 6px 12px);
 }
 
 @media (max-width: 760px) {

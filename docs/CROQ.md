@@ -1,8 +1,16 @@
 # Croquettes (CROQ)
 
-The game currency of DO NOT OPEN. Players feed sealed boxes with croquettes. The
-croquettes pile up in an encrypted stash that nobody can read or withdraw. When the box
-is opened, the cat decides what happens to the stash.
+The game currency of DO NOT OPEN. Holders feed their sealed cats croquettes, and the
+cats eat them: each cat puts on a weight that nobody can read while the box is sealed.
+Once the box is opened, the cat is weighed in public. Its weight sets its build, from
+thin to huge, and past a tolerance of its own the cat is **sick**: an ultra-rare trophy.
+
+Two gestures, two currencies:
+
+| Gesture | Paid in | Hidden counter | At the reveal |
+| --- | --- | --- | --- |
+| Pet (`DoNotOpen.feed`) | ETH, to the collection | Affection | Golden accessory past the threshold |
+| Meal (`Pantry.feed`) | cCROQ, eaten whole | Weight | Build, and sickness past the cat's tolerance |
 
 Everything here runs next to `DoNotOpen` without changing it. The `Pantry` only reads
 the box contract: `ownerOf`, `status`, `vetCertified` and `contentsOf`.
@@ -25,7 +33,7 @@ confidential twin. One CROQ wraps into one cCROQ (rate 1, since the token has no
 decimals). Unwrapping goes the other way, through a public decryption of the amount.
 
 The amount is visible when CROQ enters or leaves the game. Inside the game, every
-balance, transfer, meal, stash and payout is encrypted.
+balance, transfer, meal and weight is encrypted until the reveal.
 
 One CROQ is one croquette. There are no decimals.
 
@@ -38,7 +46,7 @@ function, no owner and no pause. Nothing can create more.
 
 | Share | Amount | Where it goes |
 | --- | --- | --- |
-| Game reserve | 10,000,000 (50%) | Wrapped into the Pantry. Pays the daily purr until it runs dry |
+| Game reserve | 10,000,000 (50%) | Wrapped into the Pantry. Pays the daily purr, and takes back 60% of every meal |
 | Welcome bags | 1,000,000 (5%) | Wrapped into the Pantry. 100 × 10,000 boxes |
 | Market liquidity | 4,000,000 (20%) | A CROQ/WETH pool on Uniswap V2 |
 | Treasury | 5,000,000 (25%) | Kept by the collection owner as plain CROQ, for events and future liquidity |
@@ -53,6 +61,9 @@ Anyone can call `fund`. The amount is public, since it moves as a plain ERC-20 f
 
 The total supply is public. How much still circulates is not: burnt croquettes stay
 locked in the Pantry under an encrypted total that nobody can read.
+
+Meals carry croquettes back to the reserve, so the reserve does not only drain: as long
+as the cats eat, the purr keeps paying.
 
 ```mermaid
 flowchart LR
@@ -69,14 +80,10 @@ flowchart LR
   market -- "wrap" --> players
   players -- "unwrap" --> market
 
-  players -- "feed" --> meal{{"Meal"}}
-  meal -- "90%" --> stash["Box stash<br/>encrypted, unreadable"]
-  meal -- "10%" --> burnt["Burnt pile<br/>locked forever"]
-
-  stash -- "settle: alive or asleep, 100%" --> players
-  stash -- "settle: quantum, 50%" --> players
-  stash -- "settle: quantum, other 50%" --> burnt
-  stash -- "settle: ghost, 100%" --> burnt
+  players -- "meal, eaten whole" --> meal{{"Meal<br/>weight += amount"}}
+  meal -- "60%" --> reserve
+  meal -- "20%, through collect" --> owner["Collection treasury<br/>cCROQ"]
+  meal -- "20%" --> burnt["Burnt pile<br/>locked forever"]
 ```
 
 ## Where croquettes come from
@@ -137,59 +144,125 @@ is nothing to simulate and nothing to retry on a bad day.
 
 ### Meals
 
-Anyone can feed any **sealed** box, holder or not, like the ETH-paid `feed` on
-`DoNotOpen`. The two are separate: a meal adds croquettes to the stash, `feed` adds
-affection.
+Only the **holder** feeds a **sealed** cat. The ETH-paid `feed` on `DoNotOpen` is
+separate: it pets the cat (affection), a meal feeds it (weight).
 
-1. The player encrypts an amount in the browser with the Relayer SDK. The input proof
-   is made for the Pantry and the player.
-2. `Pantry.feed(tokenId, encryptedAmount, inputProof)` pulls that amount from the
-   player's cCROQ. The player must have made the Pantry an operator once
-   (`cCroq.setOperator(pantry, until)`).
-3. **10% is burnt, 90% joins the box's stash.** All in FHE.
+1. The holder encrypts an amount in the browser with the Relayer SDK. The input proof
+   is made for the Pantry and the holder.
+2. `Pantry.feed(tokenId, encryptedAmount, inputProof)` cuts the amount down to what is
+   left of the day's allowance, then pulls it from the holder's cCROQ. The holder must
+   have made the Pantry an operator once (`cCroq.setOperator(pantry, until)`).
+3. **The cat eats it all.** Its encrypted weight goes up by the amount, and the
+   croquettes are split, all in FHE:
+
+   | Share | Goes to |
+   | --- | --- |
+   | 20% | The collection's treasury, sent out by `collect()` |
+   | 60% | Back to the game reserve, which pays the purr |
+   | 20% | The burnt pile |
+
 4. `meals[tokenId]` goes up by one. The event is `MealServed(tokenId, feeder, meals)`.
    There is no amount in it.
 
-If the player holds less than they offered, the transfer moves **0**. There is no
+If the holder holds less than the (capped) offer, the transfer moves **0**. There is no
 revert, and nothing on-chain tells it apart from a real meal. The meal is still
 counted.
 
-### The stash
+### Daily allowance
 
-| Who | Can read it | Can withdraw it |
+| Rule | Value |
+| --- | --- |
+| Meals per cat and per UTC day | 2. A third reverts with `NoMoreMealsToday` |
+| Croquettes per cat and per UTC day | 1,000, however they are spread: 1 + 999, 500 + 500 or 1,000 at once |
+
+The amount is encrypted, so the Pantry cannot revert on it: an offer past what is left
+of the day is cut down to it, silently, and only what the cat ate leaves the wallet. The
+holder can decrypt what their cat ate today (`eatenTodayHandle`), so the app can cap the
+input.
+
+The allowance belongs to the cat, not the wallet. More wallets do not feed a cat faster.
+
+Only the holder feeds because of that limit: if anyone could, a stranger could fill a
+cat's two meals with empty bowls every day, for the price of gas, and starve it.
+
+### The weight
+
+| Who | Can read it |
+| --- | --- |
+| The holder | No (they know what they fed, not what earlier holders did) |
+| The public | No, until the box is opened and weighed |
+| The deployer | No |
+
+Nobody is allowed on a weight, because `FHE.allow` grants are permanent: a weight that
+its holder could read would stay readable to every past holder after a sale.
+
+### Weigh-in
+
+Once `DoNotOpen` has finalised the reveal, **anyone** weighs the cat, once:
+
+1. `Pantry.weigh(tokenId)` makes the weight publicly decryptable and emits
+   `WeighInRequested(tokenId, weightHandle)`. A cat that never ate is weighed on the
+   spot, with no FHE work.
+2. Anyone fetches the cleartext and the KMS proof from the relayer and sends
+   `finalizeWeigh(tokenId, weight, proof)`.
+
+The Pantry then computes, in the clear:
+
+- the **build**, the highest one the weight reaches;
+- the cat's **tolerance**: `keccak256(seed)` folded into [300,000, 600,000);
+- **sick** when the weight is at or past the tolerance, and then the disease, from other
+  bits of the same hash.
+
+| Build | Weight from | Score bonus |
 | --- | --- | --- |
-| The holder | No | No |
-| The feeder | No (only what they sent, from their own transfer) | No |
-| The deployer | No | No |
-| The Pantry | It computes on it | Only through `settle`, after the reveal |
+| Thin | 0 (never ate) | 0 |
+| Normal | 1 | 0 |
+| Chubby | 10,000 | +100 |
+| Fat | 50,000 | +300 |
+| Huge | 150,000 | +700 |
+| **Sick** | the cat's tolerance, 300,000 to 600,000 | +2,000 on top of huge |
 
-Nobody is allowed on a stash, because `FHE.allow` grants are permanent. A stash that its
-holder could read would stay readable to every past holder after a sale. So nobody gets
-access, and the stash only grows until the box is opened.
+| Disease | Share of sick cats |
+| --- | --- |
+| Diabetic | 60% |
+| Arthritic | 30% |
+| Fatty liver | 10% |
 
-That is what makes a sale honest: the seller cannot empty the cat just before listing
-it.
+The event is `Weighed(tokenId, weight, build, sick, disease)`. Sickness is a trophy: the
+cat does not die of it, and its state from the reveal does not change.
 
-### Settlement
+The tolerance comes from the seed, which is encrypted until the box is opened, and by
+then the cat can no longer eat. Nobody, the holder included, can feed a cat up to just
+its tolerance: past 300,000 every meal is a bet that it is not enough yet.
 
-Once `DoNotOpen` has finalised the reveal, **anyone** calls `Pantry.settle(tokenId)`,
-once. The Pantry reads the state from `contentsOf(tokenId)`:
+### Calibration
 
-| State | Share of the stash paid to the holder | The rest |
-| --- | --- | --- |
-| Alive | 100% | |
-| Asleep | 100%: the cat slept on the pile | |
-| Ghost | 0% | Burnt: you were feeding a ghost all along |
-| Quantum | 50% (rounded down) | Burnt |
+The numbers are set so the builds stay rare for the life of the game, against a supply
+of 20M:
 
-The payout goes to whoever holds the box when `settle` runs. It is an encrypted cCROQ
-transfer: only that holder can read the amount. The event
-`Settled(tokenId, holder, state, payoutBps)` says which rule applied, never how much.
+| Build | Fastest, at 1,000 a day | Croquettes eaten | Share of the supply |
+| --- | --- | --- | --- |
+| Chubby | 10 days | 10,000 | 0.05% |
+| Fat | 50 days | 50,000 | 0.25% |
+| Huge | 150 days | 150,000 | 0.75% |
+| Sick | 300 to 600 days | 300,000 to 600,000 | 1.5% to 3% |
 
-Who sends `settle` does not matter: the payout goes to the holder either way. A holder
-who sells an opened box before it is settled sells the stash with it.
+- **The purr is not enough.** It pays about 2 a day per box in the first year: ~730 a year,
+  less after each halving. Anything past normal is bought on the market.
+- **A sick cat moves the market.** 300,000 croquettes is 7.5% of the pool's starting 4M,
+  and buying it from a constant-product pool costs more with every croquette.
+- **The fire is a hard ceiling.** Each sick cat burns at least 60,000. If every one of the
+  20M croquettes were eventually burnt, at most ~333 cats could ever get sick; with a
+  reserve that only lets croquettes out through the purr, the real number is far lower.
+- **Time is the other ceiling.** No sick cat exists before day 300 of the game, whatever
+  is spent.
 
-A box that was never fed settles without any FHE work.
+### Treasury share
+
+The treasury's 20% piles up in an encrypted bucket that only the treasury can read
+(`treasuryShareHandle`). `collect()` sends it all to the treasury in one confidential
+transfer. Anyone may call it; it always pays the treasury. The treasury address is set at
+deployment (`COLLECTION_OWNER`, or the deployer) and cannot change.
 
 ### The burnt pile
 
@@ -197,19 +270,19 @@ A box that was never fed settles without any FHE work.
 the wrapper would strand the same plain CROQ inside it anyway, at a higher FHE cost.
 The running total is encrypted and nobody is allowed on it.
 
-The Pantry's books always balance: its cCROQ balance equals the reserve, plus the open
-stashes, plus the burnt pile (test: "keeps the books").
+The Pantry's books always balance: its cCROQ balance equals the reserve, plus the
+uncollected treasury share, plus the burnt pile (test: "keeps the books").
 
 ## Selling a fed box
 
-A box carries its stash: the stash is keyed by token id, so it follows the box to the
-new holder. A buyer knows two things:
+The weight is keyed by token id, so it follows the cat to the new holder, and so does
+the day's allowance. A buyer knows:
 
 - how many meals it was served, which is public;
-- that the stash could not have been emptied.
+- that a cat can eat at most 1,000 a day, so the meal count and the days since the
+  first meal bound its weight.
 
-The buyer does not know the amount. The cat may be a ghost that burns it all. A box
-that duelled or was proven alive gives some hints, nothing more. The seller knows at
+The buyer does not know the weight, and nobody knows the tolerance. The seller knows at
 least what they fed it themselves. That asymmetry is part of the game.
 
 The meal count is a weak signal: a meal of 0 counts too. A seller can inflate it for the
@@ -231,7 +304,7 @@ sequenceDiagram
   P->>U: swap ETH for CROQ (public amount)
   P->>W: approve, wrap(me, amount) (public amount)
   Note over P,W: from here on, amounts are encrypted
-  P->>Pa: claim, feed, settle
+  P->>Pa: claim, feed
   P->>W: confidentialTransfer to friends
   P->>W: unwrap(me, me, encrypted amount)
   W-->>P: UnwrapRequested(requestId)
@@ -257,26 +330,27 @@ project never sells is the safest shape.
 ```mermaid
 sequenceDiagram
   autonumber
-  actor F as Feeder
+  actor H as Holder
   participant App
   participant SDK as Relayer SDK
   participant Pa as Pantry
   participant W as cCROQ
   participant B as DoNotOpen
   opt first meal
-    F->>W: setOperator(Pantry, until)
+    H->>W: setOperator(Pantry, until)
   end
-  F->>App: feed box #42 with 30
-  App->>SDK: createEncryptedInput(Pantry, feeder).add64(30)
+  H->>App: feed cat #42 with 300
+  App->>SDK: createEncryptedInput(Pantry, holder).add64(300)
   SDK-->>App: handle + input proof
   App->>Pa: feed(42, handle, proof)
-  Pa->>B: ownerOf(42), status(42) == Sealed
-  Pa->>Pa: offered = FHE.fromExternal(handle, proof)
-  Pa->>Pa: allowTransient(offered, cCROQ)
-  Pa->>W: confidentialTransferFrom(feeder, Pantry, offered)
-  W-->>Pa: moved (offered, or 0 if the feeder holds less)
-  Pa->>Pa: burnt = moved × 10%, stash += moved − burnt
-  Pa-->>App: MealServed(42, feeder, meals)
+  Pa->>B: ownerOf(42) == holder, status(42) == Sealed
+  Pa->>Pa: meals today < 2, or revert
+  Pa->>Pa: capped = min(offered, 1000 − eaten today)
+  Pa->>W: confidentialTransferFrom(holder, Pantry, capped)
+  W-->>Pa: moved (capped, or 0 if the holder holds less)
+  Pa->>Pa: weight += moved, eaten today += moved
+  Pa->>Pa: treasury += 20%, burnt += 20%, reserve += the rest
+  Pa-->>App: MealServed(42, holder, meals)
 ```
 
 ### Claim
@@ -303,7 +377,7 @@ sequenceDiagram
   Note over H,W: only the holder can decrypt total
 ```
 
-### Settle
+### Weigh
 
 ```mermaid
 sequenceDiagram
@@ -312,21 +386,19 @@ sequenceDiagram
   actor A as Anyone
   participant B as DoNotOpen
   participant Pa as Pantry
-  participant W as cCROQ
+  participant K as Relayer / KMS
   H->>B: observe(42)
   A->>B: finalizeObserve(42, seed, proof)
-  Note over B: status = Revealed, state in the clear
-  A->>Pa: settle(42)
-  Pa->>B: status(42) == Revealed, contentsOf(42).state, ownerOf(42)
-  alt alive or asleep
-    Pa->>W: confidentialTransfer(holder, stash)
-  else quantum
-    Pa->>Pa: payout = stash × 50%, burnt += stash − payout
-    Pa->>W: confidentialTransfer(holder, payout)
-  else ghost
-    Pa->>Pa: burnt += stash
-  end
-  Pa-->>A: Settled(42, holder, state, payoutBps)
+  Note over B: status = Revealed, seed in the clear
+  A->>Pa: weigh(42)
+  Pa->>Pa: makePubliclyDecryptable(weight)
+  Pa-->>A: WeighInRequested(42, weightHandle)
+  A->>K: publicDecrypt([weightHandle])
+  K-->>A: weight + KMS proof
+  A->>Pa: finalizeWeigh(42, weight, proof)
+  Pa->>B: contentsOf(42).seed
+  Pa->>Pa: tolerance = keccak256(seed) folded, build, sick, disease
+  Pa-->>A: Weighed(42, weight, build, sick, disease)
 ```
 
 ### Unwrap
@@ -357,17 +429,16 @@ The unwrapped amount becomes public: it is about to move as a plain ERC-20 anywa
 
 Encrypted amounts do not make the game invisible. Public, for anyone reading the chain:
 
-- who feeds which box, and how many times (`MealServed`);
+- who feeds which box, and how many times a day (`MealServed`);
 - who claims, for which boxes, and when (`WelcomeBag`, `Purred`, `lastPurr`);
 - every amount that crosses the border: wraps, unwraps, market trades, `fund`;
-- the outcome of each settlement: paid in full, half or burnt, since the state is
-  public after the reveal;
+- the weight of every opened and weighed cat, and so the total its holders fed it;
 - that a confidential transfer happened between two addresses.
 
 Not public, for anyone:
 
-- any balance, meal, purr, stash or payout amount;
-- the reserve left, and the total burnt;
+- any balance, meal or purr amount, and the weight of a sealed cat;
+- the reserve left, the treasury's uncollected share, and the total burnt;
 - so, how much CROQ really circulates.
 
 ## Cost
@@ -377,13 +448,13 @@ Measured on the FHEVM mock with `fhevm.computeTransactionHCU`. The protocol limi
 
 | Function | FHE work | HCU |
 | --- | --- | --- |
-| `feed` | input check, confidential `transferFrom`, `mul` + `div` for the burn, two `add` | ~2,152,000 |
+| `feed`, first meal of the day | input check, `min`, confidential `transferFrom`, two `mul` + `div` for the split, `sub`s and `add`s | ~2,790,000 |
+| `feed`, second meal | the same, plus the `sub` from what was already eaten | ~3,180,000 |
 | `claim` | per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; then `min`, `sub`, one transfer | ~680,000 per box; ~6.8M for 10 boxes (depth ~2.8M) |
 | `claim` once the purr has halved to 0 | none | 0 |
-| `settle`, never fed | none | 0 |
-| `settle`, ghost | one `add` | ~162,000 |
-| `settle`, alive or asleep | one transfer | ~586,000 |
-| `settle`, quantum | `mul` + `div`, `sub`, `add`, one transfer | ~1,990,000 |
+| `weigh`, never fed | none | 0 |
+| `weigh` + `finalizeWeigh` | one public decryption request, then plain arithmetic | ~0 |
+| `collect` | one confidential transfer | ~590,000 |
 
 Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M,
 `fund` 442k.
@@ -401,11 +472,17 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 
 The Pantry reads `DoNotOpen` at `0x880D284333F4001Bfd199899f8243D78b486e077`.
 
+**This Pantry runs the earlier rules** (stash and settlement). The weight rules need a new
+Pantry (`pnpm --filter @dno/contracts-evm deploy:sepolia`, after removing the old
+`Pantry` entry from `deployments/sepolia` so hardhat-deploy does not reuse it). The old Pantry has no withdrawal function: the CROQ funded into it stays
+there.
+
 ## Tests
 
-`packages/contracts-evm/test/Pantry.ts`, 27 tests on the FHEVM mock. They cover the
+`packages/contracts-evm/test/Pantry.ts`, 30 tests on the FHEVM mock. They cover the
 fixed supply, wrapping and unwrapping, every claim rule (bag per box, days, cap,
-Vet Certified, halving, empty reserve), meals (burn, silent 0, nobody can read a stash,
-operator and input checks), every settlement state, resale, and the bookkeeping
-invariant. Each function's HCU budget is pinned. The tests make the four states equally
-likely with a config override, so every branch is reached with a handful of boxes.
+Vet Certified, halving, empty reserve), meals (holder only, the 20/60/20 split, two
+meals a day, the 1,000 a day cap in one meal or spread, silent 0, nobody can read a
+weight, operator and input checks), the treasury's `collect`, every build, sickness
+past the seed's tolerance, a forged weight, and the bookkeeping invariant. Each
+function's HCU budget is pinned.
