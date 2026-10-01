@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { spec, TRAIT_KEYS } from "@dno/game-spec";
 import {
+  BUILD_GIRTH,
   buildBoxSpec,
   buildCatSpec,
+  buildForWeight,
   decodeSeed,
   encodeSeed,
   FIXTURE_SEEDS,
@@ -10,6 +12,7 @@ import {
   mulberry32,
   rarityScore,
   resolveTrait,
+  revealedMetadata,
   scoreDistribution,
   stateFromRoll,
   tierForScore,
@@ -233,5 +236,53 @@ describe("metadata and SVG fallback", () => {
       expect(svg).not.toContain("undefined");
       expect(svg).not.toContain("NaN");
     }
+  });
+});
+
+describe("weigh-in", () => {
+  const { seed } = FIXTURE_SEEDS[0]!;
+  const builds = spec.economy.weight.builds;
+
+  it("picks the heaviest build a weight reaches, like the Pantry", () => {
+    expect(buildForWeight(0).key).toBe("thin");
+    expect(buildForWeight(1).key).toBe("normal");
+    for (const b of builds) {
+      expect(buildForWeight(b.minWeight).key).toBe(b.key);
+      if (b.minWeight > 0) expect(buildForWeight(b.minWeight - 1).key).not.toBe(b.key);
+    }
+    expect(buildForWeight(10n ** 12n).key).toBe("huge");
+  });
+
+  it("leaves an unweighed cat untouched", () => {
+    expect(buildCatSpec({ seed }).weight).toBeNull();
+  });
+
+  it("adds the build bonus, and the sick bonus, to the score and rounds the body", () => {
+    const plain = buildCatSpec({ seed });
+    const fat = buildCatSpec({ seed, weighIn: { weight: 60_000, sick: false, disease: null } });
+    expect(fat.weight).toMatchObject({ build: "fat", buildName: "Fat", sick: false, disease: null, weight: 60_000 });
+    expect(fat.rarity.score).toBe(plain.rarity.score + builds.find((b) => b.key === "fat")!.scoreBonus);
+    expect(fat.rarity.tier).toBe(plain.rarity.tier);
+    expect(fat.body.girth).toBeCloseTo(plain.body.girth * BUILD_GIRTH.fat, 2);
+
+    const sick = buildCatSpec({ seed, weighIn: { weight: 400_000n, sick: true, disease: "diabetic" } });
+    expect(sick.weight).toMatchObject({ build: "huge", sick: true, disease: "diabetic", diseaseName: "Diabetic" });
+    expect(sick.rarity.score).toBe(
+      plain.rarity.score + builds.find((b) => b.key === "huge")!.scoreBonus + spec.economy.weight.sick.scoreBonus,
+    );
+  });
+
+  it("ignores a disease on a cat that is not sick", () => {
+    expect(buildCatSpec({ seed, weighIn: { weight: 5, sick: false, disease: "arthritic" } }).weight?.disease).toBeNull();
+  });
+
+  it("puts the weigh-in in the metadata", () => {
+    const sick = buildCatSpec({ seed, weighIn: { weight: 400_000, sick: true, disease: "fattyLiver" } });
+    const attrs = revealedMetadata(1, sick, "1.png").attributes;
+    expect(attrs).toContainEqual({ trait_type: "Build", value: "Huge" });
+    expect(attrs).toContainEqual({ trait_type: "Weight", value: 400_000, display_type: "number" });
+    expect(attrs).toContainEqual({ trait_type: "Disease", value: "Fatty liver" });
+    const plain = revealedMetadata(1, buildCatSpec({ seed }), "1.png").attributes.map((a) => a.trait_type);
+    expect(plain).not.toContain("Build");
   });
 });

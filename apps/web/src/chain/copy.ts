@@ -1,5 +1,5 @@
 import { buildCatSpec, type CatSpec } from "@dno/generator";
-import { ChainError, formatAmount, sameAddress, shortAddress, type Address, type CollectionInfo, type RevealedContents, type Step, type TraitRoll } from "@dno/chain-adapter";
+import { ChainError, formatAmount, sameAddress, shortAddress, type Address, type CollectionInfo, type RevealedContents, type Step, type TraitRoll, type WeighIn } from "@dno/chain-adapter";
 import { lookup, t } from "../i18n/app";
 import { rollNames } from "../i18n/names";
 
@@ -45,13 +45,14 @@ export function stepCopy(step: Step | null, secret = false): string {
 /** "Mood" and "Grumpy" for a roll. */
 export const traitCopy = (r: TraitRoll): { trait: string; variant: string } => rollNames(r.traitIndex, r.roll);
 
-/** Rebuilds the cat from what the chain revealed, and checks the two agree. */
-export function catFromRevealed(r: RevealedContents): CatSpec {
+/** Rebuilds the cat from what the chain revealed, and checks the two agree. The weigh-in, once
+ *  there is one, shapes the cat and adds to its score; the box contract never sees it. */
+export function catFromRevealed(r: RevealedContents, weighIn?: WeighIn | null): CatSpec {
   const cat = buildCatSpec({ seed: r.seed, affection: r.affection });
   if (cat.rarity.score !== r.score || cat.rarity.golden !== r.golden) {
     console.warn("[chain] the generator and the chain disagree about this cat", { chain: r, generator: cat.rarity });
   }
-  return cat;
+  return weighIn ? buildCatSpec({ seed: r.seed, affection: r.affection, weighIn }) : cat;
 }
 
 export const holderCopy = (owner: Address, account: Address | null) => (sameAddress(owner, account) ? t("holder.you") : shortAddress(owner));

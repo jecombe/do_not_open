@@ -223,7 +223,8 @@ score; the golden bonus only exists once a box is opened.
 
 Rules and numbers are in [CROQ.md](CROQ.md). Two more participants:
 
-- **Pantry**: holds the croquette reserve, the stashes and the burnt pile.
+- **Pantry**: holds the croquette reserve, the treasury's share and the burnt pile, and
+  counts each cat's encrypted weight.
 - **cCROQ**: the confidential token, an ERC-7984 wrapper around the plain ERC-20 CROQ.
 
 ### Buy and wrap, unwrap and sell
@@ -299,25 +300,30 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  actor F as Anyone
+  actor H as Holder
   participant App
   participant Pa as Pantry
   participant W as cCROQ
   participant Co as Coprocessor
   opt first meal
-    F->>W: setOperator(Pantry, until)
+    H->>W: setOperator(Pantry, until)
   end
-  App->>App: Relayer SDK: encrypt n for (Pantry, feeder)
-  F->>Pa: feed(tokenId, handle, proof)
-  Pa->>Pa: box exists and is Sealed
+  App->>App: Relayer SDK: encrypt n for (Pantry, holder)
+  H->>Pa: feed(tokenId, handle, proof)
+  Pa->>Pa: caller holds the box, box is Sealed, fewer than 2 meals today
   Pa->>Co: offered = fromExternal(handle, proof)
-  Pa->>W: confidentialTransferFrom(feeder, Pantry, offered)
-  W-->>Pa: moved: offered, or 0 if the feeder holds less
-  Pa->>Co: burnt = moved × 10%; stash += moved - burnt
-  Pa-->>F: MealServed(tokenId, feeder, meals)
+  Pa->>Co: capped = min(offered, 1000 - eaten today)
+  Pa->>W: confidentialTransferFrom(holder, Pantry, capped)
+  W-->>Pa: moved: capped, or 0 if the holder holds less
+  Pa->>Co: weight += moved; eaten today += moved
+  Pa->>Co: treasury += 20%; burnt += 20%; reserve += the rest
+  Pa-->>H: MealServed(tokenId, holder, meals)
 ```
 
-### Settle a stash
+The ETH-paid `DoNotOpen.feed` is the other gesture: it pets the cat (affection), and
+anyone may do it.
+
+### Weigh a cat
 
 ```mermaid
 sequenceDiagram
@@ -325,28 +331,33 @@ sequenceDiagram
   actor A as Anyone
   participant B as DoNotOpen
   participant Pa as Pantry
-  participant W as cCROQ
+  participant R as Relayer / KMS
   Note over B: the box was observed and finalised: status Revealed
-  A->>Pa: settle(tokenId)
-  Pa->>B: status, contentsOf(tokenId).state, ownerOf(tokenId)
-  alt alive, asleep
-    Pa->>W: confidentialTransfer(holder, stash)
-  else quantum
-    Pa->>W: confidentialTransfer(holder, stash × 50%)
-    Pa->>Pa: burnt += the other half
-  else ghost
-    Pa->>Pa: burnt += stash
+  A->>Pa: weigh(tokenId)
+  alt never ate
+    Pa->>Pa: record weight 0: thin
+  else
+    Pa->>Pa: makePubliclyDecryptable(weight)
+    Pa-->>A: WeighInRequested(tokenId, weightHandle)
+    A->>R: publicDecrypt([weightHandle])
+    R-->>A: weight + proof
+    A->>Pa: finalizeWeigh(tokenId, weight, proof)
+    Pa->>Pa: checkSignatures
   end
-  Pa-->>A: Settled(tokenId, holder, state, payoutBps)
+  Pa->>B: contentsOf(tokenId).seed
+  Pa->>Pa: tolerance = keccak256(seed) folded; build; sick and disease
+  Pa-->>A: Weighed(tokenId, weight, build, sick, disease)
 ```
 
 ```mermaid
 stateDiagram-v2
   [*] --> Growing: first meal
-  Growing --> Growing: feed (sealed box only)
+  Growing --> Growing: feed (holder, sealed, 2 meals and 1,000 a day)
   Growing --> Frozen: observe (no more meals)
-  Frozen --> Settled: finalizeObserve, then settle (anyone, once)
-  Settled --> [*]
+  Frozen --> Weighing: finalizeObserve, then weigh (anyone, once)
+  Weighing --> Weighed: finalizeWeigh (anyone)
+  Frozen --> Weighed: weigh, if it never ate
+  Weighed --> [*]
 ```
 
 ### Send croquettes to another player
@@ -364,4 +375,5 @@ Every two-step action can be picked up later, by anyone:
 | Box `Observing` | "Finish opening" | `finishObserve` |
 | Alive check `Pending` | "Finish the check" | `finishProveAlive` |
 | Duel `Pending` | "Reveal the result" | `finishDuel` |
-| Box revealed, stash not settled | a settle action | `settle` |
+| Box revealed, not weighed | "Weigh the cat" | `weigh` |
+| Weigh-in pending | "Weigh the cat" | `weigh` (picks up the pending one: `finalizeWeigh`) |

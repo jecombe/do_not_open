@@ -784,6 +784,15 @@ h2 {
   font-weight: 700;
 }
 
+/* A weight gauge: the empty part is just paper, nothing burns. */
+.outcome-scale {
+  background: var(--paper);
+}
+
+.outcome-sick .outcome-bar i {
+  background: repeating-linear-gradient(-45deg, var(--red) 0 6px, var(--orange) 6px 12px);
+}
+
 @media (max-width: 760px) {
   .croq-board {
     grid-template-columns: 1fr;

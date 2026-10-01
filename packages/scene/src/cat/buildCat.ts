@@ -3,6 +3,7 @@ import type { CatBody, CatSpec, Pose } from "@dno/generator";
 import type { AssetLibrary } from "../assets/gltf";
 import { Kit, type ZonePalette } from "../materials";
 import { addAccessory } from "./accessories";
+import { addSickness } from "./sickness";
 import { addPart, anchored, breedOf, catAssetLibrary, find, isPlaceholder, prepareKit, type CatBreed } from "./kitParts";
 
 export interface CatObject {
@@ -156,6 +157,8 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
   const muzzle = p === "tuxedo" || p === "points" ? body.furSecondary : p === "solid" || p === "glitch" ? body.furBase : body.furBelly;
   const geometryOf = (name: string) => (find(models, name) as Mesh).geometry;
   const girth: [number, number, number] = [body.girth, 1, layout.deep ? body.girth : 1];
+  /** How far a weighed cat's belly pushes what sits around it. 1 for any cat not weighed fat. */
+  const spread = spec.weight ? new Vector3(Math.max(1, girth[0]), 1, Math.max(1, girth[2])) : new Vector3(1, 1, 1);
   /** A group at a body anchor, moved with the body when girth widens it. */
   const onBody = (name: string) => {
     const g = anchored(group, find(models, `body_${spec.pose}__${name}`));
@@ -270,7 +273,7 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
       drifting.push({ part: addPart(kit, mouth, find(parts, "prop_smoke")), home: new Vector3(0.22, -0.02, 0.11), rise: 0.36, sway: 0.05 });
     }
   } else if (vice === "drunk") {
-    addPart(kit, group, find(parts, "prop_bottle"), { thickness: 0.008 }).position.set(0.2, 0, 0.36);
+    addPart(kit, group, find(parts, "prop_bottle"), { thickness: 0.008 }).position.set(0.2, 0, 0.36).multiply(spread);
     const hat = onHead("hat");
     for (let i = 0; i < 2; i++) {
       drifting.push({ part: addPart(kit, hat, find(parts, "prop_bubble")), home: new Vector3(0.12, 0.02, 0.1), rise: 0.3, sway: 0.03 });
@@ -294,7 +297,12 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
 
   const collar = onBody("neck");
   collar.scale.multiplyScalar(body.headSize);
+  // The neck widens with a fat body: the collar follows, or it sinks in.
+  collar.scale.multiply(new Vector3(1 + (spread.x - 1) * 0.5, 1, 1 + (spread.z - 1) * 0.5));
   addAccessory(kit, spec.accessory, parts, { neck: collar, face: onHead("face"), eye_R: onHead("eye_R"), hat: onHead("hat") });
+
+  // A curled-up cat lies across the front, head to the right: its prop goes before the belly.
+  addSickness(kit, spec.weight, group, spread, spec.pose === "curl");
 
   const anim = spec.animation;
   const baseY = anim.float ? 0.32 : 0;

@@ -55,7 +55,8 @@ describe("CROQ economy", function () {
     return pantry.connect(who).feed(tokenId, input.handles[0]!, input.inputProof);
   }
 
-  const stash = async (tokenId: number) => peek64(await pantry.stashHandle(tokenId));
+  const weight = async (tokenId: number) => peek64(await pantry.weightHandle(tokenId));
+  const treasuryShare = async () => peek64(await pantry.treasuryShareHandle());
   const burnt = async () => peek64(await pantry.burntHandle());
   const reserve = async () => peek64(await pantry.reserveHandle());
   const approvePantry = async (who: HardhatEthersSigner) =>
@@ -140,8 +141,14 @@ describe("CROQ economy", function () {
     it("rejects parameters that would break the accounting", async function () {
       const factory = await ethers.getContractFactory("Pantry");
       const bad = [
-        { mealBurnBps: 10_001 },
-        { payoutBps: [10_000, 10_000, 0, 10_001] as [number, number, number, number] },
+        { mealBurnBps: 8_001 },
+        { mealsPerDay: 0 },
+        { maxEatenPerDay: 0 },
+        { buildFloors: [0, 10, 20, 30] as [number, number, number, number] },
+        { buildFloors: [1, 10, 10, 30] as [number, number, number, number] },
+        { sickMinWeight: 150_000 },
+        { sickWeightSpread: 0 },
+        { diseaseRollBelow: [40_000, 40_000] as [number, number] },
         { purrMaxDays: 0 },
         { halvingPeriod: 0 },
         { vetMultiplier: 0 },
@@ -149,7 +156,9 @@ describe("CROQ economy", function () {
         { purrMaxPerDay: 255 },
       ];
       for (const override of bad) {
-        await expect(factory.deploy(await dno.getAddress(), cCroqAddress, pantryParamsFromSpec(override))).to.be.revertedWithCustomError(
+        await expect(
+          factory.deploy(await dno.getAddress(), cCroqAddress, deployer.address, pantryParamsFromSpec(override)),
+        ).to.be.revertedWithCustomError(
           pantry,
           "InvalidParams",
         );
@@ -307,144 +316,214 @@ describe("CROQ economy", function () {
 
   describe("feed", function () {
     beforeEach(async function () {
-      await giveCroquettes(croq, cCroq, carol, 1_000n);
-      await approvePantry(carol);
+      await giveCroquettes(croq, cCroq, alice, 5_000n);
+      await approvePantry(alice);
     });
 
-    it("burns a tenth and stashes the rest, in hidden amounts", async function () {
-      await expect(feed(carol, 3, 50n)).to.emit(pantry, "MealServed").withArgs(3, carol.address, 1);
-      await (await feed(carol, 3, 200n)).wait();
-      expect(await stash(3)).to.eq(45n + 180n);
-      expect(await burnt()).to.eq(5n + 20n);
-      expect(await pantry.meals(3)).to.eq(2n);
-      expect(await balanceOf(cCroq, carol)).to.eq(750n);
+    it("lets only the holder feed a sealed cat", async function () {
+      await giveCroquettes(croq, cCroq, carol, 100n);
+      await approvePantry(carol);
+      await expect(feed(carol, 0, 10n)).to.be.revertedWithCustomError(pantry, "NotHolder");
+      await expect(feed(alice, 99, 10n)).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
+      await (await dno.connect(alice).observe(0, { value: FEES.observe })).wait();
+      await expect(feed(alice, 0, 10n)).to.be.revertedWithCustomError(pantry, "NotSealed");
+    });
+
+    it("eats it all: a fifth to the treasury, a fifth burnt, the rest back to the reserve", async function () {
+      await expect(feed(alice, 0, 500n)).to.emit(pantry, "MealServed").withArgs(0, alice.address, 1);
+      expect(await weight(0)).to.eq(500n);
+      expect(await treasuryShare()).to.eq(100n);
+      expect(await burnt()).to.eq(100n);
+      expect(await reserve()).to.eq(FUNDED + 300n);
+      expect(await balanceOf(cCroq, alice)).to.eq(4_500n);
+    });
+
+    it("serves two meals a day, then none until the next UTC day", async function () {
+      await (await feed(alice, 0, 10n)).wait();
+      await (await feed(alice, 0, 10n)).wait();
+      expect(await pantry.mealsToday(0)).to.eq(2);
+      await expect(feed(alice, 0, 10n)).to.be.revertedWithCustomError(pantry, "NoMoreMealsToday");
+      // The limit is the cat's, not the wallet's, nor the day of the week.
+      await (await feed(alice, 1, 10n)).wait();
+      await time.increase(DAY);
+      expect(await pantry.mealsToday(0)).to.eq(0);
+      await (await feed(alice, 0, 10n)).wait();
+      expect(await pantry.meals(0)).to.eq(3n);
+      expect(await weight(0)).to.eq(30n);
+    });
+
+    it("caps what a cat eats at 1,000 a day, in one meal or spread, and cuts the rest silently", async function () {
+      await (await feed(alice, 0, 700n)).wait();
+      await expect(feed(alice, 0, 700n)).to.emit(pantry, "MealServed");
+      expect(await weight(0)).to.eq(1_000n);
+      expect(await balanceOf(cCroq, alice)).to.eq(4_000n);
+      // The feeder can follow their own day, nobody else can.
+      const today = await pantry.eatenTodayHandle(0);
+      expect(await fhevm.userDecryptEuint(FhevmType.euint64, today, pantryAddress, alice)).to.eq(1_000n);
+      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, today, pantryAddress, bob));
+
+      await time.increase(DAY);
+      await (await feed(alice, 0, 2_500n)).wait();
+      expect(await weight(0)).to.eq(2_000n);
+      expect(await balanceOf(cCroq, alice)).to.eq(3_000n);
     });
 
     it("moves nothing, silently, when the feeder holds too little", async function () {
-      await (await feed(carol, 3, 600n)).wait();
-      await expect(feed(carol, 3, 600n)).to.emit(pantry, "MealServed").withArgs(3, carol.address, 2);
-      expect(await stash(3)).to.eq(540n);
-      expect(await balanceOf(cCroq, carol)).to.eq(400n);
+      await (await dno.connect(alice).transferFrom(alice.address, bob.address, 0)).wait();
+      await giveCroquettes(croq, cCroq, bob, 50n);
+      await approvePantry(bob);
+      await expect(feed(bob, 0, 80n)).to.emit(pantry, "MealServed").withArgs(0, bob.address, 1);
+      expect(await weight(0)).to.eq(0n);
+      expect(await balanceOf(cCroq, bob)).to.eq(50n);
     });
 
-    it("lets nobody read a stash: not the holder, not the feeder, not the public", async function () {
-      await (await feed(carol, 3, 100n)).wait();
-      const handle = await pantry.stashHandle(3);
-      for (const who of [bob, carol, deployer]) {
+    it("lets nobody read a weight: not the holder, not the public", async function () {
+      await (await feed(alice, 0, 100n)).wait();
+      const handle = await pantry.weightHandle(0);
+      for (const who of [alice, bob, deployer]) {
         await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, handle, pantryAddress, who));
       }
       await expectDenied(fhevm.publicDecrypt([handle]));
       await expectDenied(fhevm.publicDecrypt([await pantry.burntHandle()]));
     });
 
-    it("requires the Pantry as operator, an existing box and a sealed one", async function () {
-      await giveCroquettes(croq, cCroq, bob, 100n);
-      await expect(feed(bob, 0, 10n)).to.be.revertedWithCustomError(cCroq, "ERC7984UnauthorizedSpender");
-      await expect(feed(carol, 99, 10n)).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
-      await (await dno.connect(alice).observe(0, { value: FEES.observe })).wait();
-      await expect(feed(carol, 0, 10n)).to.be.revertedWithCustomError(pantry, "NotSealed");
-    });
-
-    it("rejects an encrypted amount made for someone else", async function () {
-      const input = await fhevm.createEncryptedInput(pantryAddress, carol.address).add64(10n).encrypt();
-      await expect(pantry.connect(bob).feed(0, input.handles[0]!, input.inputProof)).to.be.reverted;
+    it("requires the Pantry as operator and an amount made for the caller", async function () {
+      await (await cCroq.connect(alice).setOperator(pantryAddress, 0)).wait();
+      await expect(feed(alice, 0, 10n)).to.be.revertedWithCustomError(cCroq, "ERC7984UnauthorizedSpender");
+      await approvePantry(alice);
+      const input = await fhevm.createEncryptedInput(pantryAddress, bob.address).add64(10n).encrypt();
+      await expect(pantry.connect(alice).feed(0, input.handles[0]!, input.inputProof)).to.be.reverted;
     });
 
     it("stays within the documented HCU budget", async function () {
-      expect((await hcu(feed(carol, 3, 50n))).globalHCU).to.be.lessThan(2_300_000);
+      // The first meal of the day skips the subtraction from what was already eaten.
+      expect((await hcu(feed(alice, 0, 50n))).globalHCU).to.be.lessThan(2_900_000);
+      expect((await hcu(feed(alice, 0, 50n))).globalHCU).to.be.lessThan(3_300_000);
     });
   });
 
-  describe("settle", function () {
-    /** One box per state, owned by alice, each fed 100 by carol (90 stashed). */
-    async function boxPerState() {
-      const found = new Map<number, number>();
-      for (let id = 0; id < Number(await dno.totalMinted()); id++) {
-        const state = stateOfSeed(await peekSeed(dno, id));
-        if (!found.has(state) && (await dno.ownerOf(id)) === alice.address) found.set(state, id);
-      }
-      while (found.size < 4) {
-        const first = Number(await dno.totalMinted());
-        await (await dno.connect(alice).mint(10, { value: FEES.mint * 10n })).wait();
-        for (let id = first; id < first + 10; id++) {
-          const state = stateOfSeed(await peekSeed(dno, id));
-          if (!found.has(state)) found.set(state, id);
-        }
-      }
-      for (const id of found.values()) await (await feed(carol, id, 100n)).wait();
-      return found;
-    }
+  describe("collect", function () {
+    it("pays the treasury its share, which only the treasury can read", async function () {
+      await expect(pantry.collect()).to.be.revertedWithCustomError(pantry, "NothingToCollect");
+      await giveCroquettes(croq, cCroq, alice, 1_000n);
+      await approvePantry(alice);
+      await (await feed(alice, 0, 1_000n)).wait();
+
+      const share = await pantry.treasuryShareHandle();
+      expect(await fhevm.userDecryptEuint(FhevmType.euint64, share, pantryAddress, deployer)).to.eq(200n);
+      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, share, pantryAddress, alice));
+
+      const before = await balanceOf(cCroq, deployer);
+      await expect(pantry.connect(bob).collect()).to.emit(pantry, "Collected").withArgs(deployer.address);
+      expect((await balanceOf(cCroq, deployer)) - before).to.eq(200n);
+      expect(await treasuryShare()).to.eq(0n);
+      expect((await hcu(pantry.collect())).globalHCU).to.be.lessThan(650_000);
+      expect((await balanceOf(cCroq, deployer)) - before).to.eq(200n);
+    });
+
+    it("keeps the books: the Pantry's balance is always reserve + treasury share + burnt", async function () {
+      await giveCroquettes(croq, cCroq, alice, 3_000n);
+      await approvePantry(alice);
+      await (await feed(alice, 0, 777n)).wait();
+      await (await feed(alice, 1, 333n)).wait();
+      await (await pantry.connect(alice).claim([0, 1, 2])).wait();
+      await (await pantry.collect()).wait();
+      await (await feed(alice, 2, 1_001n)).wait();
+      const held = await peek64(await cCroq.confidentialBalanceOf(pantryAddress));
+      expect(held).to.eq((await reserve()) + (await treasuryShare()) + (await burnt()));
+    });
+  });
+
+  describe("weigh", function () {
+    /** Small builds so a test can cross them all in two days. */
+    const SMALL = {
+      buildFloors: [1, 100, 300, 600] as [number, number, number, number],
+      sickMinWeight: 1_000,
+      sickWeightSpread: 500,
+    };
 
     beforeEach(async function () {
-      await giveCroquettes(croq, cCroq, carol, 10_000n);
-      await approvePantry(carol);
+      ({ croq, cCroq, pantry, pantryAddress, cCroqAddress } = await deployEconomy(dno, SMALL));
+      await giveCroquettes(croq, cCroq, alice, 5_000n);
+      await approvePantry(alice);
     });
 
-    it("pays alive and asleep cats in full, half of a quantum one, nothing for a ghost", async function () {
-      const boxes = await boxPerState();
-      const expected: Record<number, bigint> = { [STATE_IDS.alive]: 90n, [STATE_IDS.asleep]: 90n, [STATE_IDS.ghost]: 0n, [STATE_IDS.quantum]: 45n };
-      const burntAtStart = await burnt();
-      let burntBySettling = 0n;
+    const toleranceOf = async (id: number) => {
+      const h = BigInt(ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(["uint64"], [await peekSeed(dno, id)])));
+      return { tolerance: BigInt(SMALL.sickMinWeight) + (h % BigInt(SMALL.sickWeightSpread)), roll: Number((h >> 128n) & 0xffffn) };
+    };
 
-      for (const [state, id] of boxes) {
-        await open(id);
-        const before = await balanceOf(cCroq, alice);
-        await expect(pantry.connect(carol).settle(id))
-          .to.emit(pantry, "Settled")
-          .withArgs(id, alice.address, state, await pantry.payoutBps(state));
-        expect((await balanceOf(cCroq, alice)) - before, `state ${state}`).to.eq(expected[state]);
-        burntBySettling += 90n - expected[state]!;
-        expect(await pantry.settled(id)).to.eq(true);
-      }
-      expect((await burnt()) - burntAtStart).to.eq(burntBySettling);
-    });
-
-    it("pays whoever holds the box at settlement: the stash follows the token", async function () {
-      const boxes = await boxPerState();
-      const id = boxes.get(STATE_IDS.alive)!;
-      await (await dno.connect(alice).transferFrom(alice.address, bob.address, id)).wait();
+    async function weighed(id: number) {
       await open(id);
-      await (await pantry.connect(carol).settle(id)).wait();
-      expect(await balanceOf(cCroq, bob)).to.eq(90n);
-      expect(await balanceOf(cCroq, alice)).to.eq(0n);
+      const tx = await pantry.connect(carol).weigh(id);
+      await tx.wait();
+      if ((await pantry.weighIn(id)).status === 1n) {
+        const result = await fhevm.publicDecrypt([await pantry.weightHandle(id)]);
+        await (await pantry.finalizeWeigh(id, result.abiEncodedClearValues, result.decryptionProof)).wait();
+      }
+      return pantry.weighIn(id);
+    }
+
+    it("weighs a cat that never ate on the spot, as thin", async function () {
+      await open(0);
+      expect((await hcu(pantry.weigh(0))).globalHCU).to.eq(0);
+      const w = await pantry.weighIn(0);
+      expect([w.status, w.build, w.sick, w.weight]).to.deep.eq([2n, 0n, false, 0n]);
     });
 
-    it("settles once, only after the reveal is final", async function () {
-      await expect(pantry.settle(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
+    it("weighs once, only after the reveal is final", async function () {
+      await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
       await (await dno.connect(alice).observe(0, { value: FEES.observe })).wait();
-      await expect(pantry.settle(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
+      await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
       await (await finalizeObserve(dno, 0, carol)).wait();
-      await (await pantry.settle(0)).wait();
-      await expect(pantry.settle(0)).to.be.revertedWithCustomError(pantry, "AlreadySettled");
+      await (await pantry.weigh(0)).wait();
+      await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "AlreadyWeighed");
+      await expect(pantry.finalizeWeigh(1, "0x", "0x")).to.be.revertedWithCustomError(pantry, "WeighInNotPending");
     });
 
-    it("settles a box that was never fed without moving anything", async function () {
-      await open(1);
-      const used = await hcu(pantry.settle(1));
-      expect(used.globalHCU).to.eq(0);
-      expect(await balanceOf(cCroq, alice)).to.eq(0n);
-    });
-
-    it("keeps the books: the Pantry's balance is always reserve + stashes + burnt", async function () {
-      const boxes = await boxPerState();
-      await (await pantry.connect(alice).claim([...boxes.values()].slice(0, 2))).wait();
-      for (const id of [...boxes.values()].slice(0, 2)) {
-        await open(id);
-        await (await pantry.settle(id)).wait();
+    it("publishes the weight, and the build it reaches", async function () {
+      const cases: [number, bigint, bigint][] = [
+        [0, 99n, 1n],
+        [1, 300n, 3n],
+        [2, 999n, 4n],
+      ];
+      for (const [id, amount] of cases) await (await feed(alice, id, amount)).wait();
+      for (const [id, amount, build] of cases) {
+        const w = await weighed(id);
+        expect([w.weight, w.build, w.sick], `box ${id}`).to.deep.eq([amount, build, false]);
+        expect(w.tolerance).to.eq((await toleranceOf(id)).tolerance);
       }
-      let stashes = 0n;
-      for (const id of boxes.values()) if (!(await pantry.settled(id))) stashes += await stash(id);
-      const held = await peek64(await cCroq.confidentialBalanceOf(pantryAddress));
-      expect(held).to.eq((await reserve()) + stashes + (await burnt()));
+      expect(await pantry.buildOf(100)).to.eq(2);
     });
 
-    it("stays within the documented HCU budget", async function () {
-      const boxes = await boxPerState();
-      const budget: Record<number, number> = { [STATE_IDS.alive]: 650_000, [STATE_IDS.asleep]: 650_000, [STATE_IDS.ghost]: 200_000, [STATE_IDS.quantum]: 2_100_000 };
-      for (const [state, id] of boxes) {
-        await open(id);
-        expect((await hcu(pantry.settle(id))).globalHCU, `state ${state}`).to.be.lessThan(budget[state]!);
-      }
+    it("makes a cat sick past a tolerance of its own, drawn from its seed", async function () {
+      const { tolerance, roll } = await toleranceOf(0);
+      // Two full days put it past any tolerance in [1000, 1500).
+      await (await feed(alice, 0, 1_000n)).wait();
+      await time.increase(DAY);
+      await (await feed(alice, 0, 1_000n)).wait();
+      await open(0);
+      await expect(pantry.weigh(0)).to.emit(pantry, "WeighInRequested");
+      const result = await fhevm.publicDecrypt([await pantry.weightHandle(0)]);
+      const disease = roll < params.diseaseRollBelow[0] ? 0 : roll < params.diseaseRollBelow[1] ? 1 : 2;
+      await expect(pantry.finalizeWeigh(0, result.abiEncodedClearValues, result.decryptionProof))
+        .to.emit(pantry, "Weighed")
+        .withArgs(0, 2_000n, 4, true, disease);
+      expect((await pantry.weighIn(0)).tolerance).to.eq(tolerance);
+
+      // Just under its own tolerance, a cat stays huge and well.
+      await (await feed(alice, 1, 999n)).wait();
+      const w = await weighed(1);
+      expect([w.weight, w.build, w.sick]).to.deep.eq([999n, 4n, false]);
+    });
+
+    it("rejects a forged weight", async function () {
+      await (await feed(alice, 0, 500n)).wait();
+      await open(0);
+      await (await pantry.weigh(0)).wait();
+      const result = await fhevm.publicDecrypt([await pantry.weightHandle(0)]);
+      const forged = ethers.AbiCoder.defaultAbiCoder().encode(["uint64"], [400_000n]);
+      await expect(pantry.finalizeWeigh(0, forged, result.decryptionProof)).to.be.reverted;
     });
   });
 });

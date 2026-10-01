@@ -1,4 +1,4 @@
-import { spec, type StateKey, type TierKey, type TraitKey } from "@dno/game-spec";
+import { spec, type BuildKey, type DiseaseKey, type StateKey, type TierKey, type TraitKey } from "@dno/game-spec";
 import { resolveTrait, VICE_NAMES, type CatSpec, type Vice } from "@dno/generator";
 import { lookup } from "./app";
 
@@ -14,6 +14,10 @@ export const variantName = (trait: TraitKey, variant: string): string =>
   lookup(`variant.${trait}.${variant}`) ?? spec.traits.find((t) => t.key === trait)?.variants.find((v) => v.key === variant)?.name ?? variant;
 
 export const tierName = (key: TierKey): string => lookup(`tier.${key}`) ?? spec.rarity.tiers.find((t) => t.key === key)?.name ?? key;
+
+export const buildName = (key: BuildKey): string => lookup(`build.${key}`) ?? spec.economy.weight.builds.find((b) => b.key === key)?.name ?? key;
+
+export const diseaseName = (key: DiseaseKey): string => lookup(`disease.${key}`) ?? spec.economy.weight.diseases.find((d) => d.key === key)?.name ?? key;
 
 export const viceName = (key: Vice): string => lookup(`vice.${key}`) ?? VICE_NAMES[key];
 

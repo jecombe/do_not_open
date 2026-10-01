@@ -51,6 +51,8 @@ interface Opening {
   /** Once open, the cat jumps out and the box is gone. */
   unbox: Unboxing;
   content: CatObject;
+  /** The cat `content` was built from. */
+  cat: CatSpec;
   /** What the opener and the unboxing move. The cat animates inside it. */
   holder: Group;
   /** Called when the whole thing is over: the box opened, the cat out on the bench. */
@@ -64,7 +66,7 @@ function makeOpener(box: BoxObject, cat: CatSpec, sound: ShakeSound, opts: { lam
   holder.add(content.group);
   const opener = new BoxOpener(box, { content: holder, glow: glowFor(cat), reducedMotion: reducedMotion() });
   const unbox = new Unboxing(box, holder, { reducedMotion: reducedMotion(), lamp: opts.lamp });
-  const made: Opening = { opener, unbox, content, holder, onDone: null };
+  const made: Opening = { opener, unbox, content, cat, holder, onDone: null };
   opener.onRip = () => sound.rip();
   opener.onBurst = () => sound.reveal(cat.state !== "ghost");
   opener.onDone = () => unbox.start();
@@ -87,6 +89,17 @@ function updateOpening(o: Opening, step: number, time: number) {
   o.unbox.update(step);
   o.content.update(time);
 }
+
+/** Same cat, new build: the scales said something after it was already out. */
+function reweigh(o: Opening, cat: CatSpec) {
+  o.content.group.removeFromParent();
+  o.content.dispose();
+  o.content = createCat(cat);
+  o.cat = cat;
+  o.holder.add(o.content.group);
+}
+
+const sameWeight = (a: CatSpec, b: CatSpec) => JSON.stringify(a.weight) === JSON.stringify(b.weight);
 
 function disposeOpening(o: Opening) {
   o.unbox.dispose();
@@ -179,7 +192,12 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
 
   // A box that was opened earlier is simply shown open.
   useEffect(() => {
-    if (!opened || opening.current) return;
+    if (!opened) return;
+    const o = opening.current;
+    if (o) {
+      if (o.unbox.done && o.cat.seed === opened.seed && !sameWeight(o.cat, opened)) reweigh(o, opened);
+      return;
+    }
     opening.current = makeOpener(rig.box, opened, sound, { lamp: true });
     showOpened(opening.current);
   }, [rig, opened, sound]);

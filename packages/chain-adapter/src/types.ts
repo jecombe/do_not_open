@@ -8,6 +8,9 @@ export type Address = string;
 
 export type BoxStatus = "sealed" | "opening" | "revealed";
 export type AliveCheck = "none" | "pending" | "alive" | "notAlive";
+/** How heavy an opened cat came out, lightest first. Same keys as the spec's builds. */
+export type Build = "thin" | "normal" | "chubby" | "fat" | "huge";
+export type Disease = "diabetic" | "arthritic" | "fattyLiver";
 export type DuelStatus = "none" | "challenged" | "pending" | "resolved" | "cancelled";
 
 /** What the user is waiting for, in the order it happens. */
@@ -178,7 +181,7 @@ export interface EconomyInfo {
   /** "cCROQ": its confidential twin, the one the game uses. */
   confidentialSymbol: string;
   totalSupply: bigint;
-  /** CROQ wrapped into cCROQ: the most that can sit in confidential balances and stashes. */
+  /** CROQ wrapped into cCROQ: the most that can sit in confidential balances and the Pantry. */
   wrapped: bigint;
   welcomeBag: number;
   purrMaxPerDay: number;
@@ -188,10 +191,14 @@ export interface EconomyInfo {
   halvings: number;
   /** Seconds between two halvings. */
   halvingPeriod: number;
-  /** Share of each meal that is burnt, in basis points. */
+  /** Meals one cat may eat per UTC day. */
+  mealsPerDay: number;
+  /** Croquettes one cat may eat per UTC day, across its meals. More is cut down, silently. */
+  maxEatenPerDay: bigint;
+  /** Share of each meal paid to the collection's treasury, in basis points. */
+  mealTreasuryBps: number;
+  /** Share of each meal that is burnt, in basis points. The rest goes back to the reserve. */
   mealBurnBps: number;
-  /** Share of the stash paid to the holder at settlement, by state id, in basis points. */
-  payoutBps: number[];
   maxBoxesPerClaim: number;
   /** Explorer links to the plain token, the confidential one and the Pantry. */
   links: { croq: string | null; cCroq: string | null; pantry: string | null };
@@ -199,16 +206,33 @@ export interface EconomyInfo {
   market: MarketInfo | null;
 }
 
-/** What the Pantry knows publicly about one box. The stash amount is encrypted for everyone. */
+/** What the scales said about an opened cat. Public once weighed. */
+export interface WeighIn {
+  /** Croquettes it ate in its life, all holders together. */
+  weight: bigint;
+  build: Build;
+  /** True when the weight reached the cat's own tolerance: an ultra-rare trophy. */
+  sick: boolean;
+  /** Null unless sick. */
+  disease: Disease | null;
+  /** The weight past which this cat was sick, drawn from its seed. */
+  tolerance: bigint;
+}
+
+/** What the Pantry knows publicly about one box. Its weight is encrypted until it is weighed. */
 export interface BoxPantry {
   /** Meals served. Public; what they held is not. */
   meals: number;
+  /** Meals eaten today (UTC), out of the economy's `mealsPerDay`. */
+  mealsToday: number;
   /** True once its welcome bag was paid: a box gets one, whoever holds it. */
   welcomed: boolean;
   /** Unix seconds from which it can claim again. */
   nextClaimAt: number;
-  /** True once the stash was paid out or burnt after the box was opened. */
-  settled: boolean;
+  /** "pending" between the request and the proof, like an opening. */
+  weighing: "none" | "pending" | "done";
+  /** Null until the opened cat is weighed. */
+  weighIn: WeighIn | null;
 }
 
 export type TradeSide = "buy" | "sell";
@@ -286,10 +310,14 @@ export interface ChainAdapter {
   confidentialBalance(opts?: ActionOptions): Promise<bigint>;
   /** Welcome bags, then the daily purr, for the listed boxes of the caller. */
   claimCroquettes(tokenIds: number[], opts?: ActionOptions): Promise<void>;
-  /** Serves a sealed box `amount` cCROQ, encrypted. Moves 0, silently, if the caller holds less. */
+  /** Holder only: feeds a sealed cat `amount` cCROQ, encrypted. The cat eats it all. Past the
+   *  day's allowance the amount is cut down; moves 0, silently, if the caller holds less. */
   feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void>;
-  /** Pays out or burns an opened box's stash. Anyone may. */
-  settle(tokenId: number, opts?: ActionOptions): Promise<void>;
+  /** Decrypts what the connected account fed `tokenId` today, for its eyes only. 0 on a new day. */
+  eatenToday(tokenId: number, opts?: ActionOptions): Promise<bigint>;
+  /** Weighs an opened cat: requests the public decryption of its weight and proves it back,
+   *  or picks up a weighing left pending. Anyone may. */
+  weigh(tokenId: number, opts?: ActionOptions): Promise<WeighIn>;
   /** Plain CROQ into cCROQ, 1:1. */
   wrap(amount: bigint, opts?: ActionOptions): Promise<void>;
   /** cCROQ back to plain CROQ: a request, a public decryption of the amount, then the payout. */

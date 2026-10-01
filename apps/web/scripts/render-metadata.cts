@@ -60,9 +60,11 @@ async function jobs(): Promise<Job[]> {
   const out: Job[] = [];
   for (const tokenId of range(option("tokens", ""), totalMinted)) {
     const box = await chain.box(tokenId);
+    // The weigh-in lives in the Pantry; a network without one still renders its cats.
+    const weighIn = box.revealed ? await chain.boxPantry(tokenId).then((p) => p.weighIn, () => null) : null;
     out.push({
       tokenId,
-      cat: box.revealed ? buildCatSpec({ seed: box.revealed.seed, affection: box.revealed.affection }) : null,
+      cat: box.revealed ? buildCatSpec({ seed: box.revealed.seed, affection: box.revealed.affection, weighIn: weighIn ?? undefined }) : null,
       facts: { feeds: box.feeds, duelsWon: box.wins, vetCertified: box.aliveCheck === "alive", entangledWith: box.partner },
     });
   }
@@ -93,7 +95,8 @@ async function main() {
     });
     const page = await browser.newPage({ viewport: { width: 1024, height: 1024 } });
     shoot = async ({ tokenId, cat }) => {
-      const query = cat ? `token=${tokenId}&seed=${cat.seed}&affection=${cat.affection}` : `token=${tokenId}`;
+      const weighed = cat?.weight ? `&weight=${cat.weight.weight}&sick=${cat.weight.sick ? 1 : 0}${cat.weight.disease ? `&disease=${cat.weight.disease}` : ""}` : "";
+      const query = cat ? `token=${tokenId}&seed=${cat.seed}&affection=${cat.affection}${weighed}` : `token=${tokenId}`;
       await page.goto(`${url}render.html?${query}`);
       await page.waitForFunction("window.__dnoRender || window.__dnoRenderError", undefined, { timeout: 60_000 });
       const error = await page.evaluate("window.__dnoRenderError");

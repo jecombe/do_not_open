@@ -19,10 +19,12 @@ import {
   type BoxPantry,
   type BoxStatus,
   type BoxSummary,
+  type Build,
   type ChainAdapter,
   type CollectionInfo,
   type DuelInfo,
   type DuelResult,
+  type Disease,
   type DuelStatus,
   type EconomyInfo,
   type Fees,
@@ -31,6 +33,7 @@ import {
   type TraitRoll,
   type TxRecord,
   type WalletOption,
+  type WeighIn,
 } from "../types";
 import type { ChainParams, WalletSource } from "./wallet";
 
@@ -105,6 +108,22 @@ interface Permit {
  * key made in this session and authorised by an EIP-712 signature. Public ones (open,
  * alive check, duel) come back with a KMS proof that this adapter sends to the contract.
  */
+/** Pantry.WeighIn.status, by value. */
+const WEIGHING = ["none", "pending", "done"] as const;
+const WEIGHED = 2;
+const BUILDS: Build[] = ["thin", "normal", "chubby", "fat", "huge"];
+const DISEASES: Disease[] = ["diabetic", "arthritic", "fattyLiver"];
+
+function weighInFrom(w: { build: bigint; sick: boolean; disease: bigint; weight: bigint; tolerance: bigint }): WeighIn {
+  return {
+    weight: BigInt(w.weight),
+    build: BUILDS[Number(w.build)]!,
+    sick: Boolean(w.sick),
+    disease: w.sick ? DISEASES[Number(w.disease)]! : null,
+    tolerance: BigInt(w.tolerance),
+  };
+}
+
 export class EvmFhevmAdapter implements ChainAdapter {
   readonly kind = "evm" as const;
 
@@ -427,10 +446,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
       pantry.vetMultiplier!(),
       pantry.purrMaxDays!(),
       pantry.halvingPeriod!(),
+      pantry.mealsPerDay!(),
+      pantry.maxEatenPerDay!(),
+      pantry.mealTreasuryBps!(),
       pantry.mealBurnBps!(),
-      Promise.all([0, 1, 2, 3].map((s) => pantry.payoutBps!(s))),
       pantry.maxBoxesPerClaim!(),
-    ]).then(([totalSupply, welcomeBag, purrMaxPerDay, vetMultiplier, purrMaxDays, halvingPeriod, mealBurnBps, payoutBps, maxBoxesPerClaim]) => ({
+    ]).then(([totalSupply, welcomeBag, purrMaxPerDay, vetMultiplier, purrMaxDays, halvingPeriod, mealsPerDay, maxEatenPerDay, mealTreasuryBps, mealBurnBps, maxBoxesPerClaim]) => ({
       symbol: "CROQ",
       confidentialSymbol: "cCROQ",
       totalSupply,
@@ -439,8 +460,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
       vetMultiplier: Number(vetMultiplier),
       purrMaxDays: Number(purrMaxDays),
       halvingPeriod: Number(halvingPeriod),
+      mealsPerDay: Number(mealsPerDay),
+      maxEatenPerDay: BigInt(maxEatenPerDay),
+      mealTreasuryBps: Number(mealTreasuryBps),
       mealBurnBps: Number(mealBurnBps),
-      payoutBps: payoutBps.map(Number),
       maxBoxesPerClaim: Number(maxBoxesPerClaim),
       links: { croq: this.link(e.croq.address), cCroq: this.link(e.cCroq.address), pantry: this.link(e.pantry.address) },
     }));
@@ -476,10 +499,24 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async boxPantry(tokenId: number): Promise<BoxPantry> {
     const pantry = this.at(this.eco().pantry);
-    const [meals, lastPurr, nextClaimAt, settled] = await this.reading(
-      Promise.all([pantry.meals!(tokenId), pantry.lastPurr!(tokenId), pantry.nextClaimAt!(tokenId), pantry.settled!(tokenId)]),
+    const [meals, mealsToday, lastPurr, nextClaimAt, w] = await this.reading(
+      Promise.all([
+        pantry.meals!(tokenId),
+        pantry.mealsToday!(tokenId),
+        pantry.lastPurr!(tokenId),
+        pantry.nextClaimAt!(tokenId),
+        pantry.weighIn!(tokenId),
+      ]),
     );
-    return { meals: Number(meals), welcomed: BigInt(lastPurr) !== 0n, nextClaimAt: Number(nextClaimAt), settled };
+    const status = Number(w.status);
+    return {
+      meals: Number(meals),
+      mealsToday: Number(mealsToday),
+      welcomed: BigInt(lastPurr) !== 0n,
+      nextClaimAt: Number(nextClaimAt),
+      weighing: WEIGHING[status] ?? "none",
+      weighIn: status === WEIGHED ? weighInFrom(w) : null,
+    };
   }
 
   async croqBalance(owner: Address): Promise<bigint> {
@@ -487,15 +524,20 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async confidentialBalance(opts?: ActionOptions): Promise<bigint> {
-    const cCroq = this.eco().cCroq.address;
+    const account = await this.signer().getAddress();
+    const handle: string = await this.reading(this.at(this.eco().cCroq).confidentialBalanceOf!(account));
+    return this.userDecrypt64(handle, this.eco().cCroq.address, opts);
+  }
+
+  /** Decrypts a euint64 the connected account is allowed on. A zero handle is 0. */
+  private async userDecrypt64(handle: string, contractAddress: string, opts?: ActionOptions): Promise<bigint> {
+    if (handle === ZERO_HANDLE) return 0n;
     const signer = this.signer();
     const account = await signer.getAddress();
-    const handle: string = await this.reading(this.at(this.eco().cCroq).confidentialBalanceOf!(account));
-    if (handle === ZERO_HANDLE) return 0n;
     const values = await this.decrypting(opts, async (relayer) => {
       const permit = await this.permitFor(relayer, signer, account, opts);
       return relayer.userDecrypt(
-        [{ handle, contractAddress: cCroq }],
+        [{ handle, contractAddress }],
         permit.privateKey,
         permit.publicKey,
         permit.signature.replace("0x", ""),
@@ -521,8 +563,25 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, () => this.writer(e.pantry).feed!(tokenId, input.handles[0], input.inputProof));
   }
 
-  async settle(tokenId: number, opts?: ActionOptions): Promise<void> {
-    await this.send(opts, () => this.writer(this.eco().pantry).settle!(tokenId));
+  async eatenToday(tokenId: number, opts?: ActionOptions): Promise<bigint> {
+    const pantry = this.eco().pantry;
+    const handle: string = await this.reading(this.at(pantry).eatenTodayHandle!(tokenId));
+    return this.userDecrypt64(handle, pantry.address, opts);
+  }
+
+  async weigh(tokenId: number, opts?: ActionOptions): Promise<WeighIn> {
+    const pantry = this.eco().pantry;
+    // A weighing left pending only needs its proof.
+    if ((await this.boxPantry(tokenId)).weighing === "none") await this.send(opts, () => this.writer(pantry).weigh!(tokenId));
+    const after = await this.boxPantry(tokenId);
+    if (after.weighIn) return after.weighIn;
+    const handle: string = await this.reading(this.at(pantry).weightHandle!(tokenId));
+    const decrypted = await this.publicDecrypt([handle], opts);
+    opts?.onStep?.("proving");
+    await this.send(opts, () => this.writer(pantry).finalizeWeigh!(tokenId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    const done = await this.boxPantry(tokenId);
+    if (!done.weighIn) throw new ChainError("unknown", "The weigh-in was not recorded.");
+    return done.weighIn;
   }
 
   async wrap(amount: bigint, opts?: ActionOptions): Promise<void> {
@@ -607,10 +666,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }
   }
 
-  /** Contracts a user-decryption permit covers: the boxes, and cCROQ balances when there are any. */
+  /** Contracts a user-decryption permit covers: the boxes, and with croquettes, cCROQ balances
+   *  and what a feeder gave a cat today. */
   private permitContracts(): string[] {
     const e = this.opts.economy;
-    return e ? [this.opts.address, e.cCroq.address] : [this.opts.address];
+    return e ? [this.opts.address, e.cCroq.address, e.pantry.address] : [this.opts.address];
   }
 
   // --- internals ---

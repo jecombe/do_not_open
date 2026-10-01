@@ -170,24 +170,26 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | --- | --- | --- |
 | The supply is fixed | Pass | `Croq` mints once in its constructor; no mint function, no owner. Test: "mints the whole fixed supply once, with no decimals and no way to mint more" |
 | cCROQ is the unmodified OpenZeppelin wrapper | Pass | `ConfidentialCroq` only passes a name, symbol and URI to `ERC7984ERC20Wrapper` 0.5.3. Rate 1, 0 decimals. Test: "wraps 1:1 into a balance only its holder can read" |
-| Nobody is allowed on a stash, the reserve or the burnt pile | Pass | Only `allowThis` and `allowTransient(…, cCROQ)` in `Pantry`. Tests: "lets nobody read a stash: not the holder, not the feeder, not the public", "keeps each claim private" |
-| The books balance | Pass | Every croquette the Pantry holds is in exactly one bucket. Test: "keeps the books: the Pantry's balance is always reserve + stashes + burnt" |
-| No path out of a stash before the reveal | Pass | The only reader of `_stash` that moves tokens is `settle`, which requires `status == Revealed`. Test: "settles once, only after the reveal is final" |
+| Nobody is allowed on a sealed weight, the reserve or the burnt pile | Pass | `allowThis` on all three, `allowTransient(…, cCROQ)` for transfers. The only extra grants: the feeder on `_eatenToday`, the treasury on `_treasuryShare`. Tests: "lets nobody read a weight: not the holder, not the public", "keeps each claim private" |
+| The books balance | Pass | A meal is split whole: treasury and fire round down, the reserve gets the rest. Every croquette the Pantry holds is in exactly one bucket. Tests: "eats it all: a fifth to the treasury, a fifth burnt, the rest back to the reserve", "keeps the books: the Pantry's balance is always reserve + treasury share + burnt" |
 | The burnt pile never moves | Pass | `_burnt` is only ever added to. No function transfers it |
-| A feeder short of funds moves 0, without a revert | Accepted | That is the ERC-7984 transfer semantics, and it hides balances. Side effect: a meal of 0 still counts, so `meals` can be inflated for the price of gas. Test: "moves nothing, silently, when the feeder holds too little" |
-| An encrypted input made for someone else is rejected | Pass | `FHE.fromExternal` binds the proof to (Pantry, `msg.sender`). Test: "rejects an encrypted amount made for someone else" |
-| Feeding needs an explicit operator grant | Accepted | `setOperator(pantry, until)` lets the Pantry pull from the player until `until`. The Pantry only pulls in `feed`, from `msg.sender`, the amount `msg.sender` encrypted. The app should pick a finite `until`. Test: "requires the Pantry as operator, an existing box and a sealed one" |
-| Meals only reach sealed boxes | Pass | `status == Sealed`; an `Observing` box is frozen, so the stash cannot change between the request and the settlement |
-| Settlement is permissionless; front-running it is harmless | Pass | The payout goes to `ownerOf(tokenId)` whoever sends the transaction. A second call reverts `AlreadySettled` |
-| An opened, unsettled box sold carries its stash | Accepted | The buyer is paid at settlement. A seller who wants the stash should settle before selling. Test: "pays whoever holds the box at settlement: the stash follows the token" |
-| Payout per state | Pass | Test: "pays alive and asleep cats in full, half of a quantum one, nothing for a ghost" |
+| Only the treasury is paid its share, and only it reads it | Pass | `collect` always pays the immutable `treasury`, whoever calls it, then resets the bucket to an encrypted 0. Test: "pays the treasury its share, which only the treasury can read" |
+| Only the holder feeds, only a sealed cat | Pass | `ownerOf == msg.sender`, `status == Sealed`. Stops strangers from filling a cat's daily meals with empty bowls. Test: "lets only the holder feed a sealed cat" |
+| Two meals per cat per UTC day | Pass | `_days[tokenId]` counts the day's meals in the clear; a third reverts `NoMoreMealsToday`. Kept on the token, not the wallet. Test: "serves two meals a day, then none until the next UTC day" |
+| At most 1,000 croquettes per cat per UTC day | Pass | `min(offered, maxEatenPerDay − eatenToday)` in FHE before the transfer; the rest stays in the wallet, without a revert. Test: "caps what a cat eats at 1,000 a day, in one meal or spread, and cuts the rest silently" |
+| A feeder short of funds moves 0, without a revert | Accepted | That is the ERC-7984 transfer semantics, and it hides balances. Side effect: a meal of 0 still counts, so `meals` can be inflated for the price of gas, and it uses one of the day's two meals. Test: "moves nothing, silently, when the feeder holds too little" |
+| Operator grant and input binding | Pass | `setOperator(pantry, until)` lets the Pantry pull only in `feed`, from `msg.sender`; `FHE.fromExternal` binds the proof to (Pantry, `msg.sender`). The app should pick a finite `until`. Test: "requires the Pantry as operator and an amount made for the caller" |
+| The weight is frozen before it is made public | Pass | `feed` requires `Sealed`; an `Observing` box takes no meal, so the weight cannot change between the reveal request and the weigh-in |
+| Weigh-in once, after the reveal, with a valid proof | Pass | `weigh` requires `Revealed` and `NOT_WEIGHED`; `finalizeWeigh` requires `WEIGH_PENDING` and `FHE.checkSignatures`. Tests: "weighs once, only after the reveal is final", "rejects a forged weight", "weighs a cat that never ate on the spot, as thin" |
+| Nobody can aim for the tolerance | Pass | `tolerance = sickMinWeight + keccak256(seed) % sickWeightSpread`; the seed is encrypted until the reveal, after which the cat cannot eat. Shakes and duels reveal trait bytes only, not the whole seed. Test: "makes a cat sick past a tolerance of its own, drawn from its seed" |
+| Builds and diseases follow the spec | Pass | `buildFloors` and disease bounds are checked increasing in the constructor. Tests: "publishes the weight, and the build it reaches", "rejects parameters that would break the accounting" |
 | Welcome bag once per box, not per wallet | Pass | `lastPurr != 0` after the first claim, kept across transfers. Test: "pays the bag to the box, not the wallet" |
 | Purr days and cap | Pass | Test: "pays for the days owed, up to the cap, and keeps a started day" |
 | The reserve cannot be overdrawn | Pass | `FHE.min(owed, reserve)` before the transfer. Test: "never pays more than the reserve holds" |
 | The purr draw is unpredictable and cannot be retried | Pass | `FHE.randEuint8()`; the claimer learns the amount only after the transaction |
 | Draw bias | Accepted | A byte modulo 5: 0 has probability 52/256, the others 51/256 |
 | `block.timestamp` for days and halvings | Pass | A producer can shift it by seconds; days are counted whole |
-| Overflow in `mul` before `div` | Pass | Amounts are bounded by the 20M supply; `amount × 10,000` stays far below 2^64 |
+| Overflow in `mul` before `div` | Pass | Amounts are bounded by the 20M supply; `amount × 10,000` stays far below 2^64. A weight is bounded by the supply too |
 | HCU per transaction | Pass | Largest: a 10-box claim, ~6.8M (depth ~2.8M) of 20M (5M). Budgets pinned in tests |
 | Bounded loops | Pass | `claim` loops over at most `maxBoxesPerClaim` (10) |
 | Parameters cannot break the accounting | Pass | The constructor rejects shares above 100% and zero periods. Test: "rejects parameters that would break the accounting" |

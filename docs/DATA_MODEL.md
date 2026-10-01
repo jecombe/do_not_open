@@ -124,16 +124,20 @@ The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CRO
 
 | Storage | Type | Who is on the ACL | What it holds |
 | --- | --- | --- | --- |
-| `_reserve` | `euint64` | the Pantry only | Croquettes left for welcome bags and purrs |
-| `_burnt` | `euint64` | the Pantry only | Running total burnt: 10% of meals, ghost stashes, half of quantum ones. Never moved |
-| `_stash[tokenId]` | `euint64` | the Pantry only | 90% of every meal served to the box, until it is settled |
+| `_reserve` | `euint64` | the Pantry only | Croquettes left for welcome bags and purrs; 60% of every meal comes back here |
+| `_treasuryShare` | `euint64` | the Pantry, the treasury | 20% of every meal, until `collect` sends it to the treasury |
+| `_burnt` | `euint64` | the Pantry only | Running total burnt: 20% of every meal. Never moved |
+| `_weight[tokenId]` | `euint64` | the Pantry only, until `weigh` makes it public | Every croquette the cat ate, all holders together |
+| `_eatenToday[tokenId]` | `euint64` | the Pantry, the feeder | What the cat ate on its last feeding day, for the 1,000 a day cap |
+| `_days[tokenId]` | `{uint32 day, uint8 meals}` | public (`mealsToday`) | The UTC day of the last meal and how many meals that day |
 | `meals[tokenId]` | `uint32` | public | Meals served, including meals that moved 0 |
 | `lastPurr[tokenId]` | `uint64` | public | Last claim time; 0 until the welcome bag is paid |
-| `settled[tokenId]` | `bool` | public | Set once by `settle` |
-| parameters | immutables | public | `welcomeBag`, `purrMaxPerDay`, `vetMultiplier`, `purrMaxDays`, `halvingPeriod`, `mealBurnBps`, `payoutBps(state)`, `maxBoxesPerClaim`, `startedAt` |
+| `_weighIns[tokenId]` | `WeighIn` | public (`weighIn`) | Status, then the weight, build, sick, disease and tolerance in the clear |
+| parameters | immutables | public | `treasury`, `welcomeBag`, `purrMaxPerDay`, `vetMultiplier`, `purrMaxDays`, `halvingPeriod`, `mealsPerDay`, `maxEatenPerDay`, `mealTreasuryBps`, `mealBurnBps`, `buildFloors()`, `sickMinWeight`, `sickWeightSpread`, disease bounds, `maxBoxesPerClaim`, `startedAt` |
 
-`stashHandle`, `reserveHandle` and `burntHandle` return handles. A handle is an
-identifier; nobody can decrypt it.
+`weightHandle`, `eatenTodayHandle`, `treasuryShareHandle`, `reserveHandle` and
+`burntHandle` return handles. A handle is an identifier; only the accounts on its ACL
+can decrypt it.
 
 ### cCROQ storage
 
@@ -145,24 +149,27 @@ readable by its account. Each transfer amount is readable by its sender and reci
 
 | Fact | The holder | Anyone else | How |
 | --- | --- | --- | --- |
-| A box's stash | No | No | Nobody is on the ACL, ever |
-| How many meals a box had | Yes | Yes | Plain counter |
+| A sealed cat's weight | No | No | Nobody is on the ACL until the reveal |
+| An opened cat's weight, build, sickness | Yes, once weighed | Yes, once weighed | `weigh` makes it publicly decryptable; `finalizeWeigh` stores it in the clear |
+| A cat's tolerance | Only after the reveal | Only after the reveal | `keccak256(seed)`; the seed is encrypted until then |
+| How many meals a box had, and today | Yes | Yes | Plain counters |
 | How much one meal moved | The feeder | No | The feeder is on the transferred amount |
+| What a cat ate today | The feeder | No | The feeder is on `_eatenToday` |
 | What a claim paid | The claimer | No | cCROQ allows the recipient on the transfer |
-| What a settlement paid | The holder at settlement | No | Same |
-| Whether a stash was paid, halved or burnt | Yes | Yes | The state is public after the reveal |
+| The treasury's uncollected share | The treasury | No | The treasury is on `_treasuryShare` |
 | The reserve left, the total burnt | No | No | Pantry only |
 | A cCROQ balance | Its account | No | `confidentialBalanceOf` + user decryption |
 | Wrap, unwrap and market amounts | Yes | Yes | They move as a plain ERC-20 |
 
-Why nobody reads a stash, the holder included: `FHE.allow` cannot be revoked. A stash
-readable by its holder would stay readable by every previous holder after a sale, so a
-seller would always know more than the buyer about what the box carries. With nobody
-on the ACL, the stash is as unknown to the seller as to the buyer, except for what each
-fed it.
+Why nobody reads a sealed cat's weight, the holder included: `FHE.allow` cannot be
+revoked. A weight readable by its holder would stay readable by every previous holder
+after a sale, so a seller would always know more than the buyer. With nobody on the
+ACL, the weight is as unknown to the seller as to the buyer, except for what each fed it.
+Each `_eatenToday` handle is replaced by the next meal and reset on a new day, so a
+feeder only ever reads what they fed themselves.
 
 ### On transfer
 
-Nothing moves on the ACL. The stash is keyed by token id, so it follows the box:
-`settle` pays whoever holds the box at that time. The welcome bag is per box: a box
+Nothing moves on the ACL. The weight and the day's allowance are keyed by token id, so
+they follow the cat: a new holder cannot feed past what the cat already ate today. The welcome bag is per box: a box
 that changes hands keeps its `lastPurr`, and its new holder gets no second bag.

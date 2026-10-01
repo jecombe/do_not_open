@@ -4,9 +4,11 @@ A confidential NFT collection on the Zama Protocol (FHEVM). 10,000 sealed boxes.
 holds a cat whose state and traits are drawn and stored encrypted on-chain, so nobody,
 the deployer included, knows what is inside until a box is observed.
 
-Players feed the boxes with croquettes (CROQ), a game currency with encrypted balances.
-The croquettes pile up in a stash nobody can read; when the box is opened, the cat
-decides whether the holder gets them back.
+Holders pet their cats with ETH (affection, which can turn the accessory golden) and feed
+them croquettes (CROQ), a game currency with encrypted balances. The cat eats every
+croquette and puts on a weight nobody can read; when the box is opened, the cat is
+weighed in public. The heavier it is, the rarer its build, and past a tolerance of its
+own the cat is sick: an ultra-rare trophy.
 
 Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 
@@ -20,6 +22,7 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render| **Done**    |
 | 5     | Full docs, Solana porting map, audit checklist                        | **Done**    |
 | CROQ  | Croquette economy: CROQ + cCROQ, Pantry, Uniswap pool, 10,000 boxes   | **Done**, live on Sepolia |
+| Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done** on the mock; needs a Pantry redeploy on Sepolia |
 
 ## Layout
 
@@ -104,15 +107,16 @@ flowchart LR
   pool["Uniswap V2<br/>CROQ/WETH"] <-- "buy, sell<br/>public amounts" --> player(("Player"))
   player -- "wrap / unwrap<br/>public amounts" --> ccroq["cCROQ<br/>encrypted balances"]
   pantry["Pantry"] -- "welcome bag 100 per box<br/>purr 0..4 per box per day" --> ccroq
-  ccroq -- "feed a sealed box" --> stash["stash<br/>nobody can read it"]
-  ccroq -. "10% of each meal" .-> burnt["burnt<br/>locked in the Pantry"]
-  stash -- "opened: alive, asleep 100%<br/>quantum 50%" --> ccroq
-  stash -. "ghost 100%, quantum 50%" .-> burnt
+  ccroq -- "holder feeds a sealed cat<br/>2 meals, 1,000 a day" --> meal{{"meal, eaten whole<br/>weight += amount"}}
+  meal -- "60%" --> pantry
+  meal -- "20%, collect()" --> treasury["collection treasury"]
+  meal -. "20%" .-> burnt["burnt<br/>locked in the Pantry"]
+  meal -. "opened: weigh-in" .-> build["public weight<br/>thin to huge, or sick"]
 ```
 
 | Share | CROQ |
 | --- | --- |
-| Game reserve (Pantry, pays the purr) | 10,000,000 |
+| Game reserve (Pantry, pays the purr, takes back 60% of every meal) | 10,000,000 |
 | Welcome bags (Pantry, 100 per box) | 1,000,000 |
 | Market liquidity (Uniswap V2) | 4,000,000 |
 | Treasury | 5,000,000 |

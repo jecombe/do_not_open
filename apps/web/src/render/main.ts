@@ -2,6 +2,7 @@ import "@fontsource/stardos-stencil/700.css";
 import "@fontsource/barlow-condensed/500.css";
 import "@fontsource/barlow-condensed/700.css";
 import { Color, DirectionalLight, FogExp2, HemisphereLight, Mesh, MeshLambertMaterial, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight, Scene, WebGLRenderer } from "three";
+import type { DiseaseKey } from "@dno/game-spec";
 import { buildBoxSpec, buildCatSpec } from "@dno/generator";
 import { BENCH_HEIGHT, createBox, createDepot, createDiorama, DEPOT_COLORS, QUALITY } from "@dno/scene";
 
@@ -10,6 +11,7 @@ import { BENCH_HEIGHT, createBox, createDepot, createDiorama, DEPOT_COLORS, QUAL
  *
  *   /render.html?token=12                       a sealed box (token id only)
  *   /render.html?token=12&seed=0x..&affection=3 an opened one
+ *   ...&weight=412000&sick=1&disease=diabetic   an opened one, weighed
  *
  * The result is left on `window.__dnoRender` as a PNG data URL for the script that drives
  * the page (scripts/render-metadata.cts).
@@ -43,7 +45,15 @@ async function render() {
   const camera = new PerspectiveCamera(34, 1, 0.1, 60);
 
   if (seed) {
-    const cat = buildCatSpec({ seed, affection: Number(params.get("affection") ?? 0) });
+    const weight = params.get("weight");
+    const cat = buildCatSpec({
+      seed,
+      affection: Number(params.get("affection") ?? 0),
+      weighIn:
+        weight === null
+          ? undefined
+          : { weight: BigInt(weight), sick: params.get("sick") === "1", disease: (params.get("disease") as DiseaseKey | null) ?? null },
+    });
     const diorama = createDiorama(cat);
     scene.fog = new FogExp2(DEPOT_COLORS.shadow, 0.05);
     scene.add(new HemisphereLight("#AEB9C9", "#2A2018", 1.1));

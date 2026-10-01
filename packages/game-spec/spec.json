@@ -183,7 +183,7 @@
       "rule": "CROQ is a plain ERC-20 so it can be traded on public markets; cCROQ is its confidential ERC-7984 wrapper at a 1:1 rate and is what the game uses. The whole supply is minted once at deployment; nothing can mint more."
     },
     "allocation": [
-      { "key": "gameReserve", "name": "Game reserve", "amount": 10000000, "rule": "Wrapped into the Pantry. Pays the daily purr until it runs dry." },
+      { "key": "gameReserve", "name": "Game reserve", "amount": 10000000, "rule": "Wrapped into the Pantry. Pays the daily purr, and takes back 60% of every meal, so it only runs dry if the cats stop eating." },
       { "key": "welcomeBags", "name": "Welcome bags", "amount": 1000000, "rule": "Wrapped into the Pantry. One bag per box: maxSupply x welcomeBag." },
       { "key": "liquidity", "name": "Market liquidity", "amount": 4000000, "rule": "Seeded into a public CROQ/WETH pool." },
       { "key": "treasury", "name": "Treasury", "amount": 5000000, "rule": "Kept by the collection owner as plain CROQ, for events and future liquidity." }
@@ -200,12 +200,32 @@
       "rule": "Each claim draws one encrypted amount in 0..maxPerDay per box, multiplies it by the whole days since that box's last claim (at most maxDays), doubles it for Vet Certified boxes and halves it once per halvingDays since the Pantry was deployed. Paid from the game reserve, capped by what is left in it."
     },
     "meal": {
-      "burnBps": 1000,
-      "rule": "Anyone feeds a sealed box an encrypted amount of cCROQ. 10% is burnt, the rest goes to the box's encrypted stash. A feeder who holds too little moves 0, with no revert and no leak. Nobody can withdraw or read a stash while the box is sealed. The number of meals is public."
+      "mealsPerDay": 2,
+      "maxEatenPerDay": 1000,
+      "treasuryBps": 2000,
+      "burnBps": 2000,
+      "rule": "Only the holder feeds a sealed cat, an encrypted amount of cCROQ. The cat eats it all: its encrypted weight goes up by the amount. The meal is split: treasuryBps to the collection's treasury, burnBps burnt, the rest (60%) back to the game reserve that pays the purr, so croquettes go round. At most mealsPerDay meals and maxEatenPerDay croquettes per cat and per UTC day, however they are spread: an offer past what is left of the day is cut down to it, silently. A feeder who holds too little moves 0, with no revert and no leak. Nobody can read a weight while the box is sealed. The number of meals is public."
     },
-    "settlement": {
-      "payoutBps": { "alive": 10000, "asleep": 10000, "ghost": 0, "quantum": 5000 },
-      "rule": "Once a box is revealed, anyone settles it: the stash pays payoutBps of itself to the current holder and the rest is burnt. Amounts stay encrypted; only the holder can read what they received."
+    "weight": {
+      "builds": [
+        { "key": "thin", "name": "Thin", "minWeight": 0, "scoreBonus": 0 },
+        { "key": "normal", "name": "Normal", "minWeight": 1, "scoreBonus": 0 },
+        { "key": "chubby", "name": "Chubby", "minWeight": 10000, "scoreBonus": 100 },
+        { "key": "fat", "name": "Fat", "minWeight": 50000, "scoreBonus": 300 },
+        { "key": "huge", "name": "Huge", "minWeight": 150000, "scoreBonus": 700 }
+      ],
+      "sick": {
+        "minWeight": 300000,
+        "weightSpread": 300000,
+        "scoreBonus": 2000,
+        "rule": "Each cat has a tolerance in [minWeight, minWeight + weightSpread), keccak256 of its seed folded into that range. The seed is encrypted until the box is opened, so nobody knows it while the cat can still eat. A cat weighed at or past its tolerance is sick: an ultra-rare trophy, never a death."
+      },
+      "diseases": [
+        { "key": "diabetic", "name": "Diabetic", "rollBelow": 39322 },
+        { "key": "arthritic", "name": "Arthritic", "rollBelow": 58982 },
+        { "key": "fattyLiver", "name": "Fatty liver", "rollBelow": 65536 }
+      ],
+      "rule": "Once the box is opened, anyone weighs the cat: its weight is made public and sets its build, the highest whose minWeight it reaches. At the daily cap, chubby takes 10 days, fat 50, huge 150 and sick 300 to 600 days of feeding, so the builds stay rare for the life of the game. The build bonus, and the sick bonus on top, add to the rarity score."
     },
     "burn": {
       "rule": "Burnt cCROQ stays locked in the Pantry: no code path moves it. The encrypted running total is readable by nobody, so the circulating supply is unknown even though the total supply is public."
@@ -228,6 +248,8 @@
     "MealServed": { "fields": ["tokenId", "feeder", "meals"], "note": "Pantry. The amount is not emitted." },
     "WelcomeBag": { "fields": ["tokenId", "holder"], "note": "Pantry." },
     "Purred": { "fields": ["holder", "boxes"], "note": "Pantry. The amount is not emitted." },
-    "Settled": { "fields": ["tokenId", "holder", "state", "payoutBps"], "note": "Pantry. The amount is not emitted." }
+    "WeighInRequested": { "fields": ["tokenId", "weightHandle"], "note": "Pantry." },
+    "Weighed": { "fields": ["tokenId", "weight", "build", "sick", "disease"], "note": "Pantry. The weight is public once the box is open." },
+    "Collected": { "fields": ["treasury"], "note": "Pantry. The amount is not emitted." }
   }
 }

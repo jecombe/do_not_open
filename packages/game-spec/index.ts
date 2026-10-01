@@ -64,6 +64,9 @@ export interface GameSpec {
   events: Record<string, { fields: string[]; note?: string }>;
 }
 
+export type BuildKey = "thin" | "normal" | "chubby" | "fat" | "huge";
+export type DiseaseKey = "diabetic" | "arthritic" | "fattyLiver";
+
 export type AllocationKey = "gameReserve" | "welcomeBags" | "liquidity" | "treasury";
 
 /** The CROQ economy. Amounts are whole croquettes: the token has no decimals. */
@@ -80,8 +83,13 @@ export interface EconomySpec {
   allocation: { key: AllocationKey; name: string; amount: number; rule: string }[];
   welcomeBag: { amount: number; rule: string };
   purr: { maxPerDay: number; vetMultiplier: number; maxDays: number; halvingDays: number; rule: string };
-  meal: { burnBps: number; rule: string };
-  settlement: { payoutBps: Record<StateKey, number>; rule: string };
+  meal: { mealsPerDay: number; maxEatenPerDay: number; treasuryBps: number; burnBps: number; rule: string };
+  weight: {
+    builds: { key: BuildKey; name: string; minWeight: number; scoreBonus: number }[];
+    sick: { minWeight: number; weightSpread: number; scoreBonus: number; rule: string };
+    diseases: { key: DiseaseKey; name: string; rollBelow: number }[];
+    rule: string;
+  };
   burn: { rule: string };
 }
 

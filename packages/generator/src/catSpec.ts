@@ -1,4 +1,4 @@
-import { spec, type StateKey, type TierKey, type TraitKey } from "@dno/game-spec";
+import { spec, type BuildKey, type DiseaseKey, type StateKey, type TierKey, type TraitKey } from "@dno/game-spec";
 import { decodeSeed, normalizeSeed, seedToHex } from "./seed";
 import { fold32, mulberry32 } from "./prng";
 import { rarityScore, tierForScore } from "./rarity";
@@ -77,6 +77,15 @@ export interface CatSpec {
   affection: number;
   traits: Record<TraitKey, ResolvedTrait>;
   rarity: { score: number; tier: TierKey; tierName: string; golden: boolean };
+  /** From the weigh-in. Null until the cat is weighed: then it is drawn at its natural girth. */
+  weight: {
+    weight: number;
+    build: BuildKey;
+    buildName: string;
+    sick: boolean;
+    disease: DiseaseKey | null;
+    diseaseName: string | null;
+  } | null;
   body: CatBody;
   /** Second form a quantum cat flickers into. Null for every other state. */
   altBody: CatBody | null;
@@ -176,12 +185,31 @@ function bodyFor(breed: string, rand: () => number): CatBody {
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
+/** How much rounder each build draws the cat. A sick cat is drawn like a huge one. */
+export const BUILD_GIRTH: Record<BuildKey, number> = { thin: 0.85, normal: 1, chubby: 1.2, fat: 1.45, huge: 1.75 };
+
+/** The heaviest build whose minWeight `weight` reaches. Same rule as Pantry.buildOf. */
+export function buildForWeight(weight: bigint | number) {
+  const w = BigInt(weight);
+  let build = spec.economy.weight.builds[0]!;
+  for (const b of spec.economy.weight.builds) if (w >= BigInt(b.minWeight)) build = b;
+  return build;
+}
+
+function diseaseName(key: DiseaseKey): string {
+  const d = spec.economy.weight.diseases.find((x) => x.key === key);
+  if (!d) throw new Error(`no disease "${key}" in the spec`);
+  return d.name;
+}
+
 export interface CatSpecInput {
   seed: bigint | string | number;
   /** Encrypted affection counter, known only at reveal. Defaults to 0. */
   affection?: number;
   /** Optional cross-check against the state decrypted on-chain. Must match the seed. */
   state?: StateKey | number;
+  /** What the scales said once the box was opened. Absent: not weighed yet, drawn as normal. */
+  weighIn?: { weight: bigint | number; sick: boolean; disease: DiseaseKey | null };
 }
 
 /** seed (+ affection) -> everything the renderer needs. Pure and deterministic. */
@@ -269,6 +297,27 @@ export function buildCatSpec(input: CatSpecInput): CatSpec {
   const golden = affection > spec.affection.goldenThreshold;
   const baseScore = rarityScore(decoded.rolls, state.scoreBonus);
   const tier = tierForScore(baseScore);
+
+  // The weigh-in adds to the score, like golden; the tier stays the seed's.
+  let weight: CatSpec["weight"] = null;
+  let weightBonus = 0;
+  if (input.weighIn) {
+    const build = buildForWeight(input.weighIn.weight);
+    const sick = input.weighIn.sick;
+    const disease = sick ? input.weighIn.disease : null;
+    weight = {
+      weight: Number(input.weighIn.weight),
+      build: build.key,
+      buildName: build.name,
+      sick,
+      disease,
+      diseaseName: disease ? diseaseName(disease) : null,
+    };
+    weightBonus = build.scoreBonus + (sick ? spec.economy.weight.sick.scoreBonus : 0);
+    const girth = BUILD_GIRTH[sick ? "huge" : build.key];
+    body.girth = round(body.girth * girth);
+    if (altBody) altBody.girth = round(altBody.girth * girth);
+  }
   const roomKey = traits.room.variant;
 
   return {
@@ -277,11 +326,12 @@ export function buildCatSpec(input: CatSpecInput): CatSpec {
     affection,
     traits,
     rarity: {
-      score: baseScore + (golden ? spec.affection.goldenScoreBonus : 0),
+      score: baseScore + (golden ? spec.affection.goldenScoreBonus : 0) + weightBonus,
       tier: tier.key,
       tierName: tier.name,
       golden,
     },
+    weight,
     body,
     altBody,
     face,

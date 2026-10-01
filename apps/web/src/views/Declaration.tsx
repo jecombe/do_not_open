@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { CatSpec } from "@dno/generator";
 import { useT } from "../i18n/app";
-import { tierName, traitName, variantName, viceName } from "../i18n/names";
+import { buildName, diseaseName, tierName, traitName, variantName, viceName } from "../i18n/names";
 
 /** The customs form for an opened box: everything that is now public. */
 export function Declaration({ cat, children }: { cat: CatSpec; children?: ReactNode }) {
@@ -29,6 +29,20 @@ export function Declaration({ cat, children }: { cat: CatSpec; children?: ReactN
             <td>{viceName(cat.vice)}</td>
             <td className="roll" />
           </tr>
+          {cat.weight && (
+            <tr>
+              <th scope="row">{t("decl.weight")}</th>
+              <td>{t("decl.weightValue", { build: buildName(cat.weight.build), n: cat.weight.weight.toLocaleString() })}</td>
+              <td className="roll" />
+            </tr>
+          )}
+          {cat.weight?.sick && cat.weight.disease && (
+            <tr className="sick">
+              <th scope="row">{t("decl.health")}</th>
+              <td>{t("decl.sick", { disease: diseaseName(cat.weight.disease) })}</td>
+              <td className="roll" />
+            </tr>
+          )}
           <tr className="total">
             <th scope="row">{t("decl.score")}</th>
             <td />
