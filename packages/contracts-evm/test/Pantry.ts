@@ -10,11 +10,12 @@ import {
   deploy,
   deployEconomy,
   expectDenied,
-  FEES,
-  finalizeObserve,
   giveCroquettes,
+  mintBoxes,
+  open as openBox,
   peek64,
   peekSeed,
+  proveAlive,
   STATE_IDS,
 } from "./helpers";
 
@@ -45,6 +46,9 @@ describe("CROQ economy", function () {
   let pantry: Pantry;
   let pantryAddress: string;
   let cCroqAddress: string;
+  /** Alice holds A[0..2], bob holds B[0..2]. */
+  let A: number[];
+  let B: number[];
 
   const hcu = async (tx: Promise<{ wait(): Promise<unknown> }>) =>
     fhevm.computeTransactionHCU((await (await tx).wait()) as Parameters<typeof fhevm.computeTransactionHCU>[0]);
@@ -62,10 +66,16 @@ describe("CROQ economy", function () {
   const approvePantry = async (who: HardhatEthersSigner) =>
     (await cCroq.connect(who).setOperator(pantryAddress, (await time.latest()) + 365 * DAY)).wait();
 
-  async function open(tokenId: number) {
-    const holder = await ethers.getSigner(await dno.ownerOf(tokenId));
-    await (await dno.connect(holder).observe(tokenId)).wait();
-    await (await finalizeObserve(dno, tokenId, carol)).wait();
+  /** Opens a box of alice's (or of `holder`). */
+  const open = (tokenId: number, holder: HardhatEthersSigner = alice) => openBox(dno, tokenId, holder, carol);
+  /** What `who` may read about `tokenId` today: meals and croquettes eaten. */
+  async function today(tokenId: number, who: HardhatEthersSigner) {
+    const [meals, eaten] = await pantry.todayHandles(tokenId, who.address);
+    if (meals === ethers.ZeroHash) return { meals: 0n, eaten: 0n };
+    return {
+      meals: await fhevm.userDecryptEuint(FhevmType.euint8, meals, pantryAddress, who),
+      eaten: await fhevm.userDecryptEuint(FhevmType.euint64, eaten, pantryAddress, who),
+    };
   }
 
   before(async function () {
@@ -81,9 +91,8 @@ describe("CROQ economy", function () {
     if (!fhevm.isMock) this.skip();
     ({ dno } = await deploy(EVEN_STATES));
     ({ croq, cCroq, pantry, pantryAddress, cCroqAddress } = await deployEconomy(dno));
-    // Boxes 0-2 belong to alice, 3-5 to bob.
-    await dno.connect(alice).mint(3);
-    await dno.connect(bob).mint(3);
+    A = (await mintBoxes(dno, alice, 3)).owned;
+    B = (await mintBoxes(dno, bob, 3)).owned;
   });
 
   describe("CROQ and cCROQ", function () {
@@ -167,77 +176,84 @@ describe("CROQ economy", function () {
   });
 
   describe("claim", function () {
-    it("pays one welcome bag per box on its first claim", async function () {
-      await expect(pantry.connect(alice).claim([0, 1, 2]))
+    it("pays one welcome bag per box into the box, and the boxes' holder takes it", async function () {
+      await expect(pantry.connect(alice).claim(A))
         .to.emit(pantry, "WelcomeBag")
-        .withArgs(0, alice.address)
+        .withArgs(A[0])
         .and.not.to.emit(pantry, "Purred");
       expect(await balanceOf(cCroq, alice)).to.eq(3n * WELCOME);
       expect(await reserve()).to.eq(FUNDED - 3n * WELCOME);
     });
 
+    it("keeps a box's bag in the box when a stranger asks for it", async function () {
+      await (await pantry.connect(carol).claim([A[0]!])).wait();
+      expect(await balanceOf(cCroq, carol)).to.eq(0n);
+      expect(await peek64(await pantry.stashHandle(A[0]!))).to.eq(WELCOME);
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
+      expect(await balanceOf(cCroq, alice)).to.eq(WELCOME);
+      expect(await peek64(await pantry.stashHandle(A[0]!))).to.eq(0n);
+    });
+
     it("pays the bag to the box, not the wallet: a box that changes hands gets no second bag", async function () {
-      await (await pantry.connect(alice).claim([0])).wait();
-      await (await dno.connect(alice).transferFrom(alice.address, carol.address, 0)).wait();
-      await expect(pantry.connect(carol).claim([0])).to.be.revertedWithCustomError(pantry, "NothingToClaim");
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
+      await (await dno.connect(alice).confidentialTransfer(carol.address, A[0]!)).wait();
+      await (await pantry.connect(carol).claim([A[0]!])).wait();
       expect(await balanceOf(cCroq, carol)).to.eq(0n);
     });
 
     it("purrs a hidden 0 to max per day, then nothing until the next whole day", async function () {
-      await (await pantry.connect(alice).claim([0, 1, 2])).wait();
-      await expect(pantry.connect(alice).claim([0])).to.be.revertedWithCustomError(pantry, "NothingToClaim");
+      await (await pantry.connect(alice).claim(A)).wait();
+      let before = await balanceOf(cCroq, alice);
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
+      expect(await balanceOf(cCroq, alice)).to.eq(before);
 
       const draws = new Set<bigint>();
-      let before = await balanceOf(cCroq, alice);
       for (let day = 0; day < 8; day++) {
         await time.increase(DAY);
-        await expect(pantry.connect(alice).claim([0, 1, 2])).to.emit(pantry, "Purred").withArgs(alice.address, 3);
+        await expect(pantry.connect(alice).claim(A)).to.emit(pantry, "Purred").withArgs(A[0], 1);
         const now = await balanceOf(cCroq, alice);
         expect(now - before).to.be.within(0n, 3n * MAX_DAY);
         draws.add(now - before);
         before = now;
       }
-      // Eight identical sums of three draws would be a remarkable coincidence.
       expect(draws.size).to.be.greaterThan(1);
     });
 
     it("keeps each claim private: only the claimer reads what arrived", async function () {
-      await (await pantry.connect(alice).claim([0])).wait();
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
       const handle = await cCroq.confidentialBalanceOf(alice.address);
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, handle, cCroqAddress, bob));
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, await pantry.reserveHandle(), pantryAddress, deployer));
+      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, await pantry.stashHandle(A[0]!), pantryAddress, alice));
     });
 
     it("pays for the days owed, up to the cap, and keeps a started day", async function () {
-      await (await pantry.connect(alice).claim([0])).wait();
-      const first = await pantry.lastPurr(0);
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
+      const first = await pantry.lastPurr(A[0]!);
 
       await time.increase(2 * DAY + 3600);
       let before = await balanceOf(cCroq, alice);
-      await (await pantry.connect(alice).claim([0])).wait();
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
       expect((await balanceOf(cCroq, alice)) - before).to.be.within(0n, 2n * MAX_DAY);
-      expect(await pantry.lastPurr(0)).to.eq(first + BigInt(2 * DAY));
-      expect(await pantry.nextClaimAt(0)).to.eq(first + BigInt(3 * DAY));
+      expect(await pantry.lastPurr(A[0]!)).to.eq(first + BigInt(2 * DAY));
+      expect(await pantry.nextClaimAt(A[0]!)).to.eq(first + BigInt(3 * DAY));
 
       await time.increase(30 * DAY);
       before = await balanceOf(cCroq, alice);
-      await (await pantry.connect(alice).claim([0])).wait();
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
       expect((await balanceOf(cCroq, alice)) - before).to.be.within(0n, BigInt(params.purrMaxDays) * MAX_DAY);
-      expect(await pantry.lastPurr(0)).to.eq(BigInt(await time.latest()));
+      expect(await pantry.lastPurr(A[0]!)).to.eq(BigInt(await time.latest()));
     });
 
     it("doubles the purr of Vet Certified boxes", async function () {
-      // Find an alive box among alice's and certify it.
       let alive = -1;
-      for (let id = 0; id < 3 && alive === -1; id++) if (stateOfSeed(await peekSeed(dno, id)) === STATE_IDS.alive) alive = id;
+      const mine = [...A];
+      for (const id of mine) if (alive === -1 && stateOfSeed(await peekSeed(dno, id)) === STATE_IDS.alive) alive = id;
       while (alive === -1) {
-        const first = Number(await dno.totalMinted());
-        await (await dno.connect(alice).mint(5)).wait();
-        for (let id = first; id < first + 5 && alive === -1; id++) if (stateOfSeed(await peekSeed(dno, id)) === 0) alive = id;
+        const { owned } = await mintBoxes(dno, alice, 5);
+        for (const id of owned) if (alive === -1 && stateOfSeed(await peekSeed(dno, id)) === STATE_IDS.alive) alive = id;
       }
-      await (await dno.connect(alice).proveAlive(alive)).wait();
-      const result = await fhevm.publicDecrypt([await dno.aliveHandle(alive)]);
-      await (await dno.finalizeProveAlive(alive, result.abiEncodedClearValues, result.decryptionProof)).wait();
+      await proveAlive(dno, alive, alice, carol);
       expect(await dno.vetCertified(alive)).to.eq(true);
 
       await (await pantry.connect(alice).claim([alive])).wait();
@@ -254,63 +270,65 @@ describe("CROQ economy", function () {
       expect(values.size).to.be.greaterThan(1);
     });
 
-    it("halves the purr every period, and stops the FHE work once it rounds to zero", async function () {
-      await (await pantry.connect(alice).claim([0])).wait();
+    it("halves the purr every period, and skips the draw once it rounds to zero", async function () {
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
       await time.increase(params.halvingPeriod);
       expect(await pantry.halvings()).to.eq(1n);
       for (let i = 0; i < 4; i++) {
         const before = await balanceOf(cCroq, alice);
-        await (await pantry.connect(alice).claim([0])).wait();
-        expect((await balanceOf(cCroq, alice)) - before).to.be.within(0n, MAX_DAY * BigInt(params.purrMaxDays) / 2n);
+        await (await pantry.connect(alice).claim([A[0]!])).wait();
+        expect((await balanceOf(cCroq, alice)) - before).to.be.within(0n, (MAX_DAY * BigInt(params.purrMaxDays)) / 2n);
         await time.increase(DAY);
       }
 
-      // Max purr 4 x 7 days = 28 < 2^5: after five halvings nothing is left.
+      // Max purr 4 x 7 days = 28 < 2^5: after five halvings nothing is left to draw.
       await time.increase(4 * params.halvingPeriod);
       expect(await pantry.halvings()).to.eq(5n);
       const before = await balanceOf(cCroq, alice);
-      const used = await hcu(pantry.connect(alice).claim([0]));
+      const used = await hcu(pantry.connect(alice).claim([A[0]!]));
       expect(await balanceOf(cCroq, alice)).to.eq(before);
-      expect(used.globalHCU).to.eq(0);
+      // Only the holder check and the payout are left.
+      expect(used.globalHCU).to.be.lessThan(1_200_000);
     });
 
     it("never pays more than the reserve holds", async function () {
-      const poor = await deployEconomy(dno, {}, 150n);
-      await (await poor.pantry.connect(alice).claim([0])).wait();
-      await (await poor.pantry.connect(bob).claim([3])).wait();
-      expect(await balanceOf(poor.cCroq, alice)).to.eq(100n);
-      expect(await balanceOf(poor.cCroq, bob)).to.eq(50n);
-      expect(await peek64(await poor.pantry.reserveHandle())).to.eq(0n);
+      const poor = await deployEconomy(dno, {}, WELCOME + 50n);
+      await (await poor.pantry.connect(alice).claim([A[0]!])).wait();
+      // 50 left: not enough for a whole bag, so nothing, and the reserve keeps it.
+      await (await poor.pantry.connect(bob).claim([B[0]!])).wait();
+      expect(await balanceOf(poor.cCroq, alice)).to.eq(WELCOME);
+      expect(await balanceOf(poor.cCroq, bob)).to.eq(0n);
+      expect(await peek64(await poor.pantry.reserveHandle())).to.eq(50n);
 
+      // Purrs are small enough to be paid from what is left, and never more.
       await time.increase(3 * DAY);
-      await (await poor.pantry.connect(alice).claim([0])).wait();
-      expect(await balanceOf(poor.cCroq, alice)).to.eq(100n);
+      await (await poor.pantry.connect(alice).claim([A[0]!])).wait();
+      const purred = (await balanceOf(poor.cCroq, alice)) - WELCOME;
+      expect(purred).to.be.within(0n, 3n * MAX_DAY);
+      expect(await peek64(await poor.pantry.reserveHandle())).to.eq(50n - purred);
     });
 
-    it("checks holders and the box count", async function () {
-      await expect(pantry.connect(bob).claim([0])).to.be.revertedWithCustomError(pantry, "NotHolder");
+    it("checks the box count and that the boxes exist", async function () {
       await expect(pantry.connect(alice).claim([])).to.be.revertedWithCustomError(pantry, "InvalidBoxCount");
-      const tooMany = Array.from({ length: params.maxBoxesPerClaim + 1 }, () => 0);
+      const tooMany = Array.from({ length: params.maxBoxesPerClaim + 1 }, () => A[0]!);
       await expect(pantry.connect(alice).claim(tooMany)).to.be.revertedWithCustomError(pantry, "InvalidBoxCount");
-      await expect(pantry.connect(alice).claim([99])).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
+      await expect(pantry.connect(alice).claim([9999])).to.be.revertedWithCustomError(dno, "ConfidentialERC721NonexistentToken");
+    });
+
+    it("refuses to read ownership unless the collection trusts the Pantry", async function () {
+      await (await dno.connect(deployer).setTrustedReader(pantryAddress, false)).wait();
+      await expect(pantry.connect(alice).claim([A[0]!])).to.be.revertedWithCustomError(dno, "ConfidentialERC721UnauthorizedReader");
     });
 
     it("stays within the HCU budget for a full claim", async function () {
-      const ids = Array.from({ length: params.maxBoxesPerClaim }, (_, i) => i);
-      const first = Number(await dno.totalMinted());
-      for (let minted = first; minted < params.maxBoxesPerClaim; minted += 10) {
-        await (await dno.connect(carol).mint(10)).wait();
-      }
-      for (const id of ids) {
-        const owner = await ethers.getSigner(await dno.ownerOf(id));
-        if (owner.address !== carol.address) await (await dno.connect(owner).transferFrom(owner.address, carol.address, id)).wait();
-      }
-      await (await pantry.connect(carol).claim(ids)).wait();
+      const { owned } = await mintBoxes(dno, carol, params.maxBoxesPerClaim);
+      await (await pantry.connect(carol).claim(owned)).wait();
       await time.increase(DAY);
-      const used = await hcu(pantry.connect(carol).claim(ids));
+      const used = await hcu(pantry.connect(carol).claim(owned));
       // Protocol limits: 20M HCU per transaction, 5M along the longest dependency chain.
-      expect(used.globalHCU).to.be.lessThan(7_500_000);
-      expect(used.maxHCUDepth).to.be.lessThan(3_000_000);
+      expect(used.globalHCU).to.be.lessThan(14_000_000);
+      expect(used.maxHCUDepth).to.be.lessThan(5_000_000);
+      expect(await balanceOf(cCroq, carol)).to.be.greaterThanOrEqual(BigInt(params.maxBoxesPerClaim) * WELCOME);
     });
   });
 
@@ -320,66 +338,72 @@ describe("CROQ economy", function () {
       await approvePantry(alice);
     });
 
-    it("lets only the holder feed a sealed cat", async function () {
+    it("serves nothing, silently, to someone who does not hold the cat", async function () {
       await giveCroquettes(croq, cCroq, carol, 100n);
       await approvePantry(carol);
-      await expect(feed(carol, 0, 10n)).to.be.revertedWithCustomError(pantry, "NotHolder");
-      await expect(feed(alice, 99, 10n)).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
-      await (await dno.connect(alice).observe(0)).wait();
-      await expect(feed(alice, 0, 10n)).to.be.revertedWithCustomError(pantry, "NotSealed");
+      await expect(feed(carol, A[0]!, 10n)).to.emit(pantry, "MealServed").withArgs(A[0], carol.address);
+      expect(await weight(A[0]!)).to.eq(0n);
+      expect(await balanceOf(cCroq, carol)).to.eq(100n);
+      // What the stranger may read back says nothing either.
+      expect(await today(A[0]!, carol)).to.deep.eq({ meals: 0n, eaten: 0n });
+      await expect(feed(alice, 9999, 10n)).to.be.revertedWithCustomError(dno, "ConfidentialERC721NonexistentToken");
+      await open(A[0]!);
+      await expect(feed(alice, A[0]!, 10n)).to.be.revertedWithCustomError(pantry, "NotSealed");
     });
 
     it("eats it all: a fifth to the treasury, a fifth burnt, the rest back to the reserve", async function () {
-      await expect(feed(alice, 0, 500n)).to.emit(pantry, "MealServed").withArgs(0, alice.address, 1);
-      expect(await weight(0)).to.eq(500n);
+      await expect(feed(alice, A[0]!, 500n)).to.emit(pantry, "MealServed").withArgs(A[0], alice.address);
+      expect(await weight(A[0]!)).to.eq(500n);
       expect(await treasuryShare()).to.eq(100n);
       expect(await burnt()).to.eq(100n);
       expect(await reserve()).to.eq(FUNDED + 300n);
       expect(await balanceOf(cCroq, alice)).to.eq(4_500n);
     });
 
-    it("serves two meals a day, then none until the next UTC day", async function () {
-      await (await feed(alice, 0, 10n)).wait();
-      await (await feed(alice, 0, 10n)).wait();
-      expect(await pantry.mealsToday(0)).to.eq(2);
-      await expect(feed(alice, 0, 10n)).to.be.revertedWithCustomError(pantry, "NoMoreMealsToday");
-      // The limit is the cat's, not the wallet's, nor the day of the week.
-      await (await feed(alice, 1, 10n)).wait();
+    it("serves two meals a day, then nothing until the next UTC day", async function () {
+      await (await feed(alice, A[0]!, 10n)).wait();
+      await (await feed(alice, A[0]!, 10n)).wait();
+      expect((await today(A[0]!, alice)).meals).to.eq(2n);
+      // A third meal moves nothing, without reverting.
+      await (await feed(alice, A[0]!, 10n)).wait();
+      expect(await weight(A[0]!)).to.eq(20n);
+      expect(await balanceOf(cCroq, alice)).to.eq(4_980n);
+      // The limit is the cat's, not the wallet's.
+      await (await feed(alice, A[1]!, 10n)).wait();
       await time.increase(DAY);
-      expect(await pantry.mealsToday(0)).to.eq(0);
-      await (await feed(alice, 0, 10n)).wait();
-      expect(await pantry.meals(0)).to.eq(3n);
-      expect(await weight(0)).to.eq(30n);
+      expect(await today(A[0]!, alice)).to.deep.eq({ meals: 0n, eaten: 0n });
+      await (await feed(alice, A[0]!, 10n)).wait();
+      expect(await weight(A[0]!)).to.eq(30n);
     });
 
     it("caps what a cat eats at 1,000 a day, in one meal or spread, and cuts the rest silently", async function () {
-      await (await feed(alice, 0, 700n)).wait();
-      await expect(feed(alice, 0, 700n)).to.emit(pantry, "MealServed");
-      expect(await weight(0)).to.eq(1_000n);
+      await (await feed(alice, A[0]!, 700n)).wait();
+      await (await feed(alice, A[0]!, 700n)).wait();
+      expect(await weight(A[0]!)).to.eq(1_000n);
       expect(await balanceOf(cCroq, alice)).to.eq(4_000n);
       // The feeder can follow their own day, nobody else can.
-      const today = await pantry.eatenTodayHandle(0);
-      expect(await fhevm.userDecryptEuint(FhevmType.euint64, today, pantryAddress, alice)).to.eq(1_000n);
-      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, today, pantryAddress, bob));
+      expect((await today(A[0]!, alice)).eaten).to.eq(1_000n);
+      const [, eaten] = await pantry.todayHandles(A[0]!, alice.address);
+      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, eaten, pantryAddress, bob));
 
       await time.increase(DAY);
-      await (await feed(alice, 0, 2_500n)).wait();
-      expect(await weight(0)).to.eq(2_000n);
+      await (await feed(alice, A[0]!, 2_500n)).wait();
+      expect(await weight(A[0]!)).to.eq(2_000n);
       expect(await balanceOf(cCroq, alice)).to.eq(3_000n);
     });
 
     it("moves nothing, silently, when the feeder holds too little", async function () {
-      await (await dno.connect(alice).transferFrom(alice.address, bob.address, 0)).wait();
+      await (await dno.connect(alice).confidentialTransfer(bob.address, A[0]!)).wait();
       await giveCroquettes(croq, cCroq, bob, 50n);
       await approvePantry(bob);
-      await expect(feed(bob, 0, 80n)).to.emit(pantry, "MealServed").withArgs(0, bob.address, 1);
-      expect(await weight(0)).to.eq(0n);
+      await expect(feed(bob, A[0]!, 80n)).to.emit(pantry, "MealServed").withArgs(A[0], bob.address);
+      expect(await weight(A[0]!)).to.eq(0n);
       expect(await balanceOf(cCroq, bob)).to.eq(50n);
     });
 
     it("lets nobody read a weight: not the holder, not the public", async function () {
-      await (await feed(alice, 0, 100n)).wait();
-      const handle = await pantry.weightHandle(0);
+      await (await feed(alice, A[0]!, 100n)).wait();
+      const handle = await pantry.weightHandle(A[0]!);
       for (const who of [alice, bob, deployer]) {
         await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, handle, pantryAddress, who));
       }
@@ -389,16 +413,17 @@ describe("CROQ economy", function () {
 
     it("requires the Pantry as operator and an amount made for the caller", async function () {
       await (await cCroq.connect(alice).setOperator(pantryAddress, 0)).wait();
-      await expect(feed(alice, 0, 10n)).to.be.revertedWithCustomError(cCroq, "ERC7984UnauthorizedSpender");
+      await expect(feed(alice, A[0]!, 10n)).to.be.revertedWithCustomError(cCroq, "ERC7984UnauthorizedSpender");
       await approvePantry(alice);
       const input = await fhevm.createEncryptedInput(pantryAddress, bob.address).add64(10n).encrypt();
-      await expect(pantry.connect(alice).feed(0, input.handles[0]!, input.inputProof)).to.be.reverted;
+      await expect(pantry.connect(alice).feed(A[0]!, input.handles[0]!, input.inputProof)).to.be.reverted;
     });
 
-    it("stays within the documented HCU budget", async function () {
-      // The first meal of the day skips the subtraction from what was already eaten.
-      expect((await hcu(feed(alice, 0, 50n))).globalHCU).to.be.lessThan(2_900_000);
-      expect((await hcu(feed(alice, 0, 50n))).globalHCU).to.be.lessThan(3_300_000);
+    it("stays within the HCU budget", async function () {
+      expect((await hcu(feed(alice, A[0]!, 50n))).globalHCU).to.be.lessThan(4_500_000);
+      const second = await hcu(feed(alice, A[0]!, 50n));
+      expect(second.globalHCU).to.be.lessThan(4_500_000);
+      expect(second.maxHCUDepth).to.be.lessThan(5_000_000);
     });
   });
 
@@ -407,7 +432,7 @@ describe("CROQ economy", function () {
       await expect(pantry.collect()).to.be.revertedWithCustomError(pantry, "NothingToCollect");
       await giveCroquettes(croq, cCroq, alice, 1_000n);
       await approvePantry(alice);
-      await (await feed(alice, 0, 1_000n)).wait();
+      await (await feed(alice, A[0]!, 1_000n)).wait();
 
       const share = await pantry.treasuryShareHandle();
       expect(await fhevm.userDecryptEuint(FhevmType.euint64, share, pantryAddress, deployer)).to.eq(200n);
@@ -424,11 +449,11 @@ describe("CROQ economy", function () {
     it("keeps the books: the Pantry's balance is always reserve + treasury share + burnt", async function () {
       await giveCroquettes(croq, cCroq, alice, 3_000n);
       await approvePantry(alice);
-      await (await feed(alice, 0, 777n)).wait();
-      await (await feed(alice, 1, 333n)).wait();
-      await (await pantry.connect(alice).claim([0, 1, 2])).wait();
+      await (await feed(alice, A[0]!, 777n)).wait();
+      await (await feed(alice, A[1]!, 333n)).wait();
+      await (await pantry.connect(alice).claim(A)).wait();
       await (await pantry.collect()).wait();
-      await (await feed(alice, 2, 1_001n)).wait();
+      await (await feed(alice, A[2]!, 1_001n)).wait();
       const held = await peek64(await cCroq.confidentialBalanceOf(pantryAddress));
       expect(held).to.eq((await reserve()) + (await treasuryShare()) + (await burnt()));
     });
@@ -465,20 +490,21 @@ describe("CROQ economy", function () {
     }
 
     it("weighs a cat that never ate on the spot, as thin", async function () {
-      await open(0);
-      expect((await hcu(pantry.weigh(0))).globalHCU).to.eq(0);
-      const w = await pantry.weighIn(0);
+      await open(A[0]!);
+      expect((await hcu(pantry.weigh(A[0]!))).globalHCU).to.eq(0);
+      const w = await pantry.weighIn(A[0]!);
       expect([w.status, w.build, w.sick, w.weight]).to.deep.eq([2n, 0n, false, 0n]);
     });
 
     it("weighs once, only after the reveal is final", async function () {
-      await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
-      await (await dno.connect(alice).observe(0)).wait();
-      await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
-      await (await finalizeObserve(dno, 0, carol)).wait();
-      await (await pantry.weigh(0)).wait();
-      await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "AlreadyWeighed");
-      await expect(pantry.finalizeWeigh(1, "0x", "0x")).to.be.revertedWithCustomError(pantry, "WeighInNotPending");
+      await expect(pantry.weigh(A[0]!)).to.be.revertedWithCustomError(pantry, "NotRevealed");
+      // A stranger's opening request settles to nothing: still not revealed.
+      await open(A[0]!, carol);
+      await expect(pantry.weigh(A[0]!)).to.be.revertedWithCustomError(pantry, "NotRevealed");
+      await open(A[0]!);
+      await (await pantry.weigh(A[0]!)).wait();
+      await expect(pantry.weigh(A[0]!)).to.be.revertedWithCustomError(pantry, "AlreadyWeighed");
+      await expect(pantry.finalizeWeigh(A[1]!, "0x", "0x")).to.be.revertedWithCustomError(pantry, "WeighInNotPending");
     });
 
     it("publishes the weight, and the build it reaches", async function () {
@@ -487,8 +513,9 @@ describe("CROQ economy", function () {
         [1, 300n, 3n],
         [2, 999n, 4n],
       ];
-      for (const [id, amount] of cases) await (await feed(alice, id, amount)).wait();
-      for (const [id, amount, build] of cases) {
+      for (const [i, amount] of cases) await (await feed(alice, A[i]!, amount)).wait();
+      for (const [i, amount, build] of cases) {
+        const id = A[i]!;
         const w = await weighed(id);
         expect([w.weight, w.build, w.sick], `box ${id}`).to.deep.eq([amount, build, false]);
         expect(w.tolerance).to.eq((await toleranceOf(id)).tolerance);
@@ -497,33 +524,33 @@ describe("CROQ economy", function () {
     });
 
     it("makes a cat sick past a tolerance of its own, drawn from its seed", async function () {
-      const { tolerance, roll } = await toleranceOf(0);
+      const { tolerance, roll } = await toleranceOf(A[0]!);
       // Two full days put it past any tolerance in [1000, 1500).
-      await (await feed(alice, 0, 1_000n)).wait();
+      await (await feed(alice, A[0]!, 1_000n)).wait();
       await time.increase(DAY);
-      await (await feed(alice, 0, 1_000n)).wait();
-      await open(0);
-      await expect(pantry.weigh(0)).to.emit(pantry, "WeighInRequested");
-      const result = await fhevm.publicDecrypt([await pantry.weightHandle(0)]);
+      await (await feed(alice, A[0]!, 1_000n)).wait();
+      await open(A[0]!);
+      await expect(pantry.weigh(A[0]!)).to.emit(pantry, "WeighInRequested");
+      const result = await fhevm.publicDecrypt([await pantry.weightHandle(A[0]!)]);
       const disease = roll < params.diseaseRollBelow[0] ? 0 : roll < params.diseaseRollBelow[1] ? 1 : 2;
-      await expect(pantry.finalizeWeigh(0, result.abiEncodedClearValues, result.decryptionProof))
+      await expect(pantry.finalizeWeigh(A[0]!, result.abiEncodedClearValues, result.decryptionProof))
         .to.emit(pantry, "Weighed")
-        .withArgs(0, 2_000n, 4, true, disease);
-      expect((await pantry.weighIn(0)).tolerance).to.eq(tolerance);
+        .withArgs(A[0], 2_000n, 4, true, disease);
+      expect((await pantry.weighIn(A[0]!)).tolerance).to.eq(tolerance);
 
       // Just under its own tolerance, a cat stays huge and well.
-      await (await feed(alice, 1, 999n)).wait();
-      const w = await weighed(1);
+      await (await feed(alice, A[1]!, 999n)).wait();
+      const w = await weighed(A[1]!);
       expect([w.weight, w.build, w.sick]).to.deep.eq([999n, 4n, false]);
     });
 
     it("rejects a forged weight", async function () {
-      await (await feed(alice, 0, 500n)).wait();
-      await open(0);
-      await (await pantry.weigh(0)).wait();
-      const result = await fhevm.publicDecrypt([await pantry.weightHandle(0)]);
+      await (await feed(alice, A[0]!, 500n)).wait();
+      await open(A[0]!);
+      await (await pantry.weigh(A[0]!)).wait();
+      const result = await fhevm.publicDecrypt([await pantry.weightHandle(A[0]!)]);
       const forged = ethers.AbiCoder.defaultAbiCoder().encode(["uint64"], [400_000n]);
-      await expect(pantry.finalizeWeigh(0, forged, result.decryptionProof)).to.be.reverted;
+      await expect(pantry.finalizeWeigh(A[0]!, forged, result.decryptionProof)).to.be.reverted;
     });
   });
 });

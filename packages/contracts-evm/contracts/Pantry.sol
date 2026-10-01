@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {FHE, euint8, euint64, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, ebool, euint8, euint64, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -18,7 +18,9 @@ interface IDoNotOpen {
         bool golden;
     }
 
-    function ownerOf(uint256 tokenId) external view returns (address);
+    /// @dev Encrypted "does `account` hold `tokenId`", allowed to the Pantry for the transaction.
+    ///      The Pantry must be one of the collection's trusted readers.
+    function isOwner(uint256 tokenId, address account) external returns (ebool);
     function status(uint256 tokenId) external view returns (uint8);
     function vetCertified(uint256 tokenId) external view returns (bool);
     function contentsOf(uint256 tokenId) external view returns (Revealed memory);
@@ -47,12 +49,18 @@ interface IDoNotOpen {
 ///     is opened. A feeder may read what their own meals added today, and the treasury its share.
 ///
 ///  3. A cat eats at most `mealsPerDay` meals and `maxEatenPerDay` croquettes per UTC day,
-///     however they are spread. The amount is encrypted, so an offer past what is left of the
-///     day is cut down to it, silently: the meal never reverts on the amount. Only the holder
-///     feeds: with a daily meal limit, anyone else could fill a cat's meals with empty bowls.
+///     however they are spread. Who holds a box is encrypted (see `ConfidentialERC721`), so
+///     the holder check, the meal count and the amount are all encrypted: a meal past the
+///     limits, or served by someone who does not hold the cat, moves 0, silently. Nothing
+///     about a meal reverts on them, and the meal count is not public.
 ///
 ///  4. A feeder who holds less than the (capped) offer moves 0. The meal still counts, still
 ///     costs gas, and nothing on-chain tells it apart from a real one.
+///
+///  7. Welcome bags and purrs are paid into the box, not to whoever asks: `claim` first tops up
+///     each listed box's encrypted stash (anyone may, the clock is public), then pays the caller
+///     the stashes of the boxes they hold, and 0 for the others. So nobody can spend another
+///     holder's day, and a claim says nothing about what the caller holds.
 ///
 ///  5. The tolerance is keccak256 of the seed, folded into [sickMinWeight, +sickWeightSpread).
 ///     The seed is encrypted until the box is opened, and by then the weight is final: nobody,
@@ -73,7 +81,7 @@ contract Pantry is ZamaEthereumConfig {
 
     uint16 private constant BPS = 10_000;
     uint8 private constant SEALED = 0;
-    uint8 private constant REVEALED = 2;
+    uint8 private constant REVEALED = 1;
 
     uint8 public constant NOT_WEIGHED = 0;
     uint8 public constant WEIGH_PENDING = 1;
@@ -121,16 +129,18 @@ contract Pantry is ZamaEthereumConfig {
         uint64 tolerance;
     }
 
-    struct Day {
+    /// @dev What a feeder may read about today's meals of one cat: masked to 0 for a feeder who
+    ///      does not hold it.
+    struct Seen {
         uint32 day;
-        uint8 meals;
+        euint8 meals;
+        euint64 eaten;
     }
 
     error InvalidParams();
     error NotHolder();
     error NotSealed();
     error NotRevealed();
-    error NoMoreMealsToday();
     error AlreadyWeighed();
     error WeighInNotPending();
     error NothingToClaim();
@@ -138,9 +148,10 @@ contract Pantry is ZamaEthereumConfig {
     error InvalidBoxCount();
 
     event Funded(address indexed from, uint64 amount);
-    event MealServed(uint256 indexed tokenId, address indexed feeder, uint32 meals);
-    event WelcomeBag(uint256 indexed tokenId, address indexed holder);
-    event Purred(address indexed holder, uint256 boxes);
+    event MealServed(uint256 indexed tokenId, address indexed feeder);
+    event WelcomeBag(uint256 indexed tokenId);
+    event Purred(uint256 indexed tokenId, uint256 days_);
+    event Claimed(address indexed caller, uint256 boxes);
     event WeighInRequested(uint256 indexed tokenId, bytes32 weightHandle);
     event Weighed(uint256 indexed tokenId, uint64 weight, uint8 build, bool sick, uint8 disease);
     event Collected(address indexed treasury);
@@ -176,9 +187,12 @@ contract Pantry is ZamaEthereumConfig {
     euint64 private _treasuryShare;
     mapping(uint256 tokenId => euint64) private _weight;
     mapping(uint256 tokenId => euint64) private _eatenToday;
-    mapping(uint256 tokenId => Day) private _days;
-    /// @notice How many meals each box was served. Public; what they held is not.
-    mapping(uint256 tokenId => uint32) public meals;
+    mapping(uint256 tokenId => euint8) private _mealsToday;
+    /// @dev The UTC day `_eatenToday` and `_mealsToday` are about.
+    mapping(uint256 tokenId => uint32) private _day;
+    mapping(uint256 tokenId => mapping(address feeder => Seen)) private _seen;
+    /// @dev Welcome bag and purrs paid into a box, waiting for its holder.
+    mapping(uint256 tokenId => euint64) private _stash;
     /// @notice When a box last purred. Zero until its welcome bag is collected.
     mapping(uint256 tokenId => uint64) public lastPurr;
     mapping(uint256 tokenId => WeighIn) private _weighIns;
@@ -250,54 +264,67 @@ contract Pantry is ZamaEthereumConfig {
     ///         all: its hidden weight goes up, and the croquettes are split between the
     ///         treasury, the game reserve and the fire. At most `mealsPerDay` meals and
     ///         `maxEatenPerDay` croquettes a day; an offer past what is left of the day is cut
-    ///         down to it. The caller must have made the Pantry an operator on cCROQ.
+    ///         down to it, and a meal past the limits, or from someone who does not hold the cat,
+    ///         moves 0. The caller must have made the Pantry an operator on cCROQ.
     /// @param amount encrypted amount, made for this contract and the caller with the Relayer SDK
     /// @param inputProof the proof that comes with it
     function feed(uint256 tokenId, externalEuint64 amount, bytes calldata inputProof) external {
-        if (boxes.ownerOf(tokenId) != msg.sender) revert NotHolder();
         if (boxes.status(tokenId) != SEALED) revert NotSealed();
+        ebool holds = boxes.isOwner(tokenId, msg.sender);
 
         uint32 today = uint32(block.timestamp / 1 days);
-        Day memory d = _days[tokenId];
-        bool firstToday = d.day != today;
-        if (firstToday) d = Day(today, 0);
-        if (d.meals >= mealsPerDay) revert NoMoreMealsToday();
-        d.meals += 1;
-        _days[tokenId] = d;
-
-        euint64 offered = FHE.fromExternal(amount, inputProof);
-        euint64 capped = firstToday
-            ? FHE.min(offered, maxEatenPerDay)
-            : FHE.min(offered, FHE.sub(maxEatenPerDay, _eatenToday[tokenId]));
-        FHE.allowTransient(capped, address(cCroq));
-        // Moves `capped` if the caller holds it, 0 otherwise.
-        euint64 moved = cCroq.confidentialTransferFrom(msg.sender, address(this), capped);
-
-        euint64 eaten = firstToday ? moved : FHE.add(_eatenToday[tokenId], moved);
-        FHE.allowThis(eaten);
-        FHE.allow(eaten, msg.sender);
-        _eatenToday[tokenId] = eaten;
+        if (_day[tokenId] != today) {
+            _day[tokenId] = today;
+            _mealsToday[tokenId] = FHE.asEuint8(0);
+            _eatenToday[tokenId] = FHE.asEuint64(0);
+        }
+        ebool served = FHE.and(holds, FHE.lt(_mealsToday[tokenId], mealsPerDay));
+        euint64 moved = _serve(tokenId, served, FHE.fromExternal(amount, inputProof));
+        _countMeal(tokenId, today, holds, served, moved);
 
         euint64 weight = FHE.add(_weight[tokenId], moved);
         FHE.allowThis(weight);
         _weight[tokenId] = weight;
 
         _split(moved);
-
-        uint32 served = meals[tokenId] + 1;
-        meals[tokenId] = served;
-        emit MealServed(tokenId, msg.sender, served);
+        emit MealServed(tokenId, msg.sender);
     }
 
-    /// @notice Meals `tokenId` has eaten so far today (UTC).
-    function mealsToday(uint256 tokenId) public view returns (uint8) {
-        Day memory d = _days[tokenId];
-        return d.day == uint32(block.timestamp / 1 days) ? d.meals : 0;
+    /// @dev Pulls the offer, cut down to what is left of the day, or 0 if the meal is not served.
+    ///      Returns what arrived.
+    function _serve(uint256 tokenId, ebool served, euint64 offered) internal returns (euint64) {
+        euint64 left = FHE.sub(maxEatenPerDay, _eatenToday[tokenId]);
+        euint64 capped = FHE.select(served, FHE.min(offered, left), FHE.asEuint64(0));
+        FHE.allowTransient(capped, address(cCroq));
+        // Moves `capped` if the caller holds it, 0 otherwise.
+        return cCroq.confidentialTransferFrom(msg.sender, address(this), capped);
     }
 
-    /// @notice Handle of what `tokenId` ate today, readable by whoever fed it. Zero on a new day.
-    function eatenTodayHandle(uint256 tokenId) external view returns (bytes32) {
-        return mealsToday(tokenId) == 0 ? bytes32(0) : FHE.toBytes32(_eatenToday[tokenId]);
+    /// @dev Adds the meal to today's count and lets the feeder read back today's totals: the
+    ///      real ones if they hold the cat, zeros otherwise.
+    function _countMeal(uint256 tokenId, uint32 today, ebool holds, ebool served, euint64 moved) internal {
+        euint8 meals = FHE.add(_mealsToday[tokenId], FHE.select(served, FHE.asEuint8(1), FHE.asEuint8(0)));
+        euint64 eaten = FHE.add(_eatenToday[tokenId], moved);
+        FHE.allowThis(meals);
+        FHE.allowThis(eaten);
+        _mealsToday[tokenId] = meals;
+        _eatenToday[tokenId] = eaten;
+
+        euint8 seenMeals = FHE.select(holds, meals, FHE.asEuint8(0));
+        euint64 seenEaten = FHE.select(holds, eaten, FHE.asEuint64(0));
+        FHE.allowThis(seenMeals);
+        FHE.allowThis(seenEaten);
+        FHE.allow(seenMeals, msg.sender);
+        FHE.allow(seenEaten, msg.sender);
+        _seen[tokenId][msg.sender] = Seen(today, seenMeals, seenEaten);
+    }
+
+    /// @notice Handles of what `feeder` may read about `tokenId` today: meals and croquettes
+    ///         eaten, both 0 unless they hold it. Zero handles on a new day or for a stranger.
+    function todayHandles(uint256 tokenId, address feeder) external view returns (bytes32 meals, bytes32 eaten) {
+        Seen storage s = _seen[tokenId][feeder];
+        if (s.day != uint32(block.timestamp / 1 days)) return (bytes32(0), bytes32(0));
+        return (FHE.toBytes32(s.meals), FHE.toBytes32(s.eaten));
     }
 
     /// @notice Sends the treasury its share of every meal so far. Anyone may call it.
@@ -314,64 +341,79 @@ contract Pantry is ZamaEthereumConfig {
 
     // ----------------------------------------------------------------- claim
 
-    /// @notice Collects, for each listed box the caller holds: its welcome bag the first time,
-    ///         then its purr for every whole day since its last claim (up to `purrMaxDays`).
-    ///         Everything arrives as one encrypted cCROQ transfer that only the caller can read.
-    /// @dev One encrypted draw per box, multiplied by the days owed. Boxes with nothing owed
-    ///      are skipped; a claim where every box is skipped reverts.
+    /// @notice For each listed box: pays into it its welcome bag the first time, then its purr
+    ///         for every whole day since (up to `purrMaxDays`), whoever asks. Then pays the caller,
+    ///         as one encrypted cCROQ transfer, what waits in the listed boxes they hold.
+    /// @dev One encrypted draw per purring box, multiplied by the days owed. When the reserve can
+    ///      no longer pay a whole claim, that claim pays nothing into the boxes.
     function claim(uint256[] calldata tokenIds) external {
-        if (tokenIds.length == 0 || tokenIds.length > maxBoxesPerClaim) revert InvalidBoxCount();
+        uint256 count = tokenIds.length;
+        if (count == 0 || count > maxBoxesPerClaim) revert InvalidBoxCount();
 
         uint256 era = (block.timestamp - startedAt) / halvingPeriod;
-        uint64 bags;
-        euint64 purr;
-        bool paid;
-        uint256 purring;
-
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uint256 tokenId = tokenIds[i];
-            if (boxes.ownerOf(tokenId) != msg.sender) revert NotHolder();
-
-            uint64 last = lastPurr[tokenId];
-            if (last == 0) {
-                lastPurr[tokenId] = uint64(block.timestamp);
-                bags += welcomeBag;
-                paid = true;
-                emit WelcomeBag(tokenId, msg.sender);
-                continue;
-            }
-
-            uint256 owed = (block.timestamp - last) / 1 days;
-            if (owed == 0) continue;
-            if (owed > purrMaxDays) {
-                owed = purrMaxDays;
-                lastPurr[tokenId] = uint64(block.timestamp);
-            } else {
-                // Keeps the part of a day already started.
-                lastPurr[tokenId] = uint64(last + owed * 1 days);
-            }
-            paid = true;
-
-            uint256 factor = owed * (boxes.vetCertified(tokenId) ? vetMultiplier : 1);
-            // Past the point where even the best draw halves to zero, skip the FHE work.
-            if (era >= 64 || (uint256(purrMaxPerDay) * factor) >> era == 0) continue;
-
-            purring++;
-            purr = FHE.add(purr, _purrDraw(factor, uint8(era)));
+        euint64[] memory dues = new euint64[](count);
+        euint64 totalDue;
+        for (uint256 i = 0; i < count; i++) {
+            dues[i] = _accrue(tokenIds[i], era);
+            if (FHE.isInitialized(dues[i])) totalDue = FHE.isInitialized(totalDue) ? FHE.add(totalDue, dues[i]) : dues[i];
         }
-        if (!paid) revert NothingToClaim();
-        // Days were owed but the purr has halved down to nothing: no transfer to make.
-        if (bags == 0 && purring == 0) return;
+        // The reserve pays all of this claim or, once it can no longer, none of it.
+        ebool funded;
+        if (FHE.isInitialized(totalDue)) {
+            funded = FHE.le(totalDue, _reserve);
+            euint64 reserve = FHE.sub(_reserve, FHE.select(funded, totalDue, FHE.asEuint64(0)));
+            FHE.allowThis(reserve);
+            _reserve = reserve;
+        }
 
-        euint64 owedTotal = FHE.add(purr, bags);
-        // The reserve can run dry: then the purr shrinks to what is left, down to zero.
-        euint64 total = FHE.min(owedTotal, _reserve);
-        euint64 reserve = FHE.sub(_reserve, total);
-        FHE.allowThis(reserve);
-        _reserve = reserve;
+        euint64 payout = FHE.asEuint64(0);
+        bool anything;
+        for (uint256 i = 0; i < count; i++) {
+            uint256 tokenId = tokenIds[i];
+            euint64 stash = _stash[tokenId];
+            if (FHE.isInitialized(dues[i])) {
+                euint64 paid = FHE.select(funded, dues[i], FHE.asEuint64(0));
+                stash = FHE.isInitialized(stash) ? FHE.add(stash, paid) : paid;
+            }
+            if (!FHE.isInitialized(stash)) continue;
+            anything = true;
+            ebool owns = boxes.isOwner(tokenId, msg.sender);
+            euint64 mine = FHE.select(owns, stash, FHE.asEuint64(0));
+            // The holder takes it all: what stays is the stash, or nothing.
+            stash = FHE.select(owns, FHE.asEuint64(0), stash);
+            FHE.allowThis(stash);
+            _stash[tokenId] = stash;
+            payout = FHE.add(payout, mine);
+        }
+        if (!anything) revert NothingToClaim();
+        _pay(msg.sender, payout);
+        emit Claimed(msg.sender, count);
+    }
 
-        _pay(msg.sender, total);
-        if (purring != 0) emit Purred(msg.sender, purring);
+    /// @dev What `tokenId` is owed since its last claim, moving its clock. Uninitialized when
+    ///      nothing is owed or the purr has halved to nothing.
+    function _accrue(uint256 tokenId, uint256 era) internal returns (euint64 due) {
+        uint64 last = lastPurr[tokenId];
+        if (last == 0) {
+            lastPurr[tokenId] = uint64(block.timestamp);
+            emit WelcomeBag(tokenId);
+            return FHE.asEuint64(welcomeBag);
+        }
+        uint256 owed = (block.timestamp - last) / 1 days;
+        if (owed == 0) return due;
+        if (owed > purrMaxDays) {
+            owed = purrMaxDays;
+            lastPurr[tokenId] = uint64(block.timestamp);
+        } else {
+            // Keeps the part of a day already started.
+            lastPurr[tokenId] = uint64(last + owed * 1 days);
+        }
+        emit Purred(tokenId, owed);
+
+        uint256 factor = owed * (boxes.vetCertified(tokenId) ? vetMultiplier : 1);
+        // Past the point where even the best draw halves to zero, skip the FHE work.
+        if (era >= 64 || (uint256(purrMaxPerDay) * factor) >> era == 0) return due;
+        return _purrDraw(factor, uint8(era));
     }
 
     /// @dev Uniform-ish draw in [0, purrMaxPerDay] (a byte modulo n: 256 is not a multiple
@@ -444,6 +486,12 @@ contract Pantry is ZamaEthereumConfig {
     }
 
     // ----------------------------------------------------------------- views
+
+    /// @notice Handle of what waits in a box for its holder. Nobody may decrypt it: the holder
+    ///         learns it by claiming.
+    function stashHandle(uint256 tokenId) external view returns (bytes32) {
+        return FHE.toBytes32(_stash[tokenId]);
+    }
 
     /// @notice Handle of a cat's encrypted weight. A handle is an identifier, not the value:
     ///         nobody may decrypt it until `weigh` makes it public.

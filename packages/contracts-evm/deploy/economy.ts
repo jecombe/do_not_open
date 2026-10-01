@@ -54,6 +54,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
+  // The Pantry checks who holds a box, so the collection must trust it to ask.
+  const owner_ = (await read("DoNotOpen", "owner")) as string;
+  if (!((await read("DoNotOpen", "trustedReader", pantry.address)) as boolean)) {
+    if (owner_.toLowerCase() === deployer.toLowerCase()) {
+      await execute("DoNotOpen", { from: deployer, log: true }, "setTrustedReader", pantry.address, true);
+    } else {
+      console.log(`!! The collection owner ${owner_} must call DoNotOpen.setTrustedReader(${pantry.address}, true)`);
+    }
+  }
+
   if (pantry.newlyDeployed) {
     const reserve = allocation.gameReserve + allocation.welcomeBags;
     await execute("Croq", { from: deployer, log: true }, "approve", pantry.address, reserve);

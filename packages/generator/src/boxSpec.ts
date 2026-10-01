@@ -1,4 +1,3 @@
-import { spec } from "@dno/game-spec";
 import { mulberry32 } from "./prng";
 
 /**
@@ -25,9 +24,13 @@ export interface BoxSpec {
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
+/** Token ids are not bounded by the supply: every mint creates `maxPerTx` of them, sold or
+ *  empty, so they run past `maxSupply`. Any id a 32-bit field holds is valid. */
+const MAX_TOKEN_ID = 2 ** 32 - 1;
+
 export function buildBoxSpec(tokenId: number): BoxSpec {
-  if (!Number.isInteger(tokenId) || tokenId < 0 || tokenId >= spec.collection.maxSupply) {
-    throw new RangeError(`tokenId ${tokenId} outside 0..${spec.collection.maxSupply - 1}`);
+  if (!Number.isInteger(tokenId) || tokenId < 0 || tokenId > MAX_TOKEN_ID) {
+    throw new RangeError(`tokenId ${tokenId} outside 0..${MAX_TOKEN_ID}`);
   }
   const noiseSeed = (Math.imul(tokenId + 1, 0x9e3779b1) ^ 0xd0_0d_b0_c5) >>> 0;
   const rand = mulberry32(noiseSeed);

@@ -3,7 +3,9 @@
   "collection": {
     "name": "DO NOT OPEN",
     "symbol": "DNO",
-    "maxSupply": 10000
+    "maxSupply": 10000,
+    "milestones": [100, 500, 1000, 2500, 5000, 7500, 9000, 10000],
+    "milestonesRule": "Who holds which box and how many boxes were sold are encrypted. Only these milestones of the sold count are announced, one by one; the last one is the cap and means sold out."
   },
   "seed": {
     "bits": 64,

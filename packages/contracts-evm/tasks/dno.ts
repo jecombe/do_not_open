@@ -17,7 +17,7 @@ import { loadSpec } from "../lib/specParams";
  *   pnpm demo:sepolia
  *
  * Single steps:
- *   npx hardhat --network <net> dno:mint --quantity 2
+ *   npx hardhat --network <net> dno:mint --quantity 2 --ids 10
  *   npx hardhat --network <net> dno:shake --token 0
  *   npx hardhat --network <net> dno:prove-alive --token 0
  *   npx hardhat --network <net> dno:observe --token 0
@@ -29,11 +29,15 @@ import { loadSpec } from "../lib/specParams";
  *
  * With a second account, use the contract directly: propose/accept and challenge/accept
  * are separate calls, one per holder.
+ *
+ * Who holds a box is encrypted: the tasks find the signer's boxes in their own transfer
+ * receipts, and a step taken on a box the signer does not hold does nothing.
  */
 
 const STATE_NAMES = ["Alive", "Asleep", "Ghost", "Quantum"];
-const ALIVE_CHECK = ["not requested", "pending", "alive (Vet Certified)", "not alive"];
-const BOX_STATUS = ["sealed", "observing", "revealed"];
+const ALIVE_CHECK = ["not requested", "alive (Vet Certified)", "not alive"];
+const BOX_STATUS = ["sealed", "revealed"];
+const REQUEST_STATUS = ["none", "pending", "done", "refused: the caller did not hold the box"];
 
 async function connect(hre: HardhatRuntimeEnvironment, args: TaskArguments) {
   const { ethers, deployments, fhevm } = hre;
@@ -47,29 +51,53 @@ async function connect(hre: HardhatRuntimeEnvironment, args: TaskArguments) {
 
 const USDC_ABI = [
   "function balanceOf(address) view returns (uint256)",
-  "function allowance(address, address) view returns (uint256)",
   "function approve(address, uint256) returns (bool)",
   "function mint(address, uint256)",
+];
+const CUSDC_ABI = [
+  "function wrap(address, uint256)",
+  "function isOperator(address, address) view returns (bool)",
+  "function setOperator(address, uint48)",
 ];
 const usd = (hre: HardhatRuntimeEnvironment, amount: bigint) => `${hre.ethers.formatUnits(amount, 6)} USDC`;
 
 /**
- * Makes sure the signer can pay `amount` USDC: tops up from the test token's public mint
- * (USDCMock on Sepolia, TestUSDC locally) and approves the collection.
+ * Makes sure the signer can pay `amount` in cUSDC: mints test USDC (USDCMock on Sepolia,
+ * TestUSDC locally), wraps it, and makes the collection an operator. A balance already there is
+ * not read (it is encrypted), so this wraps the whole amount each time.
  */
-async function ensureUsdc(hre: HardhatRuntimeEnvironment, args: TaskArguments, amount: bigint) {
+async function ensureConfidentialUsdc(hre: HardhatRuntimeEnvironment, args: TaskArguments, amount: bigint) {
   const { dno, address, signer } = await connect(hre, args);
   const usdc = new hre.ethers.Contract(await dno.usdc(), USDC_ABI, signer);
+  const cUsdcAddress = await dno.confidentialUsdc();
+  const cUsdc = new hre.ethers.Contract(cUsdcAddress, CUSDC_ABI, signer);
   const balance: bigint = await usdc.balanceOf!(signer.address);
   if (balance < amount) {
     console.log(`  minting ${usd(hre, amount - balance)} of test USDC...`);
     await (await usdc.mint!(signer.address, amount - balance)).wait();
   }
-  if ((await usdc.allowance!(signer.address, address)) < amount) {
-    console.log(`  approving ${usd(hre, amount)}...`);
-    await (await usdc.approve!(address, amount)).wait();
+  console.log(`  wrapping ${usd(hre, amount)} into cUSDC...`);
+  await (await usdc.approve!(cUsdcAddress, amount)).wait();
+  await (await cUsdc.wrap!(signer.address, amount)).wait();
+  if (!(await cUsdc.isOperator!(signer.address, address))) {
+    const until = Math.floor(Date.now() / 1000) + 365 * 86_400;
+    await (await cUsdc.setOperator!(address, until)).wait();
   }
 }
+
+/** Sends the decrypted values of a request with their proof, and prints how it settled. */
+async function finalizeRequest(hre: HardhatRuntimeEnvironment, args: TaskArguments, requestId: bigint) {
+  const { dno } = await connect(hre, args);
+  console.log(`  fetching the decrypted values and their KMS proof...`);
+  const [, , , , , handles] = await dno.requestInfo(requestId);
+  const result = await hre.fhevm.publicDecrypt([...handles]);
+  const tx = await dno.finalize(requestId, result.abiEncodedClearValues, result.decryptionProof);
+  await tx.wait();
+  console.log(`  finalised in tx ${tx.hash}: ${REQUEST_STATUS[Number((await dno.requestInfo(requestId))[1])]}`);
+}
+
+const requestIdOf = (dno: Awaited<ReturnType<typeof connect>>["dno"], logs: readonly import("ethers").Log[]) =>
+  logs.map((l) => dno.interface.parseLog(l)).find((e) => e?.name === "RequestPlaced")!.args.requestId as bigint;
 
 const tokenOf = (args: TaskArguments): number => {
   const id = Number(args.token);
@@ -86,24 +114,29 @@ function traitAtOffset(offset: number): { key: string; name: string } {
   return trait;
 }
 
-async function mint(hre: HardhatRuntimeEnvironment, args: TaskArguments, quantity: number) {
-  const { dno, signer } = await connect(hre, args);
+async function mint(hre: HardhatRuntimeEnvironment, args: TaskArguments, quantity: number, ids = 10) {
+  const { dno, address, signer } = await connect(hre, args);
   const price = await dno.mintPrice();
-  const first = Number(await dno.totalMinted());
-  console.log(`Minting ${quantity} box(es) to ${signer.address} for ${usd(hre, price * BigInt(quantity))}...`);
-  await ensureUsdc(hre, args, price * BigInt(quantity));
-  const tx = await dno.mint(quantity);
+  console.log(`Minting ${quantity} box(es) among ${ids} ids to ${signer.address} for ${usd(hre, price * BigInt(quantity))}...`);
+  await ensureConfidentialUsdc(hre, args, price * BigInt(quantity));
+  const input = await hre.fhevm.createEncryptedInput(address, signer.address).add8(quantity).encrypt();
+  const tx = await dno.mint(input.handles[0]!, input.inputProof, ids);
   const receipt = await tx.wait();
-  const ids = Array.from({ length: quantity }, (_, i) => first + i);
   console.log(`  tx ${tx.hash} (gas ${receipt?.gasUsed})`);
-  console.log(`  minted token ids: ${ids.join(", ")}`);
-  return ids;
+  // The receipts say which of the new ids are the signer's: only the signer can read them.
+  const owned: number[] = [];
+  for (const e of receipt!.logs.map((l) => dno.interface.parseLog(l))) {
+    if (e?.name !== "ConfidentialTransfer") continue;
+    if (await hre.fhevm.userDecryptEbool(e.args.moved, address, signer)) owned.push(Number(e.args.tokenId));
+  }
+  console.log(`  your boxes: ${owned.join(", ") || "none (sold out, or not enough cUSDC)"}`);
+  return owned;
 }
 
 async function shake(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenId: number, paid = false) {
   const { dno, address, signer } = await connect(hre, args);
   console.log(`${paid ? "Paying to shake" : "Shaking"} box ${tokenId}...`);
-  if (paid) await ensureUsdc(hre, args, await dno.paidShakeFee());
+  if (paid) await ensureConfidentialUsdc(hre, args, await dno.paidShakeFee());
   const tx = paid ? await dno.paidShake(tokenId) : await dno.shake(tokenId);
   await tx.wait();
   const [pickHandle, rollHandle] = await dno.lastShake(tokenId, signer.address);
@@ -111,6 +144,10 @@ async function shake(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenI
   console.log(`  decrypting privately as ${signer.address}...`);
   const pick = Number(await hre.fhevm.userDecryptEuint(FhevmType.euint8, pickHandle, address, signer));
   const roll = Number(await hre.fhevm.userDecryptEuint(FhevmType.euint8, rollHandle, address, signer));
+  if (pick === Number(await dno.NOT_YOURS())) {
+    console.log(`  nothing: you do not hold this box${paid ? ", or the fee did not go through" : ""}.`);
+    return;
+  }
   const trait = traitAtOffset(pick);
   const variant = resolveTrait(trait.key as Parameters<typeof resolveTrait>[0], roll);
   console.log(`  you felt something: ${trait.name} = ${variant.name} (roll ${roll})`);
@@ -118,19 +155,9 @@ async function shake(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenI
 
 async function proveAlive(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenId: number) {
   const { dno } = await connect(hre, args);
-  if (Number(await dno.aliveCheck(tokenId)) === 0) {
-    console.log(`Requesting the alive check for box ${tokenId}...`);
-    const tx = await dno.proveAlive(tokenId);
-    await tx.wait();
-    console.log(`  tx ${tx.hash}`);
-  }
-  if (Number(await dno.aliveCheck(tokenId)) === 1) {
-    console.log(`  fetching the decrypted bit and its KMS proof...`);
-    const result = await hre.fhevm.publicDecrypt([await dno.aliveHandle(tokenId)]);
-    const tx = await dno.finalizeProveAlive(tokenId, result.abiEncodedClearValues, result.decryptionProof);
-    await tx.wait();
-    console.log(`  finalised in tx ${tx.hash}`);
-  }
+  console.log(`Requesting the alive check for box ${tokenId}...`);
+  const receipt = await (await dno.proveAlive(tokenId)).wait();
+  await finalizeRequest(hre, args, requestIdOf(dno, receipt!.logs));
   console.log(`  alive check: ${ALIVE_CHECK[Number(await dno.aliveCheck(tokenId))]}`);
 }
 
@@ -139,17 +166,9 @@ async function observe(hre: HardhatRuntimeEnvironment, args: TaskArguments, toke
   if (Number(await dno.status(tokenId)) === 0) {
     const fee = await dno.observeFee();
     console.log(`Observing box ${tokenId} (irreversible, fee ${usd(hre, fee)})...`);
-    await ensureUsdc(hre, args, fee);
-    const tx = await dno.observe(tokenId);
-    await tx.wait();
-    console.log(`  tx ${tx.hash}`);
-  }
-  if (Number(await dno.status(tokenId)) === 1) {
-    console.log(`  fetching the decrypted seed and its KMS proof...`);
-    const result = await hre.fhevm.publicDecrypt([...(await dno.observeHandles(tokenId))]);
-    const tx = await dno.finalizeObserve(tokenId, result.abiEncodedClearValues, result.decryptionProof);
-    await tx.wait();
-    console.log(`  finalised in tx ${tx.hash}`);
+    await ensureConfidentialUsdc(hre, args, fee);
+    const receipt = await (await dno.observe(tokenId)).wait();
+    await finalizeRequest(hre, args, requestIdOf(dno, receipt!.logs));
   }
   await status(hre, args, tokenId);
 }
@@ -158,13 +177,13 @@ async function status(hre: HardhatRuntimeEnvironment, args: TaskArguments, token
   const { dno } = await connect(hre, args);
   const boxStatus = Number(await dno.status(tokenId));
   console.log(`Box ${tokenId}`);
-  console.log(`  holder      : ${await dno.ownerOf(tokenId)}`);
+  console.log(`  holder      : encrypted`);
   console.log(`  status      : ${BOX_STATUS[boxStatus]}`);
   console.log(`  alive check : ${ALIVE_CHECK[Number(await dno.aliveCheck(tokenId))]}`);
   console.log(`  duels won   : ${await dno.wins(tokenId)}`);
   const [entangled, partner] = await dno.partnerOf(tokenId);
   if (entangled) console.log(`  entangled   : with box ${partner}`);
-  if (boxStatus !== 2) {
+  if (boxStatus !== 1) {
     const [mask, rolls] = await dno.publicTraitsOf(tokenId);
     const { spec } = loadSpec();
     spec.traits.forEach((t: { key: string; name: string; index: number }) => {
@@ -189,7 +208,7 @@ async function feed(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenId
   const { dno } = await connect(hre, args);
   const fee = await dno.feedFee();
   console.log(`Feeding box ${tokenId} ${times} time(s) at ${usd(hre, fee)} each...`);
-  await ensureUsdc(hre, args, fee * BigInt(times));
+  await ensureConfidentialUsdc(hre, args, fee * BigInt(times));
   for (let i = 0; i < times; i++) {
     const tx = await dno.feed(tokenId);
     await tx.wait();
@@ -202,10 +221,9 @@ async function entangle(hre: HardhatRuntimeEnvironment, args: TaskArguments, a: 
   const { dno } = await connect(hre, args);
   console.log(`Entangling boxes ${a} and ${b}...`);
   await (await dno.proposeEntangle(a, b)).wait();
-  const tx = await dno.acceptEntangle(a, b);
-  await tx.wait();
-  console.log(`  tx ${tx.hash}`);
-  console.log(`  observing either box now observes both.`);
+  const receipt = await (await dno.acceptEntangle(a, b)).wait();
+  await finalizeRequest(hre, args, requestIdOf(dno, receipt!.logs));
+  if ((await dno.partnerOf(a))[0]) console.log(`  observing either box now observes both.`);
 }
 
 async function duel(hre: HardhatRuntimeEnvironment, args: TaskArguments, a: number, b: number) {
@@ -218,7 +236,11 @@ async function duel(hre: HardhatRuntimeEnvironment, args: TaskArguments, a: numb
   const result = await hre.fhevm.publicDecrypt([...(await dno.duelHandles(duelId))]);
   const tx = await dno.finalizeDuel(duelId, result.abiEncodedClearValues, result.decryptionProof);
   const receipt = await tx.wait();
-  const resolved = receipt!.logs.map((l) => dno.interface.parseLog(l)).find((e) => e?.name === "DuelResolved")!;
+  const resolved = receipt!.logs.map((l) => dno.interface.parseLog(l)).find((e) => e?.name === "DuelResolved");
+  if (!resolved) {
+    console.log(`  void: one side did not hold its box.`);
+    return;
+  }
   const [, winner, loser, traitIndex, roll] = resolved.args;
   const { spec } = loadSpec();
   const trait = spec.traits.find((t: { index: number }) => t.index === Number(traitIndex));
@@ -232,13 +254,17 @@ const withAddress = (name: string, description: string) =>
 
 withAddress("dno:address", "Prints the deployed DoNotOpen address").setAction(async (args, hre) => {
   const { dno, address } = await connect(hre, args);
-  console.log(`DoNotOpen: ${address}  (minted ${await dno.totalMinted()} / ${await dno.maxSupply()})`);
+  const milestones = await dno.milestones();
+  const reached = Number(await dno.milestonesReached());
+  const sold = reached ? `more than ${milestones[reached - 1]}` : `fewer than ${milestones[0]}`;
+  console.log(`DoNotOpen: ${address}  (${await dno.tokenCount()} ids, ${sold} of ${await dno.maxSupply()} boxes sold)`);
 });
 
-withAddress("dno:mint", "Mints sealed boxes")
+withAddress("dno:mint", "Buys sealed boxes, the quantity encrypted")
   .addOptionalParam("quantity", "How many boxes", "1")
+  .addOptionalParam("ids", "How many token ids to hide the quantity among (1-10)", "10")
   .setAction(async (args, hre) => {
-    await mint(hre, args, Number(args.quantity));
+    await mint(hre, args, Number(args.quantity), Number(args.ids));
   });
 
 withAddress("dno:shake", "Shakes a box and privately decrypts the one trait it reveals")
@@ -288,8 +314,8 @@ withAddress("dno:demo2", "Phase 3 walkthrough: mint 3, feed, duel, entangle, obs
     console.log("");
     await observe(hre, args, a!);
     console.log("");
-    // The entangled partner is already in "observing"; this only relays its decryption.
-    await observe(hre, args, c!);
+    // The entangled partner opened along with it.
+    await status(hre, args, c!);
     console.log("");
     await status(hre, args, b!);
   },

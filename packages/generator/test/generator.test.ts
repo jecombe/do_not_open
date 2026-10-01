@@ -205,9 +205,11 @@ describe("BoxSpec", () => {
     expect(buildBoxSpec(7).serial).toBe("DNO-0007");
   });
 
-  it("rejects ids outside the supply", () => {
+  it("rejects ids that are not token ids", () => {
     expect(() => buildBoxSpec(-1)).toThrow(RangeError);
-    expect(() => buildBoxSpec(spec.collection.maxSupply)).toThrow(RangeError);
+    // Ids run past the supply: every mint creates ten, sold or empty.
+    expect(buildBoxSpec(spec.collection.maxSupply).serial).toBe(`DNO-${spec.collection.maxSupply}`);
+    expect(() => buildBoxSpec(2 ** 32)).toThrow(RangeError);
   });
 });
 

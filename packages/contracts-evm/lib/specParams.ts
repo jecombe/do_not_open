@@ -67,6 +67,14 @@ export function configParamsFromSpec(overrides: Partial<ConfigParams> = {}): Con
   };
 }
 
+/** The sold counts DoNotOpen announces, checked to end at the cap. */
+export function milestonesFromSpec(): number[] {
+  const { spec } = loadSpec();
+  const m: number[] = spec.collection.milestones;
+  if (!m?.length || m[m.length - 1] !== spec.collection.maxSupply) throw new Error("collection.milestones must end at maxSupply");
+  return m;
+}
+
 export interface PantryParams {
   welcomeBag: number;
   purrMaxPerDay: number;

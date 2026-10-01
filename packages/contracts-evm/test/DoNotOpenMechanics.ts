@@ -4,18 +4,26 @@ import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
 import { buildCatSpec } from "@dno/generator";
 import { configParamsFromSpec } from "../lib/specParams";
-import { DoNotOpen, TestUSDC } from "../types";
+import { DoNotOpen, TestConfidentialUSDC, TestUSDC } from "../types";
 import {
+  confidentialUsdcOf,
   deploy,
   expectDenied,
   FEES,
   finalizeDuel,
-  finalizeObserve,
+  finalizeRequest,
+  giveConfidentialUsdc,
+  mintBoxes,
+  NOT_YOURS,
+  open,
+  parseEvents,
   peekSeed,
+  REQUEST,
+  requestIdOf,
   shakeAndDecrypt,
-  STATE_IDS,
-  TRAIT_KEYS,
+  STARTING_CUSDC,
   traitByte,
+  usd,
 } from "./helpers";
 
 describe("DoNotOpen mechanics", function () {
@@ -23,11 +31,17 @@ describe("DoNotOpen mechanics", function () {
   let alice: HardhatEthersSigner;
   let bob: HardhatEthersSigner;
   let carol: HardhatEthersSigner;
+  let poor: HardhatEthersSigner;
   let dno: DoNotOpen;
   let address: string;
   let usdc: TestUSDC;
+  let cUsdc: TestConfidentialUSDC;
+  /** Alice holds A[0..2], bob holds B[0..2]. */
+  let A: number[];
+  let B: number[];
 
   const params = configParamsFromSpec();
+  const share = (FEES.paidShake * BigInt(params.paidShakeHolderBps)) / 10_000n;
   const hcu = async (tx: Promise<{ wait(): Promise<unknown> }>) =>
     fhevm.computeTransactionHCU((await (await tx).wait()) as Parameters<typeof fhevm.computeTransactionHCU>[0]);
 
@@ -38,223 +52,153 @@ describe("DoNotOpen mechanics", function () {
       HardhatEthersSigner,
       HardhatEthersSigner,
     ];
+    poor = (await ethers.getSigners())[9]!;
   });
 
   beforeEach(async function () {
     if (!fhevm.isMock) this.skip();
-    ({ dno, address, usdc } = await deploy());
-    // Boxes 0-2 belong to alice, 3-5 to bob.
-    await dno.connect(alice).mint(3);
-    await dno.connect(bob).mint(3);
+    ({ dno, address, usdc, cUsdc } = await deploy());
+    A = (await mintBoxes(dno, alice, 3)).owned;
+    B = (await mintBoxes(dno, bob, 3)).owned;
   });
 
   describe("feed", function () {
-    /** Mock only. The affection handle is exposed by observeHandles once a box was fed. */
-    const peekAffection = async (tokenId: number) => {
-      const handles = await dno.observeHandles(tokenId);
-      return handles.length < 2 ? 0n : fhevm.debugger.decryptEuint(FhevmType.euint32, handles[1]!);
-    };
-
-    it("lets anyone feed a box and adds a hidden amount each time", async function () {
-      const max = BigInt(params.feedBound - 1);
-      let previous = 0n;
-      const gains = new Set<bigint>();
+    it("lets anyone feed for the fee and adds a hidden amount each time", async function () {
       for (let i = 0; i < 10; i++) {
-        await expect(dno.connect(carol).feed(0)).to.emit(dno, "Fed").withArgs(0, carol.address);
-        const now = await peekAffection(0);
-        expect(now - previous).to.be.within(0n, max);
-        gains.add(now - previous);
-        previous = now;
+        await expect(dno.connect(carol).feed(A[0]!)).to.emit(dno, "Fed").withArgs(A[0], carol.address);
       }
-      // Ten identical draws out of four values would be a one-in-260,000 coincidence.
-      expect(gains.size).to.be.greaterThan(1);
-      // The number of feeds is public, unlike what they earned.
-      expect(await dno.feedCount(0)).to.eq(10n);
-      expect(await dno.feedCount(1)).to.eq(0n);
+      expect(await confidentialUsdcOf(cUsdc, carol)).to.eq(STARTING_CUSDC - 10n * FEES.feed);
+      await open(dno, A[0]!, alice, carol);
+      const affection = Number((await dno.contentsOf(A[0]!)).affection);
+      expect(affection).to.be.within(0, 10 * (params.feedBound - 1));
     });
 
-    it("keeps affection unreadable, even for the feeder and the holder", async function () {
-      await dno.connect(carol).feed(0);
-      const [, affectionHandle] = await dno.observeHandles(0);
-      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint32, affectionHandle!, address, carol));
-      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint32, affectionHandle!, address, alice));
-      await expectDenied(fhevm.publicDecrypt([affectionHandle!]));
+    it("adds nothing when the feeder cannot pay", async function () {
+      await giveConfidentialUsdc(usdc, cUsdc, dno, poor, FEES.feed - 1n);
+      for (let i = 0; i < 6; i++) await (await dno.connect(poor).feed(A[1]!)).wait();
+      expect(await confidentialUsdcOf(cUsdc, poor)).to.eq(FEES.feed - 1n);
+      await open(dno, A[1]!, alice, carol);
+      expect((await dno.contentsOf(A[1]!)).affection).to.eq(0n);
     });
 
-    it("requires the fee, an existing box and a sealed one", async function () {
-      await (await usdc.connect(carol).approve(address, 0)).wait();
-      await expect(dno.connect(carol).feed(0)).to.be.revertedWithCustomError(usdc, "ERC20InsufficientAllowance");
-      await (await usdc.connect(carol).approve(address, ethers.MaxUint256)).wait();
-      await expect(dno.connect(carol).feed(99)).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
-      await dno.connect(alice).observe(0);
-      await expect(dno.connect(carol).feed(0)).to.be.revertedWithCustomError(dno, "NotSealed");
+    it("refuses opened and unknown boxes", async function () {
+      await expect(dno.connect(carol).feed(9999)).to.be.revertedWithCustomError(dno, "ConfidentialERC721NonexistentToken");
+      await open(dno, A[0]!, alice, carol);
+      await expect(dno.connect(carol).feed(A[0]!)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
-    it("stays within the documented HCU budget", async function () {
-      expect((await hcu(dno.connect(carol).feed(0))).globalHCU).to.be.lessThan(150_000);
+    it("turns the accessory golden at reveal exactly like the generator", async function () {
+      for (let i = 0; i < 12; i++) await (await dno.connect(carol).feed(A[0]!)).wait();
+      await open(dno, A[0]!, alice, carol);
+      const c = await dno.contentsOf(A[0]!);
+      const cat = buildCatSpec({ seed: c.seed, affection: Number(c.affection) });
+      expect(c.golden).to.eq(Number(c.affection) > params.goldenThreshold);
+      expect(c.golden).to.eq(cat.rarity.golden);
+      expect(Number(c.score)).to.eq(cat.rarity.score);
     });
 
-    it("turns the accessory golden at reveal only above the threshold", async function () {
-      const threshold = BigInt(params.goldenThreshold);
-
-      // Box 0: fed until its hidden affection is past the threshold.
-      while ((await peekAffection(0)) <= threshold) await dno.connect(carol).feed(0);
-      // Box 1: fed, but kept at or below the threshold.
-      await dno.connect(carol).feed(1);
-      expect(await peekAffection(1)).to.be.lessThanOrEqual(threshold);
-
-      for (const [tokenId, expectGolden] of [[0, true], [1, false], [2, false]] as const) {
-        const seed = await peekSeed(dno, tokenId);
-        const affection = Number(await peekAffection(tokenId));
-        const cat = buildCatSpec({ seed, affection });
-        expect(cat.rarity.golden).to.eq(expectGolden);
-
-        await dno.connect(alice).observe(tokenId);
-        await expect(finalizeObserve(dno, tokenId, carol))
-          .to.emit(dno, "Observed")
-          .withArgs(tokenId, seed, STATE_IDS[cat.state], cat.rarity.score, expectGolden);
-
-        const contents = await dno.contentsOf(tokenId);
-        expect(contents.golden).to.eq(expectGolden);
-        expect(Number(contents.affection)).to.eq(affection);
-        expect(Number(contents.score)).to.eq(cat.rarity.score);
-      }
-    });
-
-    it("rejects an inflated affection at reveal", async function () {
-      await dno.connect(carol).feed(0);
-      await dno.connect(alice).observe(0);
-      const real = await fhevm.publicDecrypt([...(await dno.observeHandles(0))]);
-      const [seed] = ethers.AbiCoder.defaultAbiCoder().decode(["uint64", "uint32"], real.abiEncodedClearValues);
-      const forged = ethers.AbiCoder.defaultAbiCoder().encode(["uint64", "uint32"], [seed, 999]);
-      await expect(dno.finalizeObserve(0, forged, real.decryptionProof)).to.be.reverted;
+    it("stays within the HCU budget", async function () {
+      expect((await hcu(dno.connect(carol).feed(A[0]!))).globalHCU).to.be.lessThan(1_200_000);
     });
   });
 
   describe("paidShake", function () {
-    it("shows one real trait to the payer only and credits the holder 70%", async function () {
-      const seed = await peekSeed(dno, 0);
-      const share = (FEES.paidShake * BigInt(params.paidShakeHolderBps)) / 10_000n;
-
-      const { pick, roll, handles } = await shakeAndDecrypt(dno, 0, carol, true);
+    it("shows one real trait to the payer only and keeps the holder's share in the box", async function () {
+      const seed = await peekSeed(dno, A[0]!);
+      const { pick, roll, handles } = await shakeAndDecrypt(dno, A[0]!, carol, true);
       expect(roll).to.eq(traitByte(seed, pick));
-
-      // The holder is paid but learns nothing.
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint8, handles.roll, address, alice));
-      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint8, handles.pick, address, alice));
+      expect(await confidentialUsdcOf(cUsdc, carol)).to.eq(STARTING_CUSDC - FEES.paidShake);
 
-      expect(await dno.credits(alice.address)).to.eq(share);
-      expect(await dno.totalCredits()).to.eq(share);
-      await expect(dno.connect(alice).claim()).to.changeTokenBalance(usdc, alice, share);
-      expect(await dno.credits(alice.address)).to.eq(0);
-      await expect(dno.connect(alice).claim()).to.be.revertedWithCustomError(dno, "NothingToClaim");
+      // A stranger claiming the box gets nothing and leaves the earnings in place.
+      await (await dno.connect(bob).claimEarnings([A[0]!])).wait();
+      expect(await confidentialUsdcOf(cUsdc, bob)).to.eq(STARTING_CUSDC - 3n * FEES.mint);
+      const before = await confidentialUsdcOf(cUsdc, alice);
+      await (await dno.connect(alice).claimEarnings([A[0]!, A[1]!])).wait();
+      expect(await confidentialUsdcOf(cUsdc, alice)).to.eq(before + share);
+      // Paid out once.
+      await (await dno.connect(alice).claimEarnings([A[0]!])).wait();
+      expect(await confidentialUsdcOf(cUsdc, alice)).to.eq(before + share);
     });
 
-    it("emits Shaken with paid = true", async function () {
-      await expect(dno.connect(carol).paidShake(0))
-        .to.emit(dno, "Shaken")
-        .withArgs(0, carol.address, true);
+    it("shows nothing to a payer who could not pay, and earns the holder nothing", async function () {
+      await giveConfidentialUsdc(usdc, cUsdc, dno, poor, usd("1"));
+      expect((await shakeAndDecrypt(dno, A[0]!, poor, true)).pick).to.eq(NOT_YOURS);
+      const before = await confidentialUsdcOf(cUsdc, alice);
+      await (await dno.connect(alice).claimEarnings([A[0]!])).wait();
+      expect(await confidentialUsdcOf(cUsdc, alice)).to.eq(before);
     });
 
-    it("is refused to the holder, without the fee, or on an opened box", async function () {
-      await expect(dno.connect(alice).paidShake(0)).to.be.revertedWithCustomError(dno, "HolderShakesForFree");
-      const broke = (await ethers.getSigners())[9]!;
-      await expect(dno.connect(broke).paidShake(0)).to.be.revertedWithCustomError(usdc, "ERC20InsufficientAllowance");
-      await dno.connect(alice).observe(0);
-      await expect(dno.connect(carol).paidShake(0)).to.be.revertedWithCustomError(dno, "NotSealed");
+    it("pays the share to whoever holds the box when it is claimed", async function () {
+      await (await dno.connect(carol).paidShake(A[0]!)).wait();
+      await (await dno.connect(alice).confidentialTransfer(bob.address, A[0]!)).wait();
+      const before = await confidentialUsdcOf(cUsdc, bob);
+      await (await dno.connect(bob).claimEarnings([A[0]!])).wait();
+      expect(await confidentialUsdcOf(cUsdc, bob)).to.eq(before + share);
     });
 
-    it("credits whoever holds the box at the time of the shake", async function () {
-      const share = (FEES.paidShake * BigInt(params.paidShakeHolderBps)) / 10_000n;
-      await dno.connect(carol).paidShake(0);
-      await dno.connect(alice).transferFrom(alice.address, bob.address, 0);
-      await dno.connect(carol).paidShake(0);
-      expect(await dno.credits(alice.address)).to.eq(share);
-      expect(await dno.credits(bob.address)).to.eq(share);
-    });
-
-    it("keeps unclaimed holder credits out of the owner's withdrawal", async function () {
-      const share = (FEES.paidShake * BigInt(params.paidShakeHolderBps)) / 10_000n;
-      await dno.connect(carol).paidShake(0);
-      const revenue = FEES.mint * 6n + FEES.paidShake - share;
-      await expect(dno.connect(deployer).withdraw(deployer.address)).to.changeTokenBalance(usdc, deployer, revenue);
-      await expect(dno.connect(alice).claim()).to.changeTokenBalance(usdc, alice, share);
-      expect(await usdc.balanceOf(address)).to.eq(0);
+    it("books the rest as revenue and caps a claim at ten boxes", async function () {
+      await (await dno.connect(carol).paidShake(A[0]!)).wait();
+      const revenue = await fhevm.userDecryptEuint(FhevmType.euint64, await dno.revenueHandle(), address, deployer);
+      expect(revenue).to.eq(6n * FEES.mint + FEES.paidShake - share);
+      await expect(dno.connect(alice).claimEarnings(Array(11).fill(A[0]!))).to.be.revertedWithCustomError(dno, "TooManyBoxes");
     });
   });
 
   describe("entangle", function () {
+    /** Accepts and relays. Returns the request status. */
+    async function accept(a: number, b: number, who: HardhatEthersSigner) {
+      const id = requestIdOf(dno, await (await dno.connect(who).acceptEntangle(a, b)).wait());
+      await (await finalizeRequest(dno, id, carol)).wait();
+      return Number((await dno.requestInfo(id))[1]);
+    }
+
     it("links two boxes with both holders' consent and opens them together", async function () {
-      await expect(dno.connect(alice).proposeEntangle(0, 3)).to.emit(dno, "EntangleProposed").withArgs(0, 3);
-      expect((await dno.partnerOf(0)).entangled).to.eq(false);
-      expect(await dno.entangleProposer(0, 3)).to.eq(alice.address);
-      expect(await dno.entangleProposer(3, 0)).to.eq(ethers.ZeroAddress);
+      await expect(dno.connect(alice).proposeEntangle(A[0]!, B[0]!)).to.emit(dno, "EntangleProposed").withArgs(A[0], B[0], alice.address);
+      expect(await dno.entangleProposer(A[0]!, B[0]!)).to.eq(alice.address);
+      expect(await accept(A[0]!, B[0]!, bob)).to.eq(REQUEST.Done);
+      expect(await dno.partnerOf(A[0]!)).to.deep.eq([true, BigInt(B[0]!)]);
+      expect(await dno.partnerOf(B[0]!)).to.deep.eq([true, BigInt(A[0]!)]);
+      expect(await dno.entangleProposer(A[0]!, B[0]!)).to.eq(ethers.ZeroAddress);
 
-      await expect(dno.connect(bob).acceptEntangle(0, 3)).to.emit(dno, "Entangled").withArgs(0, 3);
-      expect(await dno.entangleProposer(0, 3)).to.eq(ethers.ZeroAddress);
-      expect(await dno.partnerOf(0)).to.deep.eq([true, 3n]);
-      expect(await dno.partnerOf(3)).to.deep.eq([true, 0n]);
-
-      // Bob observes his box; alice's is dragged along. One fee.
-      const tx = dno.connect(bob).observe(3);
-      await expect(tx).to.emit(dno, "ObserveRequested").withArgs(3).and.to.emit(dno, "ObserveRequested").withArgs(0);
-      expect(await dno.status(0)).to.eq(1);
-      expect(await dno.status(3)).to.eq(1);
-
-      await finalizeObserve(dno, 0, carol);
-      await finalizeObserve(dno, 3, carol);
-      expect(await dno.revealed(0)).to.eq(true);
-      expect(await dno.revealed(3)).to.eq(true);
-      expect((await dno.contentsOf(0)).seed).to.eq(await peekSeed(dno, 0));
+      // Only alice's box was fed: the opening publishes its affection, not bob's.
+      for (let i = 0; i < 4; i++) await (await dno.connect(carol).feed(A[0]!)).wait();
+      // Bob opens his box; alice's is dragged along. One fee.
+      expect(await open(dno, B[0]!, bob, carol)).to.eq(REQUEST.Done);
+      expect((await dno.contentsOf(B[0]!)).affection).to.eq(0n);
+      const fedCat = await dno.contentsOf(A[0]!);
+      expect(buildCatSpec({ seed: fedCat.seed, affection: Number(fedCat.affection) }).rarity.score).to.eq(Number(fedCat.score));
+      expect(await dno.revealed(A[0]!)).to.eq(true);
+      expect(await dno.revealed(B[0]!)).to.eq(true);
+      expect((await dno.contentsOf(A[0]!)).seed).to.eq(await peekSeed(dno, A[0]!));
     });
 
-    it("needs the second holder's consent", async function () {
-      await dno.connect(alice).proposeEntangle(0, 3);
-      await expect(dno.connect(carol).acceptEntangle(0, 3)).to.be.revertedWithCustomError(dno, "NotHolder");
-      await expect(dno.connect(alice).acceptEntangle(0, 3)).to.be.revertedWithCustomError(dno, "NotHolder");
-      // Nobody can accept a proposal that was never made, in either direction.
-      await expect(dno.connect(bob).acceptEntangle(1, 3)).to.be.revertedWithCustomError(dno, "NoSuchProposal");
-      await expect(dno.connect(alice).acceptEntangle(3, 0)).to.be.revertedWithCustomError(dno, "NoSuchProposal");
-      // Observing before acceptance affects only one box.
-      await dno.connect(bob).observe(3);
-      expect(await dno.status(0)).to.eq(0);
-    });
-
-    it("voids a proposal when the proposer's box changes hands", async function () {
-      await dno.connect(alice).proposeEntangle(0, 3);
-      await dno.connect(alice).transferFrom(alice.address, carol.address, 0);
-      await expect(dno.connect(bob).acceptEntangle(0, 3)).to.be.revertedWithCustomError(dno, "NoSuchProposal");
+    it("links nothing unless the proposer holds A and the accepter holds B", async function () {
+      await dno.connect(carol).proposeEntangle(A[0]!, B[0]!);
+      expect(await accept(A[0]!, B[0]!, bob)).to.eq(REQUEST.Refused);
+      await dno.connect(alice).proposeEntangle(A[1]!, B[1]!);
+      expect(await accept(A[1]!, B[1]!, carol)).to.eq(REQUEST.Refused);
+      expect((await dno.partnerOf(A[0]!))[0]).to.eq(false);
+      expect((await dno.partnerOf(A[1]!))[0]).to.eq(false);
+      await expect(dno.connect(bob).acceptEntangle(A[2]!, B[2]!)).to.be.revertedWithCustomError(dno, "NoSuchProposal");
     });
 
     it("rejects self-links, second partners, opened and missing boxes", async function () {
-      await expect(dno.connect(alice).proposeEntangle(0, 0)).to.be.revertedWithCustomError(dno, "SameBox");
-      await expect(dno.connect(bob).proposeEntangle(0, 3)).to.be.revertedWithCustomError(dno, "NotHolder");
-      await expect(dno.connect(alice).proposeEntangle(0, 99)).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
-
-      await dno.connect(alice).proposeEntangle(0, 3);
-      await dno.connect(alice).proposeEntangle(1, 3);
-      await dno.connect(bob).acceptEntangle(0, 3);
-      await expect(dno.connect(bob).acceptEntangle(1, 3)).to.be.revertedWithCustomError(dno, "AlreadyEntangled");
-      await expect(dno.connect(alice).proposeEntangle(0, 4)).to.be.revertedWithCustomError(dno, "AlreadyEntangled");
-
-      await dno.connect(alice).observe(2);
-      await expect(dno.connect(alice).proposeEntangle(2, 4)).to.be.revertedWithCustomError(dno, "NotSealed");
-      await expect(dno.connect(bob).proposeEntangle(4, 2)).to.be.revertedWithCustomError(dno, "NotSealed");
+      await expect(dno.connect(alice).proposeEntangle(A[0]!, A[0]!)).to.be.revertedWithCustomError(dno, "SameBox");
+      await expect(dno.connect(alice).proposeEntangle(A[0]!, 9999)).to.be.revertedWithCustomError(dno, "ConfidentialERC721NonexistentToken");
+      await dno.connect(alice).proposeEntangle(A[0]!, B[0]!);
+      await accept(A[0]!, B[0]!, bob);
+      await expect(dno.connect(alice).proposeEntangle(A[0]!, B[1]!)).to.be.revertedWithCustomError(dno, "AlreadyEntangled");
+      await open(dno, A[2]!, alice, carol);
+      await expect(dno.connect(alice).proposeEntangle(A[2]!, B[2]!)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
     it("lets one holder entangle two of their own boxes, and follows a transfer", async function () {
-      await dno.connect(alice).proposeEntangle(0, 1);
-      await dno.connect(alice).acceptEntangle(0, 1);
-      await dno.connect(alice).transferFrom(alice.address, carol.address, 1);
-
-      // Carol now holds box 1; opening it still opens alice's box 0.
-      await dno.connect(carol).observe(1);
-      expect(await dno.status(0)).to.eq(1);
-    });
-
-    it("uses no FHE operation", async function () {
-      expect((await hcu(dno.connect(alice).proposeEntangle(0, 3))).globalHCU).to.eq(0);
-      expect((await hcu(dno.connect(bob).acceptEntangle(0, 3))).globalHCU).to.eq(0);
+      await dno.connect(alice).proposeEntangle(A[0]!, A[1]!);
+      expect(await accept(A[0]!, A[1]!, alice)).to.eq(REQUEST.Done);
+      await (await dno.connect(alice).confidentialTransfer(carol.address, A[1]!)).wait();
+      expect(await open(dno, A[1]!, carol, bob)).to.eq(REQUEST.Done);
+      expect(await dno.revealed(A[0]!)).to.eq(true);
     });
   });
 
@@ -262,118 +206,90 @@ describe("DoNotOpen mechanics", function () {
     const baseScore = async (tokenId: number) => buildCatSpec({ seed: await peekSeed(dno, tokenId) }).rarity.score;
 
     it("resolves to the higher score and reveals one trait of the loser only", async function () {
-      // Every alice box against every bob box.
       let duelId = 0;
-      for (const a of [0, 1, 2]) {
-        for (const b of [3, 4, 5]) {
-          const scoreA = await baseScore(a);
-          const scoreB = await baseScore(b);
-          const expectedWinner = scoreA > scoreB ? a : b;
+      for (const a of A) {
+        for (const b of B.slice(0, 2)) {
+          const expectedWinner = (await baseScore(a)) > (await baseScore(b)) ? a : b;
           const loser = expectedWinner === a ? b : a;
           const winsBefore = await dno.wins(expectedWinner);
 
           await expect(dno.connect(alice).challengeDuel(a, b)).to.emit(dno, "DuelChallenged").withArgs(duelId, a, b);
           await expect(dno.connect(bob).acceptDuel(duelId)).to.emit(dno, "DuelAccepted").withArgs(duelId);
-
-          const tx = await finalizeDuel(dno, duelId, carol);
-          const receipt = await tx.wait();
-          const event = receipt!.logs.map((l) => dno.interface.parseLog(l)).find((e) => e?.name === "DuelResolved")!;
-          const [, winnerId, loserId, traitIndex, roll] = event.args;
+          const receipt = await (await finalizeDuel(dno, duelId, carol)).wait();
+          const [event] = parseEvents(dno, receipt!.logs, "DuelResolved");
+          const [, winnerId, loserId, traitIndex, roll] = event!;
 
           expect(Number(winnerId)).to.eq(expectedWinner);
           expect(Number(loserId)).to.eq(loser);
           expect(Number(roll)).to.eq(traitByte(await peekSeed(dno, loser), params.traitOffset[Number(traitIndex)]!));
           expect(await dno.wins(expectedWinner)).to.eq(winsBefore + 1n);
-
-          const [mask, rolls] = await dno.publicTraitsOf(loser);
+          const [mask] = await dno.publicTraitsOf(loser);
           expect(Number(mask) & (1 << Number(traitIndex))).to.not.eq(0);
-          expect(Number(rolls[Number(traitIndex)])).to.eq(Number(roll));
-          expect((await dno.duelInfo(duelId)).duelStatus).to.eq(3);
+          const info = await dno.duelInfo(duelId);
+          expect([info.duelStatus, info.accepter]).to.deep.eq([3n, bob.address]);
           duelId++;
         }
       }
-      // Nothing else leaked: every box is still sealed with a private seed.
-      for (let tokenId = 0; tokenId < 6; tokenId++) {
-        expect(await dno.status(tokenId)).to.eq(0);
-        await expectDenied(fhevm.publicDecrypt([await dno.seedHandle(tokenId)]));
+      for (const id of [...A, ...B]) {
+        expect(await dno.status(id)).to.eq(0);
+        await expectDenied(fhevm.publicDecrypt([await dno.seedHandle(id)]));
       }
     });
 
-    it("lets the challenger win only on a strictly higher score", async function () {
-      // Equal scores cannot be forced with random seeds; this pins the comparison the
-      // tie rule rests on: the published bit is exactly (scoreA > scoreB).
-      const scoreA = await baseScore(0);
-      const scoreB = await baseScore(3);
-      await dno.connect(alice).challengeDuel(0, 3);
+    it("is void, and shows nothing, unless both sides hold their boxes", async function () {
+      // Carol challenges with a box she does not hold.
+      await dno.connect(carol).challengeDuel(A[0]!, B[0]!);
       await dno.connect(bob).acceptDuel(0);
-      const result = await fhevm.publicDecrypt([...(await dno.duelHandles(0))]);
-      const [aWins] = ethers.AbiCoder.defaultAbiCoder().decode(["bool", "uint8", "uint8"], result.abiEncodedClearValues);
-      expect(aWins).to.eq(scoreA > scoreB);
-    });
+      const clear = await fhevm.publicDecrypt([...(await dno.duelHandles(0))]);
+      expect(Object.values(clear.clearValues).map((v) => BigInt(v as bigint | boolean))).to.deep.eq([0n, 0n, 0n, 0n]);
+      await expect(finalizeDuel(dno, 0, carol)).to.emit(dno, "DuelVoided").withArgs(0);
+      expect((await dno.duelInfo(0)).duelStatus).to.eq(5n);
+      expect((await dno.publicTraitsOf(B[0]!))[0]).to.eq(0);
 
-    it("computes each box's encrypted score once and reuses it", async function () {
-      const first = await hcu(dno.connect(alice).challengeDuel(0, 3));
-      expect(first.globalHCU).to.be.within(1_000_000, 1_400_000);
-      const accept = await hcu(dno.connect(bob).acceptDuel(0));
-      expect(accept.globalHCU).to.be.within(2_000_000, 2_500_000);
-      expect(accept.maxHCUDepth).to.be.lessThan(5_000_000);
-
-      // Same boxes again: both scores are cached.
-      expect((await hcu(dno.connect(alice).challengeDuel(0, 3))).globalHCU).to.eq(0);
-      expect((await hcu(dno.connect(bob).acceptDuel(1))).globalHCU).to.be.lessThan(1_100_000);
-    });
-
-    it("needs both holders' consent", async function () {
-      await expect(dno.connect(bob).challengeDuel(0, 3)).to.be.revertedWithCustomError(dno, "NotHolder");
-      await dno.connect(alice).challengeDuel(0, 3);
-      await expect(dno.connect(alice).acceptDuel(0)).to.be.revertedWithCustomError(dno, "NotHolder");
-      await expect(dno.connect(carol).acceptDuel(0)).to.be.revertedWithCustomError(dno, "NotHolder");
-      await expect(dno.connect(bob).acceptDuel(7)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
+      // Alice challenges properly, carol accepts for a box she does not hold.
+      await dno.connect(alice).challengeDuel(A[0]!, B[0]!);
+      await dno.connect(carol).acceptDuel(1);
+      await expect(finalizeDuel(dno, 1, carol)).to.emit(dno, "DuelVoided").withArgs(1);
+      // A challenger who gave the box away meanwhile: void too.
+      await dno.connect(alice).challengeDuel(A[1]!, B[1]!);
+      await (await dno.connect(alice).confidentialTransfer(carol.address, A[1]!)).wait();
+      await dno.connect(bob).acceptDuel(2);
+      await expect(finalizeDuel(dno, 2, carol)).to.emit(dno, "DuelVoided").withArgs(2);
     });
 
     it("can be cancelled by the challenger until accepted", async function () {
-      await dno.connect(alice).challengeDuel(0, 3);
-      await expect(dno.connect(bob).cancelDuel(0)).to.be.revertedWithCustomError(dno, "NotHolder");
+      await dno.connect(alice).challengeDuel(A[0]!, B[0]!);
+      await expect(dno.connect(bob).cancelDuel(0)).to.be.revertedWithCustomError(dno, "NotChallenger");
       await expect(dno.connect(alice).cancelDuel(0)).to.emit(dno, "DuelCancelled").withArgs(0);
       await expect(dno.connect(bob).acceptDuel(0)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
-
-      await dno.connect(alice).challengeDuel(0, 3);
-      await dno.connect(bob).acceptDuel(1);
-      await expect(dno.connect(alice).cancelDuel(1)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
     });
 
-    it("is void if the challenger's box was transferred, and refuses opened boxes", async function () {
-      await dno.connect(alice).challengeDuel(0, 3);
-      await dno.connect(alice).transferFrom(alice.address, carol.address, 0);
-      await expect(dno.connect(bob).acceptDuel(0)).to.be.revertedWithCustomError(dno, "ChallengerNoLongerHolds");
-
-      await expect(dno.connect(alice).challengeDuel(1, 1)).to.be.revertedWithCustomError(dno, "SameBox");
-      await dno.connect(alice).challengeDuel(1, 4);
-      await dno.connect(bob).observe(4);
-      await expect(dno.connect(bob).acceptDuel(1)).to.be.revertedWithCustomError(dno, "NotSealed");
-      await expect(dno.connect(alice).challengeDuel(2, 4)).to.be.revertedWithCustomError(dno, "NotSealed");
+    it("refuses opened boxes and the same box twice", async function () {
+      await expect(dno.connect(alice).challengeDuel(A[0]!, A[0]!)).to.be.revertedWithCustomError(dno, "SameBox");
+      await dno.connect(alice).challengeDuel(A[1]!, B[1]!);
+      await open(dno, B[1]!, bob, carol);
+      await expect(dno.connect(bob).acceptDuel(0)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
     it("rejects a forged outcome and double finalisation", async function () {
-      await dno.connect(alice).challengeDuel(0, 3);
-      await expect(dno.finalizeDuel(0, "0x", "0x")).to.be.revertedWithCustomError(dno, "WrongDuelStatus"); // not accepted yet
+      await dno.connect(alice).challengeDuel(A[0]!, B[0]!);
       await dno.connect(bob).acceptDuel(0);
-
       const real = await fhevm.publicDecrypt([...(await dno.duelHandles(0))]);
-      const [aWins, pick, roll] = ethers.AbiCoder.defaultAbiCoder().decode(["bool", "uint8", "uint8"], real.abiEncodedClearValues);
-      const flipped = ethers.AbiCoder.defaultAbiCoder().encode(["bool", "uint8", "uint8"], [!aWins, pick, roll]);
+      const coder = ethers.AbiCoder.defaultAbiCoder();
+      const [valid, aWins, pick, roll] = coder.decode(["bool", "bool", "uint8", "uint8"], real.abiEncodedClearValues);
+      const flipped = coder.encode(["bool", "bool", "uint8", "uint8"], [valid, !aWins, pick, roll]);
       await expect(dno.finalizeDuel(0, flipped, real.decryptionProof)).to.be.reverted;
-
       await dno.finalizeDuel(0, real.abiEncodedClearValues, real.decryptionProof);
       await expect(dno.finalizeDuel(0, real.abiEncodedClearValues, real.decryptionProof)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
     });
 
-    it("still resolves if a box is opened while the outcome is pending", async function () {
-      await dno.connect(alice).challengeDuel(0, 3);
-      await dno.connect(bob).acceptDuel(0);
-      await dno.connect(alice).observe(0);
-      await finalizeObserve(dno, 0, carol);
-      await expect(finalizeDuel(dno, 0, carol)).to.emit(dno, "DuelResolved");
+    it("computes each box's encrypted score once, within the HCU budget", async function () {
+      const first = await hcu(dno.connect(alice).challengeDuel(A[0]!, B[0]!));
+      expect(first.globalHCU).to.be.within(1_000_000, 1_400_000);
+      const accept = await hcu(dno.connect(bob).acceptDuel(0));
+      expect(accept.globalHCU).to.be.lessThan(3_500_000);
+      expect(accept.maxHCUDepth).to.be.lessThan(5_000_000);
+      expect((await hcu(dno.connect(alice).challengeDuel(A[0]!, B[0]!))).globalHCU).to.eq(0);
     });
   });
 });

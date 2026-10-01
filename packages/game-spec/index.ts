@@ -46,7 +46,8 @@ export interface TierDef {
 
 export interface GameSpec {
   version: string;
-  collection: { name: string; symbol: string; maxSupply: number };
+  /** `milestones`: the only sold counts ever announced, increasing, the last one `maxSupply`. */
+  collection: { name: string; symbol: string; maxSupply: number; milestones: number[]; milestonesRule: string };
   seed: { bits: number; layout: SeedSlice[] };
   states: StateDef[];
   traits: TraitDef[];

@@ -1,7 +1,7 @@
 import { parseUnits } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { configParamsFromSpec } from "../lib/specParams";
+import { configParamsFromSpec, milestonesFromSpec } from "../lib/specParams";
 
 /** USDC and its confidential ERC-7984 wrapper, per network. From Zama's list of testnet tokens. */
 export const PAYMENT_TOKENS: Record<string, { usdc: string; cUsdc: string }> = {
@@ -39,7 +39,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const dno = await deploy("DoNotOpen", {
     from: deployer,
-    args: [config.address, fees, payment.usdc, payment.cUsdc, owner],
+    args: [config.address, fees, payment.usdc, payment.cUsdc, milestonesFromSpec(), owner],
     log: true,
   });
 
