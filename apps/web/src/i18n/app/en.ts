@@ -140,6 +140,7 @@ export const en = {
   "box.noneMinted": "No box has been minted yet.",
   "box.notMinted": "This box has not been minted yet.",
   "box.backFirst": "Back to the first box",
+  "box.backTo": "← {view}",
   "box.goShelf": "Go to your shelf",
   "box.inspection": "Inspection, {serial}",
   "box.catLine": "{breed}, {mood}, {state}.",

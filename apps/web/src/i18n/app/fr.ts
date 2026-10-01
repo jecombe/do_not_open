@@ -134,6 +134,7 @@ export const fr: Record<AppKey, string> = {
   "box.noneMinted": "Aucune boîte n'a encore été mintée.",
   "box.notMinted": "Cette boîte n'a pas encore été mintée.",
   "box.backFirst": "Retour à la première boîte",
+  "box.backTo": "← {view}",
   "box.goShelf": "Aller à votre étagère",
   "box.inspection": "Inspection, {serial}",
   "box.catLine": "{breed}, {mood}, {state}.",

@@ -4,6 +4,7 @@ import { spec as gameSpec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
+import { VIEWS, type View } from "../Masthead";
 import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
 import { usePayment } from "../chain/payment";
 import { recallFelt, rememberFelt, type Felt } from "../chain/feltCache";
@@ -28,6 +29,9 @@ interface Props {
   onPair: (tokenId: number) => void;
   onShelf: () => void;
   onOverview: () => void;
+  /** The view the box was opened from, and the way back to it. */
+  backTo: Exclude<View, "box">;
+  onBack: () => void;
 }
 
 const ANGLES: InspectAngle[] = ["front", "left", "back", "right", "above"];
@@ -104,7 +108,7 @@ type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive"
 const { meal } = gameSpec.economy;
 const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
-export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview }: Props) {
+export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview, backTo, onBack }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
@@ -350,6 +354,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
 
       <section className={`slip${foldClass}`} aria-label={t("box.aria", { serial: box.serial })}>
         {foldButton}
+        <button type="button" className="link back-link keep" onClick={onBack} disabled={!!busy}>
+          {t("box.backTo", { view: t(VIEWS.find((v) => v.key === backTo)!.label) })}
+        </button>
         {missing ? (
           <>
             <div className="slip-head">
