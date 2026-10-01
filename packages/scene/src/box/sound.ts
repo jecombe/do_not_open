@@ -1,3 +1,8 @@
+import { playMeow, type MeowOptions, type MeowPhrase, type MeowVoice } from "./meow";
+
+/** A plain tabby. */
+const PLAIN_VOICE: MeowVoice = { pitch: 520, formant: 1300, q: 3 };
+
 /**
  * Synthesised shake sounds: a cardboard thump per impact and, now and then,
  * a muffled complaint from inside. No audio files.
@@ -251,44 +256,12 @@ export class ShakeSound {
   }
 
   /**
-   * A meow in the open air, not through cardboard: "mi-a-ou" from a sawtooth through a
-   * formant that opens then closes. `pitch` around 1; heavy cats meow lower. `weak` for a
-   * cat that is not feeling well.
+   * A meow in the open air, not through cardboard. `voice` is the throat, `phrase` the
+   * words: see `meow.ts`. Defaults to a plain tabby saying "miaou".
    */
-  meow(pitch = 1, weak = false): void {
-    const ctx = this.ctx;
-    if (!ctx || this.muted) return;
-    const now = ctx.currentTime;
-    const p = pitch * (0.94 + Math.random() * 0.12);
-    const length = weak ? 0.7 : 0.55;
-    const osc = ctx.createOscillator();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(520 * p, now);
-    osc.frequency.linearRampToValueAtTime(780 * p, now + 0.14);
-    osc.frequency.exponentialRampToValueAtTime((weak ? 330 : 430) * p, now + length);
-    // A little wobble in the voice.
-    const vibrato = ctx.createOscillator();
-    vibrato.frequency.value = weak ? 9 : 6;
-    const depth = ctx.createGain();
-    depth.gain.value = (weak ? 22 : 10) * p;
-    vibrato.connect(depth).connect(osc.frequency);
-    const formant = ctx.createBiquadFilter();
-    formant.type = "bandpass";
-    formant.Q.value = 3;
-    formant.frequency.setValueAtTime(800, now);
-    formant.frequency.linearRampToValueAtTime(1700, now + 0.15);
-    formant.frequency.exponentialRampToValueAtTime(700, now + length);
-    const gain = ctx.createGain();
-    const peak = weak ? 0.16 : 0.26;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(peak, now + 0.05);
-    gain.gain.setValueAtTime(peak, now + length * 0.55);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + length);
-    osc.connect(formant).connect(gain).connect(ctx.destination);
-    osc.start(now);
-    vibrato.start(now);
-    osc.stop(now + length + 0.05);
-    vibrato.stop(now + length + 0.05);
+  meow(voice: MeowVoice = PLAIN_VOICE, phrase: MeowPhrase = "miaou", opts?: MeowOptions): void {
+    if (!this.ctx || !this.noise || this.muted) return;
+    playMeow(this.ctx, this.noise, voice, phrase, opts);
   }
 
   /** A ghost's moan: a slow, wavering "oooOOOooo" with a cold echo. */

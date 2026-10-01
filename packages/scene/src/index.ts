@@ -14,6 +14,7 @@ export * from "./effects/feed";
 export * from "./effects/thread";
 export * from "./effects/duel";
 export * from "./box/sound";
+export * from "./box/meow";
 export * from "./box/textures";
 export * from "./depot/buildDepot";
 export * from "./depot/buildWarehouse";
