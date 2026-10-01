@@ -25,8 +25,8 @@ export function storeContract(name: string, make: () => Promise<Store>) {
     it("records an event once, and moves the cursor", async () => {
       const e = ev("Fed", 10, { tokenId: 1, feeder: ALICE });
       const firsts = await store.transaction(async (tx) => {
-        const a = await tx.insertEvent(e);
-        const b = await tx.insertEvent(e);
+        const a = await tx.insertEvent(e, null);
+        const b = await tx.insertEvent(e, null);
         await tx.setCursor(10);
         return [a, b];
       });
@@ -39,7 +39,7 @@ export function storeContract(name: string, make: () => Promise<Store>) {
     it("rolls back everything when a transaction throws", async () => {
       await expect(
         store.transaction(async (tx) => {
-          await tx.insertEvent(ev("Fed", 10, { tokenId: 1, feeder: ALICE }));
+          await tx.insertEvent(ev("Fed", 10, { tokenId: 1, feeder: ALICE }), null);
           await tx.saveBox(B.minted(1, 10));
           await tx.setCursor(10);
           throw new Error("boom");
@@ -92,23 +92,23 @@ export function storeContract(name: string, make: () => Promise<Store>) {
         await tx.saveRequest({ requestId: 1, kind: "aliveCheck", tokenId: 1, other: null, requester: ALICE, status: "done", placedBlock: 7, settledBlock: 8 });
         await tx.saveMilestone({ index: 0, sold: 100, block: 9 });
         await tx.saveMilestone({ index: 0, sold: 100, block: 9 });
-        await tx.saveTransfer({ tokenId: 1, from: ALICE, to: BOB, moved: "0xaa", block: 9, timestamp: null, txHash: "0xt", logIndex: 2 });
-        await tx.saveTransfer({ tokenId: 1, from: ALICE, to: BOB, moved: "0xaa", block: 9, timestamp: null, txHash: "0xt", logIndex: 2 });
+        await tx.saveTransfer({ tokenId: 1, from: ALICE, to: BOB, moved: "0xaa", block: 9, blockHash: null, timestamp: null, txHash: "0xt", logIndex: 2 });
+        await tx.saveTransfer({ tokenId: 1, from: ALICE, to: BOB, moved: "0xaa", block: 9, blockHash: null, timestamp: null, txHash: "0xt", logIndex: 2 });
       });
       expect(await store.proposal(1, 2)).toEqual({ tokenA: 1, tokenB: 2, proposer: ALICE, block: 5 });
       expect(await store.proposal(2, 1)).toBeNull();
       expect(await store.proposal(3, 4)).toBeNull();
       expect((await store.pendingRequests(ALICE)).map((r) => r.requestId)).toEqual([0]);
       expect(await store.milestonesReached()).toBe(1);
-      expect(await store.transfers(BOB, 0, 10)).toEqual([{ tokenId: 1, from: ALICE, to: BOB, moved: "0xaa", block: 9, timestamp: null, txHash: "0xt", logIndex: 2 }]);
+      expect(await store.transfers(BOB, 0, 10)).toEqual([{ tokenId: 1, from: ALICE, to: BOB, moved: "0xaa", block: 9, blockHash: null, timestamp: null, txHash: "0xt", logIndex: 2 }]);
       expect(await store.transfers(CAROL, 0, 10)).toEqual([]);
     });
 
     it("filters the activity feed by box, actor and block", async () => {
       await store.transaction(async (tx) => {
-        await tx.insertEvent(ev("MintPlaced", 1, { firstTokenId: 0, buyer: ALICE, count: 3 }));
-        await tx.insertEvent(ev("Shaken", 2, { tokenId: 1, viewer: BOB, paid: true }));
-        await tx.insertEvent(ev("Entangled", 3, { tokenA: 1, tokenB: 2 }));
+        await tx.insertEvent(ev("MintPlaced", 1, { firstTokenId: 0, buyer: ALICE, count: 3 }), null);
+        await tx.insertEvent(ev("Shaken", 2, { tokenId: 1, viewer: BOB, paid: true }), null);
+        await tx.insertEvent(ev("Entangled", 3, { tokenA: 1, tokenB: 2 }), null);
       });
       const names = (list: { name: string }[]) => list.map((e) => e.name);
       expect(names(await store.activity({ limit: 10 }))).toEqual(["Entangled", "Shaken", "MintPlaced"]);
@@ -130,6 +130,78 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       await store.saveNonce(BOB, "n2", 60);
       expect(await store.takeNonce(BOB)).toEqual({ nonce: "n2", expiresAt: 60 });
       expect(await store.takeNonce(BOB)).toBeNull();
+    });
+
+    it("stores events with their enrichment, pages them in chain order, and deletes them by key", async () => {
+      const contents = { seed: "1", state: 0, traits: [1, 2, 3, 4, 5], score: 9, affection: 4, golden: false };
+      const a = ev("Observed", 20, { tokenId: 1, openedBy: ALICE, seed: "1", state: 0, score: 9, golden: false }, { logIndex: 3 });
+      const b = ev("Fed", 20, { tokenId: 1, feeder: ALICE }, { logIndex: 1 });
+      const c = ev("Fed", 21, { tokenId: 2, feeder: BOB });
+      await store.transaction(async (tx) => {
+        await tx.insertEvent(a, { contents });
+        await tx.insertEvent(c, null);
+        await tx.insertEvent(b, null);
+      });
+      const page = await store.transaction((tx) => tx.storedEvents(null, 2));
+      expect(page.map((p) => [p.event.block, p.event.logIndex])).toEqual([[20, 1], [20, 3]]);
+      expect(page[1]).toEqual({ event: a, enrichment: { contents } });
+      const rest = await store.transaction((tx) => tx.storedEvents({ block: 20, logIndex: 3 }, 10));
+      expect(rest.map((p) => p.event)).toEqual([c]);
+
+      const between = await store.transaction((tx) => tx.eventsBetween(20, 20));
+      expect(between.sort((x, y) => x.key.localeCompare(y.key))).toEqual(
+        [a, b].map((e) => ({ key: `${e.txHash}:${e.logIndex}`, blockHash: e.blockHash })).sort((x, y) => x.key.localeCompare(y.key)),
+      );
+      expect(await store.transaction((tx) => tx.deleteEvents([`${a.txHash}:${a.logIndex}`, "0xnope:0"]))).toBe(1);
+      expect((await store.stats()).events).toBe(2);
+    });
+
+    it("empties the read models but keeps the events and the sign-ins", async () => {
+      await store.transaction(async (tx) => {
+        await tx.insertEvent(ev("Fed", 10, { tokenId: 1, feeder: ALICE }), null);
+        await tx.saveBox(B.minted(1, 10));
+        await tx.saveDuel(D.challenge({ duelId: 0, tokenA: 1, tokenB: 2, challenger: ALICE }, { block: 10, timestamp: null }));
+        await tx.saveMint({ firstTokenId: 0, count: 2, buyer: ALICE, block: 10, txHash: "0x1" });
+        await tx.saveUser({ address: ALICE, firstBlock: 10, lastBlock: 10, firstSeenAt: 1, lastSeenAt: 1, actions: 1, registeredAt: null, lastLoginAt: null });
+        await tx.saveUser({ address: BOB, firstBlock: 10, lastBlock: 10, firstSeenAt: 1, lastSeenAt: 1, actions: 2, registeredAt: 50, lastLoginAt: 60 });
+        await tx.resetReadModels();
+      });
+      expect(await store.box(1)).toBeNull();
+      expect(await store.duel(0)).toBeNull();
+      expect(await store.tokenCount()).toBe(0);
+      expect(await store.user(ALICE)).toBeNull();
+      expect(await store.user(BOB)).toEqual({ address: BOB, firstBlock: null, lastBlock: null, firstSeenAt: null, lastSeenAt: null, actions: 0, registeredAt: 50, lastLoginAt: 60 });
+      expect((await store.stats()).events).toBe(1);
+    });
+
+    it("keeps the finalized cursor and who served which blocks", async () => {
+      await store.transaction(async (tx) => {
+        await tx.setFinalizedCursor(40);
+        await tx.saveRange(10, 20, ["rpc-a"]);
+        await tx.saveRange(21, 30, ["rpc-b", "rpc-c"]);
+        await tx.saveRange(31, 30, ["ignored"]);
+      });
+      expect(await store.finalizedCursor()).toBe(40);
+      expect((await store.servedBy(15, 25)).sort()).toEqual(["rpc-a", "rpc-b", "rpc-c"]);
+      expect(await store.servedBy(31, 99)).toEqual([]);
+      await store.transaction((tx) => tx.pruneRanges(20));
+      expect((await store.servedBy(0, 99)).sort()).toEqual(["rpc-b", "rpc-c"]);
+    });
+
+    it("lists known ids, every pending request, and every open duel", async () => {
+      const at = { block: 1, timestamp: null };
+      await store.transaction(async (tx) => {
+        await tx.saveDuel(D.challenge({ duelId: 3, tokenA: 1, tokenB: 2, challenger: ALICE }, at));
+        await tx.saveDuel(D.cancel(D.challenge({ duelId: 1, tokenA: 1, tokenB: 2, challenger: BOB }, at), at));
+        await tx.saveRequest({ requestId: 5, kind: "open", tokenId: 1, other: null, requester: ALICE, status: "pending", placedBlock: 1, settledBlock: null });
+        await tx.saveRequest({ requestId: 2, kind: "open", tokenId: 1, other: null, requester: BOB, status: "pending", placedBlock: 1, settledBlock: null });
+        await tx.saveRequest({ requestId: 4, kind: "open", tokenId: 1, other: null, requester: BOB, status: "refused", placedBlock: 1, settledBlock: 2 });
+      });
+      expect(await store.knownDuelIds()).toEqual([1, 3]);
+      expect(await store.knownRequestIds()).toEqual([2, 4, 5]);
+      expect((await store.allPendingRequests()).map((r) => r.requestId)).toEqual([2, 5]);
+      expect((await store.duels({ statuses: ["challenged", "pending"], limit: 10 })).map((d) => d.duelId)).toEqual([3]);
+      expect((await store.duels({ limit: 10 })).map((d) => d.duelId)).toEqual([3, 1]);
     });
   });
 }

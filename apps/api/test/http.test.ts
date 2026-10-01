@@ -49,7 +49,7 @@ beforeAll(async () => {
     queries,
     metadata: new Metadata(queries, "https://api.test"),
     signIn,
-    indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0 }), nudge: () => void nudges++ },
+    indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
     corsOrigins: ["https://donotopen.vercel.app", "https://donotopen-*.vercel.app"],
     rateLimitPerMinute: 10_000,
   });

@@ -18,14 +18,16 @@ export interface ViewCall {
 
 /**
  * Many view calls in one `eth_call`, so a sync batch that needs fifty contract reads costs one
- * request. A call that reverts comes back null instead of failing the others.
+ * request. A call that reverts comes back null instead of failing the others. `blockTag` reads
+ * the state as of a block, so it can be compared with an index that stopped there.
  */
-export async function multicall(rpc: RpcPool, calls: ViewCall[]): Promise<(Result | null)[]> {
+export async function multicall(rpc: RpcPool, calls: ViewCall[], blockTag: number | "latest" = "latest"): Promise<(Result | null)[]> {
   const out: (Result | null)[] = [];
   for (let i = 0; i < calls.length; i += CHUNK) {
     const chunk = calls.slice(i, i + CHUNK);
     const data = MULTICALL_ABI.encodeFunctionData("aggregate3", [chunk.map((c) => ({ target: c.target, allowFailure: true, callData: c.iface.encodeFunctionData(c.fn, c.args) }))]);
-    const raw = await rpc.call<string>("eth_call", [{ to: MULTICALL3, data }, "latest"]);
+    const tag = blockTag === "latest" ? "latest" : `0x${blockTag.toString(16)}`;
+    const raw = await rpc.call<string>("eth_call", [{ to: MULTICALL3, data }, tag]);
     const [results] = MULTICALL_ABI.decodeFunctionResult("aggregate3", raw) as unknown as [{ success: boolean; returnData: string }[]];
     results.forEach((r, j) => {
       const c = chunk[j]!;

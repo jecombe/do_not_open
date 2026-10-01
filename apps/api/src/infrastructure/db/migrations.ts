@@ -136,4 +136,27 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 2,
+    name: "reconciliation",
+    sql: /* sql */ `
+      -- Events now carry their block hash (to detect reorgs) and what the contract added to them
+      -- (to rebuild the read models without the RPC). Earlier rows have neither: the index is
+      -- emptied once and rebuilt from the chain, in a minute. Sign-ins are kept.
+      truncate events, boxes, duels, requests, entangle_proposals, mints, milestones, transfers, sync_state;
+      delete from users where registered_at is null;
+      update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
+
+      alter table events add column block_hash text, add column enrichment jsonb;
+      alter table transfers add column block_hash text;
+
+      -- Which endpoint served the logs of which blocks: the finality sweep asks the others.
+      create table indexed_ranges (
+        from_block bigint not null,
+        to_block bigint not null,
+        served_by text[] not null
+      );
+      create index indexed_ranges_to on indexed_ranges (to_block);
+    `,
+  },
 ];

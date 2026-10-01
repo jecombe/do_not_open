@@ -1,4 +1,5 @@
-import type { ProtocolEvent, Snapshots } from "../../domain/events";
+import type { DuelSnapshot, ProtocolEvent, RequestSnapshot, Snapshots } from "../../domain/events";
+import type { AliveCheck, BoxStatus, TraitRoll } from "../../domain/types";
 
 /** What one read of the chain brought back. `to` may stop short of what was asked. */
 export interface ChainBatch {
@@ -6,13 +7,51 @@ export interface ChainBatch {
   to: number;
   events: ProtocolEvent[];
   snapshots: Snapshots;
+  /** The endpoints that answered, so a later check can ask others. */
+  servedBy: string[];
+}
+
+export interface ReadOptions {
+  /** Endpoints to avoid if any other can answer. */
+  exclude?: string[];
+}
+
+/** Boxes, duels and requests to fetch every event of, wherever they are. */
+export interface EntityQuery {
+  tokenIds?: number[];
+  duelIds?: number[];
+  requestIds?: number[];
+  /** Every MilestoneReached: they carry no box, duel or request to look them up by. */
+  milestones?: boolean;
 }
 
 /** The logs of the protocol, decoded, and what the views add to them. */
 export interface ChainSource {
   head(): Promise<number>;
+  /** The last block the chain will never revert. */
+  finalized(): Promise<number>;
   /** Events of `from..to` in chain order. May cover fewer blocks than asked (see `ChainBatch.to`). */
-  read(from: number, to: number): Promise<ChainBatch>;
+  read(from: number, to: number, opts?: ReadOptions): Promise<ChainBatch>;
+  /** Every event about these entities in `from..to`, the whole range. For repairs: rare and targeted. */
+  eventsOf(q: EntityQuery, from: number, to: number): Promise<Pick<ChainBatch, "events" | "snapshots">>;
+}
+
+/** How many of each thing the contract has made, at a block. */
+export interface Counters {
+  tokenCount: number;
+  duelCount: number;
+  requestCount: number;
+  milestonesReached: number;
+}
+
+/** What the contract's views say about a box, to compare with the index. */
+export interface BoxView {
+  tokenId: number;
+  status: BoxStatus;
+  aliveCheck: AliveCheck;
+  partner: number | null;
+  wins: number;
+  publicTraits: TraitRoll[];
 }
 
 /** Fees and limits fixed at deployment, read once. Amounts in the payment token's smallest unit. */
@@ -63,4 +102,10 @@ export interface ChainState {
   economy(): Promise<EconomyState | null>;
   /** Unix seconds from which a box can claim croquettes again. */
   nextClaimAt(tokenId: number): Promise<number>;
+
+  // Reads at a given block, uncached: the reconciliation compares them with the index as of that block.
+  counters(atBlock: number): Promise<Counters>;
+  duelViews(ids: number[], atBlock: number): Promise<Map<number, DuelSnapshot>>;
+  requestViews(ids: number[], atBlock: number): Promise<Map<number, RequestSnapshot>>;
+  boxViews(ids: number[], atBlock: number): Promise<BoxView[]>;
 }

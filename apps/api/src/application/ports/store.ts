@@ -1,6 +1,6 @@
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
-import type { ProtocolEvent } from "../../domain/events";
+import type { Enrichment, ProtocolEvent } from "../../domain/events";
 import type { Request } from "../../domain/request";
 import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -29,11 +29,29 @@ export interface Transfer extends ChainRef {
   moved: string;
 }
 
+/** A recorded event, with what the contract added to it when it was indexed. */
+export interface StoredEvent {
+  event: ProtocolEvent;
+  enrichment: Enrichment | null;
+}
+
 /** Writes of one sync batch, all inside one database transaction. */
 export interface ProjectionTx {
   /** Records the raw event. False when it was already recorded: the caller then skips it. */
-  insertEvent(e: ProtocolEvent): Promise<boolean>;
+  insertEvent(e: ProtocolEvent, enrichment: Enrichment | null): Promise<boolean>;
+  /** Drops events by key (`txHash:logIndex`): a reorg took them out of the chain. */
+  deleteEvents(keys: string[]): Promise<number>;
+  /** Keys and block hashes of the events recorded in `from..to`. */
+  eventsBetween(from: number, to: number): Promise<{ key: string; blockHash: string | null }[]>;
+  /** Recorded events in chain order, after `after`, `limit` at a time. */
+  storedEvents(after: { block: number; logIndex: number } | null, limit: number): Promise<StoredEvent[]>;
+  /** Empties every read model, keeping the events and the users' sign-ins: a replay follows. */
+  resetReadModels(): Promise<void>;
   setCursor(block: number): Promise<void>;
+  setFinalizedCursor(block: number): Promise<void>;
+  /** Who served the logs of `from..to`. */
+  saveRange(from: number, to: number, servedBy: string[]): Promise<void>;
+  pruneRanges(upTo: number): Promise<void>;
 
   box(tokenId: number): Promise<Box | null>;
   saveBox(box: Box): Promise<void>;
@@ -50,8 +68,9 @@ export interface ProjectionTx {
   saveTransfer(t: Transfer): Promise<void>;
 }
 
+/** Without `account` or `tokenIds`, every duel (with `statuses`, every open one). */
 export interface DuelQuery {
-  /** Duels challenged by this address. */
+  /** Duels challenged or accepted by this address. */
   account?: Address;
   /** Duels that involve any of these boxes. With `account`, either matches. */
   tokenIds?: number[];
@@ -82,6 +101,14 @@ export interface Stats {
 export interface ReadStore {
   /** Last block indexed, or null before the first sync. */
   cursor(): Promise<number | null>;
+  /** Last block checked again once final, or null. */
+  finalizedCursor(): Promise<number | null>;
+  /** Endpoints that served logs overlapping `from..to`. */
+  servedBy(from: number, to: number): Promise<string[]>;
+  knownDuelIds(): Promise<number[]>;
+  knownRequestIds(): Promise<number[]>;
+  /** Every request still waiting for its proof, whoever placed it. */
+  allPendingRequests(): Promise<Request[]>;
   box(tokenId: number): Promise<Box | null>;
   boxes(from: number, to: number): Promise<Box[]>;
   tokenCount(): Promise<number>;

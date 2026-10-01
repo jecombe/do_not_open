@@ -1,5 +1,5 @@
 import pg, { type Pool, type PoolClient } from "pg";
-import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, Store, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
 import { actorsOf, tokensOf, type ProtocolEvent } from "../../domain/events";
@@ -16,6 +16,10 @@ type Row = Record<string, any>;
 /** Any number: one sync batch at a time, whichever instance runs it. */
 const SYNC_LOCK = 724_002;
 const CURSOR_ID = "chain";
+const FINALIZED_ID = "finalized";
+
+const eventFrom = (r: Row): ProtocolEvent =>
+  ({ ...r.data, block: r.block, blockHash: r.block_hash, timestamp: r.timestamp, txHash: r.tx_hash, logIndex: r.log_index, source: r.source, name: r.name }) as ProtocolEvent;
 
 const boxFrom = (r: Row): Box => ({
   tokenId: r.token_id,
@@ -75,6 +79,7 @@ const transferFrom = (r: Row): Transfer => ({
   txHash: r.tx_hash,
   logIndex: r.log_index,
   block: r.block,
+  blockHash: r.block_hash,
   timestamp: r.timestamp,
   tokenId: r.token_id,
   from: r.from_address,
@@ -123,17 +128,54 @@ export class PgStore implements Store {
 
   private txOn(c: PoolClient): ProjectionTx {
     return {
-      insertEvent: async (e) => {
-        const { block, timestamp, txHash, logIndex, source, name, ...data } = e;
+      insertEvent: async (e, enrichment) => {
+        const { block, blockHash, timestamp, txHash, logIndex, source, name, ...data } = e;
         const { rowCount } = await c.query(
-          `insert into events (tx_hash, log_index, block, timestamp, source, name, data, actors, tokens)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict do nothing`,
-          [txHash, logIndex, block, timestamp, source, name, JSON.stringify(data), actorsOf(e), tokensOf(e)],
+          `insert into events (tx_hash, log_index, block, block_hash, timestamp, source, name, data, actors, tokens, enrichment)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict do nothing`,
+          [txHash, logIndex, block, blockHash, timestamp, source, name, JSON.stringify(data), actorsOf(e), tokensOf(e), json(enrichment)],
         );
         return rowCount === 1;
       },
+      deleteEvents: async (keys) => {
+        if (!keys.length) return 0;
+        const pairs = keys.map((k) => k.split(":"));
+        const { rowCount } = await c.query("delete from events where (tx_hash, log_index) in (select * from unnest($1::text[], $2::int[]))", [
+          pairs.map((p) => p[0]),
+          pairs.map((p) => Number(p[1])),
+        ]);
+        return rowCount ?? 0;
+      },
+      eventsBetween: async (from, to) => {
+        const { rows } = await c.query("select tx_hash, log_index, block_hash from events where block between $1 and $2", [from, to]);
+        return rows.map((r) => ({ key: `${r.tx_hash}:${r.log_index}`, blockHash: r.block_hash }));
+      },
+      storedEvents: async (after, limit): Promise<StoredEvent[]> => {
+        const { rows } = await c.query(
+          `select * from events where ($1::bigint is null or (block, log_index) > ($1::bigint, $2::int))
+           order by block, log_index limit $3`,
+          [after?.block ?? null, after?.logIndex ?? 0, limit],
+        );
+        return rows.map((r) => ({ event: eventFrom(r), enrichment: r.enrichment }));
+      },
+      resetReadModels: async () => {
+        await c.query("truncate boxes, duels, requests, entangle_proposals, mints, milestones, transfers");
+        // Sign-ins stay; on-chain activity is counted again by the replay.
+        await c.query("delete from users where registered_at is null");
+        await c.query("update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0");
+      },
       setCursor: async (block) => {
         await c.query("insert into sync_state (id, block) values ($1, $2) on conflict (id) do update set block = $2", [CURSOR_ID, block]);
+      },
+      setFinalizedCursor: async (block) => {
+        await c.query("insert into sync_state (id, block) values ($1, $2) on conflict (id) do update set block = $2", [FINALIZED_ID, block]);
+      },
+      saveRange: async (from, to, servedBy) => {
+        if (to < from || !servedBy.length) return;
+        await c.query("insert into indexed_ranges (from_block, to_block, served_by) values ($1, $2, $3)", [from, to, servedBy]);
+      },
+      pruneRanges: async (upTo) => {
+        await c.query("delete from indexed_ranges where to_block <= $1", [upTo]);
       },
       box: (id) => one(c, "select * from boxes where token_id = $1", [id], boxFrom),
       saveBox: async (b) => {
@@ -189,9 +231,9 @@ export class PgStore implements Store {
       },
       saveTransfer: async (t) => {
         await c.query(
-          `insert into transfers (tx_hash, log_index, block, timestamp, token_id, from_address, to_address, moved)
-           values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict do nothing`,
-          [t.txHash, t.logIndex, t.block, t.timestamp, t.tokenId, t.from, t.to, t.moved],
+          `insert into transfers (tx_hash, log_index, block, block_hash, timestamp, token_id, from_address, to_address, moved)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict do nothing`,
+          [t.txHash, t.logIndex, t.block, t.blockHash, t.timestamp, t.tokenId, t.from, t.to, t.moved],
         );
       },
     };
@@ -199,6 +241,27 @@ export class PgStore implements Store {
 
   async cursor() {
     return one(this.pool, "select block from sync_state where id = $1", [CURSOR_ID], (r) => r.block as number);
+  }
+
+  async finalizedCursor() {
+    return one(this.pool, "select block from sync_state where id = $1", [FINALIZED_ID], (r) => r.block as number);
+  }
+
+  async servedBy(from: number, to: number) {
+    const { rows } = await this.pool.query("select distinct unnest(served_by) as name from indexed_ranges where from_block <= $2 and to_block >= $1", [from, to]);
+    return rows.map((r) => r.name as string);
+  }
+
+  async knownDuelIds() {
+    return (await this.pool.query("select duel_id from duels order by duel_id")).rows.map((r) => r.duel_id as number);
+  }
+
+  async knownRequestIds() {
+    return (await this.pool.query("select request_id from requests order by request_id")).rows.map((r) => r.request_id as number);
+  }
+
+  async allPendingRequests() {
+    return (await this.pool.query("select * from requests where status = 'pending' order by request_id")).rows.map(requestFrom);
   }
 
   box(tokenId: number) {
@@ -230,7 +293,8 @@ export class PgStore implements Store {
   async duels(q: DuelQuery) {
     const { rows } = await this.pool.query(
       `select * from duels
-       where (($1::text is not null and (challenger = $1 or accepter = $1)) or token_a = any($2::int[]) or token_b = any($2::int[]))
+       where (($1::text is null and cardinality($2::int[]) = 0)
+              or ($1::text is not null and (challenger = $1 or accepter = $1)) or token_a = any($2::int[]) or token_b = any($2::int[]))
          and ($3::text[] is null or status = any($3::text[]))
        order by duel_id desc limit $4`,
       [q.account ?? null, q.tokenIds ?? [], q.statuses ?? null, q.limit],
@@ -274,7 +338,7 @@ export class PgStore implements Store {
        order by block desc, log_index desc limit $4`,
       [q.beforeBlock ?? null, q.tokenId ?? null, q.account ?? null, q.limit],
     );
-    return rows.map((r) => ({ ...r.data, block: r.block, timestamp: r.timestamp, txHash: r.tx_hash, logIndex: r.log_index, source: r.source, name: r.name }) as ProtocolEvent);
+    return rows.map(eventFrom);
   }
 
   async stats(): Promise<Stats> {

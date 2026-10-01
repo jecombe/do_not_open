@@ -43,6 +43,12 @@ const schema = z.object({
   /** About one Sepolia block. */
   POLL_INTERVAL_MS: z.coerce.number().int().positive().default(12_000),
   MIN_PASS_GAP_MS: z.coerce.number().int().min(0).default(3_000),
+  /** Re-reads final blocks from other endpoints than the first time, adds what was missed, drops what a reorg removed. */
+  SWEEP_EVERY_MS: z.coerce.number().int().positive().default(5 * 60_000),
+  SWEEP_MAX_BLOCKS: z.coerce.number().int().positive().default(5_000),
+  /** Compares counters, open duels, pending requests and a slice of boxes with the contract. */
+  RECONCILE_EVERY_MS: z.coerce.number().int().positive().default(10 * 60_000),
+  RECONCILE_BOXES: z.coerce.number().int().min(0).default(200),
   ECONOMY_TTL_MS: z.coerce.number().int().positive().default(30_000),
   CLAIM_TTL_MS: z.coerce.number().int().positive().default(30_000),
 

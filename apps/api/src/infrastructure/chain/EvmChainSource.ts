@@ -1,11 +1,11 @@
 import { Interface, type LogDescription, type Result } from "ethers";
-import type { ChainBatch, ChainSource } from "../../application/ports/chain";
+import type { ChainBatch, ChainSource, EntityQuery, ReadOptions } from "../../application/ports/chain";
 import type { Logger } from "../../application/ports/logger";
 import { emptySnapshots, type ProtocolEvent, type Snapshots, type Source } from "../../domain/events";
 import { normalizeAddress, ZERO_ADDRESS, type Build, type DuelStatus, type RequestKind, type RequestStatus, type RevealedContents } from "../../domain/types";
 import type { ProtocolDeployment } from "./deployment";
 import { multicall, type ViewCall } from "./multicall";
-import type { RawLog, RpcPool } from "./RpcPool";
+import type { LogFilter, RawLog, RpcPool } from "./RpcPool";
 
 const REQUEST_KINDS: RequestKind[] = ["open", "aliveCheck", "entangle"];
 const REQUEST_STATUS: (RequestStatus | null)[] = [null, "pending", "done", "refused"];
@@ -53,12 +53,61 @@ export class EvmChainSource implements ChainSource {
     return Number(await this.rpc.call<string>("eth_blockNumber", []));
   }
 
-  async read(from: number, to: number): Promise<ChainBatch> {
-    const got = await this.rpc.getLogs({ address: this.contracts.map((c) => c.address), topics: [this.topics] }, from, to);
-    const decoded = got.logs.flatMap((l) => this.decodeLog(l));
+  async finalized(): Promise<number> {
+    const header = await this.rpc.call<{ number: string } | null>("eth_getBlockByNumber", ["finalized", false]);
+    if (!header) throw new Error("the endpoint knows no finalized block");
+    return Number(header.number);
+  }
+
+  async read(from: number, to: number, opts: ReadOptions = {}): Promise<ChainBatch> {
+    const got = await this.rpc.getLogs({ address: this.addresses(), topics: [this.topics] }, from, to, opts);
+    return { to: got.to, servedBy: [got.endpoint], ...(await this.complete(got.logs)) };
+  }
+
+  /**
+   * Every event naming these boxes, duels or requests in an indexed topic, over the whole range.
+   * A box id can sit in topic 1, 2 or 3 (a duel's loser is the third), so three filters; an id
+   * that happens to match another event's topic brings a real event too, which does no harm.
+   */
+  async eventsOf(q: EntityQuery, from: number, to: number): Promise<Pick<ChainBatch, "events" | "snapshots">> {
+    const word = (n: number) => `0x${n.toString(16).padStart(64, "0")}`;
+    const topic = (name: string) => this.collection.getEvent(name)!.topicHash;
+    const filters: LogFilter[] = [];
+    if (q.tokenIds?.length) {
+      const ids = q.tokenIds.map(word);
+      filters.push({ address: this.addresses(), topics: [this.topics, ids] });
+      filters.push({ address: this.addresses(), topics: [this.topics, null, ids] });
+      filters.push({ address: this.addresses(), topics: [this.topics, null, null, ids] });
+    }
+    if (q.duelIds?.length) {
+      filters.push({ address: [this.d.collection.address], topics: [["DuelChallenged", "DuelAccepted", "DuelCancelled", "DuelResolved", "DuelVoided"].map(topic), q.duelIds.map(word)] });
+    }
+    if (q.requestIds?.length) {
+      filters.push({ address: [this.d.collection.address], topics: [["RequestPlaced", "RequestSettled"].map(topic), q.requestIds.map(word)] });
+    }
+    if (q.milestones) filters.push({ address: [this.d.collection.address], topics: [[topic("MilestoneReached")]] });
+
+    const logs = new Map<string, RawLog>();
+    for (const filter of filters) {
+      for (let at = from; at <= to; ) {
+        const got = await this.rpc.getLogs(filter, at, to);
+        for (const l of got.logs) logs.set(`${l.transactionHash}:${l.logIndex}`, l);
+        at = got.to + 1;
+      }
+    }
+    return this.complete([...logs.values()]);
+  }
+
+  private addresses() {
+    return this.contracts.map((c) => c.address);
+  }
+
+  /** Decodes raw logs and adds their timestamps and snapshots. */
+  private async complete(logs: RawLog[]): Promise<Pick<ChainBatch, "events" | "snapshots">> {
+    const decoded = logs.flatMap((l) => this.decodeLog(l));
     const [timestamps, snapshots] = await Promise.all([this.timestamps(decoded.map((e) => e.block)), this.snapshots(decoded)]);
     const events = decoded.map((e) => ({ ...e, timestamp: timestamps.get(e.block) ?? null }));
-    return { to: got.to, events, snapshots };
+    return { events, snapshots };
   }
 
   private decodeLog(l: RawLog): ProtocolEvent[] {
@@ -75,7 +124,17 @@ export class EvmChainSource implements ChainSource {
     const body = toBody(parsed.name, parsed.args);
     if (!body) return [];
     const block = Number(l.blockNumber);
-    return [{ ...body, source: contract.source, block, timestamp: null, txHash: l.transactionHash.toLowerCase(), logIndex: Number(l.logIndex) } as ProtocolEvent];
+    return [
+      {
+        ...body,
+        source: contract.source,
+        block,
+        blockHash: l.blockHash?.toLowerCase() ?? null,
+        timestamp: null,
+        txHash: l.transactionHash.toLowerCase(),
+        logIndex: Number(l.logIndex),
+      } as ProtocolEvent,
+    ];
   }
 
   /** One batched request for the blocks the events sit in. A missing timestamp is not worth failing a batch. */

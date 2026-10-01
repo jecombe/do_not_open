@@ -5,6 +5,8 @@ import { SignIn } from "./application/auth";
 import type { Store } from "./application/ports/store";
 import { Metadata } from "./application/metadata";
 import { Queries } from "./application/queries";
+import { FinalitySweep } from "./application/finalitySweep";
+import { Reconciler } from "./application/reconcile";
 import { SyncChain } from "./application/syncChain";
 import { loadConfig } from "./config";
 import { ethersVerifier, HmacSessions, randomNonce } from "./infrastructure/auth/crypto";
@@ -41,13 +43,20 @@ async function main() {
 
   let indexer: Indexer | undefined;
   if (config.ROLE !== "api") {
-    const sync = new SyncChain(new EvmChainSource(rpc, deployment, log), store, {
-      startBlock: deployment.collection.deployBlock,
+    const source = new EvmChainSource(rpc, deployment, log);
+    const startBlock = deployment.collection.deployBlock;
+    const sync = new SyncChain(source, store, {
+      startBlock,
       confirmations: config.CONFIRMATIONS,
       rescan: config.RESCAN_BLOCKS,
       maxBlocksPerPass: config.MAX_BLOCKS_PER_PASS,
     }, log);
-    indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log);
+    const sweep = new FinalitySweep(source, store, { startBlock, maxBlocks: config.SWEEP_MAX_BLOCKS }, log);
+    const reconciler = new Reconciler(source, chainState, store, { startBlock, boxesPerRun: config.RECONCILE_BOXES }, log);
+    indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, [
+      { name: "finalitySweep", everyMs: config.SWEEP_EVERY_MS, run: () => sweep.run() },
+      { name: "reconcile", everyMs: config.RECONCILE_EVERY_MS, run: () => reconciler.run() },
+    ]);
     indexer.start();
     log.info({ network: config.NETWORK, from: deployment.collection.deployBlock, endpoints: rpc.status().map((e) => e.name) }, "indexer started");
   }

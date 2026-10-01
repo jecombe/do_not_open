@@ -1,14 +1,16 @@
-import type { ActivityQuery, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
-import { actorsOf, byChainOrder, tokensOf, type ProtocolEvent } from "../../domain/events";
+import { actorsOf, byChainOrder, tokensOf } from "../../domain/events";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 
 interface State {
   cursor: number | null;
-  events: Map<string, ProtocolEvent>;
+  finalized: number | null;
+  events: Map<string, StoredEvent>;
+  ranges: { from: number; to: number; servedBy: string[] }[];
   boxes: Map<number, Box>;
   duels: Map<number, Duel>;
   requests: Map<number, Request>;
@@ -22,7 +24,9 @@ interface State {
 
 const emptyState = (): State => ({
   cursor: null,
+  finalized: null,
   events: new Map(),
+  ranges: [],
   boxes: new Map(),
   duels: new Map(),
   requests: new Map(),
@@ -36,7 +40,7 @@ const emptyState = (): State => ({
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
 const fork = (s: State): State =>
-  Object.fromEntries(Object.entries(s).map(([k, v]) => [k, v instanceof Map ? new Map(v) : v])) as unknown as State;
+  Object.fromEntries(Object.entries(s).map(([k, v]) => [k, v instanceof Map ? new Map(v) : Array.isArray(v) ? [...v] : v])) as unknown as State;
 
 const ref = (txHash: string, logIndex: number) => `${txHash}:${logIndex}`;
 const clone = <T>(v: T): T => structuredClone(v);
@@ -54,13 +58,33 @@ export class MemoryStore implements Store {
 
   private txOn(s: State): ProjectionTx {
     return {
-      insertEvent: async (e) => {
+      insertEvent: async (e, enrichment) => {
         const k = ref(e.txHash, e.logIndex);
         if (s.events.has(k)) return false;
-        s.events.set(k, clone(e));
+        s.events.set(k, clone({ event: e, enrichment }));
         return true;
       },
+      deleteEvents: async (keys) => keys.filter((k) => s.events.delete(k)).length,
+      eventsBetween: async (from, to) =>
+        [...s.events.entries()].filter(([, { event: e }]) => e.block >= from && e.block <= to).map(([key, { event: e }]) => ({ key, blockHash: e.blockHash })),
+      storedEvents: async (after, limit) =>
+        [...s.events.values()]
+          .filter(({ event: e }) => !after || e.block > after.block || (e.block === after.block && e.logIndex > after.logIndex))
+          .sort((a, b) => byChainOrder(a.event, b.event))
+          .slice(0, limit)
+          .map(clone),
+      resetReadModels: async () => {
+        for (const m of [s.boxes, s.duels, s.requests, s.proposals, s.mints, s.milestones, s.transfers] as Map<unknown, unknown>[]) m.clear();
+        // Sign-ins stay; on-chain activity is counted again by the replay.
+        for (const [a, u] of s.users) {
+          if (u.registeredAt === null) s.users.delete(a);
+          else s.users.set(a, { ...u, firstBlock: null, lastBlock: null, firstSeenAt: null, lastSeenAt: null, actions: 0 });
+        }
+      },
       setCursor: async (block) => void (s.cursor = block),
+      setFinalizedCursor: async (block) => void (s.finalized = block),
+      saveRange: async (from, to, servedBy) => void (to >= from && servedBy.length && s.ranges.push({ from, to, servedBy: [...servedBy] })),
+      pruneRanges: async (upTo) => void (s.ranges = s.ranges.filter((r) => r.to > upTo)),
       box: async (id) => clone(s.boxes.get(id) ?? null),
       saveBox: async (b) => void s.boxes.set(b.tokenId, clone(b)),
       duel: async (id) => clone(s.duels.get(id) ?? null),
@@ -79,6 +103,26 @@ export class MemoryStore implements Store {
 
   async cursor() {
     return this.s.cursor;
+  }
+
+  async finalizedCursor() {
+    return this.s.finalized;
+  }
+
+  async servedBy(from: number, to: number) {
+    return [...new Set(this.s.ranges.filter((r) => r.from <= to && r.to >= from).flatMap((r) => r.servedBy))];
+  }
+
+  async knownDuelIds() {
+    return [...this.s.duels.keys()].sort((a, b) => a - b);
+  }
+
+  async knownRequestIds() {
+    return [...this.s.requests.keys()].sort((a, b) => a - b);
+  }
+
+  async allPendingRequests() {
+    return [...this.s.requests.values()].filter((r) => r.status === "pending").sort((a, b) => a.requestId - b.requestId).map(clone);
   }
 
   async box(tokenId: number) {
@@ -108,7 +152,7 @@ export class MemoryStore implements Store {
   async duels(q: DuelQuery) {
     const tokens = new Set(q.tokenIds ?? []);
     return [...this.s.duels.values()]
-      .filter((d) => (q.account && d.challenger === q.account) || (q.account && d.accepter === q.account) || tokens.has(d.tokenA) || tokens.has(d.tokenB))
+      .filter((d) => (!q.account && !tokens.size) || (q.account && (d.challenger === q.account || d.accepter === q.account)) || tokens.has(d.tokenA) || tokens.has(d.tokenB))
       .filter((d) => !q.statuses || q.statuses.includes(d.status))
       .sort((a, b) => b.duelId - a.duelId)
       .slice(0, q.limit)
@@ -137,6 +181,7 @@ export class MemoryStore implements Store {
 
   async activity(q: ActivityQuery) {
     return [...this.s.events.values()]
+      .map((s) => s.event)
       .filter((e) => q.beforeBlock === undefined || e.block < q.beforeBlock)
       .filter((e) => q.tokenId === undefined || tokensOf(e).includes(q.tokenId))
       .filter((e) => q.account === undefined || actorsOf(e).includes(q.account))

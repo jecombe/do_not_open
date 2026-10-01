@@ -10,12 +10,26 @@ export interface IndexerOptions {
   maxBackoffMs: number;
 }
 
+/** Work that runs now and then, between passes, once the index is caught up. */
+export interface PeriodicTask {
+  name: string;
+  everyMs: number;
+  run(): Promise<unknown>;
+}
+
+export interface TaskStatus {
+  lastRunAt: number | null;
+  lastResult: unknown;
+  lastError: string | null;
+}
+
 export interface IndexerStatus {
   running: boolean;
   lastPass: SyncResult | null;
   lastPassAt: number | null;
   lastError: string | null;
   failures: number;
+  tasks: Record<string, TaskStatus>;
 }
 
 /**
@@ -27,7 +41,7 @@ export class Indexer {
   private running = false;
   private wake: (() => void) | null = null;
   private nudged = false;
-  private status_: IndexerStatus = { running: false, lastPass: null, lastPassAt: null, lastError: null, failures: 0 };
+  private status_: IndexerStatus = { running: false, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} };
   private done: Promise<void> | null = null;
 
   constructor(
@@ -36,10 +50,29 @@ export class Indexer {
     private readonly log: Logger,
     private readonly sleep: (ms: number, wake: (cb: () => void) => void) => Promise<void> = defaultSleep,
     private readonly now: () => number = Date.now,
-  ) {}
+    private readonly tasks: PeriodicTask[] = [],
+  ) {
+    for (const t of tasks) this.status_.tasks[t.name] = { lastRunAt: null, lastResult: null, lastError: null };
+  }
 
   status(): IndexerStatus {
-    return { ...this.status_, running: this.running };
+    return { ...this.status_, running: this.running, tasks: { ...this.status_.tasks } };
+  }
+
+  /** Runs the tasks that are due, one after the other. A failure is recorded and retried next time. */
+  private async runDueTasks() {
+    for (const t of this.tasks) {
+      const st = this.status_.tasks[t.name]!;
+      if (st.lastRunAt !== null && this.now() - st.lastRunAt < t.everyMs) continue;
+      st.lastRunAt = this.now();
+      try {
+        st.lastResult = await t.run();
+        st.lastError = null;
+      } catch (error) {
+        st.lastError = (error as Error).message;
+        this.log.error({ task: t.name, error: st.lastError }, "indexer task failed");
+      }
+    }
   }
 
   start() {
@@ -69,8 +102,9 @@ export class Indexer {
         lastPassAt = this.now();
         const r = await this.sync.pass();
         this.status_ = { ...this.status_, lastPass: r ?? this.status_.lastPass, lastPassAt, lastError: null, failures: 0 };
-        // Behind: go again straight away.
+        // Behind: go again straight away. Caught up: the periodic checks may run.
         if (r && r.to < r.target) wait = 0;
+        else await this.runDueTasks();
       } catch (error) {
         const failures = this.status_.failures + 1;
         this.status_ = { ...this.status_, lastError: (error as Error).message, failures };
