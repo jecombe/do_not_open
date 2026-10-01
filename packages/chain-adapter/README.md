@@ -9,7 +9,8 @@ flowchart LR
   iface --> mock["MockAdapter<br/>in memory"]
   iface --> evm["EvmFhevmAdapter<br/>ethers + Relayer SDK"]
   iface -.-> sol["solana/<br/>not started"]
-  evm --> contract["DoNotOpen on Sepolia"]
+  evm --> contract["DoNotOpen, Pantry, cCROQ on Sepolia"]
+  evm --> market["Uniswap V2: CROQ/WETH"]
   evm --> relayer["Zama relayer + KMS"]
 ```
 
@@ -20,7 +21,8 @@ flowchart LR
 | `src/evm/EvmFhevmAdapter.ts` | Sepolia: transactions through ethers, decryptions through `@zama-fhe/relayer-sdk` |
 | `src/evm/wallet.ts` | Where signatures come from: an injected browser wallet, or a fixed signer in Node |
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
-| `src/evm/deployments/sepolia.json` | Address and ABI, written by `pnpm --filter @dno/contracts-evm export:sepolia` |
+| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, written by `pnpm --filter @dno/contracts-evm export:sepolia` |
+| `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V2 market, written by the same command |
 | `src/solana/README.md` | What the Solana port needs |
 
 ## Using it
@@ -39,6 +41,12 @@ Every action takes `onStep` and reports the same four steps, in order: `wallet`,
 `code`, and for contract refusals the contract's error name in `reason`.
 
 In Node (scripts, metadata), import from `@dno/chain-adapter/node`.
+
+The croquette economy sits on the same interface: `economy()`, `boxPantry(tokenId)`,
+`croqBalance(owner)`, `confidentialBalance()` (a user decryption), `claimCroquettes`,
+`feedCroquettes` (the amount is encrypted in the page), `settle`, `wrap`, `unwrap`
+(a public decryption of the amount, then `finalizeUnwrap`), `sendCroquettes`, and
+`quote` / `trade` against the public market. See [`docs/CROQ.md`](../../docs/CROQ.md).
 
 ## What happens in a shake
 
@@ -68,9 +76,11 @@ contract, which verifies the proof before storing anything.
 ## Tests
 
 ```bash
-pnpm --filter @dno/chain-adapter test            # the mock, 12 tests, no network
+pnpm --filter @dno/chain-adapter test            # the mock, 18 tests, no network
 pnpm --filter @dno/chain-adapter smoke:sepolia   # every mechanic on the live contract
+pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap, unwrap, transfer, sell
 ```
 
-The smoke script spends testnet ETH (three mints and a few fees) and needs `PRIVATE_KEY`
-in the repo-root `.env`.
+The smoke scripts spend testnet ETH (mints, fees, a small market buy) and need
+`PRIVATE_KEY` in the repo-root `.env`. `smoke:croq` passed against the live Pantry,
+cCROQ and Uniswap pool on 2026-10-01.

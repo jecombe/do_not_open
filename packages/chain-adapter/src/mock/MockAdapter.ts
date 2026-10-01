@@ -6,6 +6,7 @@ import {
   type Address,
   type AliveCheck,
   type BoxInfo,
+  type BoxPantry,
   type BoxStatus,
   type BoxSummary,
   type ChainAdapter,
@@ -13,8 +14,10 @@ import {
   type DuelInfo,
   type DuelResult,
   type DuelStatus,
+  type EconomyInfo,
   type PairInfo,
   type RevealedContents,
+  type TradeSide,
   type TraitRoll,
   type TxRecord,
   type WalletOption,
@@ -38,7 +41,20 @@ interface MockBox {
   shakes: number;
   publicTraits: Map<number, number>;
   revealed: RevealedContents | null;
+  /** Croquettes in the box's stash. Encrypted on a real chain: nobody can read it. */
+  stash: bigint;
+  meals: number;
+  /** Mock milliseconds of the last purr; null until the welcome bag is paid. */
+  lastPurr: number | null;
+  settled: boolean;
 }
+
+const ECONOMY = spec.economy;
+const BPS = 10_000n;
+const allocation = (key: string) => BigInt(ECONOMY.allocation.find((a) => a.key === key)!.amount);
+/** Uniswap V2 takes 0.3% of what goes in. */
+const swapOut = (amountIn: bigint, reserveIn: bigint, reserveOut: bigint) =>
+  (amountIn * 997n * reserveOut) / (reserveIn * 1000n + amountIn * 997n);
 
 interface MockDuel {
   tokenA: number;
@@ -53,6 +69,10 @@ export interface MockOptions {
   /** Boxes minted before the app starts: the first ones to you, the rest to the night shift. */
   yours?: number;
   theirs?: number;
+  /** How long a purr "day" lasts, in milliseconds. A minute by default, so the demo moves. */
+  dayMs?: number;
+  /** Stands in for the clock. Tests move it by hand. */
+  now?: () => number;
 }
 
 /** Stand-in seed. On a real chain this value is encrypted and nobody can compute it. */
@@ -78,9 +98,22 @@ export class MockAdapter implements ChainAdapter {
   private readonly latency: number;
   private block = 5_000_000;
   private txCount = 0;
+  private readonly dayMs: number;
+  private readonly now: () => number;
+  private readonly startedAt: number;
+  private readonly plain = new Map<Address, bigint>();
+  private readonly hidden = new Map<Address, bigint>();
+  private reserve = allocation("gameReserve") + allocation("welcomeBags");
+  private burnt = 0n;
+  private wrapped = allocation("gameReserve") + allocation("welcomeBags");
+  private pool = { croq: allocation("liquidity"), native: ETH / 50n };
+  private purrs = 0;
 
   constructor(opts: MockOptions = {}) {
     this.latency = opts.latency ?? 450;
+    this.dayMs = opts.dayMs ?? 60_000;
+    this.now = opts.now ?? Date.now;
+    this.startedAt = this.now();
     for (let i = 0; i < (opts.yours ?? 3); i++) this.boxes.push(this.newBox(MOCK_YOU));
     for (let i = 0; i < (opts.theirs ?? 3); i++) this.boxes.push(this.newBox(MOCK_NIGHT_SHIFT));
   }
@@ -326,10 +359,188 @@ export class MockAdapter implements ChainAdapter {
     this.owed.set(me, 0n);
   }
 
+  // --- croquettes ---
+
+  async economy(): Promise<EconomyInfo> {
+    const purr = ECONOMY.purr;
+    return {
+      symbol: ECONOMY.token.symbol,
+      confidentialSymbol: ECONOMY.token.confidentialSymbol,
+      totalSupply: BigInt(ECONOMY.token.totalSupply),
+      wrapped: this.wrapped,
+      welcomeBag: ECONOMY.welcomeBag.amount,
+      purrMaxPerDay: purr.maxPerDay,
+      vetMultiplier: purr.vetMultiplier,
+      purrMaxDays: purr.maxDays,
+      halvings: this.halvings(),
+      halvingPeriod: (purr.halvingDays * this.dayMs) / 1000,
+      mealBurnBps: ECONOMY.meal.burnBps,
+      payoutBps: [...spec.states].sort((a, b) => a.id - b.id).map((s) => ECONOMY.settlement.payoutBps[s.key]),
+      maxBoxesPerClaim: 10,
+      links: { croq: null, cCroq: null, pantry: null },
+      market: { name: "Mock pool", poolUrl: null, appUrl: null, croqReserve: this.pool.croq, nativeReserve: this.pool.native },
+    };
+  }
+
+  async boxPantry(tokenId: number): Promise<BoxPantry> {
+    const b = this.get(tokenId);
+    const next = b.lastPurr === null ? this.now() : b.lastPurr + this.dayMs;
+    return { meals: b.meals, welcomed: b.lastPurr !== null, nextClaimAt: Math.floor(next / 1000), settled: b.settled };
+  }
+
+  async croqBalance(owner: Address): Promise<bigint> {
+    return this.plain.get(owner) ?? 0n;
+  }
+
+  async confidentialBalance(opts?: ActionOptions): Promise<bigint> {
+    const me = this.signer();
+    opts?.onStep?.("decrypting");
+    await this.wait(1);
+    return this.hidden.get(me) ?? 0n;
+  }
+
+  async claimCroquettes(tokenIds: number[], opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    if (tokenIds.length === 0 || tokenIds.length > 10) throw revert("InvalidBoxCount");
+    const now = this.now();
+    const halvings = this.halvings();
+    let owed = 0n;
+    let paid = false;
+    const updates: [MockBox, number][] = [];
+    for (const id of tokenIds) {
+      const b = this.get(id);
+      if (b.owner !== me) throw revert("NotHolder");
+      if (b.lastPurr === null) {
+        updates.push([b, now]);
+        owed += BigInt(ECONOMY.welcomeBag.amount);
+        paid = true;
+        continue;
+      }
+      let days = Math.floor((now - b.lastPurr) / this.dayMs);
+      if (days === 0) continue;
+      paid = true;
+      if (days > ECONOMY.purr.maxDays) {
+        days = ECONOMY.purr.maxDays;
+        updates.push([b, now]);
+      } else updates.push([b, b.lastPurr + days * this.dayMs]);
+      this.purrs += 1;
+      const roll = Math.floor(mulberry32(Math.imul(id + 3, 0x51ed27) + this.purrs * 7919)() * (ECONOMY.purr.maxPerDay + 1));
+      const factor = days * (b.aliveCheck === "alive" ? ECONOMY.purr.vetMultiplier : 1);
+      owed += BigInt(roll * factor) >> BigInt(Math.min(halvings, 63));
+    }
+    if (!paid) throw revert("NothingToClaim");
+    await this.send(opts, "claim");
+    for (const [b, at] of updates) b.lastPurr = at;
+    const total = owed < this.reserve ? owed : this.reserve;
+    this.reserve -= total;
+    this.credit(this.hidden, me, total);
+  }
+
+  async feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    const box = this.sealed(tokenId);
+    if (amount < 0n) throw revert("InvalidAmount");
+    await this.send(opts, "feed");
+    // Like the contract: too little moves nothing, and says nothing.
+    const moved = (this.hidden.get(me) ?? 0n) >= amount ? amount : 0n;
+    this.credit(this.hidden, me, -moved);
+    const burnt = (moved * BigInt(ECONOMY.meal.burnBps)) / BPS;
+    box.stash += moved - burnt;
+    this.burnt += burnt;
+    box.meals += 1;
+  }
+
+  async settle(tokenId: number, opts?: ActionOptions): Promise<void> {
+    this.signer();
+    const box = this.get(tokenId);
+    if (box.settled) throw revert("AlreadySettled");
+    if (box.status !== "revealed" || !box.revealed) throw revert("NotRevealed");
+    await this.send(opts, "settle");
+    const state = spec.states.find((s) => s.id === box.revealed!.state)!;
+    const payout = (box.stash * BigInt(ECONOMY.settlement.payoutBps[state.key])) / BPS;
+    this.burnt += box.stash - payout;
+    this.credit(this.hidden, box.owner, payout);
+    box.stash = 0n;
+    box.settled = true;
+  }
+
+  async wrap(amount: bigint, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    if (amount <= 0n || (this.plain.get(me) ?? 0n) < amount) throw revert("ERC20InsufficientBalance");
+    await this.send(opts, "wrap");
+    this.credit(this.plain, me, -amount);
+    this.credit(this.hidden, me, amount);
+    this.wrapped += amount;
+  }
+
+  async unwrap(amount: bigint, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    if (amount <= 0n) throw revert("InvalidAmount");
+    await this.send(opts, "unwrap");
+    // The burn moves what the holder has, or nothing; the decryption tells which.
+    const moved = (this.hidden.get(me) ?? 0n) >= amount ? amount : 0n;
+    await this.publish(opts, "finalizeUnwrap");
+    this.credit(this.hidden, me, -moved);
+    this.credit(this.plain, me, moved);
+    this.wrapped -= moved;
+  }
+
+  async sendCroquettes(to: Address, amount: bigint, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(to)) throw revert("ERC7984InvalidReceiver");
+    await this.send(opts, "confidentialTransfer");
+    const moved = (this.hidden.get(me) ?? 0n) >= amount ? amount : 0n;
+    this.credit(this.hidden, me, -moved);
+    this.credit(this.hidden, to.toLowerCase() === me.toLowerCase() ? me : to, moved);
+  }
+
+  async quote(side: TradeSide, amountIn: bigint): Promise<bigint> {
+    if (amountIn <= 0n) return 0n;
+    return side === "buy" ? swapOut(amountIn, this.pool.native, this.pool.croq) : swapOut(amountIn, this.pool.croq, this.pool.native);
+  }
+
+  async trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    if (amountIn <= 0n) throw revert("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
+    if (side === "sell" && (this.plain.get(me) ?? 0n) < amountIn) throw revert("ERC20InsufficientBalance");
+    const out = await this.quote(side, amountIn);
+    await this.send(opts, side === "buy" ? "swapExactETHForTokens" : "swapExactTokensForETH");
+    if (side === "buy") {
+      this.pool = { native: this.pool.native + amountIn, croq: this.pool.croq - out };
+      this.credit(this.plain, me, out);
+    } else {
+      this.pool = { croq: this.pool.croq + amountIn, native: this.pool.native - out };
+      this.credit(this.plain, me, -amountIn);
+    }
+  }
+
   // --- internals ---
 
   private newBox(owner: Address): MockBox {
-    return { owner, status: "sealed", aliveCheck: "none", partner: null, wins: 0, feeds: 0, affection: 0, shakes: 0, publicTraits: new Map(), revealed: null };
+    return {
+      owner,
+      status: "sealed",
+      aliveCheck: "none",
+      partner: null,
+      wins: 0,
+      feeds: 0,
+      affection: 0,
+      shakes: 0,
+      publicTraits: new Map(),
+      revealed: null,
+      stash: 0n,
+      meals: 0,
+      lastPurr: null,
+      settled: false,
+    };
+  }
+
+  private halvings(): number {
+    return Math.floor((this.now() - this.startedAt) / (ECONOMY.purr.halvingDays * this.dayMs));
+  }
+
+  private credit(book: Map<Address, bigint>, who: Address, delta: bigint): void {
+    book.set(who, (book.get(who) ?? 0n) + delta);
   }
 
   private get(tokenId: number): MockBox {

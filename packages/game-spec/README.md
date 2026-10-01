@@ -72,6 +72,23 @@ a box was fed is public; how much that earned is not. At reveal, `affection > 10
 the accessory golden (a cat with none gets a golden bell collar) and adds 250 to the
 revealed score. Tiers and duels use the score before that bonus.
 
+## Economy
+
+The `economy` section holds the croquette rules. The deploy script and the Pantry read
+them; [`docs/CROQ.md`](../../docs/CROQ.md) explains them.
+
+| Key | Value | Meaning |
+| --- | --- | --- |
+| `token.totalSupply` | 20,000,000 | CROQ minted once, 0 decimals |
+| `allocation` | 10M / 1M / 4M / 5M | Game reserve, welcome bags, market liquidity, treasury. Must add up to the supply |
+| `welcomeBag.amount` | 100 | Paid once per box. `allocation.welcomeBags` must equal `maxSupply` × this |
+| `purr.maxPerDay` | 4 | Encrypted draw in 0..4 per box and per day |
+| `purr.vetMultiplier` | 2 | For Vet Certified boxes |
+| `purr.maxDays` | 7 | Days one claim can collect |
+| `purr.halvingDays` | 365 | The purr halves this often |
+| `meal.burnBps` | 1000 | 10% of each meal is burnt, the rest goes to the stash |
+| `settlement.payoutBps` | alive 10000, asleep 10000, ghost 0, quantum 5000 | Share of the stash paid to the holder at settlement |
+
 ## Mechanics and events
 
 See `mechanics` and `events` in `spec.json`. Each rule is written so that it can be

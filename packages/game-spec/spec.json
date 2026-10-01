@@ -3,7 +3,7 @@
   "collection": {
     "name": "DO NOT OPEN",
     "symbol": "DNO",
-    "maxSupply": 5000
+    "maxSupply": 10000
   },
   "seed": {
     "bits": 64,
@@ -172,6 +172,45 @@
       "rule": "Same trait pick as shake, but the decryption right goes to the payer only. 70% of the fee goes to the holder."
     }
   },
+  "economy": {
+    "token": {
+      "name": "Croquettes",
+      "symbol": "CROQ",
+      "confidentialName": "Confidential Croquettes",
+      "confidentialSymbol": "cCROQ",
+      "decimals": 0,
+      "totalSupply": 20000000,
+      "rule": "CROQ is a plain ERC-20 so it can be traded on public markets; cCROQ is its confidential ERC-7984 wrapper at a 1:1 rate and is what the game uses. The whole supply is minted once at deployment; nothing can mint more."
+    },
+    "allocation": [
+      { "key": "gameReserve", "name": "Game reserve", "amount": 10000000, "rule": "Wrapped into the Pantry. Pays the daily purr until it runs dry." },
+      { "key": "welcomeBags", "name": "Welcome bags", "amount": 1000000, "rule": "Wrapped into the Pantry. One bag per box: maxSupply x welcomeBag." },
+      { "key": "liquidity", "name": "Market liquidity", "amount": 4000000, "rule": "Seeded into a public CROQ/WETH pool." },
+      { "key": "treasury", "name": "Treasury", "amount": 5000000, "rule": "Kept by the collection owner as plain CROQ, for events and future liquidity." }
+    ],
+    "welcomeBag": {
+      "amount": 100,
+      "rule": "Paid once per box, not per wallet, on the box's first claim. A box that changes hands does not get a second bag."
+    },
+    "purr": {
+      "maxPerDay": 4,
+      "vetMultiplier": 2,
+      "maxDays": 7,
+      "halvingDays": 365,
+      "rule": "Each claim draws one encrypted amount in 0..maxPerDay per box, multiplies it by the whole days since that box's last claim (at most maxDays), doubles it for Vet Certified boxes and halves it once per halvingDays since the Pantry was deployed. Paid from the game reserve, capped by what is left in it."
+    },
+    "meal": {
+      "burnBps": 1000,
+      "rule": "Anyone feeds a sealed box an encrypted amount of cCROQ. 10% is burnt, the rest goes to the box's encrypted stash. A feeder who holds too little moves 0, with no revert and no leak. Nobody can withdraw or read a stash while the box is sealed. The number of meals is public."
+    },
+    "settlement": {
+      "payoutBps": { "alive": 10000, "asleep": 10000, "ghost": 0, "quantum": 5000 },
+      "rule": "Once a box is revealed, anyone settles it: the stash pays payoutBps of itself to the current holder and the rest is burnt. Amounts stay encrypted; only the holder can read what they received."
+    },
+    "burn": {
+      "rule": "Burnt cCROQ stays locked in the Pantry: no code path moves it. The encrypted running total is readable by nobody, so the circulating supply is unknown even though the total supply is public."
+    }
+  },
   "events": {
     "Minted": { "fields": ["tokenId", "owner"] },
     "Shaken": { "fields": ["tokenId", "viewer", "paid"], "note": "The trait index is NOT emitted; it stays encrypted-side knowledge of the viewer." },
@@ -185,6 +224,10 @@
     "DuelResolved": { "fields": ["duelId", "winnerTokenId", "loserTokenId", "revealedTraitIndex", "revealedTraitRoll"] },
     "EntangleProposed": { "fields": ["tokenIdA", "tokenIdB"] },
     "Entangled": { "fields": ["tokenIdA", "tokenIdB"] },
-    "Fed": { "fields": ["tokenId", "feeder"] }
+    "Fed": { "fields": ["tokenId", "feeder"] },
+    "MealServed": { "fields": ["tokenId", "feeder", "meals"], "note": "Pantry. The amount is not emitted." },
+    "WelcomeBag": { "fields": ["tokenId", "holder"], "note": "Pantry." },
+    "Purred": { "fields": ["holder", "boxes"], "note": "Pantry. The amount is not emitted." },
+    "Settled": { "fields": ["tokenId", "holder", "state", "payoutBps"], "note": "Pantry. The amount is not emitted." }
   }
 }

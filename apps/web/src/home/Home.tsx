@@ -4,7 +4,7 @@ import type { CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { catNames } from "../i18n/names";
+import { catNames, stateName } from "../i18n/names";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 
@@ -31,6 +31,7 @@ export function Home() {
         <nav aria-label={t("home.nav")}>
           <a href="#cats">{t("home.nav.cats")}</a>
           <a href="#how">{t("home.nav.how")}</a>
+          <a href="#croquettes">{t("home.nav.croq")}</a>
           <a href={DOCS}>{t("home.nav.docs")}</a>
           <LangSwitch label={t("home.nav")} />
           <a className="btn btn-small" href={APP}>
@@ -94,6 +95,8 @@ export function Home() {
         </div>
       </section>
 
+      <Croquettes />
+
       <section id="cats" className="home-section">
         <h2>{t("home.cats.title")}</h2>
         <p className="section-lede">{t("home.cats.lede")}</p>
@@ -120,6 +123,52 @@ export function Home() {
         <a href={REPO}>{t("home.foot.source")}</a>
       </footer>
     </div>
+  );
+}
+
+/** What the stash of a box pays its holder, state by state, as the spec sets it. */
+const OUTCOMES = spec.states.map((s) => ({ key: s.key, bps: spec.economy.settlement.payoutBps[s.key] }));
+
+/** The croquette economy in one panel: the hidden stash, the four ways it ends, the market. */
+function Croquettes() {
+  const t = useT();
+  const locale = useLocale();
+  const { token, welcomeBag } = spec.economy;
+
+  return (
+    <section id="croquettes" className="home-section croq">
+      <div>
+        <h2>{t("home.croq.title")}</h2>
+        <p className="section-lede">{t("home.croq.p1", { total: token.totalSupply.toLocaleString(locale) })}</p>
+        <div className="croq-board">
+          <div className="croq-doodle" aria-hidden="true">
+            <span className="speech">{t("home.croq.bubble")}</span>
+            <KibbleDoodle />
+          </div>
+          <div className="croq-card">
+            <h3>{t("home.croq.outcomes")}</h3>
+            <ul className="outcomes">
+              {OUTCOMES.map(({ key, bps }) => (
+                <li key={key} className={`outcome outcome-${key}`}>
+                  <span className="outcome-state">{stateName(key)}</span>
+                  <span className="outcome-bar" aria-hidden="true">
+                    <i style={{ width: `${bps / 100}%` }} />
+                  </span>
+                  <span className="outcome-text">
+                    {bps === 10_000 ? t("home.croq.all", { pct: 100 }) : bps === 0 ? t("home.croq.none") : t("home.croq.split", { pct: bps / 100 })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p>{t("home.croq.p2")}</p>
+            <p>{t("home.croq.p3", { bag: welcomeBag.amount })}</p>
+            <a className="btn btn-paper" href={`${DOCS}#croquettes`}>
+              {t("home.croq.link")} →
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -264,6 +313,34 @@ const STEPS = [
     ),
   },
 ] as const;
+
+/** Croquettes raining into a sealed box, and a padlock on what piles up inside. */
+function KibbleDoodle() {
+  const kibble = [
+    [44, 30, 20],
+    [70, 20, -30],
+    [92, 36, 40],
+    [58, 46, 10],
+    [80, 54, -15],
+  ] as const;
+  return (
+    <svg className="doodle big kibble" viewBox="0 0 160 160" aria-hidden="true">
+      <g transform="translate(20 44)">
+        <BoxShape />
+      </g>
+      {kibble.map(([x, y, r], i) => (
+        <g key={i} transform={`translate(${x} ${y}) rotate(${r})`}>
+          <path d="M-7 -4 Q0 -10 7 -4 Q10 2 4 6 Q0 8 -4 6 Q-10 2 -7 -4 Z" fill="#a0612c" {...stroke} strokeWidth={3} />
+        </g>
+      ))}
+      <g transform="translate(116 104)">
+        <path d="M-9 -2 L-9 -10 Q0 -22 9 -10 L9 -2" fill="none" {...stroke} />
+        <rect x="-14" y="-3" width="28" height="22" rx="4" fill="#ffd66b" {...stroke} />
+        <text x="0" y="14" fontSize="15" fontWeight="700" textAnchor="middle" fill={INK}>?</text>
+      </g>
+    </svg>
+  );
+}
 
 function VetDoodle() {
   return (

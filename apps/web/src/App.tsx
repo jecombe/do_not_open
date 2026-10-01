@@ -7,6 +7,7 @@ import { Masthead, type View } from "./Masthead";
 import { BoxView } from "./views/BoxView";
 import { LeaderboardView } from "./views/LeaderboardView";
 import { PairView, type PairIntent } from "./views/PairView";
+import { PantryView } from "./views/PantryView";
 import { ShelfView } from "./views/ShelfView";
 import { SpecimensView } from "./views/SpecimensView";
 import { WarehouseView } from "./views/WarehouseView";
@@ -59,6 +60,7 @@ export function App() {
       {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onOverview={showWarehouse} />}
       {view === "warehouse" && <WarehouseView quality={quality} focus={focus} onInspect={showBox} />}
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} />}
+      {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}
 

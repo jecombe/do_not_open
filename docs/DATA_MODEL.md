@@ -115,3 +115,54 @@ could make them forget. What they lose: the right to shake, open, duel or entang
 
 A buyer should assume the seller knows all five traits. The buyer can level that for the
 price of a few paid shakes before buying.
+
+## Croquettes
+
+The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CROQ.md).
+
+### Pantry storage
+
+| Storage | Type | Who is on the ACL | What it holds |
+| --- | --- | --- | --- |
+| `_reserve` | `euint64` | the Pantry only | Croquettes left for welcome bags and purrs |
+| `_burnt` | `euint64` | the Pantry only | Running total burnt: 10% of meals, ghost stashes, half of quantum ones. Never moved |
+| `_stash[tokenId]` | `euint64` | the Pantry only | 90% of every meal served to the box, until it is settled |
+| `meals[tokenId]` | `uint32` | public | Meals served, including meals that moved 0 |
+| `lastPurr[tokenId]` | `uint64` | public | Last claim time; 0 until the welcome bag is paid |
+| `settled[tokenId]` | `bool` | public | Set once by `settle` |
+| parameters | immutables | public | `welcomeBag`, `purrMaxPerDay`, `vetMultiplier`, `purrMaxDays`, `halvingPeriod`, `mealBurnBps`, `payoutBps(state)`, `maxBoxesPerClaim`, `startedAt` |
+
+`stashHandle`, `reserveHandle` and `burntHandle` return handles. A handle is an
+identifier; nobody can decrypt it.
+
+### cCROQ storage
+
+OpenZeppelin `ERC7984`: one `euint64` balance per account, an encrypted total supply,
+and operators (`setOperator(operator, until)`) instead of allowances. Each balance is
+readable by its account. Each transfer amount is readable by its sender and recipient.
+
+### Who can learn what
+
+| Fact | The holder | Anyone else | How |
+| --- | --- | --- | --- |
+| A box's stash | No | No | Nobody is on the ACL, ever |
+| How many meals a box had | Yes | Yes | Plain counter |
+| How much one meal moved | The feeder | No | The feeder is on the transferred amount |
+| What a claim paid | The claimer | No | cCROQ allows the recipient on the transfer |
+| What a settlement paid | The holder at settlement | No | Same |
+| Whether a stash was paid, halved or burnt | Yes | Yes | The state is public after the reveal |
+| The reserve left, the total burnt | No | No | Pantry only |
+| A cCROQ balance | Its account | No | `confidentialBalanceOf` + user decryption |
+| Wrap, unwrap and market amounts | Yes | Yes | They move as a plain ERC-20 |
+
+Why nobody reads a stash, the holder included: `FHE.allow` cannot be revoked. A stash
+readable by its holder would stay readable by every previous holder after a sale, so a
+seller would always know more than the buyer about what the box carries. With nobody
+on the ACL, the stash is as unknown to the seller as to the buyer, except for what each
+fed it.
+
+### On transfer
+
+Nothing moves on the ACL. The stash is keyed by token id, so it follows the box:
+`settle` pays whoever holds the box at that time. The welcome bag is per box: a box
+that changes hands keeps its `lastPurr`, and its new holder gets no second bag.

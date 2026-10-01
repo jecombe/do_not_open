@@ -684,3 +684,127 @@ h2 {
     transition: none;
   }
 }
+
+/* --- Croquettes: the hidden stash and the four ways it ends --- */
+.croq-board {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 24px var(--gutter);
+}
+
+.croq-doodle {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
+.croq-doodle .doodle {
+  animation: bob 3s ease-in-out infinite;
+}
+
+.croq-card {
+  padding: 26px 28px 30px;
+  border: 4px solid var(--ink);
+  border-radius: 24px;
+  background: var(--mint);
+  box-shadow: 10px 10px 0 var(--ink);
+  transform: rotate(0.6deg);
+}
+
+.croq-card h3 {
+  margin: 0 0 12px;
+  font-family: var(--stencil);
+  font-size: 26px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.croq-card p {
+  max-width: 56ch;
+  margin: 16px 0 0;
+}
+
+.croq-card .btn {
+  margin-top: 20px;
+}
+
+.outcomes {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outcome {
+  display: grid;
+  grid-template-columns: 7.5em minmax(60px, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 12px;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.outcome-state {
+  padding: 3px 10px 1px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  font-family: var(--stencil);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.outcome-bar {
+  height: 18px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  /* What is not paid is burnt: the empty part of the bar is on fire. */
+  background: repeating-linear-gradient(-45deg, var(--red) 0 6px, var(--orange) 6px 12px);
+  overflow: hidden;
+}
+
+.outcome-bar i {
+  display: block;
+  height: 100%;
+  border-right: 3px solid var(--ink);
+  background: var(--sun);
+}
+
+.outcome-bar i[style*="100%"] {
+  border-right: 0;
+}
+
+.outcome-bar i[style*="width: 0%"] {
+  border-right: 0;
+}
+
+.outcome-text {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .croq-board {
+    grid-template-columns: 1fr;
+  }
+
+  .croq-doodle .doodle {
+    width: 200px;
+  }
+
+  .outcome {
+    grid-template-columns: 7em minmax(0, 1fr);
+  }
+
+  .outcome-text {
+    grid-column: 1 / -1;
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .croq-doodle .doodle {
+    animation: none;
+  }
+}

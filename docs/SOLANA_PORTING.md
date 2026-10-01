@@ -160,8 +160,11 @@ Sepolia one. Nothing in `apps/web` changes except the wallet button's label.
 5. `decode` in Rust, with the same cross-test against the generator that the Solidity
    one has (`decodes seeds exactly like the TypeScript generator`).
 6. proveAlive, feed, entangle, duel. Re-measure costs and re-decide the batch size.
+   The croquette economy comes after: a confidential SPL token (or Zama's equivalent of
+   ERC-7984) next to a plain SPL mint for markets, and a Pantry program with one stash
+   account per box.
 7. `SolanaAdapter`, then run the app in a third mode.
-8. Port the test suite: the 53 contract tests are written against behaviour, not against
+8. Port the test suite: the 80 contract tests are written against behaviour, not against
    Solidity, and their names read as a specification.
 
 ## Open questions for Zama

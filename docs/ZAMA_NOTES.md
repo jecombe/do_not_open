@@ -167,9 +167,28 @@ there is no re-entrancy path. `withdraw` excludes unclaimed credits.
 `DoNotOpen` is 20.3 KB of deployed bytecode against the 24.6 KB limit. The next sizeable
 feature should move logic to a library.
 
-### Sepolia deployment (2026-09-30)
+### Sepolia deployment (2026-10-01): 10,000 boxes and croquettes
 
-Current (Phase 3 mechanics plus the two Phase 4 views):
+Current. The spec's `maxSupply` went from 5,000 to 10,000 and the `economy` section was
+added, so the spec hash changed and `DoNotOpen` was redeployed with the same code.
+
+| Contract          | Address                                      |
+| ----------------- | -------------------------------------------- |
+| `DoNotOpen`       | `0x880D284333F4001Bfd199899f8243D78b486e077` |
+| `DoNotOpenConfig` | `0xe2Ce2fC413aE3cf9d0CAF663eb7B357689bF9D1A` |
+| `Croq`            | `0x72Fc0E0654f268A0785f92D63450c813cAFDfD10` |
+| `ConfidentialCroq`| `0xa89c19228261EAc5Fa48f544238d04fBC115393c` |
+| `Pantry`          | `0x8a58e2Cc6E11A3CC108612cfc6677A425Ff49882` |
+| CROQ/WETH pair    | `0x645D0d391F088895272b200aa6E187aCd00F270d` |
+
+Spec hash `0x61ccbbdacc6cd383532495d66c7edf9df99434d7e36e51d7cc4458e6af27270f`.
+`Pantry.fund` wrapped 11,000,000 CROQ into the reserve; the pair was seeded through the
+Uniswap V2 router `0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3` with 4,000,000 CROQ and
+0.02 ETH (WETH `0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14`). On-chain reads after the
+deploy: `maxSupply` 10,000, CROQ total supply 20,000,000, 11,000,000 held by the
+wrapper, pair reserves 4,000,000 CROQ and 0.02 WETH.
+
+Superseded 5,000-box deployment (Phase 3 mechanics plus the two Phase 4 views):
 
 | Contract          | Address                                      |
 | ----------------- | -------------------------------------------- |
@@ -219,18 +238,19 @@ Because the app only sees `ChainAdapter`, moving to it later is a change inside 
 
 - `createEIP712` and `userDecrypt` take the start timestamp and duration as **numbers**
   in 0.4.1. The docs' snippets pass strings.
-- This app never encrypts an input: every secret is drawn on-chain. So the adapter only
-  uses `generateKeypair`, `createEIP712`, `userDecrypt` and `publicDecrypt`, and the
-  multi-threading setup (cross-origin isolation headers) that input proofs benefit from
-  is not needed.
+- The boxes never take an encrypted input: every secret of a box is drawn on-chain.
+  Croquette amounts are the exception: a meal, a confidential transfer and an unwrap
+  each carry an amount encrypted in the page with `createEncryptedInput`. Input proofs
+  run single-threaded; the cross-origin isolation headers that would enable threads are
+  not set.
 - `createInstance` is given the read RPC URL, not `window.ethereum`, so decryption of
   public values works before any wallet is connected.
 
 ### Decisions
 
 - **One permit per session.** A shake needs a user decryption, which needs an EIP-712
-  signature over a fresh keypair. The adapter signs once (valid one day, this contract
-  only) and keeps the keypair in memory, so the wallet prompts once, not at every shake.
+  signature over a fresh keypair. The adapter signs once (valid one day, for DoNotOpen
+  and cCROQ, so the same permit reads shakes and croquette balances) and keeps the keypair in memory, so the wallet prompts once, not at every shake.
   Nothing is written to storage: a reload asks again.
 - **Retries on decryption.** The coprocessor computes a ciphertext a few seconds after
   the transaction that requested it. Asking the relayer too early fails, so decryptions
@@ -265,3 +285,73 @@ the `x-api-key` header. That proxy does not exist in this repo yet; it is a main
   They are covered by the mock adapter's tests and by the contract tests, and the smoke
   script ran them on Sepolia with one account holding both boxes.
 - `paidShake` and `claim` on Sepolia: they need a second funded account.
+
+## Croquettes: decisions
+
+### Two tokens, because AMMs need cleartext
+
+An ERC-7984 balance is an `euint64`: no AMM can price against it. CROQ is therefore a
+plain ERC-20 with a fixed supply, and the game uses cCROQ, OpenZeppelin's
+`ERC7984ERC20Wrapper` from `@openzeppelin/confidential-contracts` **0.5.3**, the release
+that pins `@fhevm/solidity` 0.11.1 like the rest of this repo. It is used unmodified.
+
+### `fromExternal` in the Pantry, then hand the handle to cCROQ
+
+An input proof is bound to a (contract, user) pair: the contract that calls
+`FHE.fromExternal` and the `msg.sender` it sees. If the Pantry forwarded the external
+handle to `cCroq.confidentialTransferFrom(from, to, externalEuint64, proof)`, cCROQ
+would check it against (cCROQ, Pantry), which no user can produce. So the user encrypts
+for the Pantry, and the Pantry does:
+
+```solidity
+euint64 offered = FHE.fromExternal(amount, inputProof); // proof for (Pantry, msg.sender)
+FHE.allowTransient(offered, address(cCroq));            // let cCROQ compute on it
+euint64 moved = cCroq.confidentialTransferFrom(msg.sender, address(this), offered);
+```
+
+The `euint64` overload of `confidentialTransferFrom` requires the caller (the Pantry)
+to be allowed on the handle, which `fromExternal` gives transiently, and returns the
+amount actually moved with a transient grant back to the Pantry. Payouts use the same
+pattern: `allowTransient(amount, cCroq)`, then `confidentialTransfer(to, amount)`.
+
+### ERC-7984 operators, not allowances
+
+A player lets the Pantry pull cCROQ with `setOperator(pantry, until)`: an expiry
+instead of an amount. The Pantry only pulls in `feed`, from `msg.sender`.
+
+### Bounded draws that are not powers of two
+
+`FHE.randEuint8(bound)` needs a power-of-two bound, and the purr is 0..4. The Pantry
+draws a full byte and takes `FHE.rem(roll, 5)`. 256 is not a multiple of 5, so 0 is
+1/256 more likely than the other values; that bias is accepted. `rem` on 8 bits keeps
+the cost down: the whole draw, scaling and sum come to about 680,000 HCU per box.
+
+### Skip the FHE work once the result is known to be zero
+
+The purr is shifted right once per halving. The Pantry computes in the clear whether
+the best possible purr, `purrMaxPerDay × days × multiplier`, survives the shift. If it
+does not, it skips the draw; if no box in the claim pays anything, it skips the
+`min`, the `sub` and the transfer too. Such a claim costs 0 HCU and only moves the clock.
+
+### Settlement reads the box contract, it does not change it
+
+`DoNotOpen` was not modified. The Pantry reads `status`, `contentsOf(tokenId).state`,
+`ownerOf` and `vetCertified` through a small interface. Payout shares of 0% and 100%
+skip the `mul` and `div`: a ghost costs one `add`, an alive cat one transfer.
+
+### Burning is locking
+
+A real burn on the wrapper would only destroy the confidential side: the plain CROQ
+behind it stays in the wrapper either way. The Pantry keeps burnt croquettes in its own
+balance under an encrypted total and has no code path that moves them.
+
+### HCU
+
+| Function | HCU |
+| --- | --- |
+| `feed` | ~2,152,000 |
+| `claim`, 10 boxes | ~6,800,000 (depth ~2,800,000) |
+| `settle` | 0 to ~1,990,000 depending on the state |
+
+`maxBoxesPerClaim` is 10 so a full claim stays far from both limits. 20 boxes measured
+13.6M HCU with a depth of 4.4M, too close to the 5M depth limit.

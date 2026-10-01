@@ -1,5 +1,7 @@
 import type { InterfaceAbi } from "ethers";
 import sepoliaDeployment from "./deployments/sepolia.json";
+import sepoliaEconomy from "./deployments/sepolia-economy.json";
+import type { EconomyDeployment } from "./EvmFhevmAdapter";
 import type { ChainParams } from "./wallet";
 
 export interface Deployment {
@@ -20,3 +22,6 @@ export const SEPOLIA: ChainParams = {
 
 /** Written by `pnpm --filter @dno/contracts-evm export:sepolia` after each deploy. */
 export const SEPOLIA_DEPLOYMENT = sepoliaDeployment as Deployment;
+
+/** The croquette economy next to it, written by the same export. */
+export const SEPOLIA_ECONOMY = sepoliaEconomy as EconomyDeployment;

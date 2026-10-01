@@ -8,6 +8,7 @@ export const VIEWS = [
   { key: "shelf", label: "nav.shelf" },
   { key: "warehouse", label: "nav.boxes" },
   { key: "pair", label: "nav.pair" },
+  { key: "pantry", label: "nav.pantry" },
   { key: "leaderboard", label: "nav.leaderboard" },
   { key: "specimens", label: "nav.specimens" },
 ] as const satisfies readonly { key: string; label: AppKey }[];

@@ -1,0 +1,234 @@
+import { spec, type AllocationKey } from "@dno/game-spec";
+import { useLocale } from "../i18n/locale";
+import { stateName } from "../i18n/names";
+import { useT } from "./i18n";
+
+/**
+ * The croquette chapter's figures. Hand-drawn SVG, like the paper slips elsewhere in the
+ * manual: no three.js here, the point is the plumbing, not the cardboard.
+ * Every number comes from the economy section of the game spec.
+ */
+
+const { economy } = spec;
+const BPS = 10_000;
+const pct = (bps: number) => bps / 100;
+
+// Drawing palette, the manual's colours (see docs.css).
+const C = {
+  ink: "#1c1814",
+  paper: "#e9dfc8",
+  tape: "#d9c28a",
+  sodium: "#ffb454",
+  spectral: "#7de3d0",
+  red: "#e0473c",
+  kraft: "#b8895a",
+};
+
+/** A labelled crate: a title in stencil and one line underneath. */
+function Crate({ x, y, w, h, title, sub, fill, dashed }: { x: number; y: number; w: number; h: number; title: string; sub: string; fill: string; dashed?: boolean }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={10} fill={fill} stroke={C.ink} strokeWidth={3} strokeDasharray={dashed ? "8 6" : undefined} />
+      <text x={x + w / 2} y={y + h / 2 - 6} textAnchor="middle" className="croq-svg-title">
+        {title}
+      </text>
+      <text x={x + w / 2} y={y + h / 2 + 20} textAnchor="middle" className="croq-svg-sub">
+        {sub}
+      </text>
+    </g>
+  );
+}
+
+/** An arrow along a path, with its label at (lx, ly). */
+function Pipe({ d, label, lx, ly, color = C.tape, anchor = "middle" }: { d: string; label: string; lx: number; ly: number; color?: string; anchor?: "start" | "middle" | "end" }) {
+  return (
+    <g>
+      <path d={d} fill="none" stroke={color} strokeWidth={4} markerEnd={`url(#croq-head-${color.slice(1)})`} strokeLinecap="round" />
+      <text x={lx} y={ly} textAnchor={anchor} className="croq-svg-label" fill={color}>
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function Heads() {
+  return (
+    <defs>
+      {[C.tape, C.sodium, C.spectral, C.red].map((color) => (
+        <marker key={color} id={`croq-head-${color.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 Z" fill={color} />
+        </marker>
+      ))}
+    </defs>
+  );
+}
+
+/** Public CROQ on the market, the wrapper in the middle, confidential cCROQ in the game. */
+export function TwoTokensFigure() {
+  const t = useT();
+  const { symbol, confidentialSymbol } = economy.token;
+  return (
+    <figure className="diagram">
+      <div className="diagram-scroll">
+        <svg viewBox="0 0 960 330" role="img" aria-label={t("fig.croq.two.aria")}>
+          <Heads />
+          {/* The public side, in the light. */}
+          <rect x={6} y={6} width={560} height={318} rx={14} fill="rgb(255 180 84 / 0.08)" stroke={C.sodium} strokeDasharray="4 8" />
+          <text x={22} y={34} className="croq-svg-zone" fill={C.sodium}>
+            {t("fig.croq.two.public")}
+          </text>
+          {/* The confidential side, in the dark. */}
+          <rect x={590} y={6} width={364} height={318} rx={14} fill="rgb(125 227 208 / 0.07)" stroke={C.spectral} strokeDasharray="4 8" />
+          <text x={606} y={34} className="croq-svg-zone" fill={C.spectral}>
+            {t("fig.croq.two.secret")}
+          </text>
+
+          <Crate x={30} y={110} w={210} h={96} fill={C.sodium} title={t("fig.croq.two.market")} sub={t("fig.croq.two.marketSub")} />
+          <Crate x={330} y={110} w={210} h={96} fill={C.paper} title={symbol} sub={t("fig.croq.two.plainSub")} />
+          <Crate x={690} y={110} w={210} h={96} fill={C.spectral} title={confidentialSymbol} sub={t("fig.croq.two.confSub")} />
+
+          <Pipe d="M244 142 L326 142" label={t("fig.croq.two.buy")} lx={285} ly={130} color={C.sodium} />
+          <Pipe d="M326 176 L244 176" label={t("fig.croq.two.sell")} lx={285} ly={200} color={C.sodium} />
+          <Pipe d="M544 142 L686 142" label={t("fig.croq.two.wrap")} lx={615} ly={130} />
+          <Pipe d="M686 176 L544 176" label={t("fig.croq.two.unwrap")} lx={615} ly={200} />
+          <text x={615} y={226} textAnchor="middle" className="croq-svg-note">
+            {t("fig.croq.two.edgeNote")}
+          </text>
+
+          <Pipe d="M795 210 L795 262" label="" lx={795} ly={0} color={C.spectral} />
+          <text x={795} y={290} textAnchor="middle" className="croq-svg-label" fill={C.spectral}>
+            {t("fig.croq.two.game")}
+          </text>
+          <text x={285} y={290} textAnchor="middle" className="croq-svg-note">
+            {t("fig.croq.two.marketNote")}
+          </text>
+        </svg>
+      </div>
+      <figcaption>{t("fig.croq.two.caption", { symbol, csymbol: confidentialSymbol })}</figcaption>
+    </figure>
+  );
+}
+
+const ALLOCATION_COLORS: Record<AllocationKey, string> = {
+  gameReserve: C.spectral,
+  welcomeBags: C.tape,
+  liquidity: C.sodium,
+  treasury: C.kraft,
+};
+
+/** The whole supply, split the way it was at deployment. */
+export function AllocationBar() {
+  const t = useT();
+  const locale = useLocale();
+  const total = economy.token.totalSupply;
+  return (
+    <figure className="allocation">
+      <div className="allocation-bar" role="img" aria-label={t("fig.croq.alloc.aria", { total: total.toLocaleString(locale) })}>
+        {economy.allocation.map((a) => (
+          <span key={a.key} style={{ flexGrow: a.amount, background: ALLOCATION_COLORS[a.key] }}>
+            {Math.round((a.amount / total) * 100)}%
+          </span>
+        ))}
+      </div>
+      <ul className="allocation-legend">
+        {economy.allocation.map((a) => (
+          <li key={a.key}>
+            <i style={{ background: ALLOCATION_COLORS[a.key] }} />
+            <strong>{t(`fig.croq.alloc.${a.key}`)}</strong> {a.amount.toLocaleString(locale)}
+            <span>{t(`fig.croq.alloc.${a.key}.v`)}</span>
+          </li>
+        ))}
+      </ul>
+    </figure>
+  );
+}
+
+/** Where croquettes go: reserve to players, players to stashes, stashes back or to the fire. */
+export function TokenFlowFigure() {
+  const t = useT();
+  const locale = useLocale();
+  const reserve = economy.allocation.filter((a) => a.key === "gameReserve" || a.key === "welcomeBags").reduce((n, a) => n + a.amount, 0);
+  const burn = pct(economy.meal.burnBps);
+  return (
+    <figure className="diagram">
+      <div className="diagram-scroll">
+        <svg viewBox="0 0 960 420" role="img" aria-label={t("fig.croq.flow.aria")}>
+          <Heads />
+          <Crate x={20} y={50} w={230} h={100} fill={C.tape} title={t("fig.croq.flow.reserve")} sub={t("fig.croq.flow.reserveSub", { n: reserve.toLocaleString(locale) })} />
+          <Crate x={365} y={50} w={230} h={100} fill={C.spectral} title={t("fig.croq.flow.balance")} sub={t("fig.croq.flow.balanceSub")} />
+          <Crate x={710} y={50} w={230} h={100} fill={C.paper} dashed title={t("fig.croq.flow.stash")} sub={t("fig.croq.flow.stashSub")} />
+          <Crate x={365} y={300} w={230} h={100} fill={C.red} title={t("fig.croq.flow.burnt")} sub={t("fig.croq.flow.burntSub")} />
+
+          <Pipe d="M254 92 L361 92" label={t("fig.croq.flow.claim")} lx={307} ly={36} />
+          <text x={135} y={176} textAnchor="middle" className="croq-svg-note">
+            {t("fig.croq.flow.claimNote", { bag: economy.welcomeBag.amount, max: economy.purr.maxPerDay })}
+          </text>
+          <Pipe d="M599 82 L706 82" label={t("fig.croq.flow.meal", { keep: 100 - burn })} lx={652} ly={36} color={C.spectral} />
+          <Pipe d="M706 124 L599 124" label={t("fig.croq.flow.settlePay")} lx={652} ly={176} color={C.sodium} />
+          <Pipe d="M450 154 L450 296" label={t("fig.croq.flow.mealBurn", { burn })} lx={440} ly={232} color={C.red} anchor="end" />
+          <Pipe d="M800 154 Q800 350 599 350" label={t("fig.croq.flow.settleBurn")} lx={812} ly={262} color={C.red} anchor="start" />
+        </svg>
+      </div>
+      <figcaption>{t("fig.croq.flow.caption")}</figcaption>
+    </figure>
+  );
+}
+
+/** One row per state: what the stash pays the holder, and what burns. */
+export function SettlementTable() {
+  const t = useT();
+  return (
+    <div className="form">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{t("fig.croq.settle.h.state")}</th>
+            <th scope="col">{t("fig.croq.settle.h.holder")}</th>
+            <th scope="col">{t("fig.croq.settle.h.burnt")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {spec.states.map((s) => {
+            const bps = economy.settlement.payoutBps[s.key];
+            return (
+              <tr key={s.key}>
+                <th scope="row">{stateName(s.key)}</th>
+                <td>{pct(bps)}%</td>
+                <td>
+                  {pct(BPS - bps)}%{bps === 0 ? ` ${t("fig.croq.settle.ghost")}` : ""}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const LEAKS = ["l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l9"] as const;
+
+/** What the economy keeps secret, and what it cannot. */
+export function LeakTable() {
+  const t = useT();
+  return (
+    <div className="form">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{t("docs.privacy.h.fact")}</th>
+            <th scope="col">{t("fig.croq.leak.h.who")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {LEAKS.map((k) => (
+            <tr key={k}>
+              <th scope="row">{t(`fig.croq.leak.${k}`)}</th>
+              <td>{t(`fig.croq.leak.${k}.v`)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

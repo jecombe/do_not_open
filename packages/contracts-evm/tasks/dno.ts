@@ -292,5 +292,22 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
     };
     writeFileSync(out, JSON.stringify(slim, null, 2) + "\n");
     console.log(`wrote ${out}`);
+
+    // The CROQ economy, when it was deployed on this network.
+    const pantry = await hre.deployments.getOrNull("Pantry");
+    if (!pantry) return;
+    const croq = await hre.deployments.get("Croq");
+    const cCroq = await hre.deployments.get("ConfidentialCroq");
+    const pair = await hre.deployments.getOrNull("CroqWethPair");
+    const { UNISWAP_V2 } = await import("../deploy/economy");
+    const economyOut = resolve(__dirname, `../../chain-adapter/src/evm/deployments/${hre.network.name}-economy.json`);
+    const economy = {
+      croq: { address: croq.address, abi: croq.abi },
+      cCroq: { address: cCroq.address, abi: cCroq.abi },
+      pantry: { address: pantry.address, abi: pantry.abi },
+      market: pair && UNISWAP_V2[hre.network.name] ? { pair: pair.address, ...UNISWAP_V2[hre.network.name] } : null,
+    };
+    writeFileSync(economyOut, JSON.stringify(economy, null, 2) + "\n");
+    console.log(`wrote ${economyOut}`);
   },
 );

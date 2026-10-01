@@ -219,6 +219,142 @@ The loser's roll is chosen with an encrypted `select`, so the winner's roll for 
 trait is never in a decryptable ciphertext. Ties go to B. The score compared is the base
 score; the golden bonus only exists once a box is opened.
 
+## Croquettes
+
+Rules and numbers are in [CROQ.md](CROQ.md). Two more participants:
+
+- **Pantry**: holds the croquette reserve, the stashes and the burnt pile.
+- **cCROQ**: the confidential token, an ERC-7984 wrapper around the plain ERC-20 CROQ.
+
+### Buy and wrap, unwrap and sell
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor P as Player
+  participant U as Uniswap V2 router
+  participant C as CROQ (ERC-20)
+  participant W as cCROQ
+  P->>U: swapExactETHForTokens(min, [WETH, CROQ]) + ETH
+  U-->>P: CROQ (public)
+  P->>C: approve(cCROQ, n)
+  P->>W: wrap(player, n)
+  W->>C: transferFrom(player, cCROQ, n)
+  W->>W: mint n, encrypted, to the player
+  Note over P,W: The player's balance is now readable by the player only
+```
+
+The way back is two steps, because the amount must be decrypted publicly before plain
+tokens can move:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor P as Player
+  participant W as cCROQ
+  participant R as Relayer / KMS
+  participant C as CROQ (ERC-20)
+  participant U as Uniswap V2 router
+  P->>P: encrypt n for (cCROQ, player)
+  P->>W: unwrap(player, player, handle, proof)
+  W->>W: burn up to n; makePubliclyDecryptable(burnt)
+  W-->>P: UnwrapRequested(player, requestId)
+  P->>R: publicDecrypt([requestId])
+  R-->>P: n + KMS proof
+  P->>W: finalizeUnwrap(requestId, n, proof)
+  W->>C: transfer(player, n)
+  P->>U: swapExactTokensForETH(n, min, [CROQ, WETH])
+```
+
+If the balance was short, the burn moves 0 and the decrypted amount is 0. Anyone can
+send `finalizeUnwrap`; the tokens go to the address set in the request.
+
+### Claim the welcome bag and the purr
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder
+  participant Pa as Pantry
+  participant B as DoNotOpen
+  participant Co as Coprocessor
+  participant W as cCROQ
+  H->>Pa: claim(tokenIds), at most 10
+  loop each box
+    Pa->>B: ownerOf(tokenId) == holder
+    alt never claimed
+      Pa->>Pa: bags += 100, lastPurr = now
+    else whole days owed (at most 7)
+      Pa->>B: vetCertified(tokenId)
+      Pa->>Co: randEuint8() mod 5, × days, × 2 if certified, >> halvings
+    end
+  end
+  Pa->>Co: total = min(bags + draws, reserve); reserve -= total
+  Pa->>W: confidentialTransfer(holder, total)
+  Pa-->>H: WelcomeBag(tokenId, holder) per new box, Purred(holder, boxes)
+```
+
+### Feed croquettes
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor F as Anyone
+  participant App
+  participant Pa as Pantry
+  participant W as cCROQ
+  participant Co as Coprocessor
+  opt first meal
+    F->>W: setOperator(Pantry, until)
+  end
+  App->>App: Relayer SDK: encrypt n for (Pantry, feeder)
+  F->>Pa: feed(tokenId, handle, proof)
+  Pa->>Pa: box exists and is Sealed
+  Pa->>Co: offered = fromExternal(handle, proof)
+  Pa->>W: confidentialTransferFrom(feeder, Pantry, offered)
+  W-->>Pa: moved: offered, or 0 if the feeder holds less
+  Pa->>Co: burnt = moved × 10%; stash += moved - burnt
+  Pa-->>F: MealServed(tokenId, feeder, meals)
+```
+
+### Settle a stash
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor A as Anyone
+  participant B as DoNotOpen
+  participant Pa as Pantry
+  participant W as cCROQ
+  Note over B: the box was observed and finalised: status Revealed
+  A->>Pa: settle(tokenId)
+  Pa->>B: status, contentsOf(tokenId).state, ownerOf(tokenId)
+  alt alive, asleep
+    Pa->>W: confidentialTransfer(holder, stash)
+  else quantum
+    Pa->>W: confidentialTransfer(holder, stash × 50%)
+    Pa->>Pa: burnt += the other half
+  else ghost
+    Pa->>Pa: burnt += stash
+  end
+  Pa-->>A: Settled(tokenId, holder, state, payoutBps)
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Growing: first meal
+  Growing --> Growing: feed (sealed box only)
+  Growing --> Frozen: observe (no more meals)
+  Frozen --> Settled: finalizeObserve, then settle (anyone, once)
+  Settled --> [*]
+```
+
+### Send croquettes to another player
+
+`cCroq.confidentialTransfer(to, handle, proof)`, with the amount encrypted for
+(cCROQ, sender). Both sides can decrypt the amount moved; nobody else can. A sender
+who holds too little moves 0.
+
 ## What the app does when a step is interrupted
 
 Every two-step action can be picked up later, by anyone:
@@ -228,3 +364,4 @@ Every two-step action can be picked up later, by anyone:
 | Box `Observing` | "Finish opening" | `finishObserve` |
 | Alive check `Pending` | "Finish the check" | `finishProveAlive` |
 | Duel `Pending` | "Reveal the result" | `finishDuel` |
+| Box revealed, stash not settled | a settle action | `settle` |

@@ -27,6 +27,8 @@ export function errorCopy(error: unknown): string {
 /** One line for whatever the user is waiting on. `secret` decryptions are for their eyes only. */
 export function stepCopy(step: Step | null, secret = false): string {
   switch (step) {
+    case "encrypting":
+      return t("step.encrypting");
     case "wallet":
       return t("step.wallet");
     case "confirming":

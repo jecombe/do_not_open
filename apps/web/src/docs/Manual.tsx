@@ -3,14 +3,15 @@ import { spec } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { CatParade } from "./CatParade";
+import { AllocationBar, LeakTable, SettlementTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 
 const REPO = "https://github.com/jecombe/do_not_open";
 const DOCS = `${REPO}/blob/dev/docs`;
-const CONTRACT = "0x6C6210E9CB6CC5218F479806258E86B176aA5BD0";
+const CONTRACT = "0x880D284333F4001Bfd199899f8243D78b486e077";
 
-const SECTIONS = ["box", "cats", "seed", "privacy", "flows", "mechanics", "transfer", "code", "solana", "mainnet", "more"] as const;
+const SECTIONS = ["box", "cats", "seed", "privacy", "flows", "mechanics", "transfer", "croquettes", "code", "solana", "mainnet", "more"] as const;
 
 /** Highlights the section being read in the routing slip. */
 function useCurrentSection(): string {
@@ -53,6 +54,9 @@ const MECHANICS = [
   { key: "m6", cost: "docs.gasOnly" },
   { key: "m7", who: "docs.mech.m6.who", cost: "docs.gasOnly" },
   { key: "m8", who: "docs.mech.m2.who", cost: "0.0005 ETH" },
+  { key: "m9", who: "docs.mech.m4.who", cost: "docs.mech.m9.cost" },
+  { key: "m10", who: "docs.mech.m2.who", cost: "docs.gasOnly" },
+  { key: "m11", who: "docs.mech.m4.who", cost: "docs.gasOnly" },
 ] as const;
 
 const REFS = [
@@ -62,6 +66,7 @@ const REFS = [
   { key: "r4", href: `${DOCS}/ZAMA_NOTES.md` },
   { key: "r5", href: `${DOCS}/DESIGN.md` },
   { key: "r6", href: `${REPO}/blob/dev/packages/contracts-evm/README.md` },
+  { key: "r7", href: `${DOCS}/CROQ.md` },
 ] as const;
 
 export function Manual() {
@@ -69,6 +74,7 @@ export function Manual() {
   const locale = useLocale();
   const current = useCurrentSection();
   const supply = spec.collection.maxSupply.toLocaleString(locale);
+  const { economy } = spec;
 
   // The tab title and description follow the language too.
   useEffect(() => {
@@ -212,7 +218,7 @@ export function Manual() {
                     <tr key={row.key}>
                       <th scope="row">{t(`docs.mech.${row.key}`)}</th>
                       <td>{"who" in row ? t(row.who) : t(`docs.mech.${row.key}.who`, { n: Number(spec.mechanics.mint?.maxPerTx ?? 10) })}</td>
-                      <td>{row.cost.startsWith("docs.") ? t(row.cost as "docs.gasOnly") : row.cost}</td>
+                      <td>{row.cost.startsWith("docs.") ? t(row.cost as "docs.gasOnly", { burn: economy.meal.burnBps / 100 }) : row.cost}</td>
                       <td>{t(`docs.mech.${row.key}.public`)}</td>
                     </tr>
                   ))}
@@ -239,6 +245,42 @@ export function Manual() {
             </ol>
             <div className="prose">
               <p>{t("docs.transfer.p2")}</p>
+            </div>
+          </section>
+
+          <section id="croquettes">
+            <h2>{t("docs.section.croquettes")}</h2>
+            <div className="prose">
+              <p>{t("docs.croq.p1", { symbol: economy.token.symbol, csymbol: economy.token.confidentialSymbol, total: economy.token.totalSupply.toLocaleString(locale) })}</p>
+            </div>
+            <TwoTokensFigure />
+            <div className="prose">
+              <p>{t("docs.croq.p2")}</p>
+            </div>
+            <AllocationBar />
+            <div className="prose">
+              <p>
+                {t("docs.croq.p3", {
+                  bag: economy.welcomeBag.amount,
+                  max: economy.purr.maxPerDay,
+                  vet: economy.purr.vetMultiplier,
+                  days: economy.purr.maxDays,
+                })}
+              </p>
+            </div>
+            <TokenFlowFigure />
+            <div className="prose">
+              <p>{t("docs.croq.p4", { burn: economy.meal.burnBps / 100 })}</p>
+              <p>{t("docs.croq.p5")}</p>
+            </div>
+            <SettlementTable />
+            <div className="prose">
+              <p>{t("docs.croq.p6")}</p>
+              <p>{t("docs.croq.p7")}</p>
+            </div>
+            <LeakTable />
+            <div className="prose">
+              <p>{t("docs.croq.p8")}</p>
             </div>
           </section>
 

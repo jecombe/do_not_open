@@ -1,4 +1,5 @@
 import { Group, SpotLight, Vector3 } from "three";
+import { spec } from "@dno/game-spec";
 import { buildBoxSpec, buildCatSpec, type CatSpec } from "@dno/generator";
 import { BOX_SIZE, BoxOpener, BoxShaker, createBox, createCat, Unboxing, type BoxObject, type CatObject } from "@dno/scene";
 import { PALETTE, Stage } from "../docs/three/stage";
@@ -10,7 +11,7 @@ const randomSeed = () => {
   const w = crypto.getRandomValues(new Uint32Array(2));
   return (BigInt(w[0]!) << 32n) | BigInt(w[1]!);
 };
-const randomToken = () => Math.floor(Math.random() * 5000);
+const randomToken = () => Math.floor(Math.random() * spec.collection.maxSupply);
 
 interface Round {
   box: BoxObject;

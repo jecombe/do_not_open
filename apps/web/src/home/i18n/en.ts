@@ -47,6 +47,17 @@ export const homeEn = {
   "home.end.docs": "Read the manual",
   "home.foot": "DO NOT OPEN runs on a test network. Nothing here is worth money, only curiosity.",
   "home.foot.source": "Source code",
+  "home.nav.croq": "Croquettes",
+  "home.croq.title": "Croquettes",
+  "home.croq.bubble": "Crunch?",
+  "home.croq.p1": "Croquettes are the game's money: {total} of them, made once, never more. Feed any sealed box and the croquettes pile up in a hidden stash. Nobody can count it or take it out, not even the holder.",
+  "home.croq.outcomes": "Then the box is opened, and the cat decides:",
+  "home.croq.all": "{pct}% to the holder",
+  "home.croq.none": "All burnt: you were feeding a ghost",
+  "home.croq.split": "{pct}% to the holder, the rest burnt",
+  "home.croq.p2": "The stash goes with the box when it's sold. The buyer sees how many meals it had, never how much is inside, nor whether it's a ghost. Poker, with cats.",
+  "home.croq.p3": "Every box brings a welcome bag of {bag} croquettes and purrs a few more each day. Croquettes also trade on a public market, so you can buy more or cash out. Inside the game they're secret: nobody sees your balance.",
+  "home.croq.link": "How croquettes work",
 } as const satisfies Record<string, string>;
 
 export type HomeKey = keyof typeof homeEn;

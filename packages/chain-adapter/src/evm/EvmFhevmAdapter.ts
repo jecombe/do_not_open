@@ -16,6 +16,7 @@ import {
   type Address,
   type AliveCheck,
   type BoxInfo,
+  type BoxPantry,
   type BoxStatus,
   type BoxSummary,
   type ChainAdapter,
@@ -23,8 +24,10 @@ import {
   type DuelInfo,
   type DuelResult,
   type DuelStatus,
+  type EconomyInfo,
   type Fees,
   type PairInfo,
+  type TradeSide,
   type TraitRoll,
   type TxRecord,
   type WalletOption,
@@ -32,7 +35,21 @@ import {
 import type { ChainParams, WalletSource } from "./wallet";
 
 /** The part of the Relayer SDK instance this adapter uses. */
-export type Relayer = Pick<FhevmInstance, "generateKeypair" | "createEIP712" | "userDecrypt" | "publicDecrypt">;
+export type Relayer = Pick<FhevmInstance, "generateKeypair" | "createEIP712" | "userDecrypt" | "publicDecrypt" | "createEncryptedInput">;
+
+interface Deployed {
+  address: string;
+  abi: InterfaceAbi;
+}
+
+/** The croquette economy, as `dno:export` writes it next to the collection's deployment. */
+export interface EconomyDeployment {
+  croq: Deployed;
+  cCroq: Deployed;
+  pantry: Deployed;
+  /** A Uniswap V2 pool, when one was opened on this network. */
+  market: { pair: string; router: string; factory: string; weth: string } | null;
+}
 
 export interface EvmAdapterOptions {
   chain: ChainParams;
@@ -44,7 +61,21 @@ export interface EvmAdapterOptions {
   wallet: WalletSource;
   /** Loads the Relayer SDK (WASM in a browser). Called on the first decryption only. */
   loadRelayer: () => Promise<Relayer>;
+  /** Without it, every croquette call fails with "not deployed". */
+  economy?: EconomyDeployment;
 }
+
+const ROUTER_ABI = [
+  "function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)",
+  "function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) payable returns (uint[] amounts)",
+  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline) returns (uint[] amounts)",
+];
+const PAIR_ABI = ["function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)", "function token0() view returns (address)"];
+/** An operator approval given to the Pantry lasts this long. */
+const OPERATOR_DAYS = 365;
+/** A trade accepts at most this much less than its quote, in basis points. */
+const SLIPPAGE_BPS = 100n;
+const ZERO_HANDLE = "0x" + "0".repeat(64);
 
 const BOX_STATUS: BoxStatus[] = ["sealed", "opening", "revealed"];
 const ALIVE_CHECK: AliveCheck[] = ["none", "pending", "alive", "notAlive"];
@@ -84,10 +115,15 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private relayer: Promise<Relayer> | null = null;
   private permit: Permit | null = null;
   private constants: Promise<{ fees: Fees; maxSupply: number; maxPerTx: number }> | null = null;
+  private economyConstants: Promise<Omit<EconomyInfo, "wrapped" | "halvings" | "market">> | null = null;
+  /** Every contract this adapter may send to, so a receipt can be parsed whichever it hit. */
+  private readonly ifaces: Interface[];
 
   constructor(private readonly opts: EvmAdapterOptions) {
     this.iface = new Interface(opts.abi);
     this.contract = new Contract(opts.address, this.iface, opts.readProvider);
+    const e = opts.economy;
+    this.ifaces = [this.iface, ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI].map((abi) => new Interface(abi)) : [])];
     opts.wallet.onChange((signer) => void this.adopt(signer));
     void this.adopt(opts.wallet.current());
   }
@@ -363,6 +399,220 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, (c) => c.claim!());
   }
 
+  // --- croquettes ---
+
+  private eco(): EconomyDeployment {
+    const e = this.opts.economy;
+    if (!e) throw new ChainError("unknown", "The croquette economy is not deployed on this network.");
+    return e;
+  }
+
+  private at(deployed: Deployed | string, abi?: InterfaceAbi): Contract {
+    return typeof deployed === "string" ? new Contract(deployed, abi!, this.opts.readProvider) : new Contract(deployed.address, deployed.abi, this.opts.readProvider);
+  }
+
+  private link(address: string): string | null {
+    const explorer = this.opts.chain.explorerUrl;
+    return explorer ? `${explorer}/address/${address}` : null;
+  }
+
+  async economy(): Promise<EconomyInfo> {
+    const e = this.eco();
+    const pantry = this.at(e.pantry);
+    const croq = this.at(e.croq);
+    this.economyConstants ??= Promise.all([
+      croq.totalSupply!(),
+      pantry.welcomeBag!(),
+      pantry.purrMaxPerDay!(),
+      pantry.vetMultiplier!(),
+      pantry.purrMaxDays!(),
+      pantry.halvingPeriod!(),
+      pantry.mealBurnBps!(),
+      Promise.all([0, 1, 2, 3].map((s) => pantry.payoutBps!(s))),
+      pantry.maxBoxesPerClaim!(),
+    ]).then(([totalSupply, welcomeBag, purrMaxPerDay, vetMultiplier, purrMaxDays, halvingPeriod, mealBurnBps, payoutBps, maxBoxesPerClaim]) => ({
+      symbol: "CROQ",
+      confidentialSymbol: "cCROQ",
+      totalSupply,
+      welcomeBag: Number(welcomeBag),
+      purrMaxPerDay: Number(purrMaxPerDay),
+      vetMultiplier: Number(vetMultiplier),
+      purrMaxDays: Number(purrMaxDays),
+      halvingPeriod: Number(halvingPeriod),
+      mealBurnBps: Number(mealBurnBps),
+      payoutBps: payoutBps.map(Number),
+      maxBoxesPerClaim: Number(maxBoxesPerClaim),
+      links: { croq: this.link(e.croq.address), cCroq: this.link(e.cCroq.address), pantry: this.link(e.pantry.address) },
+    }));
+    this.economyConstants.catch(() => (this.economyConstants = null));
+
+    const market = e.market;
+    const [constants, wrapped, halvings, reserves, token0] = await this.reading(
+      Promise.all([
+        this.economyConstants,
+        croq.balanceOf!(e.cCroq.address),
+        pantry.halvings!(),
+        market ? this.at(market.pair, PAIR_ABI).getReserves!() : null,
+        market ? this.at(market.pair, PAIR_ABI).token0!() : null,
+      ]),
+    );
+    const croqFirst = token0 && String(token0).toLowerCase() === e.croq.address.toLowerCase();
+    return {
+      ...constants,
+      wrapped,
+      halvings: Number(halvings),
+      market:
+        market && reserves
+          ? {
+              name: "Uniswap V2",
+              poolUrl: this.link(market.pair),
+              appUrl: `https://app.uniswap.org/swap?chain=sepolia&inputCurrency=ETH&outputCurrency=${e.croq.address}`,
+              croqReserve: croqFirst ? reserves[0] : reserves[1],
+              nativeReserve: croqFirst ? reserves[1] : reserves[0],
+            }
+          : null,
+    };
+  }
+
+  async boxPantry(tokenId: number): Promise<BoxPantry> {
+    const pantry = this.at(this.eco().pantry);
+    const [meals, lastPurr, nextClaimAt, settled] = await this.reading(
+      Promise.all([pantry.meals!(tokenId), pantry.lastPurr!(tokenId), pantry.nextClaimAt!(tokenId), pantry.settled!(tokenId)]),
+    );
+    return { meals: Number(meals), welcomed: BigInt(lastPurr) !== 0n, nextClaimAt: Number(nextClaimAt), settled };
+  }
+
+  async croqBalance(owner: Address): Promise<bigint> {
+    return this.reading(this.at(this.eco().croq).balanceOf!(owner));
+  }
+
+  async confidentialBalance(opts?: ActionOptions): Promise<bigint> {
+    const cCroq = this.eco().cCroq.address;
+    const signer = this.signer();
+    const account = await signer.getAddress();
+    const handle: string = await this.reading(this.at(this.eco().cCroq).confidentialBalanceOf!(account));
+    if (handle === ZERO_HANDLE) return 0n;
+    const values = await this.decrypting(opts, async (relayer) => {
+      const permit = await this.permitFor(relayer, signer, account, opts);
+      return relayer.userDecrypt(
+        [{ handle, contractAddress: cCroq }],
+        permit.privateKey,
+        permit.publicKey,
+        permit.signature.replace("0x", ""),
+        this.permitContracts(),
+        account,
+        permit.start,
+        PERMIT_DAYS,
+      );
+    });
+    return BigInt((values as Record<string, bigint | boolean | string>)[handle] as bigint);
+  }
+
+  async claimCroquettes(tokenIds: number[], opts?: ActionOptions): Promise<void> {
+    const pantry = this.eco().pantry;
+    await this.send(opts, () => this.writer(pantry).claim!(tokenIds));
+  }
+
+  async feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void> {
+    const e = this.eco();
+    const account = await this.signer().getAddress();
+    await this.ensureOperator(account, e.pantry.address, opts);
+    const input = await this.encrypt64(e.pantry.address, account, amount, opts);
+    await this.send(opts, () => this.writer(e.pantry).feed!(tokenId, input.handles[0], input.inputProof));
+  }
+
+  async settle(tokenId: number, opts?: ActionOptions): Promise<void> {
+    await this.send(opts, () => this.writer(this.eco().pantry).settle!(tokenId));
+  }
+
+  async wrap(amount: bigint, opts?: ActionOptions): Promise<void> {
+    const e = this.eco();
+    const account = await this.signer().getAddress();
+    await this.ensureAllowance(e.croq, e.cCroq.address, account, amount, opts);
+    await this.send(opts, () => this.writer(e.cCroq).wrap!(account, amount));
+  }
+
+  async unwrap(amount: bigint, opts?: ActionOptions): Promise<void> {
+    const e = this.eco();
+    const account = await this.signer().getAddress();
+    const input = await this.encrypt64(e.cCroq.address, account, amount, opts);
+    const receipt = await this.send(opts, () => this.writer(e.cCroq)["unwrap(address,address,bytes32,bytes)"]!(account, account, input.handles[0], input.inputProof));
+    const requested = this.events(receipt, "UnwrapRequested", e.cCroq.address)[0];
+    if (!requested) throw new ChainError("unknown", "The unwrap request was not found in the receipt.");
+    const requestId: string = requested.unwrapRequestId;
+    const decrypted = await this.publicDecrypt([requestId], opts);
+    const cleartext = BigInt(decrypted.clearValues[requestId as `0x${string}`] as bigint);
+    opts?.onStep?.("proving");
+    await this.send(opts, () => this.writer(e.cCroq).finalizeUnwrap!(requestId, cleartext, decrypted.decryptionProof), false);
+  }
+
+  async sendCroquettes(to: Address, amount: bigint, opts?: ActionOptions): Promise<void> {
+    const e = this.eco();
+    const account = await this.signer().getAddress();
+    const input = await this.encrypt64(e.cCroq.address, account, amount, opts);
+    await this.send(opts, () => this.writer(e.cCroq)["confidentialTransfer(address,bytes32,bytes)"]!(to, input.handles[0], input.inputProof));
+  }
+
+  async quote(side: TradeSide, amountIn: bigint): Promise<bigint> {
+    const { market, croq } = this.eco();
+    if (!market) throw new ChainError("unknown", "There is no market on this network.");
+    if (amountIn <= 0n) return 0n;
+    const path = side === "buy" ? [market.weth, croq.address] : [croq.address, market.weth];
+    const amounts: bigint[] = await this.reading(this.at(market.router, ROUTER_ABI).getAmountsOut!(amountIn, path));
+    return amounts[amounts.length - 1]!;
+  }
+
+  async trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void> {
+    const { market, croq } = this.eco();
+    if (!market) throw new ChainError("unknown", "There is no market on this network.");
+    const account = await this.signer().getAddress();
+    const minOut = ((await this.quote(side, amountIn)) * (10_000n - SLIPPAGE_BPS)) / 10_000n;
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+    const router = this.writer({ address: market.router, abi: ROUTER_ABI });
+    if (side === "buy") {
+      await this.send(opts, () => router.swapExactETHForTokens!(minOut, [market.weth, croq.address], account, deadline, { value: amountIn }));
+    } else {
+      await this.ensureAllowance(croq, market.router, account, amountIn, opts);
+      await this.send(opts, () => router.swapExactTokensForETH!(amountIn, minOut, [croq.address, market.weth], account, deadline));
+    }
+  }
+
+  private writer(deployed: Deployed): Contract {
+    return new Contract(deployed.address, deployed.abi, this.signer());
+  }
+
+  private async ensureAllowance(token: Deployed, spender: string, account: Address, amount: bigint, opts?: ActionOptions): Promise<void> {
+    const allowance: bigint = await this.reading(this.at(token).allowance!(account, spender));
+    if (allowance >= amount) return;
+    await this.send(opts, () => this.writer(token).approve!(spender, amount));
+  }
+
+  /** ERC-7984 has no allowances: the Pantry must be an operator to pull a meal. Asked once a year. */
+  private async ensureOperator(account: Address, operator: string, opts?: ActionOptions): Promise<void> {
+    const cCroq = this.eco().cCroq;
+    if (await this.reading(this.at(cCroq).isOperator!(account, operator))) return;
+    const until = Math.floor(Date.now() / 1000) + OPERATOR_DAYS * 86_400;
+    await this.send(opts, () => this.writer(cCroq).setOperator!(operator, until));
+  }
+
+  /** Encrypts one 64-bit amount, in this page, for `contract` and `account` only. */
+  private async encrypt64(contract: string, account: Address, amount: bigint, opts?: ActionOptions) {
+    if (amount < 0n || amount >= 1n << 64n) throw new ChainError("unknown", "That amount does not fit.");
+    opts?.onStep?.("encrypting");
+    try {
+      const relayer = await this.loadRelayer();
+      return await relayer.createEncryptedInput(contract, account).add64(amount).encrypt();
+    } catch (error) {
+      throw new ChainError("decryption", `Could not encrypt the amount: ${(error as Error)?.message ?? "unknown error"}`);
+    }
+  }
+
+  /** Contracts a user-decryption permit covers: the boxes, and cCROQ balances when there are any. */
+  private permitContracts(): string[] {
+    const e = this.opts.economy;
+    return e ? [this.opts.address, e.cCroq.address] : [this.opts.address];
+  }
+
   // --- internals ---
 
   private signer(): Signer {
@@ -384,7 +634,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       const tx = await call(this.contract.connect(signer) as Contract);
       if (announce) opts?.onStep?.("confirming");
       const explorer = this.opts.chain.explorerUrl;
-      sent = { hash: tx.hash, call: this.iface.parseTransaction({ data: tx.data })?.name ?? "?", status: "sent", url: explorer ? `${explorer}/tx/${tx.hash}` : null };
+      sent = { hash: tx.hash, call: this.callName(tx.data), status: "sent", url: explorer ? `${explorer}/tx/${tx.hash}` : null };
       opts?.onTx?.(sent);
       const receipt = await tx.wait();
       if (!receipt || receipt.status !== 1) throw new ChainError("reverted", "The transaction failed on-chain.");
@@ -413,10 +663,19 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }
   }
 
-  private events(receipt: ContractTransactionReceipt, name: string) {
+  private callName(data: string): string {
+    for (const iface of this.ifaces) {
+      const parsed = iface.parseTransaction({ data });
+      if (parsed) return parsed.name;
+    }
+    return "?";
+  }
+
+  private events(receipt: ContractTransactionReceipt, name: string, address: string = this.opts.address) {
+    const iface = address === this.opts.address ? this.iface : this.ifaces.find((i) => i.getEvent(name)) ?? this.iface;
     return receipt.logs.flatMap((log) => {
-      if (log.address.toLowerCase() !== this.opts.address.toLowerCase()) return [];
-      const parsed = this.iface.parseLog(log);
+      if (log.address.toLowerCase() !== address.toLowerCase()) return [];
+      const parsed = iface.parseLog(log);
       return parsed?.name === name ? [parsed.args] : [];
     });
   }
@@ -467,7 +726,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
         permit.privateKey,
         permit.publicKey,
         permit.signature.replace("0x", ""),
-        [contract],
+        this.permitContracts(),
         account,
         permit.start,
         PERMIT_DAYS,
@@ -488,7 +747,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if (p && p.account === account && now < p.start + PERMIT_DAYS * 86_400 - 600) return p;
 
     const keypair = relayer.generateKeypair();
-    const eip712 = relayer.createEIP712(keypair.publicKey, [this.opts.address], now, PERMIT_DAYS);
+    const eip712 = relayer.createEIP712(keypair.publicKey, this.permitContracts(), now, PERMIT_DAYS);
     opts?.onStep?.("wallet");
     const signature = await signer.signTypedData(
       eip712.domain as never,
@@ -507,10 +766,13 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if (isError(error, "CALL_EXCEPTION")) {
       let reason = error.revert?.name;
       if (!reason && error.data && error.data !== "0x") {
-        try {
-          reason = this.iface.parseError(error.data)?.name;
-        } catch {
-          // Not one of this contract's errors.
+        for (const iface of this.ifaces) {
+          try {
+            reason = iface.parseError(error.data)?.name;
+          } catch {
+            // Not one of this contract's errors.
+          }
+          if (reason) break;
         }
       }
       return new ChainError("reverted", reason ? `The contract refused: ${reason}.` : (error.shortMessage ?? "The contract refused."), reason);

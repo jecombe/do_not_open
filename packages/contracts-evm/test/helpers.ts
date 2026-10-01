@@ -2,8 +2,14 @@ import { FhevmType } from "@fhevm/hardhat-plugin";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
-import { configParamsFromSpec, type ConfigParams } from "../lib/specParams";
-import { DoNotOpen, DoNotOpenConfig } from "../types";
+import {
+  configParamsFromSpec,
+  economyFromSpec,
+  pantryParamsFromSpec,
+  type ConfigParams,
+  type PantryParams,
+} from "../lib/specParams";
+import { ConfidentialCroq, Croq, DoNotOpen, DoNotOpenConfig, Pantry } from "../types";
 
 export const FEES = {
   mint: ethers.parseEther("0.002"),
@@ -66,3 +72,50 @@ export async function finalizeDuel(dno: DoNotOpen, duelId: number | bigint, send
 }
 
 export const traitByte = (seed: bigint, offset: number) => Number((seed >> BigInt(offset)) & 0xffn);
+
+/** Croq, its confidential wrapper and a Pantry around `dno`, with the reserve funded. */
+export async function deployEconomy(dno: DoNotOpen, overrides: Partial<PantryParams> = {}, reserve?: bigint) {
+  const [deployer] = await ethers.getSigners();
+  const { totalSupply, allocation } = economyFromSpec();
+  const croq = (await (await ethers.getContractFactory("Croq")).deploy(totalSupply, deployer!.address)) as unknown as Croq;
+  const cCroq = (await (await ethers.getContractFactory("ConfidentialCroq")).deploy(
+    await croq.getAddress(),
+    "",
+  )) as unknown as ConfidentialCroq;
+  const pantry = (await (await ethers.getContractFactory("Pantry")).deploy(
+    await dno.getAddress(),
+    await cCroq.getAddress(),
+    pantryParamsFromSpec(overrides),
+  )) as unknown as Pantry;
+  const funded = reserve ?? allocation.gameReserve + allocation.welcomeBags;
+  if (funded > 0n) {
+    await (await croq.approve(await pantry.getAddress(), funded)).wait();
+    await (await pantry.fund(funded)).wait();
+  }
+  return {
+    croq,
+    cCroq,
+    pantry,
+    croqAddress: await croq.getAddress(),
+    cCroqAddress: await cCroq.getAddress(),
+    pantryAddress: await pantry.getAddress(),
+  };
+}
+
+/** Gives `who` `amount` cCROQ: plain CROQ from the deployer, wrapped by `who`. */
+export async function giveCroquettes(croq: Croq, cCroq: ConfidentialCroq, who: HardhatEthersSigner, amount: bigint) {
+  await (await croq.transfer(who.address, amount)).wait();
+  await (await croq.connect(who).approve(await cCroq.getAddress(), amount)).wait();
+  await (await cCroq.connect(who).wrap(who.address, amount)).wait();
+}
+
+/** `who`'s cCROQ balance, decrypted the way the app does it: by the holder, for the holder. */
+export async function balanceOf(cCroq: ConfidentialCroq, who: HardhatEthersSigner) {
+  const handle = await cCroq.confidentialBalanceOf(who.address);
+  if (handle === ethers.ZeroHash) return 0n;
+  return fhevm.userDecryptEuint(FhevmType.euint64, handle, await cCroq.getAddress(), who);
+}
+
+/** Mock only: reads any euint64 straight from the local coprocessor. */
+export const peek64 = async (handle: string) =>
+  handle === ethers.ZeroHash ? 0n : fhevm.debugger.decryptEuint(FhevmType.euint64, handle);

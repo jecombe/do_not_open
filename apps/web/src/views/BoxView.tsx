@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sameAddress, type ActionOptions, type BoxInfo, type Step, type TraitRoll } from "@dno/chain-adapter";
+import { sameAddress, type ActionOptions, type BoxInfo, type BoxPantry, type Step, type TraitRoll } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -13,6 +13,7 @@ import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scen
 import { Declaration } from "./Declaration";
 import { Stage } from "./Stage";
 import { StepTracker, type PlannedStep } from "./StepTracker";
+import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
 
 interface Props {
@@ -51,6 +52,15 @@ const PLANS: Record<string, PlannedStep[]> = {
     { step: "wallet", label: "track.sign" },
     { step: "confirming", label: "track.chain" },
   ],
+  serve: [
+    { step: "encrypting", label: "track.encrypt" },
+    { step: "wallet", label: "track.sign" },
+    { step: "confirming", label: "track.chain" },
+  ],
+  settle: [
+    { step: "wallet", label: "track.sign" },
+    { step: "confirming", label: "track.chain" },
+  ],
 };
 /** Finishing a half-done open or check starts at the decryption. */
 const resumed = (plan: PlannedStep[]) => plan.slice(2);
@@ -79,7 +89,10 @@ const ago = (at: number, locale: string) => {
 };
 
 /** A note is stored as a message key, so it follows a language change. */
-type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive">;
+type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive" | "box.noteServed" | "box.noteSettled">;
+
+/** Share of the stash a cat in each state pays its holder, by state id. */
+const PAYOUT_BPS = [...gameSpec.states].sort((a, b) => a.id - b.id).map((s) => gameSpec.economy.settlement.payoutBps[s.key]);
 
 export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview }: Props) {
   const { adapter, account, collection, refresh, connect } = useChain();
@@ -88,6 +101,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const scene = useRef<BoxSceneHandle>(null);
   const action = useAction();
   const [loaded, setInfo] = useState<BoxInfo | null>(null);
+  const [pantry, setPantry] = useState<{ tokenId: number; at: BoxPantry } | null>(null);
+  const [serving, setServing] = useState(false);
+  const [croq, setCroq] = useState("");
   const [missingId, setMissingId] = useState<number | null>(null);
   const [felt, setFelt] = useState<TraitRoll | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -111,13 +127,21 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
       setMissingId((m) => (m === tokenId ? null : m));
     } catch {
       setMissingId(tokenId);
+      return;
     }
+    // The stash lives next door, in the Pantry. Without it the box still works.
+    adapter.boxPantry(tokenId).then(
+      (at) => setPantry({ tokenId, at }),
+      () => setPantry(null),
+    );
   }, [adapter, tokenId]);
+  const stash = pantry?.tokenId === tokenId ? pantry.at : null;
 
   // The box shows the wait too: restless for a shake, a heartbeat for the vet, building up to the lid for an open.
   useEffect(() => {
     const kind = action.busy === "open" ? "open" : action.busy === "shake" ? "peek" : action.busy === "alive" ? "vet" : null;
-    scene.current?.wait(kind ? action.step : null, kind ?? "open");
+    // Encrypting happens before anything is sent: the box has nothing to show yet.
+    scene.current?.wait(kind && action.step !== "encrypting" ? action.step : null, kind ?? "open");
   }, [action.busy, action.step]);
 
   const contract = collection?.address ?? null;
@@ -132,6 +156,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     setNote(null);
     setOpening(false);
     setOut(false);
+    setServing(false);
+    setCroq("");
     reset();
     void load();
   }, [load, reset]);
@@ -178,6 +204,32 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     });
     if (!done) return;
     setNote("box.noteFed");
+    void load();
+  };
+
+  const croqAmount = parseAmount(croq, 0);
+  const serve = async () => {
+    if (!croqAmount) return;
+    start();
+    const done = await action.run("serve", async (o) => {
+      await adapter.feedCroquettes(tokenId, croqAmount, cue(o, "confirming", () => scene.current?.feed()));
+      return true;
+    });
+    if (!done) return;
+    setServing(false);
+    setCroq("");
+    setNote("box.noteServed");
+    void load();
+  };
+
+  const settle = async () => {
+    start();
+    const done = await action.run("settle", async (o) => {
+      await adapter.settle(tokenId, o);
+      return true;
+    });
+    if (!done) return;
+    setNote("box.noteSettled");
     void load();
   };
 
@@ -271,11 +323,24 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               {info!.aliveCheck === "alive" ? t("box.vetBefore") : ""}
               {info!.partner !== null ? t("box.entangledWith", { serial: buildBoxSpec(info!.partner).serial }) : ""}
             </p>
+            {stash && stash.meals > 0 && (
+              <p className="fine">
+                {stash.settled
+                  ? t("box.stashSettled", { count: stash.meals })
+                  : t("box.stashWaiting", { count: stash.meals, pct: PAYOUT_BPS[info!.revealed!.state]! / 100 })}
+              </p>
+            )}
             <div className="actions">
               <button type="button" className="stamp-button" onClick={() => inspect(true)}>
                 {t("box.takeOut")}
               </button>
+              {stash && stash.meals > 0 && !stash.settled && account && (
+                <button type="button" className="plain-button" onClick={() => void settle()} disabled={!!busy}>
+                  {busy === "settle" ? t("box.settling") : t("box.settle")}
+                </button>
+              )}
             </div>
+            {action.error ? <p className="fine problem">{action.error}</p> : note === "box.noteSettled" ? <p className="fine">{t(note)}</p> : null}
             {steps}
           </Declaration>
         ) : (
@@ -299,8 +364,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               </div>
             </dl>
 
-            {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0) && (
+            {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0 || (stash?.meals ?? 0) > 0) && (
               <ul className="marks">
+                {stash && stash.meals > 0 && <li>{t("box.markStash", { count: stash.meals })}</li>}
                 {info.aliveCheck === "alive" && <li className="mark-good">{t("box.markVet")}</li>}
                 {info.aliveCheck === "notAlive" && <li>{t("box.markNotAlive")}</li>}
                 {info.partner !== null && <li className="mark-entangled">{t("box.markEntangled", { serial: buildBoxSpec(info.partner).serial })}</li>}
@@ -350,6 +416,11 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   <button type="button" className="plain-button" onClick={() => void feed()} disabled={!!busy}>
                     {busy === "feed" ? t("box.feeding") : t("box.feed")}
                   </button>
+                  {stash && (
+                    <button type="button" className="plain-button" onClick={() => setServing((s) => !s)} disabled={!!busy} aria-expanded={serving}>
+                      {busy === "serve" ? t("box.serving") : t("box.serve")}
+                    </button>
+                  )}
                   {isHolder && (
                     <>
                       <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy}>
@@ -368,6 +439,22 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 </>
               )}
             </div>
+
+            {serving && info?.status === "sealed" && account && (
+              <form
+                className="find pantry-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void serve();
+                }}
+              >
+                <label htmlFor="serve-amount">{t("box.serveLabel")}</label>
+                <input id="serve-amount" inputMode="numeric" autoComplete="off" value={croq} onChange={(e) => setCroq(e.target.value)} placeholder="50" disabled={!!busy} />
+                <button type="submit" className="plain-button" disabled={!!busy || !croqAmount}>
+                  {t("box.serveGo")}
+                </button>
+              </form>
+            )}
 
             <div className="felt" aria-live="polite">
               {action.error ? (
@@ -391,6 +478,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   </p>
                   <p className="fine">{t("box.shakeOnlyYou")}</p>
                 </>
+              ) : serving ? (
+                <p className="fine">{t("box.serveHint", { burn: gameSpec.economy.meal.burnBps / 100 })}</p>
               ) : note ? (
                 <p className="fine">{t(note)}</p>
               ) : !info ? null : !account ? (

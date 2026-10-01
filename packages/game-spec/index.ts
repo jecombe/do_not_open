@@ -60,7 +60,29 @@ export interface GameSpec {
     goldenScoreBonus: number;
   };
   mechanics: Record<string, { paid: boolean; rule: string; [k: string]: unknown }>;
+  economy: EconomySpec;
   events: Record<string, { fields: string[]; note?: string }>;
+}
+
+export type AllocationKey = "gameReserve" | "welcomeBags" | "liquidity" | "treasury";
+
+/** The CROQ economy. Amounts are whole croquettes: the token has no decimals. */
+export interface EconomySpec {
+  token: {
+    name: string;
+    symbol: string;
+    confidentialName: string;
+    confidentialSymbol: string;
+    decimals: number;
+    totalSupply: number;
+    rule: string;
+  };
+  allocation: { key: AllocationKey; name: string; amount: number; rule: string }[];
+  welcomeBag: { amount: number; rule: string };
+  purr: { maxPerDay: number; vetMultiplier: number; maxDays: number; halvingDays: number; rule: string };
+  meal: { burnBps: number; rule: string };
+  settlement: { payoutBps: Record<StateKey, number>; rule: string };
+  burn: { rule: string };
 }
 
 export const spec = raw as unknown as GameSpec;

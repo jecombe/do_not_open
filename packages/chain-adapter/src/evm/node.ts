@@ -1,10 +1,10 @@
 import { JsonRpcProvider, Wallet, type Signer } from "ethers";
-import { SEPOLIA, SEPOLIA_DEPLOYMENT } from "./chains";
+import { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY } from "./chains";
 import { EvmFhevmAdapter } from "./EvmFhevmAdapter";
 import { StaticWallet } from "./wallet";
 
 export { EvmFhevmAdapter } from "./EvmFhevmAdapter";
-export { SEPOLIA, SEPOLIA_DEPLOYMENT } from "./chains";
+export { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY } from "./chains";
 export * from "../types";
 
 export interface NodeEvmOptions {
@@ -26,6 +26,8 @@ export function createSepoliaNodeAdapter(opts: NodeEvmOptions = {}): EvmFhevmAda
     chain,
     address: opts.address || SEPOLIA_DEPLOYMENT.address,
     abi: SEPOLIA_DEPLOYMENT.abi,
+    // An address override points at another collection: its economy, if any, is not this one.
+    economy: opts.address ? undefined : SEPOLIA_ECONOMY,
     readProvider: provider,
     wallet: signer
       ? new StaticWallet(signer)

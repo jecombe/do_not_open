@@ -10,7 +10,7 @@ flowchart TB
     scene["scene<br/>three.js builders, effects, sound"]
   end
   subgraph chain["Chain-specific"]
-    evm["contracts-evm<br/>DoNotOpen.sol, DoNotOpenConfig.sol"]
+    evm["contracts-evm<br/>DoNotOpen.sol, DoNotOpenConfig.sol<br/>Croq.sol, ConfidentialCroq.sol, Pantry.sol"]
     impl["chain-adapter / evm<br/>ethers + Relayer SDK"]
     sol["chain-adapter / solana<br/>not started"]
   end
@@ -41,21 +41,41 @@ The last row is the portability rule of the project. It is checked the blunt way
 
 ## One source of truth
 
-`packages/game-spec/spec.json` holds every number of the game. Three consumers read it
-and tests keep them in agreement:
+`packages/game-spec/spec.json` holds every number of the game, the croquette economy
+included (the `economy` section). Three consumers read it and tests keep them in
+agreement:
 
 ```mermaid
 flowchart LR
   json["spec.json"]
   json --> ts["generator (TypeScript)<br/>decodeSeed, resolveTraits, rarityScore"]
   json -- "configParamsFromSpec()<br/>+ keccak256 of the file" --> cfg["DoNotOpenConfig (Solidity)<br/>decode(seed)"]
+  json -- "pantryParamsFromSpec()<br/>economyFromSpec()" --> pantry["Pantry + Croq (Solidity)<br/>bag, purr, burn, payouts, supply split"]
   json --> mock["MockAdapter"]
   ts <-- "test: same state, rolls and score<br/>for random seeds" --> cfg
   ts <-- "smoke test: every reveal on Sepolia<br/>matches the generator" --> cfg
 ```
 
 The config contract stores the hash of the spec file it was built from
-(`specHash`), so anyone can check which rules a deployment runs.
+(`specHash`), so anyone can check which rules a deployment runs. The Pantry keeps its
+numbers as public immutables (`welcomeBag`, `purrMaxPerDay`, `mealBurnBps`,
+`payoutBps(state)`...).
+
+## Contracts
+
+```mermaid
+flowchart LR
+  cfg["DoNotOpenConfig<br/>rules, decode(seed)"] --> dno["DoNotOpen<br/>ERC-721, seeds, shake, observe, duel"]
+  croq["Croq<br/>ERC-20, 20M fixed"] -- "underlying" --> ccroq["ConfidentialCroq<br/>ERC-7984 wrapper, cCROQ"]
+  pantry["Pantry<br/>reserve, stashes, burnt pile"] -- "reads ownerOf, status,<br/>vetCertified, contentsOf" --> dno
+  pantry -- "confidentialTransferFrom,<br/>confidentialTransfer, wrap" --> ccroq
+  croq -- "4M + ETH" --> pair["Uniswap V2 pair<br/>CROQ/WETH"]
+```
+
+`DoNotOpen` does not know the Pantry exists. The economy was added next to it, and
+could be replaced without touching a box. The Pantry holds all its croquettes as one
+cCROQ balance and splits it into encrypted buckets: the reserve, one stash per box, and
+the burnt pile. See [CROQ.md](CROQ.md).
 
 ## Data flow at run time
 
@@ -63,7 +83,9 @@ The config contract stores the hash of the spec file it was built from
 flowchart LR
   user((User)) --> web["apps/web"]
   web -- "ChainAdapter calls" --> adapter["EvmFhevmAdapter"]
-  adapter -- "transactions" --> wallet["Browser wallet"] --> chain["DoNotOpen<br/>on the host chain"]
+  adapter -- "transactions" --> wallet["Browser wallet"] --> chain["DoNotOpen, Pantry, cCROQ<br/>on the host chain"]
+  wallet --> uni["Uniswap V2 router<br/>CROQ market"]
+  adapter -- "encrypted inputs<br/>(meal, transfer, unwrap)" --> sdk["Relayer SDK<br/>in the page"]
   adapter -- "reads" --> rpc["Public RPC"] --> chain
   chain -- "symbolic FHE ops, ACL" --> copro["Zama coprocessor"]
   adapter -- "userDecrypt / publicDecrypt" --> relayer["Zama relayer"] --> kms["KMS (threshold)"]
@@ -76,6 +98,9 @@ Two things are worth noticing:
 
 - The contract never sees a plaintext secret until a box is opened. It manipulates
   handles; the coprocessor does the arithmetic on ciphertexts.
+- Croquette amounts are the only secrets that come from users. The page encrypts them
+  with the Relayer SDK and sends a ciphertext with an input proof; the contract never
+  sees the number.
 - The app never trusts the chain for the look of a cat. The chain reveals a seed; the
   generator turns it into a `CatSpec`. The chain also stores state, rolls and score, and
   the app compares them with what the generator derived (`catFromRevealed`).

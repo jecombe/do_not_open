@@ -66,3 +66,56 @@ export function configParamsFromSpec(overrides: Partial<ConfigParams> = {}): Con
     ...overrides,
   };
 }
+
+export interface PantryParams {
+  welcomeBag: number;
+  purrMaxPerDay: number;
+  vetMultiplier: number;
+  purrMaxDays: number;
+  halvingPeriod: number;
+  mealBurnBps: number;
+  payoutBps: [number, number, number, number];
+  maxBoxesPerClaim: number;
+}
+
+/** Most boxes one Pantry.claim may cover; keeps a claim well under the 20M HCU limit. */
+export const MAX_BOXES_PER_CLAIM = 10;
+
+/** The Pantry constructor argument, read from the economy section of the spec. */
+export function pantryParamsFromSpec(overrides: Partial<PantryParams> = {}): PantryParams {
+  const { spec } = loadSpec();
+  const e = spec.economy;
+  const states = [...spec.states].sort((a: { id: number }, b: { id: number }) => a.id - b.id);
+  const payout = states.map((s: { key: string }) => {
+    const bps = e.settlement.payoutBps[s.key];
+    if (typeof bps !== "number") throw new Error(`economy.settlement has no payout for state "${s.key}"`);
+    return bps;
+  });
+  return {
+    welcomeBag: e.welcomeBag.amount,
+    purrMaxPerDay: e.purr.maxPerDay,
+    vetMultiplier: e.purr.vetMultiplier,
+    purrMaxDays: e.purr.maxDays,
+    halvingPeriod: e.purr.halvingDays * 86_400,
+    mealBurnBps: e.meal.burnBps,
+    payoutBps: payout as [number, number, number, number],
+    maxBoxesPerClaim: MAX_BOXES_PER_CLAIM,
+    ...overrides,
+  };
+}
+
+/** Token supply and how it is split, checked to add up. */
+export function economyFromSpec() {
+  const { spec } = loadSpec();
+  const e = spec.economy;
+  const allocation = Object.fromEntries(
+    e.allocation.map((a: { key: string; amount: number }) => [a.key, BigInt(a.amount)]),
+  ) as Record<"gameReserve" | "welcomeBags" | "liquidity" | "treasury", bigint>;
+  const totalSupply = BigInt(e.token.totalSupply);
+  const sum = Object.values(allocation).reduce((a, b) => a + b, 0n);
+  if (sum !== totalSupply) throw new Error(`allocation adds up to ${sum}, total supply is ${totalSupply}`);
+  if (allocation.welcomeBags !== BigInt(spec.collection.maxSupply) * BigInt(e.welcomeBag.amount)) {
+    throw new Error("welcomeBags must equal maxSupply x welcomeBag");
+  }
+  return { totalSupply, allocation };
+}

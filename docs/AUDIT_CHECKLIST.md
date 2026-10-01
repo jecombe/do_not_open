@@ -5,7 +5,8 @@ for an external audit, not a substitute for one. **No third party has audited th
 contract, and it must not go to mainnet before one has.**
 
 Scope: `DoNotOpen.sol` and `DoNotOpenConfig.sol` as deployed on Sepolia at
-`0x6C6210E9CB6CC5218F479806258E86B176aA5BD0` (20,468 bytes), plus the parts of the
+`0x880D284333F4001Bfd199899f8243D78b486e077` (10,000 boxes), the croquette contracts
+`Croq.sol`, `ConfidentialCroq.sol` and `Pantry.sol` (section 9), plus the parts of the
 adapter and the metadata pipeline that could leak or mislead.
 
 Status values: **Pass** (checked, with the evidence named), **Accepted** (a known
@@ -26,6 +27,10 @@ mainnet), **Not done** (a check nobody has run).
 | O8 | Unlimited open challenges: a box's pending duel can be buried by spam in the app | Low (front end) | `challengeDuel`, adapter `pair()` |
 | O9 | Mainnet relayer needs an API key behind a proxy; none exists | Blocker for mainnet | adapter |
 | O10 | Static analysis, fuzzing, Sepolia test suite and Etherscan verification not run | Process | see the end |
+| O11 | The reserve is unreadable: nobody can tell when it runs dry, and claims then pay 0 silently | Low (UX) | `Pantry.claim` |
+| O12 | Welcome bags and purrs share one reserve: an active purr can leave late boxes without a bag | Low (fairness) | `Pantry.claim` |
+| O13 | The 5M treasury sits with the deployer's hot key (the LP tokens were sent to `0x…dEaD`: the seed liquidity is locked) | Low on testnet, High on mainnet | deploy |
+| O14 | Selling CROQ or seeding its market on mainnet is regulated (MiCA in the EU) | Blocker for a mainnet market | economy |
 
 Details and the rest of the checks follow.
 
@@ -62,7 +67,7 @@ Details and the rest of the checks follow.
 | `proveAlive` publishes exactly one bit | Pass | One `ebool` is made public. Test: "publishes exactly one bit and grants the badge when it is true" |
 | Feed count does not give the affection away | Pass | Each feed adds an encrypted draw in 0..3. Test: "lets anyone feed a box and adds a hidden amount each time" |
 | Public handles (`seedHandle`, `lastShake`, `aliveHandle`, `duelHandles`) leak nothing | Pass | A handle is an identifier. Decryption is gated by the ACL |
-| No encrypted input from users | Pass | Every secret is drawn on-chain. There is no input proof to forge and no `fromExternal` call |
+| No encrypted input from users in `DoNotOpen` | Pass | Every secret of a box is drawn on-chain. There is no `fromExternal` call in `DoNotOpen`. User inputs exist only in the Pantry and cCROQ (section 9) |
 | Gas or HCU side channels | Accepted | Whether a box has a cached score, or was ever fed, is visible from cost and handle count. Both facts are public anyway |
 | Sealed metadata cannot leak the seed | Pass | `buildBoxSpec(tokenId)` and `sealedMetadata` take the token id and public facts only. Test: "builds sealed metadata from the token id and public facts only" |
 
@@ -95,7 +100,7 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | Token ids carry no information | Pass | Sequential. The look of a sealed box depends on the id only |
 | Supply and batch limits | Pass | Test: "enforces price, batch size and supply" |
 | One FHE operation per box | Pass | Test: "costs one FHE operation per box" (24,000 HCU) |
-| **O2. Supply sniping** | Open | Front-running cannot pick good boxes, but nothing stops one account from minting all 5,000 in 500 transactions. If distribution matters: a per-wallet cap, an allowlist phase, or a signature gate. Decide before mainnet |
+| **O2. Supply sniping** | Open | Front-running cannot pick good boxes, but nothing stops one account from minting all 10,000 in 1,000 transactions. With CROQ, each box also carries a 100-croquette welcome bag, which raises the incentive. If distribution matters: a per-wallet cap, an allowlist phase, or a signature gate. Decide before mainnet |
 | Information asymmetry after mint | Accepted | The holder can learn the traits; a buyer cannot without paying for shakes |
 
 ## 5. Game logic
@@ -113,7 +118,7 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | Opening a partner costs its holder nothing and asks nothing | Accepted | That is what the two holders agreed to |
 | **O8. Challenge spam** | Open | Any holder can file unlimited challenges against any sealed box. On-chain this costs only the spammer. In the app, `pair()` looks at the last 40 duels, so a real pending challenge can be pushed out of view. Fix in the adapter (index by event) or on-chain (one open challenge per pair) |
 | Unbounded loops | Pass | Mint loops at most `maxPerTx` (10); score loops are fixed at 3 and 5 |
-| Casts | Pass | Token ids fit `uint32` (supply 5,000, itself a `uint16`) |
+| Casts | Pass | Token ids fit `uint32` (supply 10,000, itself a `uint16`) |
 | HCU stays under the limit | Pass | Largest measured: `acceptDuel` 2.37M of 20M. Tests pin shake, feed and proveAlive budgets |
 
 ## 6. Administration and trust
@@ -149,8 +154,8 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 
 | Check | Status |
 | --- | --- |
-| Unit tests on the FHEVM mock | Pass: 53 tests |
-| Every mechanic run on Sepolia through the real KMS | Pass: `packages/chain-adapter/scripts/smoke.ts` |
+| Unit tests on the FHEVM mock | Pass: 80 tests (53 for the boxes, 27 for the croquettes) |
+| Every mechanic run on Sepolia through the real KMS | Pass: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts` |
 | Optional Hardhat suite on Sepolia (`pnpm test:sepolia`) | Not done |
 | Static analysis (Slither, Aderyn) | Not done |
 | Fuzz or invariant tests (`balance >= totalCredits`, status transitions) | Not done |
@@ -159,9 +164,45 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | External audit | Not done |
 | Compiler pinned | Pass: 0.8.27 in `hardhat.config.ts`. The sources say `^0.8.24`; pin them too before an audit |
 
+## 9. Croquettes: Croq, ConfidentialCroq, Pantry
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| The supply is fixed | Pass | `Croq` mints once in its constructor; no mint function, no owner. Test: "mints the whole fixed supply once, with no decimals and no way to mint more" |
+| cCROQ is the unmodified OpenZeppelin wrapper | Pass | `ConfidentialCroq` only passes a name, symbol and URI to `ERC7984ERC20Wrapper` 0.5.3. Rate 1, 0 decimals. Test: "wraps 1:1 into a balance only its holder can read" |
+| Nobody is allowed on a stash, the reserve or the burnt pile | Pass | Only `allowThis` and `allowTransient(…, cCROQ)` in `Pantry`. Tests: "lets nobody read a stash: not the holder, not the feeder, not the public", "keeps each claim private" |
+| The books balance | Pass | Every croquette the Pantry holds is in exactly one bucket. Test: "keeps the books: the Pantry's balance is always reserve + stashes + burnt" |
+| No path out of a stash before the reveal | Pass | The only reader of `_stash` that moves tokens is `settle`, which requires `status == Revealed`. Test: "settles once, only after the reveal is final" |
+| The burnt pile never moves | Pass | `_burnt` is only ever added to. No function transfers it |
+| A feeder short of funds moves 0, without a revert | Accepted | That is the ERC-7984 transfer semantics, and it hides balances. Side effect: a meal of 0 still counts, so `meals` can be inflated for the price of gas. Test: "moves nothing, silently, when the feeder holds too little" |
+| An encrypted input made for someone else is rejected | Pass | `FHE.fromExternal` binds the proof to (Pantry, `msg.sender`). Test: "rejects an encrypted amount made for someone else" |
+| Feeding needs an explicit operator grant | Accepted | `setOperator(pantry, until)` lets the Pantry pull from the player until `until`. The Pantry only pulls in `feed`, from `msg.sender`, the amount `msg.sender` encrypted. The app should pick a finite `until`. Test: "requires the Pantry as operator, an existing box and a sealed one" |
+| Meals only reach sealed boxes | Pass | `status == Sealed`; an `Observing` box is frozen, so the stash cannot change between the request and the settlement |
+| Settlement is permissionless; front-running it is harmless | Pass | The payout goes to `ownerOf(tokenId)` whoever sends the transaction. A second call reverts `AlreadySettled` |
+| An opened, unsettled box sold carries its stash | Accepted | The buyer is paid at settlement. A seller who wants the stash should settle before selling. Test: "pays whoever holds the box at settlement: the stash follows the token" |
+| Payout per state | Pass | Test: "pays alive and asleep cats in full, half of a quantum one, nothing for a ghost" |
+| Welcome bag once per box, not per wallet | Pass | `lastPurr != 0` after the first claim, kept across transfers. Test: "pays the bag to the box, not the wallet" |
+| Purr days and cap | Pass | Test: "pays for the days owed, up to the cap, and keeps a started day" |
+| The reserve cannot be overdrawn | Pass | `FHE.min(owed, reserve)` before the transfer. Test: "never pays more than the reserve holds" |
+| The purr draw is unpredictable and cannot be retried | Pass | `FHE.randEuint8()`; the claimer learns the amount only after the transaction |
+| Draw bias | Accepted | A byte modulo 5: 0 has probability 52/256, the others 51/256 |
+| `block.timestamp` for days and halvings | Pass | A producer can shift it by seconds; days are counted whole |
+| Overflow in `mul` before `div` | Pass | Amounts are bounded by the 20M supply; `amount × 10,000` stays far below 2^64 |
+| HCU per transaction | Pass | Largest: a 10-box claim, ~6.8M (depth ~2.8M) of 20M (5M). Budgets pinned in tests |
+| Bounded loops | Pass | `claim` loops over at most `maxBoxesPerClaim` (10) |
+| Parameters cannot break the accounting | Pass | The constructor rejects shares above 100% and zero periods. Test: "rejects parameters that would break the accounting" |
+| No admin on the Pantry | Accepted | No owner, no pause, no upgrade. Parameters are immutable; a change means a new Pantry |
+| Unwrap reveals the amount | Accepted | By design of the wrapper: plain tokens move in the clear. Test: "moves hidden amounts between players and unwraps back to plain CROQ" |
+| `fund` amounts are public | Accepted | They move as a plain ERC-20 first |
+| **O11. Reserve unreadable** | Open | Decide whether to publish the reserve from time to time (a public decryption), or show a warning once claims start paying 0 |
+| **O12. Shared reserve** | Open | Ring-fence the 1M welcome bags in their own bucket if every box must get one |
+| **O13. Treasury custody** | Open | LP tokens burnt to `0x…dEaD` at deploy (done). Move the treasury to a multisig before mainnet |
+| **O14. Regulation** | Open | Testnet only. Legal advice before any mainnet market |
+| Static analysis, fuzzing of the bucket invariant | Not done | |
+
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6. Fix O3, O4, O7 (small and mechanical).
+1. Decide O1, O2, O5, O6, O11 to O14. Fix O3, O4, O7 (small and mechanical).
 2. Build the relayer proxy (O9).
 3. Run the "Not done" rows of section 8.
 4. Get an external audit, by a firm that has reviewed FHEVM contracts before.

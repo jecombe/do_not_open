@@ -1245,3 +1245,79 @@ button {
     margin-bottom: 4px;
   }
 }
+
+/* --- The pantry: croquettes, the market and the rules --- */
+.slip.pantry {
+  max-height: calc(100dvh - 2 * var(--gutter) - 110px);
+  overflow-y: auto;
+}
+
+.pantry-tabs {
+  margin: 8px 0 12px;
+}
+
+.pantry-balances dd {
+  font-variant-numeric: tabular-nums;
+}
+
+.pantry-form {
+  margin-block: 10px;
+}
+
+.pantry-form input:last-child {
+  grid-column: 1 / -1;
+}
+
+.pantry-split {
+  display: flex;
+  gap: 3px;
+  margin: 10px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.pantry-split li {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 2px solid var(--ink);
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+.pantry-split li:first-child {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.pantry-split strong {
+  font-size: 18px;
+}
+
+.pantry-payouts {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+.pantry-payouts caption {
+  text-align: left;
+  font-weight: 700;
+  padding-bottom: 4px;
+}
+
+.pantry-payouts th,
+.pantry-payouts td {
+  padding: 4px 0;
+  border-top: 1px solid var(--ink);
+  text-align: left;
+  vertical-align: top;
+}
+
+.pantry-payouts th {
+  padding-right: 10px;
+  white-space: nowrap;
+}

@@ -135,3 +135,76 @@ describe("helpers", () => {
     expect(shortAddress("0x6a18cFC3fAeef453B295B12246d40a82593b3208")).toBe("0x6a18…3208");
   });
 });
+
+describe("MockAdapter croquettes", () => {
+  const DAY = 60_000;
+  const clocked = async () => {
+    let now = 1_000_000;
+    const chain = new MockAdapter({ latency: 0, dayMs: DAY, now: () => now });
+    await chain.connect();
+    return { chain, tick: (ms: number) => (now += ms) };
+  };
+
+  it("reports the spec's economy and an open market", async () => {
+    const { chain } = await clocked();
+    const e = await chain.economy();
+    expect(e.totalSupply).toBe(BigInt(spec.economy.token.totalSupply));
+    expect(e.welcomeBag).toBe(spec.economy.welcomeBag.amount);
+    expect(e.payoutBps).toEqual([10_000, 10_000, 0, 5_000]);
+    expect(e.market?.croqReserve).toBe(4_000_000n);
+  });
+
+  it("pays a welcome bag per box once, then a purr per whole day", async () => {
+    const { chain, tick } = await clocked();
+    await chain.claimCroquettes([0, 1, 2]);
+    expect(await chain.confidentialBalance()).toBe(300n);
+    expect(await refusal(chain.claimCroquettes([0]))).toBe("NothingToClaim");
+    expect((await chain.boxPantry(0)).welcomed).toBe(true);
+
+    tick(3 * DAY);
+    await chain.claimCroquettes([0, 1, 2]);
+    const after = await chain.confidentialBalance();
+    expect(after - 300n).toBeGreaterThanOrEqual(0n);
+    expect(after - 300n).toBeLessThanOrEqual(BigInt(3 * 3 * spec.economy.purr.maxPerDay));
+    expect(await refusal(chain.claimCroquettes([3]))).toBe("NotHolder");
+  });
+
+  it("burns a tenth of each meal, moves nothing when short, and settles by state", async () => {
+    const { chain } = await clocked();
+    await chain.claimCroquettes([0, 1, 2]);
+    await chain.feedCroquettes(0, 200n);
+    await chain.feedCroquettes(0, 5_000n); // more than held: moves nothing
+    expect(await chain.confidentialBalance()).toBe(100n);
+    expect((await chain.boxPantry(0)).meals).toBe(2);
+
+    expect(await refusal(chain.settle(0))).toBe("NotRevealed");
+    const [opened] = await chain.observe(0);
+    await chain.settle(0);
+    const state = spec.states.find((s) => s.id === opened!.revealed!.state)!.key;
+    const payout = (180n * BigInt(spec.economy.settlement.payoutBps[state])) / 10_000n;
+    expect(await chain.confidentialBalance()).toBe(100n + payout);
+    expect(await refusal(chain.settle(0))).toBe("AlreadySettled");
+    expect(await refusal(chain.feedCroquettes(0, 1n))).toBe("NotSealed");
+  });
+
+  it("buys on the market, wraps, unwraps and sells back", async () => {
+    const { chain } = await clocked();
+    const quoted = await chain.quote("buy", 10n ** 15n);
+    expect(quoted).toBeGreaterThan(0n);
+    await chain.trade("buy", 10n ** 15n);
+    expect(await chain.croqBalance(MOCK_YOU)).toBe(quoted);
+
+    await chain.wrap(quoted);
+    expect(await chain.croqBalance(MOCK_YOU)).toBe(0n);
+    expect(await chain.confidentialBalance()).toBe(quoted);
+
+    await chain.unwrap(1_000n);
+    expect(await chain.croqBalance(MOCK_YOU)).toBe(1_000n);
+    await chain.sendCroquettes(MOCK_NIGHT_SHIFT, 500n);
+    expect(await chain.confidentialBalance()).toBe(quoted - 1_500n);
+
+    await chain.trade("sell", 1_000n);
+    expect(await chain.croqBalance(MOCK_YOU)).toBe(0n);
+    expect(await refusal(chain.wrap(1n))).toBe("ERC20InsufficientBalance");
+  });
+});

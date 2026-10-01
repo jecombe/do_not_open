@@ -12,6 +12,8 @@ export type DuelStatus = "none" | "challenged" | "pending" | "resolved" | "cance
 
 /** What the user is waiting for, in the order it happens. */
 export type Step =
+  /** Encrypting an amount in this page, before it is sent. */
+  | "encrypting"
   /** The wallet is asking for a signature or a confirmation. */
   | "wallet"
   /** The transaction is sent and not yet included. */
@@ -156,6 +158,61 @@ export interface BoxSummary {
   partner: number | null;
 }
 
+/** Where plain CROQ trades against the chain's coin. */
+export interface MarketInfo {
+  /** e.g. "Uniswap V2". */
+  name: string;
+  /** The pool in a block explorer, if there is one. */
+  poolUrl: string | null;
+  /** The swap page of the market's own app, if it has one. */
+  appUrl: string | null;
+  /** Pool reserves: whole CROQ, and the native coin in its smallest unit. */
+  croqReserve: bigint;
+  nativeReserve: bigint;
+}
+
+/** The croquette economy next to the collection. Amounts are whole croquettes. */
+export interface EconomyInfo {
+  /** "CROQ": the plain token any market can list. */
+  symbol: string;
+  /** "cCROQ": its confidential twin, the one the game uses. */
+  confidentialSymbol: string;
+  totalSupply: bigint;
+  /** CROQ wrapped into cCROQ: the most that can sit in confidential balances and stashes. */
+  wrapped: bigint;
+  welcomeBag: number;
+  purrMaxPerDay: number;
+  vetMultiplier: number;
+  purrMaxDays: number;
+  /** How many times the purr has halved so far. */
+  halvings: number;
+  /** Seconds between two halvings. */
+  halvingPeriod: number;
+  /** Share of each meal that is burnt, in basis points. */
+  mealBurnBps: number;
+  /** Share of the stash paid to the holder at settlement, by state id, in basis points. */
+  payoutBps: number[];
+  maxBoxesPerClaim: number;
+  /** Explorer links to the plain token, the confidential one and the Pantry. */
+  links: { croq: string | null; cCroq: string | null; pantry: string | null };
+  /** Null where no public market was opened. */
+  market: MarketInfo | null;
+}
+
+/** What the Pantry knows publicly about one box. The stash amount is encrypted for everyone. */
+export interface BoxPantry {
+  /** Meals served. Public; what they held is not. */
+  meals: number;
+  /** True once its welcome bag was paid: a box gets one, whoever holds it. */
+  welcomed: boolean;
+  /** Unix seconds from which it can claim again. */
+  nextClaimAt: number;
+  /** True once the stash was paid out or burnt after the box was opened. */
+  settled: boolean;
+}
+
+export type TradeSide = "buy" | "sell";
+
 /** A wallet the browser offers, as shown in a picker. */
 export interface WalletOption {
   id: string;
@@ -219,6 +276,30 @@ export interface ChainAdapter {
 
   /** Pays out the caller's credits. */
   claim(opts?: ActionOptions): Promise<void>;
+
+  // --- croquettes (the Pantry) ---
+  economy(): Promise<EconomyInfo>;
+  boxPantry(tokenId: number): Promise<BoxPantry>;
+  /** Plain CROQ `owner` holds. Public. */
+  croqBalance(owner: Address): Promise<bigint>;
+  /** Decrypts the connected account's cCROQ balance, for its eyes only. */
+  confidentialBalance(opts?: ActionOptions): Promise<bigint>;
+  /** Welcome bags, then the daily purr, for the listed boxes of the caller. */
+  claimCroquettes(tokenIds: number[], opts?: ActionOptions): Promise<void>;
+  /** Serves a sealed box `amount` cCROQ, encrypted. Moves 0, silently, if the caller holds less. */
+  feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void>;
+  /** Pays out or burns an opened box's stash. Anyone may. */
+  settle(tokenId: number, opts?: ActionOptions): Promise<void>;
+  /** Plain CROQ into cCROQ, 1:1. */
+  wrap(amount: bigint, opts?: ActionOptions): Promise<void>;
+  /** cCROQ back to plain CROQ: a request, a public decryption of the amount, then the payout. */
+  unwrap(amount: bigint, opts?: ActionOptions): Promise<void>;
+  /** A confidential transfer: nobody but the two sides learns the amount. */
+  sendCroquettes(to: Address, amount: bigint, opts?: ActionOptions): Promise<void>;
+  /** What `amountIn` buys on the market: CROQ for coin ("buy") or coin for CROQ ("sell"). */
+  quote(side: TradeSide, amountIn: bigint): Promise<bigint>;
+  /** Trades on the public market, accepting at most 1% less than the quote. */
+  trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void>;
 }
 
 /** "0.002" for 2000000000000000n at 18 decimals. No trailing zeros. */
