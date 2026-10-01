@@ -12,6 +12,7 @@ import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
 import { traitIndexAtOffset } from "../layout";
 import {
   ChainError,
+  sameAddress,
   type ActionOptions,
   type Address,
   type AliveCheck,
@@ -42,6 +43,7 @@ import {
   type WalletOption,
   type WeighIn,
 } from "../types";
+import type { IndexedTransfer, IndexerClient } from "./indexer";
 import type { ChainParams, WalletSource } from "./wallet";
 
 /** The part of the Relayer SDK instance this adapter uses. */
@@ -79,6 +81,8 @@ export interface EvmAdapterOptions {
   ramp?: Deployed;
   /** Block the collection was deployed in: where reading its events starts. */
   deployBlock?: number;
+  /** The DO NOT OPEN API. Reads go there first, and to the chain when it is behind or away. */
+  indexer?: IndexerClient;
 }
 
 const ROUTER_ABI = [
@@ -203,6 +207,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private rampFee: Promise<number> | null = null;
   /** Every contract this adapter may send to, so a receipt can be parsed whichever it hit. */
   private readonly ifaces: Interface[];
+  /** Block of this account's last transaction: the API must have indexed it to be believed. */
+  private minBlock = 0;
 
   constructor(private readonly opts: EvmAdapterOptions) {
     this.iface = new Interface(opts.abi);
@@ -254,7 +260,36 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   // --- reads ---
 
+  /**
+   * Reads through the API when it has indexed at least this account's last transaction, the
+   * chain otherwise: one's own action always shows at once, everyone else's within a block or two.
+   */
+  private async indexed<T>(read: (ix: IndexerClient) => Promise<{ block: number | null; data: T }>, fromChain: () => Promise<T>): Promise<T> {
+    const ix = this.opts.indexer;
+    if (ix?.available()) {
+      try {
+        const r = await read(ix);
+        if (r.block !== null && r.block >= this.minBlock) return r.data;
+        ix.nudge();
+      } catch {
+        // Down or unreachable: it stays aside for a while, the chain answers.
+      }
+    }
+    return fromChain();
+  }
+
   async collection(): Promise<CollectionInfo> {
+    const payment = {
+      symbol: "USDC",
+      confidentialSymbol: "cUSDC",
+      decimals: 6,
+      faucet: this.opts.usdcFaucet ?? null,
+      ramp: null,
+    };
+    return this.indexed((ix) => ix.collection({ payment }), () => this.collectionFromChain());
+  }
+
+  private async collectionFromChain(): Promise<CollectionInfo> {
     const c = this.contract;
     this.constants ??= Promise.all([c.mintPrice!(), c.observeFee!(), c.feedFee!(), c.paidShakeFee!(), c.maxSupply!(), c.maxPerTx!(), c.milestones!()]).then(
       ([mint, observe, feed, paidShake, maxSupply, maxPerTx, milestones]) => ({
@@ -294,28 +329,26 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async box(tokenId: number): Promise<BoxInfo> {
-    const c = this.contract;
-    const [status, aliveCheck, partner, wins, publicTraits, contents, pending] = await this.reading(
-      Promise.all([
-        c.status!(tokenId),
-        c.aliveCheck!(tokenId),
-        c.partnerOf!(tokenId),
-        c.wins!(tokenId),
-        c.publicTraitsOf!(tokenId),
-        c.contentsOf!(tokenId),
-        this.myPending(tokenId),
-      ]),
-    );
-    let boxStatus = BOX_STATUS[Number(status)]!;
-    let alive = ALIVE_CHECK[Number(aliveCheck)]!;
-    if (boxStatus === "sealed" && pending.some((r) => r.kind === "open")) boxStatus = "opening";
+    const [b, pending] = await Promise.all([this.indexed((ix) => ix.box(tokenId), () => this.boxFromChain(tokenId)), this.myPending(tokenId)]);
+    let status: BoxStatus = b.status;
+    let alive: AliveCheck = b.aliveCheck;
+    if (status === "sealed" && pending.some((r) => r.kind === "open")) status = "opening";
     if (alive === "none" && pending.some((r) => r.kind === "aliveCheck")) alive = "pending";
+    return { ...b, mine: this.isMine(tokenId), status, aliveCheck: alive };
+  }
+
+  /** What the contract says about a box, before the account's own requests are added. */
+  private async boxFromChain(tokenId: number): Promise<Omit<BoxInfo, "mine">> {
+    const c = this.contract;
+    const [status, aliveCheck, partner, wins, publicTraits, contents] = await this.reading(
+      Promise.all([c.status!(tokenId), c.aliveCheck!(tokenId), c.partnerOf!(tokenId), c.wins!(tokenId), c.publicTraitsOf!(tokenId), c.contentsOf!(tokenId)]),
+    );
+    const boxStatus = BOX_STATUS[Number(status)]!;
     const mask = Number(publicTraits.mask);
     return {
       tokenId,
-      mine: this.isMine(tokenId),
       status: boxStatus,
-      aliveCheck: alive,
+      aliveCheck: ALIVE_CHECK[Number(aliveCheck)]!,
       partner: partner.entangled ? Number(partner.partner) : null,
       wins: Number(wins),
       publicTraits: [...publicTraits.rolls].flatMap((roll: bigint, traitIndex: number) =>
@@ -345,24 +378,49 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const h = this.holdings;
     const latest = await this.reading(this.opts.readProvider.getBlockNumber());
     if (latest > h.block) {
-      const filter = (from: string | null, to: string | null) => this.contract.filters.ConfidentialTransfer!(null, from, to);
-      const logs = [
-        ...(await this.logs(filter(account, null), h.block + 1, latest)),
-        ...(await this.logs(filter(null, account), h.block + 1, latest)),
-      ].sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
-      const fresh = logs.filter((l) => !h.seen.has(`${l.transactionHash}:${l.index}`));
-      const moved = await this.decryptBools(fresh.map((l) => String((l as unknown as { args: { moved: string } }).args.moved)));
-      for (const l of fresh) {
-        h.seen.add(`${l.transactionHash}:${l.index}`);
-        const { tokenId, from, to, moved: bit } = (l as unknown as { args: { tokenId: bigint; from: string; to: string; moved: string } }).args;
-        if (!moved.get(bit)) continue;
-        if (from.toLowerCase() === account.toLowerCase()) h.held.delete(Number(tokenId));
-        if (to.toLowerCase() === account.toLowerCase()) h.held.add(Number(tokenId));
+      const receipts = (await this.receiptsOf(account, h.block, latest)).sort((a, b) => a.block - b.block || a.logIndex - b.logIndex);
+      const fresh = receipts.filter((r) => !h.seen.has(`${r.txHash.toLowerCase()}:${r.logIndex}`));
+      const moved = await this.decryptBools(fresh.map((r) => r.moved));
+      for (const r of fresh) {
+        h.seen.add(`${r.txHash.toLowerCase()}:${r.logIndex}`);
+        if (!moved.get(r.moved)) continue;
+        if (r.from.toLowerCase() === account.toLowerCase()) h.held.delete(r.tokenId);
+        if (r.to.toLowerCase() === account.toLowerCase()) h.held.add(r.tokenId);
       }
       // The same account still: a disconnect meanwhile drops it all.
       if (this.holdings === h) h.block = latest;
     }
     return [...h.held].sort((a, b) => a - b);
+  }
+
+  /**
+   * The transfers naming `account` after block `after`, up to `latest`. The API serves what it
+   * indexed; the few newer blocks, or everything when it is away, come from the chain.
+   */
+  private async receiptsOf(account: Address, after: number, latest: number): Promise<IndexedTransfer[]> {
+    const out: IndexedTransfer[] = [];
+    let covered = after;
+    const ix = this.opts.indexer;
+    if (ix?.available()) {
+      try {
+        const r = await ix.transfers(account, after);
+        if (r.block !== null && r.block > after) {
+          out.push(...r.data.filter((t) => t.block <= Math.min(r.block!, latest)));
+          covered = Math.min(r.block, latest);
+        }
+      } catch {
+        // The chain answers instead.
+      }
+    }
+    if (latest > covered) {
+      const filter = (from: string | null, to: string | null) => this.contract.filters.ConfidentialTransfer!(null, from, to);
+      const logs = [...(await this.logs(filter(account, null), covered + 1, latest)), ...(await this.logs(filter(null, account), covered + 1, latest))];
+      for (const l of logs) {
+        const { tokenId, from, to, moved } = (l as unknown as { args: { tokenId: bigint; from: string; to: string; moved: string } }).args;
+        out.push({ tokenId: Number(tokenId), from, to, moved: String(moved), block: l.blockNumber, txHash: l.transactionHash, logIndex: l.index });
+      }
+    }
+    return out;
   }
 
   /** Events matching `filter` between two blocks, read in slices a public endpoint accepts.
@@ -385,6 +443,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async boxSummaries(from: number, to: number): Promise<BoxSummary[]> {
+    const list = await this.indexed((ix) => ix.boxSummaries(from, to), () => this.summariesFromChain(from, to));
+    return list.map((b) => ({ ...b, mine: this.isMine(b.tokenId) }));
+  }
+
+  private async summariesFromChain(from: number, to: number): Promise<BoxSummary[]> {
     const c = this.contract;
     const out: BoxSummary[] = [];
     // The status of each box, plus the partner of the sealed ones (only they can still be
@@ -404,6 +467,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async pair(tokenA: number, tokenB: number): Promise<PairInfo> {
+    return this.indexed((ix) => ix.pair(tokenA, tokenB), () => this.pairFromChain(tokenA, tokenB));
+  }
+
+  private async pairFromChain(tokenA: number, tokenB: number): Promise<PairInfo> {
     const c = this.contract;
     const [count, proposerAB, proposerBA] = await this.reading(
       Promise.all([c.duelCount!(), c.entangleProposer!(tokenA, tokenB), c.entangleProposer!(tokenB, tokenA)]),
@@ -437,6 +504,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async openedCats(): Promise<OpenedCat[]> {
+    return this.indexed((ix) => ix.openedCats(), () => this.openedFromChain());
+  }
+
+  private async openedFromChain(): Promise<OpenedCat[]> {
     const latest = await this.reading(this.opts.readProvider.getBlockNumber());
     const logs = await this.logs(this.contract.filters.Observed!(), this.opts.deployBlock ?? 0, latest);
     const opened = logs.map((l) => (l as unknown as { args: { tokenId: bigint; openedBy: string } }).args);
@@ -462,6 +533,45 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async pendingRequests(owner: Address): Promise<PendingRequest[]> {
+    return this.indexed((ix) => ix.pendingRequests(owner), () => this.pendingFromChain(owner));
+  }
+
+  /**
+   * Duels the account took part in, and those about the boxes it lists, newest first. Through
+   * the API they are found from any device; without it, the most recent duels are scanned.
+   */
+  async duels(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]> {
+    if (!query.account && !query.tokenIds?.length) return [];
+    return this.indexed((ix) => ix.duels(query), () => this.duelsFromChain(query));
+  }
+
+  private async duelsFromChain(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]> {
+    const c = this.contract;
+    const last = Number(await this.reading(c.duelCount!()));
+    const tokens = new Set(query.tokenIds ?? []);
+    const out: DuelInfo[] = [];
+    // Newest first, a chunk at a time, no further back than a public endpoint should be asked.
+    for (let hi = last; hi > Math.max(0, last - DUEL_SCAN * 5); hi -= READ_CHUNK) {
+      const ids = Array.from({ length: Math.min(READ_CHUNK, hi) }, (_, i) => hi - 1 - i);
+      const rows = await this.reading(Promise.all(ids.map((id) => c.duelInfo!(id))));
+      rows.forEach((d, i) => {
+        const duel: DuelInfo = {
+          duelId: ids[i]!,
+          tokenA: Number(d.tokenIdA),
+          tokenB: Number(d.tokenIdB),
+          challenger: d.challenger,
+          accepter: BigInt(d.accepter) === 0n ? null : String(d.accepter),
+          status: DUEL_STATUS[Number(d.duelStatus)]!,
+        };
+        const mine = sameAddress(duel.challenger, query.account) || sameAddress(duel.accepter, query.account) || tokens.has(duel.tokenA) || tokens.has(duel.tokenB);
+        const open = duel.status === "challenged" || duel.status === "pending";
+        if (mine && (!query.open || open)) out.push(duel);
+      });
+    }
+    return out;
+  }
+
+  private async pendingFromChain(owner: Address): Promise<PendingRequest[]> {
     const filter = this.contract.filters.RequestPlaced!(null, null, owner);
     const latest = await this.reading(this.opts.readProvider.getBlockNumber());
     return this.pendingAmong(await this.logs(filter, this.opts.deployBlock ?? 0, latest));
@@ -724,6 +834,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async economy(): Promise<EconomyInfo> {
     const e = this.eco();
+    const links = { croq: this.link(e.croq.address), cCroq: this.link(e.cCroq.address), pantry: this.link(e.pantry.address) };
+    return this.indexed((ix) => ix.economy({ links }), () => this.economyFromChain());
+  }
+
+  private async economyFromChain(): Promise<EconomyInfo> {
+    const e = this.eco();
     const pantry = this.at(e.pantry);
     const croq = this.at(e.croq);
     this.economyConstants ??= Promise.all([
@@ -786,6 +902,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async boxPantry(tokenId: number): Promise<BoxPantry> {
+    this.eco();
+    return this.indexed((ix) => ix.boxPantry(tokenId), () => this.pantryFromChain(tokenId));
+  }
+
+  private async pantryFromChain(tokenId: number): Promise<BoxPantry> {
     const pantry = this.at(this.eco().pantry);
     const [lastPurr, nextClaimAt, w] = await this.reading(
       Promise.all([pantry.lastPurr!(tokenId), pantry.nextClaimAt!(tokenId), pantry.weighIn!(tokenId)]),
@@ -1002,6 +1123,9 @@ export class EvmFhevmAdapter implements ChainAdapter {
       this.pendingCache = null;
       if (!receipt || receipt.status !== 1) throw new ChainError("reverted", "The transaction failed on-chain.");
       opts?.onTx?.({ ...sent, status: "confirmed", block: receipt.blockNumber, gasUsed: receipt.gasUsed });
+      // Until the API has indexed this block, reads go to the chain; and it is told to look now.
+      this.minBlock = Math.max(this.minBlock, receipt.blockNumber);
+      this.opts.indexer?.nudge();
       await this.caughtUp(receipt.blockNumber);
       return receipt;
     } catch (error) {

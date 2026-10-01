@@ -558,6 +558,12 @@ export const en = {
   "card.golden": "Came out in gold",
   "card.shakeAt": "Shake it: {where}",
   "card.seeAt": "See it: {where}",
+  "shelf.duels": "Your duels",
+  "shelf.duelsHint": "Open duels you challenged, and those on your boxes once they are shown. The same list on any device.",
+  "shelf.duelVs": "{a} vs {b}",
+  "shelf.duelYourMove": "your answer",
+  "shelf.duelTheirMove": "waiting for them",
+  "shelf.duelToFinish": "accepted, to finish",
 } as const satisfies Record<string, string>;
 
 export type AppKey = keyof typeof en;

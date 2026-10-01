@@ -2,6 +2,7 @@ import { spec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
 import {
   ChainError,
+  sameAddress,
   type ActionOptions,
   type Address,
   type AliveCheck,
@@ -140,7 +141,7 @@ export class MockAdapter implements ChainAdapter {
 
   private me: Address | null = null;
   private readonly boxes: MockBox[] = [];
-  private readonly duels: MockDuel[] = [];
+  private readonly duelList: MockDuel[] = [];
   private readonly proposals = new Map<string, Address>();
   /** Boxes sold: encrypted on a real chain. */
   private sold = 0;
@@ -245,7 +246,7 @@ export class MockAdapter implements ChainAdapter {
     const between = (d: MockDuel) =>
       (d.tokenA === tokenA && d.tokenB === tokenB) || (d.tokenA === tokenB && d.tokenB === tokenA);
     let openDuel: DuelInfo | null = null;
-    this.duels.forEach((d, duelId) => {
+    this.duelList.forEach((d, duelId) => {
       if (between(d) && (d.status === "challenged" || d.status === "pending")) openDuel = { duelId, ...d };
     });
     let entangleProposal: PairInfo["entangleProposal"] = null;
@@ -254,6 +255,15 @@ export class MockAdapter implements ChainAdapter {
       if (proposer) entangleProposal = { from, to, proposer };
     }
     return { openDuel, entangleProposal };
+  }
+
+  async duels(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]> {
+    const tokens = new Set(query.tokenIds ?? []);
+    return this.duelList
+      .map((d, duelId): DuelInfo => ({ duelId, ...d }))
+      .filter((d) => sameAddress(d.challenger, query.account) || sameAddress(d.accepter, query.account) || tokens.has(d.tokenA) || tokens.has(d.tokenB))
+      .filter((d) => !query.open || d.status === "challenged" || d.status === "pending")
+      .reverse();
   }
 
   async openedCats(): Promise<OpenedCat[]> {
@@ -474,9 +484,9 @@ export class MockAdapter implements ChainAdapter {
     if (this.get(tokenA).status !== "sealed" || this.get(tokenB).status !== "sealed") throw revert("NotSealed");
     await this.send(opts, "challengeDuel");
     const duel: MockDuel = { tokenA, tokenB, challenger: me, accepter: null, status: "challenged" };
-    this.duels.push(duel);
+    this.duelList.push(duel);
     if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT) Object.assign(duel, { status: "pending", accepter: MOCK_NIGHT_SHIFT });
-    return this.duels.length - 1;
+    return this.duelList.length - 1;
   }
 
   async cancelDuel(duelId: number, opts?: ActionOptions): Promise<void> {
@@ -798,7 +808,7 @@ export class MockAdapter implements ChainAdapter {
   }
 
   private duel(duelId: number): MockDuel {
-    const duel = this.duels[duelId];
+    const duel = this.duelList[duelId];
     if (!duel) throw revert("WrongDuelStatus");
     return duel;
   }

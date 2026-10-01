@@ -1,6 +1,7 @@
 import { JsonRpcProvider } from "ethers";
 import { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY } from "./chains";
 import { EvmFhevmAdapter } from "./EvmFhevmAdapter";
+import { IndexerClient } from "./indexer";
 import { InjectedWallet } from "./wallet";
 
 export interface BrowserEvmOptions {
@@ -8,6 +9,8 @@ export interface BrowserEvmOptions {
   rpcUrl?: string;
   /** Overrides the committed deployment address. */
   address?: string;
+  /** The DO NOT OPEN API, which indexes the committed deployment. Reads go to the RPC without it. */
+  apiUrl?: string;
 }
 
 /** Sepolia through the injected wallet and the Relayer SDK's browser build. */
@@ -26,6 +29,8 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     ramp: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.ramp ?? undefined),
     // Events are read from here on: the collection's own receipts, milestones and openings.
     deployBlock: opts.address ? undefined : SEPOLIA_DEPLOYMENT.deployBlock,
+    // The API indexes the committed deployment only: another address reads the chain.
+    indexer: opts.apiUrl && !opts.address ? new IndexerClient(opts.apiUrl) : undefined,
     readProvider: new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true }),
     wallet: new InjectedWallet(ethereum, chain),
     loadRelayer: async () => {

@@ -549,4 +549,10 @@ export const it: Record<AppKey, string> = {
   "card.golden": "Uscito d'oro",
   "card.shakeAt": "Scuotila: {where}",
   "card.seeAt": "Guardalo: {where}",
+  "shelf.duels": "I tuoi duelli",
+  "shelf.duelsHint": "I duelli aperti che hai lanciato e, una volta mostrate le tue scatole, quelli che le sfidano. La stessa lista su ogni dispositivo.",
+  "shelf.duelVs": "{a} contro {b}",
+  "shelf.duelYourMove": "tocca a te rispondere",
+  "shelf.duelTheirMove": "in attesa dell'altro",
+  "shelf.duelToFinish": "accettato, da concludere",
 };
