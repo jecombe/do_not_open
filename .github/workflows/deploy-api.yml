@@ -1,9 +1,9 @@
 name: Deploy API
 
-# The backend is one server for Sepolia: dev and main both deploy to it.
+# Deploys only what reaches main, by a merge or a push. Other branches are tested by CI.
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - apps/api/**
       - packages/game-spec/**
