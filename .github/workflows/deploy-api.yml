@@ -1,6 +1,7 @@
 name: Deploy API
 
-# Deploys only what reaches main, by a merge or a push. Other branches are tested by CI.
+# Deploys only what reaches main, by a merge or a push, once CI is green on that commit.
+# Other branches are tested by CI and never deployed.
 on:
   push:
     branches: [main]
@@ -26,12 +27,37 @@ env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/do_not_open-api
 
 jobs:
-  test:
-    name: Test the API
+  ci:
+    name: Wait for CI to pass
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
+    permissions:
+      actions: read
+    # The whole CI (web, contracts, API, Postgres) must be green on this commit: a red main never deploys.
+    steps:
+      - name: Wait for the CI run of this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          for i in $(seq 1 120); do
+            run=$(gh run list --workflow ci.yml --commit "$SHA" --event push --limit 1 --json status,conclusion,url --jq '.[0] // empty')
+            if [ -n "$run" ]; then
+              status=$(echo "$run" | jq -r .status)
+              conclusion=$(echo "$run" | jq -r .conclusion)
+              if [ "$status" = completed ]; then
+                echo "CI: $conclusion ($(echo "$run" | jq -r .url))"
+                [ "$conclusion" = success ] && exit 0
+                echo "CI did not pass on $SHA: nothing is deployed." >&2
+                exit 1
+              fi
+            fi
+            sleep 15
+          done
+          echo "CI did not finish within 30 minutes." >&2
+          exit 1
+
+  image: postgres:17-alpine
         env:
           POSTGRES_USER: dno
           POSTGRES_PASSWORD: dno
@@ -55,7 +81,7 @@ jobs:
 
   image:
     name: Build and push the image
-    needs: test
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

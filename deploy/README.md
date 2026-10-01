@@ -1,12 +1,13 @@
 # Deployment
 
 The site stays on Vercel. The backend (`apps/api` + Postgres) runs on one server with Docker,
-deployed by GitHub Actions when a change that touches it reaches `main` (a merged PR).
+deployed by GitHub Actions when a change that touches it reaches `main` (a merged PR), and
+only once the whole CI is green on that commit: a red `main` deploys nothing.
 
 ```mermaid
 flowchart LR
   push["git push<br/>any branch"] --> ci["CI<br/>typecheck, tests,<br/>Postgres tests"]
-  merge["merge to main"] --> wf["Deploy API<br/>test, build image"]
+  merge["merge to main"] --> wf["Deploy API<br/>waits for CI green,<br/>builds the image"]
   wf -- "push" --> ghcr["ghcr.io/jecombe/<br/>do_not_open-api:SHA"]
   wf -- "ssh: deploy.sh SHA" --> server
   subgraph server["Server"]
