@@ -8,6 +8,7 @@ export const homeFr: Record<HomeKey, string> = {
   "home.nav.how": "Comment jouer",
   "home.nav.docs": "Manuel",
   "home.nav.play": "Jouer",
+  "home.nav.menu": "Menu",
   "home.hero.kicker": "{supply} boîtes · un chat dans chacune · zéro spoiler",
   "home.hero.title": "Il y a un chat dans la boîte.",
   "home.hero.lede": "Lequel ? Personne ne sait. Ni toi, ni nous, ni même l'ordinateur qui le garde. Le seul moyen de savoir, c'est d'ouvrir. Et une fois ouverte, elle reste ouverte.",

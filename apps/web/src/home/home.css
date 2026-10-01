@@ -144,6 +144,63 @@ button {
   gap: 8px 18px;
 }
 
+.home-top-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+/* Only on a phone: the links and languages fold behind it. */
+.home-menu {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.home-menu-bars,
+.home-menu-bars::before,
+.home-menu-bars::after {
+  display: block;
+  width: 16px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+.home-menu-bars {
+  position: relative;
+}
+
+.home-menu-bars::before,
+.home-menu-bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.home-menu-bars::before {
+  top: -5px;
+}
+
+.home-menu-bars::after {
+  top: 5px;
+}
+
+.home-menu[aria-expanded="true"] .home-menu-bars {
+  background: transparent;
+}
+
+.home-menu[aria-expanded="true"] .home-menu-bars::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.home-menu[aria-expanded="true"] .home-menu-bars::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
 .home-top nav > a:not(.btn) {
   color: var(--ink);
   font-size: 19px;
@@ -669,12 +726,91 @@ h2 {
     grid-template-columns: 1fr;
   }
 
-  .home-top nav > a:not(.btn) {
+  /* One line: the stamp, "Play" and the menu button. The rest drops down as a card. */
+  .home-top {
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .home-stamp {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .home-top-actions {
+    gap: 8px;
+  }
+
+  .home-top .btn-small {
+    padding: 8px 12px 6px;
+    font-size: 16px;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .home-menu {
+    display: inline-flex;
+  }
+
+  .home-top nav {
+    display: none;
+  }
+
+  .home-top nav.is-open {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    left: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 0 14px;
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    box-shadow: 6px 6px 0 var(--ink);
+  }
+
+  .home-top nav.is-open > a:not(.btn) {
+    padding: 12px 18px;
+    font-size: 22px;
+    font-weight: 600;
+    border-bottom: 2px dashed rgb(28 24 20 / 0.2);
+  }
+
+  .home-top nav.is-open .lang {
+    margin: 14px 18px 0;
+  }
+
+  .home-top nav.is-open .lang button {
+    padding: 6px 12px 4px;
     font-size: 17px;
   }
 
   .secret-doodle .doodle {
     width: 200px;
+  }
+}
+
+/* The narrowest phones: the menu button keeps its bars, and its name for screen readers. */
+@media (max-width: 400px) {
+  .home-stamp {
+    font-size: 17px;
+  }
+
+  .home-menu {
+    padding-inline: 10px;
+  }
+
+  .home-menu-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 

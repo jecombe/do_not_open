@@ -7,6 +7,7 @@ export const homeEn = {
   "home.nav.how": "How to play",
   "home.nav.docs": "Manual",
   "home.nav.play": "Play",
+  "home.nav.menu": "Menu",
   "home.hero.kicker": "{supply} boxes · one cat each · zero spoilers",
   "home.hero.title": "There's a cat in the box.",
   "home.hero.lede": "Which one? Nobody knows. Not you, not us, not even the computer keeping it. The only way to find out is to open it. And once it's open, it stays open.",
