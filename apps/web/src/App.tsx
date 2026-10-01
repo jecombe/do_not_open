@@ -12,13 +12,20 @@ import { ShelfView } from "./views/ShelfView";
 import { SpecimensView } from "./views/SpecimensView";
 import { WarehouseView } from "./views/WarehouseView";
 
+/** `app.html?box=42` opens straight on box 42: the link the share buttons hand out. */
+const linkedBox = (() => {
+  const raw = new URLSearchParams(window.location.search).get("box");
+  const id = raw === null ? NaN : Number(raw);
+  return Number.isSafeInteger(id) && id >= 0 ? id : null;
+})();
+
 export function App() {
   const chain = useChain();
   const t = useT();
   const quality = useMemo(detectQuality, []);
   const sound = useMemo(() => new ShakeSound(), []);
-  const [view, setView] = useState<View>("shelf");
-  const [tokenId, setTokenId] = useState(0);
+  const [view, setView] = useState<View>(linkedBox === null ? "shelf" : "box");
+  const [tokenId, setTokenId] = useState(linkedBox ?? 0);
   // The box the warehouse opens in front of: the one last looked at, when coming from it.
   const [focus, setFocus] = useState<number | null>(null);
   const [pair, setPair] = useState<[number, number] | null>(null);
@@ -31,12 +38,20 @@ export function App() {
   useEffect(() => () => sound.dispose(), [sound]);
 
   // The box view opens on one of the account's own boxes, once they are first known.
-  const landed = useRef(false);
+  const landed = useRef(linkedBox !== null);
   useEffect(() => {
     if (landed.current || !chain.myBoxes.length) return;
     landed.current = true;
     setTokenId(chain.myBoxes[0]!);
   }, [chain.myBoxes]);
+
+  // The address bar follows the box on screen, so it can be copied and sent as is.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (view === "box") url.searchParams.set("box", String(tokenId));
+    else url.searchParams.delete("box");
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
+  }, [view, tokenId]);
 
   const showBox = (id: number) => {
     setTokenId(id);

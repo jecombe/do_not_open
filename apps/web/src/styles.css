@@ -1334,3 +1334,97 @@ button {
   padding-right: 10px;
   white-space: nowrap;
 }
+
+/* --- Share: a caption, a link per network, a picture card --- */
+.share-toggle {
+  display: block;
+  margin: 12px 0 0;
+  font-size: 17px;
+}
+
+.share {
+  margin: 12px 0 0;
+  padding: 10px 0 0;
+  border-top: 2px dashed rgb(28 24 20 / 0.45);
+}
+
+.share-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.share-head .link {
+  font-size: 15px;
+  text-transform: none;
+}
+
+.share-caption {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: rgb(28 24 20 / 0.07);
+  border-left: 4px solid var(--ink-red);
+}
+
+.share-caption p {
+  margin: 0 0 6px;
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.share-reroll {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.share-reroll:hover {
+  color: var(--ink-red);
+}
+
+.share-nets a {
+  padding: 4px 9px;
+  border: 2px solid var(--ink);
+  color: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.share-nets a:hover {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.share-hint {
+  margin: 10px 0 6px;
+}
+
+.share-cards button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.share-card {
+  margin: 10px 0 0;
+}
+
+.share-card img {
+  display: block;
+  width: 100%;
+  margin: 0 auto 8px;
+  border: 2px solid var(--ink);
+}
+
+.share-card.is-story img {
+  width: 62%;
+}
