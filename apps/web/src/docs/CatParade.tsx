@@ -4,6 +4,7 @@ import { spec as gameSpec } from "@dno/game-spec";
 import { useLocale } from "../i18n/locale";
 import { buildName, diseaseName, stateName, variantName } from "../i18n/names";
 import type { BuildKey, DiseaseKey } from "@dno/game-spec";
+import { catVoice, pageSound } from "../home/sound";
 import { CAT_SETS, oneIn, roster, type CatSet, type RosterCat } from "./cats";
 import { useT } from "./i18n";
 import { ParadeScene } from "./three/parade";
@@ -48,6 +49,17 @@ export function CatParade() {
   useEffect(() => {
     scene.current?.select(index);
   }, [index]);
+
+  // The cat brought to the front says hello. Only ever after a click: the first render is quiet.
+  const greeted = useRef(false);
+  useEffect(() => {
+    if (!greeted.current) {
+      greeted.current = true;
+      return;
+    }
+    pageSound.resume();
+    catVoice(current.cat);
+  }, [set, index]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const step = (by: number) => setIndex((i) => (i + by + list.length) % list.length);
 

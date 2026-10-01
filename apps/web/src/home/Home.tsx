@@ -7,6 +7,7 @@ import { useLocale } from "../i18n/locale";
 import { buildName, catNames } from "../i18n/names";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
+import { pageSound, setMuted } from "./sound";
 
 const REPO = "https://github.com/jecombe/do_not_open";
 const APP = "/app.html";
@@ -187,6 +188,7 @@ function Toy() {
   const [shakes, setShakes] = useState(0);
   const [cat, setCat] = useState<CatSpec | null>(null);
   const [webgl, setWebgl] = useState(true);
+  const [muted, setMutedState] = useState(pageSound.muted);
   const lines = useRef<string[]>([]);
   lines.current = [t("home.toy.say1"), t("home.toy.say2"), t("home.toy.opening")];
 
@@ -241,6 +243,21 @@ function Toy() {
           <p className="toy-hint">{shakes === 0 ? t("home.toy.hint") : left > 0 ? t("home.toy.left", { count: left }) : "…"}</p>
         )}
         <p className="toy-note">{t("home.toy.note")}</p>
+        <button
+          type="button"
+          className="toy-sound"
+          aria-pressed={!muted}
+          onClick={() => {
+            setMuted(!muted);
+            setMutedState(!muted);
+            if (muted) {
+              pageSound.resume();
+              pageSound.complaint();
+            }
+          }}
+        >
+          {muted ? t("home.toy.soundOff") : t("home.toy.soundOn")}
+        </button>
       </div>
     </div>
   );

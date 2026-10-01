@@ -23,6 +23,8 @@ export const homeEs: Record<HomeKey, string> = {
   "home.toy.out": "Saluda a tu {breed} ({state}), de humor: {mood}.",
   "home.toy.again": "¡Otra caja!",
   "home.toy.note": "Esta es solo para divertirse: un gato nuevo cada vez, sin cartera.",
+  "home.toy.soundOn": "🔊 Sonido activado",
+  "home.toy.soundOff": "🔇 Sonido apagado",
   "home.ticker": "No abrir ★ Frágil ★ Gato vivo (quizá) ★ Este lado arriba ★ No agitar (bueno, un poco) ★ Contenido: desconocido ★",
   "home.how.title": "Cómo jugar",
   "home.how.lede": "Cuatro pasos. Sin matemáticas.",

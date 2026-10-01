@@ -22,6 +22,8 @@ export const homeEn = {
   "home.toy.out": "Say hi to your {state} {breed}, feeling {mood}.",
   "home.toy.again": "Another box!",
   "home.toy.note": "This one is just for fun: a new cat every time, no wallet needed.",
+  "home.toy.soundOn": "🔊 Sound on",
+  "home.toy.soundOff": "🔇 Sound off",
   "home.ticker": "Do not open ★ Fragile ★ Live cat (maybe) ★ This side up ★ Do not shake (ok, shake a little) ★ Contents: unknown ★",
   "home.how.title": "How to play",
   "home.how.lede": "Four steps. No maths required.",
