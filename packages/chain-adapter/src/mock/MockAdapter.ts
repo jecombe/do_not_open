@@ -157,6 +157,11 @@ export class MockAdapter implements ChainAdapter {
     return this.owed.get(owner) ?? 0n;
   }
 
+  /** Nothing is charged in the mock: every account holds a round 1 ETH. */
+  async balance(): Promise<bigint> {
+    return 10n ** 18n;
+  }
+
   // --- actions ---
 
   async mint(quantity: number, opts?: ActionOptions): Promise<number[]> {

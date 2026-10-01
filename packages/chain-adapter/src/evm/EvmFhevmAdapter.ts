@@ -263,6 +263,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.reading(this.contract.credits!(owner));
   }
 
+  async balance(owner: Address): Promise<bigint> {
+    return this.reading(this.opts.readProvider.getBalance(owner));
+  }
+
   // --- actions ---
 
   async mint(quantity: number, opts?: ActionOptions): Promise<number[]> {

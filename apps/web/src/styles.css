@@ -845,6 +845,36 @@ button {
   border-radius: 4px;
 }
 
+/* The wallet slip: the full address in small type, the balance stamped beneath it. */
+.wallet-slip {
+  width: 260px;
+}
+
+.slip-address {
+  margin: 0 16px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  user-select: all;
+  opacity: 0.8;
+}
+
+.slip-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 16px 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.slip-balance strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 /* Language tags: four small stamps along the bottom of the list. */
 .lang {
   display: flex;

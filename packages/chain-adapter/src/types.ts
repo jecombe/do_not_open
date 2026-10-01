@@ -187,6 +187,8 @@ export interface ChainAdapter {
   pair(tokenA: number, tokenB: number): Promise<PairInfo>;
   /** What `owner` earned from paid shakes and has not claimed yet. */
   credits(owner: Address): Promise<bigint>;
+  /** Native coin `owner` holds, in the smallest unit (wei on EVM). */
+  balance(owner: Address): Promise<bigint>;
 
   // --- actions ---
   /** Returns the new token ids. */
