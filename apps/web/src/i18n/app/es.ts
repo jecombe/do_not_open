@@ -470,6 +470,7 @@ export const es: Record<AppKey, string> = {
   "sale.moreThan": "Más de {n} cajas enviadas",
   "sale.soldOut": "Las {max} cajas están enviadas",
   "mine.hidden": "Nadie puede ver qué cajas son tuyas, ni siquiera esta página. Tu wallet las encuentra leyendo sus propios recibos.",
+  "mine.findAbove": "Tus cajas están ocultas, incluso para esta página. Muéstralas con el botón encima de la estantería.",
   "mine.find": "Mostrar mis cajas",
   "mine.finding": "Leyendo tus recibos…",
   "mine.why": "Una firma, una vez por visita. Permite a tu navegador descifrar tus recibos, solo para ti.",

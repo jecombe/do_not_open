@@ -470,6 +470,7 @@ export const fr: Record<AppKey, string> = {
   "sale.moreThan": "Plus de {n} boîtes expédiées",
   "sale.soldOut": "Les {max} boîtes sont expédiées",
   "mine.hidden": "Personne ne peut voir quelles boîtes sont à vous, pas même cette page. Votre wallet les retrouve en lisant ses propres reçus.",
+  "mine.findAbove": "Vos boîtes sont cachées, même pour cette page. Affichez-les avec le bouton au-dessus de l'étagère.",
   "mine.find": "Afficher mes boîtes",
   "mine.finding": "Lecture de vos reçus…",
   "mine.why": "Une signature, une fois par visite. Elle permet à votre navigateur de déchiffrer vos reçus, pour vous seul.",

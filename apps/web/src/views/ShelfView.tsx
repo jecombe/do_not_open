@@ -102,6 +102,13 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
         <ShelfScene boxes={onBench} arrivals={arrived} quality={quality} sound={sound} highlight={pointed} onSelect={onSelect} />
       </Stage>
 
+      {/* Hung above the empty shelf, where the boxes will land once they are found. */}
+      {account && !boxesKnown && (
+        <div className="find-over">
+          <FindMine />
+        </div>
+      )}
+
       <section className={`slip${foldClass}`} aria-label={t("shelf.title")}>
         {foldButton}
         <div className="slip-head">
@@ -120,7 +127,7 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
         ) : (
           <>
             {!boxesKnown ? (
-              <FindMine />
+              <p className="state-note">{t("mine.findAbove")}</p>
             ) : myBoxes.length === 0 ? (
               <p className="state-note">{t("shelf.empty")}</p>
             ) : (

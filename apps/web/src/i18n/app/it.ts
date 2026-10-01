@@ -470,6 +470,7 @@ export const it: Record<AppKey, string> = {
   "sale.moreThan": "Più di {n} scatole spedite",
   "sale.soldOut": "Tutte le {max} scatole spedite",
   "mine.hidden": "Nessuno può vedere quali scatole sono tue, nemmeno questa pagina. Il tuo wallet le ritrova leggendo le proprie ricevute.",
+  "mine.findAbove": "Le tue scatole sono nascoste, anche a questa pagina. Mostrale con il pulsante sopra lo scaffale.",
   "mine.find": "Mostra le mie scatole",
   "mine.finding": "Lettura delle tue ricevute…",
   "mine.why": "Una firma, una volta per visita. Permette al tuo browser di decifrare le tue ricevute, solo per te.",
