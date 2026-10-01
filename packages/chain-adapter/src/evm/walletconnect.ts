@@ -6,10 +6,13 @@ export interface WalletConnectProvider extends Eip1193Provider {
   /** Opens the WalletConnect modal unless a session is already there, and resolves to its accounts. */
   enable(): Promise<string[]>;
   disconnect(): Promise<void>;
-  session?: unknown;
+  session?: { namespaces: Record<string, { accounts: string[] }> };
   on(event: string, listener: (...args: never[]) => void): void;
   removeListener(event: string, listener: (...args: never[]) => void): void;
 }
+
+/** Offered next to the app's chain: mobile wallets such as MetaMask may stall on a session that names a testnet only. */
+const MAINNET = 1;
 
 /** One per page: WalletConnect's core refuses a second init, which React's dev double-mount would cause. */
 let loading: Promise<WalletConnectProvider> | null = null;
@@ -31,8 +34,9 @@ async function init(projectId: string, chain: ChainParams): Promise<WalletConnec
   const origin = window.location.origin;
   const provider = await EthereumProvider.init({
     projectId,
-    // Optional rather than required: a wallet that does not list Sepolia up front can still connect and switch.
-    optionalChains: [chain.chainId],
+    // Optional rather than required, so no wallet is turned away. The app's chain comes first and is
+    // the provider's default; when the wallet approves it, switching to it needs no round trip.
+    optionalChains: [chain.chainId, MAINNET],
     rpcMap: { [chain.chainId]: chain.rpcUrl },
     showQrModal: true,
     metadata: {
@@ -40,7 +44,14 @@ async function init(projectId: string, chain: ChainParams): Promise<WalletConnec
       description: "Sealed boxes on an encrypted chain.",
       url: origin,
       icons: [`${origin}/favicon.svg`],
+      // Where the wallet app sends the user back once a request is answered.
+      redirect: { universal: window.location.href },
     },
   });
   return provider as unknown as WalletConnectProvider;
+}
+
+/** Whether the session lets the dapp use `chainId` without asking the wallet. */
+export function approvesChain(provider: WalletConnectProvider, chainId: number): boolean {
+  return !!provider.session?.namespaces.eip155?.accounts.some((a) => a.startsWith(`eip155:${chainId}:`));
 }
