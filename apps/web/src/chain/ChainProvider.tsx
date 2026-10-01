@@ -1,5 +1,5 @@
-import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { createAdapter, ExternalWallet, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step, type WalletOption } from "@dno/chain-adapter";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createAdapter, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step, type WalletOption } from "@dno/chain-adapter";
 import { errorCopy } from "./copy";
 
 interface ChainState {
@@ -26,9 +26,6 @@ interface ChainState {
 
 const ChainContext = createContext<ChainState | null>(null);
 
-// Privy is heavy: fetched only on a live chain with an app id.
-const PrivyBridge = lazy(() => import("./PrivyBridge"));
-
 /** Modes announced in `.env.example` that no adapter implements yet. */
 const PLANNED_MODES = ["mainnet", "solana-devnet", "solana-mainnet"];
 
@@ -47,8 +44,6 @@ function chainMode(): { mode: ChainMode; unavailable: string | null } {
 
 export function ChainProvider({ children }: { children: ReactNode }) {
   const { mode, unavailable } = useMemo(chainMode, []);
-  const privyAppId = import.meta.env.VITE_PRIVY_APP_ID;
-  const privyWallet = useMemo(() => (mode === "sepolia" && privyAppId ? new ExternalWallet() : undefined), [mode, privyAppId]);
   const [adapter, setAdapter] = useState<ChainAdapter | null>(null);
   const [account, setAccount] = useState<Address | null>(null);
   const [collection, setCollection] = useState<CollectionInfo | null>(null);
@@ -63,7 +58,6 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       mode,
       rpcUrl: import.meta.env.VITE_SEPOLIA_RPC_URL,
       address: import.meta.env.VITE_DNO_ADDRESS,
-      wallet: privyWallet,
     }).then((a) => {
       if (!live) return;
       unsubscribe = a.onAccountChange(setAccount);
@@ -76,7 +70,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       live = false;
       unsubscribe();
     };
-  }, [mode, privyWallet]);
+  }, [mode]);
 
   const refresh = useCallback(async () => {
     if (!adapter) return;
@@ -119,11 +113,6 @@ export function ChainProvider({ children }: { children: ReactNode }) {
   return (
     <ChainContext.Provider value={{ adapter, mode, account, collection, myBoxes, offline, unavailable, refresh, connect, disconnect, connectError, picking, closePicker }}>
       {children}
-      {privyWallet && privyAppId && (
-        <Suspense fallback={null}>
-          <PrivyBridge appId={privyAppId} wallet={privyWallet} />
-        </Suspense>
-      )}
     </ChainContext.Provider>
   );
 }

@@ -9,6 +9,4 @@ interface ImportMetaEnv {
   readonly VITE_SEPOLIA_RPC_URL?: string;
   /** Overrides the committed DoNotOpen address. */
   readonly VITE_DNO_ADDRESS?: string;
-  /** Privy app id. When set, sepolia signs in through Privy instead of the injected wallet. */
-  readonly VITE_PRIVY_APP_ID?: string;
 }

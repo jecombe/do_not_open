@@ -1,10 +1,8 @@
 import { MockAdapter, type MockOptions } from "./mock/MockAdapter";
-import type { ExternalWallet } from "./evm/external";
 import type { ChainAdapter } from "./types";
 
 export * from "./types";
 export { traitIndexAtOffset } from "./layout";
-export { ExternalWallet, type SignIn } from "./evm/external";
 export { MockAdapter, mockSeedForToken, MOCK_YOU, MOCK_NIGHT_SHIFT, type MockOptions } from "./mock/MockAdapter";
 
 export type ChainMode = "mock" | "sepolia";
@@ -14,8 +12,6 @@ export interface AdapterConfig {
   /** sepolia: read endpoint, and an optional contract address override. */
   rpcUrl?: string;
   address?: string;
-  /** sepolia: a wallet the app signs in itself, instead of the browser's injected ones. */
-  wallet?: ExternalWallet;
   mock?: MockOptions;
 }
 
@@ -26,7 +22,7 @@ export interface AdapterConfig {
 export async function createAdapter(config: AdapterConfig): Promise<ChainAdapter> {
   if (config.mode === "sepolia") {
     const { createSepoliaBrowserAdapter } = await import("./evm/browser");
-    return createSepoliaBrowserAdapter({ rpcUrl: config.rpcUrl, address: config.address, wallet: config.wallet });
+    return createSepoliaBrowserAdapter({ rpcUrl: config.rpcUrl, address: config.address });
   }
   return new MockAdapter(config.mock);
 }
