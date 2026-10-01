@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { spec } from "@dno/game-spec";
 import type { CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
@@ -13,6 +13,68 @@ const REPO = "https://github.com/jecombe/do_not_open";
 const APP = "/app.html";
 const DOCS = "/docs.html";
 
+/**
+ * The stamp, the site's links and languages, and the way into the game. On a phone the links
+ * and languages fold into a menu, so the stamp, "Play" and the menu button share one line.
+ */
+function HomeTop() {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const navId = useId();
+  const root = useRef<HTMLElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggle.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // A link followed from the menu folds it away.
+  const close = () => setOpen(false);
+  return (
+    <header className="home-top" ref={root}>
+      <a className="home-stamp" href="/">
+        Do not open
+      </a>
+      <nav id={navId} className={open ? "is-open" : undefined} aria-label={t("home.nav")}>
+        <a href="#cats" onClick={close}>
+          {t("home.nav.cats")}
+        </a>
+        <a href="#how" onClick={close}>
+          {t("home.nav.how")}
+        </a>
+        <a href="#croquettes" onClick={close}>
+          {t("home.nav.croq")}
+        </a>
+        <a href={DOCS}>{t("home.nav.docs")}</a>
+        <LangSwitch label={t("home.nav")} />
+      </nav>
+      <div className="home-top-actions">
+        <a className="btn btn-small" href={APP}>
+          {t("home.nav.play")}
+        </a>
+        <button type="button" ref={toggle} className="btn btn-small btn-paper home-menu" aria-expanded={open} aria-controls={navId} onClick={() => setOpen((o) => !o)}>
+          <span className="home-menu-bars" aria-hidden="true" />
+          <span className="home-menu-label">{t("home.nav.menu")}</span>
+        </button>
+      </div>
+    </header>
+  );
+}
+
 export function Home() {
   const t = useT();
   const locale = useLocale();
@@ -25,21 +87,7 @@ export function Home() {
 
   return (
     <div className="home">
-      <header className="home-top">
-        <a className="home-stamp" href="/">
-          Do not open
-        </a>
-        <nav aria-label={t("home.nav")}>
-          <a href="#cats">{t("home.nav.cats")}</a>
-          <a href="#how">{t("home.nav.how")}</a>
-          <a href="#croquettes">{t("home.nav.croq")}</a>
-          <a href={DOCS}>{t("home.nav.docs")}</a>
-          <LangSwitch label={t("home.nav")} />
-          <a className="btn btn-small" href={APP}>
-            {t("home.nav.play")}
-          </a>
-        </nav>
-      </header>
+      <HomeTop />
 
       <section className="home-hero">
         <div className="hero-text">

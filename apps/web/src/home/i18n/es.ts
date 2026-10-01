@@ -8,6 +8,7 @@ export const homeEs: Record<HomeKey, string> = {
   "home.nav.how": "Cómo jugar",
   "home.nav.docs": "Manual",
   "home.nav.play": "Jugar",
+  "home.nav.menu": "Menú",
   "home.hero.kicker": "{supply} cajas · un gato en cada una · cero spoilers",
   "home.hero.title": "Hay un gato en la caja.",
   "home.hero.lede": "¿Cuál? Nadie lo sabe. Ni tú, ni nosotros, ni siquiera el ordenador que lo guarda. La única forma de saberlo es abrirla. Y una vez abierta, se queda abierta.",

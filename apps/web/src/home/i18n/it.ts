@@ -8,6 +8,7 @@ export const homeIt: Record<HomeKey, string> = {
   "home.nav.how": "Come si gioca",
   "home.nav.docs": "Manuale",
   "home.nav.play": "Gioca",
+  "home.nav.menu": "Menu",
   "home.hero.kicker": "{supply} scatole · un gatto in ognuna · zero spoiler",
   "home.hero.title": "C'è un gatto nella scatola.",
   "home.hero.lede": "Quale? Nessuno lo sa. Né tu, né noi, nemmeno il computer che lo custodisce. L'unico modo per scoprirlo è aprirla. E una volta aperta, resta aperta.",
