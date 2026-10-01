@@ -5,7 +5,7 @@ for an external audit, not a substitute for one. **No third party has audited th
 contract, and it must not go to mainnet before one has.**
 
 Scope: `DoNotOpen.sol` and `DoNotOpenConfig.sol` as deployed on Sepolia at
-`0x880D284333F4001Bfd199899f8243D78b486e077` (10,000 boxes), the croquette contracts
+`0xe8f699eEBc22767413A9edBb48826B10D3117f61` (10,000 boxes), the croquette contracts
 `Croq.sol`, `ConfidentialCroq.sol` and `Pantry.sol` (section 9), plus the parts of the
 adapter and the metadata pipeline that could leak or mislead.
 
@@ -34,20 +34,28 @@ mainnet), **Not done** (a check nobody has run).
 
 Details and the rest of the checks follow.
 
-## 1. Re-entrancy and ETH handling
+## 1. Re-entrancy and payments (USDC and cUSDC)
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| No external call in the middle of game logic | Pass | The only value-sending calls are in `claim` and `withdraw`. `paidShake` credits the holder and sends nothing |
+| No external call in the middle of game logic | Pass | USDC is pulled before the action (`costs()`, `mint`) and sent only in `claim` and `withdraw`. `paidShake` credits the holder and sends nothing. The token addresses are immutables set at deploy |
+| cUSDC orders act only on a proven payment | Pass | `finalizeOrder` rebuilds the handle from storage and checks the KMS proof; an order settles once. Tests: "mints only once the payment is proven…", "settles an order once, with a proof for its own bit only" |
+| A short cUSDC balance mints nothing | Pass | The transfer moves 0, the bit decrypts to false, the order ends `Unpaid` and frees its boxes. Test: "moves nothing and mints nothing when the buyer cannot pay" |
+| A paid order the box no longer allows is refunded | Pass | Rules are checked again at settlement; the price goes back in cUSDC. Test: "refunds a paid order the box no longer allows" |
+| cUSDC payouts cannot re-enter | Pass | `confidentialTransfer` (no `AndCall`) calls nothing on the receiver; the order's status is written before |
+| `withdrawConfidential` cannot take a pending order's price | Pass | It sends `confidentialRevenue`, booked only when an order is `Done`. Test: "lets the owner withdraw cUSDC revenue, never a pending order's price" |
 | `claim` follows checks-effects-interactions | Pass | `credits[msg.sender] = 0` and `totalCredits -= amount` happen before the call. Tests: "shows one real trait to the payer only and credits the holder 70%", "keeps unclaimed holder credits out of the owner's withdrawal" |
 | A reverting or re-entering holder cannot block `paidShake` | Pass | Pull payment: the holder is never called during `paidShake` |
 | Mint has no receiver callback | Pass | `_mint`, not `_safeMint`. Accepted consequence: a contract that cannot handle ERC-721 can mint to itself and lock the box |
 | `safeTransferFrom` callback cannot corrupt state | Pass | The contract has no transfer hook and keeps no per-owner game state that a callback could race |
-| `withdraw` cannot take holders' unclaimed credits | Pass | Sends `balance - totalCredits`. Invariant `balance >= totalCredits` holds because each credit is a fraction (at most 100%, validated in config) of ETH received in the same call; forced ETH only raises the balance |
+| `withdraw` cannot take holders' unclaimed credits | Pass | Sends the USDC balance minus `totalCredits`. Invariant `balance >= totalCredits` holds because each credit is a fraction (at most 100%, validated in config) of USDC received in the same call; USDC sent by anyone else only raises the balance |
 | `withdraw` re-entrancy | Pass | Owner-only, to an address the owner chose, and no state is read after the call |
-| Exact-fee checks | Pass | `costs()` and `mint` require `msg.value ==` the fee. Tests: "enforces price, batch size and supply", "requires the holder and the exact fee" |
+| Fee checks | Pass | `costs()` and `mint` pull exactly the fee with `safeTransferFrom`; nothing is payable. Tests: "charges the price in USDC, and enforces batch size and supply", "requires the holder and the fee" |
 | Fees cannot be changed after deploy | Accepted | They are immutables. A price change means a new deployment |
-| No `receive` or `fallback` | Pass | Plain ETH transfers to the contract revert |
+| No `receive` or `fallback` | Pass | Plain ETH transfers to the contract revert, and no function is payable |
+| `UsdcRamp` fee is bounded and pulled | Pass | `feeBps` is an immutable checked against `MAX_FEE_BPS` (1%) in the constructor; fees accrue in the contract and only the owner withdraws them, after zeroing `fees`. Tests in `test/UsdcRamp.ts` |
+| `UsdcRamp` swaps are slippage-bounded | Pass | The caller passes `minUsdcOut` and a deadline to the router; the app asks for at most 1% under the quote. A sandwich can still take up to that 1% |
+| `UsdcRamp` holds no buyer funds between calls | Pass | Unshielded USDC goes straight to the buyer; shielded USDC is wrapped to the buyer in the same call. With a wrapper `rate()` above 1, the remainder of the division would stay in the ramp: cUSDC's rate is 1 |
 
 ## 2. ACL and confidentiality
 
@@ -125,7 +133,7 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Owner powers are limited to `withdraw` and `setBaseURI` | Pass | Test: "lets only the owner withdraw proceeds and set the base URI". The owner cannot mint for free, change rules, pause, or read a seed |
+| Owner powers are limited to `withdraw`, `withdrawConfidential` and `setBaseURI` | Pass | Tests: "lets only the owner withdraw proceeds and set the base URI", "lets the owner withdraw cUSDC revenue…". The owner cannot mint for free, change rules, pause, or read a seed |
 | **O5. Ownership** | Open | `Ownable` is single-step, and on Sepolia the owner is the deployer's hot key. For mainnet: `Ownable2Step` and a multisig |
 | **O6. Metadata control** | Open | `setBaseURI` can be called at any time. Add a one-way freeze, or point at content-addressed storage and say so |
 | **O7. Metadata refresh** | Open | Emit ERC-4906 `MetadataUpdate(tokenId)` in `finalizeObserve` so marketplaces re-fetch the image |

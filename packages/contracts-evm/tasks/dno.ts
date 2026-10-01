@@ -45,6 +45,32 @@ async function connect(hre: HardhatRuntimeEnvironment, args: TaskArguments) {
   return { dno, address, signer };
 }
 
+const USDC_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function allowance(address, address) view returns (uint256)",
+  "function approve(address, uint256) returns (bool)",
+  "function mint(address, uint256)",
+];
+const usd = (hre: HardhatRuntimeEnvironment, amount: bigint) => `${hre.ethers.formatUnits(amount, 6)} USDC`;
+
+/**
+ * Makes sure the signer can pay `amount` USDC: tops up from the test token's public mint
+ * (USDCMock on Sepolia, TestUSDC locally) and approves the collection.
+ */
+async function ensureUsdc(hre: HardhatRuntimeEnvironment, args: TaskArguments, amount: bigint) {
+  const { dno, address, signer } = await connect(hre, args);
+  const usdc = new hre.ethers.Contract(await dno.usdc(), USDC_ABI, signer);
+  const balance: bigint = await usdc.balanceOf!(signer.address);
+  if (balance < amount) {
+    console.log(`  minting ${usd(hre, amount - balance)} of test USDC...`);
+    await (await usdc.mint!(signer.address, amount - balance)).wait();
+  }
+  if ((await usdc.allowance!(signer.address, address)) < amount) {
+    console.log(`  approving ${usd(hre, amount)}...`);
+    await (await usdc.approve!(address, amount)).wait();
+  }
+}
+
 const tokenOf = (args: TaskArguments): number => {
   const id = Number(args.token);
   if (!Number.isInteger(id) || id < 0) throw new Error("--token must be a token id");
@@ -64,8 +90,9 @@ async function mint(hre: HardhatRuntimeEnvironment, args: TaskArguments, quantit
   const { dno, signer } = await connect(hre, args);
   const price = await dno.mintPrice();
   const first = Number(await dno.totalMinted());
-  console.log(`Minting ${quantity} box(es) to ${signer.address} for ${hre.ethers.formatEther(price * BigInt(quantity))} ETH...`);
-  const tx = await dno.mint(quantity, { value: price * BigInt(quantity) });
+  console.log(`Minting ${quantity} box(es) to ${signer.address} for ${usd(hre, price * BigInt(quantity))}...`);
+  await ensureUsdc(hre, args, price * BigInt(quantity));
+  const tx = await dno.mint(quantity);
   const receipt = await tx.wait();
   const ids = Array.from({ length: quantity }, (_, i) => first + i);
   console.log(`  tx ${tx.hash} (gas ${receipt?.gasUsed})`);
@@ -76,7 +103,8 @@ async function mint(hre: HardhatRuntimeEnvironment, args: TaskArguments, quantit
 async function shake(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenId: number, paid = false) {
   const { dno, address, signer } = await connect(hre, args);
   console.log(`${paid ? "Paying to shake" : "Shaking"} box ${tokenId}...`);
-  const tx = paid ? await dno.paidShake(tokenId, { value: await dno.paidShakeFee() }) : await dno.shake(tokenId);
+  if (paid) await ensureUsdc(hre, args, await dno.paidShakeFee());
+  const tx = paid ? await dno.paidShake(tokenId) : await dno.shake(tokenId);
   await tx.wait();
   const [pickHandle, rollHandle] = await dno.lastShake(tokenId, signer.address);
   console.log(`  tx ${tx.hash}`);
@@ -110,8 +138,9 @@ async function observe(hre: HardhatRuntimeEnvironment, args: TaskArguments, toke
   const { dno } = await connect(hre, args);
   if (Number(await dno.status(tokenId)) === 0) {
     const fee = await dno.observeFee();
-    console.log(`Observing box ${tokenId} (irreversible, fee ${hre.ethers.formatEther(fee)} ETH)...`);
-    const tx = await dno.observe(tokenId, { value: fee });
+    console.log(`Observing box ${tokenId} (irreversible, fee ${usd(hre, fee)})...`);
+    await ensureUsdc(hre, args, fee);
+    const tx = await dno.observe(tokenId);
     await tx.wait();
     console.log(`  tx ${tx.hash}`);
   }
@@ -159,9 +188,10 @@ async function status(hre: HardhatRuntimeEnvironment, args: TaskArguments, token
 async function feed(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenId: number, times: number) {
   const { dno } = await connect(hre, args);
   const fee = await dno.feedFee();
-  console.log(`Feeding box ${tokenId} ${times} time(s) at ${hre.ethers.formatEther(fee)} ETH each...`);
+  console.log(`Feeding box ${tokenId} ${times} time(s) at ${usd(hre, fee)} each...`);
+  await ensureUsdc(hre, args, fee * BigInt(times));
   for (let i = 0; i < times; i++) {
-    const tx = await dno.feed(tokenId, { value: fee });
+    const tx = await dno.feed(tokenId);
     await tx.wait();
     console.log(`  tx ${tx.hash}`);
   }
@@ -289,6 +319,8 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
       address: deployment.address,
       deployBlock: deployment.receipt?.blockNumber ?? 0,
       abi: deployment.abi,
+      // ETH in, USDC or cUSDC out, when a ramp was deployed on this network.
+      ramp: await hre.deployments.getOrNull("UsdcRamp").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
     };
     writeFileSync(out, JSON.stringify(slim, null, 2) + "\n");
     console.log(`wrote ${out}`);
@@ -298,14 +330,17 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
     if (!pantry) return;
     const croq = await hre.deployments.get("Croq");
     const cCroq = await hre.deployments.get("ConfidentialCroq");
-    const pair = await hre.deployments.getOrNull("CroqWethPair");
+    const pair = await hre.deployments.getOrNull("CroqUsdcPair");
     const { UNISWAP_V2 } = await import("../deploy/economy");
+    const { PAYMENT_TOKENS } = await import("../deploy/deploy");
+    const uniswap = UNISWAP_V2[hre.network.name];
+    const usdc = PAYMENT_TOKENS[hre.network.name]?.usdc;
     const economyOut = resolve(__dirname, `../../chain-adapter/src/evm/deployments/${hre.network.name}-economy.json`);
     const economy = {
       croq: { address: croq.address, abi: croq.abi },
       cCroq: { address: cCroq.address, abi: cCroq.abi },
       pantry: { address: pantry.address, abi: pantry.abi },
-      market: pair && UNISWAP_V2[hre.network.name] ? { pair: pair.address, ...UNISWAP_V2[hre.network.name] } : null,
+      market: pair && uniswap && usdc ? { pair: pair.address, router: uniswap.router, factory: uniswap.factory, usdc } : null,
     };
     writeFileSync(economyOut, JSON.stringify(economy, null, 2) + "\n");
     console.log(`wrote ${economyOut}`);

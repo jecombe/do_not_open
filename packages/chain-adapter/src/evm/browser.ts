@@ -21,6 +21,9 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     abi: SEPOLIA_DEPLOYMENT.abi,
     // An address override points at another collection: its economy, if any, is not this one.
     economy: opts.address ? undefined : SEPOLIA_ECONOMY,
+    // Zama's USDCMock lets anyone mint: 100 test dollars a go.
+    usdcFaucet: 100_000_000n,
+    ramp: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.ramp ?? undefined),
     readProvider: new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true }),
     wallet: new InjectedWallet(ethereum, chain),
     loadRelayer: async () => {

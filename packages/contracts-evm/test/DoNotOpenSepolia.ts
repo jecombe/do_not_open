@@ -27,7 +27,11 @@ describe("DoNotOpen on Sepolia", function () {
     const [holder] = await ethers.getSigners();
     const tokenId = await dno.totalMinted();
 
-    await (await dno.mint(1, { value: await dno.mintPrice() })).wait();
+    const price = await dno.mintPrice();
+    const usdc = await ethers.getContractAt("TestUSDC", await dno.usdc());
+    if ((await usdc.balanceOf(holder!.address)) < price) await (await usdc.mint(holder!.address, price)).wait();
+    await (await usdc.approve(address, price)).wait();
+    await (await dno.mint(1)).wait();
     expect(await dno.ownerOf(tokenId)).to.eq(holder!.address);
 
     await (await dno.shake(tokenId)).wait();

@@ -185,7 +185,7 @@
     "allocation": [
       { "key": "gameReserve", "name": "Game reserve", "amount": 10000000, "rule": "Wrapped into the Pantry. Pays the daily purr, and takes back 60% of every meal, so it only runs dry if the cats stop eating." },
       { "key": "welcomeBags", "name": "Welcome bags", "amount": 1000000, "rule": "Wrapped into the Pantry. One bag per box: maxSupply x welcomeBag." },
-      { "key": "liquidity", "name": "Market liquidity", "amount": 4000000, "rule": "Seeded into a public CROQ/WETH pool." },
+      { "key": "liquidity", "name": "Market liquidity", "amount": 4000000, "rule": "Seeded into a public CROQ/USDC pool." },
       { "key": "treasury", "name": "Treasury", "amount": 5000000, "rule": "Kept by the collection owner as plain CROQ, for events and future liquidity." }
     ],
     "welcomeBag": {

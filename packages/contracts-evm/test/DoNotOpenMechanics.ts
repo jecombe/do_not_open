@@ -4,7 +4,7 @@ import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
 import { buildCatSpec } from "@dno/generator";
 import { configParamsFromSpec } from "../lib/specParams";
-import { DoNotOpen } from "../types";
+import { DoNotOpen, TestUSDC } from "../types";
 import {
   deploy,
   expectDenied,
@@ -25,6 +25,7 @@ describe("DoNotOpen mechanics", function () {
   let carol: HardhatEthersSigner;
   let dno: DoNotOpen;
   let address: string;
+  let usdc: TestUSDC;
 
   const params = configParamsFromSpec();
   const hcu = async (tx: Promise<{ wait(): Promise<unknown> }>) =>
@@ -41,10 +42,10 @@ describe("DoNotOpen mechanics", function () {
 
   beforeEach(async function () {
     if (!fhevm.isMock) this.skip();
-    ({ dno, address } = await deploy());
+    ({ dno, address, usdc } = await deploy());
     // Boxes 0-2 belong to alice, 3-5 to bob.
-    await dno.connect(alice).mint(3, { value: FEES.mint * 3n });
-    await dno.connect(bob).mint(3, { value: FEES.mint * 3n });
+    await dno.connect(alice).mint(3);
+    await dno.connect(bob).mint(3);
   });
 
   describe("feed", function () {
@@ -59,7 +60,7 @@ describe("DoNotOpen mechanics", function () {
       let previous = 0n;
       const gains = new Set<bigint>();
       for (let i = 0; i < 10; i++) {
-        await expect(dno.connect(carol).feed(0, { value: FEES.feed })).to.emit(dno, "Fed").withArgs(0, carol.address);
+        await expect(dno.connect(carol).feed(0)).to.emit(dno, "Fed").withArgs(0, carol.address);
         const now = await peekAffection(0);
         expect(now - previous).to.be.within(0n, max);
         gains.add(now - previous);
@@ -73,31 +74,33 @@ describe("DoNotOpen mechanics", function () {
     });
 
     it("keeps affection unreadable, even for the feeder and the holder", async function () {
-      await dno.connect(carol).feed(0, { value: FEES.feed });
+      await dno.connect(carol).feed(0);
       const [, affectionHandle] = await dno.observeHandles(0);
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint32, affectionHandle!, address, carol));
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint32, affectionHandle!, address, alice));
       await expectDenied(fhevm.publicDecrypt([affectionHandle!]));
     });
 
-    it("requires the exact fee, an existing box and a sealed one", async function () {
-      await expect(dno.connect(carol).feed(0)).to.be.revertedWithCustomError(dno, "WrongPayment");
-      await expect(dno.connect(carol).feed(99, { value: FEES.feed })).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
-      await dno.connect(alice).observe(0, { value: FEES.observe });
-      await expect(dno.connect(carol).feed(0, { value: FEES.feed })).to.be.revertedWithCustomError(dno, "NotSealed");
+    it("requires the fee, an existing box and a sealed one", async function () {
+      await (await usdc.connect(carol).approve(address, 0)).wait();
+      await expect(dno.connect(carol).feed(0)).to.be.revertedWithCustomError(usdc, "ERC20InsufficientAllowance");
+      await (await usdc.connect(carol).approve(address, ethers.MaxUint256)).wait();
+      await expect(dno.connect(carol).feed(99)).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
+      await dno.connect(alice).observe(0);
+      await expect(dno.connect(carol).feed(0)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
     it("stays within the documented HCU budget", async function () {
-      expect((await hcu(dno.connect(carol).feed(0, { value: FEES.feed }))).globalHCU).to.be.lessThan(150_000);
+      expect((await hcu(dno.connect(carol).feed(0))).globalHCU).to.be.lessThan(150_000);
     });
 
     it("turns the accessory golden at reveal only above the threshold", async function () {
       const threshold = BigInt(params.goldenThreshold);
 
       // Box 0: fed until its hidden affection is past the threshold.
-      while ((await peekAffection(0)) <= threshold) await dno.connect(carol).feed(0, { value: FEES.feed });
+      while ((await peekAffection(0)) <= threshold) await dno.connect(carol).feed(0);
       // Box 1: fed, but kept at or below the threshold.
-      await dno.connect(carol).feed(1, { value: FEES.feed });
+      await dno.connect(carol).feed(1);
       expect(await peekAffection(1)).to.be.lessThanOrEqual(threshold);
 
       for (const [tokenId, expectGolden] of [[0, true], [1, false], [2, false]] as const) {
@@ -106,7 +109,7 @@ describe("DoNotOpen mechanics", function () {
         const cat = buildCatSpec({ seed, affection });
         expect(cat.rarity.golden).to.eq(expectGolden);
 
-        await dno.connect(alice).observe(tokenId, { value: FEES.observe });
+        await dno.connect(alice).observe(tokenId);
         await expect(finalizeObserve(dno, tokenId, carol))
           .to.emit(dno, "Observed")
           .withArgs(tokenId, seed, STATE_IDS[cat.state], cat.rarity.score, expectGolden);
@@ -119,8 +122,8 @@ describe("DoNotOpen mechanics", function () {
     });
 
     it("rejects an inflated affection at reveal", async function () {
-      await dno.connect(carol).feed(0, { value: FEES.feed });
-      await dno.connect(alice).observe(0, { value: FEES.observe });
+      await dno.connect(carol).feed(0);
+      await dno.connect(alice).observe(0);
       const real = await fhevm.publicDecrypt([...(await dno.observeHandles(0))]);
       const [seed] = ethers.AbiCoder.defaultAbiCoder().decode(["uint64", "uint32"], real.abiEncodedClearValues);
       const forged = ethers.AbiCoder.defaultAbiCoder().encode(["uint64", "uint32"], [seed, 999]);
@@ -142,40 +145,41 @@ describe("DoNotOpen mechanics", function () {
 
       expect(await dno.credits(alice.address)).to.eq(share);
       expect(await dno.totalCredits()).to.eq(share);
-      await expect(dno.connect(alice).claim()).to.changeEtherBalance(alice, share);
+      await expect(dno.connect(alice).claim()).to.changeTokenBalance(usdc, alice, share);
       expect(await dno.credits(alice.address)).to.eq(0);
       await expect(dno.connect(alice).claim()).to.be.revertedWithCustomError(dno, "NothingToClaim");
     });
 
     it("emits Shaken with paid = true", async function () {
-      await expect(dno.connect(carol).paidShake(0, { value: FEES.paidShake }))
+      await expect(dno.connect(carol).paidShake(0))
         .to.emit(dno, "Shaken")
         .withArgs(0, carol.address, true);
     });
 
-    it("is refused to the holder, without the exact fee, or on an opened box", async function () {
-      await expect(dno.connect(alice).paidShake(0, { value: FEES.paidShake })).to.be.revertedWithCustomError(dno, "HolderShakesForFree");
-      await expect(dno.connect(carol).paidShake(0, { value: FEES.paidShake - 1n })).to.be.revertedWithCustomError(dno, "WrongPayment");
-      await dno.connect(alice).observe(0, { value: FEES.observe });
-      await expect(dno.connect(carol).paidShake(0, { value: FEES.paidShake })).to.be.revertedWithCustomError(dno, "NotSealed");
+    it("is refused to the holder, without the fee, or on an opened box", async function () {
+      await expect(dno.connect(alice).paidShake(0)).to.be.revertedWithCustomError(dno, "HolderShakesForFree");
+      const broke = (await ethers.getSigners())[9]!;
+      await expect(dno.connect(broke).paidShake(0)).to.be.revertedWithCustomError(usdc, "ERC20InsufficientAllowance");
+      await dno.connect(alice).observe(0);
+      await expect(dno.connect(carol).paidShake(0)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
     it("credits whoever holds the box at the time of the shake", async function () {
       const share = (FEES.paidShake * BigInt(params.paidShakeHolderBps)) / 10_000n;
-      await dno.connect(carol).paidShake(0, { value: FEES.paidShake });
+      await dno.connect(carol).paidShake(0);
       await dno.connect(alice).transferFrom(alice.address, bob.address, 0);
-      await dno.connect(carol).paidShake(0, { value: FEES.paidShake });
+      await dno.connect(carol).paidShake(0);
       expect(await dno.credits(alice.address)).to.eq(share);
       expect(await dno.credits(bob.address)).to.eq(share);
     });
 
     it("keeps unclaimed holder credits out of the owner's withdrawal", async function () {
       const share = (FEES.paidShake * BigInt(params.paidShakeHolderBps)) / 10_000n;
-      await dno.connect(carol).paidShake(0, { value: FEES.paidShake });
+      await dno.connect(carol).paidShake(0);
       const revenue = FEES.mint * 6n + FEES.paidShake - share;
-      await expect(dno.connect(deployer).withdraw(deployer.address)).to.changeEtherBalance(deployer, revenue);
-      await expect(dno.connect(alice).claim()).to.changeEtherBalance(alice, share);
-      expect(await ethers.provider.getBalance(address)).to.eq(0);
+      await expect(dno.connect(deployer).withdraw(deployer.address)).to.changeTokenBalance(usdc, deployer, revenue);
+      await expect(dno.connect(alice).claim()).to.changeTokenBalance(usdc, alice, share);
+      expect(await usdc.balanceOf(address)).to.eq(0);
     });
   });
 
@@ -192,7 +196,7 @@ describe("DoNotOpen mechanics", function () {
       expect(await dno.partnerOf(3)).to.deep.eq([true, 0n]);
 
       // Bob observes his box; alice's is dragged along. One fee.
-      const tx = dno.connect(bob).observe(3, { value: FEES.observe });
+      const tx = dno.connect(bob).observe(3);
       await expect(tx).to.emit(dno, "ObserveRequested").withArgs(3).and.to.emit(dno, "ObserveRequested").withArgs(0);
       expect(await dno.status(0)).to.eq(1);
       expect(await dno.status(3)).to.eq(1);
@@ -212,7 +216,7 @@ describe("DoNotOpen mechanics", function () {
       await expect(dno.connect(bob).acceptEntangle(1, 3)).to.be.revertedWithCustomError(dno, "NoSuchProposal");
       await expect(dno.connect(alice).acceptEntangle(3, 0)).to.be.revertedWithCustomError(dno, "NoSuchProposal");
       // Observing before acceptance affects only one box.
-      await dno.connect(bob).observe(3, { value: FEES.observe });
+      await dno.connect(bob).observe(3);
       expect(await dno.status(0)).to.eq(0);
     });
 
@@ -233,7 +237,7 @@ describe("DoNotOpen mechanics", function () {
       await expect(dno.connect(bob).acceptEntangle(1, 3)).to.be.revertedWithCustomError(dno, "AlreadyEntangled");
       await expect(dno.connect(alice).proposeEntangle(0, 4)).to.be.revertedWithCustomError(dno, "AlreadyEntangled");
 
-      await dno.connect(alice).observe(2, { value: FEES.observe });
+      await dno.connect(alice).observe(2);
       await expect(dno.connect(alice).proposeEntangle(2, 4)).to.be.revertedWithCustomError(dno, "NotSealed");
       await expect(dno.connect(bob).proposeEntangle(4, 2)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
@@ -244,7 +248,7 @@ describe("DoNotOpen mechanics", function () {
       await dno.connect(alice).transferFrom(alice.address, carol.address, 1);
 
       // Carol now holds box 1; opening it still opens alice's box 0.
-      await dno.connect(carol).observe(1, { value: FEES.observe });
+      await dno.connect(carol).observe(1);
       expect(await dno.status(0)).to.eq(1);
     });
 
@@ -345,7 +349,7 @@ describe("DoNotOpen mechanics", function () {
 
       await expect(dno.connect(alice).challengeDuel(1, 1)).to.be.revertedWithCustomError(dno, "SameBox");
       await dno.connect(alice).challengeDuel(1, 4);
-      await dno.connect(bob).observe(4, { value: FEES.observe });
+      await dno.connect(bob).observe(4);
       await expect(dno.connect(bob).acceptDuel(1)).to.be.revertedWithCustomError(dno, "NotSealed");
       await expect(dno.connect(alice).challengeDuel(2, 4)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
@@ -367,7 +371,7 @@ describe("DoNotOpen mechanics", function () {
     it("still resolves if a box is opened while the outcome is pending", async function () {
       await dno.connect(alice).challengeDuel(0, 3);
       await dno.connect(bob).acceptDuel(0);
-      await dno.connect(alice).observe(0, { value: FEES.observe });
+      await dno.connect(alice).observe(0);
       await finalizeObserve(dno, 0, carol);
       await expect(finalizeDuel(dno, 0, carol)).to.emit(dno, "DuelResolved");
     });

@@ -311,6 +311,19 @@ button {
   color: var(--manifest);
 }
 
+/* --- Pay with USDC or cUSDC --- */
+.pay-with {
+  margin-top: 12px;
+}
+
+.pay-with .picker {
+  margin-bottom: 6px;
+}
+
+.pay-with.is-compact {
+  margin: 0 0 10px;
+}
+
 /* --- Footer notice --- */
 .notice {
   position: absolute;

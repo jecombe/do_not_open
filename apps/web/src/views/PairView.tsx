@@ -4,13 +4,14 @@ import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
+import { usePayment } from "../chain/payment";
 import { logTx, recallTxs, type LoggedTx } from "../chain/txLog";
 import { useT, type AppKey } from "../i18n/app";
 import { useLocale } from "../i18n/locale";
 import { catNames } from "../i18n/names";
 import { PairScene, type PairSceneHandle } from "../scenes/Scenes";
 import { Stage } from "./Stage";
-import { StepTracker, type PlannedStep } from "./StepTracker";
+import { PAYMENT_STEPS, StepTracker, type PlannedStep } from "./StepTracker";
 import { TxJournal } from "./TxJournal";
 import { useFold } from "./useFold";
 
@@ -46,6 +47,7 @@ const OPEN_PLAN: PlannedStep[] = [...SIGN_AND_MINE("track.sign"), { step: "decry
 
 export function PairView({ quality, sound, initial, intent, onInspect }: Props) {
   const { adapter, account, collection, myBoxes, refresh, connect } = useChain();
+  const pay = usePayment();
   const t = useT();
   const { foldClass, foldButton } = useFold();
   const scene = useRef<PairSceneHandle>(null);
@@ -276,8 +278,8 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
     if (!openable) return;
     start();
     const id = openable.tokenId;
-    setPlan(openable.status === "opening" ? OPEN_PLAN.slice(2) : OPEN_PLAN);
-    const opened = await action.run("open", (o) => (openable.status === "opening" ? adapter.finishObserve(id, logged(o)) : adapter.observe(id, logged(o))));
+    setPlan(openable.status === "opening" ? OPEN_PLAN.slice(2) : pay === "cusdc" ? [...PAYMENT_STEPS, ...OPEN_PLAN] : OPEN_PLAN);
+    const opened = await action.run("open", (o) => (openable.status === "opening" ? adapter.finishObserve(id, logged(o)) : adapter.observe(id, { ...logged(o), pay })));
     if (!opened) {
       void load();
       return;
@@ -471,7 +473,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
           ) : offerLink && linkStep === "accept" && proposal ? (
             <p className="fine">{t("pair.linkExplain", { from: serial(proposal.from), to: serial(proposal.to) })}</p>
           ) : entangled ? (
-            <p className="fine">{t("pair.entangledExplain", { fee: fee(collection?.fees.observe ?? 0n, collection) })}</p>
+            <p className="fine">{t("pair.entangledExplain", { fee: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
           ) : taken && offerLink ? (
             <p className="fine">{t("pair.taken")}</p>
           ) : challenger === null ? (

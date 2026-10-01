@@ -4,7 +4,8 @@ A confidential NFT collection on the Zama Protocol (FHEVM). 10,000 sealed boxes.
 holds a cat whose state and traits are drawn and stored encrypted on-chain, so nobody,
 the deployer included, knows what is inside until a box is observed.
 
-Holders pet their cats with ETH (affection, which can turn the accessory golden) and feed
+Boxes, and every paid action, cost USDC; each price can also be paid in cUSDC, Zama's
+confidential USDC, which keeps the buyer's balance private. Holders pet their cats (affection, which can turn the accessory golden) and feed
 them croquettes (CROQ), a game currency with encrypted balances. The cat eats every
 croquette and puts on a weight nobody can read; when the box is opened, the cat is
 weighed in public. The heavier it is, the rarer its build, and past a tolerance of its
@@ -60,7 +61,8 @@ The same app on Sepolia, against the live contract and Zama's relayer:
 VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app.html?chain=sepolia
 ```
 
-You need a browser wallet with a little Sepolia ETH. `?chain=mock` and `?chain=sepolia`
+You need a browser wallet with a little Sepolia ETH for gas. Prices are in Zama's test USDC
+on Sepolia; the shelf has a button that mints some, and another that shields it as cUSDC. `?chain=mock` and `?chain=sepolia`
 switch modes without restarting.
 
 Token metadata (JSON, a 3D render and an SVG fallback per token):
@@ -104,7 +106,7 @@ once at deployment; nothing can mint more.
 
 ```mermaid
 flowchart LR
-  pool["Uniswap V2<br/>CROQ/WETH"] <-- "buy, sell<br/>public amounts" --> player(("Player"))
+  pool["Uniswap V2<br/>CROQ/USDC"] <-- "buy, sell<br/>public amounts" --> player(("Player"))
   player -- "wrap / unwrap<br/>public amounts" --> ccroq["cCROQ<br/>encrypted balances"]
   pantry["Pantry"] -- "welcome bag 100 per box<br/>purr 0..4 per box per day" --> ccroq
   ccroq -- "holder feeds a sealed cat<br/>2 meals, 1,000 a day" --> meal{{"meal, eaten whole<br/>weight += amount"}}
@@ -127,14 +129,18 @@ The rules, what leaks and the costs are in [`docs/CROQ.md`](docs/CROQ.md).
 
 | Contract | Address |
 | --- | --- |
-| `DoNotOpen` (10,000 boxes) | [`0x880D284333F4001Bfd199899f8243D78b486e077`](https://sepolia.etherscan.io/address/0x880D284333F4001Bfd199899f8243D78b486e077) |
-| `DoNotOpenConfig` | [`0xe2Ce2fC413aE3cf9d0CAF663eb7B357689bF9D1A`](https://sepolia.etherscan.io/address/0xe2Ce2fC413aE3cf9d0CAF663eb7B357689bF9D1A) |
-| `Croq` (CROQ) | [`0x72Fc0E0654f268A0785f92D63450c813cAFDfD10`](https://sepolia.etherscan.io/address/0x72Fc0E0654f268A0785f92D63450c813cAFDfD10) |
-| `ConfidentialCroq` (cCROQ) | [`0xa89c19228261EAc5Fa48f544238d04fBC115393c`](https://sepolia.etherscan.io/address/0xa89c19228261EAc5Fa48f544238d04fBC115393c) |
-| `Pantry` | [`0x8a58e2Cc6E11A3CC108612cfc6677A425Ff49882`](https://sepolia.etherscan.io/address/0x8a58e2Cc6E11A3CC108612cfc6677A425Ff49882) |
-| CROQ/WETH pair, Uniswap V2 | [`0x645D0d391F088895272b200aa6E187aCd00F270d`](https://sepolia.etherscan.io/address/0x645D0d391F088895272b200aa6E187aCd00F270d) |
+| `DoNotOpen` (10,000 boxes) | [`0xe8f699eEBc22767413A9edBb48826B10D3117f61`](https://sepolia.etherscan.io/address/0xe8f699eEBc22767413A9edBb48826B10D3117f61) |
+| `DoNotOpenConfig` | [`0xa5D7870f643537b85A575Ab716446fdb6F022780`](https://sepolia.etherscan.io/address/0xa5D7870f643537b85A575Ab716446fdb6F022780) |
+| `Croq` (CROQ) | [`0x183B74906673283f7Fe3272103989A357Cf88522`](https://sepolia.etherscan.io/address/0x183B74906673283f7Fe3272103989A357Cf88522) |
+| `ConfidentialCroq` (cCROQ) | [`0x7598484e5DDdada766ab19Cd7d0dD42d17Dd4F06`](https://sepolia.etherscan.io/address/0x7598484e5DDdada766ab19Cd7d0dD42d17Dd4F06) |
+| `Pantry` | [`0x20755493eF05C954BdC2e970b0437B12AE19d01e`](https://sepolia.etherscan.io/address/0x20755493eF05C954BdC2e970b0437B12AE19d01e) |
+| CROQ/USDC pair, Uniswap V2 | [`0xDc7Ed9F6ffd2993350BDc2c563E42036C5a53B43`](https://sepolia.etherscan.io/address/0xDc7Ed9F6ffd2993350BDc2c563E42036C5a53B43) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x20FB2d7f2d3fb249924ce3871255bb417670ba50`](https://sepolia.etherscan.io/address/0x20FB2d7f2d3fb249924ce3871255bb417670ba50) |
+| ETH/USDC pair, Uniswap V2 (seeded for the ramp) | [`0x58151722a43de9a7A850dF12f6D9924B19E50F8D`](https://sepolia.etherscan.io/address/0x58151722a43de9a7A850dF12f6D9924B19E50F8D) |
 
-The earlier 5,000-box deployments are superseded. None of these contracts has been
+The earlier ETH-priced and 5,000-box deployments are superseded. None of these contracts has been
 audited. See [`docs/AUDIT_CHECKLIST.md`](docs/AUDIT_CHECKLIST.md) for what is open
 before a mainnet deployment.
 

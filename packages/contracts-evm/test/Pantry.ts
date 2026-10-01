@@ -64,7 +64,7 @@ describe("CROQ economy", function () {
 
   async function open(tokenId: number) {
     const holder = await ethers.getSigner(await dno.ownerOf(tokenId));
-    await (await dno.connect(holder).observe(tokenId, { value: FEES.observe })).wait();
+    await (await dno.connect(holder).observe(tokenId)).wait();
     await (await finalizeObserve(dno, tokenId, carol)).wait();
   }
 
@@ -82,8 +82,8 @@ describe("CROQ economy", function () {
     ({ dno } = await deploy(EVEN_STATES));
     ({ croq, cCroq, pantry, pantryAddress, cCroqAddress } = await deployEconomy(dno));
     // Boxes 0-2 belong to alice, 3-5 to bob.
-    await dno.connect(alice).mint(3, { value: FEES.mint * 3n });
-    await dno.connect(bob).mint(3, { value: FEES.mint * 3n });
+    await dno.connect(alice).mint(3);
+    await dno.connect(bob).mint(3);
   });
 
   describe("CROQ and cCROQ", function () {
@@ -232,7 +232,7 @@ describe("CROQ economy", function () {
       for (let id = 0; id < 3 && alive === -1; id++) if (stateOfSeed(await peekSeed(dno, id)) === STATE_IDS.alive) alive = id;
       while (alive === -1) {
         const first = Number(await dno.totalMinted());
-        await (await dno.connect(alice).mint(5, { value: FEES.mint * 5n })).wait();
+        await (await dno.connect(alice).mint(5)).wait();
         for (let id = first; id < first + 5 && alive === -1; id++) if (stateOfSeed(await peekSeed(dno, id)) === 0) alive = id;
       }
       await (await dno.connect(alice).proveAlive(alive)).wait();
@@ -299,7 +299,7 @@ describe("CROQ economy", function () {
       const ids = Array.from({ length: params.maxBoxesPerClaim }, (_, i) => i);
       const first = Number(await dno.totalMinted());
       for (let minted = first; minted < params.maxBoxesPerClaim; minted += 10) {
-        await (await dno.connect(carol).mint(10, { value: FEES.mint * 10n })).wait();
+        await (await dno.connect(carol).mint(10)).wait();
       }
       for (const id of ids) {
         const owner = await ethers.getSigner(await dno.ownerOf(id));
@@ -325,7 +325,7 @@ describe("CROQ economy", function () {
       await approvePantry(carol);
       await expect(feed(carol, 0, 10n)).to.be.revertedWithCustomError(pantry, "NotHolder");
       await expect(feed(alice, 99, 10n)).to.be.revertedWithCustomError(dno, "ERC721NonexistentToken");
-      await (await dno.connect(alice).observe(0, { value: FEES.observe })).wait();
+      await (await dno.connect(alice).observe(0)).wait();
       await expect(feed(alice, 0, 10n)).to.be.revertedWithCustomError(pantry, "NotSealed");
     });
 
@@ -473,7 +473,7 @@ describe("CROQ economy", function () {
 
     it("weighs once, only after the reveal is final", async function () {
       await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
-      await (await dno.connect(alice).observe(0, { value: FEES.observe })).wait();
+      await (await dno.connect(alice).observe(0)).wait();
       await expect(pantry.weigh(0)).to.be.revertedWithCustomError(pantry, "NotRevealed");
       await (await finalizeObserve(dno, 0, carol)).wait();
       await (await pantry.weigh(0)).wait();

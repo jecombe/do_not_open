@@ -5,14 +5,16 @@ import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
+import { usePayment } from "../chain/payment";
 import { recallFelt, rememberFelt, type Felt } from "../chain/feltCache";
 import { useLocale } from "../i18n/locale";
 import { useT, type AppKey } from "../i18n/app";
 import { cap, catNames } from "../i18n/names";
 import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scenes";
 import { Declaration } from "./Declaration";
+import { PayWith } from "./PayWith";
 import { Stage } from "./Stage";
-import { StepTracker, type PlannedStep } from "./StepTracker";
+import { PAYMENT_STEPS, StepTracker, type PlannedStep } from "./StepTracker";
 import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
 
@@ -71,6 +73,8 @@ const PLANS: Record<string, PlannedStep[]> = {
 /** Finishing a half-done open or check starts at the decryption. */
 const resumed = (plan: PlannedStep[]) => plan.slice(2);
 
+const PAID_ACTIONS = new Set(["feed", "open"]);
+
 const HOLDER_SHARE = Number(gameSpec.mechanics.paidShake?.holderShareBps ?? 7000) / 100;
 
 /** Runs `then` the first time an action reaches `at`: the moment the scene should react. */
@@ -102,6 +106,7 @@ const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
 export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview }: Props) {
   const { adapter, account, collection, refresh, connect } = useChain();
+  const pay = usePayment();
   const t = useT();
   const { foldClass, foldButton } = useFold();
   const scene = useRef<BoxSceneHandle>(null);
@@ -202,7 +207,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const shake = async () => {
     start();
     const rattle = () => scene.current?.shake();
-    const result = await action.run("shake", (o) => (isHolder ? adapter.shake(tokenId, cue(o, "confirming", rattle)) : adapter.paidShake(tokenId, cue(o, "confirming", rattle))));
+    const result = await action.run("shake", (o) => (isHolder ? adapter.shake(tokenId, cue(o, "confirming", rattle)) : adapter.paidShake(tokenId, { ...cue(o, "confirming", rattle), pay })));
     if (!result) return;
     rattle();
     setFelt(result);
@@ -212,7 +217,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const feed = async () => {
     start();
     const done = await action.run("feed", async (o) => {
-      await adapter.feed(tokenId, cue(o, "confirming", () => scene.current?.feed()));
+      await adapter.feed(tokenId, { ...cue(o, "confirming", () => scene.current?.feed()), pay });
       return true;
     });
     if (!done) return;
@@ -273,7 +278,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
 
   const open = async () => {
     start();
-    const boxes = await action.run("open", (o) => (info?.status === "opening" ? adapter.finishObserve(tokenId, o) : adapter.observe(tokenId, o)));
+    const boxes = await action.run("open", (o) => (info?.status === "opening" ? adapter.finishObserve(tokenId, o) : adapter.observe(tokenId, { ...o, pay })));
     const mine = boxes?.find((b) => b.tokenId === tokenId);
     if (!mine?.revealed) {
       void load();
@@ -474,6 +479,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               )}
             </div>
 
+            {account && info?.status === "sealed" && <PayWith busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} compact />}
+
             {serving && info?.status === "sealed" && isHolder && !fullToday && (
               <form
                 className="find pantry-form"
@@ -498,7 +505,13 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   {PLANS[action.busy] && (
                     <StepTracker
                       key={action.busy}
-                      plan={(action.busy === "open" && info?.status === "opening") || (action.busy === "alive" && info?.aliveCheck === "pending") ? resumed(PLANS[action.busy]!) : PLANS[action.busy]!}
+                      plan={
+                        (action.busy === "open" && info?.status === "opening") || (action.busy === "alive" && info?.aliveCheck === "pending")
+                          ? resumed(PLANS[action.busy]!)
+                          : pay === "cusdc" && (PAID_ACTIONS.has(action.busy) || (action.busy === "shake" && !isHolder))
+                            ? [...PAYMENT_STEPS, ...PLANS[action.busy]!]
+                            : PLANS[action.busy]!
+                      }
                       step={action.step}
                     />
                   )}
@@ -531,10 +544,10 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               ) : info.status === "opening" ? (
                 <p className="fine">{t("box.stuckOpening")}</p>
               ) : isHolder ? (
-                <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection), open: fee(collection?.fees.observe ?? 0n, collection) })}</p>
+                <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
               ) : (
                 <p className="fine">
-                  {t("box.strangerHint", { paid: fee(collection?.fees.paidShake ?? 0n, collection), share: HOLDER_SHARE, feed: fee(collection?.fees.feed ?? 0n, collection) })}
+                  {t("box.strangerHint", { paid: fee(collection?.fees.paidShake ?? 0n, collection, pay), share: HOLDER_SHARE, feed: fee(collection?.fees.feed ?? 0n, collection, pay) })}
                 </p>
               )}
             </div>

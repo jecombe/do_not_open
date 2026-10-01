@@ -60,8 +60,6 @@ export function PantryView({ quality, sound, onSelect }: Props) {
   const [boxes, setBoxes] = useState<Map<number, BoxPantry>>(new Map());
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [done, setDone] = useState<AppKey | null>(null);
-  const decimals = collection?.currency.decimals ?? 18;
-  const symbol = collection?.currency.symbol ?? "ETH";
 
   const load = useCallback(async () => {
     try {
@@ -189,7 +187,7 @@ export function PantryView({ quality, sound, onSelect }: Props) {
             </Feedback>
           </>
         ) : tab === "market" ? (
-          <Market economy={economy} decimals={decimals} symbol={symbol} busy={action.busy} run={action.run} onDone={(k) => void after(k, false)} />
+          <Market economy={economy} decimals={economy.market?.quote.decimals ?? 6} symbol={economy.market?.quote.symbol ?? "USDC"} busy={action.busy} run={action.run} onDone={(k) => void after(k, false)} />
         ) : (
           <Bridge economy={economy} hidden={hidden} plain={plain} busy={action.busy} run={action.run} onDone={(k) => void after(k)} />
         )}
@@ -265,7 +263,7 @@ function Market({
   if (!market) return <p className="state-note">{t("pantry.noMarket")}</p>;
 
   // The pool's own price, before fees: coin per thousand croquettes.
-  const perThousand = market.croqReserve > 0n ? (market.nativeReserve * 1000n) / market.croqReserve : 0n;
+  const perThousand = market.croqReserve > 0n ? (market.quoteReserve * 1000n) / market.croqReserve : 0n;
   const trade = async () => {
     if (!amount) return;
     const ok = await run("trade", async (o) => {
@@ -291,7 +289,7 @@ function Market({
         </div>
         <div>
           <dt>{t("pantry.poolCoin", { symbol })}</dt>
-          <dd>{coin(market.nativeReserve, decimals)}</dd>
+          <dd>{coin(market.quoteReserve, decimals)}</dd>
         </div>
       </dl>
       <p className="fine">{t("pantry.priceNote", { symbol, market: market.name })}</p>
@@ -311,7 +309,7 @@ function Market({
         }}
       >
         <label htmlFor="trade-amount">{side === "buy" ? t("pantry.payWith", { symbol }) : t("pantry.sellAmount")}</label>
-        <input id="trade-amount" inputMode="decimal" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder={side === "buy" ? "0.001" : "1000"} disabled={!!busy} />
+        <input id="trade-amount" inputMode="decimal" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder={side === "buy" ? "5" : "1000"} disabled={!!busy} />
         <button type="submit" className="plain-button" disabled={!!busy || !amount}>
           {busy === "trade" ? t("pantry.trading") : side === "buy" ? t("pantry.buy") : t("pantry.sell")}
         </button>

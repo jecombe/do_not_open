@@ -156,20 +156,67 @@ may entangle or duel two of their own boxes.
 There is no way to untangle. Whoever buys an entangled box can have it opened by the
 partner's holder; marketplaces should show `partnerOf`.
 
+### Paid in USDC, or in cUSDC through a two-step order
+
+Since 2026-10-01 every price is in USDC (6 decimals): mint 5, open 1, feed 0.5, paid shake
+2.5. On Sepolia the collection takes Zama's `USDCMock` (`0x9b5C…dFfF`, anyone can mint it)
+and its wrapper `cUSDCMock` (`0x7c5B…3639`); locally, `TestUSDC` and `TestConfidentialUSDC`
+stand in. The contract reads nothing else from them: they are immutables.
+
+An ERC-7984 transfer never reverts for a short balance, it moves 0. A contract that pulls
+cUSDC therefore cannot mint in the same transaction without either trusting the payment
+or decrypting. `order` pulls the price with `confidentialTransferFrom`, compares what
+arrived to the price, and makes that one bit publicly decryptable; `finalizeOrder` checks
+it with the KMS proof, like the other `finalize*` functions, and only then acts. The
+alternative, `confidentialTransferAndCall` into the collection, needs a client-encrypted
+amount and still needs the decryption before minting, so it saves nothing. Rules are
+checked at both steps; a paid order the box no longer allows is refunded, and a mint
+order reserves its boxes (`reserved`) so it cannot be sold out in between.
+
+The holder's share of a paid shake in cUSDC is sent at once with `confidentialTransfer`,
+which calls nothing on the receiver. cUSDC revenue is counted in `confidentialRevenue`
+when an order settles, so `withdrawConfidential` never takes the price of a pending order.
+
 ### Paid shake earnings are pulled, not pushed
 
-The holder's 70% is credited and withdrawn with `claim()`. Nothing is sent to a holder
+The holder's 70% of a USDC paid shake is credited and withdrawn with `claim()`. Nothing is sent to a holder
 in the middle of `paidShake`, so a holder contract that reverts cannot block shakes, and
 there is no re-entrancy path. `withdraw` excludes unclaimed credits.
 
 ### Contract size
 
-`DoNotOpen` is 20.3 KB of deployed bytecode against the 24.6 KB limit. The next sizeable
-feature should move logic to a library.
+`DoNotOpen` is 23.8 KB of deployed bytecode against the 24.6 KB limit, since the cUSDC
+orders. The next feature must move logic to a library or a second contract.
 
-### Sepolia deployment (2026-10-01): 10,000 boxes and croquettes
+### Sepolia deployment (2026-10-01): prices in USDC and cUSDC
 
-Current. The spec's `maxSupply` went from 5,000 to 10,000 and the `economy` section was
+Current. `DoNotOpen` takes USDC or cUSDC instead of ETH, so it was redeployed, and with
+it the whole croquette economy (a Pantry is tied to one collection).
+
+| Contract          | Address                                      |
+| ----------------- | -------------------------------------------- |
+| `DoNotOpen`       | `0xe8f699eEBc22767413A9edBb48826B10D3117f61` |
+| `DoNotOpenConfig` | `0xa5D7870f643537b85A575Ab716446fdb6F022780` |
+| `Croq`            | `0x183B74906673283f7Fe3272103989A357Cf88522` |
+| `ConfidentialCroq`| `0x7598484e5DDdada766ab19Cd7d0dD42d17Dd4F06` |
+| `Pantry`          | `0x20755493eF05C954BdC2e970b0437B12AE19d01e` |
+| CROQ/USDC pair    | `0xDc7Ed9F6ffd2993350BDc2c563E42036C5a53B43` |
+| `UsdcRamp`        | `0x20FB2d7f2d3fb249924ce3871255bb417670ba50` |
+| ETH/USDC pair     | `0x58151722a43de9a7A850dF12f6D9924B19E50F8D` |
+| USDC (`USDCMock`) | `0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF` |
+| cUSDC (`cUSDCMock`)| `0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639` |
+
+Spec hash `0x73a897cddadf28e8a6e49da208906c5931fa901243a89035a1507dc854eea22f`.
+`DoNotOpen` took 5,391,855 gas. CROQ now trades against USDC: the pool was seeded with
+4,000,000 CROQ and 4,000 USDC, LP tokens sent to `0x…dEaD`. No ETH/USDCMock pool existed
+for the ramp, so one was opened with 0.1 ETH and 250 USDC; its LP tokens stay with the
+deployer. An earlier run of the same code an hour before, with a CROQ/WETH pool
+(`DoNotOpen` `0x33Cf…4dC1`), passed `smoke:sepolia` end to end, cUSDC mint and feed
+included, and was replaced only to move the market to USDC.
+
+### Superseded: 10,000 boxes and croquettes, priced in ETH (2026-10-01)
+
+The spec's `maxSupply` went from 5,000 to 10,000 and the `economy` section was
 added, so the spec hash changed and `DoNotOpen` was redeployed with the same code.
 
 | Contract          | Address                                      |

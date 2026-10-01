@@ -9,7 +9,7 @@ import { useT } from "./i18n";
 
 const REPO = "https://github.com/jecombe/do_not_open";
 const DOCS = `${REPO}/blob/dev/docs`;
-const CONTRACT = "0x880D284333F4001Bfd199899f8243D78b486e077";
+const CONTRACT = "0xe8f699eEBc22767413A9edBb48826B10D3117f61";
 
 const SECTIONS = ["box", "cats", "seed", "privacy", "flows", "mechanics", "transfer", "croquettes", "code", "solana", "mainnet", "more"] as const;
 
@@ -46,14 +46,14 @@ const PRIVACY = [
 
 /** Rows of the mechanics table. A missing `who` or `cost` reuses the row above's words. */
 const MECHANICS = [
-  { key: "m1", cost: "0.002 ETH" },
+  { key: "m1", cost: "5 USDC" },
   { key: "m2", cost: "docs.gasOnly" },
   { key: "m3", cost: "docs.mech.m3.cost" },
-  { key: "m4", cost: "0.0002 ETH" },
+  { key: "m4", cost: "0.5 USDC" },
   { key: "m5", cost: "docs.gasOnly" },
   { key: "m6", cost: "docs.gasOnly" },
   { key: "m7", who: "docs.mech.m6.who", cost: "docs.gasOnly" },
-  { key: "m8", who: "docs.mech.m2.who", cost: "0.0005 ETH" },
+  { key: "m8", who: "docs.mech.m2.who", cost: "1 USDC" },
   { key: "m9", who: "docs.mech.m2.who", cost: "docs.mech.m9.cost" },
   { key: "m10", who: "docs.mech.m2.who", cost: "docs.gasOnly" },
   { key: "m11", who: "docs.mech.m4.who", cost: "docs.gasOnly" },
@@ -227,6 +227,7 @@ export function Manual() {
             </div>
             <div className="prose">
               <p>{t("docs.mech.p1", { min: spec.affection.perFeedMin, max: spec.affection.perFeedMax, threshold: spec.affection.goldenThreshold })}</p>
+              <p>{t("docs.mech.p2")}</p>
             </div>
           </section>
 

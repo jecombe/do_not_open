@@ -1,7 +1,8 @@
-import { parseEther } from "ethers";
+import { parseUnits } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { economyFromSpec, pantryParamsFromSpec } from "../lib/specParams";
+import { PAYMENT_TOKENS } from "./deploy";
 
 /** Uniswap V2 on Sepolia, from Uniswap's deployment list. Checked on-chain before use. */
 export const UNISWAP_V2: Record<string, { router: string; factory: string; weth: string }> = {
@@ -15,7 +16,12 @@ export const UNISWAP_V2: Record<string, { router: string; factory: string; weth:
 const ROUTER_ABI = [
   "function factory() view returns (address)",
   "function WETH() view returns (address)",
-  "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) payable returns (uint, uint, uint)",
+  "function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint, uint, uint)",
+];
+const USDC_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function approve(address, uint256) returns (bool)",
+  "function mint(address, uint256)",
 ];
 const FACTORY_ABI = ["function getPair(address, address) view returns (address)"];
 const PAIR_ABI = ["function balanceOf(address) view returns (uint256)", "function transfer(address, uint256) returns (bool)"];
@@ -25,7 +31,7 @@ export const DEAD = "0x000000000000000000000000000000000000dEaD";
 /**
  * The CROQ economy: the plain token, its confidential wrapper and the Pantry, then the split
  * from the spec. Game reserve and welcome bags go into the Pantry; on a network with Uniswap V2,
- * the liquidity share opens a CROQ/WETH pool; the rest stays with the collection owner.
+ * the liquidity share opens a CROQ/USDC pool; the rest stays with the collection owner.
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -62,17 +68,23 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if ((await router.factory()) !== uniswap.factory || (await router.WETH()) !== uniswap.weth) {
       throw new Error("the Uniswap V2 router does not match the expected factory and WETH");
     }
-    let pair: string = await factory.getPair(croq.address, uniswap.weth);
+    // CROQ trades against USDC, the collection's own currency. On Sepolia it is Zama's USDCMock,
+    // which anyone can mint: the deployer mints the USDC side of the pool.
+    const usdcAddress = PAYMENT_TOKENS[hre.network.name]?.usdc;
+    if (!usdcAddress) throw new Error(`no USDC known on ${hre.network.name}`);
+    const usdc = new ethers.Contract(usdcAddress, USDC_ABI, signer);
+    let pair: string = await factory.getPair(croq.address, usdcAddress);
     if (pair === ethers.ZeroAddress) {
-      const ethSide = parseEther(process.env.LIQUIDITY_ETH || "0.02");
+      const usdSide = parseUnits(process.env.LIQUIDITY_USDC || "4000", 6);
+      const held: bigint = await usdc.balanceOf(deployer);
+      if (held < usdSide) await (await usdc.mint(deployer, usdSide - held)).wait();
+      await (await usdc.approve(uniswap.router, usdSide)).wait();
       await execute("Croq", { from: deployer, log: true }, "approve", uniswap.router, allocation.liquidity);
       const deadline = Math.floor(Date.now() / 1000) + 3600;
-      const tx = await router.addLiquidityETH(croq.address, allocation.liquidity, allocation.liquidity, ethSide, deployer, deadline, {
-        value: ethSide,
-      });
+      const tx = await router.addLiquidity(croq.address, usdcAddress, allocation.liquidity, usdSide, allocation.liquidity, usdSide, deployer, deadline);
       await tx.wait();
-      pair = await factory.getPair(croq.address, uniswap.weth);
-      console.log(`CROQ/WETH pool  : ${pair} (${allocation.liquidity} CROQ + ${ethers.formatEther(ethSide)} ETH)`);
+      pair = await factory.getPair(croq.address, usdcAddress);
+      console.log(`CROQ/USDC pool  : ${pair} (${allocation.liquidity} CROQ + ${ethers.formatUnits(usdSide, 6)} USDC)`);
     }
     // Lock the liquidity: nobody, the deployer included, can take it back out.
     const lp = new ethers.Contract(pair, PAIR_ABI, signer);
@@ -81,7 +93,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       await (await lp.transfer(DEAD, held)).wait();
       console.log(`LP tokens       : ${held} sent to ${DEAD}`);
     }
-    await hre.deployments.save("CroqWethPair", { address: pair, abi: [] });
+    await hre.deployments.save("CroqUsdcPair", { address: pair, abi: [] });
   }
 
   const owner = process.env.COLLECTION_OWNER;

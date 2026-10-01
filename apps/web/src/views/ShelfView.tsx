@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import type { BoxInfo } from "@dno/chain-adapter";
+import type { BoxInfo, PendingOrder } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, stepCopy } from "../chain/copy";
+import { usePayment } from "../chain/payment";
 import { useT } from "../i18n/app";
 import { SHELF_CAPACITY, ShelfScene, type ShelfBox } from "../scenes/Scenes";
 import type { PairIntent } from "./PairView";
+import { PayWith } from "./PayWith";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
 
@@ -29,6 +31,8 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [infos, setInfos] = useState<BoxInfo[]>([]);
   const [owed, setOwed] = useState(0n);
+  const [pending, setPending] = useState<PendingOrder[]>([]);
+  const pay = usePayment();
   const [arrived, setArrived] = useState<number[]>([]);
   // The box whose tag is pointed at in the slip: it lifts on the bench.
   const [pointed, setPointed] = useState<number | null>(null);
@@ -40,8 +44,13 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
     void Promise.all(listed.map((id) => adapter.box(id)))
       .then((boxes) => live && setInfos(boxes))
       .catch(() => live && setInfos([]));
-    if (account) void adapter.credits(account).then((c) => live && setOwed(c)).catch(() => undefined);
-    else setOwed(0n);
+    if (account) {
+      void adapter.credits(account).then((c) => live && setOwed(c)).catch(() => undefined);
+      void adapter.pendingOrders(account).then((p) => live && setPending(p)).catch(() => undefined);
+    } else {
+      setOwed(0n);
+      setPending([]);
+    }
     return () => {
       live = false;
     };
@@ -58,10 +67,20 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
 
   const mint = async () => {
     sound.resume();
-    const ids = await action.run("mint", (o) => adapter.mint(quantity, o));
+    const ids = await action.run("mint", (o) => adapter.mint(quantity, { ...o, pay }));
     if (!ids) return;
     setArrived(ids);
     await refresh();
+  };
+
+  /** A cUSDC order whose proof never made it, say because the tab was closed. */
+  const finish = async (order: PendingOrder) => {
+    const done = await action.run("finish", async (o) => {
+      await adapter.finishOrder(order.orderId, o);
+      return true;
+    });
+    if (account) void adapter.pendingOrders(account).then(setPending).catch(() => undefined);
+    if (done) await refresh();
   };
 
   const claim = async () => {
@@ -143,6 +162,8 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
               </button>
             </div>
 
+            <PayWith busy={action.busy} need={total} />
+
             <div className="felt" aria-live="polite">
               {action.error ? (
                 <p className="fine problem">{action.error}</p>
@@ -152,8 +173,16 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
                 <p className="fine">{t("shelf.arrived", { serials: arrived.map((id) => buildBoxSpec(id).serial).join(", ") })}</p>
               ) : (
                 <p className="fine">
-                  {t("shelf.price", { count: quantity, fee: fee(total, collection) })}
+                  {t("shelf.price", { count: quantity, fee: fee(total, collection, pay) })}
                   {mode === "mock" ? t("shelf.mockFree") : ""}
+                </p>
+              )}
+              {pending.length > 0 && !action.busy && (
+                <p className="fine">
+                  {t("shelf.pendingOrder", { count: pending.length })}{" "}
+                  <button type="button" className="link" onClick={() => void finish(pending[0]!)}>
+                    {t("shelf.finishOrder")}
+                  </button>
                 </p>
               )}
               {owed > 0n && !action.busy && (

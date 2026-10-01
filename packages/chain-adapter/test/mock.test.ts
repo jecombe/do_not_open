@@ -56,6 +56,28 @@ describe("MockAdapter", () => {
     expect(await refusal(chain.mint(11))).toBe("InvalidQuantity");
   });
 
+  it("charges USDC by default and cUSDC on request, and refuses what the wallet cannot cover", async () => {
+    const chain = await fresh();
+    const usdc = await chain.usdcBalance(MOCK_YOU);
+    const cUsdc = await chain.confidentialUsdcBalance();
+    await chain.mint(2);
+    expect(await chain.usdcBalance(MOCK_YOU)).toBe(usdc - 10_000_000n);
+    await chain.mint(1, { pay: "cusdc" });
+    expect(await chain.confidentialUsdcBalance()).toBe(cUsdc - 5_000_000n);
+    // 15 cUSDC left: three boxes, not four.
+    expect(await refusal(chain.mint(4, { pay: "cusdc" }))).toBe("unpaid");
+    await chain.shieldUsdc(10_000_000n);
+    expect(await chain.confidentialUsdcBalance()).toBe(cUsdc + 5_000_000n);
+    await chain.faucetUsdc();
+    expect(await chain.usdcBalance(MOCK_YOU)).toBe(usdc + 80_000_000n);
+    expect(await refusal(chain.shieldUsdc(10n ** 12n))).toBe("insufficient-usdc");
+    const before = await chain.confidentialUsdcBalance();
+    const { usdcOut, fee } = await chain.quoteUsdc(10n ** 16n);
+    expect(fee).toBe(3n * 10n ** 13n);
+    await chain.buyUsdc(10n ** 16n, true);
+    expect(await chain.confidentialUsdcBalance()).toBe(before + usdcOut);
+  });
+
   it("reports steps in order: wallet, confirming, decrypting", async () => {
     const chain = await fresh();
     const steps: Step[] = [];
@@ -73,7 +95,7 @@ describe("MockAdapter", () => {
     expect(await refusal(chain.shake(3))).toBe("NotHolder");
     expect(await refusal(chain.paidShake(0))).toBe("HolderShakesForFree");
     await chain.paidShake(3);
-    expect(await chain.credits(MOCK_NIGHT_SHIFT)).toBe(700000000000000n);
+    expect(await chain.credits(MOCK_NIGHT_SHIFT)).toBe(1_750_000n);
   });
 
   it("opens a box once, with contents that match the generator", async () => {
@@ -172,7 +194,7 @@ describe("MockAdapter croquettes", () => {
   it("lets the holder feed twice a day, up to 1,000, and splits each meal", async () => {
     const { chain, tick } = await clocked();
     const youHold = async (n: bigint) => {
-      await chain.trade("buy", 10n ** 16n);
+      await chain.trade("buy", 10_000_000n);
       await chain.wrap(await chain.croqBalance(MOCK_YOU));
       expect(await chain.confidentialBalance()).toBeGreaterThanOrEqual(n);
     };
@@ -225,9 +247,9 @@ describe("MockAdapter croquettes", () => {
 
   it("buys on the market, wraps, unwraps and sells back", async () => {
     const { chain } = await clocked();
-    const quoted = await chain.quote("buy", 10n ** 15n);
+    const quoted = await chain.quote("buy", 5_000_000n);
     expect(quoted).toBeGreaterThan(0n);
-    await chain.trade("buy", 10n ** 15n);
+    await chain.trade("buy", 5_000_000n);
     expect(await chain.croqBalance(MOCK_YOU)).toBe(quoted);
 
     await chain.wrap(quoted);

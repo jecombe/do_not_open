@@ -10,6 +10,8 @@ export interface Deployment {
   /** Block the contract was deployed in. */
   deployBlock: number;
   abi: InterfaceAbi;
+  /** ETH in, USDC or cUSDC out. Null where none was deployed. */
+  ramp?: { address: string; abi: InterfaceAbi } | null;
 }
 
 export const SEPOLIA: ChainParams = {
