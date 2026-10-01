@@ -17,6 +17,7 @@
     "@dno/scene": "workspace:*",
     "@fontsource/barlow-condensed": "^5.2.8",
     "@fontsource/stardos-stencil": "^5.2.8",
+    "@privy-io/react-auth": "^3.46.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@react-three/postprocessing": "^3.1.3",
