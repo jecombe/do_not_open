@@ -18,6 +18,7 @@
   "dependencies": {
     "@dno/game-spec": "workspace:*",
     "@dno/generator": "workspace:*",
+    "@walletconnect/ethereum-provider": "^2.25.0",
     "@zama-fhe/relayer-sdk": "0.4.1",
     "ethers": "^6.16.0"
   },
