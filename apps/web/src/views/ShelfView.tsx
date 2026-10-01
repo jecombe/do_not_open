@@ -25,7 +25,7 @@ interface Props {
 const LIST_LIMIT = 40;
 
 export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
-  const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect, mode } = useChain();
+  const { adapter, account, collection, myBoxes, boxesKnown, findMyBoxes, refresh, connect, mode } = useChain();
   const t = useT();
   const { foldClass, foldButton } = useFold();
   const action = useAction();
@@ -70,7 +70,10 @@ export function ShelfView({ quality, sound, onSelect, onPair }: Props) {
     const got = await action.run("mint", (o) => adapter.mint(quantity, { ...o, pay, ids: among }));
     if (!got) return;
     setArrived(got);
-    await refresh();
+    // Boxes never looked up yet: the shelf would stay on "Show my boxes" and hide the new ones.
+    // The mint just decrypted its receipts, so the lookup reuses that permit: no new signature.
+    if (boxesKnown) await refresh();
+    else await findMyBoxes();
   };
 
   /** A request whose proof never made it, say because the tab was closed. */
