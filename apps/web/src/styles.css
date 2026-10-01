@@ -990,6 +990,14 @@ button {
   margin-top: 12px;
 }
 
+/* Top of a box's slip: back to the view it was opened from. */
+.back-link {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .box-steps .overview {
   grid-column: 1 / -1;
 }
