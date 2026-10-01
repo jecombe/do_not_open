@@ -41,19 +41,44 @@ domain and its own ports.
   "more than 10000 results"...) and kept.
 - **Contract state no event carries** (economy, next claim time) is cached and batched:
   fifty boxes asking for their claim time within 20 ms cost one multicall.
+- **Every endpoint proves it has the block** before its logs are believed, so a lagging free
+  node cannot make an event disappear.
 - **Nudges, not polling faster:** after a transaction, the app calls `POST /v1/sync/nudge`; the
   indexer looks sooner, never more than once every 3 s.
 
-## Correctness
+## Correctness and reconciliation
 
-- Indexing stays `CONFIRMATIONS` blocks behind the head, and every pass re-reads the last
-  `RESCAN_BLOCKS`: a log a lagging node missed is picked up next time.
-- Each event is recorded once (`tx_hash`, `log_index`); a batch, its projections and the new
-  cursor are one transaction. A crash leaves the index as it was.
-- Read models only move forward (a resolved duel never goes back to pending), so a late or
-  replayed event does no harm.
-- Every answer carries `block`, the last block indexed. The app trusts it only when it covers
-  the account's own last transaction, and reads the chain otherwise.
+The `events` table is the source of truth. Each event is stored with its block hash and with
+what the contract's views added to it when indexed (its *enrichment*: a duel's challenger, an
+opening's contents...). Every other table is a fold of it, and `replayAll` can rebuild them
+all from it, in chain order, without a single RPC call.
+
+Four layers keep it complete and right:
+
+1. **Each pass is atomic.** A batch, its projections and the new cursor are one transaction:
+   a crash or an RPC error leaves the index as it was, and the pass runs again.
+2. **No blind trust in an endpoint.** Before its `eth_getLogs` for `from..to` is believed, the
+   endpoint must return the header of block `to`. A lagging node answers "no logs" for blocks it
+   has not seen, without an error; this catches it and another endpoint answers. Logs outside
+   the range, or from another fork than that header, are refused too. Indexing stays
+   `CONFIRMATIONS` blocks behind the head and re-reads the last `RESCAN_BLOCKS` each pass.
+3. **Finality sweep** (every `SWEEP_EVERY_MS`, 5 min). Once blocks are finalized, they are read
+   again, from other endpoints than those that served them the first time (`indexed_ranges`
+   records who did). An event the first read missed is added; one recorded from a block a
+   reorg dropped is removed. If anything changed, the read models are replayed.
+4. **Reconciliation** (every `RECONCILE_EVERY_MS`, 10 min). The contract's views, read as of
+   the last indexed block, are compared with the index: counters (tokens, duels, requests,
+   milestones), every open duel, every pending request, and `RECONCILE_BOXES` boxes in turn
+   (status, alive check, partner, wins, public traits). For what differs, that entity's events
+   are fetched from the deployment on, by indexed topic, added if missing, and the read models
+   replayed. What still differs is logged as an error.
+
+Both show their last result in `GET /health` (`indexer.tasks`). Their cost is a few RPC
+requests an hour. Read models only move forward (a resolved duel never goes back to
+pending), so a late or replayed event does no harm in between.
+
+Every answer of the API carries `block`, the last block indexed. The app trusts it only when
+it covers the account's own last transaction, and reads the chain otherwise.
 
 ## API
 

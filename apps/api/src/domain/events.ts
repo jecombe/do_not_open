@@ -64,6 +64,47 @@ export interface Snapshots {
 
 export const emptySnapshots = (): Snapshots => ({ duels: new Map(), requests: new Map(), contents: new Map(), weighIns: new Map() });
 
+/**
+ * The part of the snapshots one event needs, stored with it. With it, the read models can be
+ * rebuilt from the events table alone, without asking the chain again.
+ */
+export interface Enrichment {
+  duel?: DuelSnapshot;
+  request?: RequestSnapshot;
+  contents?: RevealedContents;
+  weighIn?: WeighIn;
+}
+
+const DUEL_EVENTS = new Set(["DuelChallenged", "DuelAccepted", "DuelCancelled", "DuelResolved", "DuelVoided"]);
+
+export function enrichmentOf(e: ProtocolEvent, s: Snapshots): Enrichment | null {
+  const out: Enrichment = {};
+  if (DUEL_EVENTS.has(e.name) && "duelId" in e && s.duels.has(e.duelId)) out.duel = s.duels.get(e.duelId)!;
+  if ((e.name === "RequestPlaced" || e.name === "RequestSettled") && s.requests.has(e.requestId)) out.request = s.requests.get(e.requestId)!;
+  if (e.name === "Observed" && s.contents.has(e.tokenId)) out.contents = s.contents.get(e.tokenId)!;
+  if (e.name === "Weighed" && s.weighIns.has(e.tokenId)) out.weighIn = s.weighIns.get(e.tokenId)!;
+  return Object.keys(out).length ? out : null;
+}
+
+/** The snapshots an event was projected with, back from what was stored with it. */
+export function snapshotsFrom(e: ProtocolEvent, enrichment: Enrichment | null): Snapshots {
+  const s = emptySnapshots();
+  if (!enrichment) return s;
+  if (enrichment.duel && "duelId" in e) s.duels.set(e.duelId, enrichment.duel);
+  if (enrichment.request && "requestId" in e) s.requests.set(e.requestId, enrichment.request);
+  if (enrichment.contents && "tokenId" in e) s.contents.set(e.tokenId, enrichment.contents);
+  if (enrichment.weighIn && "tokenId" in e) s.weighIns.set(e.tokenId, enrichment.weighIn);
+  return s;
+}
+
+/** Identity of a log: the same transaction and position is the same event. */
+export const eventKey = (e: Pick<ChainRef, "txHash" | "logIndex">): string => `${e.txHash}:${e.logIndex}`;
+
+/** What an event touches, for a reconciliation to know which events concern an entity. */
+export function idsOf(e: ProtocolEvent): { duelId?: number; requestId?: number } {
+  return { duelId: "duelId" in e ? e.duelId : undefined, requestId: "requestId" in e ? e.requestId : undefined };
+}
+
 /** Events in chain order. */
 export const byChainOrder = (a: ChainRef, b: ChainRef): number => a.block - b.block || a.logIndex - b.logIndex;
 

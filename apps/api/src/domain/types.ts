@@ -41,6 +41,8 @@ export interface WeighIn {
 /** Where on the chain something happened. */
 export interface ChainRef {
   block: number;
+  /** Hash of the block, to tell a log of the canonical chain from one a reorg dropped. Null when unknown. */
+  blockHash: string | null;
   /** Unix seconds, when known. */
   timestamp: number | null;
   txHash: string;

@@ -84,9 +84,9 @@ describe("SyncChain", () => {
       original(async (tx) => {
         const insert = tx.insertEvent;
         let n = 0;
-        tx.insertEvent = async (e) => {
+        tx.insertEvent = async (e, enrichment) => {
           if (++n === 2) throw new Error("disk full");
-          return insert(e);
+          return insert(e, enrichment);
         };
         return run(tx);
       });

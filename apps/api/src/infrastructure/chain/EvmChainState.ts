@@ -1,5 +1,7 @@
 import { Interface } from "ethers";
-import type { ChainState, CollectionConstants, EconomyState } from "../../application/ports/chain";
+import type { BoxView, ChainState, CollectionConstants, Counters, EconomyState } from "../../application/ports/chain";
+import type { DuelSnapshot, RequestSnapshot } from "../../domain/events";
+import { normalizeAddress, ZERO_ADDRESS, type AliveCheck, type BoxStatus, type DuelStatus, type RequestKind, type RequestStatus } from "../../domain/types";
 import { Batcher, TtlCache } from "../cache";
 import type { ProtocolDeployment } from "./deployment";
 import { multicall } from "./multicall";
@@ -8,6 +10,11 @@ import type { RpcPool } from "./RpcPool";
 const ERC20 = new Interface(["function balanceOf(address) view returns (uint256)", "function totalSupply() view returns (uint256)"]);
 const PAIR = new Interface(["function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)", "function token0() view returns (address)"]);
 const RAMP = new Interface(["function feeBps() view returns (uint16)"]);
+const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
+const ALIVE_CHECK: AliveCheck[] = ["none", "alive", "notAlive"];
+const DUEL_STATUS: (DuelStatus | null)[] = [null, "challenged", "pending", "resolved", "cancelled", "void"];
+const REQUEST_KINDS: RequestKind[] = ["open", "aliveCheck", "entangle"];
+const REQUEST_STATUS: (RequestStatus | null)[] = [null, "pending", "done", "refused"];
 
 export interface ChainStateOptions {
   /** How long the moving parts of the economy (wrapped supply, halvings, pool) are kept. */
@@ -143,6 +150,71 @@ export class EvmChainState implements ChainState {
 
   nextClaimAt(tokenId: number): Promise<number> {
     return this.claimCache.get(tokenId, () => this.claims.load(tokenId));
+  }
+
+  async counters(atBlock: number): Promise<Counters> {
+    const c = { target: this.d.collection.address, iface: this.collectionIface, args: [] };
+    const r = await multicall(this.rpc, ["tokenCount", "duelCount", "requestCount", "milestonesReached"].map((fn) => ({ ...c, fn })), atBlock);
+    if (r.some((x) => x === null)) throw new Error("counters unreadable");
+    const [tokenCount, duelCount, requestCount, milestonesReached] = r.map((x) => Number(x![0]));
+    return { tokenCount: tokenCount!, duelCount: duelCount!, requestCount: requestCount!, milestonesReached: milestonesReached! };
+  }
+
+  async duelViews(ids: number[], atBlock: number): Promise<Map<number, DuelSnapshot>> {
+    const r = await multicall(this.rpc, ids.map((id) => ({ target: this.d.collection.address, iface: this.collectionIface, fn: "duelInfo", args: [id] })), atBlock);
+    const out = new Map<number, DuelSnapshot>();
+    r.forEach((x, i) => {
+      if (!x) return;
+      out.set(ids[i]!, {
+        tokenA: Number(x.tokenIdA),
+        tokenB: Number(x.tokenIdB),
+        challenger: x.challenger === ZERO_ADDRESS ? null : normalizeAddress(x.challenger),
+        accepter: x.accepter === ZERO_ADDRESS ? null : normalizeAddress(x.accepter),
+        status: DUEL_STATUS[Number(x.duelStatus)] ?? null,
+      });
+    });
+    return out;
+  }
+
+  async requestViews(ids: number[], atBlock: number): Promise<Map<number, RequestSnapshot>> {
+    const r = await multicall(this.rpc, ids.map((id) => ({ target: this.d.collection.address, iface: this.collectionIface, fn: "requestInfo", args: [id] })), atBlock);
+    const out = new Map<number, RequestSnapshot>();
+    r.forEach((x, i) => {
+      if (!x) return;
+      out.set(ids[i]!, {
+        kind: REQUEST_KINDS[Number(x.kind)] ?? "open",
+        status: REQUEST_STATUS[Number(x.requestStatus)] ?? null,
+        requester: normalizeAddress(x.requester),
+        tokenId: Number(x.tokenId),
+        other: Number(x.other) ? Number(x.other) - 1 : null,
+      });
+    });
+    return out;
+  }
+
+  /** Five views a box, in one multicall per 30 boxes. */
+  async boxViews(ids: number[], atBlock: number): Promise<BoxView[]> {
+    const fns = ["status", "aliveCheck", "partnerOf", "wins", "publicTraitsOf"];
+    const r = await multicall(
+      this.rpc,
+      ids.flatMap((id) => fns.map((fn) => ({ target: this.d.collection.address, iface: this.collectionIface, fn, args: [id] }))),
+      atBlock,
+    );
+    return ids.flatMap((tokenId, i) => {
+      const [status, alive, partner, wins, traits] = r.slice(i * fns.length, (i + 1) * fns.length);
+      if (!status || !alive || !partner || !wins || !traits) return [];
+      const mask = Number(traits.mask);
+      return [
+        {
+          tokenId,
+          status: BOX_STATUS[Number(status[0])] ?? "sealed",
+          aliveCheck: ALIVE_CHECK[Number(alive[0])] ?? "none",
+          partner: partner.entangled ? Number(partner.partner) : null,
+          wins: Number(wins[0]),
+          publicTraits: [...traits.rolls].flatMap((roll: bigint, traitIndex: number) => (mask & (1 << traitIndex) ? [{ traitIndex, roll: Number(roll) }] : [])),
+        },
+      ];
+    });
   }
 
   private async readClaims(ids: number[]): Promise<number[]> {

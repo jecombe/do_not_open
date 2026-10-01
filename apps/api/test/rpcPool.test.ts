@@ -33,6 +33,7 @@ function harness(handlers: Record<string, Handler>, opts: Partial<RpcPoolOptions
 const ok = (result: unknown, id = 1) => ({ json: { jsonrpc: "2.0", id, result } });
 const rpcError = (message: string, code = -32000) => ({ json: { jsonrpc: "2.0", id: 1, error: { code, message } } });
 const single = (b: unknown) => b as { method: string; params: unknown[] };
+const HEADER = { hash: "0xh", number: "0x1" };
 
 describe("RpcPool", () => {
   it("spreads calls over healthy endpoints", async () => {
@@ -69,7 +70,14 @@ describe("RpcPool", () => {
   });
 
   it("treats rate-limit messages, outages and refused chains alike: next endpoint", async () => {
-    for (const bad of [rpcError("Too many requests, rate limit exceeded"), new TypeError("fetch failed"), { status: 503, text: "<html>" }, rpcError("chain is not available on free plan, please upgrade to paid plan")]) {
+    for (const bad of [
+      rpcError("Too many requests, rate limit exceeded"),
+      new TypeError("fetch failed"),
+      { status: 503, text: "<html>" },
+      rpcError("chain is not available on free plan, please upgrade to paid plan"),
+      // What 1rpc answers when it is overloaded: nothing to go on, so another endpoint is tried.
+      rpcError("error", -32000),
+    ]) {
       const { pool } = harness({ "https://a": () => bad, "https://b": () => ok("0x3") });
       expect(await pool.call("eth_chainId", [])).toBe("0x3");
       expect(pool.status()[0]!.healthy).toBe(false);
@@ -101,14 +109,15 @@ describe("RpcPool", () => {
     const spans: number[] = [];
     const { pool } = harness({
       "https://a": (b) => {
+        if (single(b).method === "eth_getBlockByNumber") return ok(HEADER);
         const { fromBlock, toBlock } = single(b).params[0] as { fromBlock: string; toBlock: string };
         const span = Number(toBlock) - Number(fromBlock) + 1;
         spans.push(span);
         return span > 50 ? rpcError("eth_getLogs is limited to 0 - 50 blocks range", -32602) : ok([]);
       },
     });
-    expect(await pool.getLogs({ address: ["0x1"] }, 100, 999)).toEqual({ logs: [], to: 149 });
-    expect(await pool.getLogs({ address: ["0x1"] }, 150, 999)).toEqual({ logs: [], to: 199 });
+    expect(await pool.getLogs({ address: ["0x1"] }, 100, 999)).toEqual({ logs: [], to: 149, endpoint: "a" });
+    expect(await pool.getLogs({ address: ["0x1"] }, 150, 999)).toEqual({ logs: [], to: 199, endpoint: "a" });
     expect(spans).toEqual([900, 50, 50]);
   });
 
@@ -117,6 +126,7 @@ describe("RpcPool", () => {
     let dense = true;
     const { pool } = harness({
       "https://a": (b) => {
+        if (single(b).method === "eth_getBlockByNumber") return ok(HEADER);
         const { fromBlock, toBlock } = single(b).params[0] as { fromBlock: string; toBlock: string };
         const span = Number(toBlock) - Number(fromBlock) + 1;
         spans.push(span);
@@ -153,5 +163,43 @@ describe("RpcPool", () => {
 
     const refusing = harness({ "https://a": (b) => (Array.isArray(b) ? rpcError("batch requests are not allowed", -32600) : ok("one")) });
     expect(await refusing.pool.batch([{ method: "m", params: [] }, { method: "m", params: [] }])).toEqual(["one", "one"]);
+  });
+
+  it("does not believe logs from an endpoint that has not seen the end of the range", async () => {
+    const { pool, calls } = harness({
+      // Behind: knows no block 500, and would answer "no logs" for it.
+      "https://lagging": (b) => (single(b).method === "eth_getBlockByNumber" ? ok(null) : ok([])),
+      "https://synced": (b) =>
+        single(b).method === "eth_getBlockByNumber"
+          ? ok(HEADER)
+          : ok([{ address: "0x1", topics: [], data: "0x", blockNumber: "0x1f4", transactionHash: "0xab", logIndex: "0x0" }]),
+    });
+    const r = await pool.getLogs({ address: ["0x1"] }, 400, 500);
+    expect(r).toMatchObject({ endpoint: "synced", to: 500 });
+    expect(r.logs).toHaveLength(1);
+    expect(calls.filter((c) => c.url === "https://lagging").map((c) => c.method)).toEqual(["eth_getBlockByNumber"]);
+    // Resting a few seconds, without a strike: it is late, not broken.
+    expect(pool.status()[0]).toMatchObject({ healthy: false, cooldownSeconds: 3 });
+  });
+
+  it("refuses logs outside the asked range, or from another fork than the header", async () => {
+    for (const bad of [
+      { blockNumber: "0x10", blockHash: "0xh" },
+      { blockNumber: "0x64", blockHash: "0xother" },
+    ]) {
+      const { pool } = harness({
+        "https://a": (b) => (single(b).method === "eth_getBlockByNumber" ? ok(HEADER) : ok([{ ...bad, address: "0x1", topics: [], data: "0x", transactionHash: "0xab", logIndex: "0x0" }])),
+        "https://b": (b) => (single(b).method === "eth_getBlockByNumber" ? ok(HEADER) : ok([])),
+      });
+      expect(await pool.getLogs({ address: ["0x1"] }, 50, 100)).toMatchObject({ endpoint: "b", logs: [] });
+    }
+  });
+
+  it("asks another endpoint than the excluded ones, while one can answer", async () => {
+    const answer = (b: unknown) => (single(b).method === "eth_getBlockByNumber" ? ok(HEADER) : ok([]));
+    const { pool } = harness({ "https://a": answer, "https://b": answer });
+    for (let i = 0; i < 3; i++) expect((await pool.getLogs({ address: [] }, 1, 1, { exclude: ["a"] })).endpoint).toBe("b");
+    // Everyone excluded: someone still has to answer.
+    expect(["a", "b"]).toContain((await pool.getLogs({ address: [] }, 1, 1, { exclude: ["a", "b"] })).endpoint);
   });
 });

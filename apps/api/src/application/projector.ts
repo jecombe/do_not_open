@@ -30,7 +30,7 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
     case "MilestoneReached":
       return tx.saveMilestone({ index: e.index, sold: e.sold, block: e.block });
     case "ConfidentialTransfer":
-      return tx.saveTransfer({ tokenId: e.tokenId, from: e.from, to: e.to, moved: e.moved, block: e.block, timestamp: e.timestamp, txHash: e.txHash, logIndex: e.logIndex });
+      return tx.saveTransfer({ tokenId: e.tokenId, from: e.from, to: e.to, moved: e.moved, block: e.block, blockHash: e.blockHash, timestamp: e.timestamp, txHash: e.txHash, logIndex: e.logIndex });
     case "Observed":
       return updateBox(tx, e.tokenId, e.block, (b) => B.reveal(b, snapshots.contents.get(e.tokenId) ?? contentsFromEvent(e), e.openedBy, e.block));
     case "AliveProven":

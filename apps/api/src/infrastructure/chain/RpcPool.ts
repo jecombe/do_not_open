@@ -11,6 +11,8 @@ import type { Logger } from "../../application/ports/logger";
  *   blocks", "ranges over 10000 blocks", "more than 10000 results"...) and keeps to it.
  * - Errors that are the caller's (a revert, bad params) are thrown as they are and cost the
  *   endpoint nothing.
+ * - An endpoint must show it has the last block of a range before its logs are believed: a
+ *   lagging node answers "no logs" for blocks it has not seen, without an error.
  */
 
 export interface RpcPoolOptions {
@@ -30,7 +32,8 @@ export interface RpcPoolOptions {
   log?: Logger;
 }
 
-export type FailureKind = "rate-limited" | "unavailable" | "range" | "fatal";
+/** "behind": the endpoint has not seen the block yet. Another one will do, and it will catch up. */
+export type FailureKind = "rate-limited" | "unavailable" | "behind" | "range" | "fatal";
 
 export class RpcError extends Error {
   constructor(
@@ -92,6 +95,8 @@ export interface RawLog {
 const RANGE_PATTERN = /block range|range (is )?too (large|wide|big)|ranges? over|limited to|max(imum)?( allowed)? (number of )?(requested )?blocks|too many (blocks|results|logs)|more than \d+ (results|logs)|response size|exceed(s|ed)? .*(range|results|size|logs)|query timeout|returned more than/i;
 /** The endpoint will not serve this chain or this method to us: bench it, another one will. */
 const REFUSED_PATTERN = /not available|upgrade|paid plan|not supported|unsupported|disabled|api.?key|unauthori[sz]ed|forbidden|method not found|not whitelisted/i;
+/** Errors any endpoint would return: a revert, bad arguments, a batch refused as such. */
+const CALLER_PATTERN = /revert|invalid (argument|param|opcode)|out of gas|batch|not allowed|execution/i;
 const RATE_PATTERN = /rate.?limit|too many requests|capacity|throttl|exceeded.*(quota|limit)|quota|compute units|request limit/i;
 
 export class RpcPool {
@@ -164,17 +169,27 @@ export class RpcPool {
 
   /**
    * Logs of `from..to`, or of the first part of it the chosen endpoint accepts in one call.
-   * Returns the last block covered.
+   * Returns the last block covered and the endpoint that answered. `exclude` names endpoints to
+   * avoid while another one can answer.
    */
-  getLogs(filter: LogFilter, from: number, to: number): Promise<{ logs: RawLog[]; to: number }> {
+  getLogs(filter: LogFilter, from: number, to: number, opts: { exclude?: string[] } = {}): Promise<{ logs: RawLog[]; to: number; endpoint: string }> {
     return this.withEndpoint(async (e) => {
       for (let shrinks = 0; ; shrinks++) {
         const end = Math.min(to, from + e.logRange - 1);
         try {
-          const logs = await this.send<RawLog[]>(e, "eth_getLogs", [{ ...filter, fromBlock: hex(from), toBlock: hex(end) }], 1);
+          // Has it seen the end of the range? If not, its "no logs" would mean nothing.
+          const header = await this.send<{ hash: string } | null>(e, "eth_getBlockByNumber", [hex(end), false], 1);
+          if (!header) throw new RpcError(`${e.name}: has not seen block ${end} yet`, "behind");
+          const logs = (await this.send<RawLog[]>(e, "eth_getLogs", [{ ...filter, fromBlock: hex(from), toBlock: hex(end) }], 1)).filter((l) => !l.removed);
+          for (const l of logs) {
+            const n = Number(l.blockNumber);
+            if (n < from || n > end) throw new RpcError(`${e.name}: returned a log of block ${n} for ${from}..${end}`, "unavailable");
+            // A log of the last block from another fork than the header: the node is mid-reorg.
+            if (n === end && l.blockHash && header.hash && l.blockHash !== header.hash) throw new RpcError(`${e.name}: inconsistent block ${end}`, "behind");
+          }
           // It took this range: let it try a little wider next time, up to what it said it takes.
           e.logRange = Math.min(e.logCeiling, Math.ceil(e.logRange * 1.25));
-          return { logs: logs.filter((l) => !l.removed), to: end };
+          return { logs, to: end, endpoint: e.name };
         } catch (error) {
           if (!(error instanceof RpcError) || error.kind !== "range") throw error;
           // Still refusing after several cuts: it is not about the range. Let another endpoint try.
@@ -182,7 +197,7 @@ export class RpcPool {
           this.shrink(e, error.message, end - from + 1);
         }
       }
-    });
+    }, opts.exclude);
   }
 
   /** Narrows an endpoint's range after a refusal, to the limit it named if it named one. */
@@ -202,11 +217,11 @@ export class RpcPool {
   }
 
   /** Runs `run` on the best endpoint, moving to another on rate limits and outages. */
-  private async withEndpoint<T>(run: (e: Endpoint) => Promise<T>): Promise<T> {
+  private async withEndpoint<T>(run: (e: Endpoint) => Promise<T>, exclude: string[] = []): Promise<T> {
     const attempts = this.opts.attempts ?? Math.max(3, this.endpoints.length * 2);
     let last: unknown;
     for (let i = 0; i < attempts; i++) {
-      const e = await this.pick();
+      const e = await this.pick(exclude);
       try {
         const result = await run(e);
         e.strikes = Math.max(0, e.strikes - 1);
@@ -216,6 +231,12 @@ export class RpcPool {
         if (!(error instanceof RpcError) || error.kind === "fatal" || error.kind === "range") throw error;
         last = error;
         e.failed++;
+        if (error.kind === "behind") {
+          // Not a fault: a short rest, and no strike.
+          e.cooldownUntil = this.now() + 3_000;
+          this.opts.log?.debug({ endpoint: e.name, error: error.message }, "rpc endpoint behind");
+          continue;
+        }
         e.strikes++;
         const backoff = error.kind === "rate-limited" ? Math.min(60_000, 2_000 * 2 ** (e.strikes - 1)) : Math.min(300_000, 5_000 * 2 ** (e.strikes - 1));
         e.cooldownUntil = this.now() + Math.max(backoff, (error.retryAfter ?? 0) * 1000);
@@ -229,10 +250,13 @@ export class RpcPool {
    * The healthy endpoint with the fewest strikes; among those, one with a token to spend right
    * now, the fastest first. Equals take turns. Waits if every endpoint rests.
    */
-  private async pick(): Promise<Endpoint> {
+  private async pick(exclude: string[] = []): Promise<Endpoint> {
     for (;;) {
       const now = this.now();
-      const healthy = this.endpoints.filter((e) => e.cooldownUntil <= now);
+      const rested = this.endpoints.filter((e) => e.cooldownUntil <= now);
+      // Avoid the excluded ones while another can answer.
+      const others = rested.filter((e) => !exclude.includes(e.name));
+      const healthy = others.length ? others : rested;
       if (healthy.length) {
         const fewest = Math.min(...healthy.map((e) => e.strikes));
         let best = healthy.filter((e) => e.strikes === fewest);
@@ -338,9 +362,10 @@ function classify(endpoint: string, method: string, error: { code?: number; mess
   if (method === "eth_getLogs" && RANGE_PATTERN.test(text)) return new RpcError(message, "range", error.code);
   if (RATE_PATTERN.test(text) || error.code === 429) return new RpcError(message, "rate-limited", error.code);
   if (REFUSED_PATTERN.test(text) || error.code === -32601) return new RpcError(message, "unavailable", error.code);
-  // Server-side trouble that another endpoint may not have.
-  if (error.code === -32603 || (error.code === -32000 && /header not found|unknown block|timeout|unavailable|internal/i.test(text))) return new RpcError(message, "unavailable", error.code);
-  return new RpcError(message, "fatal", error.code);
+  // The caller's own mistake: another endpoint would say the same.
+  if (CALLER_PATTERN.test(text) || error.code === -32602 || error.code === -32600 || error.code === 3) return new RpcError(message, "fatal", error.code);
+  // Anything else ("error", "internal error", "header not found"...) is the endpoint's: try another.
+  return new RpcError(message, "unavailable", error.code);
 }
 
 const hex = (n: number) => `0x${n.toString(16)}`;
