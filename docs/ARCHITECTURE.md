@@ -10,7 +10,7 @@ flowchart TB
     scene["scene<br/>three.js builders, effects, sound"]
   end
   subgraph chain["Chain-specific"]
-    evm["contracts-evm<br/>DoNotOpen.sol, DoNotOpenConfig.sol<br/>Croq.sol, ConfidentialCroq.sol, Pantry.sol"]
+    evm["contracts-evm<br/>ConfidentialERC721.sol, DoNotOpen.sol, DoNotOpenConfig.sol<br/>Croq.sol, ConfidentialCroq.sol, Pantry.sol"]
     impl["chain-adapter / evm<br/>ethers + Relayer SDK"]
     sol["chain-adapter / solana<br/>not started"]
   end
@@ -65,15 +65,20 @@ numbers as public immutables (`welcomeBag`, `purrMaxPerDay`, `mealsPerDay`,
 
 ```mermaid
 flowchart LR
-  cfg["DoNotOpenConfig<br/>rules, decode(seed)"] --> dno["DoNotOpen<br/>ERC-721, seeds, shake, observe, duel"]
+  base["ConfidentialERC721<br/>encrypted owners, isOwner,<br/>transfers that never revert on ownership"] -- "inherited by" --> dno
+  cfg["DoNotOpenConfig<br/>rules, decode(seed)"] --> dno["DoNotOpen<br/>seeds, hidden mint, milestones,<br/>shake, requests, duel"]
+  dno -- "pulls and pays" --> cusdc["cUSDC<br/>ERC-7984"]
   croq["Croq<br/>ERC-20, 20M fixed"] -- "underlying" --> ccroq["ConfidentialCroq<br/>ERC-7984 wrapper, cCROQ"]
-  pantry["Pantry<br/>reserve, weights, treasury share,<br/>burnt pile, weigh-ins"] -- "reads ownerOf, status,<br/>vetCertified, contentsOf" --> dno
+  pantry["Pantry<br/>reserve, stashes, weights,<br/>treasury share, burnt pile, weigh-ins"] -- "isOwner (trusted reader), status,<br/>vetCertified, contentsOf" --> dno
   pantry -- "confidentialTransferFrom,<br/>confidentialTransfer, wrap" --> ccroq
-  croq -- "4M + ETH" --> pair["Uniswap V2 pair<br/>CROQ/WETH"]
+  croq -- "4M + USDC" --> pair["Uniswap V2 pair<br/>CROQ/USDC"]
 ```
 
-`DoNotOpen` does not know the Pantry exists. The economy was added next to it, and
-could be replaced without touching a box. The Pantry holds all its croquettes as one
+`DoNotOpen` knows the Pantry only as a trusted reader: the owner's `setTrustedReader`
+lets it ask `isOwner(tokenId, account)`, an encrypted answer, about anyone. Nothing else
+links them; the Pantry never writes to a box, and the economy could be replaced without
+touching one. `ConfidentialERC721` is a reusable base, ERC-165 id `0x5f6463b8`, described in
+[HIDDEN_OWNERS.md](HIDDEN_OWNERS.md). The Pantry holds all its croquettes as one
 cCROQ balance and splits it into encrypted buckets: the reserve, the treasury's
 uncollected share, and the burnt pile. A cat's weight is a counter, not a bucket: the
 croquettes it ate have already been split. See [CROQ.md](CROQ.md).
@@ -86,7 +91,7 @@ flowchart LR
   web -- "ChainAdapter calls" --> adapter["EvmFhevmAdapter"]
   adapter -- "transactions" --> wallet["Browser wallet"] --> chain["DoNotOpen, Pantry, cCROQ<br/>on the host chain"]
   wallet --> uni["Uniswap V2 router<br/>CROQ market"]
-  adapter -- "encrypted inputs<br/>(meal, transfer, unwrap)" --> sdk["Relayer SDK<br/>in the page"]
+  adapter -- "encrypted inputs<br/>(mint quantity, meal, transfer, unwrap)" --> sdk["Relayer SDK<br/>in the page"]
   adapter -- "reads" --> rpc["Public RPC"] --> chain
   chain -- "symbolic FHE ops, ACL" --> copro["Zama coprocessor"]
   adapter -- "userDecrypt / publicDecrypt" --> relayer["Zama relayer"] --> kms["KMS (threshold)"]
@@ -99,9 +104,12 @@ Two things are worth noticing:
 
 - The contract never sees a plaintext secret until a box is opened. It manipulates
   handles; the coprocessor does the arithmetic on ciphertexts.
-- Croquette amounts are the only secrets that come from users. The page encrypts them
-  with the Relayer SDK and sends a ciphertext with an input proof; the contract never
-  sees the number.
+- The secrets that come from users are the quantity of a mint and croquette amounts.
+  The page encrypts them with the Relayer SDK and sends a ciphertext with an input
+  proof; the contract never sees the number.
+- Who holds a box is never read from the chain in the clear. The adapter replays the
+  connected account's own `ConfidentialTransfer` receipts, decrypting their "moved" bits
+  (one signature per visit), to find its boxes.
 - The app never trusts the chain for the look of a cat. The chain reveals a seed; the
   generator turns it into a `CatSpec`. The chain also stores state, rolls and score, and
   the app compares them with what the generator derived (`catFromRevealed`).
@@ -152,12 +160,12 @@ See [DESIGN.md](DESIGN.md) for the art direction and the effect catalogue.
 
 ```mermaid
 flowchart TB
-  main["main.tsx"] --> provider["ChainProvider<br/>adapter, account, collection, my boxes"]
+  main["main.tsx"] --> provider["ChainProvider<br/>adapter, account, collection,<br/>my boxes once found (Show my boxes)"]
   provider --> app["App<br/>view switch, wallet tag, sound"]
-  app --> shelf["ShelfView<br/>mint, boxes held, claim"]
-  app --> box["BoxView<br/>shake, feed, alive check, open, take the cat out"]
+  app --> shelf["ShelfView<br/>mint, my boxes, pending requests,<br/>shake earnings, croquettes"]
+  app --> box["BoxView<br/>shake, feed, alive check, open, send,<br/>take the cat out"]
   app --> pair["PairView<br/>duel, entangle, open"]
-  app --> board["LeaderboardView<br/>opened boxes by score, sealed ones by duel wins"]
+  app --> board["LeaderboardView<br/>opened cats by score, and their openers"]
   app --> spec["SpecimensView<br/>fixture cats, no chain"]
   shelf & box & pair --> action["useAction()<br/>one action at a time, step, error copy"]
   shelf --> s1["ShelfScene"]
@@ -171,9 +179,10 @@ flowchart TB
 `VITE_CHAIN_MODE` (or `?chain=` in the URL) picks the adapter. In mock mode the EVM
 adapter, ethers and the Relayer SDK are never downloaded: they sit behind a dynamic import.
 
-The leaderboard ranks only what is public: opened boxes by rarity score, sealed boxes
-by duels won (a sealed box has no public score). It reads the 250 most recent boxes
-one by one through `box()`; past that size it needs an indexer, like `boxesOf`.
+The leaderboard ranks only what is public: opened cats by rarity score, and the players
+who opened them (`Observed` names the opener, the only holder that is ever public). It
+reads every `Observed` event through `openedCats()`; at mainnet scale that wants an
+indexer. `boxesOf` cannot use one: only the account itself can decrypt its receipts.
 
 ### Gaps against the original brief
 

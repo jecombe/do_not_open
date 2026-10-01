@@ -365,11 +365,21 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return [...h.held].sort((a, b) => a - b);
   }
 
-  /** Events matching `filter` between two blocks, read in slices a public endpoint accepts. */
+  /** Events matching `filter` between two blocks, read in slices a public endpoint accepts.
+   *  A public endpoint refuses now and then: each slice is tried a few times. */
   private async logs(filter: Parameters<Contract["queryFilter"]>[0], from: number, to: number) {
     const out = [];
     for (let lo = Math.max(0, from); lo <= to; lo += LOG_SPAN) {
-      out.push(...(await this.reading(this.contract.queryFilter(filter, lo, Math.min(to, lo + LOG_SPAN - 1)))));
+      const hi = Math.min(to, lo + LOG_SPAN - 1);
+      for (let attempt = 0; ; attempt++) {
+        try {
+          out.push(...(await this.contract.queryFilter(filter, lo, hi)));
+          break;
+        } catch (error) {
+          if (attempt >= 3) throw this.toChainError(error);
+          await sleep(1000 * (attempt + 1));
+        }
+      }
     }
     return out;
   }

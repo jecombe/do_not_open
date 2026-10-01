@@ -5,30 +5,41 @@
 ```mermaid
 flowchart TB
   subgraph enc["Encrypted: only the contract is on the ACL"]
+    owner["owner : eaddress<br/>address(0) for an empty id"]
     seed["seed : euint64<br/>drawn at mint by FHE.randEuint64"]
-    aff["affection : euint32<br/>exists once the box is fed"]
+    aff["affection : euint32<br/>exists once a paid feed landed"]
     score["score : euint16<br/>computed at the first duel, cached"]
+    earn["earnings : euint64<br/>holder's share of paid shakes"]
   end
   subgraph fresh["Encrypted, handed out"]
-    shake["shake result : 2 x euint8<br/>ACL: contract + the one viewer"]
-    alive["alive bit : ebool<br/>publicly decryptable once requested"]
-    duel["duel outcome : ebool + 2 x euint8<br/>publicly decryptable once accepted"]
+    moved["transfer receipt : ebool moved<br/>ACL: contract + from + to"]
+    shake["shake result : 2 x euint8<br/>ACL: contract + the one viewer<br/>NOT_YOURS (255) and 0 for a non-holder"]
+    req["request answers : ok bit + values masked by it<br/>publicly decryptable once requested"]
+    duel["duel outcome : 2 x ebool + 2 x euint8<br/>valid, aWins, pick, loserRoll<br/>publicly decryptable once accepted"]
   end
   subgraph pub["Plain storage: everyone"]
-    owner["owner, status"]
-    counts["feedCount, wins"]
-    badge["aliveCheck (none / pending / alive / not alive)"]
+    status["status (Sealed / Revealed), wins"]
+    badge["aliveCheck (None / Alive / NotAlive)"]
     partner["entangled partner"]
     ptraits["traits shown after lost duels"]
-    rev["revealed contents<br/>(all zero until opened)"]
+    rev["revealed contents and opener<br/>(all zero until opened)"]
   end
+  owner -- "eq(owner, caller)" --> moved
+  owner -- "eq(owner, caller): holds" --> shake
   seed -- "shr + cast, fresh ciphertext" --> shake
-  seed -- "low 16 bits < threshold" --> alive
+  owner -- "holds" --> req
+  seed -- "low 16 bits < threshold, AND holds" --> req
   seed -- "weighted sum under encryption" --> score
-  score -- "gt, select" --> duel
-  seed -- "observe: makePubliclyDecryptable" --> rev
-  aff -- "observe" --> rev
+  score -- "gt, select, masked by valid" --> duel
+  req -- "finalize" --> badge
+  req -- "finalize" --> rev
+  aff -- "observe, masked by ok" --> req
 ```
+
+Per collection: the number sold (`euint16`, nobody on the ACL, capped at 10,000 under
+encryption), the bit "the next milestone is reached" (publicly decryptable after each
+mint), the cUSDC revenue (`euint64`, the owner may read it). Public: `tokenCount` (ids
+created, empty ones included) and `milestonesReached`. See [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md).
 
 The seed layout (from `game-spec`):
 
@@ -46,14 +57,19 @@ is public.
 
 | Fact | Holder | Anyone else | How |
 | --- | --- | --- | --- |
+| Who holds a box | Yes, their own | No, unless the holder opens it or makes a request that succeeds | Encrypted owner; the holder replays their own `ConfidentialTransfer` receipts |
+| How many boxes an account holds | Yes, their own | No: an upper bound at most (ids it minted, transfers naming it) | There is no `balanceOf` |
+| How many boxes were sold | No | No | Encrypted counter; only milestones are announced |
+| How many boxes one mint bought | The buyer | No: at most the `ids` it created | Encrypted quantity in `MintPlaced` |
 | The seed, the state, the score | No | No | Only by opening the box, for everyone at once |
-| One trait per shake | Yes, free, unlimited | Yes, by paying (`paidShake`) | User decryption of a fresh ciphertext |
+| One trait per shake | Yes, free, unlimited | Yes, by paying (`paidShake`) | User decryption of a fresh ciphertext. A free shake by a non-holder reads `NOT_YOURS` |
 | Which trait a shake picked | The viewer only | No | The pick is encrypted too, and absent from the event |
-| Whether it is alive | Everyone, if the holder asks | same | `proveAlive` publishes one bit, once per box |
-| Who wins a duel, one trait of the loser | Everyone | same | Public decryption of three values |
+| Whether it is alive | Everyone, if the holder asks | same | `proveAlive` publishes one bit, once per box. A request by a non-holder is refused and reveals nothing |
+| Who wins a duel, one trait of the loser | Everyone | same | Public decryption of four values: valid, aWins, pick, loserRoll. A void duel publishes zeros |
 | The winner's trait in a duel | No | No | Selected away under encryption, never decryptable |
-| How many times it was fed | Everyone | same | Plain counter |
-| How much affection that earned | No | No | Each feed adds an encrypted draw in 0..3 |
+| That someone fed it | Everyone | same | `Fed(tokenId, feeder)`. Whether the fee was paid is not public, and the count is not kept |
+| How much affection that earned | No | No | Each paid feed adds an encrypted draw in 0..3; an unpaid one adds 0 |
+| What paid shakes earned the box | No | No | Encrypted; paid to whoever holds the box at `claimEarnings` |
 
 Two deliberate consequences:
 
@@ -67,7 +83,8 @@ Two deliberate consequences:
 ## ACL lifecycle
 
 `FHE.allow` grants are permanent on this protocol: there is no revoke. The design
-therefore never grants anything durable that would need revoking.
+therefore never grants anything durable that would need revoking. The owner itself is a
+ciphertext only the contract may use.
 
 ```mermaid
 sequenceDiagram
@@ -78,40 +95,46 @@ sequenceDiagram
   participant B as Bob (buyer)
 
   Note over C,ACL: mint
-  C->>ACL: allowThis(seed)
-  Note over ACL: seed: [contract]
+  C->>ACL: allowThis(seed, owner), allow(moved, Alice)
+  Note over ACL: seed, owner: [contract]
 
   Note over A,ACL: Alice shakes
   A->>C: shake(tokenId)
   C->>ACL: allowThis(pick1, roll1), allow(pick1, roll1, Alice)
-  Note over ACL: seed: [contract]<br/>pick1, roll1: [contract, Alice]
+  Note over ACL: pick1, roll1: [contract, Alice]
 
   Note over A,B: transfer
-  A->>C: transferFrom(Alice, Bob, tokenId)
-  Note over ACL: nothing changes.<br/>There was nothing on the seed to move or revoke.
+  A->>C: confidentialTransfer(Bob, tokenId)
+  C->>ACL: allowThis(new owner), allow(moved, Alice and Bob)
+  Note over ACL: nothing on the seed changes.<br/>There was nothing to move or revoke.
 
   Note over B,ACL: Bob shakes
   B->>C: shake(tokenId)
   C->>ACL: allow(pick2, roll2, Bob)
   Note over ACL: pick2, roll2: [contract, Bob]
 
-  A-xC: shake(tokenId) reverts NotHolder
+  A->>C: shake(tokenId), no revert
+  C->>ACL: allow(pick3 = NOT_YOURS, roll3 = 0, Alice)
   Note over A: Alice can still decrypt pick1 and roll1:<br/>what she already saw. She cannot get anything new.
 ```
 
 | Event | ACL change | Why |
 | --- | --- | --- |
-| mint | contract allowed on the seed | The contract must compute on it later |
-| shake, paidShake | contract and viewer allowed on two fresh ciphertexts | The relayer requires the contract on anything a user decrypts |
-| feed | contract allowed on the new affection | |
-| first duel | contract allowed on the cached score | |
-| transfer | **none** | No holder is ever on the seed, the score or the affection |
-| proveAlive | the alive bit becomes publicly decryptable | One bit, nothing else |
-| acceptDuel | three duel values become publicly decryptable | |
-| observe | seed and affection become publicly decryptable | Irreversible, like the grant |
+| mint | contract on the seed and each owner; buyer on each receipt and on the quantity | The contract computes on them later; the buyer finds which ids are theirs |
+| confidentialTransfer | contract on the new owner; both sides on the `moved` bit | The receipt is how each side tracks its boxes |
+| shake, paidShake | contract and viewer on two fresh ciphertexts | The relayer requires the contract on anything a user decrypts |
+| feed | contract on the new affection | |
+| paidShake, claimEarnings | contract on the box's earnings | |
+| first duel | contract on the cached score | |
+| `isOwner` | the account on the answer; the asking contract for the transaction | Only the account, its operators and trusted readers (the Pantry) may ask |
+| proveAlive | "holds" and the alive bit become publicly decryptable | One bit, and that the caller held the box |
+| acceptEntangle | "both hold" becomes publicly decryptable | |
+| acceptDuel | four duel values become publicly decryptable | Masked by "both hold" |
+| observe | "holds and paid", seed and affection (masked by it) become publicly decryptable | Irreversible, like the grant |
 
 What a previous holder keeps after a sale: the traits they shook out, which no system
-could make them forget. What they lose: the right to shake, open, duel or entangle.
+could make them forget, and the receipts that tell them the box left. What they lose: the
+right to shake, open, duel or entangle: their attempts now do nothing.
 
 A buyer should assume the seller knows all five traits. The buyer can level that for the
 price of a few paid shakes before buying.
@@ -128,14 +151,15 @@ The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CRO
 | `_treasuryShare` | `euint64` | the Pantry, the treasury | 20% of every meal, until `collect` sends it to the treasury |
 | `_burnt` | `euint64` | the Pantry only | Running total burnt: 20% of every meal. Never moved |
 | `_weight[tokenId]` | `euint64` | the Pantry only, until `weigh` makes it public | Every croquette the cat ate, all holders together |
-| `_eatenToday[tokenId]` | `euint64` | the Pantry, the feeder | What the cat ate on its last feeding day, for the 1,000 a day cap |
-| `_days[tokenId]` | `{uint32 day, uint8 meals}` | public (`mealsToday`) | The UTC day of the last meal and how many meals that day |
-| `meals[tokenId]` | `uint32` | public | Meals served, including meals that moved 0 |
+| `_eatenToday[tokenId]`, `_mealsToday[tokenId]` | `euint64`, `euint8` | the Pantry only | What the cat ate and how many meals it had on its last feeding day, for the daily limits |
+| `_day[tokenId]` | `uint32` | plain | The UTC day those two counters are about |
+| `_seen[tokenId][feeder]` | `{uint32 day, euint8 meals, euint64 eaten}` | the Pantry, the feeder | The day's totals after the feeder's last meal, masked to 0 if they did not hold the cat (`todayHandles`) |
+| `_stash[tokenId]` | `euint64` | the Pantry only | Welcome bag and purrs paid into the box, waiting for its holder's claim |
 | `lastPurr[tokenId]` | `uint64` | public | Last claim time; 0 until the welcome bag is paid |
 | `_weighIns[tokenId]` | `WeighIn` | public (`weighIn`) | Status, then the weight, build, sick, disease and tolerance in the clear |
 | parameters | immutables | public | `treasury`, `welcomeBag`, `purrMaxPerDay`, `vetMultiplier`, `purrMaxDays`, `halvingPeriod`, `mealsPerDay`, `maxEatenPerDay`, `mealTreasuryBps`, `mealBurnBps`, `buildFloors()`, `sickMinWeight`, `sickWeightSpread`, disease bounds, `maxBoxesPerClaim`, `startedAt` |
 
-`weightHandle`, `eatenTodayHandle`, `treasuryShareHandle`, `reserveHandle` and
+`weightHandle`, `stashHandle`, `todayHandles`, `treasuryShareHandle`, `reserveHandle` and
 `burntHandle` return handles. A handle is an identifier; only the accounts on its ACL
 can decrypt it.
 
@@ -152,9 +176,11 @@ readable by its account. Each transfer amount is readable by its sender and reci
 | A sealed cat's weight | No | No | Nobody is on the ACL until the reveal |
 | An opened cat's weight, build, sickness | Yes, once weighed | Yes, once weighed | `weigh` makes it publicly decryptable; `finalizeWeigh` stores it in the clear |
 | A cat's tolerance | Only after the reveal | Only after the reveal | `keccak256(seed)`; the seed is encrypted until then |
-| How many meals a box had, and today | Yes | Yes | Plain counters |
+| That someone fed a box | Yes | Yes | `MealServed(tokenId, feeder)`; not whether the feeder held it |
+| How many meals a cat had today | Yes (`todayHandles`) | No | Encrypted counter; a non-holder's copy reads 0 |
+| What a cat ate today | Yes (`todayHandles`) | No | Same |
 | How much one meal moved | The feeder | No | The feeder is on the transferred amount |
-| What a cat ate today | The feeder | No | The feeder is on `_eatenToday` |
+| What waits in a box's stash | No, until they claim it | No | Pantry only |
 | What a claim paid | The claimer | No | cCROQ allows the recipient on the transfer |
 | The treasury's uncollected share | The treasury | No | The treasury is on `_treasuryShare` |
 | The reserve left, the total burnt | No | No | Pantry only |
@@ -165,11 +191,13 @@ Why nobody reads a sealed cat's weight, the holder included: `FHE.allow` cannot 
 revoked. A weight readable by its holder would stay readable by every previous holder
 after a sale, so a seller would always know more than the buyer. With nobody on the
 ACL, the weight is as unknown to the seller as to the buyer, except for what each fed it.
-Each `_eatenToday` handle is replaced by the next meal and reset on a new day, so a
-feeder only ever reads what they fed themselves.
+A feeder's `_seen` copy is replaced at their next meal and expires with the day, so a
+past holder reads nothing about days after they sold.
 
 ### On transfer
 
-Nothing moves on the ACL. The weight and the day's allowance are keyed by token id, so
-they follow the cat: a new holder cannot feed past what the cat already ate today. The welcome bag is per box: a box
-that changes hands keeps its `lastPurr`, and its new holder gets no second bag.
+Nothing moves on the ACL. The weight, the day's allowance and the stash are keyed by
+token id, so they follow the cat: a new holder cannot feed past what the cat already ate
+today, and collects whatever earlier claims paid into the box and nobody took. The welcome
+bag is per box: a box that changes hands keeps its `lastPurr`, and gets no second bag.
+Paid-shake earnings stay in the box the same way, for whoever holds it at `claimEarnings`.

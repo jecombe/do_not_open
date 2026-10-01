@@ -4,10 +4,14 @@ This is a self-review, written by the people who wrote the code. It is a startin
 for an external audit, not a substitute for one. **No third party has audited this
 contract, and it must not go to mainnet before one has.**
 
-Scope: `DoNotOpen.sol` and `DoNotOpenConfig.sol` as deployed on Sepolia at
-`0xe8f699eEBc22767413A9edBb48826B10D3117f61` (10,000 boxes), the croquette contracts
-`Croq.sol`, `ConfidentialCroq.sol` and `Pantry.sol` (section 9), plus the parts of the
-adapter and the metadata pipeline that could leak or mislead.
+Scope: `ConfidentialERC721.sol`, `DoNotOpen.sol` and `DoNotOpenConfig.sol` in this
+repository, the hidden-owner version (10,000 boxes, owners and sold count encrypted; see
+[HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)), deployed on Sepolia at
+`0xDdC71FeBA832c961770F59d0be4B0b3ae536707B`; the croquette contracts
+`Croq.sol`, `ConfidentialCroq.sol` and `Pantry.sol` (section 9); plus the parts of the
+adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
+`0xe8f699eEBc22767413A9edBb48826B10D3117f61` is the previous version, an ERC-721 with
+public owners, and is not what this list reviews.
 
 Status values: **Pass** (checked, with the evidence named), **Accepted** (a known
 property of the design, documented), **Open** (should be fixed or decided before
@@ -17,42 +21,44 @@ mainnet), **Not done** (a check nobody has run).
 
 | # | Finding | Severity | Where |
 | --- | --- | --- | --- |
-| O1 | A box stuck in `Observing` has no way out if the KMS never answers | Medium | `observe` |
-| O2 | No per-wallet mint cap or allowlist: one bot can mint the supply | Medium (fairness) | `mint` |
+| O1 | A request whose proof never comes stays `Pending`: an opening keeps its fee | Low | `observe`, `finalize` |
+| O2 | No per-wallet mint cap or allowlist: one bot can mint the supply, and a cap would now have to be encrypted | Medium (fairness) | `mint` |
 | O3 | `DoNotOpenConfig` does not check that the maximum score fits 16 bits | Low (deploy-time) | constructor |
 | O4 | `DoNotOpenConfig` does not check that trait offsets are distinct and byte-aligned | Low (deploy-time) | constructor |
 | O5 | Single-step `Ownable`; the owner is an externally owned account on Sepolia | Low on testnet, High on mainnet | admin |
 | O6 | `setBaseURI` can repoint every token's metadata, with no freeze | Medium (trust) | admin |
-| O7 | No ERC-4906 `MetadataUpdate` on reveal: marketplaces keep the sealed image | Low | `finalizeObserve` |
+| O7 | No ERC-4906 `MetadataUpdate` on reveal: marketplaces keep the sealed image | Low | `finalize` |
 | O8 | Unlimited open challenges: a box's pending duel can be buried by spam in the app | Low (front end) | `challengeDuel`, adapter `pair()` |
 | O9 | Mainnet relayer needs an API key behind a proxy; none exists | Blocker for mainnet | adapter |
 | O10 | Static analysis, fuzzing, Sepolia test suite and Etherscan verification not run | Process | see the end |
-| O11 | The reserve is unreadable: nobody can tell when it runs dry, and claims then pay 0 silently | Low (UX) | `Pantry.claim` |
+| O11 | The reserve is unreadable: nobody can tell when it runs dry, and claims then pay nothing, silently | Low (UX) | `Pantry.claim` |
 | O12 | Welcome bags and purrs share one reserve: an active purr can leave late boxes without a bag | Low (fairness) | `Pantry.claim` |
 | O13 | The 5M treasury sits with the deployer's hot key (the LP tokens were sent to `0x…dEaD`: the seed liquidity is locked) | Low on testnet, High on mainnet | deploy |
 | O14 | Selling CROQ or seeding its market on mainnet is regulated (MiCA in the EU) | Blocker for a mainnet market | economy |
+| O15 | The owner can make any contract a trusted reader, and a malicious one could publish who holds a box | Medium (trust) | `setTrustedReader` |
+| O16 | `IConfidentialERC721` is a draft standard written here; no third party has reviewed it | Medium | `ConfidentialERC721` |
+| O17 | Anyone can send decoy transfers naming an address: its holder's discovery must decrypt every one | Low (UX) | `confidentialTransfer`, adapter `boxesOf` |
+| O18 | `DoNotOpen` is 24,093 bytes, 483 under the limit: the next feature does not fit | Low (maintenance) | build |
 
 Details and the rest of the checks follow.
 
-## 1. Re-entrancy and payments (USDC and cUSDC)
+## 1. Re-entrancy and payments (cUSDC)
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| No external call in the middle of game logic | Pass | USDC is pulled before the action (`costs()`, `mint`) and sent only in `claim` and `withdraw`. `paidShake` credits the holder and sends nothing. The token addresses are immutables set at deploy |
-| cUSDC orders act only on a proven payment | Pass | `finalizeOrder` rebuilds the handle from storage and checks the KMS proof; an order settles once. Tests: "mints only once the payment is proven…", "settles an order once, with a proof for its own bit only" |
-| A short cUSDC balance mints nothing | Pass | The transfer moves 0, the bit decrypts to false, the order ends `Unpaid` and frees its boxes. Test: "moves nothing and mints nothing when the buyer cannot pay" |
-| A paid order the box no longer allows is refunded | Pass | Rules are checked again at settlement; the price goes back in cUSDC. Test: "refunds a paid order the box no longer allows" |
-| cUSDC payouts cannot re-enter | Pass | `confidentialTransfer` (no `AndCall`) calls nothing on the receiver; the order's status is written before |
-| `withdrawConfidential` cannot take a pending order's price | Pass | It sends `confidentialRevenue`, booked only when an order is `Done`. Test: "lets the owner withdraw cUSDC revenue, never a pending order's price" |
-| `claim` follows checks-effects-interactions | Pass | `credits[msg.sender] = 0` and `totalCredits -= amount` happen before the call. Tests: "shows one real trait to the payer only and credits the holder 70%", "keeps unclaimed holder credits out of the owner's withdrawal" |
-| A reverting or re-entering holder cannot block `paidShake` | Pass | Pull payment: the holder is never called during `paidShake` |
-| Mint has no receiver callback | Pass | `_mint`, not `_safeMint`. Accepted consequence: a contract that cannot handle ERC-721 can mint to itself and lock the box |
-| `safeTransferFrom` callback cannot corrupt state | Pass | The contract has no transfer hook and keeps no per-owner game state that a callback could race |
-| `withdraw` cannot take holders' unclaimed credits | Pass | Sends the USDC balance minus `totalCredits`. Invariant `balance >= totalCredits` holds because each credit is a fraction (at most 100%, validated in config) of USDC received in the same call; USDC sent by anyone else only raises the balance |
-| `withdraw` re-entrancy | Pass | Owner-only, to an address the owner chose, and no state is read after the call |
-| Fee checks | Pass | `costs()` and `mint` pull exactly the fee with `safeTransferFrom`; nothing is payable. Tests: "charges the price in USDC, and enforces batch size and supply", "requires the holder and the fee" |
+| No external call in the middle of game logic | Pass | Each paid action pulls cUSDC first (`_pull`, a `confidentialTransferFrom`) and acts on what arrived. cUSDC is sent only by `claimEarnings`, the refund of an opening made redundant by its partner (`_payBack`), and `withdraw`. The token addresses are immutables set at deploy |
+| A short cUSDC balance buys nothing, without a revert | Pass | The transfer moves 0 and the action is masked by `paid == price`: a mint creates only empty ids, a feed adds 0, a paid shake reads `NOT_YOURS` and earns the holder nothing, an opening is refused. Tests: "gives nothing and charges nothing to a buyer who cannot pay", "adds nothing when the feeder cannot pay", "shows nothing to a payer who could not pay, and earns the holder nothing" |
+| A mint charges only the boxes it gives | Pass | `price = quantity × mintPrice` after the cap and batch cuts; all or nothing. Tests: "charges only the boxes it gives, in cUSDC", "never sells past the cap, and charges nothing for a mint that would" |
+| Only a holder is charged for an opening | Pass | `observe` pulls `select(holds, fee, 0)`. Test: "refuses someone who does not hold the box: nothing opens, nothing is charged, nothing leaks" |
+| cUSDC payouts cannot re-enter | Pass | `confidentialTransfer` (no `AndCall`) calls nothing on the receiver; earnings are zeroed before the transfer |
+| A reverting or re-entering holder cannot block `paidShake` | Pass | The holder's share stays in the box (`_earnings`); nobody is called during `paidShake` |
+| Earnings go to whoever holds the box when claimed | Pass | `claimEarnings` pays `select(isOwner, earnings, 0)` per box and keeps the rest. Tests: "pays the share to whoever holds the box when it is claimed", "books the rest as revenue and caps a claim at ten boxes" |
+| `withdraw` cannot take holders' earnings | Pass | Paid-shake fees are split at once: the holder's share into the box, the rest into `_revenue`. `withdraw` sends `_revenue` only |
+| `withdraw` re-entrancy | Pass | Owner-only, to an address the owner chose; `_revenue` is reset before the transfer |
+| No receiver callback | Pass | The Confidential ERC-721 has no safe transfer and no hook: a mint or transfer calls nothing on the receiver |
 | Fees cannot be changed after deploy | Accepted | They are immutables. A price change means a new deployment |
 | No `receive` or `fallback` | Pass | Plain ETH transfers to the contract revert, and no function is payable |
+| Paying from plain USDC shows the quantity | Accepted | The contract takes cUSDC only; the app's `pay: "usdc"` shields the exact price first, a public wrap. The app says so |
 | `UsdcRamp` fee is bounded and pulled | Pass | `feeBps` is an immutable checked against `MAX_FEE_BPS` (1%) in the constructor; fees accrue in the contract and only the owner withdraws them, after zeroing `fees`. Tests in `test/UsdcRamp.ts` |
 | `UsdcRamp` swaps are slippage-bounded | Pass | The caller passes `minUsdcOut` and a deadline to the router; the app asks for at most 1% under the quote. A sandwich can still take up to that 1% |
 | `UsdcRamp` holds no buyer funds between calls | Pass | Unshielded USDC goes straight to the buyer; shielded USDC is wrapped to the buyer in the same call. With a wrapper `rate()` above 1, the remainder of the division would stay in the ramp: cUSDC's rate is 1 |
@@ -67,37 +73,52 @@ Details and the rest of the checks follow.
 | A shake can never return the state | Pass | The five picks are the five trait offsets (16 to 48); the state roll is bits 0 to 15. `InvalidTraitOffset` rejects offsets below 16 at deploy |
 | The shake event does not leak the pick | Pass | `Shaken(tokenId, viewer, paid)`. Test: "emits no information about the pick" |
 | The pick cannot be predicted or ground | Pass | It is an encrypted draw. Resubmitting gives another hidden draw, not a chosen one |
-| Transfer moves no ACL and leaves nothing to revoke | Pass | Tests: "transferFrom / safeTransferFrom: the new holder can shake, the previous one cannot" |
+| Owners are unreadable, the owner included | Pass | `_owners` is allowed to the contract only. Test: "keeps the owner itself unreadable, even to the owner" |
+| A real token and an empty one look the same | Pass | Same event, same seed draw, same storage; only the buyer reads `moved`. Test: "makes a real token and an empty one look the same from outside" |
+| A transfer by a non-holder does nothing and does not revert | Pass | `moved = owner == from`, `owner = select(moved, to, owner)`. Tests: "does nothing, without reverting, when the sender does not hold it", "follows a token through several hands, decoys included" |
+| A transfer receipt is readable by its two sides only | Pass | `allow(moved, from)`, `allow(moved, to)`, transient for the calling contract. Test: "moves the token when the sender holds it, and tells only the two sides" |
+| `isOwner` answers only the account, its operators and trusted readers | Pass | Reverts `ConfidentialERC721UnauthorizedReader` otherwise. Tests: "answers the account itself, its operators and trusted contracts only", "refuses to read ownership unless the collection trusts the Pantry" |
+| **O15. Trusted readers** | Open | A trusted reader gets `isOwner` about anyone, with a transient grant. A malicious one could make the answer publicly decryptable and so publish who holds a box. Only the owner adds readers. Make the set immutable after deploy, or put it behind a timelock and a multisig |
+| A request by a non-holder reveals nothing about the box | Pass | Every published value is masked by `holds` (or `ok`, `valid`); a refused request decrypts to "no" and zeros. Tests: "refuses someone who does not hold the box…", "refuses a stranger, and is asked once per box", "is void, and shows nothing, unless both sides hold their boxes" |
+| What a successful request reveals | Accepted | That the caller held the box then: an opening, an alive check, an entanglement, a valid duel. `Observed` names the opener. Documented in HIDDEN_OWNERS.md |
+| A buyer's holdings can be bounded from above | Accepted | Ids minted (`MintPlaced.count`) plus transfers naming the address. Never known exactly |
+| A milestone shows which mint crossed it | Accepted | Its bit decrypts to true. Nothing between two milestones |
+| **O16. Draft standard** | Open | `IConfidentialERC721` and its ERC-165 id `0x5f6463b8` are this project's. Have the standard reviewed, or align it with one Zama or OpenZeppelin publishes |
+| **O17. Decoy receipts** | Open | `confidentialTransfer(victim, id)` costs the sender gas and emits a receipt naming the victim, which their `boxesOf` must decrypt. Spam slows discovery; it cannot add a box. Batch decryption and a cap per visit in the adapter |
+| Transfer moves no ACL on game data and leaves nothing to revoke | Pass | Test: "hands the box over: the new holder can shake, the previous one cannot" |
 | A previous holder keeps what they already decrypted | Accepted | Unavoidable. Documented in `DATA_MODEL.md` |
 | A holder can learn all five traits by shaking repeatedly | Accepted | By design ("unlimited"). The state and the affection stay hidden. A buyer should assume the seller knows the traits |
 | Duels leak the order of base scores, and so a hint about the state | Accepted | The state bonus is up to 1,000 of 3,040 points: a box that beats many others is more likely quantum or ghost. This is the mechanic |
 | The duel winner's trait is never decryptable | Pass | `select(aWins, roll(B), roll(A))` under encryption; only the selected value is made public. Test: "resolves to the higher score and reveals one trait of the loser only" |
-| `proveAlive` publishes exactly one bit | Pass | One `ebool` is made public. Test: "publishes exactly one bit and grants the badge when it is true" |
-| Feed count does not give the affection away | Pass | Each feed adds an encrypted draw in 0..3. Test: "lets anyone feed a box and adds a hidden amount each time" |
-| Public handles (`seedHandle`, `lastShake`, `aliveHandle`, `duelHandles`) leak nothing | Pass | A handle is an identifier. Decryption is gated by the ACL |
-| No encrypted input from users in `DoNotOpen` | Pass | Every secret of a box is drawn on-chain. There is no `fromExternal` call in `DoNotOpen`. User inputs exist only in the Pantry and cCROQ (section 9) |
-| Gas or HCU side channels | Accepted | Whether a box has a cached score, or was ever fed, is visible from cost and handle count. Both facts are public anyway |
+| `proveAlive` publishes exactly one bit about the box | Pass | Two `ebool`s are made public: "holds" and "alive AND holds". Test: "publishes exactly one bit and grants the badge when it is true" |
+| Feeds do not give the affection away | Pass | Each paid feed adds an encrypted draw in 0..3, an unpaid one 0, and the count is not kept. Tests: "lets anyone feed for the fee and adds a hidden amount each time", "adds nothing when the feeder cannot pay" |
+| Public handles (`seedHandle`, `lastShake`, `requestInfo`, `duelHandles`, `milestoneHandle`, `confidentialOwnerOf`) leak nothing | Pass | A handle is an identifier. Decryption is gated by the ACL |
+| The one encrypted input of `DoNotOpen` is bound to the buyer | Pass | `mint` takes `externalEuint8` with `FHE.fromExternal`, bound to (DoNotOpen, `msg.sender`), then cut to `ids`. Test: "cuts a quantity above the batch size down to it" |
+| Gas or HCU side channels | Accepted | Whether a box has a cached score, or was ever fed, is visible from cost and handle count (an opening of a fed box publishes one more handle). Whether a caller holds a box is not: holder and non-holder paths run the same operations |
 | Sealed metadata cannot leak the seed | Pass | `buildBoxSpec(tokenId)` and `sealedMetadata` take the token id and public facts only. Test: "builds sealed metadata from the token id and public facts only" |
 
 ## 3. Decryption "callbacks"
 
 The protocol has no on-chain callback. Each reveal ends with a permissionless
-`finalize*` transaction carrying clear values and a KMS proof.
+`finalize`, `finalizeDuel`, `announceMilestone` or `finalizeWeigh` transaction carrying
+clear values and a KMS proof.
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| The handle list is rebuilt from storage, never taken from the caller | Pass | `observeHandles`, `duelHandles`, `_aliveBit` |
-| A forged value is rejected | Pass | Tests: "rejects a forged seed and a proof made for another box", "rejects a forged answer", "rejects a forged outcome and double finalisation" |
-| A valid proof for another box cannot be replayed | Pass | Same tests: the proof is bound to the handles |
-| Finalisation happens once | Pass | Status guards: `Observing`, `Pending` (alive), `Pending` (duel) |
-| Finalisation before the request is rejected | Pass | Test: "rejects duplicate requests and out-of-order finalisation" |
-| Duplicate requests are rejected | Pass | `onlySealed` on `observe`; `AliveCheckAlreadyRequested`; duel status |
-| Handles cannot change between request and finalisation | Pass | `feed` is `onlySealed`, so the affection handle is frozen once `Observing`. The alive bit and duel handles are written once |
-| The order of decoded values matches the order of handles | Pass | Covered by every finalisation test, and by the Sepolia smoke run against the real KMS |
-| Anyone can finalise, including after a transfer | Pass | Test: "can still be finalised after the box changes hands" |
-| A duel still resolves if a box is opened meanwhile | Pass | Test: "still resolves if a box is opened while the outcome is pending" |
-| Front-running a finalisation | Accepted | Whoever sends it, the result is the same. The slower sender's transaction reverts and costs them gas. The app should treat that revert as success (it currently shows a message and the box appears open on reload) |
-| **O1. Liveness** | Open | If the KMS or relayer never answers, a box stays `Observing` forever: it cannot be shaken, fed, duelled or re-sealed, and there is no timeout. The fee is not refunded. Options: a timeout after which the holder can cancel (but the seed was already marked public, so it cannot be un-revealed: the honest fix is only a refund), or accept and document. The same applies to a pending alive check (harmless) and a pending duel (harmless) |
+| The handle list is taken from storage, never from the caller | Pass | Stored per request (`_requestHandles`), `duelHandles`, `_milestoneBit` |
+| A forged value is rejected | Pass | Tests: "rejects a forged seed, a proof made for another request, and a second settlement", "rejects a forged answer" (alive, milestones), "rejects a forged outcome and double finalisation" |
+| A valid proof for another request cannot be replayed | Pass | Same tests: the proof is bound to the handles stored at the request |
+| Finalisation happens once | Pass | Request status `Pending`, duel status `Pending`, `milestonesReached` moves on and clears the bit |
+| A request cannot be finalised before it exists | Pass | `RequestNotPending` on an unknown id |
+| Repeated requests are harmless | Pass | Several openings of one box may be pending; the first finalised opens it, a later one by a holder refunds its fee. `proveAlive` reverts once the box has an answer. A stranger's requests are refused |
+| Handles cannot change between request and finalisation | Pass | A request publishes fresh masked copies (`select(ok, …)`), stored with the request; later feeds or transfers do not touch them |
+| Feeds after an opening request do not count | Accepted | The affection published is the one at the request. A feed paid in between is lost to the reveal |
+| Duplicate handles in one decryption | Pass | A public decryption refuses one handle twice: an unfed box publishes no affection (`Request.fed`). Test: "links two boxes with both holders' consent and opens them together" (one of the two unfed) |
+| The order of decoded values matches the order of handles | Pass | Covered by every finalisation test |
+| Anyone can finalise, including after a transfer | Pass | Test: "still opens for the holder at the time of the request, even if the box moved since" |
+| A duel still resolves if a box is opened meanwhile | Pass | `finalizeDuel` checks only the duel's status |
+| Front-running a finalisation | Accepted | Whoever sends it, the result is the same. The slower sender's transaction reverts (`RequestNotPending`) and costs them gas. The adapter checks that a request is still `Pending` before sending its proof |
+| **O1. Liveness** | Open | If the KMS or relayer never answers, a request stays `Pending`. The box stays `Sealed` and usable, but an opening's fee is kept, and the masked seed stays marked public: if the KMS answers later, anyone can still finalise it. Options: a refund after a timeout, or accept and document. A pending alive check or duel is harmless |
 
 ## 4. Mint
 
@@ -105,10 +126,12 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | --- | --- | --- |
 | The seed cannot be seen or influenced by the minter, a block producer or the deployer | Pass | `FHE.randEuint64()`, encrypted at birth |
 | Mint cannot be reverted selectively on a bad roll | Pass | Nothing about the roll is known during or after the transaction |
-| Token ids carry no information | Pass | Sequential. The look of a sealed box depends on the id only |
-| Supply and batch limits | Pass | Test: "enforces price, batch size and supply" |
-| One FHE operation per box | Pass | Test: "costs one FHE operation per box" (24,000 HCU) |
-| **O2. Supply sniping** | Open | Front-running cannot pick good boxes, but nothing stops one account from minting all 10,000 in 1,000 transactions. With CROQ, each box also carries a 100-croquette welcome bag, which raises the incentive. If distribution matters: a per-wallet cap, an allowlist phase, or a signature gate. Decide before mainnet |
+| Token ids carry no information | Pass | Sequential, empty ones included. The look of a sealed box depends on the id only |
+| The quantity is hidden among the ids | Pass | `ids` (1 to 10) ids per mint, the first `quantity` owned. Tests: "creates ten boxes per mint and gives the buyer the first ones, privately", "hides the quantity among as many ids as the buyer picks, and never gives more" |
+| The cap holds under encryption | Pass | `sold + quantity <= maxSupply` or the mint is empty and free. Test: "never sells past the cap, and charges nothing for a mint that would" |
+| Milestones are announced once each, with a proof | Pass | Tests: "announces each milestone once it is reached, and nothing in between", "rejects a forged answer and milestones that do not end at the cap" |
+| HCU and gas | Pass | 10 ids: ~3.3M HCU, ~2.6M gas. Test: "stays within the HCU budget" |
+| **O2. Supply sniping** | Open | Front-running cannot pick good boxes, but nothing stops one account from minting the supply in 1,000 transactions. With CROQ, each box also carries a 100-croquette welcome bag, which raises the incentive. A per-wallet cap would have to be encrypted, as the quantity is. Decide before mainnet |
 | Information asymmetry after mint | Accepted | The holder can learn the traits; a buyer cannot without paying for shakes |
 
 ## 5. Game logic
@@ -117,26 +140,27 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | --- | --- | --- |
 | The Solidity decoder equals the TypeScript generator | Pass | Tests: "decodes seeds exactly like the TypeScript generator", "maps rolls to variants like the generator". Smoke run: both Sepolia reveals matched |
 | The encrypted score equals the plain one | Pass | Test: "resolves to the higher score..." compares against the mock's cleartext. Same weights and thresholds are read from the config |
-| **O3. Score overflow** | Open | The score is a `uint16` / `euint16`. With the shipped spec the maximum is 3,040. With other weights the plain `decode` would revert (bricking `finalizeObserve` for that box) while the encrypted sum would wrap silently. Add a constructor check that `max(bonus) + 255 * sum(weights) + goldenBonus <= 65535` |
+| **O3. Score overflow** | Open | The score is a `uint16` / `euint16`. With the shipped spec the maximum is 3,040. With other weights the plain `decode` would revert (bricking `finalize` of that box's opening) while the encrypted sum would wrap silently. Add a constructor check that `max(bonus) + 255 * sum(weights) + goldenBonus <= 65535` |
 | **O4. Offsets** | Open | The constructor checks each offset is in 16..56 but not that the five are distinct and multiples of 8. `configParamsFromSpec` produces valid values; the contract should not rely on that |
 | Ties in a duel go to B | Pass | Test: "lets the challenger win only on a strictly higher score" |
-| Duel and entanglement need both holders | Pass | Tests: "needs both holders' consent", "needs the second holder's consent" |
-| A proposal or challenge dies if the proposer's box is sold | Pass | Tests: "voids a proposal when the proposer's box changes hands", "is void if the challenger's box was transferred..." |
+| Duel and entanglement need both holders | Pass | Checked under encryption at acceptance. Tests: "links nothing unless the proposer holds A and the accepter holds B", "is void, and shows nothing, unless both sides hold their boxes" |
+| A proposal or challenge dies if the proposer's box is sold | Pass | The proposer's or challenger's holding is checked at acceptance, not at the proposal. Test: "lets one holder entangle two of their own boxes, and follows a transfer" |
 | Entanglement is permanent and follows the token | Accepted | A buyer of an entangled box can have it opened by the partner's holder, at no cost to them and with no consent asked. Marketplaces and the app must show `partnerOf`. The app does |
 | Opening a partner costs its holder nothing and asks nothing | Accepted | That is what the two holders agreed to |
 | **O8. Challenge spam** | Open | Any holder can file unlimited challenges against any sealed box. On-chain this costs only the spammer. In the app, `pair()` looks at the last 40 duels, so a real pending challenge can be pushed out of view. Fix in the adapter (index by event) or on-chain (one open challenge per pair) |
-| Unbounded loops | Pass | Mint loops at most `maxPerTx` (10); score loops are fixed at 3 and 5 |
-| Casts | Pass | Token ids fit `uint32` (supply 10,000, itself a `uint16`) |
-| HCU stays under the limit | Pass | Largest measured: `acceptDuel` 2.37M of 20M. Tests pin shake, feed and proveAlive budgets |
+| Unbounded loops | Pass | Mint loops at most `maxPerTx` (10) ids; `claimEarnings` at most `MAX_CLAIM` (10) boxes; score loops are fixed at 3 and 5 |
+| Casts | Pass | Token ids run past 10,000 (empty ids) and are stored as `uint32` in requests and duels: 4 billion ids, 400 million mints. `buildBoxSpec` accepts any 32-bit id |
+| HCU stays under the limit | Pass | Largest in `DoNotOpen`: a 10-id mint ~3.3M and `acceptDuel` ~2.8M of 20M. Tests pin the budgets |
+| **O18. Contract size** | Open | 24,093 bytes deployed, limit 24,576. Move logic to a library or a trusted-reader contract before the next feature |
 
 ## 6. Administration and trust
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Owner powers are limited to `withdraw`, `withdrawConfidential` and `setBaseURI` | Pass | Tests: "lets only the owner withdraw proceeds and set the base URI", "lets the owner withdraw cUSDC revenue…". The owner cannot mint for free, change rules, pause, or read a seed |
+| Owner powers are limited to `withdraw`, `setTrustedReader` and `setBaseURI` | Pass | Test: "lets only the owner withdraw the revenue, trust readers and set the base URI". The owner cannot mint for free, change rules, pause, or read a seed or an owner; it reads the encrypted revenue. `setTrustedReader` is a confidentiality power: see O15 |
 | **O5. Ownership** | Open | `Ownable` is single-step, and on Sepolia the owner is the deployer's hot key. For mainnet: `Ownable2Step` and a multisig |
 | **O6. Metadata control** | Open | `setBaseURI` can be called at any time. Add a one-way freeze, or point at content-addressed storage and say so |
-| **O7. Metadata refresh** | Open | Emit ERC-4906 `MetadataUpdate(tokenId)` in `finalizeObserve` so marketplaces re-fetch the image |
+| **O7. Metadata refresh** | Open | Emit ERC-4906 `MetadataUpdate(tokenId)` when an opening is finalised so marketplaces re-fetch the image |
 | The contract is not upgradeable | Accepted | A bug cannot be patched, and seeds in a broken deployment stay sealed forever. The config is immutable too |
 | Rules are verifiable | Pass | `specHash` on-chain equals `keccak256(spec.json)`. Test: "records the hash of the spec it was built from" |
 | Trust in Zama | Accepted | Confidentiality rests on the KMS threshold assumption; correctness of reveals rests on KMS signatures; liveness rests on the coprocessor, relayer and KMS |
@@ -148,7 +172,8 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | --- | --- | --- |
 | No private key in the repository | Pass | `.env` is git-ignored; `.env.example` has empty values. History checked before each commit |
 | The web app holds no secret | Pass | Only `VITE_*` values reach the bundle: a mode, a public RPC URL, an address |
-| The decryption permit is narrow | Pass | One contract, one day, kept in memory only, dropped on account change |
+| The decryption permit is narrow | Pass | The game's contracts (DoNotOpen, cCROQ, cUSDC, Pantry), one day, kept in memory only, dropped on account change |
+| Nobody but the account can find its boxes | Pass | `boxesOf` returns `[]` for any address but the connected one; it needs that account's permit to decrypt its receipts |
 | The session private key never leaves the page | Pass | Generated by the SDK in the page; only the public key and the signature go to the relayer |
 | The app cross-checks what the chain reveals | Pass | `catFromRevealed` rebuilds the cat from the seed and warns if score or golden flag differ |
 | Reads come from a public RPC the user did not choose | Accepted | A lying RPC can misreport state; it cannot make the wallet sign something else, and the wallet shows each transaction |
@@ -156,17 +181,18 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | **O9. Mainnet relayer key** | Open | The hosted mainnet relayer needs an API key that must stay server-side. A proxy has to be built |
 | Dependency pinning | Pass | `pnpm-lock.yaml` committed; the Relayer SDK is pinned to an exact version |
 | Real wallet extension tested | Not done | The browser run used a local signing proxy behind an injected provider |
-| Two-holder flows and `paidShake` / `claim` on Sepolia | Not done | Covered on the mock and in contract tests only |
+| Two-holder flows and `paidShake` / `claimEarnings` on Sepolia | Not done | Covered on the mock and in contract tests only |
+| The hidden-owner contracts on Sepolia | Pass | Deployed 2026-10-01; both smoke tests ran through the real coprocessor, relayer and KMS |
 
 ## 8. Process
 
 | Check | Status |
 | --- | --- |
-| Unit tests on the FHEVM mock | Pass: 80 tests (53 for the boxes, 27 for the croquettes) |
-| Every mechanic run on Sepolia through the real KMS | Pass: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts` |
+| Unit tests on the FHEVM mock | Pass: 95 tests (the standard, the boxes, the croquettes, the ramp, the market hooks) |
+| Every mechanic run on Sepolia through the real KMS | Pass for the previous version: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts`. Not done for the hidden-owner contracts |
 | Optional Hardhat suite on Sepolia (`pnpm test:sepolia`) | Not done |
 | Static analysis (Slither, Aderyn) | Not done |
-| Fuzz or invariant tests (`balance >= totalCredits`, status transitions) | Not done |
+| Fuzz or invariant tests (revenue plus earnings equal the cUSDC balance, status transitions, owner replay) | Not done |
 | Coverage report | Not done |
 | Source verified on Etherscan | Not done: needs `ETHERSCAN_API_KEY` |
 | External audit | Not done |
@@ -178,27 +204,29 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 | --- | --- | --- |
 | The supply is fixed | Pass | `Croq` mints once in its constructor; no mint function, no owner. Test: "mints the whole fixed supply once, with no decimals and no way to mint more" |
 | cCROQ is the unmodified OpenZeppelin wrapper | Pass | `ConfidentialCroq` only passes a name, symbol and URI to `ERC7984ERC20Wrapper` 0.5.3. Rate 1, 0 decimals. Test: "wraps 1:1 into a balance only its holder can read" |
-| Nobody is allowed on a sealed weight, the reserve or the burnt pile | Pass | `allowThis` on all three, `allowTransient(…, cCROQ)` for transfers. The only extra grants: the feeder on `_eatenToday`, the treasury on `_treasuryShare`. Tests: "lets nobody read a weight: not the holder, not the public", "keeps each claim private" |
+| Nobody is allowed on a sealed weight, the reserve, the stashes or the burnt pile | Pass | `allowThis` on all of them, `allowTransient(…, cCROQ)` for transfers. The only extra grants: the feeder on their masked copy of today's totals (`_seen`), the treasury on `_treasuryShare`. Tests: "lets nobody read a weight: not the holder, not the public", "keeps each claim private: only the claimer reads what arrived" |
 | The books balance | Pass | A meal is split whole: treasury and fire round down, the reserve gets the rest. Every croquette the Pantry holds is in exactly one bucket. Tests: "eats it all: a fifth to the treasury, a fifth burnt, the rest back to the reserve", "keeps the books: the Pantry's balance is always reserve + treasury share + burnt" |
 | The burnt pile never moves | Pass | `_burnt` is only ever added to. No function transfers it |
 | Only the treasury is paid its share, and only it reads it | Pass | `collect` always pays the immutable `treasury`, whoever calls it, then resets the bucket to an encrypted 0. Test: "pays the treasury its share, which only the treasury can read" |
-| Only the holder feeds, only a sealed cat | Pass | `ownerOf == msg.sender`, `status == Sealed`. Stops strangers from filling a cat's daily meals with empty bowls. Test: "lets only the holder feed a sealed cat" |
-| Two meals per cat per UTC day | Pass | `_days[tokenId]` counts the day's meals in the clear; a third reverts `NoMoreMealsToday`. Kept on the token, not the wallet. Test: "serves two meals a day, then none until the next UTC day" |
+| Only the holder's meals are served, only a sealed cat | Pass | `served = isOwner AND meals < mealsPerDay`, encrypted; a stranger's meal moves 0 and uses none of the day's meals. `status == Sealed` reverts in the clear. Test: "serves nothing, silently, to someone who does not hold the cat" |
+| The Pantry may read ownership | Pass | It must be a trusted reader of `DoNotOpen`, set at deploy. Test: "refuses to read ownership unless the collection trusts the Pantry" |
+| Two meals per cat per UTC day | Pass | `_mealsToday[tokenId]` counts the day's served meals, encrypted; a third moves 0, silently. Kept on the token, not the wallet. Test: "serves two meals a day, then nothing until the next UTC day" |
 | At most 1,000 croquettes per cat per UTC day | Pass | `min(offered, maxEatenPerDay − eatenToday)` in FHE before the transfer; the rest stays in the wallet, without a revert. Test: "caps what a cat eats at 1,000 a day, in one meal or spread, and cuts the rest silently" |
-| A feeder short of funds moves 0, without a revert | Accepted | That is the ERC-7984 transfer semantics, and it hides balances. Side effect: a meal of 0 still counts, so `meals` can be inflated for the price of gas, and it uses one of the day's two meals. Test: "moves nothing, silently, when the feeder holds too little" |
+| A feeder short of funds moves 0, without a revert | Accepted | That is the ERC-7984 transfer semantics, and it hides balances. Side effect: the holder's meal of 0 still uses one of the day's two meals. Test: "moves nothing, silently, when the feeder holds too little" |
 | Operator grant and input binding | Pass | `setOperator(pantry, until)` lets the Pantry pull only in `feed`, from `msg.sender`; `FHE.fromExternal` binds the proof to (Pantry, `msg.sender`). The app should pick a finite `until`. Test: "requires the Pantry as operator and an amount made for the caller" |
-| The weight is frozen before it is made public | Pass | `feed` requires `Sealed`; an `Observing` box takes no meal, so the weight cannot change between the reveal request and the weigh-in |
+| The weight is frozen before it is made public | Pass | `feed` requires `Sealed` and `weigh` requires `Revealed`: once an opening is finalised the cat takes no meal, so the weight cannot change between the weigh-in request and its proof |
 | Weigh-in once, after the reveal, with a valid proof | Pass | `weigh` requires `Revealed` and `NOT_WEIGHED`; `finalizeWeigh` requires `WEIGH_PENDING` and `FHE.checkSignatures`. Tests: "weighs once, only after the reveal is final", "rejects a forged weight", "weighs a cat that never ate on the spot, as thin" |
 | Nobody can aim for the tolerance | Pass | `tolerance = sickMinWeight + keccak256(seed) % sickWeightSpread`; the seed is encrypted until the reveal, after which the cat cannot eat. Shakes and duels reveal trait bytes only, not the whole seed. Test: "makes a cat sick past a tolerance of its own, drawn from its seed" |
 | Builds and diseases follow the spec | Pass | `buildFloors` and disease bounds are checked increasing in the constructor. Tests: "publishes the weight, and the build it reaches", "rejects parameters that would break the accounting" |
-| Welcome bag once per box, not per wallet | Pass | `lastPurr != 0` after the first claim, kept across transfers. Test: "pays the bag to the box, not the wallet" |
+| Welcome bag once per box, not per wallet | Pass | `lastPurr != 0` after the first claim, kept across transfers. Test: "pays the bag to the box, not the wallet: a box that changes hands gets no second bag" |
+| Bags and purrs go to the box, then its holder | Pass | `claim` pays dues into `_stash`, then `select(isOwner, stash, 0)` to the caller. A stranger's claim moves the clocks and fills the stashes, and gets 0. Tests: "pays one welcome bag per box into the box, and the boxes' holder takes it", "keeps a box's bag in the box when a stranger asks for it" |
 | Purr days and cap | Pass | Test: "pays for the days owed, up to the cap, and keeps a started day" |
-| The reserve cannot be overdrawn | Pass | `FHE.min(owed, reserve)` before the transfer. Test: "never pays more than the reserve holds" |
+| The reserve cannot be overdrawn | Pass | `le(totalDue, reserve)`: the reserve pays a whole claim or none of it. Test: "never pays more than the reserve holds" |
 | The purr draw is unpredictable and cannot be retried | Pass | `FHE.randEuint8()`; the claimer learns the amount only after the transaction |
 | Draw bias | Accepted | A byte modulo 5: 0 has probability 52/256, the others 51/256 |
 | `block.timestamp` for days and halvings | Pass | A producer can shift it by seconds; days are counted whole |
 | Overflow in `mul` before `div` | Pass | Amounts are bounded by the 20M supply; `amount × 10,000` stays far below 2^64. A weight is bounded by the supply too |
-| HCU per transaction | Pass | Largest: a 10-box claim, ~6.8M (depth ~2.8M) of 20M (5M). Budgets pinned in tests |
+| HCU per transaction | Pass | Largest: a 10-box claim, ~13M of 20M; `feed` ~3.7M. Budgets pinned in tests: "stays within the HCU budget for a full claim", "stays within the HCU budget" |
 | Bounded loops | Pass | `claim` loops over at most `maxBoxesPerClaim` (10) |
 | Parameters cannot break the accounting | Pass | The constructor rejects shares above 100% and zero periods. Test: "rejects parameters that would break the accounting" |
 | No admin on the Pantry | Accepted | No owner, no pause, no upgrade. Parameters are immutable; a change means a new Pantry |
@@ -212,7 +240,8 @@ The protocol has no on-chain callback. Each reveal ends with a permissionless
 
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6, O11 to O14. Fix O3, O4, O7 (small and mechanical).
+1. Decide O1, O2, O5, O6, O11 to O16. Fix O3, O4, O7, O17 (small and mechanical), and
+   make room for O18.
 2. Build the relayer proxy (O9).
 3. Run the "Not done" rows of section 8.
 4. Get an external audit, by a firm that has reviewed FHEVM contracts before.

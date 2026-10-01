@@ -1,6 +1,6 @@
 {
   "croq": {
-    "address": "0x183B74906673283f7Fe3272103989A357Cf88522",
+    "address": "0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2",
     "abi": [
       {
         "inputs": [
@@ -329,7 +329,7 @@
     ]
   },
   "cCroq": {
-    "address": "0x7598484e5DDdada766ab19Cd7d0dD42d17Dd4F06",
+    "address": "0x58B4e70B877afF540796c3ec38b54C2C7834B804",
     "abi": [
       {
         "inputs": [
@@ -1343,7 +1343,7 @@
     ]
   },
   "pantry": {
-    "address": "0x20755493eF05C954BdC2e970b0437B12AE19d01e",
+    "address": "0x084C50597D83ab89D62F5FA4245A4a4e9909A77D",
     "abi": [
       {
         "inputs": [
@@ -1465,11 +1465,6 @@
       },
       {
         "inputs": [],
-        "name": "NoMoreMealsToday",
-        "type": "error"
-      },
-      {
-        "inputs": [],
         "name": "NotHolder",
         "type": "error"
       },
@@ -1536,6 +1531,25 @@
           {
             "indexed": true,
             "internalType": "address",
+            "name": "caller",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "boxes",
+            "type": "uint256"
+          }
+        ],
+        "name": "Claimed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
             "name": "treasury",
             "type": "address"
           }
@@ -1576,12 +1590,6 @@
             "internalType": "address",
             "name": "feeder",
             "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint32",
-            "name": "meals",
-            "type": "uint32"
           }
         ],
         "name": "MealServed",
@@ -1611,14 +1619,14 @@
         "inputs": [
           {
             "indexed": true,
-            "internalType": "address",
-            "name": "holder",
-            "type": "address"
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "boxes",
+            "name": "days_",
             "type": "uint256"
           }
         ],
@@ -1689,12 +1697,6 @@
             "internalType": "uint256",
             "name": "tokenId",
             "type": "uint256"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "holder",
-            "type": "address"
           }
         ],
         "name": "WelcomeBag",
@@ -1862,25 +1864,6 @@
             "internalType": "uint256",
             "name": "tokenId",
             "type": "uint256"
-          }
-        ],
-        "name": "eatenTodayHandle",
-        "outputs": [
-          {
-            "internalType": "bytes32",
-            "name": "",
-            "type": "bytes32"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
           },
           {
             "internalType": "externalEuint64",
@@ -2032,46 +2015,8 @@
         "type": "function"
       },
       {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "meals",
-        "outputs": [
-          {
-            "internalType": "uint32",
-            "name": "",
-            "type": "uint32"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
         "inputs": [],
         "name": "mealsPerDay",
-        "outputs": [
-          {
-            "internalType": "uint8",
-            "name": "",
-            "type": "uint8"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          }
-        ],
-        "name": "mealsToday",
         "outputs": [
           {
             "internalType": "uint8",
@@ -2174,6 +2119,54 @@
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "stashHandle",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "feeder",
+            "type": "address"
+          }
+        ],
+        "name": "todayHandles",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "meals",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "eaten",
+            "type": "bytes32"
           }
         ],
         "stateMutability": "view",
@@ -2317,7 +2310,7 @@
     ]
   },
   "market": {
-    "pair": "0xDc7Ed9F6ffd2993350BDc2c563E42036C5a53B43",
+    "pair": "0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60",
     "router": "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
     "factory": "0xF62c03E08ada871A0bEb309762E260a7a6a880E6",
     "usdc": "0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF"

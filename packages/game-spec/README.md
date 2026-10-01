@@ -4,6 +4,14 @@ The chain-agnostic rules of DO NOT OPEN. `spec.json` is the single source of tru
 the EVM contract, the future Solana program, the generator and the UI. Nothing in here
 knows what a blockchain is.
 
+## Collection
+
+`collection.maxSupply` is 10,000 boxes. Who holds them and how many were sold are
+encrypted on-chain, so `collection.milestones` lists the only sold counts ever announced:
+100, 500, 1,000, 2,500, 5,000, 7,500, 9,000 and 10,000, the last one the cap. Token ids
+run past `maxSupply`, because a mint hides its quantity among empty ids; any 32-bit id is
+valid. See [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNERS.md).
+
 ## Seed layout
 
 Every box holds one 64-bit seed. Everything about the cat is a pure function of it.
@@ -67,8 +75,9 @@ the distribution ever disagree.
 
 ## Affection
 
-`feed` adds a hidden uniform amount between 0 and 3 to an encrypted counter. How often
-a box was fed is public; how much that earned is not. At reveal, `affection > 10` turns
+A paid `feed` adds a hidden uniform amount between 0 and 3 to an encrypted counter; an
+unpaid one adds 0. Feeds are public events, but neither their number (not kept) nor what
+they earned tells the affection. At reveal, `affection > 10` turns
 the accessory golden (a cat with none gets a golden bell collar) and adds 250 to the
 revealed score. Tiers and duels use the score before that bonus.
 
@@ -86,8 +95,9 @@ them; [`docs/CROQ.md`](../../docs/CROQ.md) explains them.
 | `purr.vetMultiplier` | 2 | For Vet Certified boxes |
 | `purr.maxDays` | 7 | Days one claim can collect |
 | `purr.halvingDays` | 365 | The purr halves this often |
-| `meal.burnBps` | 1000 | 10% of each meal is burnt, the rest goes to the stash |
-| `settlement.payoutBps` | alive 10000, asleep 10000, ghost 0, quantum 5000 | Share of the stash paid to the holder at settlement |
+| `meal.mealsPerDay`, `meal.maxEatenPerDay` | 2, 1,000 | Per cat and per UTC day; past either, a meal moves 0, silently |
+| `meal.treasuryBps`, `meal.burnBps` | 2000, 2000 | 20% of each meal to the treasury, 20% burnt, the rest back to the game reserve |
+| `weight` | builds, sick, diseases | Build floors, the sickness tolerance range and the disease odds, applied at the weigh-in |
 
 ## Mechanics and events
 

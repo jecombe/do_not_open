@@ -24,6 +24,8 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     // Zama's USDCMock lets anyone mint: 100 test dollars a go.
     usdcFaucet: 100_000_000n,
     ramp: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.ramp ?? undefined),
+    // Events are read from here on: the collection's own receipts, milestones and openings.
+    deployBlock: opts.address ? undefined : SEPOLIA_DEPLOYMENT.deployBlock,
     readProvider: new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true }),
     wallet: new InjectedWallet(ethereum, chain),
     loadRelayer: async () => {

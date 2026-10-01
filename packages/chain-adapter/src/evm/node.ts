@@ -31,6 +31,8 @@ export function createSepoliaNodeAdapter(opts: NodeEvmOptions = {}): EvmFhevmAda
     // Zama's USDCMock lets anyone mint: 100 test dollars a go.
     usdcFaucet: 100_000_000n,
     ramp: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.ramp ?? undefined),
+    // Events are read from here on: the collection's own receipts, milestones and openings.
+    deployBlock: opts.address ? undefined : SEPOLIA_DEPLOYMENT.deployBlock,
     readProvider: provider,
     wallet: signer
       ? new StaticWallet(signer)

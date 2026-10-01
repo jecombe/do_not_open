@@ -4,8 +4,12 @@ A confidential NFT collection on the Zama Protocol (FHEVM). 10,000 sealed boxes.
 holds a cat whose state and traits are drawn and stored encrypted on-chain, so nobody,
 the deployer included, knows what is inside until a box is observed.
 
-Boxes, and every paid action, cost USDC; each price can also be paid in cUSDC, Zama's
-confidential USDC, which keeps the buyer's balance private. Holders pet their cats (affection, which can turn the accessory golden) and feed
+Who holds which box, how many boxes an account holds, and how many boxes were sold are
+encrypted too: `DoNotOpen` is a Confidential ERC-721, and only milestones of the sale are
+announced. See [`docs/HIDDEN_OWNERS.md`](docs/HIDDEN_OWNERS.md).
+
+Prices are in USDC and paid in cUSDC, Zama's confidential USDC, so no amount is public;
+the app shields plain USDC first when needed. Holders pet their cats (affection, which can turn the accessory golden) and feed
 them croquettes (CROQ), a game currency with encrypted balances. The cat eats every
 croquette and puts on a weight nobody can read; when the box is opened, the cat is
 weighed in public. The heavier it is, the rarer its build, and past a tolerance of its
@@ -23,7 +27,8 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render| **Done**    |
 | 5     | Full docs, Solana porting map, audit checklist                        | **Done**    |
 | CROQ  | Croquette economy: CROQ + cCROQ, Pantry, Uniswap pool, 10,000 boxes   | **Done**, live on Sepolia |
-| Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done** on the mock; needs a Pantry redeploy on Sepolia |
+| Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done**, live on Sepolia |
+| Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done** on the FHEVM mock; not deployed on Sepolia yet |
 
 ## Layout
 
@@ -33,7 +38,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>DoNotOpen, Croq, cCROQ, Pantry"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
 
   spec --> gen --> scene --> web
@@ -50,19 +55,23 @@ Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
 
 ```bash
 pnpm install
-pnpm test        # generator, chain adapter, and 80 contract tests on the FHEVM mock
+pnpm test        # generator, chain adapter, and 95 contract tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173: home page; the game is at /app.html (mock mode, no chain)
 ```
 
-The same app on Sepolia, against the live contract and Zama's relayer:
+The same app on Sepolia, against Zama's relayer. The hidden-owner contracts are not
+deployed there yet: until `pnpm deploy:sepolia` runs, this mode points at the previous
+version (the table below), which the current adapter does not speak.
 
 ```bash
 VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app.html?chain=sepolia
 ```
 
 You need a browser wallet with a little Sepolia ETH for gas. Prices are in Zama's test USDC
-on Sepolia; the shelf has a button that mints some, and another that shields it as cUSDC. `?chain=mock` and `?chain=sepolia`
+on Sepolia; the shelf has a button that mints some, and another that shields it as cUSDC.
+Who holds a box is encrypted, so the app finds yours from your own transfer receipts: one
+decryption signature per visit ("Show my boxes"). `?chain=mock` and `?chain=sepolia`
 switch modes without restarting.
 
 Token metadata (JSON, a 3D render and an SVG fallback per token):
@@ -78,7 +87,9 @@ No private key is ever committed.
 ## How a box is opened
 
 Every reveal follows this shape: a request on-chain, a decryption off-chain, a proof
-back on-chain. There is no decryption callback on the current protocol.
+back on-chain. There is no decryption callback on the current protocol. Nothing reverts
+on ownership: a request by someone who does not hold the box is settled `Refused` and
+decrypts to zeros.
 
 ```mermaid
 sequenceDiagram
@@ -88,11 +99,12 @@ sequenceDiagram
   participant KMS as Zama relayer + KMS
   Holder->>App: Open the box
   App->>Contract: observe(tokenId)
-  Contract->>Contract: status = Observing, seed marked publicly decryptable
-  App->>KMS: publicDecrypt(handles)
-  KMS-->>App: seed + proof
-  App->>Contract: finalizeObserve(tokenId, seed, proof)
-  Contract->>Contract: verify proof, decode seed, status = Revealed
+  Contract->>Contract: ok = holds AND paid (encrypted), seed masked by ok
+  Contract-->>App: RequestPlaced(requestId)
+  App->>KMS: publicDecrypt(requestInfo(requestId).handles)
+  KMS-->>App: ok, seed + proof
+  App->>Contract: finalize(requestId, cleartexts, proof)
+  Contract->>Contract: verify proof, ok: decode seed, status = Revealed, Observed(tokenId, opener)
   App->>App: seed to CatSpec to 3D cat
 ```
 
@@ -108,7 +120,7 @@ once at deployment; nothing can mint more.
 flowchart LR
   pool["Uniswap V2<br/>CROQ/USDC"] <-- "buy, sell<br/>public amounts" --> player(("Player"))
   player -- "wrap / unwrap<br/>public amounts" --> ccroq["cCROQ<br/>encrypted balances"]
-  pantry["Pantry"] -- "welcome bag 100 per box<br/>purr 0..4 per box per day" --> ccroq
+  pantry["Pantry"] -- "welcome bag 100 per box<br/>purr 0..4 per box per day<br/>paid into the box, then its holder" --> ccroq
   ccroq -- "holder feeds a sealed cat<br/>2 meals, 1,000 a day" --> meal{{"meal, eaten whole<br/>weight += amount"}}
   meal -- "60%" --> pantry
   meal -- "20%, collect()" --> treasury["collection treasury"]
@@ -125,7 +137,27 @@ flowchart LR
 
 The rules, what leaks and the costs are in [`docs/CROQ.md`](docs/CROQ.md).
 
-## Live on Sepolia
+## On Sepolia
+
+The hidden-owner contracts, deployed on 2026-10-01 (block 11822985):
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0xDdC71FeBA832c961770F59d0be4B0b3ae536707B`](https://sepolia.etherscan.io/address/0xDdC71FeBA832c961770F59d0be4B0b3ae536707B) |
+| `DoNotOpenConfig` | [`0x2456fE3d2B27f044593C895fae553bA146084bFB`](https://sepolia.etherscan.io/address/0x2456fE3d2B27f044593C895fae553bA146084bFB) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0xEE2219018b765891eDB72954197E097e8E6A4FFc`](https://sepolia.etherscan.io/address/0xEE2219018b765891eDB72954197E097e8E6A4FFc) |
+| `Croq` (CROQ) | [`0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2`](https://sepolia.etherscan.io/address/0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2) |
+| `ConfidentialCroq` (cCROQ) | [`0x58B4e70B877afF540796c3ec38b54C2C7834B804`](https://sepolia.etherscan.io/address/0x58B4e70B877afF540796c3ec38b54C2C7834B804) |
+| `Pantry` | [`0x084C50597D83ab89D62F5FA4245A4a4e9909A77D`](https://sepolia.etherscan.io/address/0x084C50597D83ab89D62F5FA4245A4a4e9909A77D) |
+| CROQ/USDC pair, Uniswap V2 | [`0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60`](https://sepolia.etherscan.io/address/0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x20FB2d7f2d3fb249924ce3871255bb417670ba50`](https://sepolia.etherscan.io/address/0x20FB2d7f2d3fb249924ce3871255bb417670ba50) |
+
+The end-to-end smoke tests (`pnpm --filter @dno/chain-adapter smoke:sepolia` and
+`smoke:croq`) ran against them through the real coprocessor, relayer and KMS.
+
+The previous version, an ERC-721 with public owners, kept for the record:
 
 | Contract | Address |
 | --- | --- |
@@ -153,6 +185,7 @@ Its source is `apps/web/src/docs`.
 For the reference documents, start at [`docs/README.md`](docs/README.md). In short:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): packages, data flow, 3D pipeline
+- [`docs/HIDDEN_OWNERS.md`](docs/HIDDEN_OWNERS.md): encrypted owners, hidden mint quantity, milestones, what leaks, what it costs
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md): what is encrypted, who can read what, ACL on transfer
 - [`docs/FLOWS.md`](docs/FLOWS.md): sequence diagrams for every mechanic
 - [`docs/CROQ.md`](docs/CROQ.md): the croquette economy, its two tokens and its market

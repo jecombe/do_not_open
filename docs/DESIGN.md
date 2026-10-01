@@ -179,7 +179,8 @@ built from the same `BoxSpec` / `CatSpec`. It needs no browser (`--svg-only`) an
 what to serve where a large PNG is unwelcome.
 
 The privacy rule holds here too: a sealed token's three files depend on the token id
-and on public chain facts (times fed, duels won, Vet Certified, entangled partner).
+and on public chain facts (duels won, Vet Certified, entangled partner). Who holds the box
+is not one of them: it is encrypted.
 
 ## Inspection
 

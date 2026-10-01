@@ -9,11 +9,15 @@ Two gestures, two currencies:
 
 | Gesture | Paid in | Hidden counter | At the reveal |
 | --- | --- | --- | --- |
-| Pet (`DoNotOpen.feed`) | USDC or cUSDC, to the collection | Affection | Golden accessory past the threshold |
+| Pet (`DoNotOpen.feed`) | cUSDC, to the collection | Affection | Golden accessory past the threshold |
 | Meal (`Pantry.feed`) | cCROQ, eaten whole | Weight | Build, and sickness past the cat's tolerance |
 
-Everything here runs next to `DoNotOpen` without changing it. The `Pantry` only reads
-the box contract: `ownerOf`, `status`, `vetCertified` and `contentsOf`.
+Everything here runs next to `DoNotOpen` without writing to it. The `Pantry` only reads
+the box contract: `status`, `vetCertified`, `contentsOf`, and `isOwner`, the encrypted
+"does this account hold this box", which `DoNotOpen` answers because its owner made the
+Pantry a trusted reader (`setTrustedReader`). Who holds a box is encrypted (see
+[HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)), so every holder check here is encrypted too, and
+none of them reverts.
 
 The numbers live in the `economy` section of
 [`packages/game-spec/spec.json`](../packages/game-spec/spec.json). The deploy script and
@@ -90,13 +94,14 @@ flowchart LR
 
 ### Welcome bag
 
-**100 cCROQ per box, once.** It is paid on the box's first claim. It belongs to the box,
-not to the wallet: a box that changes hands does not get a second bag, and minting more
-wallets gives nothing more. Getting bags means holding boxes, and boxes cost USDC.
+**100 cCROQ per box, once.** It is paid into the box on the box's first claim, whoever
+asks, and its holder collects it. It belongs to the box, not to the wallet: a box that
+changes hands does not get a second bag, and minting more wallets gives nothing more.
+Getting bags means holding boxes, and boxes cost USDC.
 
 ### Purr
 
-Every box held purrs a little every day. The holder collects it with
+Every box purrs a little every day, into the box. Its holder collects it with
 `Pantry.claim(tokenIds)`.
 
 | Rule | Value |
@@ -105,18 +110,27 @@ Every box held purrs a little every day. The holder collects it with
 | Vet Certified boxes | × 2 |
 | Days one claim can collect | At most 7. Older days are lost |
 | Halving | Every 365 days after the Pantry was deployed, the purr is halved |
-| Ceiling | What is left in the reserve. Once it is empty, a claim pays 0 |
+| Ceiling | What is left in the reserve. A claim whose dues the reserve cannot cover pays nothing into its boxes |
 | Boxes per claim | At most 10 (`MAX_BOXES_PER_CLAIM`, to stay under the HCU limit) |
 
-How a claim works, per box:
+How a claim works. Anyone may call it, for any boxes:
 
-1. First claim: the welcome bag, and the purr clock starts.
+1. First claim of a box: its welcome bag is due, and the purr clock starts.
 2. Later claims: the whole days since the last claim are counted (at most 7). A box with
-   no full day owed is skipped. A claim where every box is skipped reverts.
+   no full day owed adds nothing.
 3. One encrypted draw in 0..4 per box, multiplied by the days owed, doubled if the box is
    Vet Certified, shifted right once per halving.
-4. Everything is summed, capped by the encrypted reserve, and sent as **one**
+4. The dues are summed and compared with the encrypted reserve: if it covers them, each
+   box's due goes into its encrypted **stash**; if not, nothing does (one `le`, not a
+   `min` per box).
+5. For each box, the caller takes the stash if they hold the box (`isOwner`), 0
+   otherwise, and the rest stays in the box. Everything taken goes out as **one**
    confidential transfer. Only the claimer can decrypt what arrived.
+
+A claim where no box owed anything and none had a stash reverts (`NothingToClaim`). A
+claim never reverts on ownership: a stranger who claims for someone else's boxes only
+moves their clocks and fills their stashes, and gets 0. So nobody can spend a holder's
+day, and a claim says nothing about what the caller holds.
 
 A part of a day that has started is kept: claiming after 2 days and 1 hour moves the
 clock forward by exactly 2 days. When more than 7 days are owed, the clock is reset to
@@ -149,9 +163,11 @@ separate: it pets the cat (affection), a meal feeds it (weight).
 
 1. The holder encrypts an amount in the browser with the Relayer SDK. The input proof
    is made for the Pantry and the holder.
-2. `Pantry.feed(tokenId, encryptedAmount, inputProof)` cuts the amount down to what is
-   left of the day's allowance, then pulls it from the holder's cCROQ. The holder must
-   have made the Pantry an operator once (`cCroq.setOperator(pantry, until)`).
+2. `Pantry.feed(tokenId, encryptedAmount, inputProof)` asks `isOwner` and checks the
+   day's meal count, both encrypted. A meal that is served is cut down to what is left
+   of the day's allowance, then pulled from the holder's cCROQ; a meal that is not
+   (a stranger, a third meal) pulls 0. The holder must have made the Pantry an operator
+   once (`cCroq.setOperator(pantry, until)`).
 3. **The cat eats it all.** Its encrypted weight goes up by the amount, and the
    croquettes are split, all in FHE:
 
@@ -161,8 +177,9 @@ separate: it pets the cat (affection), a meal feeds it (weight).
    | 60% | Back to the game reserve, which pays the purr |
    | 20% | The burnt pile |
 
-4. `meals[tokenId]` goes up by one. The event is `MealServed(tokenId, feeder, meals)`.
-   There is no amount in it.
+4. The day's encrypted meal count goes up by one if the meal was served. The event is
+   `MealServed(tokenId, feeder)`: no amount, no count, and nothing about whether it was
+   served.
 
 If the holder holds less than the (capped) offer, the transfer moves **0**. There is no
 revert, and nothing on-chain tells it apart from a real meal. The meal is still
@@ -172,18 +189,20 @@ counted.
 
 | Rule | Value |
 | --- | --- |
-| Meals per cat and per UTC day | 2. A third reverts with `NoMoreMealsToday` |
+| Meals per cat and per UTC day | 2. A third moves 0, silently |
 | Croquettes per cat and per UTC day | 1,000, however they are spread: 1 + 999, 500 + 500 or 1,000 at once |
 
-The amount is encrypted, so the Pantry cannot revert on it: an offer past what is left
-of the day is cut down to it, silently, and only what the cat ate leaves the wallet. The
-holder can decrypt what their cat ate today (`eatenTodayHandle`), so the app can cap the
-input.
+The amount and the meal count are encrypted, so the Pantry cannot revert on them: an
+offer past what is left of the day is cut down to it, silently, and only what the cat ate
+leaves the wallet. A feeder can decrypt today's meals and croquettes eaten after their
+own meal (`todayHandles(tokenId, feeder)`): the real figures if they hold the cat, zeros
+otherwise. The app reads them (`pantryDay`) to cap the input.
 
 The allowance belongs to the cat, not the wallet. More wallets do not feed a cat faster.
 
-Only the holder feeds because of that limit: if anyone could, a stranger could fill a
-cat's two meals with empty bowls every day, for the price of gas, and starve it.
+Only the holder's meals are served because of that limit: if anyone's were, a stranger
+could fill a cat's two meals with empty bowls every day, for the price of gas, and starve
+it. A stranger's meal uses none of the day's two.
 
 ### The weight
 
@@ -275,18 +294,18 @@ uncollected treasury share, plus the burnt pile (test: "keeps the books").
 
 ## Selling a fed box
 
-The weight is keyed by token id, so it follows the cat to the new holder, and so does
-the day's allowance. A buyer knows:
+The weight is keyed by token id, so it follows the cat to the new holder, and so do the
+day's allowance and whatever waits in its stash. A buyer knows:
 
-- how many meals it was served, which is public;
-- that a cat can eat at most 1,000 a day, so the meal count and the days since the
-  first meal bound its weight.
+- the `MealServed` events: how often someone tried to feed it, not whether those meals
+  were served or what they moved;
+- that a cat can eat at most 1,000 a day, so the days since the first meal bound its
+  weight.
 
 The buyer does not know the weight, and nobody knows the tolerance. The seller knows at
 least what they fed it themselves. That asymmetry is part of the game.
 
-The meal count is a weak signal: a meal of 0 counts too. A seller can inflate it for the
-price of gas.
+The events are a weak signal: anyone can emit one for the price of gas.
 
 ## The public market
 
@@ -345,14 +364,16 @@ sequenceDiagram
   App->>SDK: createEncryptedInput(Pantry, holder).add64(300)
   SDK-->>App: handle + input proof
   App->>Pa: feed(42, handle, proof)
-  Pa->>B: ownerOf(42) == holder, status(42) == Sealed
-  Pa->>Pa: meals today < 2, or revert
-  Pa->>Pa: capped = min(offered, 1000 − eaten today)
-  Pa->>W: confidentialTransferFrom(holder, Pantry, capped)
-  W-->>Pa: moved (capped, or 0 if the holder holds less)
-  Pa->>Pa: weight += moved, eaten today += moved
+  Pa->>B: status(42) == Sealed, or revert
+  Pa->>B: isOwner(42, caller): holds, encrypted
+  Pa->>Pa: served = holds AND meals today < 2
+  Pa->>Pa: capped = served ? min(offered, 1000 − eaten today) : 0
+  Pa->>W: confidentialTransferFrom(caller, Pantry, capped)
+  W-->>Pa: moved (capped, or 0 if the caller holds less)
+  Pa->>Pa: meals today += served, weight += moved, eaten today += moved
+  Pa->>Pa: the feeder may read today's totals, masked by holds
   Pa->>Pa: treasury += 20%, burnt += 20%, reserve += the rest
-  Pa-->>App: MealServed(42, holder, meals)
+  Pa-->>App: MealServed(42, caller)
 ```
 
 ### Claim
@@ -360,23 +381,27 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  actor H as Holder
+  actor H as Caller
   participant Pa as Pantry
   participant B as DoNotOpen
   participant W as cCROQ
   H->>Pa: claim([1, 7, 9])
   loop each box
-    Pa->>B: ownerOf == holder?
     alt first claim
-      Pa->>Pa: + welcome bag (100), start the clock
+      Pa->>Pa: due = welcome bag (100), start the clock
     else days owed
       Pa->>B: vetCertified?
-      Pa->>Pa: draw = rand byte mod 5 × days (× 2) >> halvings
+      Pa->>Pa: due = rand byte mod 5 × days (× 2) >> halvings
     end
   end
-  Pa->>Pa: total = min(bags + draws, reserve), reserve −= total
-  Pa->>W: confidentialTransfer(holder, total)
-  Note over H,W: only the holder can decrypt total
+  Pa->>Pa: funded = sum of dues ≤ reserve, reserve −= funded ? sum : 0
+  loop each box
+    Pa->>Pa: stash += funded ? due : 0
+    Pa->>B: isOwner(box, caller): owns, encrypted
+    Pa->>Pa: payout += owns ? stash : 0, stash = owns ? 0 : stash
+  end
+  Pa->>W: confidentialTransfer(caller, payout)
+  Note over H,W: only the caller can decrypt payout: 0 if they hold none of the boxes
 ```
 
 ### Weigh
@@ -390,7 +415,7 @@ sequenceDiagram
   participant Pa as Pantry
   participant K as Relayer / KMS
   H->>B: observe(42)
-  A->>B: finalizeObserve(42, seed, proof)
+  A->>B: finalize(requestId, ok + seed, proof)
   Note over B: status = Revealed, seed in the clear
   A->>Pa: weigh(42)
   Pa->>Pa: makePubliclyDecryptable(weight)
@@ -431,8 +456,10 @@ The unwrapped amount becomes public: it is about to move as a plain ERC-20 anywa
 
 Encrypted amounts do not make the game invisible. Public, for anyone reading the chain:
 
-- who feeds which box, and how many times a day (`MealServed`);
-- who claims, for which boxes, and when (`WelcomeBag`, `Purred`, `lastPurr`);
+- who tries to feed which box, and when (`MealServed`), not whether the meal was
+  served;
+- who claims, for which boxes, and when (`Claimed`, `WelcomeBag`, `Purred`, `lastPurr`),
+  not whether the caller holds any of them;
 - every amount that crosses the border: wraps, unwraps, market trades, `fund`;
 - the weight of every opened and weighed cat, and so the total its holders fed it;
 - that a confidential transfer happened between two addresses.
@@ -440,20 +467,23 @@ Encrypted amounts do not make the game invisible. Public, for anyone reading the
 Not public, for anyone:
 
 - any balance, meal or purr amount, and the weight of a sealed cat;
+- how many meals a cat had, and what waits in a box's stash;
+- who holds a box;
 - the reserve left, the treasury's uncollected share, and the total burnt;
 - so, how much CROQ really circulates.
 
 ## Cost
 
 Measured on the FHEVM mock with `fhevm.computeTransactionHCU`. The protocol limit is
-20,000,000 HCU per transaction and 5,000,000 along the longest dependency chain.
+20,000,000 HCU per transaction and 5,000,000 along the longest dependency chain. Gas and
+HCU for every function, with what they mean in dollars, are in
+[HIDDEN_OWNERS.md](HIDDEN_OWNERS.md#7-cost).
 
 | Function | FHE work | HCU |
 | --- | --- | --- |
-| `feed`, first meal of the day | input check, `min`, confidential `transferFrom`, two `mul` + `div` for the split, `sub`s and `add`s | ~2,790,000 |
-| `feed`, second meal | the same, plus the `sub` from what was already eaten | ~3,180,000 |
-| `claim` | per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; then `min`, `sub`, one transfer | ~680,000 per box; ~6.8M for 10 boxes (depth ~2.8M) |
-| `claim` once the purr has halved to 0 | none | 0 |
+| `feed` | holder check, meal count, input check, `min`, confidential `transferFrom`, the feeder's masked copies, two `mul` + `div` for the split, `sub`s and `add`s | ~3,680,000 (1.23M gas) |
+| `claim`, 3 boxes | per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; one `le` and `sub` on the reserve; per box with a stash: `isOwner`, two `select`s, `add`; one transfer | ~2.6M to ~4.5M (about 1M gas) |
+| `claim`, 10 boxes | the same | ~13M |
 | `weigh`, never fed | none | 0 |
 | `weigh` + `finalizeWeigh` | one public decryption request, then plain arithmetic | ~0 |
 | `collect` | one confidential transfer | ~590,000 |
@@ -462,6 +492,17 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 `fund` 442k.
 
 ## Deployed on Sepolia
+
+The Pantry that reads the hidden-owner `DoNotOpen` (deployed 2026-10-01):
+
+| Contract | Address |
+| --- | --- |
+| `Croq` | [`0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2`](https://sepolia.etherscan.io/address/0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2) |
+| `ConfidentialCroq` | [`0x58B4e70B877afF540796c3ec38b54C2C7834B804`](https://sepolia.etherscan.io/address/0x58B4e70B877afF540796c3ec38b54C2C7834B804) |
+| `Pantry` | [`0x084C50597D83ab89D62F5FA4245A4a4e9909A77D`](https://sepolia.etherscan.io/address/0x084C50597D83ab89D62F5FA4245A4a4e9909A77D) |
+| CROQ/USDC pair (Uniswap V2) | [`0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60`](https://sepolia.etherscan.io/address/0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60) |
+
+The previous version, which checks `ownerOf` in the clear:
 
 | Contract | Address |
 | --- | --- |
@@ -481,10 +522,11 @@ no withdrawal function, so the CROQ funded into the old one stays there.
 
 ## Tests
 
-`packages/contracts-evm/test/Pantry.ts`, 30 tests on the FHEVM mock. They cover the
-fixed supply, wrapping and unwrapping, every claim rule (bag per box, days, cap,
-Vet Certified, halving, empty reserve), meals (holder only, the 20/60/20 split, two
-meals a day, the 1,000 a day cap in one meal or spread, silent 0, nobody can read a
-weight, operator and input checks), the treasury's `collect`, every build, sickness
-past the seed's tolerance, a forged weight, and the bookkeeping invariant. Each
-function's HCU budget is pinned.
+`packages/contracts-evm/test/Pantry.ts`, 32 tests on the FHEVM mock. They cover the
+fixed supply, wrapping and unwrapping, every claim rule (bag per box into the box, a
+stranger's claim, days, cap, Vet Certified, halving, empty reserve), the trusted-reader
+gate, meals (a non-holder's meal served nothing, the 20/60/20 split, two meals a day,
+the 1,000 a day cap in one meal or spread, silent 0, nobody can read a weight, operator
+and input checks), the treasury's `collect`, every build, sickness past the seed's
+tolerance, a forged weight, and the bookkeeping invariant. Each function's HCU budget is
+pinned.

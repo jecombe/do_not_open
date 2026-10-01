@@ -32,19 +32,21 @@ APIs confirmed current: `ZamaEthereumConfig` (replaces the removed `SepoliaConfi
 The brief describes `observe` as "request public decryption, then a callback sets
 revealed". `FHE.requestDecryption` and the oracle callback were removed in v0.9.
 
-**What we do instead** (same pattern for observe, proveAlive and duel):
+**What we do instead** (same pattern for observe, proveAlive, acceptEntangle, duel and
+milestones):
 
-1. `observe(tokenId)`: checks, sets `observing = true`, calls
-   `FHE.makePubliclyDecryptable` on the handles, emits `ObserveRequested`.
+1. `observe(tokenId)`: computes the encrypted answers ("the caller holds the box and
+   paid", the seed and affection masked by it), calls `FHE.makePubliclyDecryptable` on
+   them, stores their handles under a new request id, emits `RequestPlaced`.
 2. Off-chain, anyone calls `relayer.publicDecrypt(handles)` and gets cleartexts plus a
    KMS proof.
-3. `finalizeObserve(tokenId, cleartexts, proof)`: permissionless. Rebuilds the handle
-   list from storage, calls `FHE.checkSignatures`, stores plaintext, sets
-   `revealed = true`.
+3. `finalize(requestId, cleartexts, proof)`: permissionless. Takes the handle list
+   stored at the request, calls `FHE.checkSignatures`, then stores plaintext and sets
+   `Revealed`, or settles the request `Refused` if the caller did not hold the box.
 
-The intermediate state and the duplicate-request guard from the brief still apply; the
-"callback" is a normal transaction that anyone may send. The frontend sends it for the
-user; a keeper can sweep stragglers.
+The "callback" is a normal transaction that anyone may send. The frontend sends it for
+the user; a keeper can sweep stragglers. Since 2026-10-01 there is no intermediate box
+state: a box stays `Sealed` until an opening is finalized (see the last section).
 
 ### 2. ACL grants cannot be revoked
 
@@ -88,8 +90,9 @@ thresholds. State odds are exact to 1/65536 (see `packages/game-spec/README.md`)
 ### 6. HCU limit per transaction
 
 A transaction is capped at 20M HCU (5M sequential depth). Measured costs are in
-`packages/contracts-evm/README.md`. Mint is 24,000 HCU per box, so the batch limit
-(10 per transaction) is set by EVM gas, not by HCU.
+`packages/contracts-evm/README.md` and [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md#7-cost). A mint
+of 10 ids is about 3.3M HCU and 2.6M gas, so the batch limit (10 ids per transaction) is
+set by EVM gas, not by HCU.
 
 ### 7. Solana
 
@@ -104,7 +107,8 @@ The brief lists `state` (euint8), five traits (euint8), `rarityScore` (euint32) 
 stored encrypted fields. The contract stores **only the seed** and derives the rest
 when a function needs it:
 
-- `mint` is a single FHE operation per box instead of roughly twenty;
+- `mint` is a single FHE operation per box instead of roughly twenty (the hidden-owner
+  mint adds an encrypted owner and the quantity checks, still one seed);
 - `shake` cuts the picked byte out of the seed with one encrypted shift;
 - `proveAlive` compares the low 16 bits of the seed with one threshold;
 - `observe` decrypts one handle, and state, traits and score are then computed in plain
@@ -116,12 +120,16 @@ the brief: smaller types are cheaper to compare.
 
 ### `revealed` is a view
 
-Box state is one enum (`Sealed`, `Observing`, `Revealed`); `revealed(tokenId)` reads it.
+Box state is one enum; `revealed(tokenId)` reads it. It was `Sealed`, `Observing`,
+`Revealed` until 2026-10-01, and is now `Sealed`, `Revealed`: a pending opening is a
+request, not a state.
 
 ### `_mint`, not `_safeMint`
 
 No receiver callback during mint, so no re-entrancy surface there. A contract that
-cannot handle ERC-721 tokens can still mint to itself; that is the minter's risk.
+cannot handle ERC-721 tokens can still mint to itself; that is the minter's risk. The
+Confidential ERC-721 has no safe transfer at all: a receiver hook would be called on
+transfers that did not move anything.
 
 ## Decisions taken in Phase 3
 
@@ -130,17 +138,20 @@ cannot handle ERC-721 tokens can still mint to itself; that is the minter's risk
 The brief says feed "increments affection in encrypted form". If each feed added
 exactly 1, anyone could count `Fed` events and know the affection: the encryption would
 hide nothing. Each feed therefore adds an encrypted uniform draw in 0..3
-(`FHE.randEuint8(4)`). The number of feeds is public; what they earned is not. The
-golden threshold stays at "affection > 10", about seven feeds on average.
+(`FHE.randEuint8(4)`). What they earned is not public. Since 2026-10-01 the number of
+feeds is not kept either: an unpaid feed emits the same `Fed` event and adds 0. The
+golden threshold stays at "affection > 10", about seven paid feeds on average.
 
 A cat with no accessory that crosses the threshold gets a golden bell collar.
 
-### Duel: three values become public, in one round
+### Duel: few values become public, in one round
 
 Accepting a duel computes, under encryption, `scoreA > scoreB`, a uniform trait pick, and
 `select(aWins, rollOfB, rollOfA)`: the loser's roll for the picked trait. Only those three
 ciphertexts are made publicly decryptable, so one `finalizeDuel` settles everything and
-the winner's trait is never decryptable by anyone.
+the winner's trait is never decryptable by anyone. Since 2026-10-01 a fourth value comes
+first, `valid` ("both sides held their boxes"), and the other three are masked by it; an
+invalid duel ends `Void`.
 
 Each box's encrypted score is computed once (about 1.35M HCU) and cached. The challenger
 pays for their box at `challengeDuel`, the accepter for theirs at `acceptDuel`.
@@ -148,50 +159,47 @@ pays for their box at `challengeDuel`, the accepter for theirs at `acceptDuel`.
 ### Consent is two transactions
 
 `proposeEntangle` / `acceptEntangle` and `challengeDuel` / `acceptDuel`. A proposal or a
-challenge is void if the proposer's box changes hands before it is accepted. One holder
-may entangle or duel two of their own boxes.
+challenge is void if the proposer's box changes hands before it is accepted: since
+2026-10-01 this is checked under encryption at acceptance (a refused entanglement, a
+void duel). One holder may entangle or duel two of their own boxes.
 
 ### Entanglement is permanent and follows the token
 
 There is no way to untangle. Whoever buys an entangled box can have it opened by the
 partner's holder; marketplaces should show `partnerOf`.
 
-### Paid in USDC, or in cUSDC through a two-step order
+### Prices in USDC, paid in cUSDC
 
 Since 2026-10-01 every price is in USDC (6 decimals): mint 5, open 1, feed 0.5, paid shake
-2.5. On Sepolia the collection takes Zama's `USDCMock` (`0x9b5C…dFfF`, anyone can mint it)
+2.5. On Sepolia the collection uses Zama's `USDCMock` (`0x9b5C…dFfF`, anyone can mint it)
 and its wrapper `cUSDCMock` (`0x7c5B…3639`); locally, `TestUSDC` and `TestConfidentialUSDC`
 stand in. The contract reads nothing else from them: they are immutables.
 
-An ERC-7984 transfer never reverts for a short balance, it moves 0. A contract that pulls
-cUSDC therefore cannot mint in the same transaction without either trusting the payment
-or decrypting. `order` pulls the price with `confidentialTransferFrom`, compares what
-arrived to the price, and makes that one bit publicly decryptable; `finalizeOrder` checks
-it with the KMS proof, like the other `finalize*` functions, and only then acts. The
-alternative, `confidentialTransferAndCall` into the collection, needs a client-encrypted
-amount and still needs the decryption before minting, so it saves nothing. Rules are
-checked at both steps; a paid order the box no longer allows is refunded, and a mint
-order reserves its boxes (`reserved`) so it cannot be sold out in between.
-
-The holder's share of a paid shake in cUSDC is sent at once with `confidentialTransfer`,
-which calls nothing on the receiver. cUSDC revenue is counted in `confidentialRevenue`
-when an order settles, so `withdrawConfidential` never takes the price of a pending order.
+The hidden-owner contracts take cUSDC only. An ERC-7984 transfer never reverts for a
+short balance, it moves 0; instead of deciding in the clear whether it was paid, the
+contract masks what the payment buys with `paid == price` under encryption (see the last
+section). The previous version, deployed below, also took plain USDC, and settled cUSDC
+payments through a two-step order; both are gone.
 
 ### Paid shake earnings are pulled, not pushed
 
-The holder's 70% of a USDC paid shake is credited and withdrawn with `claim()`. Nothing is sent to a holder
-in the middle of `paidShake`, so a holder contract that reverts cannot block shakes, and
-there is no re-entrancy path. `withdraw` excludes unclaimed credits.
+The holder's 70% of a paid shake waits in the box, encrypted (`_earnings`), and is paid
+to whoever holds the box when they call `claimEarnings(tokenIds)`. Nothing is sent to a
+holder in the middle of `paidShake`, so there is no re-entrancy path, and nobody learns
+who holds the box.
 
 ### Contract size
 
-`DoNotOpen` is 23.8 KB of deployed bytecode against the 24.6 KB limit, since the cUSDC
-orders. The next feature must move logic to a library or a second contract.
+`DoNotOpen` is 24,093 bytes of deployed bytecode against the 24,576 limit, since the
+hidden owners. The next feature must move logic to a library or a second contract that
+is a trusted reader.
 
 ### Sepolia deployment (2026-10-01): prices in USDC and cUSDC
 
-Current. `DoNotOpen` takes USDC or cUSDC instead of ETH, so it was redeployed, and with
-it the whole croquette economy (a Pantry is tied to one collection).
+Superseded by the hidden-owner contracts (below); kept for the
+record. This `DoNotOpen` is an ERC-721 with public owners and takes USDC or cUSDC instead
+of ETH, so it was redeployed, and with it the whole croquette economy (a Pantry is tied
+to one collection).
 
 | Contract          | Address                                      |
 | ----------------- | -------------------------------------------- |
@@ -285,9 +293,9 @@ Because the app only sees `ChainAdapter`, moving to it later is a change inside 
 
 - `createEIP712` and `userDecrypt` take the start timestamp and duration as **numbers**
   in 0.4.1. The docs' snippets pass strings.
-- The boxes never take an encrypted input: every secret of a box is drawn on-chain.
-  Croquette amounts are the exception: a meal, a confidential transfer and an unwrap
-  each carry an amount encrypted in the page with `createEncryptedInput`. Input proofs
+- Every secret of a box is drawn on-chain. The encrypted inputs are the quantity of a
+  mint (`add8`, since 2026-10-01) and croquette amounts: a meal, a confidential transfer
+  and an unwrap each carry an amount encrypted in the page with `createEncryptedInput`. Input proofs
   run single-threaded; the cross-origin isolation headers that would enable threads are
   not set.
 - `createInstance` is given the read RPC URL, not `window.ethereum`, so decryption of
@@ -302,19 +310,21 @@ Because the app only sees `ChainAdapter`, moving to it later is a change inside 
 - **Retries on decryption.** The coprocessor computes a ciphertext a few seconds after
   the transaction that requested it. Asking the relayer too early fails, so decryptions
   are retried up to five times with a growing pause.
-- **Two-step actions can be resumed.** observe, proveAlive and duel each end with a
-  proof transaction. If the user closes the tab in between, the box stays "opening" (or
-  the check or duel "pending"); the app then shows "Finish opening" and anyone can send
-  the proof. The adapter exposes `finishObserve`, `finishProveAlive` and `finishDuel`.
+- **Two-step actions can be resumed.** observe, proveAlive, acceptEntangle and duel each
+  end with a proof transaction. If the user closes the tab in between, the request (or
+  duel) stays pending; the app lists the account's pending requests and anyone can send
+  the proof. The adapter exposes `pendingRequests`, `finishRequest`, `finishObserve`,
+  `finishProveAlive` and `finishDuel`.
 - **Reads do not need a wallet.** They go to a public RPC endpoint. After each
   transaction the adapter waits until that endpoint has seen the block, because public
   endpoints are load-balanced and can answer from a node that is one block late.
-- **No enumeration on-chain.** The contract is a plain ERC-721. `boxesOf` checks the
-  balance, then walks `ownerOf` from the newest token down until it has found them all.
-  Fine on a testnet; a mainnet front end should read an indexer instead.
-- **Two views added to the contract** for the front end: `feedCount(tokenId)` (the
-  number of feeds was already public through events) and `entangleProposer(a, b)`.
-  Deployed bytecode is now 20,468 bytes.
+- **No enumeration on-chain.** Since 2026-10-01 owners are encrypted: there is no
+  `ownerOf` or `balanceOf`. `boxesOf` reads the connected account's own
+  `ConfidentialTransfer` events, decrypts their "moved" bits and replays them; it returns
+  nothing for another account. An indexer can serve the events, never the answer.
+- **Two views added to the contract** for the front end: `feedCount(tokenId)` and
+  `entangleProposer(a, b)`. Deployed bytecode was then 20,468 bytes. `feedCount` was
+  removed with the hidden owners.
 
 ### Mainnet
 
@@ -331,7 +341,8 @@ the `x-api-key` header. That proxy does not exist in this repo yet; it is a main
 - The two-holder flows in the browser (accepting someone else's duel or entanglement).
   They are covered by the mock adapter's tests and by the contract tests, and the smoke
   script ran them on Sepolia with one account holding both boxes.
-- `paidShake` and `claim` on Sepolia: they need a second funded account.
+- `paidShake` and `claimEarnings` on Sepolia: they need a second funded account. None of
+  the hidden-owner contracts has run on Sepolia yet.
 
 ## Croquettes: decisions
 
@@ -368,7 +379,9 @@ treasury's `collect` use the same pattern: `allowTransient(amount, cCroq)`, then
 The Pantry cannot revert on an amount it cannot read. The daily cap of 1,000 per cat is
 applied with `FHE.min(offered, maxEatenPerDay - eatenToday)` before the transfer: an offer
 past the day's allowance is cut down silently, and only what was eaten leaves the
-wallet. The meal count, which is public, is capped with a plain revert.
+wallet. Since 2026-10-01 the meal count and the holder check are encrypted too: a third
+meal of the day, or a meal from someone who does not hold the cat, moves 0 instead of
+reverting.
 
 ### ERC-7984 operators, not allowances
 
@@ -386,13 +399,15 @@ the cost down: the whole draw, scaling and sum come to about 680,000 HCU per box
 
 The purr is shifted right once per halving. The Pantry computes in the clear whether
 the best possible purr, `purrMaxPerDay × days × multiplier`, survives the shift. If it
-does not, it skips the draw; if no box in the claim pays anything, it skips the
-`min`, the `sub` and the transfer too. Such a claim costs 0 HCU and only moves the clock.
+does not, it skips the draw, and the box adds nothing to the reserve check. A claim
+still asks `isOwner` and pays out for every box with a stash, so it is no longer free
+once a box has something waiting.
 
 ### The weigh-in reads the box contract, it does not change it
 
-`DoNotOpen` was not modified. The Pantry reads `status`, `ownerOf`, `vetCertified` and,
-after the reveal, `contentsOf(tokenId).seed` through a small interface. A cat's weight is
+The Pantry reads `status`, `vetCertified`, `isOwner` (an encrypted answer, as a trusted
+reader set with `setTrustedReader`) and, after the reveal, `contentsOf(tokenId).seed`
+through a small interface. It never writes to `DoNotOpen`. A cat's weight is
 made public with `makePubliclyDecryptable` and proved back with `checkSignatures`, like
 an opening. Its tolerance needs no FHE at all: it is `keccak256(seed)`, computed in the
 clear once the seed is public, and secret until then because the seed is.
@@ -407,10 +422,105 @@ balance under an encrypted total and has no code path that moves them.
 
 | Function | HCU |
 | --- | --- |
-| `feed` | ~2,790,000 (first meal of the day), ~3,180,000 (second) |
-| `claim`, 10 boxes | ~6,800,000 (depth ~2,800,000) |
+| `feed` | ~3,680,000 (with the encrypted holder check and meal count) |
+| `claim`, 3 boxes | ~2,600,000 to ~4,500,000 |
+| `claim`, 10 boxes | ~13,000,000 |
 | `weigh` + `finalizeWeigh` | ~0: one public decryption request |
 | `collect` | ~590,000 |
 
-`maxBoxesPerClaim` is 10 so a full claim stays far from both limits. 20 boxes measured
-13.6M HCU with a depth of 4.4M, too close to the 5M depth limit.
+`maxBoxesPerClaim` is 10. Before the hidden owners a 10-box claim was ~6.8M HCU and 20
+boxes measured 13.6M with a depth of 4.4M; the stash and the holder check per box now
+bring 10 boxes to about 13M, still under the limits.
+
+## Hidden owners: decisions (2026-10-01)
+
+Who holds which box, how many boxes an account holds and how many were sold are now
+encrypted. The design, its leaks and its costs are in [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md);
+this section records why, from the protocol's side.
+
+### A Confidential ERC-721, written here
+
+Neither Zama nor OpenZeppelin ships a confidential NFT standard (ERC-7984 is fungible).
+`IConfidentialERC721` (ERC-165 `0x5f6463b8`) stores each owner as an `eaddress` and borrows
+ERC-7984's shape: operators with an expiry, transfers that return an encrypted bool.
+`ownerOf` and `balanceOf` cannot exist: their answer would be the secret.
+
+### Nothing reverts on ownership, so everything is a request
+
+A revert on "not the holder" would publish the comparison. Every action compares
+`owner == caller` under encryption and masks its effect with the result. Where something
+must become public (an opening, an alive check, an entanglement), the masked answers are
+made publicly decryptable and a second, permissionless transaction proves them with
+`finalize(requestId, cleartexts, proof)`. The handles are stored with the request, so a
+proof for another request cannot be replayed.
+
+### Masked outputs
+
+Every published value is `select(holds, value, 0)`, with `holds` published first. A
+refused request decrypts to "no" and zeros: it says nothing about the box, and a stranger
+can request as often as they like without learning anything. A duel publishes four values
+(`valid`, `aWins`, `pick`, `loserRoll`), the last three masked by the first.
+
+### Empty token ids hide the quantity
+
+An encrypted quantity is useless if the mint creates exactly that many ids. So a mint
+creates `ids` ids (1 to 10, public) and owns the first `quantity` of them; the others get
+owner `address(0)`, the same seed draw and the same events. Token ids therefore run past
+10,000, and `buildBoxSpec` accepts any 32-bit id. More ids cost about 174,000 gas each.
+
+### Milestones instead of a counter
+
+A public supply counter would give every mint's quantity away. The sold count is an
+`euint16`, capped at 10,000 under encryption (a mint past the cap gets nothing and pays
+nothing). After each mint one bit, "the next milestone is reached", is publicly
+decryptable, and `announceMilestone` proves it. The milestones are in `spec.json`
+(`collection.milestones`): 100, 500, 1,000, 2,500, 5,000, 7,500, 9,000, 10,000.
+
+### A public decryption refuses the same handle twice
+
+Found while testing entangled openings: `publicDecrypt` rejects a request whose handle
+list contains one handle twice. Two entangled boxes that were never fed would both
+publish `select(ok, 0, 0)` on the same operands, and a handle is derived from the
+operation and its operands: the same handle twice. So an unfed
+box publishes no affection at all; `Request.fed` records which boxes carry one, and
+`finalize` reads the cleartexts accordingly.
+
+### The Pantry is a trusted reader
+
+`isOwner(tokenId, account)` answers only the account, its operators, and contracts the
+collection trusts. The Pantry is set as one at deploy (`setTrustedReader`), and promises
+never to make what it learns public: its holder checks only mask amounts.
+
+### Contract size
+
+`DoNotOpen` is 24,093 bytes deployed, 483 under the limit. The next feature has to move
+logic out.
+
+### Sepolia deployment (2026-10-01): hidden owners
+
+Current. Deployed at block 11822985 with a fresh croquette economy (a Pantry is tied to
+one collection, and the previous reserve is locked in the previous Pantry):
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0xDdC71FeBA832c961770F59d0be4B0b3ae536707B`](https://sepolia.etherscan.io/address/0xDdC71FeBA832c961770F59d0be4B0b3ae536707B) |
+| `DoNotOpenConfig` | [`0x2456fE3d2B27f044593C895fae553bA146084bFB`](https://sepolia.etherscan.io/address/0x2456fE3d2B27f044593C895fae553bA146084bFB) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0xEE2219018b765891eDB72954197E097e8E6A4FFc`](https://sepolia.etherscan.io/address/0xEE2219018b765891eDB72954197E097e8E6A4FFc) |
+| `Croq` (CROQ) | [`0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2`](https://sepolia.etherscan.io/address/0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2) |
+| `ConfidentialCroq` (cCROQ) | [`0x58B4e70B877afF540796c3ec38b54C2C7834B804`](https://sepolia.etherscan.io/address/0x58B4e70B877afF540796c3ec38b54C2C7834B804) |
+| `Pantry` | [`0x084C50597D83ab89D62F5FA4245A4a4e9909A77D`](https://sepolia.etherscan.io/address/0x084C50597D83ab89D62F5FA4245A4a4e9909A77D) |
+| CROQ/USDC pair, Uniswap V2 | [`0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60`](https://sepolia.etherscan.io/address/0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x20FB2d7f2d3fb249924ce3871255bb417670ba50`](https://sepolia.etherscan.io/address/0x20FB2d7f2d3fb249924ce3871255bb417670ba50) |
+
+`pnpm --filter @dno/chain-adapter smoke:sepolia` ran every mechanic against it through the
+real coprocessor, relayer and KMS: a mint of 2 boxes hidden among 10 ids paid in cUSDC, a
+mint of 1 among 3 ids shielded from USDC just before, the boxes found back in the
+account's receipts, two shakes on one permit, a feed, a shake of an empty id that showed
+nothing, an alive check, a duel, an entanglement, and an opening that opened both
+entangled boxes; both reveals matched the generator.
+
+Found on the way: the adapter must start reading events at the deploy block. Reading from
+block 0 in 40,000-block slices made the public endpoint refuse after a few hundred calls.
+The browser and Node factories pass `deployBlock` from the export.
