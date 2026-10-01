@@ -18,18 +18,21 @@ const refusal = async (p: Promise<unknown>) => {
 };
 
 describe("MockAdapter", () => {
-  it("starts with boxes for you and for the night shift", async () => {
+  it("starts with boxes for you and for the night shift, and tells you only yours", async () => {
     const chain = await fresh();
     expect(await chain.boxesOf(MOCK_YOU)).toEqual([0, 1, 2]);
-    expect(await chain.boxesOf(MOCK_NIGHT_SHIFT)).toEqual([3, 4, 5]);
-    expect((await chain.collection()).totalMinted).toBe(6);
+    // Nobody can list another account's boxes.
+    expect(await chain.boxesOf(MOCK_NIGHT_SHIFT)).toEqual([]);
+    const c = await chain.collection();
+    expect(c.tokenCount).toBe(6);
+    expect(c.sale).toEqual({ milestones: spec.collection.milestones, reached: 0, soldOut: false });
   });
 
-  it("summarises a range of boxes with their holder and status", async () => {
+  it("summarises a range of boxes: yours or not, status, partner", async () => {
     const chain = await fresh();
     const rows = await chain.boxSummaries(2, 5);
     expect(rows.map((r) => r.tokenId)).toEqual([2, 3, 4]);
-    expect(rows.map((r) => r.owner)).toEqual([MOCK_YOU, MOCK_NIGHT_SHIFT, MOCK_NIGHT_SHIFT]);
+    expect(rows.map((r) => r.mine)).toEqual([true, false, false]);
     expect(rows.every((r) => r.status === "sealed")).toBe(true);
     expect(rows.every((r) => r.partner === null)).toBe(true);
     expect(await chain.boxSummaries(6, 10)).toEqual([]);
@@ -46,36 +49,52 @@ describe("MockAdapter", () => {
   it("needs an account for actions but not for reads", async () => {
     const chain = new MockAdapter({ latency: 0 });
     expect((await chain.box(0)).status).toBe("sealed");
+    expect((await chain.box(0)).mine).toBe(false);
     expect(await refusal(chain.mint(1))).toBe("not-connected");
   });
 
-  it("mints consecutive ids and enforces the per-transaction cap", async () => {
+  it("hides a mint's quantity among as many ids as asked, and gives the first ones", async () => {
     const chain = await fresh();
     expect(await chain.mint(2)).toEqual([6, 7]);
+    expect((await chain.collection()).tokenCount).toBe(16);
     expect(await chain.boxesOf(MOCK_YOU)).toEqual([0, 1, 2, 6, 7]);
-    expect(await refusal(chain.mint(11))).toBe("InvalidQuantity");
+    // Fewer ids: cheaper, and the quantity is easier to guess.
+    expect(await chain.mint(1, { ids: 3 })).toEqual([16]);
+    expect((await chain.collection()).tokenCount).toBe(19);
+    // More boxes than ids gets as many as ids... and never fewer ids than boxes asked.
+    expect(await chain.mint(12, { pay: "usdc" })).toHaveLength(10);
   });
 
-  it("charges USDC by default and cUSDC on request, and refuses what the wallet cannot cover", async () => {
+  it("pays in cUSDC, shields USDC first on request, and gives nothing the wallet cannot cover", async () => {
     const chain = await fresh();
     const usdc = await chain.usdcBalance(MOCK_YOU);
     const cUsdc = await chain.confidentialUsdcBalance();
-    await chain.mint(2);
+    await chain.mint(1);
+    expect(await chain.confidentialUsdcBalance()).toBe(cUsdc - 5_000_000n);
+    await chain.mint(2, { pay: "usdc" });
+    // Shielded, then spent: the cUSDC balance is back where it was.
     expect(await chain.usdcBalance(MOCK_YOU)).toBe(usdc - 10_000_000n);
-    await chain.mint(1, { pay: "cusdc" });
     expect(await chain.confidentialUsdcBalance()).toBe(cUsdc - 5_000_000n);
     // 15 cUSDC left: three boxes, not four.
-    expect(await refusal(chain.mint(4, { pay: "cusdc" }))).toBe("unpaid");
-    await chain.shieldUsdc(10_000_000n);
-    expect(await chain.confidentialUsdcBalance()).toBe(cUsdc + 5_000_000n);
+    expect(await refusal(chain.mint(4))).toBe("unpaid");
     await chain.faucetUsdc();
-    expect(await chain.usdcBalance(MOCK_YOU)).toBe(usdc + 80_000_000n);
+    expect(await chain.usdcBalance(MOCK_YOU)).toBe(usdc + 90_000_000n);
     expect(await refusal(chain.shieldUsdc(10n ** 12n))).toBe("insufficient-usdc");
     const before = await chain.confidentialUsdcBalance();
     const { usdcOut, fee } = await chain.quoteUsdc(10n ** 16n);
     expect(fee).toBe(3n * 10n ** 13n);
     await chain.buyUsdc(10n ** 16n, true);
     expect(await chain.confidentialUsdcBalance()).toBe(before + usdcOut);
+  });
+
+  it("announces milestones as the hidden sold count reaches them", async () => {
+    const chain = await fresh();
+    for (let i = 0; i < 5; i++) await chain.faucetUsdc();
+    // 6 sold at the start; the first milestone is 100.
+    for (let i = 0; i < 9; i++) await chain.mint(10, { pay: "usdc" });
+    expect((await chain.collection()).sale.reached).toBe(0);
+    await chain.mint(10, { pay: "usdc" });
+    expect((await chain.collection()).sale.reached).toBe(1);
   });
 
   it("reports steps in order: wallet, confirming, decrypting", async () => {
@@ -85,36 +104,48 @@ describe("MockAdapter", () => {
     expect(steps).toEqual(["wallet", "confirming", "decrypting"]);
   });
 
-  it("shakes show a real trait of the box, and only the holder shakes for free", async () => {
+  it("shakes show a real trait to the holder, and nothing to anyone else", async () => {
     const chain = await fresh();
     const cat = buildCatSpec({ seed: mockSeedForToken(0) });
     for (let i = 0; i < 8; i++) {
       const { traitIndex, roll } = await chain.shake(0);
       expect(roll).toBe(cat.traits[spec.traits[traitIndex]!.key].roll);
     }
-    expect(await refusal(chain.shake(3))).toBe("NotHolder");
-    expect(await refusal(chain.paidShake(0))).toBe("HolderShakesForFree");
-    await chain.paidShake(3);
-    expect(await chain.credits(MOCK_NIGHT_SHIFT)).toBe(1_750_000n);
+    expect(await refusal(chain.shake(3))).toBe("not-yours");
   });
 
-  it("opens a box once, with contents that match the generator", async () => {
+  it("lets anyone pay to shake, and keeps the holder's share in the box", async () => {
+    const chain = await fresh();
+    await chain.paidShake(0);
+    const before = await chain.confidentialUsdcBalance();
+    // Your own box: the share comes back to you when you claim it.
+    expect(await chain.claimEarnings([0, 1])).toBe(1_750_000n);
+    expect(await chain.confidentialUsdcBalance()).toBe(before + 1_750_000n);
+    await chain.paidShake(3);
+    // The night shift's box: claiming it gets you nothing.
+    expect(await chain.claimEarnings([3])).toBe(0n);
+  });
+
+  it("opens a box once, with contents that match the generator, and refuses a stranger", async () => {
     const chain = await fresh();
     await chain.feed(1);
     const [box] = await chain.observe(1);
     const cat = buildCatSpec({ seed: box!.revealed!.seed, affection: box!.revealed!.affection });
     expect(box!.status).toBe("revealed");
-    expect(box!.feeds).toBe(1);
     expect(box!.revealed!.score).toBe(cat.rarity.score);
     expect(await refusal(chain.observe(1))).toBe("NotSealed");
     expect(await refusal(chain.feed(1))).toBe("NotSealed");
+    const before = await chain.confidentialUsdcBalance();
+    expect(await refusal(chain.observe(3))).toBe("not-yours");
+    expect(await chain.confidentialUsdcBalance()).toBe(before);
   });
 
-  it("answers the alive check once", async () => {
+  it("answers the alive check once, for the holder only", async () => {
     const chain = await fresh();
+    expect(await refusal(chain.proveAlive(3))).toBe("not-yours");
     const alive = await chain.proveAlive(0);
     expect((await chain.box(0)).aliveCheck).toBe(alive ? "alive" : "notAlive");
-    expect(await refusal(chain.proveAlive(0))).toBe("AliveCheckAlreadyRequested");
+    expect(await refusal(chain.proveAlive(0))).toBe("NotSealed");
   });
 
   it("entangles two of your boxes in two steps and opens them together", async () => {
@@ -127,15 +158,29 @@ describe("MockAdapter", () => {
     expect(opened.map((b) => [b.tokenId, b.status])).toEqual([[0, "revealed"], [1, "revealed"]]);
   });
 
+  it("refuses an entanglement whose proposer did not hold the box", async () => {
+    const chain = await fresh();
+    await chain.proposeEntangle(3, 0);
+    expect(await refusal(chain.acceptEntangle(3, 0))).toBe("not-yours");
+    expect((await chain.box(0)).partner).toBeNull();
+  });
+
   it("runs a duel against the night shift, who accepts at once", async () => {
     const chain = await fresh();
     const duelId = await chain.challengeDuel(0, 3);
     expect((await chain.pair(0, 3)).openDuel?.status).toBe("pending");
-    const result = await chain.finishDuel(duelId);
+    const result = (await chain.finishDuel(duelId))!;
     expect([result.winner, result.loser].sort()).toEqual([0, 3]);
     expect((await chain.box(result.winner)).wins).toBe(1);
     expect((await chain.box(result.loser)).publicTraits).toEqual([result.shown]);
     expect((await chain.pair(0, 3)).openDuel).toBeNull();
+  });
+
+  it("voids a duel fought with a box the challenger does not hold", async () => {
+    const chain = await fresh();
+    const duelId = await chain.challengeDuel(4, 3);
+    expect(await chain.finishDuel(duelId)).toBeNull();
+    expect((await chain.box(3)).publicTraits).toEqual([]);
   });
 
   it("lets the challenger cancel a duel between two of their own boxes", async () => {
@@ -144,6 +189,14 @@ describe("MockAdapter", () => {
     expect((await chain.pair(0, 1)).openDuel?.status).toBe("challenged");
     await chain.cancelDuel(duelId);
     expect(await refusal(chain.acceptDuel(duelId))).toBe("WrongDuelStatus");
+  });
+
+  it("gives a box away, and gives nothing when it is not yours", async () => {
+    const chain = await fresh();
+    await chain.sendBox(0, MOCK_NIGHT_SHIFT);
+    expect(await chain.boxesOf(MOCK_YOU)).toEqual([1, 2]);
+    await chain.sendBox(3, MOCK_YOU);
+    expect(await chain.boxesOf(MOCK_YOU)).toEqual([1, 2]);
   });
 });
 
@@ -180,7 +233,9 @@ describe("MockAdapter croquettes", () => {
     const { chain, tick } = await clocked();
     await chain.claimCroquettes([0, 1, 2]);
     expect(await chain.confidentialBalance()).toBe(300n);
-    expect(await refusal(chain.claimCroquettes([0]))).toBe("NothingToClaim");
+    // A second claim the same day pays nothing more.
+    await chain.claimCroquettes([0]);
+    expect(await chain.confidentialBalance()).toBe(300n);
     expect((await chain.boxPantry(0)).welcomed).toBe(true);
 
     tick(3 * DAY);
@@ -188,7 +243,10 @@ describe("MockAdapter croquettes", () => {
     const after = await chain.confidentialBalance();
     expect(after - 300n).toBeGreaterThanOrEqual(0n);
     expect(after - 300n).toBeLessThanOrEqual(BigInt(3 * 3 * spec.economy.purr.maxPerDay));
-    expect(await refusal(chain.claimCroquettes([3]))).toBe("NotHolder");
+    // The night shift's box: its bag goes into the box, not to you.
+    const mine = await chain.confidentialBalance();
+    await chain.claimCroquettes([3]);
+    expect(await chain.confidentialBalance()).toBe(mine);
   });
 
   it("lets the holder feed twice a day, up to 1,000, and splits each meal", async () => {
@@ -203,20 +261,21 @@ describe("MockAdapter croquettes", () => {
 
     await chain.feedCroquettes(0, 700n);
     await chain.feedCroquettes(0, 700n); // only 300 left today: cut down, silently
-    expect(await chain.eatenToday(0)).toBe(1_000n);
+    expect(await chain.pantryDay(0)).toEqual({ meals: 2, eaten: 1_000n });
     expect(await chain.confidentialBalance()).toBe(start - 1_000n);
-    expect(await refusal(chain.feedCroquettes(0, 1n))).toBe("NoMoreMealsToday");
-    expect(await refusal(chain.feedCroquettes(3, 1n))).toBe("NotHolder");
-    expect((await chain.boxPantry(0)).mealsToday).toBe(2);
+    // A third meal, or a meal for someone else's cat, moves nothing.
+    await chain.feedCroquettes(0, 1n);
+    await chain.feedCroquettes(3, 1n);
+    expect(await chain.confidentialBalance()).toBe(start - 1_000n);
+    expect(await chain.pantryDay(3)).toEqual({ meals: 0, eaten: 0n });
 
     tick(DAY);
-    expect(await chain.eatenToday(0)).toBe(0n);
+    expect(await chain.pantryDay(0)).toEqual({ meals: 0, eaten: 0n });
     await chain.feedCroquettes(0, 10n ** 9n); // a new day: cut down to 1,000
     expect(await chain.confidentialBalance()).toBe(start - 2_000n);
     await chain.sendCroquettes(MOCK_NIGHT_SHIFT, await chain.confidentialBalance());
     await chain.feedCroquettes(1, 50n); // more than held: moves nothing
-    expect(await chain.eatenToday(1)).toBe(0n);
-    expect((await chain.boxPantry(0)).meals).toBe(3);
+    expect((await chain.pantryDay(1)).eaten).toBe(0n);
   });
 
   it("weighs an opened cat once, by the spec's builds", async () => {

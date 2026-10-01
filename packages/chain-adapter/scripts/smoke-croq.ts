@@ -52,9 +52,9 @@ async function main() {
 
   console.log(`feed box ${box} 40 cCROQ`);
   await chain.feedCroquettes(box, 40n, { onStep });
-  check((await chain.boxPantry(box)).meals === 1, "one meal counted");
   check((await chain.confidentialBalance({ onStep })) === afterBag - 40n, "40 cCROQ left the wallet");
-  check((await chain.eatenToday(box, { onStep })) === 40n, "the feeder reads 40 eaten today");
+  const day = await chain.pantryDay(box, { onStep });
+  check(day.meals === 1 && day.eaten === 40n, "the holder reads one meal, 40 eaten today");
 
   console.log(`open box ${box} and weigh it`);
   await chain.observe(box, { onStep });

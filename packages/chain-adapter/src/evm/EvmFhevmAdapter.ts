@@ -28,10 +28,12 @@ import {
   type DuelStatus,
   type EconomyInfo,
   type Fees,
+  type MintOptions,
   type PairInfo,
+  type PantryDay,
   type PayOptions,
-  type PendingOrder,
-  type Purchase,
+  type PendingRequest,
+  type RequestKind,
   type TradeSide,
   type TraitRoll,
   type TxRecord,
@@ -73,6 +75,8 @@ export interface EvmAdapterOptions {
   usdcFaucet?: bigint;
   /** The UsdcRamp contract. Without it, USDC cannot be bought through the site. */
   ramp?: Deployed;
+  /** Block the collection was deployed in: where reading its events starts. */
+  deployBlock?: number;
 }
 
 const ROUTER_ABI = [
@@ -95,12 +99,16 @@ const CUSDC_ABI = [
   "function wrap(address to, uint256 amount)",
   "error ERC7984UnauthorizedSpender(address holder, address spender)",
 ];
-const PURCHASES: Purchase[] = ["mint", "feed", "observe", "paidShake"];
-const ORDER_PENDING = 1;
-const ORDER_UNPAID = 3;
-const ORDER_REFUNDED = 4;
-/** How far back `pendingOrders()` looks. */
-const ORDER_SCAN = 40;
+/** RequestKind and RequestStatus in the contract, by value. */
+const REQUEST_KINDS: RequestKind[] = ["open", "aliveCheck", "entangle"];
+const REQUEST_PENDING = 1;
+const REQUEST_REFUSED = 3;
+/** DoNotOpen.NOT_YOURS: the pick a shake returns to someone who did not hold the box or pay. */
+const NOT_YOURS = 255;
+/** Events are read in slices of this many blocks: public endpoints refuse wider ranges. */
+const LOG_SPAN = 40_000;
+/** How many handles one user decryption asks for. */
+const DECRYPT_BATCH = 50;
 const PAIR_ABI = ["function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)", "function token0() view returns (address)"];
 /** An operator approval given to the Pantry lasts this long. */
 const OPERATOR_DAYS = 365;
@@ -108,18 +116,29 @@ const OPERATOR_DAYS = 365;
 const SLIPPAGE_BPS = 100n;
 const ZERO_HANDLE = "0x" + "0".repeat(64);
 
-const BOX_STATUS: BoxStatus[] = ["sealed", "opening", "revealed"];
-const ALIVE_CHECK: AliveCheck[] = ["none", "pending", "alive", "notAlive"];
-const DUEL_STATUS: DuelStatus[] = ["none", "challenged", "pending", "resolved", "cancelled"];
+/** On-chain values; "opening" and "pending" come from the account's own requests. */
+const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
+const ALIVE_CHECK: AliveCheck[] = ["none", "alive", "notAlive"];
+const DUEL_STATUS: DuelStatus[] = ["none", "challenged", "pending", "resolved", "cancelled", "void"];
 
 /** How far back `pair()` looks for a duel that is still open. */
 const DUEL_SCAN = 40;
-/** `boxesOf()` asks for owners in slices of this many calls. */
-const OWNER_SCAN_CHUNK = 100;
+/** `boxSummaries()` reads statuses in slices of this many calls. */
+const READ_CHUNK = 100;
 /** A user-decryption permit is signed once and reused for this long. */
 const PERMIT_DAYS = 1;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** What the connected account found in its own receipts, kept so the next look only reads new blocks. */
+interface Holdings {
+  account: Address;
+  /** Last block read. */
+  block: number;
+  held: Set<number>;
+  /** Receipts already replayed, by transaction hash and log index. */
+  seen: Set<string>;
+}
 
 interface Permit {
   account: Address;
@@ -161,7 +180,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private readonly listeners = new Set<(account: Address | null) => void>();
   private relayer: Promise<Relayer> | null = null;
   private permit: Permit | null = null;
-  private constants: Promise<{ fees: Fees; maxSupply: number; maxPerTx: number }> | null = null;
+  private constants: Promise<{ fees: Fees; maxSupply: number; maxPerTx: number; milestones: number[] }> | null = null;
+  private holdings: Holdings | null = null;
   private economyConstants: Promise<Omit<EconomyInfo, "wrapped" | "halvings" | "market">> | null = null;
   private paymentTokens: Promise<{ usdc: Deployed; cUsdc: Deployed }> | null = null;
   private rampFee: Promise<number> | null = null;
@@ -212,6 +232,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if (next === this.address_) return;
     this.address_ = next;
     this.permit = null;
+    this.holdings = null;
     for (const l of this.listeners) l(next);
   }
 
@@ -219,11 +240,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async collection(): Promise<CollectionInfo> {
     const c = this.contract;
-    this.constants ??= Promise.all([c.mintPrice!(), c.observeFee!(), c.feedFee!(), c.paidShakeFee!(), c.maxSupply!(), c.maxPerTx!()]).then(
-      ([mint, observe, feed, paidShake, maxSupply, maxPerTx]) => ({
+    this.constants ??= Promise.all([c.mintPrice!(), c.observeFee!(), c.feedFee!(), c.paidShakeFee!(), c.maxSupply!(), c.maxPerTx!(), c.milestones!()]).then(
+      ([mint, observe, feed, paidShake, maxSupply, maxPerTx, milestones]) => ({
         fees: { mint, observe, feed, paidShake },
         maxSupply: Number(maxSupply),
         maxPerTx: Number(maxPerTx),
+        milestones: [...milestones].map(Number),
       }),
     );
     this.constants.catch(() => (this.constants = null));
@@ -232,8 +254,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
       this.rampFee ??= this.at(ramp).feeBps!().then(Number);
       this.rampFee.catch(() => (this.rampFee = null));
     }
-    const [constants, totalMinted, feeBps] = await this.reading(Promise.all([this.constants, c.totalMinted!(), ramp ? this.rampFee : null]));
+    const [constants, tokenCount, reached, feeBps] = await this.reading(
+      Promise.all([this.constants, c.tokenCount!(), c.milestonesReached!(), ramp ? this.rampFee : null]),
+    );
     const { chain } = this.opts;
+    const { milestones, ...rest } = constants;
     return {
       chain: chain.name,
       address: this.opts.address,
@@ -246,35 +271,37 @@ export class EvmFhevmAdapter implements ChainAdapter {
         faucet: this.opts.usdcFaucet ?? null,
         ramp: feeBps === null ? null : { feeBps: Number(feeBps) },
       },
-      ...constants,
-      totalMinted: Number(totalMinted),
+      ...rest,
+      tokenCount: Number(tokenCount),
+      sale: { milestones, reached: Number(reached), soldOut: Number(reached) >= milestones.length },
     };
   }
 
   async box(tokenId: number): Promise<BoxInfo> {
     const c = this.contract;
-    const [owner, status, aliveCheck, partner, wins, feeds, publicTraits, contents] = await this.reading(
+    const [status, aliveCheck, partner, wins, publicTraits, contents, pending] = await this.reading(
       Promise.all([
-        c.ownerOf!(tokenId),
         c.status!(tokenId),
         c.aliveCheck!(tokenId),
         c.partnerOf!(tokenId),
         c.wins!(tokenId),
-        c.feedCount!(tokenId),
         c.publicTraitsOf!(tokenId),
         c.contentsOf!(tokenId),
+        this.myPending(tokenId),
       ]),
     );
-    const boxStatus = BOX_STATUS[Number(status)]!;
+    let boxStatus = BOX_STATUS[Number(status)]!;
+    let alive = ALIVE_CHECK[Number(aliveCheck)]!;
+    if (boxStatus === "sealed" && pending.some((r) => r.kind === "open")) boxStatus = "opening";
+    if (alive === "none" && pending.some((r) => r.kind === "aliveCheck")) alive = "pending";
     const mask = Number(publicTraits.mask);
     return {
       tokenId,
-      owner,
+      mine: this.isMine(tokenId),
       status: boxStatus,
-      aliveCheck: ALIVE_CHECK[Number(aliveCheck)]!,
+      aliveCheck: alive,
       partner: partner.entangled ? Number(partner.partner) : null,
       wins: Number(wins),
-      feeds: Number(feeds),
       publicTraits: [...publicTraits.rolls].flatMap((roll: bigint, traitIndex: number) =>
         mask & (1 << traitIndex) ? [{ traitIndex, roll: Number(roll) }] : [],
       ),
@@ -292,41 +319,69 @@ export class EvmFhevmAdapter implements ChainAdapter {
     };
   }
 
+  /** Whether the last look at the connected account's receipts found `tokenId`. */
+  private isMine(tokenId: number): boolean {
+    const h = this.holdings;
+    return !!h && h.account === this.address_ && h.held.has(tokenId);
+  }
+
   /**
-   * The contract is a plain ERC-721, without the enumerable extension (it would cost every
-   * mint and transfer). So this walks `ownerOf` over the minted range, stopping as soon as
-   * the balance is accounted for. Fine for a testnet; a production front end reads an indexer.
+   * Who holds a box is encrypted. The account finds its boxes by reading the transfers that
+   * name it, decrypting each one's "moved" bit (only the two sides may), and replaying them in
+   * order. The first look reads from the deployment; later ones only read new blocks.
    */
   async boxesOf(owner: Address): Promise<number[]> {
-    const c = this.contract;
-    const [balance, totalMinted] = await this.reading(Promise.all([c.balanceOf!(owner), c.totalMinted!()]));
-    const want = Number(balance);
-    const found: number[] = [];
-    // Newest first: people mostly look at what they just minted.
-    for (let hi = Number(totalMinted); hi > 0 && found.length < want; hi -= OWNER_SCAN_CHUNK) {
-      const lo = Math.max(0, hi - OWNER_SCAN_CHUNK);
-      const ids = Array.from({ length: hi - lo }, (_, i) => lo + i);
-      const owners: string[] = await this.reading(Promise.all(ids.map((id) => c.ownerOf!(id))));
-      owners.forEach((o, i) => o.toLowerCase() === owner.toLowerCase() && found.push(ids[i]!));
+    const account = this.address_;
+    if (!account || account.toLowerCase() !== owner.toLowerCase()) return [];
+    if (this.holdings?.account !== account) {
+      this.holdings = { account, block: (this.opts.deployBlock ?? 1) - 1, held: new Set(), seen: new Set() };
     }
-    return found.sort((a, b) => a - b);
+    const h = this.holdings;
+    const latest = await this.reading(this.opts.readProvider.getBlockNumber());
+    if (latest > h.block) {
+      const filter = (from: string | null, to: string | null) => this.contract.filters.ConfidentialTransfer!(null, from, to);
+      const logs = [
+        ...(await this.logs(filter(account, null), h.block + 1, latest)),
+        ...(await this.logs(filter(null, account), h.block + 1, latest)),
+      ].sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
+      const fresh = logs.filter((l) => !h.seen.has(`${l.transactionHash}:${l.index}`));
+      const moved = await this.decryptBools(fresh.map((l) => String((l as unknown as { args: { moved: string } }).args.moved)));
+      for (const l of fresh) {
+        h.seen.add(`${l.transactionHash}:${l.index}`);
+        const { tokenId, from, to, moved: bit } = (l as unknown as { args: { tokenId: bigint; from: string; to: string; moved: string } }).args;
+        if (!moved.get(bit)) continue;
+        if (from.toLowerCase() === account.toLowerCase()) h.held.delete(Number(tokenId));
+        if (to.toLowerCase() === account.toLowerCase()) h.held.add(Number(tokenId));
+      }
+      // The same account still: a disconnect meanwhile drops it all.
+      if (this.holdings === h) h.block = latest;
+    }
+    return [...h.held].sort((a, b) => a - b);
+  }
+
+  /** Events matching `filter` between two blocks, read in slices a public endpoint accepts. */
+  private async logs(filter: Parameters<Contract["queryFilter"]>[0], from: number, to: number) {
+    const out = [];
+    for (let lo = Math.max(0, from); lo <= to; lo += LOG_SPAN) {
+      out.push(...(await this.reading(this.contract.queryFilter(filter, lo, Math.min(to, lo + LOG_SPAN - 1)))));
+    }
+    return out;
   }
 
   async boxSummaries(from: number, to: number): Promise<BoxSummary[]> {
     const c = this.contract;
     const out: BoxSummary[] = [];
-    // Two reads per box, plus the partner of the sealed ones (only they can still be
+    // The status of each box, plus the partner of the sealed ones (only they can still be
     // entangled), a chunk at a time so a public endpoint is not flooded.
-    for (let lo = from; lo < to; lo += OWNER_SCAN_CHUNK) {
-      const ids = Array.from({ length: Math.min(OWNER_SCAN_CHUNK, to - lo) }, (_, i) => lo + i);
-      const rows = await this.reading(Promise.all(ids.map((id) => Promise.all([c.ownerOf!(id), c.status!(id)]))));
-      const statuses = rows.map(([, status]) => BOX_STATUS[Number(status)]!);
+    for (let lo = from; lo < to; lo += READ_CHUNK) {
+      const ids = Array.from({ length: Math.min(READ_CHUNK, to - lo) }, (_, i) => lo + i);
+      const statuses = (await this.reading(Promise.all(ids.map((id) => c.status!(id))))).map((s) => BOX_STATUS[Number(s)]!);
       const partners = await this.reading(
         Promise.all(ids.map((id, i) => (statuses[i] === "sealed" ? c.partnerOf!(id) : null))),
       );
-      rows.forEach(([owner], i) => {
+      ids.forEach((id, i) => {
         const p = partners[i];
-        out.push({ tokenId: ids[i]!, owner, status: statuses[i]!, partner: p && p[0] ? Number(p[1]) : null });
+        out.push({ tokenId: id, mine: this.isMine(id), status: statuses[i]!, partner: p && p[0] ? Number(p[1]) : null });
       });
     }
     return out;
@@ -334,8 +389,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async pair(tokenA: number, tokenB: number): Promise<PairInfo> {
     const c = this.contract;
-    const [count, proposerAB, proposerBA, ownerA, ownerB] = await this.reading(
-      Promise.all([c.duelCount!(), c.entangleProposer!(tokenA, tokenB), c.entangleProposer!(tokenB, tokenA), c.ownerOf!(tokenA), c.ownerOf!(tokenB)]),
+    const [count, proposerAB, proposerBA] = await this.reading(
+      Promise.all([c.duelCount!(), c.entangleProposer!(tokenA, tokenB), c.entangleProposer!(tokenB, tokenA)]),
     );
     const last = Number(count);
     const ids = Array.from({ length: Math.min(DUEL_SCAN, last) }, (_, i) => last - 1 - i);
@@ -344,6 +399,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       tokenA: Number(d.tokenIdA),
       tokenB: Number(d.tokenIdB),
       challenger: d.challenger,
+      accepter: BigInt(d.accepter) === 0n ? null : String(d.accepter),
       status: DUEL_STATUS[Number(d.duelStatus)]!,
     }));
     const openDuel =
@@ -353,15 +409,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
           ((d.tokenA === tokenA && d.tokenB === tokenB) || (d.tokenA === tokenB && d.tokenB === tokenA)),
       ) ?? null;
 
-    // A proposal is only good while the proposer still holds the box they offered.
+    // Whether the proposer still holds the box is checked, encrypted, when it is accepted.
     let entangleProposal: PairInfo["entangleProposal"] = null;
-    if (BigInt(proposerAB) !== 0n && proposerAB === ownerA) entangleProposal = { from: tokenA, to: tokenB, proposer: proposerAB };
-    else if (BigInt(proposerBA) !== 0n && proposerBA === ownerB) entangleProposal = { from: tokenB, to: tokenA, proposer: proposerBA };
+    if (BigInt(proposerAB) !== 0n) entangleProposal = { from: tokenA, to: tokenB, proposer: proposerAB };
+    else if (BigInt(proposerBA) !== 0n) entangleProposal = { from: tokenB, to: tokenA, proposer: proposerBA };
     return { openDuel, entangleProposal };
-  }
-
-  async credits(owner: Address): Promise<bigint> {
-    return this.reading(this.contract.credits!(owner));
   }
 
   async balance(owner: Address): Promise<bigint> {
@@ -380,13 +432,27 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.userDecrypt64(handle, cUsdc.address, opts);
   }
 
-  async pendingOrders(owner: Address): Promise<PendingOrder[]> {
-    const count = Number(await this.reading(this.contract.orderCount!()));
-    const ids = Array.from({ length: Math.min(ORDER_SCAN, count) }, (_, i) => count - 1 - i);
-    const rows = await this.reading(Promise.all(ids.map((id) => this.contract.orderInfo!(id))));
-    return rows.flatMap((o, i) =>
-      Number(o.orderStatus) === ORDER_PENDING && String(o.buyer).toLowerCase() === owner.toLowerCase()
-        ? [{ orderId: ids[i]!, purchase: PURCHASES[Number(o.purchase)]!, arg: Number(o.arg), price: BigInt(o.price) }]
+  async pendingRequests(owner: Address): Promise<PendingRequest[]> {
+    const filter = this.contract.filters.RequestPlaced!(null, null, owner);
+    const latest = await this.reading(this.opts.readProvider.getBlockNumber());
+    return this.pendingAmong(await this.logs(filter, this.opts.deployBlock ?? 0, latest));
+  }
+
+  /** The connected account's pending requests about one box. */
+  private async myPending(tokenId: number): Promise<PendingRequest[]> {
+    const account = this.address_;
+    if (!account) return [];
+    const filter = this.contract.filters.RequestPlaced!(null, tokenId, account);
+    const latest = await this.reading(this.opts.readProvider.getBlockNumber());
+    return this.pendingAmong(await this.logs(filter, this.opts.deployBlock ?? 0, latest));
+  }
+
+  private async pendingAmong(logs: Awaited<ReturnType<EvmFhevmAdapter["logs"]>>): Promise<PendingRequest[]> {
+    const ids = logs.map((l) => Number((l as unknown as { args: { requestId: bigint } }).args.requestId));
+    const rows = await this.reading(Promise.all(ids.map((id) => this.contract.requestInfo!(id))));
+    return rows.flatMap((r, i) =>
+      Number(r.requestStatus) === REQUEST_PENDING
+        ? [{ requestId: ids[i]!, kind: REQUEST_KINDS[Number(r.kind)]!, tokenId: Number(r.tokenId), other: Number(r.other) ? Number(r.other) - 1 : null }]
         : [],
     );
   }
@@ -404,48 +470,38 @@ export class EvmFhevmAdapter implements ChainAdapter {
   // --- actions ---
 
   /**
-   * Pays `amount` for a call to the collection. In USDC: checks the balance, approves exactly
-   * that amount if needed, then sends `plain`. In cUSDC: places an order for `purchase` and
-   * settles it, which is when the action actually happens.
+   * Gets `amount` ready in cUSDC before a paid call: the collection must be the account's
+   * cUSDC operator, and the balance must cover it. With `pay: "usdc"`, the amount is shielded
+   * from plain USDC first, which is public.
    */
-  private async pay(
-    opts: PayOptions | undefined,
-    amount: bigint,
-    purchase: Purchase,
-    arg: number,
-    plain: (c: Contract) => Promise<ContractTransactionResponse>,
-  ): Promise<ContractTransactionReceipt> {
-    const { usdc, cUsdc } = await this.payment();
+  private async prepay(opts: PayOptions | undefined, amount: bigint): Promise<void> {
+    const { cUsdc } = await this.payment();
     const account = await this.signer().getAddress();
-    if (opts?.pay === "cusdc") {
-      await this.ensureOperator(cUsdc, account, this.opts.address, opts);
-      const placed = await this.send(opts, (c) => c.order!(PURCHASES.indexOf(purchase), arg));
-      const orderId = Number(this.events(placed, "OrderPlaced")[0]!.orderId);
-      return this.settle(orderId, opts);
+    if (opts?.pay === "usdc") await this.shieldUsdc(amount, opts);
+    else if ((await this.confidentialUsdcBalance(opts)) < amount) {
+      throw new ChainError("unpaid", "The cUSDC balance does not cover the price. Shield some USDC first.");
     }
-    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
-    if (held < amount) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.");
-    await this.ensureAllowance(usdc, this.opts.address, account, amount, opts);
-    return this.send(opts, plain);
+    await this.ensureOperator(cUsdc, account, this.opts.address, opts);
   }
 
-  /** Proves whether a cUSDC order was paid and runs it. Throws `unpaid` or `refunded`. */
-  private async settle(orderId: number, opts?: ActionOptions): Promise<ContractTransactionReceipt> {
-    const info = await this.reading(this.contract.orderInfo!(orderId));
-    const decrypted = await this.publicDecrypt([String(info.paidHandle)], opts);
-    opts?.onStep?.("proving");
-    const receipt = await this.send(opts, (c) => c.finalizeOrder!(orderId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
-    const status = Number(this.events(receipt, "OrderSettled")[0]?.status);
-    if (status === ORDER_UNPAID) throw new ChainError("unpaid", "The cUSDC balance did not cover the price. Nothing was taken.");
-    if (status === ORDER_REFUNDED) throw new ChainError("refunded", "The box changed before the order settled. The cUSDC went back.");
-    return receipt;
+  /** Sends a request and proves it at once. Throws `not-yours` when it was refused. */
+  private async request(opts: ActionOptions | undefined, call: (c: Contract) => Promise<ContractTransactionResponse>): Promise<number> {
+    const receipt = await this.send(opts, call);
+    const requestId = Number(this.events(receipt, "RequestPlaced")[0]!.requestId);
+    await this.finishRequest(requestId, opts);
+    return requestId;
   }
 
-  async finishOrder(orderId: number, opts?: ActionOptions): Promise<void> {
-    const info = await this.reading(this.contract.orderInfo!(orderId));
-    await this.settle(orderId, opts);
-    // An opening paid in cUSDC still has its own public decryption to go.
-    if (PURCHASES[Number(info.purchase)] === "observe") await this.finishObserve(Number(info.arg), opts);
+  async finishRequest(requestId: number, opts?: ActionOptions): Promise<void> {
+    const info = await this.reading(this.contract.requestInfo!(requestId));
+    if (Number(info.requestStatus) === REQUEST_PENDING) {
+      const decrypted = await this.publicDecrypt([...info.handles].map(String), opts);
+      opts?.onStep?.("proving");
+      await this.send(opts, (c) => c.finalize!(requestId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    }
+    if (Number((await this.reading(this.contract.requestInfo!(requestId))).requestStatus) === REQUEST_REFUSED) {
+      throw new ChainError("not-yours", "This box is not yours, or the fee did not go through. Nothing happened.");
+    }
   }
 
   async faucetUsdc(opts?: ActionOptions): Promise<void> {
@@ -484,59 +540,88 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, () => this.writer(ramp).buy!(minOut, shield, deadline, { value: coinIn }));
   }
 
-  async mint(quantity: number, opts?: PayOptions): Promise<number[]> {
-    const { fees } = await this.collection();
-    const receipt = await this.pay(opts, fees.mint * BigInt(quantity), "mint", quantity, (c) => c.mint!(quantity));
-    return this.events(receipt, "Minted").map((e) => Number(e.tokenId));
+  async mint(quantity: number, opts?: MintOptions): Promise<number[]> {
+    const { fees, maxPerTx } = await this.collection();
+    const ids = Math.min(maxPerTx, Math.max(quantity, opts?.ids ?? maxPerTx));
+    await this.prepay(opts, fees.mint * BigInt(quantity));
+    const account = await this.signer().getAddress();
+    opts?.onStep?.("encrypting");
+    let input;
+    try {
+      input = await (await this.loadRelayer()).createEncryptedInput(this.opts.address, account).add8(quantity).encrypt();
+    } catch (error) {
+      throw new ChainError("decryption", `Could not encrypt the quantity: ${(error as Error)?.message ?? "unknown error"}`);
+    }
+    const receipt = await this.send(opts, (c) => c.mint!(input.handles[0], input.inputProof, ids));
+    // The new ids that are the account's: its receipts say, and only it can read them.
+    const transfers = this.events(receipt, "ConfidentialTransfer");
+    const moved = await this.decryptBools(transfers.map((t) => String(t.moved)), opts);
+    const owned = transfers.filter((t) => moved.get(String(t.moved))).map((t) => Number(t.tokenId));
+    if (this.holdings?.account === account) for (const id of owned) this.holdings.held.add(id);
+    if (!owned.length) throw new ChainError("unpaid", "No box this time: sold out, or the cUSDC did not cover it. Nothing was taken.");
+    // Rare: this mint reached the next milestone. Announce it while we are here.
+    await this.announceMilestone(opts).catch(() => false);
+    return owned;
+  }
+
+  async announceMilestone(opts?: ActionOptions): Promise<boolean> {
+    const handle: string = await this.reading(this.contract.milestoneHandle!());
+    if (handle === ZERO_HANDLE) return false;
+    const decrypted = await this.publicDecrypt([handle], opts);
+    if (!decrypted.clearValues[handle as `0x${string}`]) return false;
+    opts?.onStep?.("proving");
+    await this.send(opts, (c) => c.announceMilestone!(decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    return true;
   }
 
   async shake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll> {
     await this.send(opts, (c) => c.shake!(tokenId));
-    return this.readShake(tokenId, opts);
+    const roll = await this.readShake(tokenId, opts);
+    if (!roll) throw new ChainError("not-yours", "This box is not yours: shaking it showed nothing.");
+    return roll;
   }
 
   async paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
     const { fees } = await this.collection();
-    await this.pay(opts, fees.paidShake, "paidShake", tokenId, (c) => c.paidShake!(tokenId));
-    return this.readShake(tokenId, opts);
+    await this.prepay(opts, fees.paidShake);
+    await this.send(opts, (c) => c.paidShake!(tokenId));
+    const roll = await this.readShake(tokenId, opts);
+    if (!roll) throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
+    return roll;
   }
 
   async feed(tokenId: number, opts?: PayOptions): Promise<void> {
     const { fees } = await this.collection();
-    await this.pay(opts, fees.feed, "feed", tokenId, (c) => c.feed!(tokenId));
+    await this.prepay(opts, fees.feed);
+    await this.send(opts, (c) => c.feed!(tokenId));
   }
 
   async proveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean> {
-    await this.send(opts, (c) => c.proveAlive!(tokenId));
-    return this.finishProveAlive(tokenId, opts);
+    await this.request(opts, (c) => c.proveAlive!(tokenId));
+    return Number(await this.reading(this.contract.aliveCheck!(tokenId))) === 1;
   }
 
   async finishProveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean> {
-    const handle: string = await this.reading(this.contract.aliveHandle!(tokenId));
-    const decrypted = await this.publicDecrypt([handle], opts);
-    opts?.onStep?.("proving");
-    const receipt = await this.send(opts, (c) => c.finalizeProveAlive!(tokenId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
-    return Boolean(this.events(receipt, "AliveProven")[0]?.alive);
+    for (const r of await this.myPending(tokenId)) if (r.kind === "aliveCheck") await this.finishRequest(r.requestId, opts);
+    return Number(await this.reading(this.contract.aliveCheck!(tokenId))) === 1;
   }
 
   async observe(tokenId: number, opts?: PayOptions): Promise<BoxInfo[]> {
     const { fees } = await this.collection();
-    await this.pay(opts, fees.observe, "observe", tokenId, (c) => c.observe!(tokenId));
-    return this.finishObserve(tokenId, opts);
+    // Only a holder is charged: a refused opening costs nothing but gas.
+    await this.prepay(opts, fees.observe);
+    await this.request(opts, (c) => c.observe!(tokenId));
+    return this.withPartner(tokenId);
   }
 
   async finishObserve(tokenId: number, opts?: ActionOptions): Promise<BoxInfo[]> {
+    for (const r of await this.myPending(tokenId)) if (r.kind === "open") await this.finishRequest(r.requestId, opts);
+    return this.withPartner(tokenId);
+  }
+
+  private async withPartner(tokenId: number): Promise<BoxInfo[]> {
     const first = await this.box(tokenId);
-    const ids = first.partner === null ? [tokenId] : [tokenId, first.partner];
-    for (const id of ids) {
-      const box = id === tokenId ? first : await this.box(id);
-      if (box.status !== "opening") continue;
-      const handles: string[] = [...(await this.reading(this.contract.observeHandles!(id)))];
-      const decrypted = await this.publicDecrypt(handles, opts);
-      opts?.onStep?.("proving");
-      await this.send(opts, (c) => c.finalizeObserve!(id, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
-    }
-    return Promise.all(ids.map((id) => this.box(id)));
+    return first.partner === null ? [first] : [first, await this.box(first.partner)];
   }
 
   async proposeEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void> {
@@ -544,7 +629,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async acceptEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void> {
-    await this.send(opts, (c) => c.acceptEntangle!(tokenA, tokenB));
+    await this.request(opts, (c) => c.acceptEntangle!(tokenA, tokenB));
   }
 
   async challengeDuel(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<number> {
@@ -560,12 +645,13 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, (c) => c.acceptDuel!(duelId));
   }
 
-  async finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult> {
+  async finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult | null> {
     const handles: string[] = [...(await this.reading(this.contract.duelHandles!(duelId)))];
     const decrypted = await this.publicDecrypt(handles, opts);
     opts?.onStep?.("proving");
     const receipt = await this.send(opts, (c) => c.finalizeDuel!(duelId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
-    const e = this.events(receipt, "DuelResolved")[0]!;
+    const e = this.events(receipt, "DuelResolved")[0];
+    if (!e) return null;
     return {
       duelId,
       winner: Number(e.winnerTokenId),
@@ -574,8 +660,17 @@ export class EvmFhevmAdapter implements ChainAdapter {
     };
   }
 
-  async claim(opts?: ActionOptions): Promise<void> {
-    await this.send(opts, (c) => c.claim!());
+  async claimEarnings(tokenIds: number[], opts?: ActionOptions): Promise<bigint> {
+    const before = await this.confidentialUsdcBalance(opts);
+    await this.send(opts, (c) => c.claimEarnings!(tokenIds));
+    return (await this.confidentialUsdcBalance(opts)) - before;
+  }
+
+  async sendBox(tokenId: number, to: Address, opts?: ActionOptions): Promise<void> {
+    const account = await this.signer().getAddress();
+    await this.send(opts, (c) => c["confidentialTransfer(address,uint256)"]!(to, tokenId));
+    // Read the receipt back: if the box was the account's, it is gone now.
+    if (this.holdings?.account === account) await this.boxesOf(account);
   }
 
   // --- croquettes ---
@@ -660,19 +755,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async boxPantry(tokenId: number): Promise<BoxPantry> {
     const pantry = this.at(this.eco().pantry);
-    const [meals, mealsToday, lastPurr, nextClaimAt, w] = await this.reading(
-      Promise.all([
-        pantry.meals!(tokenId),
-        pantry.mealsToday!(tokenId),
-        pantry.lastPurr!(tokenId),
-        pantry.nextClaimAt!(tokenId),
-        pantry.weighIn!(tokenId),
-      ]),
+    const [lastPurr, nextClaimAt, w] = await this.reading(
+      Promise.all([pantry.lastPurr!(tokenId), pantry.nextClaimAt!(tokenId), pantry.weighIn!(tokenId)]),
     );
     const status = Number(w.status);
     return {
-      meals: Number(meals),
-      mealsToday: Number(mealsToday),
       welcomed: BigInt(lastPurr) !== 0n,
       nextClaimAt: Number(nextClaimAt),
       weighing: WEIGHING[status] ?? "none",
@@ -693,12 +780,17 @@ export class EvmFhevmAdapter implements ChainAdapter {
   /** Decrypts a euint64 the connected account is allowed on. A zero handle is 0. */
   private async userDecrypt64(handle: string, contractAddress: string, opts?: ActionOptions): Promise<bigint> {
     if (handle === ZERO_HANDLE) return 0n;
+    return BigInt((await this.userDecrypt([handle], contractAddress, opts))[handle] as bigint);
+  }
+
+  /** Decrypts handles of one contract the connected account is allowed on, with its session permit. */
+  private async userDecrypt(handles: string[], contractAddress: string, opts?: ActionOptions) {
     const signer = this.signer();
     const account = await signer.getAddress();
     const values = await this.decrypting(opts, async (relayer) => {
       const permit = await this.permitFor(relayer, signer, account, opts);
       return relayer.userDecrypt(
-        [{ handle, contractAddress }],
+        handles.map((handle) => ({ handle, contractAddress })),
         permit.privateKey,
         permit.publicKey,
         permit.signature.replace("0x", ""),
@@ -708,7 +800,19 @@ export class EvmFhevmAdapter implements ChainAdapter {
         PERMIT_DAYS,
       );
     });
-    return BigInt((values as Record<string, bigint | boolean | string>)[handle] as bigint);
+    return values as Record<string, bigint | boolean | string>;
+  }
+
+  /** Decrypts "moved" bits of the collection, in batches. Handle -> value. */
+  private async decryptBools(handles: string[], opts?: ActionOptions): Promise<Map<string, boolean>> {
+    const out = new Map<string, boolean>();
+    const unique = [...new Set(handles)];
+    for (let i = 0; i < unique.length; i += DECRYPT_BATCH) {
+      const batch = unique.slice(i, i + DECRYPT_BATCH);
+      const clear = await this.userDecrypt(batch, this.opts.address, opts);
+      for (const h of batch) out.set(h, clear[h] === true || clear[h] === 1n || clear[h] === "true");
+    }
+    return out;
   }
 
   async claimCroquettes(tokenIds: number[], opts?: ActionOptions): Promise<void> {
@@ -724,10 +828,13 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, () => this.writer(e.pantry).feed!(tokenId, input.handles[0], input.inputProof));
   }
 
-  async eatenToday(tokenId: number, opts?: ActionOptions): Promise<bigint> {
+  async pantryDay(tokenId: number, opts?: ActionOptions): Promise<PantryDay> {
     const pantry = this.eco().pantry;
-    const handle: string = await this.reading(this.at(pantry).eatenTodayHandle!(tokenId));
-    return this.userDecrypt64(handle, pantry.address, opts);
+    const account = await this.signer().getAddress();
+    const [meals, eaten]: [string, string] = await this.reading(this.at(pantry).todayHandles!(tokenId, account));
+    if (meals === ZERO_HANDLE) return { meals: 0, eaten: 0n };
+    const clear = await this.userDecrypt([meals, eaten], pantry.address, opts);
+    return { meals: Number(clear[meals]), eaten: BigInt(clear[eaten] as bigint) };
   }
 
   async weigh(tokenId: number, opts?: ActionOptions): Promise<WeighIn> {
@@ -931,30 +1038,13 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.decrypting(opts, (relayer) => relayer.publicDecrypt(handles));
   }
 
-  /** Decrypts the caller's latest shake of a box: the picked trait and its roll. */
-  private async readShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll> {
-    const signer = this.signer();
-    const account = await signer.getAddress();
+  /** Decrypts the caller's latest shake of a box: the picked trait and its roll. Null when the
+   *  shake showed nothing (not the holder, or an unpaid paid shake). */
+  private async readShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll | null> {
+    const account = await this.signer().getAddress();
     const [pick, roll]: [string, string] = await this.reading(this.contract.lastShake!(tokenId, account));
-    const contract = this.opts.address;
-
-    const values = await this.decrypting(opts, async (relayer) => {
-      const permit = await this.permitFor(relayer, signer, account, opts);
-      return relayer.userDecrypt(
-        [
-          { handle: pick, contractAddress: contract },
-          { handle: roll, contractAddress: contract },
-        ],
-        permit.privateKey,
-        permit.publicKey,
-        permit.signature.replace("0x", ""),
-        await this.permitContracts(),
-        account,
-        permit.start,
-        PERMIT_DAYS,
-      );
-    });
-    const clear = values as Record<string, bigint | boolean | string>;
+    const clear = await this.userDecrypt([pick, roll], this.opts.address, opts);
+    if (Number(clear[pick]) === NOT_YOURS) return null;
     return { traitIndex: traitIndexAtOffset(Number(clear[pick])), roll: Number(clear[roll]) };
   }
 

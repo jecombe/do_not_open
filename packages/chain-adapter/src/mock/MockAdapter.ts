@@ -15,10 +15,11 @@ import {
   type DuelResult,
   type DuelStatus,
   type EconomyInfo,
+  type MintOptions,
   type PairInfo,
-  type Payment,
+  type PantryDay,
   type PayOptions,
-  type PendingOrder,
+  type PendingRequest,
   type RevealedContents,
   type TradeSide,
   type TraitRoll,
@@ -34,6 +35,8 @@ export const MOCK_NIGHT_SHIFT: Address = "0x000000000000000000000000000000000000
 /** One USDC, in its smallest unit. */
 const USD = 1_000_000n;
 const FEES = { mint: 5n * USD, observe: USD, feed: USD / 2n, paidShake: (5n * USD) / 2n };
+const MAX_PER_TX = Number(spec.mechanics.mint?.maxPerTx ?? 10);
+const MILESTONES = spec.collection.milestones;
 /** What you start the demo with, and what the faucet gives. */
 const START_USDC = 100n * USD;
 const START_CUSDC = 20n * USD;
@@ -43,19 +46,24 @@ const USDC_PER_ETH = 2_500n * USD;
 const RAMP_FEE_BPS = 30n;
 
 interface MockBox {
-  owner: Address;
+  /** Encrypted on a real chain. Null for an empty box: a token id nobody bought. */
+  owner: Address | null;
   status: BoxStatus;
   aliveCheck: AliveCheck;
   partner: number | null;
   wins: number;
+  /** Feeds, paid or not: only drives the mock's draw. */
   feeds: number;
   affection: number;
+  /** The holder's share of paid shakes, waiting in the box. */
+  earnings: bigint;
+  /** Welcome bag and purrs paid into the box, waiting for its holder. */
+  stash: bigint;
   shakes: number;
   publicTraits: Map<number, number>;
   revealed: RevealedContents | null;
   /** Croquettes the cat ate in its life. Encrypted on a real chain until it is weighed. */
   weight: bigint;
-  meals: number;
   /** Mock day of the last meal, with that day's meals and croquettes. */
   mealDay: number;
   mealsToday: number;
@@ -76,6 +84,7 @@ interface MockDuel {
   tokenA: number;
   tokenB: number;
   challenger: Address;
+  accepter: Address | null;
   status: DuelStatus;
 }
 
@@ -118,8 +127,10 @@ export function mockWeighIn(weight: bigint, seed: bigint): WeighIn {
 
 /**
  * The whole game in memory, with the same rules and the same refusals as the contract.
- * The other holder (the night shift) accepts every duel and every entanglement at once,
- * so each flow can be played alone.
+ * Who holds a box is known here, but only the connected account's own boxes are ever told,
+ * as on chain. Requests settle in the same call, so none is left pending. The other holder
+ * (the night shift) accepts every duel and every entanglement at once, so each flow can be
+ * played alone.
  */
 export class MockAdapter implements ChainAdapter {
   readonly kind = "mock" as const;
@@ -128,7 +139,9 @@ export class MockAdapter implements ChainAdapter {
   private readonly boxes: MockBox[] = [];
   private readonly duels: MockDuel[] = [];
   private readonly proposals = new Map<string, Address>();
-  private readonly owed = new Map<Address, bigint>();
+  /** Boxes sold: encrypted on a real chain. */
+  private sold = 0;
+  private milestonesReached = 0;
   /** Plain USDC, public. */
   private readonly usdc = new Map<Address, bigint>();
   /** cUSDC: encrypted on a real chain, readable by its holder only. */
@@ -159,6 +172,8 @@ export class MockAdapter implements ChainAdapter {
     this.cUsdc.set(MOCK_YOU, START_CUSDC);
     for (let i = 0; i < (opts.yours ?? 3); i++) this.boxes.push(this.newBox(MOCK_YOU));
     for (let i = 0; i < (opts.theirs ?? 3); i++) this.boxes.push(this.newBox(MOCK_NIGHT_SHIFT));
+    this.sold = this.boxes.length;
+    this.settleMilestones();
   }
 
   // --- account ---
@@ -190,6 +205,7 @@ export class MockAdapter implements ChainAdapter {
   // --- reads ---
 
   async collection(): Promise<CollectionInfo> {
+    const milestones = MILESTONES;
     return {
       chain: "Mock depot",
       address: "in memory",
@@ -197,8 +213,9 @@ export class MockAdapter implements ChainAdapter {
       currency: { symbol: "ETH", decimals: 18 },
       payment: { symbol: "USDC", confidentialSymbol: "cUSDC", decimals: 6, faucet: FAUCET, ramp: { feeBps: Number(RAMP_FEE_BPS) } },
       maxSupply: spec.collection.maxSupply,
-      maxPerTx: Number(spec.mechanics.mint?.maxPerTx ?? 10),
-      totalMinted: this.boxes.length,
+      maxPerTx: MAX_PER_TX,
+      tokenCount: this.boxes.length,
+      sale: { milestones, reached: this.milestonesReached, soldOut: this.milestonesReached >= milestones.length },
       fees: FEES,
     };
   }
@@ -207,12 +224,16 @@ export class MockAdapter implements ChainAdapter {
     return this.info(tokenId);
   }
 
+  /** Only the connected account can find its boxes, as on chain. */
   async boxesOf(owner: Address): Promise<number[]> {
+    if (!this.me || owner !== this.me) return [];
     return this.boxes.flatMap((b, id) => (b.owner === owner ? [id] : []));
   }
 
   async boxSummaries(from: number, to: number): Promise<BoxSummary[]> {
-    return this.boxes.slice(from, to).map((b, i) => ({ tokenId: from + i, owner: b.owner, status: b.status, partner: b.status === "sealed" ? b.partner : null }));
+    return this.boxes
+      .slice(from, to)
+      .map((b, i) => ({ tokenId: from + i, mine: this.mine(b), status: b.status, partner: b.status === "sealed" ? b.partner : null }));
   }
 
   async pair(tokenA: number, tokenB: number): Promise<PairInfo> {
@@ -225,13 +246,9 @@ export class MockAdapter implements ChainAdapter {
     let entangleProposal: PairInfo["entangleProposal"] = null;
     for (const [from, to] of [[tokenA, tokenB], [tokenB, tokenA]] as const) {
       const proposer = this.proposals.get(`${from}:${to}`);
-      if (proposer && proposer === this.boxes[from]?.owner) entangleProposal = { from, to, proposer };
+      if (proposer) entangleProposal = { from, to, proposer };
     }
     return { openDuel, entangleProposal };
-  }
-
-  async credits(owner: Address): Promise<bigint> {
-    return this.owed.get(owner) ?? 0n;
   }
 
   /** Gas is free in the mock: every account holds a round 1 ETH. */
@@ -250,13 +267,13 @@ export class MockAdapter implements ChainAdapter {
     return this.cUsdc.get(me) ?? 0n;
   }
 
-  /** Mock orders settle in the same call, so none is ever left waiting. */
-  async pendingOrders(): Promise<PendingOrder[]> {
+  /** Mock requests settle in the same call, so none is ever left waiting. */
+  async pendingRequests(): Promise<PendingRequest[]> {
     return [];
   }
 
-  async finishOrder(): Promise<void> {
-    throw revert("OrderNotPending");
+  async finishRequest(): Promise<void> {
+    throw revert("RequestNotPending");
   }
 
   async faucetUsdc(opts?: ActionOptions): Promise<void> {
@@ -287,61 +304,80 @@ export class MockAdapter implements ChainAdapter {
   }
 
   /**
-   * Takes `amount` from the caller, the way the contract would. USDC: refused up front when
-   * short. cUSDC: an order, a public decryption of "paid", then the proof; short means
-   * nothing moves and the action does not happen.
+   * Gets `amount` ready in cUSDC, as the app does before a paid call: shielded from plain USDC
+   * first with `pay: "usdc"`, otherwise checked against the cUSDC balance.
    */
-  private async charge(opts: PayOptions | undefined, amount: bigint, call: string): Promise<void> {
+  private async prepay(opts: PayOptions | undefined, amount: bigint): Promise<void> {
     const me = this.signer();
-    const pay: Payment = opts?.pay ?? "usdc";
-    if (pay === "usdc") {
-      if ((this.usdc.get(me) ?? 0n) < amount) throw new ChainError("insufficient-usdc", "Not enough USDC.");
-      await this.send(opts, call);
-      this.credit(this.usdc, me, -amount);
-      return;
-    }
-    await this.send(opts, "order");
-    await this.publish(opts, "finalizeOrder");
-    if ((this.cUsdc.get(me) ?? 0n) < amount) throw new ChainError("unpaid", "The cUSDC balance did not cover the price.");
-    this.credit(this.cUsdc, me, -amount);
+    if (opts?.pay === "usdc") await this.shieldUsdc(amount, opts);
+    else if ((this.cUsdc.get(me) ?? 0n) < amount) throw new ChainError("unpaid", "The cUSDC balance does not cover the price.");
+  }
+
+  /** Pulls `amount` cUSDC: all of it, or nothing. Returns whether it arrived. */
+  private pull(who: Address, amount: bigint): boolean {
+    if ((this.cUsdc.get(who) ?? 0n) < amount) return false;
+    this.credit(this.cUsdc, who, -amount);
+    return true;
   }
 
   // --- actions ---
 
-  async mint(quantity: number, opts?: PayOptions): Promise<number[]> {
+  async mint(quantity: number, opts?: MintOptions): Promise<number[]> {
     const me = this.signer();
-    const max = Number(spec.mechanics.mint?.maxPerTx ?? 10);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > max) throw revert("InvalidQuantity");
-    if (this.boxes.length + quantity > spec.collection.maxSupply) throw revert("SoldOut");
-    await this.charge(opts, FEES.mint * BigInt(quantity), "mint");
+    if (!Number.isInteger(quantity) || quantity < 1) throw revert("InvalidQuantity");
+    const ids = Math.min(MAX_PER_TX, Math.max(quantity, opts?.ids ?? MAX_PER_TX));
+    await this.prepay(opts, FEES.mint * BigInt(quantity));
+    opts?.onStep?.("encrypting");
+    await this.wait(0.8);
+    await this.send(opts, "mint");
+    // As the contract: at most `ids`, all or nothing at the cap, nothing if the price did not arrive.
+    let got = Math.min(quantity, ids);
+    if (this.sold + got > spec.collection.maxSupply) got = 0;
+    if (got && !this.pull(me, FEES.mint * BigInt(got))) got = 0;
+    this.sold += got;
     const first = this.boxes.length;
-    for (let i = 0; i < quantity; i++) this.boxes.push(this.newBox(me));
-    return Array.from({ length: quantity }, (_, i) => first + i);
+    for (let i = 0; i < ids; i++) this.boxes.push(this.newBox(i < got ? me : null));
+    opts?.onStep?.("decrypting");
+    await this.wait(1);
+    if (this.settleMilestones()) await this.publish(opts, "announceMilestone");
+    if (!got) throw new ChainError("unpaid", "No box this time: sold out, or the cUSDC did not cover it. Nothing was taken.");
+    return Array.from({ length: got }, (_, i) => first + i);
+  }
+
+  async announceMilestone(): Promise<boolean> {
+    return false;
   }
 
   async shake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll> {
     const me = this.signer();
     const box = this.sealed(tokenId);
-    if (box.owner !== me) throw revert("NotHolder");
     await this.send(opts, "shake");
+    if (box.owner !== me) {
+      await this.decrypting(opts);
+      throw notYours();
+    }
     return this.decryptShake(tokenId, opts);
   }
 
   async paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
     const me = this.signer();
     const box = this.sealed(tokenId);
-    if (box.owner === me) throw revert("HolderShakesForFree");
-    await this.charge(opts, FEES.paidShake, "paidShake");
-    const share = (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
-    // In USDC the holder is credited and claims; in cUSDC the share arrives at once.
-    this.credit(opts?.pay === "cusdc" ? this.cUsdc : this.owed, box.owner, share);
+    await this.prepay(opts, FEES.paidShake);
+    await this.send(opts, "paidShake");
+    if (!this.pull(me, FEES.paidShake)) {
+      await this.decrypting(opts);
+      throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
+    }
+    box.earnings += (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
     return this.decryptShake(tokenId, opts);
   }
 
   async feed(tokenId: number, opts?: PayOptions): Promise<void> {
-    this.signer();
+    const me = this.signer();
     const box = this.sealed(tokenId);
-    await this.charge(opts, FEES.feed, "feed");
+    await this.prepay(opts, FEES.feed);
+    await this.send(opts, "feed");
+    if (!this.pull(me, FEES.feed)) return;
     box.feeds += 1;
     const rand = mulberry32(Math.imul(tokenId + 7, 0x9e3779b1) + box.feeds * 31337);
     box.affection += Math.floor(rand() * (spec.affection.perFeedMax + 1));
@@ -350,40 +386,33 @@ export class MockAdapter implements ChainAdapter {
   async proveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean> {
     const me = this.signer();
     const box = this.sealed(tokenId);
-    if (box.owner !== me) throw revert("NotHolder");
-    if (box.aliveCheck !== "none") throw revert("AliveCheckAlreadyRequested");
+    if (box.aliveCheck !== "none") throw revert("NotSealed");
     await this.send(opts, "proveAlive");
-    box.aliveCheck = "pending";
-    return this.finishProveAlive(tokenId, opts);
-  }
-
-  async finishProveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean> {
-    const box = this.get(tokenId);
-    if (box.aliveCheck !== "pending") throw revert("AliveCheckNotPending");
-    await this.publish(opts, "finalizeProveAlive");
+    await this.publish(opts, "finalize");
+    if (box.owner !== me) throw notYours();
     const alive = buildCatSpec({ seed: mockSeedForToken(tokenId) }).state === "alive";
     box.aliveCheck = alive ? "alive" : "notAlive";
     return alive;
   }
 
+  /** Mock checks never wait for a proof. */
+  async finishProveAlive(tokenId: number): Promise<boolean> {
+    return this.get(tokenId).aliveCheck === "alive";
+  }
+
   async observe(tokenId: number, opts?: PayOptions): Promise<BoxInfo[]> {
     const me = this.signer();
     const box = this.sealed(tokenId);
-    if (box.owner !== me) throw revert("NotHolder");
-    await this.charge(opts, FEES.observe, "observe");
-    box.status = "opening";
-    if (box.partner !== null && this.get(box.partner).status === "sealed") this.get(box.partner).status = "opening";
-    return this.finishObserve(tokenId, opts);
-  }
-
-  async finishObserve(tokenId: number, opts?: ActionOptions): Promise<BoxInfo[]> {
-    const box = this.get(tokenId);
+    await this.prepay(opts, FEES.observe);
+    await this.send(opts, "observe");
+    // Only a holder is charged.
+    const ok = box.owner === me && this.pull(me, FEES.observe);
+    await this.publish(opts, "finalize");
+    if (!ok) throw notYours();
     const ids = box.partner === null ? [tokenId] : [tokenId, box.partner];
-    if (box.status !== "opening") throw revert("NotObserving");
     for (const id of ids) {
       const b = this.get(id);
-      if (b.status !== "opening") continue;
-      await this.publish(opts, "finalizeObserve");
+      if (b.status !== "sealed") continue;
       const cat = buildCatSpec({ seed: mockSeedForToken(id), affection: b.affection });
       b.revealed = {
         seed: mockSeedForToken(id),
@@ -398,35 +427,41 @@ export class MockAdapter implements ChainAdapter {
     return ids.map((id) => this.info(id));
   }
 
+  /** Mock openings never wait for a proof. */
+  async finishObserve(tokenId: number): Promise<BoxInfo[]> {
+    const box = this.get(tokenId);
+    return (box.partner === null ? [tokenId] : [tokenId, box.partner]).map((id) => this.info(id));
+  }
+
   async proposeEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void> {
     const me = this.signer();
-    if (this.get(tokenA).owner !== me) throw revert("NotHolder");
     this.checkEntangleable(tokenA, tokenB);
     await this.send(opts, "proposeEntangle");
     this.proposals.set(`${tokenA}:${tokenB}`, me);
-    // The night shift says yes to everything.
-    if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT) this.entangle(tokenA, tokenB);
+    // The night shift says yes to everything, for the boxes it holds.
+    if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT && this.get(tokenA).owner === me) this.entangle(tokenA, tokenB);
   }
 
   async acceptEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void> {
     const me = this.signer();
-    if (this.get(tokenB).owner !== me) throw revert("NotHolder");
     const proposer = this.proposals.get(`${tokenA}:${tokenB}`);
-    if (!proposer || proposer !== this.get(tokenA).owner) throw revert("NoSuchProposal");
+    if (!proposer) throw revert("NoSuchProposal");
     this.checkEntangleable(tokenA, tokenB);
     await this.send(opts, "acceptEntangle");
+    await this.publish(opts, "finalize");
+    this.proposals.delete(`${tokenA}:${tokenB}`);
+    if (this.get(tokenA).owner !== proposer || this.get(tokenB).owner !== me) throw notYours();
     this.entangle(tokenA, tokenB);
   }
 
   async challengeDuel(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<number> {
     const me = this.signer();
-    if (this.get(tokenA).owner !== me) throw revert("NotHolder");
     if (tokenA === tokenB) throw revert("SameBox");
     if (this.get(tokenA).status !== "sealed" || this.get(tokenB).status !== "sealed") throw revert("NotSealed");
     await this.send(opts, "challengeDuel");
-    const duel: MockDuel = { tokenA, tokenB, challenger: me, status: "challenged" };
+    const duel: MockDuel = { tokenA, tokenB, challenger: me, accepter: null, status: "challenged" };
     this.duels.push(duel);
-    if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT) duel.status = "pending";
+    if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT) Object.assign(duel, { status: "pending", accepter: MOCK_NIGHT_SHIFT });
     return this.duels.length - 1;
   }
 
@@ -434,7 +469,7 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     const duel = this.duel(duelId);
     if (duel.status !== "challenged") throw revert("WrongDuelStatus");
-    if (duel.challenger !== me) throw revert("NotHolder");
+    if (duel.challenger !== me) throw revert("NotChallenger");
     await this.send(opts, "cancelDuel");
     duel.status = "cancelled";
   }
@@ -443,16 +478,20 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     const duel = this.duel(duelId);
     if (duel.status !== "challenged") throw revert("WrongDuelStatus");
-    if (this.get(duel.tokenB).owner !== me) throw revert("NotHolder");
-    if (this.get(duel.tokenA).owner !== duel.challenger) throw revert("ChallengerNoLongerHolds");
+    if (this.get(duel.tokenA).status !== "sealed" || this.get(duel.tokenB).status !== "sealed") throw revert("NotSealed");
     await this.send(opts, "acceptDuel");
-    duel.status = "pending";
+    Object.assign(duel, { status: "pending", accepter: me });
   }
 
-  async finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult> {
+  async finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult | null> {
     const duel = this.duel(duelId);
     if (duel.status !== "pending") throw revert("WrongDuelStatus");
     await this.publish(opts, "finalizeDuel");
+    // Both sides must have held their boxes at acceptance; otherwise nothing happens.
+    if (this.get(duel.tokenA).owner !== duel.challenger || this.get(duel.tokenB).owner !== duel.accepter) {
+      duel.status = "void";
+      return null;
+    }
     const score = (id: number) => buildCatSpec({ seed: mockSeedForToken(id) }).rarity.score;
     // Strictly higher wins; ties go to B.
     const aWins = score(duel.tokenA) > score(duel.tokenB);
@@ -464,12 +503,29 @@ export class MockAdapter implements ChainAdapter {
     return { duelId, winner, loser, shown };
   }
 
-  async claim(opts?: ActionOptions): Promise<void> {
+  async claimEarnings(tokenIds: number[], opts?: ActionOptions): Promise<bigint> {
     const me = this.signer();
-    if (!this.owed.get(me)) throw revert("NothingToClaim");
-    await this.send(opts, "claim");
-    this.credit(this.usdc, me, this.owed.get(me)!);
-    this.owed.set(me, 0n);
+    if (tokenIds.length > 10) throw revert("TooManyBoxes");
+    await this.send(opts, "claimEarnings");
+    let total = 0n;
+    for (const id of tokenIds) {
+      const b = this.get(id);
+      if (b.owner !== me) continue;
+      total += b.earnings;
+      b.earnings = 0n;
+    }
+    this.credit(this.cUsdc, me, total);
+    opts?.onStep?.("decrypting");
+    await this.wait(1);
+    return total;
+  }
+
+  async sendBox(tokenId: number, to: Address, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(to) || /^0x0{40}$/.test(to)) throw revert("ConfidentialERC721InvalidReceiver");
+    const box = this.get(tokenId);
+    await this.send(opts, "confidentialTransfer");
+    if (box.owner === me) box.owner = to;
   }
 
   // --- croquettes ---
@@ -501,8 +557,6 @@ export class MockAdapter implements ChainAdapter {
     const b = this.get(tokenId);
     const next = b.lastPurr === null ? this.now() : b.lastPurr + this.dayMs;
     return {
-      meals: b.meals,
-      mealsToday: b.mealDay === this.day() ? b.mealsToday : 0,
       welcomed: b.lastPurr !== null,
       nextClaimAt: Math.floor(next / 1000),
       weighing: b.weighIn ? "done" : "none",
@@ -526,49 +580,55 @@ export class MockAdapter implements ChainAdapter {
     if (tokenIds.length === 0 || tokenIds.length > 10) throw revert("InvalidBoxCount");
     const now = this.now();
     const halvings = this.halvings();
-    let owed = 0n;
-    let paid = false;
-    const updates: [MockBox, number][] = [];
+    const dues: [MockBox, bigint][] = [];
     for (const id of tokenIds) {
       const b = this.get(id);
-      if (b.owner !== me) throw revert("NotHolder");
       if (b.lastPurr === null) {
-        updates.push([b, now]);
-        owed += BigInt(ECONOMY.welcomeBag.amount);
-        paid = true;
+        b.lastPurr = now;
+        dues.push([b, BigInt(ECONOMY.welcomeBag.amount)]);
         continue;
       }
       let days = Math.floor((now - b.lastPurr) / this.dayMs);
       if (days === 0) continue;
-      paid = true;
       if (days > ECONOMY.purr.maxDays) {
         days = ECONOMY.purr.maxDays;
-        updates.push([b, now]);
-      } else updates.push([b, b.lastPurr + days * this.dayMs]);
+        b.lastPurr = now;
+      } else b.lastPurr += days * this.dayMs;
       this.purrs += 1;
       const roll = Math.floor(mulberry32(Math.imul(id + 3, 0x51ed27) + this.purrs * 7919)() * (ECONOMY.purr.maxPerDay + 1));
       const factor = days * (b.aliveCheck === "alive" ? ECONOMY.purr.vetMultiplier : 1);
-      owed += BigInt(roll * factor) >> BigInt(Math.min(halvings, 63));
+      dues.push([b, BigInt(roll * factor) >> BigInt(Math.min(halvings, 63))]);
     }
-    if (!paid) throw revert("NothingToClaim");
     await this.send(opts, "claim");
-    for (const [b, at] of updates) b.lastPurr = at;
-    const total = owed < this.reserve ? owed : this.reserve;
-    this.reserve -= total;
-    this.credit(this.hidden, me, total);
+    // The reserve pays the whole claim into the boxes, or none of it.
+    const total = dues.reduce((sum, [, due]) => sum + due, 0n);
+    if (total <= this.reserve) {
+      this.reserve -= total;
+      for (const [b, due] of dues) b.stash += due;
+    }
+    // Then the caller takes what waits in the boxes they hold.
+    for (const id of tokenIds) {
+      const b = this.get(id);
+      if (b.owner !== me) continue;
+      this.credit(this.hidden, me, b.stash);
+      b.stash = 0n;
+    }
   }
 
   async feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void> {
     const me = this.signer();
     const box = this.get(tokenId);
-    if (box.owner !== me) throw revert("NotHolder");
     if (box.status !== "sealed") throw revert("NotSealed");
+    if (amount < 0n) throw revert("InvalidAmount");
     const today = this.day();
     if (box.mealDay !== today) Object.assign(box, { mealDay: today, mealsToday: 0, eatenToday: 0n });
-    if (box.mealsToday >= ECONOMY.meal.mealsPerDay) throw revert("NoMoreMealsToday");
-    if (amount < 0n) throw revert("InvalidAmount");
+    opts?.onStep?.("encrypting");
+    await this.wait(0.8);
     await this.send(opts, "feed");
-    // Like the contract: past the day's allowance the offer is cut down, too little moves nothing.
+    // Like the contract: a meal past the limits, or from someone who does not hold the cat, moves
+    // nothing; past the day's allowance the offer is cut down; too little moves nothing.
+    const served = box.owner === me && box.mealsToday < ECONOMY.meal.mealsPerDay;
+    if (!served) return;
     const room = BigInt(ECONOMY.meal.maxEatenPerDay) - box.eatenToday;
     const capped = amount < room ? amount : room;
     const moved = (this.hidden.get(me) ?? 0n) >= capped ? capped : 0n;
@@ -581,15 +641,15 @@ export class MockAdapter implements ChainAdapter {
     box.weight += moved;
     box.eatenToday += moved;
     box.mealsToday += 1;
-    box.meals += 1;
   }
 
-  async eatenToday(tokenId: number, opts?: ActionOptions): Promise<bigint> {
-    this.signer();
+  async pantryDay(tokenId: number, opts?: ActionOptions): Promise<PantryDay> {
+    const me = this.signer();
     const box = this.get(tokenId);
     opts?.onStep?.("decrypting");
     await this.wait(1);
-    return box.mealDay === this.day() ? box.eatenToday : 0n;
+    if (box.owner !== me || box.mealDay !== this.day()) return { meals: 0, eaten: 0n };
+    return { meals: box.mealsToday, eaten: box.eatenToday };
   }
 
   async weigh(tokenId: number, opts?: ActionOptions): Promise<WeighIn> {
@@ -658,7 +718,7 @@ export class MockAdapter implements ChainAdapter {
 
   // --- internals ---
 
-  private newBox(owner: Address): MockBox {
+  private newBox(owner: Address | null): MockBox {
     return {
       owner,
       status: "sealed",
@@ -667,11 +727,12 @@ export class MockAdapter implements ChainAdapter {
       wins: 0,
       feeds: 0,
       affection: 0,
+      earnings: 0n,
+      stash: 0n,
       shakes: 0,
       publicTraits: new Map(),
       revealed: null,
       weight: 0n,
-      meals: 0,
       mealDay: -1,
       mealsToday: 0,
       eatenToday: 0n,
@@ -695,8 +756,23 @@ export class MockAdapter implements ChainAdapter {
 
   private get(tokenId: number): MockBox {
     const box = this.boxes[tokenId];
-    if (!box) throw revert("ERC721NonexistentToken");
+    if (!box) throw revert("ConfidentialERC721NonexistentToken");
     return box;
+  }
+
+  /** Whether the connected account holds a box: the one thing the chain tells it. */
+  private mine(box: MockBox): boolean {
+    return !!this.me && box.owner === this.me;
+  }
+
+  /** Announces every milestone the sold count reached. Returns whether one was. */
+  private settleMilestones(): boolean {
+    let announced = false;
+    while (this.milestonesReached < MILESTONES.length && this.sold >= MILESTONES[this.milestonesReached]!) {
+      this.milestonesReached += 1;
+      announced = true;
+    }
+    return announced;
   }
 
   private sealed(tokenId: number): MockBox {
@@ -720,12 +796,11 @@ export class MockAdapter implements ChainAdapter {
     const b = this.get(tokenId);
     return {
       tokenId,
-      owner: b.owner,
+      mine: this.mine(b),
       status: b.status,
       aliveCheck: b.aliveCheck,
       partner: b.partner,
       wins: b.wins,
-      feeds: b.feeds,
       publicTraits: [...b.publicTraits].map(([traitIndex, roll]) => ({ traitIndex, roll })),
       revealed: b.revealed,
     };
@@ -778,6 +853,12 @@ export class MockAdapter implements ChainAdapter {
     return "0x" + Array.from({ length: 64 }, () => Math.floor(rand() * 16).toString(16)).join("");
   }
 
+  /** A private decryption that comes back empty-handed. */
+  private async decrypting(opts: ActionOptions | undefined): Promise<void> {
+    opts?.onStep?.("decrypting");
+    await this.wait(1.4);
+  }
+
   /** A public decryption followed by the transaction that carries its proof. */
   private async publish(opts: ActionOptions | undefined, call: string): Promise<void> {
     opts?.onStep?.("decrypting");
@@ -792,3 +873,4 @@ export class MockAdapter implements ChainAdapter {
 }
 
 const revert = (reason: string) => new ChainError("reverted", `The depot refused: ${reason}.`, reason);
+const notYours = () => new ChainError("not-yours", "This box is not yours. Nothing happened.");

@@ -11,7 +11,8 @@ export type AliveCheck = "none" | "pending" | "alive" | "notAlive";
 /** How heavy an opened cat came out, lightest first. Same keys as the spec's builds. */
 export type Build = "thin" | "normal" | "chubby" | "fat" | "huge";
 export type Disease = "diabetic" | "arthritic" | "fattyLiver";
-export type DuelStatus = "none" | "challenged" | "pending" | "resolved" | "cancelled";
+/** "void": accepted, but one side did not hold its box. Nothing happened. */
+export type DuelStatus = "none" | "challenged" | "pending" | "resolved" | "cancelled" | "void";
 
 /** What the user is waiting for, in the order it happens. */
 export type Step =
@@ -44,12 +45,22 @@ export interface ActionOptions {
   onTx?: (tx: TxRecord) => void;
 }
 
-/** How an action is paid: plain USDC, public like any ERC-20, or confidential cUSDC. */
+/**
+ * Where a payment comes from. The collection only takes confidential cUSDC; "usdc" shields the
+ * exact price from the wallet's plain USDC first, which is public: for a mint, it tells everyone
+ * how many boxes were bought.
+ */
 export type Payment = "usdc" | "cusdc";
 
 export interface PayOptions extends ActionOptions {
-  /** "usdc" when left out. */
+  /** "cusdc" when left out. */
   pay?: Payment;
+}
+
+export interface MintOptions extends PayOptions {
+  /** How many token ids to hide the quantity among, from the quantity to `maxPerTx`. Public;
+   *  more hide better and cost more gas. `maxPerTx` when left out. */
+  ids?: number;
 }
 
 /** In the payment token's smallest unit (USDC has 6 decimals). */
@@ -81,8 +92,18 @@ export interface CollectionInfo {
     ramp: { feeBps: number } | null;
   };
   maxSupply: number;
+  /** Most boxes, and most token ids, one mint creates. */
   maxPerTx: number;
-  totalMinted: number;
+  /** Token ids created so far, empty ones included: not a supply. */
+  tokenCount: number;
+  /** How many boxes were sold is encrypted. Only these milestones of it are announced. */
+  sale: {
+    milestones: number[];
+    /** How many milestones were announced: the sold count is at least `milestones[reached - 1]`. */
+    reached: number;
+    /** The last milestone is the cap. */
+    soldOut: boolean;
+  };
   fees: Fees;
 }
 
@@ -108,14 +129,16 @@ export interface TraitRoll {
 
 export interface BoxInfo {
   tokenId: number;
-  owner: Address;
+  /** Who holds a box is encrypted. True when the connected account found it among its own
+   *  boxes (`boxesOf`), false otherwise, including for every box when nobody is connected. */
+  mine: boolean;
+  /** "opening" and an alive check "pending" while the connected account's request waits for
+   *  its proof. */
   status: BoxStatus;
   aliveCheck: AliveCheck;
   /** Token id of the entangled partner, if any. */
   partner: number | null;
   wins: number;
-  /** How many times it was fed. What that earned is encrypted. */
-  feeds: number;
   /** Traits made public by lost duels while the box is still sealed. */
   publicTraits: TraitRoll[];
   revealed: RevealedContents | null;
@@ -126,6 +149,8 @@ export interface DuelInfo {
   tokenA: number;
   tokenB: number;
   challenger: Address;
+  /** Who accepted, once someone did. */
+  accepter: Address | null;
   status: DuelStatus;
 }
 
@@ -145,15 +170,15 @@ export interface PairInfo {
   entangleProposal: { from: number; to: number; proposer: Address } | null;
 }
 
-export type Purchase = "mint" | "feed" | "observe" | "paidShake";
+export type RequestKind = "open" | "aliveCheck" | "entangle";
 
-/** A cUSDC payment waiting for its proof. See `ChainAdapter.finishOrder`. */
-export interface PendingOrder {
-  orderId: number;
-  purchase: Purchase;
-  /** Quantity for a mint, token id otherwise. */
-  arg: number;
-  price: bigint;
+/** A request of the connected account that waits for its proof. See `finishRequest`. */
+export interface PendingRequest {
+  requestId: number;
+  kind: RequestKind;
+  tokenId: number;
+  /** The entangled partner opened along with it, or box B of an entanglement. */
+  other: number | null;
 }
 
 export type ChainErrorCode =
@@ -167,10 +192,10 @@ export type ChainErrorCode =
   | "insufficient-funds"
   /** Not enough plain USDC for the price. */
   | "insufficient-usdc"
-  /** A cUSDC order the buyer could not cover. Nothing was taken. */
+  /** The cUSDC did not cover the price, or the mint would have passed the cap. Nothing was taken. */
   | "unpaid"
-  /** A cUSDC order the box no longer allowed by the time it settled. The price went back. */
-  | "refunded"
+  /** The caller did not hold the box. Nothing happened, and nobody else learned it. */
+  | "not-yours"
   /** The chain refused the transaction. `reason` carries the contract's error name. */
   | "reverted"
   /** The decryption service failed or timed out. */
@@ -189,11 +214,12 @@ export class ChainError extends Error {
   }
 }
 
-/** What the warehouse needs to shelve a box, and the pair view to offer it: who holds it,
- *  whether it is open, and whether it is already entangled. */
+/** What the warehouse needs to shelve a box, and the pair view to offer it: whether it is the
+ *  connected account's, whether it is open, and whether it is already entangled. */
 export interface BoxSummary {
   tokenId: number;
-  owner: Address;
+  /** See `BoxInfo.mine`. */
+  mine: boolean;
   status: BoxStatus;
   /** Entangled partner of a sealed box. Not read for the others, where it is always null. */
   partner: number | null;
@@ -246,6 +272,14 @@ export interface EconomyInfo {
   market: MarketInfo | null;
 }
 
+/** What the connected account may read about a cat's day: the real figures if it holds it. */
+export interface PantryDay {
+  /** Meals eaten today (UTC), out of the economy's `mealsPerDay`. */
+  meals: number;
+  /** Croquettes eaten today, out of `maxEatenPerDay`. */
+  eaten: bigint;
+}
+
 /** What the scales said about an opened cat. Public once weighed. */
 export interface WeighIn {
   /** Croquettes it ate in its life, all holders together. */
@@ -261,10 +295,6 @@ export interface WeighIn {
 
 /** What the Pantry knows publicly about one box. Its weight is encrypted until it is weighed. */
 export interface BoxPantry {
-  /** Meals served. Public; what they held is not. */
-  meals: number;
-  /** Meals eaten today (UTC), out of the economy's `mealsPerDay`. */
-  mealsToday: number;
   /** True once its welcome bag was paid: a box gets one, whoever holds it. */
   welcomed: boolean;
   /** Unix seconds from which it can claim again. */
@@ -302,52 +332,64 @@ export interface ChainAdapter {
   // --- reads (no account needed) ---
   collection(): Promise<CollectionInfo>;
   box(tokenId: number): Promise<BoxInfo>;
+  /** The connected account's boxes, found in its own transfer receipts: it decrypts them,
+   *  nobody else can. Asks for a decryption signature the first time. [] for anyone else. */
   boxesOf(owner: Address): Promise<number[]>;
-  /** Owner and status of tokens `from` to `to` (exclusive), cheaper than `box` for each. */
+  /** Status of token ids `from` to `to` (exclusive), cheaper than `box` for each. */
   boxSummaries(from: number, to: number): Promise<BoxSummary[]>;
   pair(tokenA: number, tokenB: number): Promise<PairInfo>;
-  /** What `owner` earned from paid shakes and has not claimed yet. */
-  credits(owner: Address): Promise<bigint>;
   /** Native coin `owner` holds, in the smallest unit (wei on EVM). */
   balance(owner: Address): Promise<bigint>;
   /** Plain USDC `owner` holds. Public. */
   usdcBalance(owner: Address): Promise<bigint>;
   /** Decrypts the connected account's cUSDC balance, for its eyes only. */
   confidentialUsdcBalance(opts?: ActionOptions): Promise<bigint>;
-  /** The connected account's cUSDC orders that were paid for but never settled. */
-  pendingOrders(owner: Address): Promise<PendingOrder[]>;
+  /** The connected account's openings, alive checks and entanglements waiting for their proof. */
+  pendingRequests(owner: Address): Promise<PendingRequest[]>;
 
   // --- actions ---
-  // Paid actions take `opts.pay`. In cUSDC each is an order: the price is pulled, a public
-  // decryption proves it arrived, then the action happens (or the price is refunded).
-  /** Returns the new token ids. */
-  mint(quantity: number, opts?: PayOptions): Promise<number[]>;
-  /** Holder only, free. One random trait, readable by the caller alone. */
+  // Paid actions are paid in cUSDC, from the cUSDC balance or, with `pay: "usdc"`, shielded
+  // from plain USDC just before. A payment the balance does not cover moves nothing.
+  /** Buys `quantity` boxes, the quantity encrypted. Returns the ids the caller got. Throws
+   *  `unpaid` when it got none (not enough cUSDC, or sold out). */
+  mint(quantity: number, opts?: MintOptions): Promise<number[]>;
+  /** Announces the next sale milestone if the sold count reached it. Anyone may. Returns
+   *  whether one was announced. */
+  announceMilestone(opts?: ActionOptions): Promise<boolean>;
+  /** Holder only, free. One random trait, readable by the caller alone. Throws `not-yours`. */
   shake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll>;
-  /** Anyone but the holder, paid. Same result, same privacy. */
+  /** Anyone, paid; the holder's share waits in the box. Same result, same privacy. Throws
+   *  `unpaid` when the cUSDC did not cover the fee. */
   paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll>;
   feed(tokenId: number, opts?: PayOptions): Promise<void>;
-  /** Publishes the single bit "is it alive". Returns the answer. */
+  /** Publishes the single bit "is it alive". Returns the answer. Throws `not-yours`. */
   proveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean>;
   /** Picks up an alive check that was requested and never finished. */
   finishProveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean>;
-  /** Opens the box for good. Returns it, and its entangled partner if it had one. */
+  /** Opens the box for good. Returns it, and its entangled partner if it had one. Throws
+   *  `not-yours` (nothing charged) or `unpaid`. */
   observe(tokenId: number, opts?: PayOptions): Promise<BoxInfo[]>;
-  /** Picks up an opening that was requested and never finished. Anyone may. */
+  /** Picks up the connected account's opening of `tokenId` that never got its proof. */
   finishObserve(tokenId: number, opts?: ActionOptions): Promise<BoxInfo[]>;
+  /** Picks up any pending request, by id. Anyone may. Throws `not-yours` when it was refused. */
+  finishRequest(requestId: number, opts?: ActionOptions): Promise<void>;
 
   proposeEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void>;
+  /** Throws `not-yours` when the proposer no longer holds A or the caller does not hold B. */
   acceptEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void>;
 
   /** Returns the duel id. */
   challengeDuel(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<number>;
   cancelDuel(duelId: number, opts?: ActionOptions): Promise<void>;
   acceptDuel(duelId: number, opts?: ActionOptions): Promise<void>;
-  /** Publishes the outcome of an accepted duel. Anyone may. */
-  finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult>;
+  /** Publishes the outcome of an accepted duel. Anyone may. Null when the duel was void. */
+  finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult | null>;
 
-  /** Pays out the caller's credits, in USDC. */
-  claim(opts?: ActionOptions): Promise<void>;
+  /** Pays the caller what paid shakes earned the listed boxes they hold, in cUSDC. Returns
+   *  what arrived, read from the caller's own balance. */
+  claimEarnings(tokenIds: number[], opts?: ActionOptions): Promise<bigint>;
+  /** Gives a box away. Moves it only if the caller holds it; nobody else learns which. */
+  sendBox(tokenId: number, to: Address, opts?: ActionOptions): Promise<void>;
 
   // --- USDC ---
   /** Test networks only: mints `payment.faucet` test USDC to the caller. */
@@ -360,9 +402,6 @@ export interface ChainAdapter {
   /** Buys USDC with the chain's coin on a public pool, accepting at most 1% less than the quote.
    *  With `shield`, it arrives as cUSDC in the same transaction. */
   buyUsdc(coinIn: bigint, shield: boolean, opts?: ActionOptions): Promise<void>;
-  /** Settles a pending cUSDC order: proves whether it was paid, then runs or refunds it. Anyone may.
-   *  Throws `unpaid` or `refunded` when it did not go through. */
-  finishOrder(orderId: number, opts?: ActionOptions): Promise<void>;
 
   // --- croquettes (the Pantry) ---
   economy(): Promise<EconomyInfo>;
@@ -371,13 +410,16 @@ export interface ChainAdapter {
   croqBalance(owner: Address): Promise<bigint>;
   /** Decrypts the connected account's cCROQ balance, for its eyes only. */
   confidentialBalance(opts?: ActionOptions): Promise<bigint>;
-  /** Welcome bags, then the daily purr, for the listed boxes of the caller. */
+  /** Pays welcome bags, then the daily purr, into the listed boxes, and the caller what waits in
+   *  those they hold. */
   claimCroquettes(tokenIds: number[], opts?: ActionOptions): Promise<void>;
   /** Holder only: feeds a sealed cat `amount` cCROQ, encrypted. The cat eats it all. Past the
-   *  day's allowance the amount is cut down; moves 0, silently, if the caller holds less. */
+   *  day's limits the amount is cut down; moves 0, silently, if the caller holds less or does
+   *  not hold the cat. */
   feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void>;
-  /** Decrypts what the connected account fed `tokenId` today, for its eyes only. 0 on a new day. */
-  eatenToday(tokenId: number, opts?: ActionOptions): Promise<bigint>;
+  /** Decrypts what the connected account may read about `tokenId` today: zeros on a new day,
+   *  or when it does not hold the cat. */
+  pantryDay(tokenId: number, opts?: ActionOptions): Promise<PantryDay>;
   /** Weighs an opened cat: requests the public decryption of its weight and proves it back,
    *  or picks up a weighing left pending. Anyone may. */
   weigh(tokenId: number, opts?: ActionOptions): Promise<WeighIn>;

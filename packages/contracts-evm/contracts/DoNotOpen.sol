@@ -156,7 +156,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     /// @dev Which trait was picked is deliberately absent: only the viewer can decrypt it.
     event Shaken(uint256 indexed tokenId, address indexed viewer, bool paid);
     event Fed(uint256 indexed tokenId, address indexed feeder);
-    event RequestPlaced(uint256 indexed requestId, RequestKind indexed kind, uint256 indexed tokenId, address requester);
+    event RequestPlaced(uint256 indexed requestId, uint256 indexed tokenId, address indexed requester, RequestKind kind);
     event RequestSettled(uint256 indexed requestId, RequestStatus status);
     event Observed(uint256 indexed tokenId, uint64 seed, uint8 state, uint16 rarityScore, bool golden);
     event AliveProven(uint256 indexed tokenId, bool alive);
@@ -663,7 +663,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
             other: uint32(other),
             fed: 0
         });
-        emit RequestPlaced(requestId, kind, tokenId, msg.sender);
+        emit RequestPlaced(requestId, tokenId, msg.sender, kind);
     }
 
     function _publish(ebool value) internal returns (bytes32) {
