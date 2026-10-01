@@ -44,6 +44,15 @@ export interface ActionOptions {
   onTx?: (tx: TxRecord) => void;
 }
 
+/** How an action is paid: plain USDC, public like any ERC-20, or confidential cUSDC. */
+export type Payment = "usdc" | "cusdc";
+
+export interface PayOptions extends ActionOptions {
+  /** "usdc" when left out. */
+  pay?: Payment;
+}
+
+/** In the payment token's smallest unit (USDC has 6 decimals). */
 export interface Fees {
   mint: bigint;
   observe: bigint;
@@ -58,7 +67,19 @@ export interface CollectionInfo {
   address: string;
   /** Link to the collection in a block explorer, if there is one. */
   explorerUrl: string | null;
+  /** The chain's own coin, which pays for gas. */
   currency: { symbol: string; decimals: number };
+  /** What the fees are paid in: a stablecoin, and its confidential twin. */
+  payment: {
+    symbol: string;
+    confidentialSymbol: string;
+    decimals: number;
+    /** What one faucet call gives on a test network. Null where there is no faucet. */
+    faucet: bigint | null;
+    /** Buying USDC with the chain's coin through the site, and the fee it takes. Null where
+     *  there is no ramp. Shielding USDC already held is always free. */
+    ramp: { feeBps: number } | null;
+  };
   maxSupply: number;
   maxPerTx: number;
   totalMinted: number;
@@ -124,6 +145,17 @@ export interface PairInfo {
   entangleProposal: { from: number; to: number; proposer: Address } | null;
 }
 
+export type Purchase = "mint" | "feed" | "observe" | "paidShake";
+
+/** A cUSDC payment waiting for its proof. See `ChainAdapter.finishOrder`. */
+export interface PendingOrder {
+  orderId: number;
+  purchase: Purchase;
+  /** Quantity for a mint, token id otherwise. */
+  arg: number;
+  price: bigint;
+}
+
 export type ChainErrorCode =
   /** No wallet available in this environment. */
   | "no-wallet"
@@ -133,6 +165,12 @@ export type ChainErrorCode =
   | "rejected"
   | "wrong-network"
   | "insufficient-funds"
+  /** Not enough plain USDC for the price. */
+  | "insufficient-usdc"
+  /** A cUSDC order the buyer could not cover. Nothing was taken. */
+  | "unpaid"
+  /** A cUSDC order the box no longer allowed by the time it settled. The price went back. */
+  | "refunded"
   /** The chain refused the transaction. `reason` carries the contract's error name. */
   | "reverted"
   /** The decryption service failed or timed out. */
@@ -161,7 +199,7 @@ export interface BoxSummary {
   partner: number | null;
 }
 
-/** Where plain CROQ trades against the chain's coin. */
+/** Where plain CROQ trades against USDC. */
 export interface MarketInfo {
   /** e.g. "Uniswap V2". */
   name: string;
@@ -169,9 +207,11 @@ export interface MarketInfo {
   poolUrl: string | null;
   /** The swap page of the market's own app, if it has one. */
   appUrl: string | null;
-  /** Pool reserves: whole CROQ, and the native coin in its smallest unit. */
+  /** What CROQ is priced in. */
+  quote: { symbol: string; decimals: number };
+  /** Pool reserves: whole CROQ, and the quote token in its smallest unit. */
   croqReserve: bigint;
-  nativeReserve: bigint;
+  quoteReserve: bigint;
 }
 
 /** The croquette economy next to the collection. Amounts are whole croquettes. */
@@ -270,21 +310,29 @@ export interface ChainAdapter {
   credits(owner: Address): Promise<bigint>;
   /** Native coin `owner` holds, in the smallest unit (wei on EVM). */
   balance(owner: Address): Promise<bigint>;
+  /** Plain USDC `owner` holds. Public. */
+  usdcBalance(owner: Address): Promise<bigint>;
+  /** Decrypts the connected account's cUSDC balance, for its eyes only. */
+  confidentialUsdcBalance(opts?: ActionOptions): Promise<bigint>;
+  /** The connected account's cUSDC orders that were paid for but never settled. */
+  pendingOrders(owner: Address): Promise<PendingOrder[]>;
 
   // --- actions ---
+  // Paid actions take `opts.pay`. In cUSDC each is an order: the price is pulled, a public
+  // decryption proves it arrived, then the action happens (or the price is refunded).
   /** Returns the new token ids. */
-  mint(quantity: number, opts?: ActionOptions): Promise<number[]>;
+  mint(quantity: number, opts?: PayOptions): Promise<number[]>;
   /** Holder only, free. One random trait, readable by the caller alone. */
   shake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll>;
   /** Anyone but the holder, paid. Same result, same privacy. */
-  paidShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll>;
-  feed(tokenId: number, opts?: ActionOptions): Promise<void>;
+  paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll>;
+  feed(tokenId: number, opts?: PayOptions): Promise<void>;
   /** Publishes the single bit "is it alive". Returns the answer. */
   proveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean>;
   /** Picks up an alive check that was requested and never finished. */
   finishProveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean>;
   /** Opens the box for good. Returns it, and its entangled partner if it had one. */
-  observe(tokenId: number, opts?: ActionOptions): Promise<BoxInfo[]>;
+  observe(tokenId: number, opts?: PayOptions): Promise<BoxInfo[]>;
   /** Picks up an opening that was requested and never finished. Anyone may. */
   finishObserve(tokenId: number, opts?: ActionOptions): Promise<BoxInfo[]>;
 
@@ -298,8 +346,23 @@ export interface ChainAdapter {
   /** Publishes the outcome of an accepted duel. Anyone may. */
   finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult>;
 
-  /** Pays out the caller's credits. */
+  /** Pays out the caller's credits, in USDC. */
   claim(opts?: ActionOptions): Promise<void>;
+
+  // --- USDC ---
+  /** Test networks only: mints `payment.faucet` test USDC to the caller. */
+  faucetUsdc(opts?: ActionOptions): Promise<void>;
+  /** Plain USDC into cUSDC, 1:1, straight through the cUSDC contract: no fee. The amount is
+   *  public; what happens to it next is not. */
+  shieldUsdc(amount: bigint, opts?: ActionOptions): Promise<void>;
+  /** What `coinIn` (in the chain's coin) buys through the ramp, after its fee. */
+  quoteUsdc(coinIn: bigint): Promise<{ usdcOut: bigint; fee: bigint }>;
+  /** Buys USDC with the chain's coin on a public pool, accepting at most 1% less than the quote.
+   *  With `shield`, it arrives as cUSDC in the same transaction. */
+  buyUsdc(coinIn: bigint, shield: boolean, opts?: ActionOptions): Promise<void>;
+  /** Settles a pending cUSDC order: proves whether it was paid, then runs or refunds it. Anyone may.
+   *  Throws `unpaid` or `refunded` when it did not go through. */
+  finishOrder(orderId: number, opts?: ActionOptions): Promise<void>;
 
   // --- croquettes (the Pantry) ---
   economy(): Promise<EconomyInfo>;
@@ -324,7 +387,7 @@ export interface ChainAdapter {
   unwrap(amount: bigint, opts?: ActionOptions): Promise<void>;
   /** A confidential transfer: nobody but the two sides learns the amount. */
   sendCroquettes(to: Address, amount: bigint, opts?: ActionOptions): Promise<void>;
-  /** What `amountIn` buys on the market: CROQ for coin ("buy") or coin for CROQ ("sell"). */
+  /** What `amountIn` buys on the market: CROQ for USDC ("buy") or USDC for CROQ ("sell"). */
   quote(side: TradeSide, amountIn: bigint): Promise<bigint>;
   /** Trades on the public market, accepting at most 1% less than the quote. */
   trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void>;

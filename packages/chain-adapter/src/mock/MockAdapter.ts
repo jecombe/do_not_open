@@ -16,6 +16,9 @@ import {
   type DuelStatus,
   type EconomyInfo,
   type PairInfo,
+  type Payment,
+  type PayOptions,
+  type PendingOrder,
   type RevealedContents,
   type TradeSide,
   type TraitRoll,
@@ -28,8 +31,16 @@ import {
 export const MOCK_YOU: Address = "0x00000000000000000000000000000000000d0c4a";
 export const MOCK_NIGHT_SHIFT: Address = "0x000000000000000000000000000000000000beef";
 
-const ETH = 10n ** 18n;
-const FEES = { mint: ETH / 500n, observe: ETH / 2000n, feed: ETH / 5000n, paidShake: ETH / 1000n };
+/** One USDC, in its smallest unit. */
+const USD = 1_000_000n;
+const FEES = { mint: 5n * USD, observe: USD, feed: USD / 2n, paidShake: (5n * USD) / 2n };
+/** What you start the demo with, and what the faucet gives. */
+const START_USDC = 100n * USD;
+const START_CUSDC = 20n * USD;
+const FAUCET = 100n * USD;
+/** The ramp: a fixed 2,500 USDC per ETH, less its fee. */
+const USDC_PER_ETH = 2_500n * USD;
+const RAMP_FEE_BPS = 30n;
 
 interface MockBox {
   owner: Address;
@@ -118,6 +129,10 @@ export class MockAdapter implements ChainAdapter {
   private readonly duels: MockDuel[] = [];
   private readonly proposals = new Map<string, Address>();
   private readonly owed = new Map<Address, bigint>();
+  /** Plain USDC, public. */
+  private readonly usdc = new Map<Address, bigint>();
+  /** cUSDC: encrypted on a real chain, readable by its holder only. */
+  private readonly cUsdc = new Map<Address, bigint>();
   private readonly listeners = new Set<(account: Address | null) => void>();
   private readonly latency: number;
   private block = 5_000_000;
@@ -132,7 +147,7 @@ export class MockAdapter implements ChainAdapter {
   /** The treasury's uncollected share of the meals. */
   private treasury = 0n;
   private wrapped = allocation("gameReserve") + allocation("welcomeBags");
-  private pool = { croq: allocation("liquidity"), native: ETH / 50n };
+  private pool = { croq: allocation("liquidity"), usdc: 4_000n * USD };
   private purrs = 0;
 
   constructor(opts: MockOptions = {}) {
@@ -140,6 +155,8 @@ export class MockAdapter implements ChainAdapter {
     this.dayMs = opts.dayMs ?? 60_000;
     this.now = opts.now ?? Date.now;
     this.startedAt = this.now();
+    this.usdc.set(MOCK_YOU, START_USDC);
+    this.cUsdc.set(MOCK_YOU, START_CUSDC);
     for (let i = 0; i < (opts.yours ?? 3); i++) this.boxes.push(this.newBox(MOCK_YOU));
     for (let i = 0; i < (opts.theirs ?? 3); i++) this.boxes.push(this.newBox(MOCK_NIGHT_SHIFT));
   }
@@ -178,6 +195,7 @@ export class MockAdapter implements ChainAdapter {
       address: "in memory",
       explorerUrl: null,
       currency: { symbol: "ETH", decimals: 18 },
+      payment: { symbol: "USDC", confidentialSymbol: "cUSDC", decimals: 6, faucet: FAUCET, ramp: { feeBps: Number(RAMP_FEE_BPS) } },
       maxSupply: spec.collection.maxSupply,
       maxPerTx: Number(spec.mechanics.mint?.maxPerTx ?? 10),
       totalMinted: this.boxes.length,
@@ -216,19 +234,86 @@ export class MockAdapter implements ChainAdapter {
     return this.owed.get(owner) ?? 0n;
   }
 
-  /** Nothing is charged in the mock: every account holds a round 1 ETH. */
+  /** Gas is free in the mock: every account holds a round 1 ETH. */
   async balance(): Promise<bigint> {
     return 10n ** 18n;
   }
 
+  async usdcBalance(owner: Address): Promise<bigint> {
+    return this.usdc.get(owner) ?? 0n;
+  }
+
+  async confidentialUsdcBalance(opts?: ActionOptions): Promise<bigint> {
+    const me = this.signer();
+    opts?.onStep?.("decrypting");
+    await this.wait(1);
+    return this.cUsdc.get(me) ?? 0n;
+  }
+
+  /** Mock orders settle in the same call, so none is ever left waiting. */
+  async pendingOrders(): Promise<PendingOrder[]> {
+    return [];
+  }
+
+  async finishOrder(): Promise<void> {
+    throw revert("OrderNotPending");
+  }
+
+  async faucetUsdc(opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    await this.send(opts, "mint");
+    this.credit(this.usdc, me, FAUCET);
+  }
+
+  async shieldUsdc(amount: bigint, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    if ((this.usdc.get(me) ?? 0n) < amount) throw new ChainError("insufficient-usdc", "Not enough USDC.");
+    await this.send(opts, "wrap");
+    this.credit(this.usdc, me, -amount);
+    this.credit(this.cUsdc, me, amount);
+  }
+
+  async quoteUsdc(coinIn: bigint): Promise<{ usdcOut: bigint; fee: bigint }> {
+    const fee = (coinIn * RAMP_FEE_BPS) / 10_000n;
+    return { usdcOut: ((coinIn - fee) * USDC_PER_ETH) / 10n ** 18n, fee };
+  }
+
+  /** Gas is free in the mock, and so is the ETH: only the USDC side is tracked. */
+  async buyUsdc(coinIn: bigint, shield: boolean, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    const { usdcOut } = await this.quoteUsdc(coinIn);
+    await this.send(opts, "buy");
+    this.credit(shield ? this.cUsdc : this.usdc, me, usdcOut);
+  }
+
+  /**
+   * Takes `amount` from the caller, the way the contract would. USDC: refused up front when
+   * short. cUSDC: an order, a public decryption of "paid", then the proof; short means
+   * nothing moves and the action does not happen.
+   */
+  private async charge(opts: PayOptions | undefined, amount: bigint, call: string): Promise<void> {
+    const me = this.signer();
+    const pay: Payment = opts?.pay ?? "usdc";
+    if (pay === "usdc") {
+      if ((this.usdc.get(me) ?? 0n) < amount) throw new ChainError("insufficient-usdc", "Not enough USDC.");
+      await this.send(opts, call);
+      this.credit(this.usdc, me, -amount);
+      return;
+    }
+    await this.send(opts, "order");
+    await this.publish(opts, "finalizeOrder");
+    if ((this.cUsdc.get(me) ?? 0n) < amount) throw new ChainError("unpaid", "The cUSDC balance did not cover the price.");
+    this.credit(this.cUsdc, me, -amount);
+  }
+
   // --- actions ---
 
-  async mint(quantity: number, opts?: ActionOptions): Promise<number[]> {
+  async mint(quantity: number, opts?: PayOptions): Promise<number[]> {
     const me = this.signer();
     const max = Number(spec.mechanics.mint?.maxPerTx ?? 10);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > max) throw revert("InvalidQuantity");
     if (this.boxes.length + quantity > spec.collection.maxSupply) throw revert("SoldOut");
-    await this.send(opts, "mint");
+    await this.charge(opts, FEES.mint * BigInt(quantity), "mint");
     const first = this.boxes.length;
     for (let i = 0; i < quantity; i++) this.boxes.push(this.newBox(me));
     return Array.from({ length: quantity }, (_, i) => first + i);
@@ -242,20 +327,21 @@ export class MockAdapter implements ChainAdapter {
     return this.decryptShake(tokenId, opts);
   }
 
-  async paidShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll> {
+  async paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
     const me = this.signer();
     const box = this.sealed(tokenId);
     if (box.owner === me) throw revert("HolderShakesForFree");
-    await this.send(opts, "paidShake");
+    await this.charge(opts, FEES.paidShake, "paidShake");
     const share = (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
-    this.owed.set(box.owner, (this.owed.get(box.owner) ?? 0n) + share);
+    // In USDC the holder is credited and claims; in cUSDC the share arrives at once.
+    this.credit(opts?.pay === "cusdc" ? this.cUsdc : this.owed, box.owner, share);
     return this.decryptShake(tokenId, opts);
   }
 
-  async feed(tokenId: number, opts?: ActionOptions): Promise<void> {
+  async feed(tokenId: number, opts?: PayOptions): Promise<void> {
     this.signer();
     const box = this.sealed(tokenId);
-    await this.send(opts, "feed");
+    await this.charge(opts, FEES.feed, "feed");
     box.feeds += 1;
     const rand = mulberry32(Math.imul(tokenId + 7, 0x9e3779b1) + box.feeds * 31337);
     box.affection += Math.floor(rand() * (spec.affection.perFeedMax + 1));
@@ -280,11 +366,11 @@ export class MockAdapter implements ChainAdapter {
     return alive;
   }
 
-  async observe(tokenId: number, opts?: ActionOptions): Promise<BoxInfo[]> {
+  async observe(tokenId: number, opts?: PayOptions): Promise<BoxInfo[]> {
     const me = this.signer();
     const box = this.sealed(tokenId);
     if (box.owner !== me) throw revert("NotHolder");
-    await this.send(opts, "observe");
+    await this.charge(opts, FEES.observe, "observe");
     box.status = "opening";
     if (box.partner !== null && this.get(box.partner).status === "sealed") this.get(box.partner).status = "opening";
     return this.finishObserve(tokenId, opts);
@@ -382,6 +468,7 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     if (!this.owed.get(me)) throw revert("NothingToClaim");
     await this.send(opts, "claim");
+    this.credit(this.usdc, me, this.owed.get(me)!);
     this.owed.set(me, 0n);
   }
 
@@ -406,7 +493,7 @@ export class MockAdapter implements ChainAdapter {
       mealBurnBps: ECONOMY.meal.burnBps,
       maxBoxesPerClaim: 10,
       links: { croq: null, cCroq: null, pantry: null },
-      market: { name: "Mock pool", poolUrl: null, appUrl: null, croqReserve: this.pool.croq, nativeReserve: this.pool.native },
+      market: { name: "Mock pool", poolUrl: null, appUrl: null, quote: { symbol: "USDC", decimals: 6 }, croqReserve: this.pool.croq, quoteReserve: this.pool.usdc },
     };
   }
 
@@ -548,21 +635,24 @@ export class MockAdapter implements ChainAdapter {
 
   async quote(side: TradeSide, amountIn: bigint): Promise<bigint> {
     if (amountIn <= 0n) return 0n;
-    return side === "buy" ? swapOut(amountIn, this.pool.native, this.pool.croq) : swapOut(amountIn, this.pool.croq, this.pool.native);
+    return side === "buy" ? swapOut(amountIn, this.pool.usdc, this.pool.croq) : swapOut(amountIn, this.pool.croq, this.pool.usdc);
   }
 
   async trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void> {
     const me = this.signer();
     if (amountIn <= 0n) throw revert("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
     if (side === "sell" && (this.plain.get(me) ?? 0n) < amountIn) throw revert("ERC20InsufficientBalance");
+    if (side === "buy" && (this.usdc.get(me) ?? 0n) < amountIn) throw new ChainError("insufficient-usdc", "Not enough USDC.");
     const out = await this.quote(side, amountIn);
-    await this.send(opts, side === "buy" ? "swapExactETHForTokens" : "swapExactTokensForETH");
+    await this.send(opts, "swapExactTokensForTokens");
     if (side === "buy") {
-      this.pool = { native: this.pool.native + amountIn, croq: this.pool.croq - out };
+      this.pool = { usdc: this.pool.usdc + amountIn, croq: this.pool.croq - out };
+      this.credit(this.usdc, me, -amountIn);
       this.credit(this.plain, me, out);
     } else {
-      this.pool = { croq: this.pool.croq + amountIn, native: this.pool.native - out };
+      this.pool = { croq: this.pool.croq + amountIn, usdc: this.pool.usdc - out };
       this.credit(this.plain, me, -amountIn);
+      this.credit(this.usdc, me, out);
     }
   }
 

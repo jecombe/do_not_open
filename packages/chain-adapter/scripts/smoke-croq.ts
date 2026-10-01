@@ -1,7 +1,8 @@
 /**
  * End-to-end check of the croquette calls of EvmFhevmAdapter against the live Sepolia
  * Pantry, cCROQ and Uniswap V2 pool, through the real coprocessor, relayer and KMS.
- * Spends testnet ETH: one mint, one opening, a small market buy and gas for about fifteen
+ * Spends test USDC (one mint, one opening, a 1 USDC market buy; minted from the faucet when
+ * short) and testnet ETH for gas for about fifteen
  * transactions. Needs the Pantry with weigh-ins: redeploy the economy first.
  *
  *   pnpm --filter @dno/chain-adapter smoke:croq
@@ -28,9 +29,16 @@ async function main() {
   const onStep = (s: Step) => console.log(`    … ${s}`);
 
   const e = await chain.economy();
-  console.log(`${e.symbol}: ${e.totalSupply} total, ${e.wrapped} wrapped; pool ${e.market?.croqReserve} CROQ / ${formatAmount(e.market?.nativeReserve ?? 0n, 18)} ETH`);
+  console.log(`${e.symbol}: ${e.totalSupply} total, ${e.wrapped} wrapped; pool ${e.market?.croqReserve} CROQ / ${formatAmount(e.market?.quoteReserve ?? 0n, 6)} USDC`);
   check(e.totalSupply === BigInt(spec.economy.token.totalSupply), "total supply matches the spec");
 
+  const ramp = await chain.quoteUsdc(10n ** 15n);
+  console.log(`ramp: 0.001 ETH buys about ${formatAmount(ramp.usdcOut, 6)} USDC, fee ${formatAmount(ramp.fee, 18)} ETH; buying it shielded`);
+  const cBefore = await chain.confidentialUsdcBalance({ onStep });
+  await chain.buyUsdc(10n ** 15n, true, { onStep });
+  const cAfter = await chain.confidentialUsdcBalance({ onStep });
+  check(cAfter - cBefore >= (ramp.usdcOut * 99n) / 100n, `received ${formatAmount(cAfter - cBefore, 6)} cUSDC`);
+  if ((await chain.usdcBalance(me)) < 10_000_000n) await chain.faucetUsdc({ onStep });
   console.log("mint 1");
   const [box] = (await chain.mint(1, { onStep })) as [number];
   console.log(`  box ${box}`);
@@ -53,11 +61,11 @@ async function main() {
   const w = await chain.weigh(box, { onStep });
   check(w.weight === 40n && w.build === "normal" && !w.sick, "weighed 40, normal build");
 
-  const ethIn = 10n ** 14n;
-  const quoted = await chain.quote("buy", ethIn);
-  console.log(`buy CROQ for ${formatAmount(ethIn, 18)} ETH (quote ${quoted})`);
+  const usdIn = 1_000_000n; // 1 USDC
+  const quoted = await chain.quote("buy", usdIn);
+  console.log(`buy CROQ for ${formatAmount(usdIn, 6)} USDC (quote ${quoted})`);
   const plainBefore = await chain.croqBalance(me);
-  await chain.trade("buy", ethIn, { onStep });
+  await chain.trade("buy", usdIn, { onStep });
   const bought = (await chain.croqBalance(me)) - plainBefore;
   check(bought >= (quoted * 99n) / 100n, `bought ${bought} CROQ`);
 

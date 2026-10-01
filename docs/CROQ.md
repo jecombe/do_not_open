@@ -9,7 +9,7 @@ Two gestures, two currencies:
 
 | Gesture | Paid in | Hidden counter | At the reveal |
 | --- | --- | --- | --- |
-| Pet (`DoNotOpen.feed`) | ETH, to the collection | Affection | Golden accessory past the threshold |
+| Pet (`DoNotOpen.feed`) | USDC or cUSDC, to the collection | Affection | Golden accessory past the threshold |
 | Meal (`Pantry.feed`) | cCROQ, eaten whole | Weight | Build, and sickness past the cat's tolerance |
 
 Everything here runs next to `DoNotOpen` without changing it. The `Pantry` only reads
@@ -48,7 +48,7 @@ function, no owner and no pause. Nothing can create more.
 | --- | --- | --- |
 | Game reserve | 10,000,000 (50%) | Wrapped into the Pantry. Pays the daily purr, and takes back 60% of every meal |
 | Welcome bags | 1,000,000 (5%) | Wrapped into the Pantry. 100 × 10,000 boxes |
-| Market liquidity | 4,000,000 (20%) | A CROQ/WETH pool on Uniswap V2 |
+| Market liquidity | 4,000,000 (20%) | A CROQ/USDC pool on Uniswap V2 |
 | Treasury | 5,000,000 (25%) | Kept by the collection owner as plain CROQ, for events and future liquidity |
 
 `economyFromSpec()` in `packages/contracts-evm/lib/specParams.ts` refuses a spec whose
@@ -71,7 +71,7 @@ flowchart LR
     croq["Croq (ERC-20)"]
   end
   croq -- "11M, wrapped by Pantry.fund" --> reserve["Pantry reserve<br/>encrypted"]
-  croq -- "4M" --> pool["Uniswap V2<br/>CROQ/WETH pool"]
+  croq -- "4M" --> pool["Uniswap V2<br/>CROQ/USDC pool"]
   croq -- "5M" --> treasury["Treasury<br/>plain CROQ"]
 
   reserve -- "welcome bag: 100 per box, once" --> players["Players<br/>cCROQ, encrypted balances"]
@@ -92,7 +92,7 @@ flowchart LR
 
 **100 cCROQ per box, once.** It is paid on the box's first claim. It belongs to the box,
 not to the wallet: a box that changes hands does not get a second bag, and minting more
-wallets gives nothing more. Getting bags means holding boxes, and boxes cost ETH.
+wallets gives nothing more. Getting bags means holding boxes, and boxes cost USDC.
 
 ### Purr
 
@@ -144,7 +144,7 @@ is nothing to simulate and nothing to retry on a bad day.
 
 ### Meals
 
-Only the **holder** feeds a **sealed** cat. The ETH-paid `feed` on `DoNotOpen` is
+Only the **holder** feeds a **sealed** cat. The USDC-paid `feed` on `DoNotOpen` is
 separate: it pets the cat (affection), a meal feeds it (weight).
 
 1. The holder encrypts an amount in the browser with the Relayer SDK. The input proof
@@ -290,9 +290,11 @@ price of gas.
 
 ## The public market
 
-A Uniswap V2 pool pairs CROQ with WETH on Sepolia. It was seeded at deployment with the
-4M liquidity share and 0.02 Sepolia ETH (`LIQUIDITY_ETH`), which puts the opening price
-at 0.000000005 ETH per CROQ. The price then comes from trades.
+A Uniswap V2 pool pairs CROQ with USDC, the collection's own currency (Zama's `USDCMock` on
+Sepolia). It was seeded at deployment with the 4M liquidity share and 4,000 USDC
+(`LIQUIDITY_USDC`), which puts the opening price at 0.001 USDC per CROQ: a welcome bag is
+worth 10 cents. The price then comes from trades. A player with no USDC can buy some with
+ETH through the site's ramp (see [FLOWS.md](FLOWS.md#getting-usdc)).
 
 ```mermaid
 sequenceDiagram
@@ -301,7 +303,7 @@ sequenceDiagram
   participant U as Uniswap V2
   participant W as cCROQ (wrapper)
   participant Pa as Pantry
-  P->>U: swap ETH for CROQ (public amount)
+  P->>U: swap USDC for CROQ (public amount)
   P->>W: approve, wrap(me, amount) (public amount)
   Note over P,W: from here on, amounts are encrypted
   P->>Pa: claim, feed
@@ -309,13 +311,13 @@ sequenceDiagram
   P->>W: unwrap(me, me, encrypted amount)
   W-->>P: UnwrapRequested(requestId)
   P->>W: finalizeUnwrap(requestId, amount, proof) (amount now public)
-  P->>U: swap CROQ for ETH (public amount)
+  P->>U: swap CROQ for USDC (public amount)
 ```
 
 The LP tokens of the seed liquidity were sent to `0x000000000000000000000000000000000000dEaD`:
 the pool's starting liquidity can never be withdrawn, by the deployer or anyone else.
 
-On Sepolia none of this has a real value: Sepolia ETH is free. The project does not sell
+On Sepolia none of this has a real value: test USDC and Sepolia ETH are free. The project does not sell
 CROQ and promises no value for it.
 
 **Mainnet note.** Offering a token to the public, or seeding the market it trades on,
@@ -463,19 +465,19 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 
 | Contract | Address |
 | --- | --- |
-| `Croq` | [`0x72Fc0E0654f268A0785f92D63450c813cAFDfD10`](https://sepolia.etherscan.io/address/0x72Fc0E0654f268A0785f92D63450c813cAFDfD10) |
-| `ConfidentialCroq` | [`0xa89c19228261EAc5Fa48f544238d04fBC115393c`](https://sepolia.etherscan.io/address/0xa89c19228261EAc5Fa48f544238d04fBC115393c) |
-| `Pantry` | [`0x8a58e2Cc6E11A3CC108612cfc6677A425Ff49882`](https://sepolia.etherscan.io/address/0x8a58e2Cc6E11A3CC108612cfc6677A425Ff49882) |
-| CROQ/WETH pair (Uniswap V2) | [`0x645D0d391F088895272b200aa6E187aCd00F270d`](https://sepolia.etherscan.io/address/0x645D0d391F088895272b200aa6E187aCd00F270d) |
+| `Croq` | [`0x183B74906673283f7Fe3272103989A357Cf88522`](https://sepolia.etherscan.io/address/0x183B74906673283f7Fe3272103989A357Cf88522) |
+| `ConfidentialCroq` | [`0x7598484e5DDdada766ab19Cd7d0dD42d17Dd4F06`](https://sepolia.etherscan.io/address/0x7598484e5DDdada766ab19Cd7d0dD42d17Dd4F06) |
+| `Pantry` | [`0x20755493eF05C954BdC2e970b0437B12AE19d01e`](https://sepolia.etherscan.io/address/0x20755493eF05C954BdC2e970b0437B12AE19d01e) |
+| CROQ/USDC pair (Uniswap V2) | [`0xDc7Ed9F6ffd2993350BDc2c563E42036C5a53B43`](https://sepolia.etherscan.io/address/0xDc7Ed9F6ffd2993350BDc2c563E42036C5a53B43) |
 | Uniswap V2 router | `0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3` |
-| WETH | `0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14` |
+| USDC (`USDCMock`) | `0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF` |
 
-The Pantry reads `DoNotOpen` at `0x880D284333F4001Bfd199899f8243D78b486e077`.
+The Pantry reads `DoNotOpen` at `0xe8f699eEBc22767413A9edBb48826B10D3117f61`.
 
-**This Pantry runs the earlier rules** (stash and settlement). The weight rules need a new
-Pantry (`pnpm --filter @dno/contracts-evm deploy:sepolia`, after removing the old
-`Pantry` entry from `deployments/sepolia` so hardhat-deploy does not reuse it). The old Pantry has no withdrawal function: the CROQ funded into it stays
-there.
+Deployed on 2026-10-01 with the USDC-priced collection, so this Pantry runs the weight
+rules. The earlier CROQ, cCROQ, Pantry and pool (`0x72Fc…dD10`, `0xa89c…393c`,
+`0x8a58…9882`, `0x645D…270d`) are abandoned: a Pantry is tied to one collection and has
+no withdrawal function, so the CROQ funded into the old one stays there.
 
 ## Tests
 

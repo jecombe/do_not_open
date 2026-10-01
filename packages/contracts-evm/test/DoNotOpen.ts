@@ -5,7 +5,7 @@ import { ethers, fhevm } from "hardhat";
 import { buildCatSpec, FIXTURE_SEEDS, mulberry32 } from "@dno/generator";
 import { configParamsFromSpec, loadSpec } from "../lib/specParams";
 import { deploy, expectDenied, FEES, finalizeObserve, peekSeed as peek, shakeAndDecrypt as shakeFor, STATE_IDS, TRAIT_KEYS } from "./helpers";
-import { DoNotOpen, DoNotOpenConfig } from "../types";
+import { DoNotOpen, DoNotOpenConfig, TestUSDC } from "../types";
 
 const MINT_PRICE = FEES.mint;
 const OBSERVE_FEE = FEES.observe;
@@ -78,6 +78,7 @@ describe("DoNotOpen", function () {
   let carol: HardhatEthersSigner;
   let dno: DoNotOpen;
   let address: string;
+  let usdc: TestUSDC;
 
   const peekSeed = (tokenId: number) => peek(dno, tokenId);
   const shakeAndDecrypt = (tokenId: number, who: HardhatEthersSigner) => shakeFor(dno, tokenId, who);
@@ -93,12 +94,12 @@ describe("DoNotOpen", function () {
 
   beforeEach(async function () {
     if (!fhevm.isMock) this.skip();
-    ({ dno, address } = await deploy());
+    ({ dno, address, usdc } = await deploy());
   });
 
   describe("mint", function () {
     it("mints sealed boxes with distinct encrypted seeds", async function () {
-      const tx = await dno.connect(alice).mint(3, { value: MINT_PRICE * 3n });
+      const tx = await dno.connect(alice).mint(3);
       await expect(tx).to.emit(dno, "Minted").withArgs(0, alice.address).and.to.emit(dno, "Minted").withArgs(2, alice.address);
 
       expect(await dno.totalMinted()).to.eq(3);
@@ -111,26 +112,27 @@ describe("DoNotOpen", function () {
     });
 
     it("costs one FHE operation per box", async function () {
-      const receipt = await (await dno.connect(alice).mint(4, { value: MINT_PRICE * 4n })).wait();
+      const receipt = await (await dno.connect(alice).mint(4)).wait();
       const hcu = fhevm.computeTransactionHCU(receipt!);
       expect(hcu.globalHCU).to.eq(4 * 24_000);
     });
 
-    it("enforces price, batch size and supply", async function () {
-      await expect(dno.connect(alice).mint(1, { value: MINT_PRICE - 1n })).to.be.revertedWithCustomError(dno, "WrongPayment");
-      await expect(dno.connect(alice).mint(1, { value: MINT_PRICE + 1n })).to.be.revertedWithCustomError(dno, "WrongPayment");
+    it("charges the price in USDC, and enforces batch size and supply", async function () {
+      const broke = (await ethers.getSigners())[9]!;
+      await expect(dno.connect(broke).mint(1)).to.be.revertedWithCustomError(usdc, "ERC20InsufficientAllowance");
+      await expect(dno.connect(alice).mint(1)).to.changeTokenBalances(usdc, [alice, dno], [-MINT_PRICE, MINT_PRICE]);
       await expect(dno.connect(alice).mint(0)).to.be.revertedWithCustomError(dno, "InvalidQuantity");
-      await expect(dno.connect(alice).mint(11, { value: MINT_PRICE * 11n })).to.be.revertedWithCustomError(dno, "InvalidQuantity");
+      await expect(dno.connect(alice).mint(11)).to.be.revertedWithCustomError(dno, "InvalidQuantity");
 
       const small = await deploy({ maxSupply: 3 });
-      await small.dno.connect(alice).mint(2, { value: MINT_PRICE * 2n });
-      await expect(small.dno.connect(bob).mint(2, { value: MINT_PRICE * 2n })).to.be.revertedWithCustomError(small.dno, "SoldOut");
-      await small.dno.connect(bob).mint(1, { value: MINT_PRICE });
+      await small.dno.connect(alice).mint(2);
+      await expect(small.dno.connect(bob).mint(2)).to.be.revertedWithCustomError(small.dno, "SoldOut");
+      await small.dno.connect(bob).mint(1);
       expect(await small.dno.totalMinted()).to.eq(3);
     });
 
     it("gives nobody the right to decrypt the seed, not even the holder or the deployer", async function () {
-      await dno.connect(alice).mint(1, { value: MINT_PRICE });
+      await dno.connect(alice).mint(1);
       const handle = await dno.seedHandle(0);
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, handle, address, alice));
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, handle, address, deployer));
@@ -140,7 +142,7 @@ describe("DoNotOpen", function () {
 
   describe("shake", function () {
     beforeEach(async function () {
-      await dno.connect(alice).mint(1, { value: MINT_PRICE });
+      await dno.connect(alice).mint(1);
     });
 
     it("privately reveals one real trait of the box to its holder", async function () {
@@ -183,7 +185,7 @@ describe("DoNotOpen", function () {
 
   describe("transfer", function () {
     beforeEach(async function () {
-      await dno.connect(alice).mint(1, { value: MINT_PRICE });
+      await dno.connect(alice).mint(1);
     });
 
     for (const method of ["transferFrom", "safeTransferFrom"] as const) {
@@ -211,7 +213,7 @@ describe("DoNotOpen", function () {
 
   describe("observe", function () {
     beforeEach(async function () {
-      await dno.connect(alice).mint(2, { value: MINT_PRICE * 2n });
+      await dno.connect(alice).mint(2);
     });
 
     const finalize = (tokenId: number, sender: HardhatEthersSigner = carol) => finalizeObserve(dno, tokenId, sender);
@@ -220,7 +222,7 @@ describe("DoNotOpen", function () {
       const seed = await peekSeed(0);
       const cat = buildCatSpec({ seed });
 
-      await expect(dno.connect(alice).observe(0, { value: OBSERVE_FEE })).to.emit(dno, "ObserveRequested").withArgs(0);
+      await expect(dno.connect(alice).observe(0)).to.emit(dno, "ObserveRequested").withArgs(0);
       expect(await dno.status(0)).to.eq(1);
       expect(await dno.revealed(0)).to.eq(false);
 
@@ -242,30 +244,31 @@ describe("DoNotOpen", function () {
     });
 
     it("uses no FHE operation", async function () {
-      const receipt = await (await dno.connect(alice).observe(0, { value: OBSERVE_FEE })).wait();
+      const receipt = await (await dno.connect(alice).observe(0)).wait();
       expect(fhevm.computeTransactionHCU(receipt!).globalHCU).to.eq(0);
     });
 
-    it("requires the holder and the exact fee", async function () {
-      await expect(dno.connect(bob).observe(0, { value: OBSERVE_FEE })).to.be.revertedWithCustomError(dno, "NotHolder");
-      await expect(dno.connect(alice).observe(0)).to.be.revertedWithCustomError(dno, "WrongPayment");
+    it("requires the holder and the fee", async function () {
+      await expect(dno.connect(bob).observe(0)).to.be.revertedWithCustomError(dno, "NotHolder");
+      await (await usdc.connect(alice).approve(address, 0)).wait();
+      await expect(dno.connect(alice).observe(0)).to.be.revertedWithCustomError(usdc, "ERC20InsufficientAllowance");
     });
 
     it("rejects duplicate requests and out-of-order finalisation", async function () {
       const fake = ethers.AbiCoder.defaultAbiCoder().encode(["uint64"], [1n]);
       await expect(dno.finalizeObserve(0, fake, "0x")).to.be.revertedWithCustomError(dno, "NotObserving");
 
-      await dno.connect(alice).observe(0, { value: OBSERVE_FEE });
-      await expect(dno.connect(alice).observe(0, { value: OBSERVE_FEE })).to.be.revertedWithCustomError(dno, "NotSealed");
+      await dno.connect(alice).observe(0);
+      await expect(dno.connect(alice).observe(0)).to.be.revertedWithCustomError(dno, "NotSealed");
 
       await finalize(0);
       await expect(finalize(0)).to.be.revertedWithCustomError(dno, "NotObserving");
-      await expect(dno.connect(alice).observe(0, { value: OBSERVE_FEE })).to.be.revertedWithCustomError(dno, "NotSealed");
+      await expect(dno.connect(alice).observe(0)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
     it("rejects a forged seed and a proof made for another box", async function () {
-      await dno.connect(alice).observe(0, { value: OBSERVE_FEE });
-      await dno.connect(alice).observe(1, { value: OBSERVE_FEE });
+      await dno.connect(alice).observe(0);
+      await dno.connect(alice).observe(1);
       const real0 = await fhevm.publicDecrypt([await dno.seedHandle(0)]);
       const real1 = await fhevm.publicDecrypt([await dno.seedHandle(1)]);
 
@@ -280,14 +283,14 @@ describe("DoNotOpen", function () {
     });
 
     it("stops shakes once the box is being opened", async function () {
-      await dno.connect(alice).observe(0, { value: OBSERVE_FEE });
+      await dno.connect(alice).observe(0);
       await expect(dno.connect(alice).shake(0)).to.be.revertedWithCustomError(dno, "NotSealed");
       await finalize(0);
       await expect(dno.connect(alice).shake(0)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
     it("can still be finalised after the box changes hands", async function () {
-      await dno.connect(alice).observe(0, { value: OBSERVE_FEE });
+      await dno.connect(alice).observe(0);
       await dno.connect(alice).transferFrom(alice.address, bob.address, 0);
       await finalize(0);
       expect(await dno.revealed(0)).to.eq(true);
@@ -297,7 +300,7 @@ describe("DoNotOpen", function () {
 
   describe("proveAlive", function () {
     beforeEach(async function () {
-      await dno.connect(alice).mint(6, { value: MINT_PRICE * 6n });
+      await dno.connect(alice).mint(6);
     });
 
     const finalize = async (tokenId: number) => {
@@ -337,7 +340,7 @@ describe("DoNotOpen", function () {
       await expect(finalize(0)).to.be.revertedWithCustomError(dno, "AliveCheckNotPending");
       await expect(dno.connect(alice).proveAlive(0)).to.be.revertedWithCustomError(dno, "AliveCheckAlreadyRequested");
 
-      await dno.connect(alice).observe(1, { value: OBSERVE_FEE });
+      await dno.connect(alice).observe(1);
       await expect(dno.connect(alice).proveAlive(1)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
@@ -366,11 +369,11 @@ describe("DoNotOpen", function () {
 
   describe("admin", function () {
     it("lets only the owner withdraw proceeds and set the base URI", async function () {
-      await dno.connect(alice).mint(2, { value: MINT_PRICE * 2n });
-      await dno.connect(alice).observe(0, { value: OBSERVE_FEE });
+      await dno.connect(alice).mint(2);
+      await dno.connect(alice).observe(0);
 
       await expect(dno.connect(alice).withdraw(alice.address)).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
-      await expect(dno.connect(deployer).withdraw(carol.address)).to.changeEtherBalance(carol, MINT_PRICE * 2n + OBSERVE_FEE);
+      await expect(dno.connect(deployer).withdraw(carol.address)).to.changeTokenBalance(usdc, carol, MINT_PRICE * 2n + OBSERVE_FEE);
 
       await expect(dno.connect(alice).setBaseURI("ipfs://x/")).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
       await dno.connect(deployer).setBaseURI("ipfs://boxes/");

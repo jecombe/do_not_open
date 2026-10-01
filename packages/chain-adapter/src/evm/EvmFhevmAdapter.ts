@@ -29,6 +29,9 @@ import {
   type EconomyInfo,
   type Fees,
   type PairInfo,
+  type PayOptions,
+  type PendingOrder,
+  type Purchase,
   type TradeSide,
   type TraitRoll,
   type TxRecord,
@@ -50,8 +53,8 @@ export interface EconomyDeployment {
   croq: Deployed;
   cCroq: Deployed;
   pantry: Deployed;
-  /** A Uniswap V2 pool, when one was opened on this network. */
-  market: { pair: string; router: string; factory: string; weth: string } | null;
+  /** A Uniswap V2 CROQ/USDC pool, when one was opened on this network. */
+  market: { pair: string; router: string; factory: string; usdc: string } | null;
 }
 
 export interface EvmAdapterOptions {
@@ -66,13 +69,38 @@ export interface EvmAdapterOptions {
   loadRelayer: () => Promise<Relayer>;
   /** Without it, every croquette call fails with "not deployed". */
   economy?: EconomyDeployment;
+  /** Test networks: how much `faucetUsdc` mints. Without it there is no faucet. */
+  usdcFaucet?: bigint;
+  /** The UsdcRamp contract. Without it, USDC cannot be bought through the site. */
+  ramp?: Deployed;
 }
 
 const ROUTER_ABI = [
   "function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)",
-  "function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) payable returns (uint[] amounts)",
-  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline) returns (uint[] amounts)",
+  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline) returns (uint[] amounts)",
 ];
+/** The collection's payment tokens. Their addresses are read from the collection itself. */
+const USDC_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function mint(address to, uint256 amount)",
+  "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+  "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
+];
+const CUSDC_ABI = [
+  "function confidentialBalanceOf(address) view returns (bytes32)",
+  "function isOperator(address holder, address spender) view returns (bool)",
+  "function setOperator(address operator, uint48 until)",
+  "function wrap(address to, uint256 amount)",
+  "error ERC7984UnauthorizedSpender(address holder, address spender)",
+];
+const PURCHASES: Purchase[] = ["mint", "feed", "observe", "paidShake"];
+const ORDER_PENDING = 1;
+const ORDER_UNPAID = 3;
+const ORDER_REFUNDED = 4;
+/** How far back `pendingOrders()` looks. */
+const ORDER_SCAN = 40;
 const PAIR_ABI = ["function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)", "function token0() view returns (address)"];
 /** An operator approval given to the Pantry lasts this long. */
 const OPERATOR_DAYS = 365;
@@ -135,6 +163,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private permit: Permit | null = null;
   private constants: Promise<{ fees: Fees; maxSupply: number; maxPerTx: number }> | null = null;
   private economyConstants: Promise<Omit<EconomyInfo, "wrapped" | "halvings" | "market">> | null = null;
+  private paymentTokens: Promise<{ usdc: Deployed; cUsdc: Deployed }> | null = null;
+  private rampFee: Promise<number> | null = null;
   /** Every contract this adapter may send to, so a receipt can be parsed whichever it hit. */
   private readonly ifaces: Interface[];
 
@@ -142,7 +172,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
     this.iface = new Interface(opts.abi);
     this.contract = new Contract(opts.address, this.iface, opts.readProvider);
     const e = opts.economy;
-    this.ifaces = [this.iface, ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI].map((abi) => new Interface(abi)) : [])];
+    this.ifaces = [
+      this.iface,
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : [])].map((abi) => new Interface(abi)),
+      ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI].map((abi) => new Interface(abi)) : []),
+    ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
     void this.adopt(opts.wallet.current());
   }
@@ -193,13 +227,25 @@ export class EvmFhevmAdapter implements ChainAdapter {
       }),
     );
     this.constants.catch(() => (this.constants = null));
-    const [constants, totalMinted] = await this.reading(Promise.all([this.constants, c.totalMinted!()]));
+    const ramp = this.opts.ramp;
+    if (ramp) {
+      this.rampFee ??= this.at(ramp).feeBps!().then(Number);
+      this.rampFee.catch(() => (this.rampFee = null));
+    }
+    const [constants, totalMinted, feeBps] = await this.reading(Promise.all([this.constants, c.totalMinted!(), ramp ? this.rampFee : null]));
     const { chain } = this.opts;
     return {
       chain: chain.name,
       address: this.opts.address,
       explorerUrl: chain.explorerUrl ? `${chain.explorerUrl}/address/${this.opts.address}` : null,
       currency: { symbol: chain.currency.symbol, decimals: chain.currency.decimals },
+      payment: {
+        symbol: "USDC",
+        confidentialSymbol: "cUSDC",
+        decimals: 6,
+        faucet: this.opts.usdcFaucet ?? null,
+        ramp: feeBps === null ? null : { feeBps: Number(feeBps) },
+      },
       ...constants,
       totalMinted: Number(totalMinted),
     };
@@ -322,11 +368,125 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.reading(this.opts.readProvider.getBalance(owner));
   }
 
+  async usdcBalance(owner: Address): Promise<bigint> {
+    const { usdc } = await this.payment();
+    return this.reading(this.at(usdc).balanceOf!(owner));
+  }
+
+  async confidentialUsdcBalance(opts?: ActionOptions): Promise<bigint> {
+    const { cUsdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    const handle: string = await this.reading(this.at(cUsdc).confidentialBalanceOf!(account));
+    return this.userDecrypt64(handle, cUsdc.address, opts);
+  }
+
+  async pendingOrders(owner: Address): Promise<PendingOrder[]> {
+    const count = Number(await this.reading(this.contract.orderCount!()));
+    const ids = Array.from({ length: Math.min(ORDER_SCAN, count) }, (_, i) => count - 1 - i);
+    const rows = await this.reading(Promise.all(ids.map((id) => this.contract.orderInfo!(id))));
+    return rows.flatMap((o, i) =>
+      Number(o.orderStatus) === ORDER_PENDING && String(o.buyer).toLowerCase() === owner.toLowerCase()
+        ? [{ orderId: ids[i]!, purchase: PURCHASES[Number(o.purchase)]!, arg: Number(o.arg), price: BigInt(o.price) }]
+        : [],
+    );
+  }
+
+  /** The payment tokens, read once from the collection: it is the one that knows what it takes. */
+  private payment(): Promise<{ usdc: Deployed; cUsdc: Deployed }> {
+    this.paymentTokens ??= Promise.all([this.contract.usdc!(), this.contract.confidentialUsdc!()]).then(([usdc, cUsdc]) => ({
+      usdc: { address: String(usdc), abi: USDC_ABI },
+      cUsdc: { address: String(cUsdc), abi: CUSDC_ABI },
+    }));
+    this.paymentTokens.catch(() => (this.paymentTokens = null));
+    return this.reading(this.paymentTokens);
+  }
+
   // --- actions ---
 
-  async mint(quantity: number, opts?: ActionOptions): Promise<number[]> {
+  /**
+   * Pays `amount` for a call to the collection. In USDC: checks the balance, approves exactly
+   * that amount if needed, then sends `plain`. In cUSDC: places an order for `purchase` and
+   * settles it, which is when the action actually happens.
+   */
+  private async pay(
+    opts: PayOptions | undefined,
+    amount: bigint,
+    purchase: Purchase,
+    arg: number,
+    plain: (c: Contract) => Promise<ContractTransactionResponse>,
+  ): Promise<ContractTransactionReceipt> {
+    const { usdc, cUsdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    if (opts?.pay === "cusdc") {
+      await this.ensureOperator(cUsdc, account, this.opts.address, opts);
+      const placed = await this.send(opts, (c) => c.order!(PURCHASES.indexOf(purchase), arg));
+      const orderId = Number(this.events(placed, "OrderPlaced")[0]!.orderId);
+      return this.settle(orderId, opts);
+    }
+    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
+    if (held < amount) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.");
+    await this.ensureAllowance(usdc, this.opts.address, account, amount, opts);
+    return this.send(opts, plain);
+  }
+
+  /** Proves whether a cUSDC order was paid and runs it. Throws `unpaid` or `refunded`. */
+  private async settle(orderId: number, opts?: ActionOptions): Promise<ContractTransactionReceipt> {
+    const info = await this.reading(this.contract.orderInfo!(orderId));
+    const decrypted = await this.publicDecrypt([String(info.paidHandle)], opts);
+    opts?.onStep?.("proving");
+    const receipt = await this.send(opts, (c) => c.finalizeOrder!(orderId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    const status = Number(this.events(receipt, "OrderSettled")[0]?.status);
+    if (status === ORDER_UNPAID) throw new ChainError("unpaid", "The cUSDC balance did not cover the price. Nothing was taken.");
+    if (status === ORDER_REFUNDED) throw new ChainError("refunded", "The box changed before the order settled. The cUSDC went back.");
+    return receipt;
+  }
+
+  async finishOrder(orderId: number, opts?: ActionOptions): Promise<void> {
+    const info = await this.reading(this.contract.orderInfo!(orderId));
+    await this.settle(orderId, opts);
+    // An opening paid in cUSDC still has its own public decryption to go.
+    if (PURCHASES[Number(info.purchase)] === "observe") await this.finishObserve(Number(info.arg), opts);
+  }
+
+  async faucetUsdc(opts?: ActionOptions): Promise<void> {
+    const amount = this.opts.usdcFaucet;
+    if (!amount) throw new ChainError("unknown", "There is no USDC faucet on this network.");
+    const { usdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    await this.send(opts, () => this.writer(usdc).mint!(account, amount));
+  }
+
+  async shieldUsdc(amount: bigint, opts?: ActionOptions): Promise<void> {
+    const { usdc, cUsdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
+    if (held < amount) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.");
+    await this.ensureAllowance(usdc, cUsdc.address, account, amount, opts);
+    await this.send(opts, () => this.writer(cUsdc).wrap!(account, amount));
+  }
+
+  private theRamp(): Deployed {
+    const ramp = this.opts.ramp;
+    if (!ramp) throw new ChainError("unknown", "USDC cannot be bought through the site on this network.");
+    return ramp;
+  }
+
+  async quoteUsdc(coinIn: bigint): Promise<{ usdcOut: bigint; fee: bigint }> {
+    if (coinIn <= 0n) return { usdcOut: 0n, fee: 0n };
+    const [usdcOut, fee] = await this.reading(this.at(this.theRamp()).quote!(coinIn));
+    return { usdcOut: BigInt(usdcOut), fee: BigInt(fee) };
+  }
+
+  async buyUsdc(coinIn: bigint, shield: boolean, opts?: ActionOptions): Promise<void> {
+    const ramp = this.theRamp();
+    const minOut = ((await this.quoteUsdc(coinIn)).usdcOut * (10_000n - SLIPPAGE_BPS)) / 10_000n;
+    const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
+    await this.send(opts, () => this.writer(ramp).buy!(minOut, shield, deadline, { value: coinIn }));
+  }
+
+  async mint(quantity: number, opts?: PayOptions): Promise<number[]> {
     const { fees } = await this.collection();
-    const receipt = await this.send(opts, (c) => c.mint!(quantity, { value: fees.mint * BigInt(quantity) }));
+    const receipt = await this.pay(opts, fees.mint * BigInt(quantity), "mint", quantity, (c) => c.mint!(quantity));
     return this.events(receipt, "Minted").map((e) => Number(e.tokenId));
   }
 
@@ -335,15 +495,15 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.readShake(tokenId, opts);
   }
 
-  async paidShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll> {
+  async paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
     const { fees } = await this.collection();
-    await this.send(opts, (c) => c.paidShake!(tokenId, { value: fees.paidShake }));
+    await this.pay(opts, fees.paidShake, "paidShake", tokenId, (c) => c.paidShake!(tokenId));
     return this.readShake(tokenId, opts);
   }
 
-  async feed(tokenId: number, opts?: ActionOptions): Promise<void> {
+  async feed(tokenId: number, opts?: PayOptions): Promise<void> {
     const { fees } = await this.collection();
-    await this.send(opts, (c) => c.feed!(tokenId, { value: fees.feed }));
+    await this.pay(opts, fees.feed, "feed", tokenId, (c) => c.feed!(tokenId));
   }
 
   async proveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean> {
@@ -359,9 +519,9 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return Boolean(this.events(receipt, "AliveProven")[0]?.alive);
   }
 
-  async observe(tokenId: number, opts?: ActionOptions): Promise<BoxInfo[]> {
+  async observe(tokenId: number, opts?: PayOptions): Promise<BoxInfo[]> {
     const { fees } = await this.collection();
-    await this.send(opts, (c) => c.observe!(tokenId, { value: fees.observe }));
+    await this.pay(opts, fees.observe, "observe", tokenId, (c) => c.observe!(tokenId));
     return this.finishObserve(tokenId, opts);
   }
 
@@ -489,9 +649,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
           ? {
               name: "Uniswap V2",
               poolUrl: this.link(market.pair),
-              appUrl: `https://app.uniswap.org/swap?chain=sepolia&inputCurrency=ETH&outputCurrency=${e.croq.address}`,
+              appUrl: `https://app.uniswap.org/swap?chain=sepolia&inputCurrency=${market.usdc}&outputCurrency=${e.croq.address}`,
+              quote: { symbol: "USDC", decimals: 6 },
               croqReserve: croqFirst ? reserves[0] : reserves[1],
-              nativeReserve: croqFirst ? reserves[1] : reserves[0],
+              quoteReserve: croqFirst ? reserves[1] : reserves[0],
             }
           : null,
     };
@@ -541,7 +702,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
         permit.privateKey,
         permit.publicKey,
         permit.signature.replace("0x", ""),
-        this.permitContracts(),
+        await this.permitContracts(),
         account,
         permit.start,
         PERMIT_DAYS,
@@ -558,7 +719,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   async feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void> {
     const e = this.eco();
     const account = await this.signer().getAddress();
-    await this.ensureOperator(account, e.pantry.address, opts);
+    await this.ensureOperator(e.cCroq, account, e.pantry.address, opts);
     const input = await this.encrypt64(e.pantry.address, account, amount, opts);
     await this.send(opts, () => this.writer(e.pantry).feed!(tokenId, input.handles[0], input.inputProof));
   }
@@ -616,7 +777,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const { market, croq } = this.eco();
     if (!market) throw new ChainError("unknown", "There is no market on this network.");
     if (amountIn <= 0n) return 0n;
-    const path = side === "buy" ? [market.weth, croq.address] : [croq.address, market.weth];
+    const path = side === "buy" ? [market.usdc, croq.address] : [croq.address, market.usdc];
     const amounts: bigint[] = await this.reading(this.at(market.router, ROUTER_ABI).getAmountsOut!(amountIn, path));
     return amounts[amounts.length - 1]!;
   }
@@ -628,12 +789,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const minOut = ((await this.quote(side, amountIn)) * (10_000n - SLIPPAGE_BPS)) / 10_000n;
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
     const router = this.writer({ address: market.router, abi: ROUTER_ABI });
-    if (side === "buy") {
-      await this.send(opts, () => router.swapExactETHForTokens!(minOut, [market.weth, croq.address], account, deadline, { value: amountIn }));
-    } else {
-      await this.ensureAllowance(croq, market.router, account, amountIn, opts);
-      await this.send(opts, () => router.swapExactTokensForETH!(amountIn, minOut, [croq.address, market.weth], account, deadline));
+    const [tokenIn, tokenOut] = side === "buy" ? [{ address: market.usdc, abi: USDC_ABI }, croq] : [croq, { address: market.usdc, abi: USDC_ABI }];
+    if (side === "buy" && (await this.reading(this.at(tokenIn).balanceOf!(account))) < amountIn) {
+      throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.");
     }
+    await this.ensureAllowance(tokenIn, market.router, account, amountIn, opts);
+    await this.send(opts, () => router.swapExactTokensForTokens!(amountIn, minOut, [tokenIn.address, tokenOut.address], account, deadline));
   }
 
   private writer(deployed: Deployed): Contract {
@@ -646,12 +807,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, () => this.writer(token).approve!(spender, amount));
   }
 
-  /** ERC-7984 has no allowances: the Pantry must be an operator to pull a meal. Asked once a year. */
-  private async ensureOperator(account: Address, operator: string, opts?: ActionOptions): Promise<void> {
-    const cCroq = this.eco().cCroq;
-    if (await this.reading(this.at(cCroq).isOperator!(account, operator))) return;
+  /** ERC-7984 has no allowances: the Pantry, or the collection, must be an operator to pull a
+   *  payment. Asked once a year. */
+  private async ensureOperator(token: Deployed, account: Address, operator: string, opts?: ActionOptions): Promise<void> {
+    if (await this.reading(this.at(token).isOperator!(account, operator))) return;
     const until = Math.floor(Date.now() / 1000) + OPERATOR_DAYS * 86_400;
-    await this.send(opts, () => this.writer(cCroq).setOperator!(operator, until));
+    await this.send(opts, () => this.writer(token).setOperator!(operator, until));
   }
 
   /** Encrypts one 64-bit amount, in this page, for `contract` and `account` only. */
@@ -666,11 +827,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }
   }
 
-  /** Contracts a user-decryption permit covers: the boxes, and with croquettes, cCROQ balances
-   *  and what a feeder gave a cat today. */
-  private permitContracts(): string[] {
+  /** Contracts a user-decryption permit covers: the boxes, cUSDC balances, and with croquettes,
+   *  cCROQ balances and what a feeder gave a cat today. */
+  private async permitContracts(): Promise<string[]> {
     const e = this.opts.economy;
-    return e ? [this.opts.address, e.cCroq.address, e.pantry.address] : [this.opts.address];
+    const { cUsdc } = await this.payment();
+    return [this.opts.address, cUsdc.address, ...(e ? [e.cCroq.address, e.pantry.address] : [])];
   }
 
   // --- internals ---
@@ -786,7 +948,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
         permit.privateKey,
         permit.publicKey,
         permit.signature.replace("0x", ""),
-        this.permitContracts(),
+        await this.permitContracts(),
         account,
         permit.start,
         PERMIT_DAYS,
@@ -807,7 +969,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if (p && p.account === account && now < p.start + PERMIT_DAYS * 86_400 - 600) return p;
 
     const keypair = relayer.generateKeypair();
-    const eip712 = relayer.createEIP712(keypair.publicKey, this.permitContracts(), now, PERMIT_DAYS);
+    const eip712 = relayer.createEIP712(keypair.publicKey, await this.permitContracts(), now, PERMIT_DAYS);
     opts?.onStep?.("wallet");
     const signature = await signer.signTypedData(
       eip712.domain as never,

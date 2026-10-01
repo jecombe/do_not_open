@@ -5,6 +5,9 @@ import {FHE, ebool, euint8, euint16, euint32, euint64} from "@fhevm/solidity/lib
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984.sol";
 import {DoNotOpenConfig} from "./DoNotOpenConfig.sol";
 
 /// @title DO NOT OPEN
@@ -31,8 +34,17 @@ import {DoNotOpenConfig} from "./DoNotOpenConfig.sol";
 ///     them to the matching `finalize*` function, which verifies the proof against handles
 ///     it rebuilds from its own storage.
 ///
-///  5. ETH never leaves in the middle of game logic. Holder earnings from paid shakes are
-///     credited and pulled with `claim`.
+///  5. Everything is paid in a stablecoin: plain USDC, or its confidential ERC-7984 twin cUSDC.
+///     Plain USDC is pulled with an allowance and the action happens at once. Holder earnings
+///     from paid shakes in USDC are credited and pulled with `claim`.
+///
+///  6. A cUSDC payment cannot fail: a confidential transfer of more than the payer holds moves
+///     0, silently. So paying in cUSDC is an order in two steps. `order` pulls the price and
+///     makes one bit, "the price arrived", publicly decryptable; `finalizeOrder` checks that
+///     bit with its KMS proof and only then mints, feeds, opens or shakes. An order the box no
+///     longer allows (opened, or changed hands, in between) is refunded in cUSDC. What cUSDC
+///     hides is the buyer's balance and history, not the purchase: prices are public, and so
+///     is what an order buys.
 ///
 ///  HCU per function (FHE cost, protocol limit 20,000,000 per transaction), measured in tests:
 ///    mint            24,000 per box   one randEuint64
@@ -41,8 +53,11 @@ import {DoNotOpenConfig} from "./DoNotOpenConfig.sol";
 ///    proveAlive      ~58,000          one scalar lt on 16 bits
 ///    challengeDuel  ~1,351,000        first score of box A (0 if already cached)
 ///    acceptDuel     ~2,372,000        first score of box B, gt, pick, 2 encrypted shr, select
+///    order (cUSDC)     ~670,000         the token's transfer, one scalar eq
 ///    observe, entangle, finalize*, claim, transfer: 0
 contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
+    using SafeERC20 for IERC20;
+
     enum BoxStatus {
         Sealed,
         Observing,
@@ -64,11 +79,42 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
         Cancelled
     }
 
+    /// @dev In the payment token's smallest unit (USDC has 6 decimals). 64 bits, so a price
+    ///      fits the confidential token's amounts.
     struct Fees {
-        uint256 mint;
-        uint256 observe;
-        uint256 feed;
-        uint256 paidShake;
+        uint64 mint;
+        uint64 observe;
+        uint64 feed;
+        uint64 paidShake;
+    }
+
+    /// @notice What a cUSDC order buys. `arg` is the quantity for a mint, a token id otherwise.
+    enum Purchase {
+        Mint,
+        Feed,
+        Observe,
+        PaidShake
+    }
+
+    enum OrderStatus {
+        None,
+        /// Paid or not, nobody knows yet: waiting for `finalizeOrder`.
+        Pending,
+        Done,
+        /// The buyer did not hold the price. Nothing moved.
+        Unpaid,
+        /// Paid, but the box no longer allowed it. The price went back.
+        Refunded
+    }
+
+    struct Order {
+        address buyer;
+        Purchase purchase;
+        OrderStatus status;
+        uint32 arg;
+        uint64 price;
+        /// "The price arrived", publicly decryptable.
+        ebool paid;
     }
 
     struct Revealed {
@@ -104,7 +150,7 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
 
     error InvalidQuantity();
     error SoldOut();
-    error WrongPayment(uint256 expected);
+    error OrderNotPending();
     error NotHolder();
     error NotSealed();
     error NotObserving();
@@ -112,14 +158,15 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
     error AliveCheckNotPending();
     error HolderShakesForFree();
     error NothingToClaim();
-    error TransferFailed();
-    error SameBox();
+        error SameBox();
     error AlreadyEntangled();
     error NoSuchProposal();
     error WrongDuelStatus();
     error ChallengerNoLongerHolds();
 
     event Minted(uint256 indexed tokenId, address indexed owner);
+    event OrderPlaced(uint256 indexed orderId, address indexed buyer, Purchase purchase, uint256 arg, bytes32 paidHandle);
+    event OrderSettled(uint256 indexed orderId, OrderStatus status);
     /// @dev Which trait was picked is deliberately absent: only the viewer can decrypt it.
     event Shaken(uint256 indexed tokenId, address indexed viewer, bool paid);
     event Fed(uint256 indexed tokenId, address indexed feeder);
@@ -141,10 +188,14 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
     );
 
     DoNotOpenConfig public immutable config;
-    uint256 public immutable mintPrice;
-    uint256 public immutable observeFee;
-    uint256 public immutable feedFee;
-    uint256 public immutable paidShakeFee;
+    /// @notice Plain USDC. Every price is in its smallest unit.
+    IERC20 public immutable usdc;
+    /// @notice Confidential USDC (ERC-7984), the private way to pay the same prices.
+    IERC7984 public immutable confidentialUsdc;
+    uint64 public immutable mintPrice;
+    uint64 public immutable observeFee;
+    uint64 public immutable feedFee;
+    uint64 public immutable paidShakeFee;
 
     uint16 private immutable _maxSupply;
     uint8 private immutable _maxPerTx;
@@ -167,9 +218,15 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
     uint16 private constant PICK_4 = 52429;
 
     uint256 public totalMinted;
+    /// @notice Boxes held back for cUSDC mint orders that are not settled yet.
+    uint256 public reserved;
     uint256 public duelCount;
-    /// @notice ETH owed to holders for paid shakes, not yet claimed.
+    uint256 public orderCount;
+    /// @notice USDC owed to holders for paid shakes, not yet claimed.
     uint256 public totalCredits;
+    /// @notice cUSDC the owner may withdraw: settled orders, minus what went to holders.
+    ///         Pending orders are not counted, so a refund always has its money.
+    uint256 public confidentialRevenue;
     string private _baseTokenURI;
 
     mapping(uint256 tokenId => euint64) private _seed;
@@ -191,13 +248,18 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
     /// @dev Traits made public by lost duels: bit i set means trait i is known.
     mapping(uint256 tokenId => uint8) private _publicTraitMask;
     mapping(uint256 tokenId => uint8[5]) private _publicTraitRoll;
+    mapping(uint256 orderId => Order) private _orders;
 
     constructor(
         DoNotOpenConfig config_,
         Fees memory fees,
+        IERC20 usdc_,
+        IERC7984 confidentialUsdc_,
         address owner_
     ) ERC721("DO NOT OPEN", "DNO") Ownable(owner_) {
         config = config_;
+        usdc = usdc_;
+        confidentialUsdc = confidentialUsdc_;
         mintPrice = fees.mint;
         observeFee = fees.observe;
         feedFee = fees.feed;
@@ -227,30 +289,39 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
         _;
     }
 
-    modifier costs(uint256 fee) {
-        if (msg.value != fee) revert WrongPayment(fee);
+    /// @dev Pulls `amount` USDC from the caller, who must have approved this contract.
+    modifier costs(uint256 amount) {
+        usdc.safeTransferFrom(msg.sender, address(this), amount);
         _;
     }
 
     // ------------------------------------------------------------------ mint
 
-    /// @notice Mints `quantity` sealed boxes. Each gets its own encrypted random seed.
+    /// @notice Mints `quantity` sealed boxes for `mintPrice` USDC each. Each gets its own
+    ///         encrypted random seed.
     /// @dev The seed comes from the protocol's encrypted PRNG. Its value is unknown to the
     ///      minter, the deployer and block producers, so there is nothing to front-run or grind.
     ///      `_mint` is used instead of `_safeMint`: no receiver callback, no re-entrancy surface.
-    function mint(uint256 quantity) external payable {
-        if (quantity == 0 || quantity > _maxPerTx) revert InvalidQuantity();
-        uint256 first = totalMinted;
-        if (first + quantity > _maxSupply) revert SoldOut();
-        if (msg.value != mintPrice * quantity) revert WrongPayment(mintPrice * quantity);
+    function mint(uint256 quantity) external {
+        _checkMint(quantity);
+        usdc.safeTransferFrom(msg.sender, address(this), mintPrice * quantity);
+        _mintBoxes(msg.sender, quantity);
+    }
 
+    function _checkMint(uint256 quantity) internal view {
+        if (quantity == 0 || quantity > _maxPerTx) revert InvalidQuantity();
+        if (totalMinted + reserved + quantity > _maxSupply) revert SoldOut();
+    }
+
+    function _mintBoxes(address to, uint256 quantity) internal {
+        uint256 first = totalMinted;
         totalMinted = first + quantity;
         for (uint256 tokenId = first; tokenId < first + quantity; tokenId++) {
             euint64 seed = FHE.randEuint64();
             FHE.allowThis(seed);
             _seed[tokenId] = seed;
-            _mint(msg.sender, tokenId);
-            emit Minted(tokenId, msg.sender);
+            _mint(to, tokenId);
+            emit Minted(tokenId, to);
         }
     }
 
@@ -269,11 +340,11 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
     ///         the holder is credited their share and learns nothing.
     function paidShake(
         uint256 tokenId
-    ) external payable onlySealed(tokenId) costs(paidShakeFee) returns (euint8 pick, euint8 roll) {
+    ) external onlySealed(tokenId) costs(paidShakeFee) returns (euint8 pick, euint8 roll) {
         address holder = ownerOf(tokenId);
         if (holder == msg.sender) revert HolderShakesForFree();
 
-        uint256 share = (msg.value * _holderBps) / 10_000;
+        uint256 share = _holderShare();
         credits[holder] += share;
         totalCredits += share;
 
@@ -287,8 +358,11 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
         if (amount == 0) revert NothingToClaim();
         credits[msg.sender] = 0;
         totalCredits -= amount;
-        (bool ok, ) = msg.sender.call{value: amount}("");
-        if (!ok) revert TransferFailed();
+        usdc.safeTransfer(msg.sender, amount);
+    }
+
+    function _holderShare() internal view returns (uint64) {
+        return uint64((uint256(paidShakeFee) * _holderBps) / 10_000);
     }
 
     /// @dev Uniform encrypted choice among the five trait offsets. Being encrypted, it
@@ -331,20 +405,28 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
     /// @notice Anyone can feed a sealed box. The cat gains a hidden amount of affection,
     ///         possibly none. Past the golden threshold, its accessory turns golden at reveal.
     /// @dev How many times a box was fed is public; how much that earned is not.
-    function feed(uint256 tokenId) external payable onlySealed(tokenId) costs(feedFee) {
+    function feed(uint256 tokenId) external onlySealed(tokenId) costs(feedFee) {
         _requireOwned(tokenId);
+        _feed(tokenId, msg.sender);
+    }
+
+    function _feed(uint256 tokenId, address feeder) internal {
         euint32 affection = FHE.add(_affection[tokenId], FHE.asEuint32(FHE.randEuint8(_feedBound)));
         FHE.allowThis(affection);
         _affection[tokenId] = affection;
         feedCount[tokenId] += 1;
-        emit Fed(tokenId, msg.sender);
+        emit Fed(tokenId, feeder);
     }
 
     // --------------------------------------------------------------- observe
 
     /// @notice Opens the box. Irreversible. Step 1 of 2: makes its seed and affection publicly
     ///         decryptable. An entangled partner is opened in the same transaction.
-    function observe(uint256 tokenId) external payable onlyHolder(tokenId) onlySealed(tokenId) costs(observeFee) {
+    function observe(uint256 tokenId) external onlyHolder(tokenId) onlySealed(tokenId) costs(observeFee) {
+        _observe(tokenId);
+    }
+
+    function _observe(uint256 tokenId) internal {
         _requestObserve(tokenId);
         uint256 partner = _partner[tokenId];
         if (partner != 0 && status[partner - 1] == BoxStatus.Sealed) _requestObserve(partner - 1);
@@ -639,16 +721,139 @@ contract DoNotOpen is ERC721, Ownable, ZamaEthereumConfig {
         _score[tokenId] = score;
     }
 
+    // ---------------------------------------------------------- cUSDC orders
+
+    /// @notice Pays for a mint, a feed, an opening or a paid shake in cUSDC. Step 1 of 2: pulls
+    ///         the price and makes "it arrived" publicly decryptable. The caller must have made
+    ///         this contract an operator on cUSDC (`setOperator`).
+    /// @param arg quantity for `Purchase.Mint`, token id otherwise
+    /// @dev Checks the same rules as the plain-USDC function, now; `finalizeOrder` checks
+    ///      them again. A mint order holds its boxes back so it cannot be sold out meanwhile.
+    function order(Purchase purchase, uint256 arg) external returns (uint256 orderId) {
+        uint64 price;
+        if (purchase == Purchase.Mint) {
+            _checkMint(arg);
+            reserved += arg;
+            price = mintPrice * uint64(arg);
+        } else {
+            address holder = _requireOwned(arg);
+            if (status[arg] != BoxStatus.Sealed) revert NotSealed();
+            if (purchase == Purchase.Feed) price = feedFee;
+            else if (purchase == Purchase.Observe) {
+                if (holder != msg.sender) revert NotHolder();
+                price = observeFee;
+            } else {
+                if (holder == msg.sender) revert HolderShakesForFree();
+                price = paidShakeFee;
+            }
+        }
+
+        euint64 amount = FHE.asEuint64(price);
+        FHE.allowTransient(amount, address(confidentialUsdc));
+        // All or nothing: the token moves the whole amount, or 0 if the buyer holds less.
+        euint64 sent = confidentialUsdc.confidentialTransferFrom(msg.sender, address(this), amount);
+        ebool paid = FHE.eq(sent, price);
+        FHE.allowThis(paid);
+        FHE.makePubliclyDecryptable(paid);
+
+        orderId = orderCount++;
+        _orders[orderId] = Order({
+            buyer: msg.sender,
+            purchase: purchase,
+            status: OrderStatus.Pending,
+            arg: uint32(arg),
+            price: price,
+            paid: paid
+        });
+        emit OrderPlaced(orderId, msg.sender, purchase, arg, FHE.toBytes32(paid));
+    }
+
+    /// @notice Step 2 of 2. Anyone may submit the decrypted "paid" bit with its KMS proof.
+    ///         Paid: the purchase happens for the buyer, or is refunded if the box no longer
+    ///         allows it. Not paid: nothing happens, and a mint order frees its boxes.
+    function finalizeOrder(uint256 orderId, bytes calldata abiEncodedPaid, bytes calldata decryptionProof) external {
+        Order storage o = _orders[orderId];
+        if (o.status != OrderStatus.Pending) revert OrderNotPending();
+
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = FHE.toBytes32(o.paid);
+        FHE.checkSignatures(handles, abiEncodedPaid, decryptionProof);
+
+        if (o.purchase == Purchase.Mint) reserved -= o.arg;
+        if (!abi.decode(abiEncodedPaid, (bool))) {
+            o.status = OrderStatus.Unpaid;
+        } else if (_fulfil(o)) {
+            o.status = OrderStatus.Done;
+        } else {
+            o.status = OrderStatus.Refunded;
+            _payOut(o.buyer, o.price);
+        }
+        emit OrderSettled(orderId, o.status);
+    }
+
+    /// @dev False when the box no longer allows the purchase. Books the revenue otherwise.
+    function _fulfil(Order storage o) internal returns (bool) {
+        uint256 arg = o.arg;
+        uint64 kept = o.price;
+        if (o.purchase == Purchase.Mint) {
+            _mintBoxes(o.buyer, arg);
+        } else {
+            address holder = _ownerOf(arg);
+            if (status[arg] != BoxStatus.Sealed) return false;
+            if (o.purchase == Purchase.Feed) {
+                _feed(arg, o.buyer);
+            } else if (o.purchase == Purchase.Observe) {
+                if (holder != o.buyer) return false;
+                _observe(arg);
+            } else {
+                if (holder == o.buyer) return false;
+                // The holder's share is paid at once, in cUSDC: there is no confidential claim.
+                uint64 share = _holderShare();
+                kept -= share;
+                _payOut(holder, share);
+                _shakeFor(arg, o.buyer);
+                emit Shaken(arg, o.buyer, true);
+            }
+        }
+        confidentialRevenue += kept;
+        return true;
+    }
+
+    /// @dev cUSDC out of this contract. A plain confidential transfer calls nothing on the receiver.
+    function _payOut(address to, uint64 amount) internal {
+        euint64 value = FHE.asEuint64(amount);
+        FHE.allowTransient(value, address(confidentialUsdc));
+        confidentialUsdc.confidentialTransfer(to, value);
+    }
+
+    /// @notice One order. `paidHandle` is what to pass to the relayer's publicDecrypt.
+    function orderInfo(
+        uint256 orderId
+    )
+        external
+        view
+        returns (address buyer, Purchase purchase, OrderStatus orderStatus, uint256 arg, uint256 price, bytes32 paidHandle)
+    {
+        Order storage o = _orders[orderId];
+        return (o.buyer, o.purchase, o.status, o.arg, o.price, FHE.toBytes32(o.paid));
+    }
+
     // ----------------------------------------------------------------- admin
 
     function setBaseURI(string calldata baseURI_) external onlyOwner {
         _baseTokenURI = baseURI_;
     }
 
-    /// @notice Withdraws protocol revenue. Never touches what holders have yet to claim.
-    function withdraw(address payable to) external onlyOwner {
-        (bool ok, ) = to.call{value: address(this).balance - totalCredits}("");
-        if (!ok) revert TransferFailed();
+    /// @notice Withdraws USDC revenue. Never touches what holders have yet to claim.
+    function withdraw(address to) external onlyOwner {
+        usdc.safeTransfer(to, usdc.balanceOf(address(this)) - totalCredits);
+    }
+
+    /// @notice Withdraws cUSDC revenue. Never touches the price of an order still pending.
+    function withdrawConfidential(address to) external onlyOwner {
+        uint256 amount = confidentialRevenue;
+        confidentialRevenue = 0;
+        _payOut(to, uint64(amount));
     }
 
     function maxSupply() external view returns (uint256) {

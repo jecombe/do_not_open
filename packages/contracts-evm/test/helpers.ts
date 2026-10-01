@@ -9,14 +9,18 @@ import {
   type ConfigParams,
   type PantryParams,
 } from "../lib/specParams";
-import { ConfidentialCroq, Croq, DoNotOpen, DoNotOpenConfig, Pantry } from "../types";
+import { ConfidentialCroq, Croq, DoNotOpen, DoNotOpenConfig, Pantry, TestConfidentialUSDC, TestUSDC } from "../types";
 
+/** In USDC's smallest unit: 6 decimals. */
+export const usd = (amount: string) => ethers.parseUnits(amount, 6);
 export const FEES = {
-  mint: ethers.parseEther("0.002"),
-  observe: ethers.parseEther("0.0005"),
-  feed: ethers.parseEther("0.0002"),
-  paidShake: ethers.parseEther("0.001"),
+  mint: usd("5"),
+  observe: usd("1"),
+  feed: usd("0.5"),
+  paidShake: usd("2.5"),
 };
+/** What every test signer starts with, in USDC, already approved to the collection. */
+export const STARTING_USDC = usd("1000");
 export const STATE_IDS = { alive: 0, asleep: 1, ghost: 2, quantum: 3 } as const;
 export const TRAIT_KEYS = ["breed", "mood", "accessory", "brokenThing", "room"] as const;
 
@@ -25,12 +29,52 @@ export async function deploy(overrides: Partial<ConfigParams> = {}) {
   const config = (await (await ethers.getContractFactory("DoNotOpenConfig")).deploy(
     configParamsFromSpec(overrides),
   )) as unknown as DoNotOpenConfig;
+  const usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
+  const cUsdc = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(
+    await usdc.getAddress(),
+  )) as unknown as TestConfidentialUSDC;
   const dno = (await (await ethers.getContractFactory("DoNotOpen")).deploy(
     await config.getAddress(),
     FEES,
+    await usdc.getAddress(),
+    await cUsdc.getAddress(),
     deployer!.address,
   )) as unknown as DoNotOpen;
-  return { config, dno, address: await dno.getAddress() };
+  const address = await dno.getAddress();
+  // Plain USDC is the default way to pay: everyone is funded and has approved the collection.
+  for (const signer of (await ethers.getSigners()).slice(0, 6)) {
+    await (await usdc.mint(signer.address, STARTING_USDC)).wait();
+    await (await usdc.connect(signer).approve(address, ethers.MaxUint256)).wait();
+  }
+  return { config, dno, address, usdc, cUsdc };
+}
+
+/** Gives `who` `amount` cUSDC (wrapped from their USDC) and makes the collection their operator. */
+export async function giveConfidentialUsdc(
+  usdc: TestUSDC,
+  cUsdc: TestConfidentialUSDC,
+  dno: DoNotOpen,
+  who: HardhatEthersSigner,
+  amount: bigint,
+) {
+  await (await usdc.connect(who).approve(await cUsdc.getAddress(), amount)).wait();
+  await (await cUsdc.connect(who).wrap(who.address, amount)).wait();
+  const until = (await ethers.provider.getBlock("latest"))!.timestamp + 86_400;
+  await (await cUsdc.connect(who).setOperator(await dno.getAddress(), until)).wait();
+}
+
+/** Relays the public decryption of an order's "paid" bit, as any third party could. */
+export async function finalizeOrder(dno: DoNotOpen, orderId: number | bigint, sender: HardhatEthersSigner) {
+  const [, , , , , paidHandle] = await dno.orderInfo(orderId);
+  const result = await fhevm.publicDecrypt([paidHandle]);
+  return dno.connect(sender).finalizeOrder(orderId, result.abiEncodedClearValues, result.decryptionProof);
+}
+
+/** `who`'s cUSDC balance, decrypted by its holder. */
+export async function confidentialUsdcOf(cUsdc: TestConfidentialUSDC, who: HardhatEthersSigner) {
+  const handle = await cUsdc.confidentialBalanceOf(who.address);
+  if (handle === ethers.ZeroHash) return 0n;
+  return fhevm.userDecryptEuint(FhevmType.euint64, handle, await cUsdc.getAddress(), who);
 }
 
 /** Asserts that a decryption request is refused. */
@@ -50,7 +94,7 @@ export const peekSeed = async (dno: DoNotOpen, tokenId: number) =>
 
 export async function shakeAndDecrypt(dno: DoNotOpen, tokenId: number, who: HardhatEthersSigner, paid = false) {
   const address = await dno.getAddress();
-  const tx = paid ? await dno.connect(who).paidShake(tokenId, { value: FEES.paidShake }) : await dno.connect(who).shake(tokenId);
+  const tx = paid ? await dno.connect(who).paidShake(tokenId) : await dno.connect(who).shake(tokenId);
   await tx.wait();
   const [pick, roll] = await dno.lastShake(tokenId, who.address);
   return {

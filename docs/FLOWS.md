@@ -219,6 +219,75 @@ The loser's roll is chosen with an encrypted `select`, so the winner's roll for 
 trait is never in a decryptable ciphertext. Ties go to B. The score compared is the base
 score; the golden bonus only exists once a box is opened.
 
+## Paying in cUSDC
+
+Every paid action (mint, feed, open, paid shake) takes plain USDC through an allowance, and
+happens in the same transaction. Each can be paid in cUSDC instead, Zama's confidential
+USDC (ERC-7984). A confidential transfer of more than the payer holds does not revert: it
+moves 0. So the contract cannot know, in the paying transaction, whether it was paid. A
+cUSDC payment is an order in two steps.
+
+```mermaid
+sequenceDiagram
+  participant U as Buyer
+  participant D as DoNotOpen
+  participant C as cUSDC
+  participant K as Relayer / KMS
+  U->>C: setOperator(DoNotOpen, until) (once a year)
+  U->>D: order(purchase, arg)
+  D->>D: same checks as the plain function; a mint holds its boxes back
+  D->>C: confidentialTransferFrom(buyer, DoNotOpen, price)
+  C-->>D: sent (encrypted: the price, or 0)
+  D->>D: paid = (sent == price), made publicly decryptable
+  D-->>U: OrderPlaced(orderId, buyer, purchase, arg, paidHandle)
+  U->>K: publicDecrypt([paidHandle])
+  K-->>U: paid + KMS proof
+  U->>D: finalizeOrder(orderId, paid, proof) (anyone may)
+  alt paid, and the box still allows it
+    D->>D: mint / feed / open / shake for the buyer
+    D->>C: a paid shake pays the holder's share at once
+  else paid, but the box changed (opened, sold)
+    D->>C: confidentialTransfer(buyer, price): refund
+  else not paid
+    D->>D: nothing moved; a mint frees its boxes
+  end
+  D-->>U: OrderSettled(orderId, status)
+```
+
+The price, the purchase and the "paid" bit are public. What cUSDC keeps private is the
+buyer's balance and the rest of their cUSDC history. An order nobody settled stays
+`Pending`; the app lists the buyer's pending orders on the shelf and finishes them.
+
+## Getting USDC
+
+A player with no USDC has three ways in. On a test network, a faucet button mints test
+USDC. Anywhere, `UsdcRamp.buy` swaps ETH for USDC on a public Uniswap V2 pool in one
+transaction, keeping a fee of 0.3% of the ETH (set at deployment, never above 1%, withdrawn
+by the owner); with `shield`, the ramp wraps the USDC and the buyer receives cUSDC in the
+same transaction. And USDC already held is shielded as cUSDC by calling the cUSDC wrapper
+directly, which costs nothing but gas: the site takes no fee on it.
+
+```mermaid
+sequenceDiagram
+  participant U as Buyer
+  participant R as UsdcRamp
+  participant X as Uniswap V2 (ETH/USDC)
+  participant C as cUSDC
+  U->>R: buy(minOut, shield, deadline) + ETH
+  R->>R: keep 0.3% of the ETH
+  R->>X: swapExactETHForTokens(rest)
+  alt shield
+    X-->>R: USDC
+    R->>C: wrap(buyer, USDC)
+    C-->>U: cUSDC
+  else
+    X-->>U: USDC
+  end
+```
+
+Every amount here is public: ETH in, USDC out, and the amount wrapped. cUSDC hides what
+happens after.
+
 ## Croquettes
 
 Rules and numbers are in [CROQ.md](CROQ.md). Two more participants:
@@ -320,7 +389,7 @@ sequenceDiagram
   Pa-->>H: MealServed(tokenId, holder, meals)
 ```
 
-The ETH-paid `DoNotOpen.feed` is the other gesture: it pets the cat (affection), and
+The USDC-paid `DoNotOpen.feed` is the other gesture: it pets the cat (affection), and
 anyone may do it.
 
 ### Weigh a cat

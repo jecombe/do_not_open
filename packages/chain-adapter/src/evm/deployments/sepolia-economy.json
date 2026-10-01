@@ -1,6 +1,6 @@
 {
   "croq": {
-    "address": "0x72Fc0E0654f268A0785f92D63450c813cAFDfD10",
+    "address": "0x183B74906673283f7Fe3272103989A357Cf88522",
     "abi": [
       {
         "inputs": [
@@ -329,7 +329,7 @@
     ]
   },
   "cCroq": {
-    "address": "0xa89c19228261EAc5Fa48f544238d04fBC115393c",
+    "address": "0x7598484e5DDdada766ab19Cd7d0dD42d17Dd4F06",
     "abi": [
       {
         "inputs": [
@@ -1343,7 +1343,7 @@
     ]
   },
   "pantry": {
-    "address": "0x8a58e2Cc6E11A3CC108612cfc6677A425Ff49882",
+    "address": "0x20755493eF05C954BdC2e970b0437B12AE19d01e",
     "abi": [
       {
         "inputs": [
@@ -2317,9 +2317,9 @@
     ]
   },
   "market": {
-    "pair": "0x645D0d391F088895272b200aa6E187aCd00F270d",
+    "pair": "0xDc7Ed9F6ffd2993350BDc2c563E42036C5a53B43",
     "router": "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
     "factory": "0xF62c03E08ada871A0bEb309762E260a7a6a880E6",
-    "weth": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
+    "usdc": "0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF"
   }
 }

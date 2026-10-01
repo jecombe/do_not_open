@@ -1,6 +1,7 @@
 /**
  * End-to-end check of EvmFhevmAdapter against the live Sepolia deployment, through the
- * real coprocessor, relayer and KMS. Spends testnet ETH (three mints and a few fees).
+ * real coprocessor, relayer and KMS. Spends testnet ETH for gas, and test USDC it mints itself:
+ * two boxes in USDC, one in cUSDC, a feed in cUSDC.
  *
  *   pnpm --filter @dno/chain-adapter smoke:sepolia
  *
@@ -23,19 +24,34 @@ async function main() {
   const trait = (t: { traitIndex: number; roll: number }) => `${spec.traits[t.traitIndex]!.name} roll ${t.roll}`;
 
   const info = await chain.collection();
-  console.log(`${info.chain} ${info.address}: ${info.totalMinted}/${info.maxSupply} minted, mint ${formatAmount(info.fees.mint, 18)} ETH`);
+  const usd = (v: bigint) => `${formatAmount(v, info.payment.decimals)}`;
+  console.log(`${info.chain} ${info.address}: ${info.totalMinted}/${info.maxSupply} minted, mint ${usd(info.fees.mint)} USDC`);
   console.log(`account ${me}`);
 
-  console.log("mint 3");
-  const [a, b, c] = (await chain.mint(3, { onStep })) as [number, number, number];
+  if ((await chain.usdcBalance(me)) < 50_000_000n) {
+    console.log("faucet");
+    await chain.faucetUsdc({ onStep });
+  }
+  const shielded = await chain.confidentialUsdcBalance({ onStep });
+  console.log(`  ${usd(await chain.usdcBalance(me))} USDC, ${usd(shielded)} cUSDC`);
+  if (shielded < 10_000_000n) {
+    console.log("shield 20 USDC");
+    await chain.shieldUsdc(20_000_000n, { onStep });
+  }
+
+  console.log("mint 2 in USDC");
+  const [a, b] = (await chain.mint(2, { onStep })) as [number, number];
+  console.log("mint 1 in cUSDC (order, public decryption of the paid bit, settlement)");
+  const [c] = (await chain.mint(1, { onStep, pay: "cusdc" })) as [number];
   console.log(`  boxes ${a}, ${b}, ${c}; boxesOf -> ${(await chain.boxesOf(me)).join(", ")}`);
+  console.log(`  cUSDC now ${usd(await chain.confidentialUsdcBalance({ onStep }))}; pending orders ${(await chain.pendingOrders(me)).length}`);
 
   console.log(`shake ${a} twice (one permit signature)`);
   console.log(`  ${trait(await chain.shake(a, { onStep }))}`);
   console.log(`  ${trait(await chain.shake(a, { onStep }))}`);
 
-  console.log(`feed ${a}`);
-  await chain.feed(a, { onStep });
+  console.log(`feed ${a} in cUSDC`);
+  await chain.feed(a, { onStep, pay: "cusdc" });
   console.log(`  feeds: ${(await chain.box(a)).feeds}`);
 
   console.log(`prove alive ${b}`);
