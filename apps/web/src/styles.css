@@ -239,6 +239,42 @@ button {
   color: var(--manifest);
 }
 
+/* "Show my boxes" on the shelf view: a tag hung above the bench, not inside the slip. */
+.find-over {
+  position: absolute;
+  top: max(96px, 16dvh);
+  left: 50%;
+  z-index: 2;
+  width: min(360px, calc(100vw - 2 * var(--gutter)));
+  padding: 14px 16px 12px;
+  background: var(--manifest);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 5px var(--manifest), 0 18px 40px rgb(0 0 0 / 0.55);
+  transform: translateX(-50%) rotate(0.8deg);
+}
+
+.find-over .fine {
+  margin-bottom: 0;
+}
+
+/* On a phone the slip takes the lower half: the tag keeps to the button and its one line. */
+@media (max-width: 700px) {
+  .find-over {
+    top: 76px;
+    padding: 10px 12px 8px;
+  }
+
+  .find-over .state-note {
+    display: none;
+  }
+
+  .find-over .stamp-button {
+    font-size: 20px;
+    padding: 9px 10px 6px;
+  }
+}
+
 .state-note {
   margin: 0 0 8px;
   font-size: 20px;

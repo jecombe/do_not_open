@@ -479,6 +479,7 @@ export const en = {
   "sale.moreThan": "More than {n} boxes shipped",
   "sale.soldOut": "All {max} boxes shipped",
   "mine.hidden": "Nobody can see which boxes are yours, not even this page. Your wallet finds them by reading its own receipts.",
+  "mine.findAbove": "Your boxes are hidden, even from this page. Show them with the button above the shelf.",
   "mine.find": "Show my boxes",
   "mine.finding": "Reading your receipts…",
   "mine.why": "One signature, once per visit. It lets your browser decrypt your receipts, for your eyes only.",
