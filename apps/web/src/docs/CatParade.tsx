@@ -1,7 +1,9 @@
 import "./parade.css";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { spec as gameSpec } from "@dno/game-spec";
 import { useLocale } from "../i18n/locale";
-import { stateName, variantName } from "../i18n/names";
+import { buildName, diseaseName, stateName, variantName } from "../i18n/names";
+import type { BuildKey, DiseaseKey } from "@dno/game-spec";
 import { CAT_SETS, oneIn, roster, type CatSet, type RosterCat } from "./cats";
 import { useT } from "./i18n";
 import { ParadeScene } from "./three/parade";
@@ -69,7 +71,13 @@ export function CatParade() {
           </p>
           <h3>{nameOf(set, current, t)}</h3>
           <p className="parade-odds">
-            {current.odds === null
+            {current.eaten
+              ? current.eaten.to
+                ? t("docs.cats.eatenRange", { from: current.eaten.from.toLocaleString(locale), to: current.eaten.to.toLocaleString(locale) })
+                : current.eaten.from === 0
+                  ? t("docs.cats.eatenNone")
+                  : t("docs.cats.eatenFrom", { n: current.eaten.from.toLocaleString(locale), days: Math.ceil(current.eaten.from / DAILY) })
+              : current.odds === null
               ? t("docs.cats.oddsPlay")
               : current.odds >= 0.25
                 ? t("docs.cats.oddsTen", { n: Math.round(current.odds * 10) })
@@ -101,5 +109,10 @@ function nameOf(set: CatSet, c: RosterCat, t: ReturnType<typeof useT>): string {
   if (set === "breeds") return variantName("breed", c.key);
   if (set === "states") return stateName(c.cat.state);
   if (set === "vices") return t(`docs.cats.vices.${c.key}.name` as "docs.cats.vices.stoned.name");
+  if (set === "builds") return buildName(c.key as BuildKey);
+  if (set === "sickness") return diseaseName(c.key as DiseaseKey);
   return t(`docs.cats.extras.${c.key}.name` as "docs.cats.extras.golden.name");
 }
+
+/** Croquettes a cat may eat in a day: the floor on how fast it gets fat. */
+const DAILY = gameSpec.economy.meal.maxEatenPerDay;

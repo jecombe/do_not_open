@@ -1,9 +1,9 @@
-import { spec, type StateKey, type TraitKey } from "@dno/game-spec";
+import { spec, type BuildKey, type DiseaseKey, type StateKey, type TraitKey } from "@dno/game-spec";
 import { buildCatSpec, encodeSeed, viceFromCosmetic, type CatSpec, type Vice } from "@dno/generator";
 
 /** The line-ups the cat parade can show. */
-export type CatSet = "breeds" | "states" | "vices" | "extras";
-export const CAT_SETS: readonly CatSet[] = ["breeds", "states", "vices", "extras"];
+export type CatSet = "breeds" | "states" | "vices" | "extras" | "builds" | "sickness";
+export const CAT_SETS: readonly CatSet[] = ["breeds", "states", "vices", "extras", "builds", "sickness"];
 
 export interface RosterCat {
   /** Names the blurb: `docs.cats.<set>.<key>` in the dictionaries. */
@@ -11,6 +11,8 @@ export interface RosterCat {
   cat: CatSpec;
   /** Share of boxes that hold this kind of cat, 0..1. Null when it depends on play, not luck. */
   odds: number | null;
+  /** For a build or a disease: the croquettes it takes to eat into it, `to` for a range. */
+  eaten?: { from: number; to?: number };
 }
 
 const traitDef = (key: TraitKey) => spec.traits.find((t) => t.key === key)!;
@@ -50,6 +52,7 @@ interface Pick {
   state?: StateKey;
   cosmetic?: number;
   affection?: number;
+  weighIn?: { weight: number; sick: boolean; disease: DiseaseKey | null };
 }
 
 function catFor(pick: Pick): CatSpec {
@@ -65,7 +68,7 @@ function catFor(pick: Pick): CatSpec {
     },
     cosmetic: pick.cosmetic ?? 1,
   });
-  return buildCatSpec({ seed, affection: pick.affection ?? 0 });
+  return buildCatSpec({ seed, affection: pick.affection ?? 0, weighIn: pick.weighIn });
 }
 
 /** A mood per breed, so the line-up shows off the poses and faces as well. */
@@ -81,6 +84,8 @@ const BREED_MOODS: Record<string, string> = {
   loaf: "smug",
   glitch: "zoomies",
 };
+
+const SICK = spec.economy.weight.sick;
 
 let cache: Record<CatSet, RosterCat[]> | null = null;
 
@@ -107,6 +112,19 @@ export function roster(): Record<CatSet, RosterCat[]> {
       { key: "golden", cat: catFor({ breed: "calico", accessory: "crown", affection: spec.affection.goldenThreshold + 1 }), odds: null },
       { key: "wizard", cat: catFor({ breed: "void", mood: "enlightened", accessory: "wizardHat" }), odds: share("mood", "enlightened") * share("accessory", "wizardHat") },
     ],
+    // The same hungry orange cat, weighed at every build: only the croquettes differ.
+    builds: spec.economy.weight.builds.map((b: { key: BuildKey; minWeight: number }) => ({
+      key: b.key,
+      cat: catFor({ breed: "orange", mood: "hungry", weighIn: { weight: b.minWeight, sick: false, disease: null } }),
+      odds: null,
+      eaten: { from: b.minWeight },
+    })),
+    sickness: spec.economy.weight.diseases.map((d: { key: DiseaseKey }) => ({
+      key: d.key,
+      cat: catFor({ breed: "tabby", mood: "betrayed", weighIn: { weight: SICK.minWeight + SICK.weightSpread, sick: true, disease: d.key } }),
+      odds: null,
+      eaten: { from: SICK.minWeight, to: SICK.minWeight + SICK.weightSpread },
+    })),
   };
   return cache;
 }

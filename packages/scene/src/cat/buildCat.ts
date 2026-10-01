@@ -1,8 +1,9 @@
-import { BufferAttribute, BufferGeometry, Euler, Group, Matrix4, Mesh, MeshBasicMaterial, Object3D, Vector3 } from "three";
+import { BufferAttribute, BufferGeometry, Euler, Group, Matrix4, Mesh, MeshBasicMaterial, Object3D, SphereGeometry, Vector3 } from "three";
 import type { CatBody, CatSpec, Pose } from "@dno/generator";
 import type { AssetLibrary } from "../assets/gltf";
 import { Kit, type ZonePalette } from "../materials";
 import { addAccessory } from "./accessories";
+import { BodyShape } from "./fatten";
 import { addSickness } from "./sickness";
 import { addPart, anchored, breedOf, catAssetLibrary, find, isPlaceholder, prepareKit, type CatBreed } from "./kitParts";
 
@@ -119,6 +120,17 @@ class BentTail {
   }
 }
 
+/** `a` moved towards `b` by `t`, both #RRGGBB. */
+function mix(a: string, b: string, t: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16);
+  return (
+    "#" +
+    [1, 3, 5]
+      .map((i) => Math.round(channel(a, i) + (channel(b, i) - channel(a, i)) * t).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
 /** Rough perceived brightness of a #RRGGBB colour, 0..1. */
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -142,12 +154,15 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
   const group = new Group();
   const p = body.pattern;
   const vice = spec.vice;
+  const weight = spec.weight;
+  /** A fatty liver shows: yellowed skin and yellowed whites of the eyes. */
+  const jaundiced = weight?.disease === "fattyLiver";
   const palette: ZonePalette = {
     base: body.furBase,
     secondary: body.furSecondary,
     tertiary: body.furTertiary,
     belly: body.furBelly,
-    skin: body.skin,
+    skin: jaundiced ? mix(body.skin, "#E8C93A", 0.55) : body.skin,
   };
   const fur = kit.zoned(palette);
   // Brows, closed eyes and mouths are drawn lines: dark on light fur, pale on dark fur.
@@ -156,23 +171,32 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
     p === "calico" ? (side > 0 ? body.furSecondary : body.furTertiary) : p === "loaf" ? body.furBelly : body.furBase;
   const muzzle = p === "tuxedo" || p === "points" ? body.furSecondary : p === "solid" || p === "glitch" ? body.furBase : body.furBelly;
   const geometryOf = (name: string) => (find(models, name) as Mesh).geometry;
-  const girth: [number, number, number] = [body.girth, 1, layout.deep ? body.girth : 1];
+  const restGeo = geometryOf(`body_${spec.pose}`);
+  const rest = restGeo.boundingBox!;
+  // A weighed cat is reshaped, belly first; any other keeps its natural girth, as a plain scale.
+  // A sick cat ate past even huge, and it shows.
+  const excess = weight ? body.girth - 1 + (weight.sick ? 0.15 : 0) : 0;
+  const shape = weight ? new BodyShape(rest, excess, layout.deep) : null;
+  const girth: [number, number, number] = shape ? [1, 1, 1] : [body.girth, 1, layout.deep ? body.girth : 1];
+  const bodyGeo = shape ? shape.reshape(restGeo) : restGeo;
   /** How far a weighed cat's belly pushes what sits around it. 1 for any cat not weighed fat. */
-  const spread = spec.weight ? new Vector3(Math.max(1, girth[0]), 1, Math.max(1, girth[2])) : new Vector3(1, 1, 1);
-  /** A group at a body anchor, moved with the body when girth widens it. */
+  const spread = shape
+    ? new Vector3(Math.max(1, shape.bounds.max.x / rest.max.x), 1, Math.max(1, shape.bounds.max.z / rest.max.z))
+    : new Vector3(1, 1, 1);
+  /** A group at a body anchor, moved with the body when it is widened or reshaped. */
   const onBody = (name: string) => {
     const g = anchored(group, find(models, `body_${spec.pose}__${name}`));
-    g.position.multiply(new Vector3(...girth));
+    if (shape) shape.apply(g.position, g.position);
+    else g.position.multiply(new Vector3(...girth));
     return g;
   };
 
   // --- Body: scaled about its own centre so breathing does not lift it off the floor ---
-  const bodyGeo = geometryOf(`body_${spec.pose}`);
   const centre = bodyGeo.boundingBox!.getCenter(new Vector3());
   const bodyGroup = new Group();
   bodyGroup.position.set(0, centre.y, centre.z * girth[2]);
   group.add(bodyGroup);
-  const bodyMesh = kit.add(bodyGroup, bodyGeo, fur, { shared: true });
+  const bodyMesh = kit.add(bodyGroup, bodyGeo, fur, { shared: !shape });
   bodyMesh.position.set(0, -centre.y, -centre.z * girth[2]);
   bodyMesh.scale.set(...girth);
 
@@ -186,6 +210,8 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
   // --- Head ---
   const neck = onBody("head");
   neck.scale.setScalar(body.headSize);
+  // Fat shows in the face too: rounder cheeks, a fuller head. Thin cats get a little gaunt.
+  if (shape) neck.scale.multiply(new Vector3(1 + excess * (excess < 0 ? 0.5 : 0.3), 1 + excess * 0.05, 1 + excess * 0.16));
   const head = new Group();
   head.rotation.z = face.headTilt;
   neck.add(head);
@@ -216,7 +242,7 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
       if (shape === "wide") eye.scale.multiplyScalar(1.2);
       const iris = side < 0 ? face.eyeColorLeft : face.eyeColorRight;
       // The void has no whites: two lamps in the dark. A stoned cat's whites are not white either.
-      const white = p === "solid" ? iris : vice === "stoned" ? "#F2A69B" : "#FFFFFF";
+      const white = p === "solid" ? iris : vice === "stoned" ? "#F2A69B" : jaundiced ? "#F2DE74" : "#FFFFFF";
       addPart(kit, eye, find(parts, "eye_ball"), { colors: { white }, ...thin });
       const look = new Group();
       const gaze = GAZE[breed];
@@ -263,6 +289,16 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
 
   const awake = face.eyeShape !== "closed";
   const mouth = onHead("mouth");
+
+  // Past fat, a chin under the chin, in the muzzle's colour; a second one past huge.
+  if (excess >= 0.4) {
+    const chins = excess >= 0.7 ? 2 : 1;
+    for (let i = 0; i < chins; i++) {
+      const chin = kit.add(mouth, new SphereGeometry(0.1, 16, 10), kit.fur(muzzle), { thickness: 0.008 });
+      chin.scale.set(1.05 + excess * 0.5 - i * 0.18, 0.42, 0.7);
+      chin.position.set(0, -0.075 - i * 0.05, -0.02 - i * 0.02);
+    }
+  }
   addPart(kit, mouth, find(parts, vice === "drunk" && awake ? "mouth_wobbly" : `mouth_${face.mouth}`), { colors: { dark: line(muzzle) } });
 
   // Vices: a lit joint with its smoke, or a bottle and the hiccups.
@@ -301,8 +337,7 @@ function buildForm(spec: CatSpec, body: CatBody, breed: CatBreed, kit: Kit, part
   collar.scale.multiply(new Vector3(1 + (spread.x - 1) * 0.5, 1, 1 + (spread.z - 1) * 0.5));
   addAccessory(kit, spec.accessory, parts, { neck: collar, face: onHead("face"), eye_R: onHead("eye_R"), hat: onHead("hat") });
 
-  // A curled-up cat lies across the front, head to the right: its prop goes before the belly.
-  addSickness(kit, spec.weight, group, spread, spec.pose === "curl");
+  if (shape) addSickness(kit, weight, group, { pose: spec.pose, bounds: shape.bounds, place: (p) => shape.apply(p, p) });
 
   const anim = spec.animation;
   const baseY = anim.float ? 0.32 : 0;
