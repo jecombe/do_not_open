@@ -90,6 +90,7 @@ export function Home() {
           <h2>{t("home.secret.title")}</h2>
           <p>{t("home.secret.p1")}</p>
           <p>{t("home.secret.p2")}</p>
+          <p>{t("home.secret.p3")}</p>
           <a className="btn btn-paper" href={`${DOCS}#privacy`}>
             {t("home.secret.link")} →
           </a>

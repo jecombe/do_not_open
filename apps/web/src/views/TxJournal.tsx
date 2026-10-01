@@ -10,7 +10,7 @@ const CALLS: Record<string, AppKey> = {
   proposeEntangle: "tx.proposeEntangle",
   acceptEntangle: "tx.acceptEntangle",
   observe: "tx.observe",
-  finalizeObserve: "tx.finalizeObserve",
+  finalize: "tx.finalize",
 };
 
 const shortHash = (hash: string) => `${hash.slice(0, 8)}…${hash.slice(-6)}`;

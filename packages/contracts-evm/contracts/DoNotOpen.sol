@@ -158,7 +158,9 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     event Fed(uint256 indexed tokenId, address indexed feeder);
     event RequestPlaced(uint256 indexed requestId, uint256 indexed tokenId, address indexed requester, RequestKind kind);
     event RequestSettled(uint256 indexed requestId, RequestStatus status);
-    event Observed(uint256 indexed tokenId, uint64 seed, uint8 state, uint16 rarityScore, bool golden);
+    /// @notice A box opened. `openedBy` asked for it, and held the box (or its entangled partner)
+    ///         then: the one ownership fact an opening makes public.
+    event Observed(uint256 indexed tokenId, address indexed openedBy, uint64 seed, uint8 state, uint16 rarityScore, bool golden);
     event AliveProven(uint256 indexed tokenId, bool alive);
     event EntangleProposed(uint256 indexed tokenIdA, uint256 indexed tokenIdB, address proposer);
     event Entangled(uint256 indexed tokenIdA, uint256 indexed tokenIdB);
@@ -499,7 +501,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         if (fed) handles.push(_publish(FHE.select(ok, affection, FHE.asEuint32(0))));
     }
 
-    function _reveal(uint256 tokenId, uint64 seed, uint32 affection) internal {
+    function _reveal(uint256 tokenId, uint64 seed, uint32 affection, address openedBy) internal {
         if (status[tokenId] != BoxStatus.Sealed) return;
         (uint8 state, uint8[5] memory traits, uint16 score) = config.decode(seed);
         bool golden = affection > _goldenThreshold;
@@ -514,7 +516,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
             affection: affection,
             golden: golden
         });
-        emit Observed(tokenId, seed, state, score, golden);
+        emit Observed(tokenId, openedBy, seed, state, score, golden);
     }
 
     /// @notice True once the box has been opened and its contents stored in the clear.
@@ -626,11 +628,11 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         uint256 at = 1;
         uint64 seed = uint64(_word(cleartexts, at++));
         uint32 affection = r.fed & 1 != 0 ? uint32(_word(cleartexts, at++)) : 0;
-        _reveal(r.tokenId, seed, affection);
+        _reveal(r.tokenId, seed, affection, r.requester);
         if (r.other != 0) {
             seed = uint64(_word(cleartexts, at++));
             affection = r.fed & 2 != 0 ? uint32(_word(cleartexts, at)) : 0;
-            _reveal(r.other - 1, seed, affection);
+            _reveal(r.other - 1, seed, affection, r.requester);
         }
     }
 

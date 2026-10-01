@@ -29,6 +29,8 @@ import {
   type EconomyInfo,
   type Fees,
   type MintOptions,
+  type OpenedCat,
+  type RevealedContents,
   type PairInfo,
   type PantryDay,
   type PayOptions,
@@ -171,6 +173,18 @@ function weighInFrom(w: { build: bigint; sick: boolean; disease: bigint; weight:
   };
 }
 
+/** The contract's `Revealed` struct, as the app reads it. */
+function revealedFrom(c: { seed: bigint; state: bigint; traits: bigint[]; score: bigint; affection: bigint; golden: boolean }): RevealedContents {
+  return {
+    seed: BigInt(c.seed),
+    state: Number(c.state),
+    traits: [...c.traits].map(Number),
+    score: Number(c.score),
+    affection: Number(c.affection),
+    golden: Boolean(c.golden),
+  };
+}
+
 export class EvmFhevmAdapter implements ChainAdapter {
   readonly kind = "evm" as const;
 
@@ -182,6 +196,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private permit: Permit | null = null;
   private constants: Promise<{ fees: Fees; maxSupply: number; maxPerTx: number; milestones: number[] }> | null = null;
   private holdings: Holdings | null = null;
+  /** The connected account's pending requests, read once until its next transaction. */
+  private pendingCache: { account: Address; list: Promise<PendingRequest[]> } | null = null;
   private economyConstants: Promise<Omit<EconomyInfo, "wrapped" | "halvings" | "market">> | null = null;
   private paymentTokens: Promise<{ usdc: Deployed; cUsdc: Deployed }> | null = null;
   private rampFee: Promise<number> | null = null;
@@ -305,17 +321,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       publicTraits: [...publicTraits.rolls].flatMap((roll: bigint, traitIndex: number) =>
         mask & (1 << traitIndex) ? [{ traitIndex, roll: Number(roll) }] : [],
       ),
-      revealed:
-        boxStatus === "revealed"
-          ? {
-              seed: contents.seed,
-              state: Number(contents.state),
-              traits: [...contents.traits].map(Number),
-              score: Number(contents.score),
-              affection: Number(contents.affection),
-              golden: contents.golden,
-            }
-          : null,
+      revealed: boxStatus === "revealed" ? revealedFrom(contents) : null,
     };
   }
 
@@ -420,6 +426,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.reading(this.opts.readProvider.getBalance(owner));
   }
 
+  async openedCats(): Promise<OpenedCat[]> {
+    const latest = await this.reading(this.opts.readProvider.getBlockNumber());
+    const logs = await this.logs(this.contract.filters.Observed!(), this.opts.deployBlock ?? 0, latest);
+    const opened = logs.map((l) => (l as unknown as { args: { tokenId: bigint; openedBy: string } }).args);
+    const contents = await this.reading(Promise.all(opened.map((o) => this.contract.contentsOf!(o.tokenId))));
+    return opened.map((o, i) => ({ tokenId: Number(o.tokenId), openedBy: String(o.openedBy), revealed: revealedFrom(contents[i]) }));
+  }
+
   async usdcBalance(owner: Address): Promise<bigint> {
     const { usdc } = await this.payment();
     return this.reading(this.at(usdc).balanceOf!(owner));
@@ -442,9 +456,12 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private async myPending(tokenId: number): Promise<PendingRequest[]> {
     const account = this.address_;
     if (!account) return [];
-    const filter = this.contract.filters.RequestPlaced!(null, tokenId, account);
-    const latest = await this.reading(this.opts.readProvider.getBlockNumber());
-    return this.pendingAmong(await this.logs(filter, this.opts.deployBlock ?? 0, latest));
+    if (this.pendingCache?.account !== account) {
+      const list = this.pendingRequests(account);
+      list.catch(() => (this.pendingCache = null));
+      this.pendingCache = { account, list };
+    }
+    return (await this.pendingCache.list).filter((r) => r.tokenId === tokenId);
   }
 
   private async pendingAmong(logs: Awaited<ReturnType<EvmFhevmAdapter["logs"]>>): Promise<PendingRequest[]> {
@@ -966,6 +983,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
       sent = { hash: tx.hash, call: this.callName(tx.data), status: "sent", url: explorer ? `${explorer}/tx/${tx.hash}` : null };
       opts?.onTx?.(sent);
       const receipt = await tx.wait();
+      // Whatever it was, it may have placed or settled a request.
+      this.pendingCache = null;
       if (!receipt || receipt.status !== 1) throw new ChainError("reverted", "The transaction failed on-chain.");
       opts?.onTx?.({ ...sent, status: "confirmed", block: receipt.blockNumber, gasUsed: receipt.gasUsed });
       await this.caughtUp(receipt.blockNumber);

@@ -16,6 +16,7 @@ import {
   type DuelStatus,
   type EconomyInfo,
   type MintOptions,
+  type OpenedCat,
   type PairInfo,
   type PantryDay,
   type PayOptions,
@@ -64,6 +65,8 @@ interface MockBox {
   revealed: RevealedContents | null;
   /** Croquettes the cat ate in its life. Encrypted on a real chain until it is weighed. */
   weight: bigint;
+  /** Who opened it: public on chain, in the opening's event. */
+  openedBy: Address | null;
   /** Mock day of the last meal, with that day's meals and croquettes. */
   mealDay: number;
   mealsToday: number;
@@ -251,6 +254,10 @@ export class MockAdapter implements ChainAdapter {
     return { openDuel, entangleProposal };
   }
 
+  async openedCats(): Promise<OpenedCat[]> {
+    return this.boxes.flatMap((b, tokenId) => (b.revealed && b.openedBy ? [{ tokenId, openedBy: b.openedBy, revealed: b.revealed }] : []));
+  }
+
   /** Gas is free in the mock: every account holds a round 1 ETH. */
   async balance(): Promise<bigint> {
     return 10n ** 18n;
@@ -423,6 +430,7 @@ export class MockAdapter implements ChainAdapter {
         golden: cat.rarity.golden,
       };
       b.status = "revealed";
+      b.openedBy = me;
     }
     return ids.map((id) => this.info(id));
   }
@@ -733,6 +741,7 @@ export class MockAdapter implements ChainAdapter {
       publicTraits: new Map(),
       revealed: null,
       weight: 0n,
+      openedBy: null,
       mealDay: -1,
       mealsToday: 0,
       eatenToday: 0n,

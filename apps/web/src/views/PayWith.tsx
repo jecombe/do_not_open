@@ -165,7 +165,7 @@ export function PayWith({ busy, need, compact = false }: Props) {
                       coin: coin.symbol,
                       pct: payment.ramp.feeBps / 100,
                     })
-                  : t("pay.buyHint", { pct: payment.ramp.feeBps / 100 })}
+                  : t("pay.buyHint", { pct: payment.ramp.feeBps / 100, coin: coin.symbol })}
               </p>
             </>
           )}

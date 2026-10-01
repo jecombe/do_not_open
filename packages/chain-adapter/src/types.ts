@@ -144,6 +144,15 @@ export interface BoxInfo {
   revealed: RevealedContents | null;
 }
 
+/** An opened box, as the leaderboard ranks it: the cat, and who opened it. Opening is the one
+ *  thing that makes a holder public. */
+export interface OpenedCat {
+  tokenId: number;
+  /** Who asked for the opening, and held the box (or its entangled partner) then. */
+  openedBy: Address;
+  revealed: RevealedContents;
+}
+
 export interface DuelInfo {
   duelId: number;
   tokenA: number;
@@ -338,6 +347,8 @@ export interface ChainAdapter {
   /** Status of token ids `from` to `to` (exclusive), cheaper than `box` for each. */
   boxSummaries(from: number, to: number): Promise<BoxSummary[]>;
   pair(tokenA: number, tokenB: number): Promise<PairInfo>;
+  /** Every opened box, with who opened it. */
+  openedCats(): Promise<OpenedCat[]>;
   /** Native coin `owner` holds, in the smallest unit (wei on EVM). */
   balance(owner: Address): Promise<bigint>;
   /** Plain USDC `owner` holds. Public. */

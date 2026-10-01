@@ -43,10 +43,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
+  // The confidential marketplace's hooks: refuse a sale whose box changed while in escrow.
+  const hooks = await deploy("DoNotOpenHooks", { from: deployer, args: [dno.address], log: true });
+
   console.log(`spec hash       : ${params.specHash}`);
   console.log(`DoNotOpenConfig : ${config.address}`);
   console.log(`USDC / cUSDC    : ${payment.usdc} / ${payment.cUsdc}`);
   console.log(`DoNotOpen       : ${dno.address}`);
+  console.log(`DoNotOpenHooks  : ${hooks.address}`);
 };
 export default func;
 func.id = "deploy_doNotOpen";

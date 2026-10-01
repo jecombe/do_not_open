@@ -56,16 +56,16 @@ async function jobs(): Promise<Job[]> {
     return [...cats, { tokenId: cats.length, cat: null, facts: {} }];
   }
   const chain = createSepoliaNodeAdapter({ rpcUrl: process.env.SEPOLIA_RPC_URL });
-  const { totalMinted } = await chain.collection();
+  const { tokenCount } = await chain.collection();
   const out: Job[] = [];
-  for (const tokenId of range(option("tokens", ""), totalMinted)) {
+  for (const tokenId of range(option("tokens", ""), tokenCount)) {
     const box = await chain.box(tokenId);
     // The weigh-in lives in the Pantry; a network without one still renders its cats.
     const weighIn = box.revealed ? await chain.boxPantry(tokenId).then((p) => p.weighIn, () => null) : null;
     out.push({
       tokenId,
       cat: box.revealed ? buildCatSpec({ seed: box.revealed.seed, affection: box.revealed.affection, weighIn: weighIn ?? undefined }) : null,
-      facts: { feeds: box.feeds, duelsWon: box.wins, vetCertified: box.aliveCheck === "alive", entangledWith: box.partner },
+      facts: { duelsWon: box.wins, vetCertified: box.aliveCheck === "alive", entangledWith: box.partner },
     });
   }
   return out;

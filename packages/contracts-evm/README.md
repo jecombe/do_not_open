@@ -1,18 +1,24 @@
 # @dno/contracts-evm
 
-Hardhat project built on the official Zama template. Five contracts:
+Hardhat project built on the official Zama template. Six contracts, and a reusable base:
 
 - **`DoNotOpenConfig`** — the game's numbers, read from `packages/game-spec/spec.json`
   at deploy (`lib/specParams.ts`), plus the plaintext rule that turns a revealed seed
   into state, traits and score. Stores the keccak256 of the spec it was built from.
-- **`DoNotOpen`** — ERC-721 and all FHE logic of the boxes. 10,000 boxes.
+- **`ConfidentialERC721`** (`contracts/confidential/`) — the base of a Confidential ERC-721:
+  encrypted owners, transfers that never revert on ownership, discovery through the
+  holder's own receipts. Any collection can inherit it. See
+  [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNERS.md).
+- **`DoNotOpen`** — a Confidential ERC-721 and all FHE logic of the boxes. 10,000 boxes; who
+  holds them and how many were sold are encrypted. Paid in cUSDC.
+- **`UsdcRamp`** — ETH in, USDC or cUSDC out, through a public pool, for a small fee.
 - **`Croq`** — CROQ, a plain ERC-20 with 0 decimals. 20,000,000 minted once in the
   constructor; no mint function, no owner.
 - **`ConfidentialCroq`** — cCROQ, OpenZeppelin's `ERC7984ERC20Wrapper` around CROQ,
   unmodified. Encrypted balances and transfer amounts, 1:1 with CROQ.
 - **`Pantry`** — the croquette economy: welcome bags, the daily purr, meals into
-  encrypted stashes, settlement by the cat's state. Reads `DoNotOpen`, never writes to
-  it. Parameters from the spec's `economy` section (`pantryParamsFromSpec()`).
+  encrypted weights, the weigh-in. Reads `DoNotOpen` (as a trusted reader of who holds a box),
+  never writes to it. Parameters from the spec's `economy` section (`pantryParamsFromSpec()`).
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -20,60 +26,48 @@ The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
 | Per box            | Storage                          | Who can read it                            |
 | ------------------ | -------------------------------- | ------------------------------------------ |
-| Seed               | `euint64`                        | Nobody until `observe`                     |
-| Affection          | `euint32`, exists once fed       | Nobody until `observe`                     |
+| Owner              | `eaddress`                       | Nobody; the holder finds their boxes in their own receipts |
+| Seed               | `euint64`                        | Nobody until an opening is finalized       |
+| Affection          | `euint32`, exists once fed       | Nobody until an opening is finalized       |
 | Rarity score       | `euint16`, cached at first duel  | Nobody; only compared under encryption     |
-| Duel outcome       | `ebool` + two `euint8`           | Everyone, once the duel is accepted        |
-| State, traits, score | not stored; derived from the seed | Nobody until `observe`                   |
+| Paid-shake earnings | `euint64`                       | Nobody; paid to whoever holds the box when claimed |
 | A shake result     | two fresh `euint8` per viewer    | The viewer who shook, nobody else          |
-| "Is alive" bit     | `ebool`, only after `proveAlive` | Everyone, once requested                   |
-| Status, badge, revealed contents | plain storage      | Everyone                                   |
-| Croquette stash    | `euint64` in the Pantry          | Nobody; settled after `observe`            |
-| Meals, last claim, settled flag | plain storage in the Pantry | Everyone                           |
+| A transfer receipt | `ebool` "moved"                  | Its sender and recipient                   |
+| A request or a duel outcome | `ebool`s and values masked by "the caller holds it" | Everyone, once requested |
+| Boxes sold         | `euint16`                        | Nobody; milestones only                    |
+| Status, badge, revealed contents, opener | plain storage, events | Everyone                       |
+| Weight, today's meals, stash | `euint64`/`euint8` in the Pantry | Nobody (the holder reads today's meals) |
 
 ## Cost per function
 
-Measured on the FHEVM mock with `fhevm.computeTransactionHCU`. The protocol allows
-20,000,000 HCU per transaction (5,000,000 sequential depth).
+Measured on the FHEVM mock (`REPORT_COSTS=1 pnpm test test/Costs.ts`). The protocol allows
+20,000,000 HCU per transaction (5,000,000 sequential depth). The full table, with what each
+number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNERS.md#7-cost).
 
-| Function             | FHE operations                                       | HCU              | Gas      |
-| -------------------- | ---------------------------------------------------- | ---------------- | -------- |
-| `mint(n)`            | `randEuint64` per box                                | 24,000 per box   | ~186k for 1, ~881k for 10 |
-| `shake`, `paidShake` | `randEuint16`, 4 scalar `ge`, 4 `select`, 1 encrypted `shr`, casts | 672,224 (depth 507,064) | ~366k, ~411k |
-| `feed`               | `randEuint8`, one 32-bit `add`                       | 148,032          | ~111k    |
-| `proveAlive`         | cast, 1 scalar `lt` on 16 bits                       | 58,032           | ~164k    |
-| `challengeDuel`      | score of box A on first use: 3 `ge`, 3 `select`, 5 `shr`, 2 `mul`, 5 `add` | 1,351,480, then 0 | ~499k |
-| `acceptDuel`         | score of box B on first use, `gt`, pick, 2 encrypted `shr`, `select` | 2,371,768, ~1.0M once cached | ~919k |
-| `finalizeDuel`       | none (KMS signature check)                           | 0                | ~169k    |
-| `proposeEntangle`, `acceptEntangle` | none                                  | 0                | ~59k, ~78k |
-| `observe`            | none (ACL change); twice the ACL work if entangled   | 0                | ~88k to ~149k |
-| `finalizeObserve`    | none (KMS signature check, plaintext decode)         | 0                | ~192k    |
-| `finalizeProveAlive` | none                                                 | 0                | ~94k     |
-| `claim`, transfer    | none                                                 | 0                | ~31k, ~60k |
-
-`Pantry`:
-
-| Function | FHE operations | HCU |
+| Function | Gas | HCU |
 | --- | --- | --- |
-| `feed` | `fromExternal`, confidential `transferFrom`, `mul` + `div` for the 10% burn, 2 `add` | ~2,152,000 |
-| `claim(ids)` | per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; then `min`, `sub`, one transfer | ~680,000 per box, ~6.8M for the 10-box maximum (depth ~2.8M) |
-| `claim` once the purr has halved to 0 | none | 0 |
-| `settle` | none if never fed; ghost one `add`; alive or asleep one transfer; quantum `mul` + `div`, `sub`, `add`, transfer | 0, ~162,000, ~586,000, ~1,990,000 |
-| `fund` | `wrap`, one `add` | not pinned |
+| `mint`, 1 box among 10 ids | ~2.6M | ~3.3M |
+| `mint`, 1 box among 1 id | ~1.0M | ~1.9M |
+| `confidentialTransfer` | ~184k | ~200k |
+| `shake` / `paidShake` | ~421k / ~889k | ~0.9M / ~2.0M |
+| `feed` | ~530k | ~1.07M |
+| `observe` + `finalize` | ~698k + ~223k | ~1.12M |
+| `acceptDuel` (first score) | ~1.1M | ~2.77M |
+| `Pantry.feed` | ~1.23M | ~3.68M |
+| `Pantry.claim`, 10 boxes | | ~13M |
 
-Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M,
-`fund` 442k.
+Deployed size: `DoNotOpen` 24,093 bytes (limit 24,576), `Pantry` about 14,000.
 
 ## Commands
 
 ```bash
 pnpm compile
-pnpm test                 # 80 tests on the local FHEVM mock (27 in test/Pantry.ts)
+pnpm test                 # 95 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp
 
 # Local walkthrough
 pnpm chain                # terminal 1
 pnpm deploy:localhost     # terminal 2
-pnpm demo:localhost       # mint, shake twice, prove alive, observe
+pnpm demo:localhost       # buy a hidden box, shake twice, prove alive, observe
 pnpm demo2:localhost      # mint 3, feed, duel, entangle, observe one and see both open
 
 # Sepolia (fill MNEMONIC or PRIVATE_KEY in the repo-root .env first)
@@ -84,13 +78,16 @@ pnpm test:sepolia         # optional integration test, spends a little Sepolia E
 pnpm verify:sepolia
 ```
 
-`pnpm deploy:<net>` runs two scripts. `deploy/deploy.ts` deploys the config and
-`DoNotOpen`. `deploy/economy.ts` then deploys `Croq`, `ConfidentialCroq` and `Pantry`,
-approves and calls `Pantry.fund` with the game reserve plus the welcome bags (11M), and,
-on a network listed in `UNISWAP_V2` (Sepolia), opens a CROQ/WETH pool with the 4M
-liquidity share and `LIQUIDITY_ETH` ETH (default `0.02`). The LP tokens are then sent to
-`0x…dEaD`, so that liquidity is locked for good. The rest of the supply (the treasury) stays with the deployer too, or goes to
-`COLLECTION_OWNER` if it is set.
+`pnpm deploy:<net>` runs three scripts. `deploy/deploy.ts` deploys the config and
+`DoNotOpen` (with the spec's milestones), paid in Zama's USDCMock / cUSDCMock on Sepolia and
+in local test tokens elsewhere. `deploy/economy.ts` then deploys `Croq`, `ConfidentialCroq`
+and `Pantry`, makes the Pantry a trusted reader of `DoNotOpen` (or prints the call when the
+collection owner is another key), approves and calls `Pantry.fund` with the game reserve
+plus the welcome bags (11M), and, on a network listed in `UNISWAP_V2` (Sepolia), opens a
+CROQ/USDC pool with the 4M liquidity share and `LIQUIDITY_USDC` USDC (default 4,000). The
+LP tokens are sent to `0x…dEaD`, so that liquidity is locked for good. The rest of the
+supply (the treasury) stays with the deployer, or goes to `COLLECTION_OWNER` if it is set.
+`deploy/ramp.ts` deploys the `UsdcRamp`.
 `CROQ_CONTRACT_URI` sets cCROQ's contract URI (default empty).
 
 `Pantry.fund` calls FHE, so the economy script fails on the bare in-process `hardhat`
@@ -99,24 +96,28 @@ network. Use `pnpm chain` + `pnpm deploy:localhost`, which runs the FHEVM mock.
 `pnpm export:sepolia` (run by `deploy:sepolia`) writes
 `packages/chain-adapter/src/evm/deployments/sepolia.json` (the box contract) and
 `sepolia-economy.json` (CROQ, cCROQ, Pantry addresses and ABIs, and the market: pair,
-router, factory, WETH).
+router, factory, USDC).
 
-Single steps: `npx hardhat --network <net> dno:mint|dno:shake|dno:feed|dno:paid-shake|dno:prove-alive|dno:observe|dno:status --token <id>`,
+Single steps: `npx hardhat --network <net> dno:mint --quantity <n> --ids <n>`,
+`dno:shake|dno:feed|dno:paid-shake|dno:prove-alive|dno:observe|dno:status --token <id>`,
 `dno:entangle --a <id> --b <id>`, `dno:duel --a <id> --b <id>`.
 
 ## Two-step public decryption
 
-`observe` and `proveAlive` only mark a ciphertext as publicly decryptable. The cleartext
-comes back in a second transaction that anyone can send:
+What must become public goes through a request. The first transaction computes the
+encrypted answers (for an opening: "the caller holds the box and paid", the seed and the
+affection masked by it) and marks them publicly decryptable. The cleartexts come back in a
+second transaction that anyone can send:
 
 ```
-holder   -> observe(tokenId)                status = Observing
-anyone   -> relayer.publicDecrypt([seedHandle])  => cleartext + KMS proof   (off-chain)
-anyone   -> finalizeObserve(tokenId, cleartext, proof)
-            contract rebuilds the handle list from its own storage,
+holder   -> observe(tokenId)                         RequestPlaced(requestId, tokenId, holder, Open)
+anyone   -> relayer.publicDecrypt(requestInfo(requestId).handles)  => cleartexts + KMS proof   (off-chain)
+anyone   -> finalize(requestId, cleartexts, proof)
+            the handles are the ones stored at the request,
             FHE.checkSignatures(...) reverts on any mismatch,
-            status = Revealed
+            "holds" true: Revealed and Observed(tokenId, holder, ...); false: Refused, nothing happens
 ```
 
-The CLI tasks and, later, the frontend do both steps in one go. If the second step is
-never sent the box stays in `Observing`; nothing is lost and anyone can finish it.
+Alive checks and entanglements work the same way; duels have their own `finalizeDuel`; a
+milestone has `announceMilestone`. The CLI tasks and the app do both steps in one go. A
+request whose second step was never sent stays pending; anyone can finish it.

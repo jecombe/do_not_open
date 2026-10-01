@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sameAddress, shortAddress, type ActionOptions, type BoxInfo, type BoxSummary, type DuelResult, type PairInfo } from "@dno/chain-adapter";
+import { sameAddress, type ActionOptions, type BoxInfo, type BoxSummary, type DuelResult, type PairInfo } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
 import { usePayment } from "../chain/payment";
+import { FindMine } from "./FindMine";
 import { logTx, recallTxs, type LoggedTx } from "../chain/txLog";
 import { useT, type AppKey } from "../i18n/app";
 import { useLocale } from "../i18n/locale";
 import { catNames } from "../i18n/names";
 import { PairScene, type PairSceneHandle } from "../scenes/Scenes";
 import { Stage } from "./Stage";
-import { PAYMENT_STEPS, StepTracker, type PlannedStep } from "./StepTracker";
+import { StepTracker, type PlannedStep } from "./StepTracker";
 import { TxJournal } from "./TxJournal";
 import { useFold } from "./useFold";
 
@@ -29,11 +30,11 @@ export type PairIntent = "duel" | "entangle";
 
 /** The pickers draw from this many of the most recent boxes, plus the account's own. */
 const PICK_LIMIT = 200;
-const summaryOf = (x: BoxInfo): BoxSummary => ({ tokenId: x.tokenId, owner: x.owner, status: x.status, partner: x.status === "sealed" ? x.partner : null });
+const summaryOf = (x: BoxInfo): BoxSummary => ({ tokenId: x.tokenId, mine: x.mine, status: x.status, partner: x.status === "sealed" ? x.partner : null });
 const serial = (id: number) => buildBoxSpec(id).serial;
 
 /** A note is stored as a message key, so it follows a language change. */
-type Note = Extract<AppKey, "pair.noteChallenge" | "pair.noteProposal">;
+type Note = Extract<AppKey, "pair.noteChallenge" | "pair.noteProposal" | "pair.noteVoid">;
 
 const SIGN_AND_MINE = (label: AppKey): PlannedStep[] => [
   { step: "wallet", label },
@@ -46,13 +47,13 @@ const DECIDE: PlannedStep[] = [
 const OPEN_PLAN: PlannedStep[] = [...SIGN_AND_MINE("track.sign"), { step: "decrypting", label: "track.decryptPublic" }, { step: "proving", label: "track.proof" }];
 
 export function PairView({ quality, sound, initial, intent, onInspect }: Props) {
-  const { adapter, account, collection, myBoxes, refresh, connect } = useChain();
+  const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
   const { foldClass, foldButton } = useFold();
   const scene = useRef<PairSceneHandle>(null);
   const action = useAction();
-  const minted = collection?.totalMinted ?? 0;
+  const minted = collection?.tokenCount ?? 0;
 
   const [picked, setPicked] = useState<[number, number] | null>(initial && initial[1] >= 0 ? initial : null);
   const [loaded, setLoaded] = useState<{ boxes: [BoxInfo, BoxInfo]; standing: PairInfo } | null>(null);
@@ -152,7 +153,6 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
     }
     return [sorted([...yours.map((x) => x.tokenId), a]), sorted([...theirs.map((x) => x.tokenId), b])];
   }, [account, pool, yours, theirs, minted, a, b]);
-  const holderOf = useMemo(() => new Map((pool ?? []).map((x) => [x.tokenId, x.owner])), [pool]);
   // Only what was read for the boxes on screen: right after a pick, the last pair's boxes
   // (and their cats) are still in state, and must not be dressed onto the new ones.
   const current = loaded && loaded.boxes[0].tokenId === a && loaded.boxes[1].tokenId === b ? loaded : null;
@@ -213,14 +213,15 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
         d = (await adapter.pair(a, b)).openDuel;
       }
       if (d?.status === "challenged") {
-        if (!sameAddress((await adapter.box(d.tokenB)).owner, account)) return "waiting" as const;
+        if (!mine(d.tokenB)) return "waiting" as const;
         await adapter.acceptDuel(d.duelId, o);
         d = { ...d, status: "pending" };
       }
       return d ? adapter.finishDuel(d.duelId, o) : ("waiting" as const);
     });
-    if (result === undefined || result === "waiting") {
+    if (result === undefined || result === "waiting" || result === null) {
       if (result === "waiting") setNote("pair.noteChallenge");
+      if (result === null) setNote("pair.noteVoid");
       void load();
       return;
     }
@@ -262,7 +263,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
         if ((await adapter.box(from)).partner === to) return true;
         p = { from, to, proposer: account! };
       }
-      if (!sameAddress((await adapter.box(p.to)).owner, account)) return false;
+      if (!mine(p.to)) return false;
       await adapter.acceptEntangle(p.from, p.to, o);
       return true;
     });
@@ -278,7 +279,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
     if (!openable) return;
     start();
     const id = openable.tokenId;
-    setPlan(openable.status === "opening" ? OPEN_PLAN.slice(2) : pay === "cusdc" ? [...PAYMENT_STEPS, ...OPEN_PLAN] : OPEN_PLAN);
+    setPlan(openable.status === "opening" ? OPEN_PLAN.slice(2) : OPEN_PLAN);
     const opened = await action.run("open", (o) => (openable.status === "opening" ? adapter.finishObserve(id, logged(o)) : adapter.observe(id, { ...logged(o), pay })));
     if (!opened) {
       void load();
@@ -357,7 +358,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
                 {options[slot].map((id) => (
                   <option key={id} value={id}>
                     {serial(id)}
-                    {mine(id) ? t("pair.yours") : account && holderOf.has(id) ? ` · ${shortAddress(holderOf.get(id)!)}` : ""}
+                    {mine(id) ? t("pair.yours") : ""}
                   </option>
                 ))}
               </select>
@@ -365,7 +366,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
                 {(() => {
                   const x = slot === 0 ? boxA : boxB;
                   if (!x) return "…";
-                  return t("pair.status", { holder: holderCopy(x.owner, account), state: status(x) }) + (x.wins ? t("pair.won", { n: x.wins }) : "");
+                  return t("pair.status", { holder: holderCopy(mine(x.tokenId)), state: status(x) }) + (x.wins ? t("pair.won", { n: x.wins }) : "");
                 })()}
               </span>
               {account && pool && (slot === 0 ? yours : theirs).length === 0 && (
@@ -398,6 +399,8 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
               {t("nav.connect")}
             </button>
           </div>
+        ) : !boxesKnown ? (
+          <FindMine compact />
         ) : (
           opened.length < 2 && (
             <div className="actions">

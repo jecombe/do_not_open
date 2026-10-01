@@ -1,5 +1,5 @@
 import { buildCatSpec, type CatSpec } from "@dno/generator";
-import { ChainError, formatAmount, sameAddress, shortAddress, type Address, type CollectionInfo, type Payment, type RevealedContents, type Step, type TraitRoll, type WeighIn } from "@dno/chain-adapter";
+import { ChainError, formatAmount, type CollectionInfo, type Payment, type RevealedContents, type Step, type TraitRoll, type WeighIn } from "@dno/chain-adapter";
 import { lookup, t } from "../i18n/app";
 import { rollNames } from "../i18n/names";
 
@@ -14,8 +14,8 @@ export function errorCopy(error: unknown): string {
       return t("error.usdc");
     case "unpaid":
       return t("error.unpaid");
-    case "refunded":
-      return t("error.refunded");
+    case "not-yours":
+      return t("error.notYours");
     case "no-wallet":
       return t("error.noWallet");
     case "not-connected":
@@ -61,8 +61,17 @@ export function catFromRevealed(r: RevealedContents, weighIn?: WeighIn | null): 
   return weighIn ? buildCatSpec({ seed: r.seed, affection: r.affection, weighIn }) : cat;
 }
 
-export const holderCopy = (owner: Address, account: Address | null) => (sameAddress(owner, account) ? t("holder.you") : shortAddress(owner));
+/** Who holds a box, as far as this page may say: the account itself, or nobody knows. */
+export const holderCopy = (mine: boolean) => (mine ? t("holder.you") : t("holder.hidden"));
+
+/** How many boxes are sold, as far as the milestones say. */
+export function saleCopy(c: CollectionInfo): string {
+  const { milestones, reached, soldOut } = c.sale;
+  if (soldOut) return t("sale.soldOut", { max: c.maxSupply });
+  if (reached === 0) return t("sale.fewerThan", { n: milestones[0] ?? c.maxSupply });
+  return t("sale.moreThan", { n: milestones[reached - 1]! });
+}
 
 /** A price, in the stablecoin it will be paid in. */
-export const fee = (amount: bigint, c: CollectionInfo | null, pay: Payment = "usdc") =>
+export const fee = (amount: bigint, c: CollectionInfo | null, pay: Payment = "cusdc") =>
   c ? `${formatAmount(amount, c.payment.decimals)} ${pay === "cusdc" ? c.payment.confidentialSymbol : c.payment.symbol}` : "";

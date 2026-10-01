@@ -216,9 +216,9 @@ describe("BoxSpec", () => {
 describe("metadata and SVG fallback", () => {
   it("builds sealed metadata from the token id and public facts only", async () => {
     const { sealedMetadata, renderBoxSvg, buildBoxSpec } = await import("../src");
-    const meta = sealedMetadata(42, "42.png", { feeds: 3, vetCertified: true });
+    const meta = sealedMetadata(42, "42.png", { duelsWon: 3, vetCertified: true });
     expect(meta.name).toBe("DO NOT OPEN DNO-0042");
-    expect(meta.attributes.map((a) => a.trait_type)).toEqual(["Status", "Times fed", "Vet Certified"]);
+    expect(meta.attributes.map((a) => a.trait_type)).toEqual(["Status", "Duels won", "Vet Certified"]);
     const svg = renderBoxSvg(buildBoxSpec(42));
     expect(svg.startsWith("<svg")).toBe(true);
     expect(svg).toContain("DNO-0042");

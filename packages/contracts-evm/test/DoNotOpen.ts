@@ -310,7 +310,7 @@ describe("DoNotOpen", function () {
       // Anyone may relay the decryption; here a third party does.
       await expect(finalizeRequest(dno, id, carol))
         .to.emit(dno, "Observed")
-        .withArgs(0, seed, STATE_IDS[cat.state], cat.rarity.score, false)
+        .withArgs(0, alice.address, seed, STATE_IDS[cat.state], cat.rarity.score, false)
         .and.to.emit(dno, "RequestSettled")
         .withArgs(id, REQUEST.Done);
 

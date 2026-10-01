@@ -11,7 +11,7 @@ const REPO = "https://github.com/jecombe/do_not_open";
 const DOCS = `${REPO}/blob/dev/docs`;
 const CONTRACT = "0xe8f699eEBc22767413A9edBb48826B10D3117f61";
 
-const SECTIONS = ["box", "cats", "seed", "privacy", "flows", "mechanics", "transfer", "croquettes", "code", "solana", "mainnet", "more"] as const;
+const SECTIONS = ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "transfer", "croquettes", "code", "solana", "mainnet", "more"] as const;
 
 /** Highlights the section being read in the routing slip. */
 function useCurrentSection(): string {
@@ -34,28 +34,32 @@ function useCurrentSection(): string {
 
 /** Rows of the privacy table: a fact, then either one cell per column or one cell spanning both. */
 const PRIVACY = [
+  { key: "r9", holder: "docs.privacy.r9.holder", others: "docs.no" },
+  { key: "r10", holder: "docs.privacy.r10.holder", others: "docs.no" },
+  { key: "r11", both: "docs.privacy.r11.v" },
   { key: "r1", holder: "docs.no", others: "docs.no" },
   { key: "r2", holder: "docs.privacy.r2.holder", others: "docs.privacy.r2.others" },
   { key: "r3", both: "docs.privacy.r3.v" },
   { key: "r4", both: "docs.privacy.r4.v" },
   { key: "r5", both: "docs.everyone" },
   { key: "r6", holder: "docs.no", others: "docs.no" },
-  { key: "r7", both: "docs.everyone" },
+  { key: "r7", both: "docs.privacy.r7.v" },
   { key: "r8", holder: "docs.no", others: "docs.no" },
 ] as const;
 
 /** Rows of the mechanics table. A missing `who` or `cost` reuses the row above's words. */
 const MECHANICS = [
-  { key: "m1", cost: "5 USDC" },
+  { key: "m1", cost: "docs.mech.m1.cost" },
   { key: "m2", cost: "docs.gasOnly" },
   { key: "m3", cost: "docs.mech.m3.cost" },
-  { key: "m4", cost: "0.5 USDC" },
+  { key: "m12", cost: "docs.gasOnly" },
+  { key: "m4", cost: "0.5 cUSDC" },
   { key: "m5", cost: "docs.gasOnly" },
   { key: "m6", cost: "docs.gasOnly" },
   { key: "m7", who: "docs.mech.m6.who", cost: "docs.gasOnly" },
-  { key: "m8", who: "docs.mech.m2.who", cost: "1 USDC" },
+  { key: "m8", who: "docs.mech.m2.who", cost: "1 cUSDC" },
   { key: "m9", who: "docs.mech.m2.who", cost: "docs.mech.m9.cost" },
-  { key: "m10", who: "docs.mech.m2.who", cost: "docs.gasOnly" },
+  { key: "m10", who: "docs.mech.m4.who", cost: "docs.gasOnly" },
   { key: "m11", who: "docs.mech.m4.who", cost: "docs.gasOnly" },
 ] as const;
 
@@ -67,6 +71,7 @@ const REFS = [
   { key: "r5", href: `${DOCS}/DESIGN.md` },
   { key: "r6", href: `${REPO}/blob/dev/packages/contracts-evm/README.md` },
   { key: "r7", href: `${DOCS}/CROQ.md` },
+  { key: "r8", href: `${DOCS}/HIDDEN_OWNERS.md` },
 ] as const;
 
 export function Manual() {
@@ -75,6 +80,8 @@ export function Manual() {
   const current = useCurrentSection();
   const supply = spec.collection.maxSupply.toLocaleString(locale);
   const { economy } = spec;
+  const maxPerTx = Number(spec.mechanics.mint?.maxPerTx ?? 10);
+  const milestones = spec.collection.milestones.map((m) => m.toLocaleString(locale)).join(", ");
 
   // The tab title and description follow the language too.
   useEffect(() => {
@@ -156,6 +163,18 @@ export function Manual() {
             </div>
           </section>
 
+          <section id="holders">
+            <h2>{t("docs.section.holders")}</h2>
+            <div className="prose">
+              <p>{t("docs.holders.p1")}</p>
+              <p>{t("docs.holders.p2")}</p>
+              <p>{t("docs.holders.p3", { n: maxPerTx })}</p>
+              <p>{t("docs.holders.p4", { supply, list: milestones })}</p>
+              <p>{t("docs.holders.p5")}</p>
+              <p>{t("docs.holders.p6")}</p>
+            </div>
+          </section>
+
           <section id="privacy">
             <h2>{t("docs.section.privacy")}</h2>
             <div className="prose">
@@ -217,7 +236,7 @@ export function Manual() {
                   {MECHANICS.map((row) => (
                     <tr key={row.key}>
                       <th scope="row">{t(`docs.mech.${row.key}`)}</th>
-                      <td>{"who" in row ? t(row.who) : t(`docs.mech.${row.key}.who`, { n: Number(spec.mechanics.mint?.maxPerTx ?? 10) })}</td>
+                      <td>{"who" in row ? t(row.who) : t(`docs.mech.${row.key}.who`, { n: maxPerTx })}</td>
                       <td>{row.cost.startsWith("docs.") ? t(row.cost as "docs.gasOnly", { cap: economy.meal.maxEatenPerDay.toLocaleString(locale), burn: economy.meal.burnBps / 100 }) : row.cost}</td>
                       <td>{t(`docs.mech.${row.key}.public`)}</td>
                     </tr>
@@ -237,7 +256,7 @@ export function Manual() {
               <p>{t("docs.transfer.p1")}</p>
             </div>
             <ol className="timeline">
-              {(["t1", "t2", "t3", "t4", "t5"] as const).map((k) => (
+              {(["t1", "t2", "t3", "t4", "t5", "t6"] as const).map((k) => (
                 <li key={k}>
                   <strong>{t(`docs.transfer.${k}`)}</strong>
                   <span>{t(`docs.transfer.${k}.v`)}</span>
@@ -348,7 +367,7 @@ export function Manual() {
               </p>
             </div>
             <ul className="findings">
-              {(["f1", "f2", "f3", "f4", "f5", "f6"] as const).map((k) => (
+              {(["f1", "f2", "f3", "f4", "f5", "f6", "f8"] as const).map((k) => (
                 <li key={k}>
                   <strong>{t(`docs.mainnet.${k}`)}</strong> {t(`docs.mainnet.${k}.v`)}
                 </li>

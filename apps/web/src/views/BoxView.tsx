@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sameAddress, type ActionOptions, type BoxInfo, type BoxPantry, type Step, type TraitRoll } from "@dno/chain-adapter";
+import type { ActionOptions, BoxInfo, BoxPantry, PantryDay, Step, TraitRoll } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -14,7 +14,8 @@ import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scen
 import { Declaration } from "./Declaration";
 import { PayWith } from "./PayWith";
 import { Stage } from "./Stage";
-import { PAYMENT_STEPS, StepTracker, type PlannedStep } from "./StepTracker";
+import { StepTracker, type PlannedStep } from "./StepTracker";
+import { FindMine } from "./FindMine";
 import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
 
@@ -73,8 +74,6 @@ const PLANS: Record<string, PlannedStep[]> = {
 /** Finishing a half-done open or check starts at the decryption. */
 const resumed = (plan: PlannedStep[]) => plan.slice(2);
 
-const PAID_ACTIONS = new Set(["feed", "open"]);
-
 const HOLDER_SHARE = Number(gameSpec.mechanics.paidShake?.holderShareBps ?? 7000) / 100;
 
 /** Runs `then` the first time an action reaches `at`: the moment the scene should react. */
@@ -99,13 +98,13 @@ const ago = (at: number, locale: string) => {
 };
 
 /** A note is stored as a message key, so it follows a language change. */
-type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive" | "box.noteServed" | "box.noteWeighed">;
+type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive" | "box.noteServed" | "box.noteWeighed" | "box.noteSent">;
 
 const { meal } = gameSpec.economy;
 const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
 export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview }: Props) {
-  const { adapter, account, collection, refresh, connect } = useChain();
+  const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
   const { foldClass, foldButton } = useFold();
@@ -116,7 +115,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const [serving, setServing] = useState(false);
   const [croq, setCroq] = useState("");
   // What the holder fed this cat today, decrypted for them: the input stops at what is left.
-  const [eaten, setEaten] = useState<{ tokenId: number; value: bigint } | null>(null);
+  const [day, setDay] = useState<{ tokenId: number; value: PantryDay } | null>(null);
+  const [giving, setGiving] = useState(false);
+  const [giveTo, setGiveTo] = useState("");
   const [missingId, setMissingId] = useState<number | null>(null);
   const [felt, setFelt] = useState<TraitRoll | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -131,7 +132,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const info = loaded?.tokenId === tokenId ? loaded : null;
   const missing = missingId === tokenId;
   const box = useMemo(() => buildBoxSpec(tokenId), [tokenId]);
-  const minted = collection?.totalMinted ?? 0;
+  const minted = collection?.tokenCount ?? 0;
 
   const load = useCallback(async () => {
     try {
@@ -150,9 +151,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const kitchen = pantry?.tokenId === tokenId ? pantry.at : null;
   const weighIn = kitchen?.weighIn ?? null;
   const cat = useMemo(() => (info?.revealed ? catFromRevealed(info.revealed, weighIn) : null), [info, weighIn]);
-  const fullToday = !!kitchen && kitchen.mealsToday >= meal.mealsPerDay;
-  const eatenToday = kitchen?.mealsToday === 0 ? 0n : eaten?.tokenId === tokenId ? eaten.value : null;
-  const leftToday = eatenToday === null ? null : DAILY_CAP - eatenToday;
+  const today = day?.tokenId === tokenId ? day.value : null;
+  const fullToday = !!today && today.meals >= meal.mealsPerDay;
+  const leftToday = today === null ? null : DAILY_CAP - today.eaten;
 
   // The box shows the wait too: restless for a shake, a heartbeat for the vet, building up to the lid for an open.
   useEffect(() => {
@@ -175,13 +176,15 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     setOut(false);
     setServing(false);
     setCroq("");
-    setEaten(null);
+    setDay(null);
+    setGiving(false);
+    setGiveTo("");
     reset();
     void load();
   }, [load, reset]);
 
   const step = (delta: number) => minted > 0 && onTokenChange((tokenId + delta + minted) % minted);
-  const isHolder = !!info && sameAddress(info.owner, account);
+  const isHolder = myBoxes.includes(tokenId);
   const busy = action.busy ?? (opening ? "open" : null);
   const onOpened = useCallback(() => setOpening(false), []);
   const steps = (
@@ -235,9 +238,25 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
       return;
     }
     setServing(true);
-    if (!kitchen || kitchen.mealsToday === 0 || eaten?.tokenId === tokenId) return;
-    const value = await action.run("today", (o) => adapter.eatenToday(tokenId, o));
-    if (value !== undefined) setEaten({ tokenId, value });
+    if (!kitchen || today) return;
+    const value = await action.run("today", (o) => adapter.pantryDay(tokenId, o));
+    if (value !== undefined) setDay({ tokenId, value });
+  };
+
+  /** Gives the box to another address. Moves it only if it is yours, which it is here. */
+  const give = async () => {
+    const to = giveTo.trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(to)) return;
+    start();
+    const done = await action.run("give", async (o) => {
+      await adapter.sendBox(tokenId, to, o);
+      return true;
+    });
+    if (!done) return;
+    setGiving(false);
+    setGiveTo("");
+    setNote("box.noteSent");
+    await refresh();
   };
 
   const serve = async () => {
@@ -251,7 +270,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     setServing(false);
     setCroq("");
     // A meal can be cut down, or move nothing: read the day again rather than guess.
-    setEaten(null);
+    setDay(null);
     setNote("box.noteServed");
     void load();
   };
@@ -352,13 +371,14 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
         ) : revealed ? (
           <Declaration cat={cat}>
             <p className="fine after-table">
-              {t("box.openForGood", { serial: box.serial, holder: isHolder ? t("holder.youLower") : holderCopy(info!.owner, account) })}
-              {cat.rarity.golden ? t("box.goldenFed") : info!.feeds > 0 ? t("box.fedNotEnough", { count: info!.feeds }) : ""}
+              {t("box.openForGood", { serial: box.serial })}
+              {isHolder ? t("box.openYours") : ""}
+              {cat.rarity.golden ? t("box.goldenFed") : ""}
               {info!.aliveCheck === "alive" ? t("box.vetBefore") : ""}
               {info!.partner !== null ? t("box.entangledWith", { serial: buildBoxSpec(info!.partner).serial }) : ""}
             </p>
             {kitchen && !weighIn && (
-              <p className="fine">{kitchen.meals > 0 ? t("box.weighPrompt", { count: kitchen.meals }) : t("box.weighPromptNever")}</p>
+              <p className="fine">{t("box.weighPromptHidden")}</p>
             )}
             <div className="actions">
               <button type="button" className="stamp-button" onClick={() => inspect(true)}>
@@ -395,17 +415,12 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               </div>
               <div>
                 <dt>{t("box.holder")}</dt>
-                <dd>{info ? holderCopy(info.owner, account) : "…"}</dd>
-              </div>
-              <div>
-                <dt>{t("box.fed")}</dt>
-                <dd>{info ? `${info.feeds} ×` : "…"}</dd>
+                <dd>{info ? holderCopy(isHolder) : "…"}</dd>
               </div>
             </dl>
 
-            {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0 || (kitchen?.meals ?? 0) > 0) && (
+            {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0) && (
               <ul className="marks">
-                {kitchen && kitchen.meals > 0 && <li>{t("box.markMeals", { count: kitchen.meals })}</li>}
                 {info.aliveCheck === "alive" && <li className="mark-good">{t("box.markVet")}</li>}
                 {info.aliveCheck === "notAlive" && <li>{t("box.markNotAlive")}</li>}
                 {info.partner !== null && <li className="mark-entangled">{t("box.markEntangled", { serial: buildBoxSpec(info.partner).serial })}</li>}
@@ -443,6 +458,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 <button type="button" className="stamp-button" onClick={() => void connect()}>
                   {t("nav.connect")}
                 </button>
+              ) : !boxesKnown ? (
+                <FindMine compact />
               ) : info.status === "opening" ? (
                 <button type="button" className="stamp-button" onClick={() => void open()} disabled={!!busy}>
                   {busy === "open" ? t("box.opening") : t("box.finishOpening")}
@@ -470,6 +487,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                           {busy === "alive" ? t("box.checking") : info.aliveCheck === "pending" ? t("box.finishCheck") : t("box.isAlive")}
                         </button>
                       )}
+                      <button type="button" className="plain-button" onClick={() => setGiving((g) => !g)} disabled={!!busy} aria-expanded={giving}>
+                        {busy === "give" ? t("box.giving") : t("box.give")}
+                      </button>
                     </>
                   )}
                   <button type="button" className="plain-button" onClick={() => onPair(tokenId)} disabled={!!busy}>
@@ -479,7 +499,23 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               )}
             </div>
 
-            {account && info?.status === "sealed" && <PayWith busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} compact />}
+            {account && boxesKnown && info?.status === "sealed" && <PayWith busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} compact />}
+
+            {giving && isHolder && (
+              <form
+                className="find pantry-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void give();
+                }}
+              >
+                <label htmlFor="give-to">{t("box.giveTo")}</label>
+                <input id="give-to" autoComplete="off" spellCheck={false} value={giveTo} onChange={(e) => setGiveTo(e.target.value)} placeholder="0x…" disabled={!!busy} />
+                <button type="submit" className="plain-button" disabled={!!busy || !/^0x[0-9a-fA-F]{40}$/.test(giveTo.trim())}>
+                  {t("box.giveGo")}
+                </button>
+              </form>
+            )}
 
             {serving && info?.status === "sealed" && isHolder && !fullToday && (
               <form
@@ -508,9 +544,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                       plan={
                         (action.busy === "open" && info?.status === "opening") || (action.busy === "alive" && info?.aliveCheck === "pending")
                           ? resumed(PLANS[action.busy]!)
-                          : pay === "cusdc" && (PAID_ACTIONS.has(action.busy) || (action.busy === "shake" && !isHolder))
-                            ? [...PAYMENT_STEPS, ...PLANS[action.busy]!]
-                            : PLANS[action.busy]!
+                          : PLANS[action.busy]!
                       }
                       step={action.step}
                     />
@@ -528,15 +562,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               ) : serving ? (
                 <>
                   <p className="fine">
-                    {leftToday === null
-                      ? t("box.todayMeals", { meals: kitchen?.mealsToday ?? 0, max: meal.mealsPerDay })
-                      : t("box.today", { meals: kitchen?.mealsToday ?? 0, max: meal.mealsPerDay, eaten: String(eatenToday), cap: meal.maxEatenPerDay })}
+                    {today === null
+                      ? t("box.todayUnread")
+                      : t("box.today", { meals: today.meals, max: meal.mealsPerDay, eaten: String(today.eaten), cap: meal.maxEatenPerDay })}
                     {tooMuch ? ` ${t("box.tooMuchToday", { left: String(leftToday) })}` : ""}
                   </p>
                   <p className="fine">
                     {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
                   </p>
                 </>
+              ) : giving ? (
+                <p className="fine">{t("box.giveHint")}</p>
               ) : note ? (
                 <p className="fine">{t(note)}</p>
               ) : !info ? null : !account ? (

@@ -27,7 +27,7 @@ export interface Flow {
 export const stationName = (id: StationId): string => t(`station.${id}`);
 export const packetName = (kind: PacketKind): string => t(`packet.${kind}`);
 
-type FlowKey = "mint" | "shake" | "open" | "duel";
+type FlowKey = "mint" | "shake" | "open" | "duel" | "transfer";
 type Route = [from: StationId, to: StationId, kind: PacketKind];
 
 /** Who talks to whom, per step. The words for each step live in the dictionaries. */
@@ -35,8 +35,12 @@ const ROUTES: Record<FlowKey, Route[]> = {
   mint: [
     ["you", "contract", "tx"],
     ["contract", "copro", "cipher"],
+    ["contract", "copro", "cipher"],
     ["contract", "contract", "cipher"],
-    ["contract", "you", "plain"],
+    ["contract", "you", "cipher"],
+    ["you", "kms", "sign"],
+    ["kms", "you", "cipher"],
+    ["you", "you", "plain"],
   ],
   shake: [
     ["you", "contract", "tx"],
@@ -49,7 +53,7 @@ const ROUTES: Record<FlowKey, Route[]> = {
   ],
   open: [
     ["you", "contract", "tx"],
-    ["contract", "contract", "cipher"],
+    ["contract", "copro", "cipher"],
     ["you", "kms", "cipher"],
     ["kms", "you", "proof"],
     ["you", "contract", "proof"],
@@ -66,9 +70,17 @@ const ROUTES: Record<FlowKey, Route[]> = {
     ["you", "contract", "proof"],
     ["contract", "other", "plain"],
   ],
+  transfer: [
+    ["you", "contract", "tx"],
+    ["contract", "copro", "cipher"],
+    ["contract", "other", "cipher"],
+    ["other", "kms", "sign"],
+    ["kms", "other", "cipher"],
+    ["other", "other", "plain"],
+  ],
 };
 
-/** The four flows in the current language. Call it again after a language change. */
+/** The five flows in the current language. Call it again after a language change. */
 export function flows(): Flow[] {
   return (Object.keys(ROUTES) as FlowKey[]).map((key) => ({
     key,

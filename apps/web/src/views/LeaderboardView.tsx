@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { BoxInfo } from "@dno/chain-adapter";
+import { sameAddress, shortAddress, type Address, type OpenedCat } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useChain } from "../chain/ChainProvider";
-import { catFromRevealed, holderCopy } from "../chain/copy";
+import { catFromRevealed } from "../chain/copy";
 import { useT } from "../i18n/app";
 import { catNames } from "../i18n/names";
-import { SHELF_CAPACITY, ShelfScene, SpecimenScene } from "../scenes/Scenes";
+import { ShelfScene, SpecimenScene } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
 
@@ -16,54 +16,66 @@ interface Props {
   onSelect: (tokenId: number) => void;
 }
 
-/** The ranking reads this many of the most recent boxes. Beyond that it needs an indexer. */
-const READ_LIMIT = 250;
-/** Cats shown in 3D behind the opened ranking. */
+/** Cats shown in 3D behind the ranking. */
 const PODIUM = 3;
 
-type Board = "opened" | "sealed";
+type Board = "cats" | "players";
 
+interface Player {
+  address: Address;
+  /** Their cats, best first. */
+  cats: OpenedCat[];
+}
+
+/**
+ * Who holds a box is secret until its holder opens it: opening publishes the cat and who
+ * opened it. So the leaderboard only knows opened cats, and the players who opened them.
+ */
 export function LeaderboardView({ quality, sound, onSelect }: Props) {
   const { adapter, account, collection } = useChain();
   const t = useT();
   const { foldClass, foldButton } = useFold();
-  const [boxes, setBoxes] = useState<BoxInfo[] | null>(null);
+  const [opened, setOpened] = useState<OpenedCat[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [board, setBoard] = useState<Board>("opened");
+  const [board, setBoard] = useState<Board>("cats");
   const [selected, setSelected] = useState(0);
-  const minted = collection?.totalMinted;
+  // Read again when the sale moves: a new milestone, a new box.
+  const stamp = collection?.tokenCount;
 
   useEffect(() => {
-    if (minted === undefined) return;
     let live = true;
-    const first = Math.max(0, minted - READ_LIMIT);
-    const ids = Array.from({ length: minted - first }, (_, i) => first + i);
-    void Promise.all(ids.map((id) => adapter.box(id)))
-      .then((all) => live && setBoxes(all))
+    void adapter
+      .openedCats()
+      .then((all) => live && setOpened(all))
       .catch(() => live && setFailed(true));
     return () => {
       live = false;
     };
-  }, [adapter, minted]);
+  }, [adapter, stamp]);
 
-  // Opened boxes rank on what they revealed. Ties go to the lower serial: it was there first.
-  const opened = useMemo(
+  // Ranked by rarity score. Ties go to the lower serial: it was there first.
+  const cats = useMemo(
     () =>
-      (boxes ?? [])
-        .filter((b) => b.revealed)
-        .map((box) => ({ box, cat: catFromRevealed(box.revealed!) }))
-        .sort((a, b) => b.box.revealed!.score - a.box.revealed!.score || a.box.tokenId - b.box.tokenId),
-    [boxes],
+      (opened ?? [])
+        .map((o) => ({ o, cat: catFromRevealed(o.revealed) }))
+        .sort((a, b) => b.o.revealed.score - a.o.revealed.score || a.o.tokenId - b.o.tokenId),
+    [opened],
   );
-  // Sealed boxes have no public score. Duel wins are the only thing they can be ranked on.
-  const sealed = useMemo(
-    () => (boxes ?? []).filter((b) => !b.revealed).sort((a, b) => b.wins - a.wins || a.tokenId - b.tokenId),
-    [boxes],
-  );
+  // Players ranked by their best cat, then by how many they opened.
+  const players = useMemo(() => {
+    const by = new Map<string, Player>();
+    for (const { o } of cats) {
+      const key = o.openedBy.toLowerCase();
+      const p = by.get(key) ?? { address: o.openedBy, cats: [] };
+      p.cats.push(o);
+      by.set(key, p);
+    }
+    return [...by.values()].sort((a, b) => b.cats[0]!.revealed.score - a.cats[0]!.revealed.score || b.cats.length - a.cats.length);
+  }, [cats]);
 
-  const podium = useMemo(() => opened.slice(0, PODIUM).map((o) => o.cat), [opened]);
-  const bench = useMemo(() => sealed.slice(0, SHELF_CAPACITY).map((b) => ({ tokenId: b.tokenId, cat: null })), [sealed]);
-  const showCats = board === "opened" && podium.length > 0;
+  const podium = useMemo(() => cats.slice(0, PODIUM).map((c) => c.cat), [cats]);
+  const showCats = podium.length > 0;
+  const who = (a: Address) => (sameAddress(a, account) ? t("holder.you") : shortAddress(a));
 
   return (
     <>
@@ -71,7 +83,7 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
         {showCats ? (
           <SpecimenScene specs={podium} selected={Math.min(selected, podium.length - 1)} onSelect={setSelected} />
         ) : (
-          <ShelfScene boxes={board === "sealed" ? bench : []} quality={quality} sound={sound} onSelect={onSelect} />
+          <ShelfScene boxes={[]} quality={quality} sound={sound} onSelect={onSelect} />
         )}
       </Stage>
 
@@ -80,79 +92,69 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
         <div className="slip-head">
           <span>{t("lb.title")}</span>
           <div className="picker" role="group" aria-label={t("lb.ranking")}>
-            <button type="button" aria-pressed={board === "opened"} onClick={() => setBoard("opened")}>
-              {t("lb.opened")}
+            <button type="button" aria-pressed={board === "cats"} onClick={() => setBoard("cats")}>
+              {t("lb.cats")}
             </button>
-            <button type="button" aria-pressed={board === "sealed"} onClick={() => setBoard("sealed")}>
-              {t("lb.sealed")}
+            <button type="button" aria-pressed={board === "players"} onClick={() => setBoard("players")}>
+              {t("lb.players")}
             </button>
           </div>
         </div>
 
         {failed ? (
           <p className="fine problem">{t("lb.failed")}</p>
-        ) : !boxes ? (
+        ) : !opened ? (
           <p className="state-note">{t("lb.reading")}</p>
-        ) : board === "opened" ? (
-          opened.length === 0 ? (
-            <p className="state-note">{t("lb.noneOpened")}</p>
-          ) : (
-            <ol className="ranking">
-              {opened.map(({ box, cat }, i) => {
-                const names = catNames(cat);
-                return (
-                  <li key={box.tokenId}>
-                    <button
-                      type="button"
-                      onClick={() => (i < podium.length ? setSelected(i) : onSelect(box.tokenId))}
-                      onDoubleClick={() => onSelect(box.tokenId)}
-                      aria-pressed={showCats && i === selected}
-                    >
-                      <span className="rank">{i + 1}</span>
-                      <span className="who">
-                        <strong>{buildBoxSpec(box.tokenId).serial}</strong> {t("lb.cat", { state: names.state.toLowerCase(), breed: names.breed.toLowerCase() })}
-                        <small>
-                          {names.tier}
-                          {cat.rarity.golden ? t("lb.golden") : ""}
-                          {t("lb.heldBy", { holder: holderCopy(box.owner, account) })}
-                        </small>
-                      </span>
-                      <span className="roll">{box.revealed!.score}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          )
-        ) : sealed.length === 0 ? (
-          <p className="state-note">{t("lb.allOpened")}</p>
+        ) : cats.length === 0 ? (
+          <p className="state-note">{t("lb.noneOpened")}</p>
+        ) : board === "cats" ? (
+          <ol className="ranking">
+            {cats.map(({ o, cat }, i) => {
+              const names = catNames(cat);
+              return (
+                <li key={o.tokenId}>
+                  <button
+                    type="button"
+                    onClick={() => (i < podium.length ? setSelected(i) : onSelect(o.tokenId))}
+                    onDoubleClick={() => onSelect(o.tokenId)}
+                    aria-pressed={i === selected && i < podium.length}
+                  >
+                    <span className="rank">{i + 1}</span>
+                    <span className="who">
+                      <strong>{buildBoxSpec(o.tokenId).serial}</strong> {t("lb.cat", { state: names.state.toLowerCase(), breed: names.breed.toLowerCase() })}
+                      <small>
+                        {names.tier}
+                        {cat.rarity.golden ? t("lb.golden") : ""}
+                        {sameAddress(o.openedBy, account) ? t("lb.openedByYou") : t("lb.openedBy", { who: shortAddress(o.openedBy) })}
+                      </small>
+                    </span>
+                    <span className="roll">{o.revealed.score}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
         ) : (
           <ol className="ranking">
-            {sealed.map((box, i) => (
-              <li key={box.tokenId}>
-                <button type="button" onClick={() => onSelect(box.tokenId)}>
+            {players.map((p, i) => (
+              <li key={p.address}>
+                <button type="button" onClick={() => onSelect(p.cats[0]!.tokenId)}>
                   <span className="rank">{i + 1}</span>
                   <span className="who">
-                    <strong>{buildBoxSpec(box.tokenId).serial}</strong>
-                    <small>
-                      {t("lb.heldBySealed", { holder: holderCopy(box.owner, account) })}
-                      {box.aliveCheck === "alive" ? t("lb.vet") : ""}
-                      {box.feeds ? t("lb.fed", { n: box.feeds }) : ""}
-                    </small>
+                    <strong>{who(p.address)}</strong>
+                    <small>{t("lb.playerCats", { count: p.cats.length, best: buildBoxSpec(p.cats[0]!.tokenId).serial })}</small>
                   </span>
-                  <span className="roll">{t("lb.wins", { count: box.wins })}</span>
+                  <span className="roll">{p.cats[0]!.revealed.score}</span>
                 </button>
               </li>
             ))}
           </ol>
         )}
 
-        {boxes && !failed && (board === "opened" ? opened : sealed).length > 0 && (
-          <p className="fine after-table">
-            {board === "opened" ? (showCats ? t("lb.rankedPodium", { n: podium.length }) : t("lb.ranked")) : t("lb.rankedSealed")}
-            {minted !== undefined && minted > READ_LIMIT ? t("lb.onlyRecent", { n: READ_LIMIT }) : ""}
-          </p>
+        {opened && !failed && cats.length > 0 && (
+          <p className="fine after-table">{board === "cats" ? t("lb.rankedPodium", { n: podium.length }) : t("lb.rankedPlayers")}</p>
         )}
+        <p className="fine">{t("lb.onlyOpened")}</p>
       </section>
     </>
   );

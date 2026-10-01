@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { sameAddress, type BoxSummary } from "@dno/chain-adapter";
+import type { BoxSummary } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings } from "@dno/scene";
 import { useChain } from "../chain/ChainProvider";
@@ -20,10 +20,10 @@ interface Props {
 const CHUNK = 96;
 
 export function WarehouseView({ quality, focus, onInspect }: Props) {
-  const { adapter, account, collection } = useChain();
+  const { adapter, account, collection, myBoxes } = useChain();
   const t = useT();
   const { foldClass, foldButton } = useFold();
-  const count = collection?.totalMinted ?? 0;
+  const count = collection?.tokenCount ?? 0;
   const [rows, setRows] = useState<Map<number, BoxSummary>>(new Map());
   const [hovered, setHovered] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(focus);
@@ -54,9 +54,10 @@ export function WarehouseView({ quality, focus, onInspect }: Props) {
 
   const boxes = useMemo(() => {
     const m = new Map<number, WarehouseBox>();
-    for (const [id, r] of rows) m.set(id, { state: r.status, mine: sameAddress(r.owner, account) });
+    const yours = new Set(myBoxes);
+    for (const [id, r] of rows) m.set(id, { state: r.status, mine: yours.has(id) });
     return m;
-  }, [rows, account]);
+  }, [rows, myBoxes]);
   const opened = useMemo(() => [...rows.values()].filter((r) => r.status === "revealed").length, [rows]);
   const mine = useMemo(() => [...boxes.values()].filter((b) => b.mine).length, [boxes]);
 
@@ -103,7 +104,7 @@ export function WarehouseView({ quality, focus, onInspect }: Props) {
               </div>
               <div>
                 <dt>{t("box.holder")}</dt>
-                <dd>{row ? holderCopy(row.owner, account) : "…"}</dd>
+                <dd>{row ? holderCopy(myBoxes.includes(shown)) : "…"}</dd>
               </div>
             </dl>
             {selected !== null && (

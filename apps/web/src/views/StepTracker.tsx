@@ -7,14 +7,6 @@ export interface PlannedStep {
   label: AppKey;
 }
 
-/** A cUSDC payment comes first: the order, then the proof that it was paid. */
-export const PAYMENT_STEPS: PlannedStep[] = [
-  { step: "wallet", label: "track.order" },
-  { step: "confirming", label: "track.chain" },
-  { step: "decrypting", label: "track.decryptPaid" },
-  { step: "proving", label: "track.proof" },
-];
-
 /**
  * The steps of a slow chain action, ticked off as they pass, the current one with a
  * running count of seconds: a long decryption reads as progress, not as a hang.

@@ -7,8 +7,14 @@ interface ChainState {
   mode: ChainMode;
   account: Address | null;
   collection: CollectionInfo | null;
-  /** Token ids held by the connected account. */
+  /** Token ids held by the connected account, once found (see `boxesKnown`). */
   myBoxes: number[];
+  /** Who holds a box is encrypted: the account's boxes are found by decrypting its own
+   *  receipts, which takes one signature. Until then, no box is known to be the account's. */
+  boxesKnown: boolean;
+  /** Asks for that signature and finds the account's boxes. */
+  findMyBoxes(): Promise<void>;
+  findError: string | null;
   /** Set when the chain could not be read at all. */
   offline: string | null;
   /** The mode the build asked for when it is not available yet (e.g. "solana-mainnet"). The app then runs in mock mode. */
@@ -50,6 +56,8 @@ export function ChainProvider({ children }: { children: ReactNode }) {
   const [myBoxes, setMyBoxes] = useState<number[]>([]);
   const [offline, setOffline] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [boxesKnown, setBoxesKnown] = useState(false);
+  const [findError, setFindError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -72,19 +80,37 @@ export function ChainProvider({ children }: { children: ReactNode }) {
     };
   }, [mode]);
 
+  // A new account starts unknown again; the mock has nothing to sign.
+  useEffect(() => {
+    setBoxesKnown(adapter?.kind === "mock" && !!account);
+    setMyBoxes([]);
+    setFindError(null);
+  }, [adapter, account]);
+
   const refresh = useCallback(async () => {
     if (!adapter) return;
     try {
-      const [info, boxes] = await Promise.all([adapter.collection(), account ? adapter.boxesOf(account) : []]);
+      const [info, boxes] = await Promise.all([adapter.collection(), account && boxesKnown ? adapter.boxesOf(account) : []]);
       setCollection(info);
       setMyBoxes(boxes);
       setOffline(null);
     } catch (error) {
       setOffline(errorCopy(error));
     }
-  }, [adapter, account]);
+  }, [adapter, account, boxesKnown]);
 
   useEffect(() => void refresh(), [refresh]);
+
+  const findMyBoxes = useCallback(async () => {
+    if (!adapter || !account) return;
+    setFindError(null);
+    try {
+      setMyBoxes(await adapter.boxesOf(account));
+      setBoxesKnown(true);
+    } catch (error) {
+      setFindError(errorCopy(error));
+    }
+  }, [adapter, account]);
 
   const [picking, setPicking] = useState<WalletOption[] | null>(null);
   const closePicker = useCallback(() => setPicking(null), []);
@@ -111,7 +137,9 @@ export function ChainProvider({ children }: { children: ReactNode }) {
 
   if (!adapter) return <p className="boot">Unlocking the depot…</p>;
   return (
-    <ChainContext.Provider value={{ adapter, mode, account, collection, myBoxes, offline, unavailable, refresh, connect, disconnect, connectError, picking, closePicker }}>
+    <ChainContext.Provider
+      value={{ adapter, mode, account, collection, myBoxes, boxesKnown, findMyBoxes, findError, offline, unavailable, refresh, connect, disconnect, connectError, picking, closePicker }}
+    >
       {children}
     </ChainContext.Provider>
   );

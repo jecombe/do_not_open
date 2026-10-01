@@ -19,7 +19,6 @@ export interface TokenMetadata {
 
 /** Facts about a sealed box that the chain already made public. None of them comes from the seed. */
 export interface PublicBoxFacts {
-  feeds?: number;
   duelsWon?: number;
   vetCertified?: boolean;
   entangledWith?: number | null;
@@ -27,7 +26,6 @@ export interface PublicBoxFacts {
 
 function publicAttributes(facts: PublicBoxFacts): MetadataAttribute[] {
   const out: MetadataAttribute[] = [];
-  if (facts.feeds) out.push({ trait_type: "Times fed", value: facts.feeds, display_type: "number" });
   if (facts.duelsWon) out.push({ trait_type: "Duels won", value: facts.duelsWon, display_type: "number" });
   if (facts.vetCertified) out.push({ trait_type: "Vet Certified", value: "Yes" });
   if (facts.entangledWith !== null && facts.entangledWith !== undefined) out.push({ trait_type: "Entangled with", value: buildBoxSpec(facts.entangledWith).serial });
