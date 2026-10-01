@@ -1,0 +1,309 @@
+import pg, { type Pool, type PoolClient } from "pg";
+import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, Store, Transfer } from "../../application/ports/store";
+import type { Box } from "../../domain/box";
+import type { Duel } from "../../domain/duel";
+import { actorsOf, tokensOf, type ProtocolEvent } from "../../domain/events";
+import type { Request } from "../../domain/request";
+import type { Address } from "../../domain/types";
+import type { User } from "../../domain/user";
+
+// Block numbers and unix times are int8 columns; they all fit a JS number.
+pg.types.setTypeParser(20, (v) => Number(v));
+
+type Q = Pick<Pool | PoolClient, "query">;
+type Row = Record<string, any>;
+
+/** Any number: one sync batch at a time, whichever instance runs it. */
+const SYNC_LOCK = 724_002;
+const CURSOR_ID = "chain";
+
+const boxFrom = (r: Row): Box => ({
+  tokenId: r.token_id,
+  status: r.status,
+  aliveCheck: r.alive_check,
+  partner: r.partner,
+  wins: r.wins,
+  publicTraits: r.public_traits,
+  revealed: r.revealed,
+  openedBy: r.opened_by,
+  openedBlock: r.opened_block,
+  mintedBlock: r.minted_block,
+  welcomed: r.welcomed,
+  weighing: r.weighing,
+  weighIn: r.weigh_in,
+});
+
+const duelFrom = (r: Row): Duel => ({
+  duelId: r.duel_id,
+  tokenA: r.token_a,
+  tokenB: r.token_b,
+  challenger: r.challenger,
+  accepter: r.accepter,
+  status: r.status,
+  winner: r.winner,
+  loser: r.loser,
+  shown: r.shown,
+  createdBlock: r.created_block,
+  updatedBlock: r.updated_block,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
+const requestFrom = (r: Row): Request => ({
+  requestId: r.request_id,
+  kind: r.kind,
+  tokenId: r.token_id,
+  other: r.other,
+  requester: r.requester,
+  status: r.status,
+  placedBlock: r.placed_block,
+  settledBlock: r.settled_block,
+});
+
+const userFrom = (r: Row): User => ({
+  address: r.address,
+  firstBlock: r.first_block,
+  lastBlock: r.last_block,
+  firstSeenAt: r.first_seen_at,
+  lastSeenAt: r.last_seen_at,
+  actions: r.actions,
+  registeredAt: r.registered_at,
+  lastLoginAt: r.last_login_at,
+});
+
+const transferFrom = (r: Row): Transfer => ({
+  txHash: r.tx_hash,
+  logIndex: r.log_index,
+  block: r.block,
+  timestamp: r.timestamp,
+  tokenId: r.token_id,
+  from: r.from_address,
+  to: r.to_address,
+  moved: r.moved,
+});
+
+const json = (v: unknown) => (v === null || v === undefined ? null : JSON.stringify(v));
+
+async function one<T>(q: Q, sql: string, params: unknown[], map: (r: Row) => T): Promise<T | null> {
+  const { rows } = await q.query(sql, params);
+  return rows[0] ? map(rows[0]) : null;
+}
+
+async function saveUser(q: Q, u: User) {
+  await q.query(
+    `insert into users (address, first_block, last_block, first_seen_at, last_seen_at, actions, registered_at, last_login_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)
+     on conflict (address) do update set first_block = $2, last_block = $3, first_seen_at = $4, last_seen_at = $5,
+       actions = $6, registered_at = $7, last_login_at = $8`,
+    [u.address, u.firstBlock, u.lastBlock, u.firstSeenAt, u.lastSeenAt, u.actions, u.registeredAt, u.lastLoginAt],
+  );
+}
+
+const getUser = (q: Q, address: Address) => one(q, "select * from users where address = $1", [address], userFrom);
+
+/** The index in Postgres. */
+export class PgStore implements Store {
+  constructor(private readonly pool: Pool) {}
+
+  async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select pg_advisory_xact_lock($1)", [SYNC_LOCK]);
+      const result = await run(this.txOn(client));
+      await client.query("commit");
+      return result;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private txOn(c: PoolClient): ProjectionTx {
+    return {
+      insertEvent: async (e) => {
+        const { block, timestamp, txHash, logIndex, source, name, ...data } = e;
+        const { rowCount } = await c.query(
+          `insert into events (tx_hash, log_index, block, timestamp, source, name, data, actors, tokens)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict do nothing`,
+          [txHash, logIndex, block, timestamp, source, name, JSON.stringify(data), actorsOf(e), tokensOf(e)],
+        );
+        return rowCount === 1;
+      },
+      setCursor: async (block) => {
+        await c.query("insert into sync_state (id, block) values ($1, $2) on conflict (id) do update set block = $2", [CURSOR_ID, block]);
+      },
+      box: (id) => one(c, "select * from boxes where token_id = $1", [id], boxFrom),
+      saveBox: async (b) => {
+        await c.query(
+          `insert into boxes (token_id, status, alive_check, partner, wins, public_traits, revealed, opened_by, opened_block, minted_block, welcomed, weighing, weigh_in)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+           on conflict (token_id) do update set status = $2, alive_check = $3, partner = $4, wins = $5, public_traits = $6, revealed = $7,
+             opened_by = $8, opened_block = $9, minted_block = $10, welcomed = $11, weighing = $12, weigh_in = $13`,
+          [b.tokenId, b.status, b.aliveCheck, b.partner, b.wins, json(b.publicTraits), json(b.revealed), b.openedBy, b.openedBlock, b.mintedBlock, b.welcomed, b.weighing, json(b.weighIn)],
+        );
+      },
+      duel: (id) => one(c, "select * from duels where duel_id = $1", [id], duelFrom),
+      saveDuel: async (d) => {
+        await c.query(
+          `insert into duels (duel_id, token_a, token_b, challenger, accepter, status, winner, loser, shown, created_block, updated_block, created_at, updated_at)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+           on conflict (duel_id) do update set token_a = $2, token_b = $3, challenger = $4, accepter = $5, status = $6, winner = $7,
+             loser = $8, shown = $9, created_block = $10, updated_block = $11, created_at = $12, updated_at = $13`,
+          [d.duelId, d.tokenA, d.tokenB, d.challenger, d.accepter, d.status, d.winner, d.loser, json(d.shown), d.createdBlock, d.updatedBlock, d.createdAt, d.updatedAt],
+        );
+      },
+      request: (id) => one(c, "select * from requests where request_id = $1", [id], requestFrom),
+      saveRequest: async (r) => {
+        await c.query(
+          `insert into requests (request_id, kind, token_id, other, requester, status, placed_block, settled_block)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)
+           on conflict (request_id) do update set kind = $2, token_id = $3, other = $4, requester = $5, status = $6, placed_block = $7, settled_block = $8`,
+          [r.requestId, r.kind, r.tokenId, r.other, r.requester, r.status, r.placedBlock, r.settledBlock],
+        );
+      },
+      user: (a) => getUser(c, a),
+      saveUser: (u) => saveUser(c, u),
+      saveProposal: async (p) => {
+        await c.query(
+          "insert into entangle_proposals (token_a, token_b, proposer, block) values ($1, $2, $3, $4) on conflict (token_a, token_b) do update set proposer = $3, block = $4",
+          [p.tokenA, p.tokenB, p.proposer, p.block],
+        );
+      },
+      deleteProposal: async (a, b) => {
+        await c.query("delete from entangle_proposals where token_a = $1 and token_b = $2", [a, b]);
+      },
+      saveMint: async (m) => {
+        await c.query("insert into mints (first_token_id, count, buyer, block, tx_hash) values ($1, $2, $3, $4, $5) on conflict do nothing", [
+          m.firstTokenId,
+          m.count,
+          m.buyer,
+          m.block,
+          m.txHash,
+        ]);
+      },
+      saveMilestone: async (m) => {
+        await c.query("insert into milestones (idx, sold, block) values ($1, $2, $3) on conflict do nothing", [m.index, m.sold, m.block]);
+      },
+      saveTransfer: async (t) => {
+        await c.query(
+          `insert into transfers (tx_hash, log_index, block, timestamp, token_id, from_address, to_address, moved)
+           values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict do nothing`,
+          [t.txHash, t.logIndex, t.block, t.timestamp, t.tokenId, t.from, t.to, t.moved],
+        );
+      },
+    };
+  }
+
+  async cursor() {
+    return one(this.pool, "select block from sync_state where id = $1", [CURSOR_ID], (r) => r.block as number);
+  }
+
+  box(tokenId: number) {
+    return one(this.pool, "select * from boxes where token_id = $1", [tokenId], boxFrom);
+  }
+
+  async boxes(from: number, to: number) {
+    const { rows } = await this.pool.query("select * from boxes where token_id >= $1 and token_id < $2 order by token_id", [from, to]);
+    return rows.map(boxFrom);
+  }
+
+  async tokenCount() {
+    return (await one(this.pool, "select coalesce(max(first_token_id + count), 0) as n from mints", [], (r) => r.n as number)) ?? 0;
+  }
+
+  async milestonesReached() {
+    return (await one(this.pool, "select count(*)::int as n from milestones", [], (r) => r.n as number)) ?? 0;
+  }
+
+  async openedBoxes() {
+    const { rows } = await this.pool.query("select * from boxes where status = 'revealed' order by token_id");
+    return rows.map(boxFrom);
+  }
+
+  duel(duelId: number) {
+    return one(this.pool, "select * from duels where duel_id = $1", [duelId], duelFrom);
+  }
+
+  async duels(q: DuelQuery) {
+    const { rows } = await this.pool.query(
+      `select * from duels
+       where (($1::text is not null and (challenger = $1 or accepter = $1)) or token_a = any($2::int[]) or token_b = any($2::int[]))
+         and ($3::text[] is null or status = any($3::text[]))
+       order by duel_id desc limit $4`,
+      [q.account ?? null, q.tokenIds ?? [], q.statuses ?? null, q.limit],
+    );
+    return rows.map(duelFrom);
+  }
+
+  proposal(tokenA: number, tokenB: number) {
+    return one(
+      this.pool,
+      "select * from entangle_proposals where token_a = $1 and token_b = $2",
+      [tokenA, tokenB],
+      (r): EntangleProposal => ({ tokenA: r.token_a, tokenB: r.token_b, proposer: r.proposer, block: r.block }),
+    );
+  }
+
+  async pendingRequests(requester: Address) {
+    const { rows } = await this.pool.query("select * from requests where requester = $1 and status = 'pending' order by request_id", [requester]);
+    return rows.map(requestFrom);
+  }
+
+  async transfers(account: Address, afterBlock: number, limit: number) {
+    const { rows } = await this.pool.query(
+      `select * from transfers where block > $2 and (from_address = $1 or to_address = $1)
+       order by block, log_index limit $3`,
+      [account, afterBlock, limit],
+    );
+    return rows.map(transferFrom);
+  }
+
+  user(address: Address) {
+    return getUser(this.pool, address);
+  }
+
+  async activity(q: ActivityQuery): Promise<ProtocolEvent[]> {
+    const { rows } = await this.pool.query(
+      `select * from events
+       where ($1::bigint is null or block < $1)
+         and ($2::int is null or tokens @> array[$2::int])
+         and ($3::text is null or actors @> array[$3::text])
+       order by block desc, log_index desc limit $4`,
+      [q.beforeBlock ?? null, q.tokenId ?? null, q.account ?? null, q.limit],
+    );
+    return rows.map((r) => ({ ...r.data, block: r.block, timestamp: r.timestamp, txHash: r.tx_hash, logIndex: r.log_index, source: r.source, name: r.name }) as ProtocolEvent);
+  }
+
+  async stats(): Promise<Stats> {
+    const { rows } = await this.pool.query(`
+      select
+        (select count(*)::int from users) as users,
+        (select count(*)::int from users where registered_at is not null) as registered,
+        (select coalesce(max(first_token_id + count), 0)::int from mints) as minted,
+        (select count(*)::int from boxes where status = 'revealed') as opened,
+        (select count(*)::int from duels) as duels,
+        (select count(*)::int from duels where status in ('challenged', 'pending')) as open_duels,
+        (select count(*)::int from events) as events`);
+    const r = rows[0]!;
+    return { users: r.users, registered: r.registered, minted: r.minted, opened: r.opened, duels: r.duels, openDuels: r.open_duels, events: r.events };
+  }
+
+  saveUser(user: User) {
+    return saveUser(this.pool, user);
+  }
+
+  async saveNonce(address: Address, nonce: string, expiresAt: number) {
+    await this.pool.query("insert into auth_nonces (address, nonce, expires_at) values ($1, $2, $3) on conflict (address) do update set nonce = $2, expires_at = $3", [
+      address,
+      nonce,
+      expiresAt,
+    ]);
+  }
+
+  takeNonce(address: Address) {
+    return one(this.pool, "delete from auth_nonces where address = $1 returning nonce, expires_at", [address], (r) => ({ nonce: r.nonce as string, expiresAt: r.expires_at as number }));
+  }
+}

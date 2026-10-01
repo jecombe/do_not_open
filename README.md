@@ -40,12 +40,18 @@ flowchart LR
   web["apps/web<br/>React Three Fiber app"]
   evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
+  api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
   spec --> gen --> scene --> web
   spec --> evm
   spec --> adapter
   evm -- address + ABI --> adapter --> web
+  evm -- logs --> api -- "reads (VITE_API_URL)" --> adapter
 ```
+
+The backend, `apps/api`, indexes the protocol into Postgres and serves the app's reads, so
+visitors do not each hit a public RPC; it runs on its own server, the site stays on Vercel.
+See [`apps/api/README.md`](apps/api/README.md) and [`deploy/README.md`](deploy/README.md).
 
 Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
 `contracts-evm` and the adapter implementations. The frontend only ever talks to the

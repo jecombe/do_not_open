@@ -1,0 +1,34 @@
+{
+  "name": "@dno/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Indexer and HTTP API for DO NOT OPEN: tracks the protocol in Postgres so the app reads one cached source instead of the RPC.",
+  "scripts": {
+    "dev": "node build.mjs && node --enable-source-maps dist/main.js",
+    "start": "node --enable-source-maps dist/main.js",
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dno/chain-adapter": "workspace:*",
+    "@dno/game-spec": "workspace:*",
+    "@dno/generator": "workspace:*",
+    "@fastify/cors": "^11",
+    "@fastify/rate-limit": "^10",
+    "ethers": "^6.16.0",
+    "fastify": "^5",
+    "pg": "^8",
+    "pino": "^10",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.3"
+  }
+}

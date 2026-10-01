@@ -1,0 +1,2 @@
+# One file per project in sites/, e.g. sites/dno.caddy. Nothing else lives here.
+import /etc/caddy/sites/*.caddy

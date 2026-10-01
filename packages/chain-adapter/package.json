@@ -6,7 +6,8 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./node": "./src/evm/node.ts"
+    "./node": "./src/evm/node.ts",
+    "./deployments": "./src/evm/chains.ts"
   },
   "scripts": {
     "test": "vitest run",
