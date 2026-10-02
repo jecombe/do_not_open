@@ -12,6 +12,7 @@ import {
   type BoxStatus,
   type BoxSummary,
   type ChainAdapter,
+  type DecryptionAllowance,
   type CollectionInfo,
   type DuelInfo,
   type DuelResult,
@@ -802,6 +803,15 @@ export class MockAdapter implements ChainAdapter {
       this.credit(this.plain, me, -amountIn);
       this.credit(this.usdc, me, out);
     }
+  }
+
+  /** The demo has no relayer, so nobody counts its decryptions. */
+  async decryptionAllowance(): Promise<DecryptionAllowance | null> {
+    return null;
+  }
+
+  async buyCredits(_credits: number, _opts?: ActionOptions): Promise<void> {
+    throw new ChainError("unknown", "The demo has no decryption credits: its decryptions are free.");
   }
 
   // --- internals ---

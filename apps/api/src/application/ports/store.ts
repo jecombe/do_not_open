@@ -1,6 +1,7 @@
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
 import type { Enrichment, ProtocolEvent } from "../../domain/events";
+import type { Charge, Meter } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -66,6 +67,10 @@ export interface ProjectionTx {
   saveMint(m: Mint): Promise<void>;
   saveMilestone(m: { index: number; sold: number; block: number }): Promise<void>;
   saveTransfer(t: Transfer): Promise<void>;
+  /** Handles one of the protocol's contracts made publicly decryptable. */
+  savePublished(handles: string[], caller: Address, block: number): Promise<void>;
+  /** Credits bought on-chain for `account`. */
+  addCredits(account: Address, credits: number): Promise<void>;
 }
 
 /** Without `account` or `tokenIds`, every duel (with `statuses`, every open one). */
@@ -124,6 +129,10 @@ export interface ReadStore {
   user(address: Address): Promise<User | null>;
   activity(q: ActivityQuery): Promise<ProtocolEvent[]>;
   stats(): Promise<Stats>;
+  /** Which of these handles one of the protocol's contracts made publicly decryptable. Lowercase. */
+  publishedAmong(handles: string[]): Promise<string[]>;
+  /** Credits ever bought for this account. */
+  creditsBought(account: Address): Promise<number>;
 }
 
 export interface Store extends ReadStore {
@@ -133,4 +142,11 @@ export interface Store extends ReadStore {
   /** One-shot sign-in challenges. `takeNonce` deletes it, so a signature cannot be replayed. */
   saveNonce(address: Address, nonce: string, expiresAt: number): Promise<void>;
   takeNonce(address: Address): Promise<{ nonce: string; expiresAt: number } | null>;
+  /**
+   * The relayer meter of an account on a UTC day. Not a read model: a replay of the chain keeps
+   * it. `apply` sees the meter, locked against concurrent calls, and returns what to add to it,
+   * or null to leave it as it is; `meter` returns the same.
+   */
+  meter(account: Address, day: string, apply: (m: Meter) => Charge | null): Promise<Charge | null>;
+  meterOf(account: Address, day: string): Promise<Meter>;
 }

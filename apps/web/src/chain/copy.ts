@@ -11,7 +11,7 @@ export interface Problem {
   hints: string[];
   /** The transaction that failed, in a block explorer. */
   txUrl: string | null;
-  /** Where to get what was missing: the wallet slip (USDC, cUSDC), or a faucet for the gas coin. */
+  /** Where to get what was missing: the wallet slip (USDC, cUSDC, decryption credits), or a faucet for the gas coin. */
   fix: "wallet" | "gas" | null;
 }
 
@@ -105,6 +105,12 @@ export function problemOf(error: unknown, ctx: ProblemContext = {}): Problem {
     case "network":
       p.text = t("problem.network");
       p.hints.push(t("problem.networkHint"));
+      break;
+    case "no-credits":
+      p.text = t("problem.noCredits");
+      if (held !== undefined && needed !== undefined) p.hints.push(t("problem.noCreditsHave", { held: held.toString(), needed: needed.toString() }));
+      p.hints.push(t("problem.noCreditsHint"));
+      p.fix = "wallet";
       break;
     case "nonce":
       p.text = t("problem.nonce");

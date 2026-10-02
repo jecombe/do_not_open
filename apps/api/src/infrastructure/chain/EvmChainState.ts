@@ -31,6 +31,7 @@ export class EvmChainState implements ChainState {
   private readonly collectionIface: Interface;
   private readonly pantryIface: Interface | null;
   private constants: Promise<CollectionConstants> | null = null;
+  private contracts: Promise<string[]> | null = null;
   private economyConstants: Promise<Omit<EconomyState, "wrapped" | "halvings" | "market">> | null = null;
   private readonly economyCache: TtlCache<"economy", EconomyState | null>;
   private readonly claimCache: TtlCache<number, number>;
@@ -81,6 +82,19 @@ export class EvmChainState implements ChainState {
       rampFeeBps: this.d.ramp && r[7] ? Number(r[7][0]) : null,
       usdcFaucet: this.d.usdcFaucet === null ? null : String(this.d.usdcFaucet),
     };
+  }
+
+  /**
+   * The contracts the relayer proxy decrypts for and makes inputs for, lowercase: the
+   * collection and the cUSDC it is paid in, the Pantry and cCROQ. Read once.
+   */
+  decryptable(): Promise<string[]> {
+    this.contracts ??= multicall(this.rpc, [{ target: this.d.collection.address, iface: this.collectionIface, fn: "confidentialUsdc", args: [] }]).then((r) => {
+      if (!r[0]) throw new Error("the collection's cUSDC is unreadable");
+      return [this.d.collection.address, String(r[0][0]), this.d.pantry?.address, this.d.cCroq?.address].filter((a): a is string => !!a).map(normalizeAddress);
+    });
+    this.contracts.catch(() => (this.contracts = null));
+    return this.contracts;
   }
 
   economy(): Promise<EconomyState | null> {

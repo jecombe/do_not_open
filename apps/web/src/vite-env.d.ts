@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_DNO_ADDRESS?: string;
   /** The DO NOT OPEN API (apps/api). Reads go there first; the RPC answers when it lags or is away. */
   readonly VITE_API_URL?: string;
+  /** "true": encrypt and decrypt through the API's relayer proxy, which meters each wallet (mainnet). */
+  readonly VITE_RELAYER_PROXY?: string;
   /** Reown (WalletConnect) project id: lets phones connect through a wallet app. */
   readonly VITE_WALLETCONNECT_PROJECT_ID?: string;
 }

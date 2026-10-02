@@ -4,6 +4,7 @@ import type {
   BoxStatus,
   BoxSummary,
   CollectionInfo,
+  DecryptionAllowance,
   DuelInfo,
   EconomyInfo,
   OpenedCat,
@@ -187,6 +188,11 @@ export class IndexerClient {
       maxEatenPerDay: BigInt(e.maxEatenPerDay),
       market: e.market ? { ...e.market, croqReserve: BigInt(e.market.croqReserve), quoteReserve: BigInt(e.market.quoteReserve) } : null,
     }) as EconomyInfo);
+  }
+
+  /** What the relayer proxy still lets the account decrypt today. Never cached. */
+  allowance(account: Address): Promise<Indexed<Omit<DecryptionAllowance, "price">>> {
+    return this.get(`/v1/relayer/allowance/${account}`, (a: Json) => ({ freePerDay: a.freePerDay, freeLeft: a.freeLeft, credits: a.credits, resetsAt: a.resetsAt }));
   }
 
   boxPantry(tokenId: number): Promise<Indexed<BoxPantry>> {

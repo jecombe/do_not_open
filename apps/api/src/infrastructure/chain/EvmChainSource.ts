@@ -22,7 +22,24 @@ const INDEXED: Record<Source, string[]> = {
   ],
   pantry: ["MealServed", "WelcomeBag", "Purred", "Claimed", "WeighInRequested", "Weighed"],
   ramp: ["Bought"],
+  credits: ["CreditsBought"],
+  acl: ["AllowedForDecryption"],
 };
+
+/** The one ACL event the index follows, and only when one of the protocol's contracts is the caller. */
+const ACL = new Interface(["event AllowedForDecryption(address indexed caller, bytes32[] handlesList)"]);
+
+/** Handles made publicly decryptable by the contracts that publish some: the collection, the Pantry, cCROQ. */
+export function aclFilterFor(d: ProtocolDeployment): LogFilter {
+  const publishers = [d.collection.address, d.pantry?.address, d.cCroq?.address].filter((a): a is string => !!a);
+  return {
+    address: [d.fhevm.acl.toLowerCase()],
+    topics: [ACL.getEvent("AllowedForDecryption")!.topicHash, publishers.map((a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`)],
+  };
+}
+
+/** The handles an ACL log lists. */
+export const handlesOf = (l: RawLog): string[] => [...ACL.parseLog({ topics: l.topics, data: l.data })!.args.handlesList].map((h: string) => String(h).toLowerCase());
 
 const addr = (v: unknown) => normalizeAddress(String(v));
 const num = (v: unknown) => Number(v);
@@ -47,6 +64,7 @@ export class EvmChainSource implements ChainSource {
   private readonly topics: string[];
   private readonly collection: Interface;
   private readonly pantry: Interface | null;
+  private readonly aclFilter: LogFilter;
 
   constructor(
     private readonly rpc: RpcPool,
@@ -59,8 +77,11 @@ export class EvmChainSource implements ChainSource {
       { source: "collection" as const, address: d.collection.address, iface: this.collection },
       ...(d.pantry ? [{ source: "pantry" as const, address: d.pantry.address, iface: this.pantry! }] : []),
       ...(d.ramp ? [{ source: "ramp" as const, address: d.ramp.address, iface: new Interface(d.ramp.abi) }] : []),
+      ...(d.credits ? [{ source: "credits" as const, address: d.credits.address, iface: new Interface(d.credits.abi) }] : []),
     ].map((c) => ({ ...c, address: c.address.toLowerCase() }));
     this.topics = this.contracts.flatMap((c) => INDEXED[c.source].map((name) => c.iface.getEvent(name)!.topicHash));
+    this.aclFilter = aclFilterFor(d);
+    this.contracts.push({ source: "acl", address: d.fhevm.acl.toLowerCase(), iface: ACL });
   }
 
   async head(): Promise<number> {
@@ -75,7 +96,16 @@ export class EvmChainSource implements ChainSource {
 
   async read(from: number, to: number, opts: ReadOptions = {}): Promise<ChainBatch> {
     const got = await this.rpc.getLogs({ address: this.addresses(), topics: [this.topics] }, from, to, opts);
-    return { to: got.to, servedBy: [got.endpoint], ...(await this.complete(got.logs)) };
+    // The ACL logs for every app on the chain: a second filter keeps only the protocol's own.
+    const logs = [...got.logs];
+    const servedBy = new Set([got.endpoint]);
+    for (let at = from; at <= got.to; ) {
+      const acl = await this.rpc.getLogs(this.aclFilter, at, got.to, opts);
+      logs.push(...acl.logs);
+      servedBy.add(acl.endpoint);
+      at = acl.to + 1;
+    }
+    return { to: got.to, servedBy: [...servedBy], ...(await this.complete(logs)) };
   }
 
   /**
@@ -112,8 +142,9 @@ export class EvmChainSource implements ChainSource {
     return this.complete([...logs.values()]);
   }
 
+  /** The protocol's own contracts, the ACL left out. */
   private addresses() {
-    return this.contracts.map((c) => c.address);
+    return this.contracts.filter((c) => c.source !== "acl").map((c) => c.address);
   }
 
   /** Decodes raw logs and adds their timestamps and snapshots. */
@@ -289,6 +320,10 @@ function toBody(name: string, a: Result): Record<string, unknown> | null {
       return { name, tokenId: num(a.tokenId), weight: String(a.weight), build: num(a.build), sick: Boolean(a.sick), disease: num(a.disease) };
     case "Bought":
       return { name, buyer: addr(a.buyer), ethIn: String(a.ethIn), fee: String(a.fee), usdcOut: String(a.usdcOut), shielded: Boolean(a.shielded) };
+    case "CreditsBought":
+      return { name, payer: addr(a.payer), account: addr(a.account), credits: num(a.credits), paid: String(a.paid) };
+    case "AllowedForDecryption":
+      return { name: "PubliclyDecryptable", caller: addr(a.caller), handles: [...a.handlesList].map((h: string) => String(h).toLowerCase()) };
     default:
       return null;
   }

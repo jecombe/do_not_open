@@ -12,6 +12,8 @@ export interface Deployment {
   abi: InterfaceAbi;
   /** ETH in, USDC or cUSDC out. Null where none was deployed. */
   ramp?: { address: string; abi: InterfaceAbi } | null;
+  /** Decryption credits, bought in USDC past the free daily allowance. Null where none was deployed. */
+  credits?: { address: string; abi: InterfaceAbi } | null;
 }
 
 export const SEPOLIA: ChainParams = {

@@ -16,10 +16,30 @@ export interface ProtocolDeployment {
   croq: Deployed | null;
   cCroq: Deployed | null;
   ramp: Deployed | null;
+  /** Decryption credits, bought in USDC. Null where none was deployed. */
+  credits: Deployed | null;
+  /** Zama's contracts on this network, as the Relayer SDK's preset names them. */
+  fhevm: FhevmConfig;
   market: { pair: string; usdc: string } | null;
   /** What one faucet call mints, on a test network. */
   usdcFaucet: bigint | null;
 }
+
+export interface FhevmConfig {
+  /** The ACL: it logs every handle a contract makes publicly decryptable. */
+  acl: string;
+  /** The contract user-decryption permits are signed for (EIP-712 domain, with the host chain's id). */
+  verifyingContractDecryption: string;
+  /** Zama's relayer, versioned. */
+  relayerUrl: string;
+}
+
+/** From `SepoliaConfig` in @zama-fhe/relayer-sdk 0.4.1. */
+const SEPOLIA_FHEVM: FhevmConfig = {
+  acl: "0xf0Ffdc93b7E186bC2f8CB3dAA75D86d1930A433D",
+  verifyingContractDecryption: "0x5D8BD78e2ea6bbE41f26dFe9fdaEAa349e077478",
+  relayerUrl: "https://relayer.testnet.zama.org/v2",
+};
 
 export function deploymentFor(network: string, overrides: { address?: string; startBlock?: number } = {}): ProtocolDeployment {
   if (network !== "sepolia") throw new Error(`no deployment for network "${network}"`);
@@ -38,6 +58,8 @@ export function deploymentFor(network: string, overrides: { address?: string; st
     croq: own ? SEPOLIA_ECONOMY.croq : null,
     cCroq: own ? SEPOLIA_ECONOMY.cCroq : null,
     ramp: own ? (SEPOLIA_DEPLOYMENT.ramp ?? null) : null,
+    credits: own ? (SEPOLIA_DEPLOYMENT.credits ?? null) : null,
+    fhevm: SEPOLIA_FHEVM,
     market: own && SEPOLIA_ECONOMY.market ? { pair: SEPOLIA_ECONOMY.market.pair, usdc: SEPOLIA_ECONOMY.market.usdc } : null,
     // Zama's USDCMock lets anyone mint: 100 test dollars a go.
     usdcFaucet: 100_000_000n,

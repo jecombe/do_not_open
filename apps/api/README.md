@@ -108,6 +108,8 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `POST /v1/auth/nonce` · `POST /v1/auth/verify` · `GET /v1/me` | Sign-in with a wallet signature (no gas), then a bearer session |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. |
+| `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
+| `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 
 A duel carries `reserved`, `openUntil` (null until the holding is proven) and `tokenB`, null
 while a duel open to any box waits for a taker.
@@ -119,6 +121,32 @@ Migration 3 (`src/infrastructure/db/migrations.ts`) is for the duel-shelf contra
 empties the index (sign-ins are kept) and the indexer rebuilds it from the new deployment
 block. Point the API at the new addresses before it runs.
 
+## Relayer proxy
+
+On mainnet Zama bills the collection for every value its relayer decrypts and every encrypted
+input it verifies (litepaper: $0.001 to $0.10 a decryption, $0.005 to $0.50 an input,
+depending on the plan), and its hosted relayer needs an API key that must not reach a
+browser. With `VITE_RELAYER_PROXY=true` the app sends every encryption and decryption here
+instead; `RelayerGate` (`src/application/relayerGate.ts`) decides, `HttpRelayerUpstream`
+adds `RELAYER_API_KEY` and forwards.
+
+| Request | Let through when | Counted |
+| --- | --- | --- |
+| user decryption | every contract named is the protocol's (collection, its cUSDC, Pantry, cCROQ), and the EIP-712 permit was signed by the `userAddress` it is for | one unit per value: the day's free units first (`RELAYER_FREE_PER_DAY`, reset at midnight UTC), then the wallet's credits. Given back when Zama refuses |
+| public decryption | every handle was made public by the collection, the Pantry or cCROQ: the index follows Zama's ACL (`AllowedForDecryption` with one of them as caller), and the last `RELAYER_RECENT_BLOCKS` are read directly for what it has not caught up with | free: it settles something already on-chain |
+| encrypted input | for one of the protocol's contracts, on this chain | free: the action it goes with is paid, or costs gas |
+
+Polling a queued job is passed through and not counted. A refusal answers in the relayer's
+own error shape (`400`, label `request_error`, message `dno:<code>: ...`), so the SDK reports
+it; the adapter turns `dno:no-credits` into a `no-credits` error, and checks the allowance
+before a shake or a mint so no gas is spent on a result it could not read.
+
+Credits are bought on-chain from `DecryptionCredits`, in plain USDC (a short balance
+reverts; cUSDC would move 0 silently), and indexed from its `CreditsBought` events. What was
+used is kept in `relayer_free_used` and `relayer_credits_spent`, which a replay of the
+chain does not touch. Migration 4 empties the index once so it is rebuilt with the ACL and
+credit events.
+
 ## Run it
 
 ```bash
@@ -128,5 +156,6 @@ DATABASE_URL=postgres://... pnpm --filter @dno/api dev
 ```
 
 Configuration is environment variables, all optional in development: see `src/config.ts`
-(`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`...). Deployment is in
+(`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
+`RELAYER_FREE_PER_DAY`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

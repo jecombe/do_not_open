@@ -356,6 +356,8 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
       abi: deployment.abi,
       // ETH in, USDC or cUSDC out, when a ramp was deployed on this network.
       ramp: await hre.deployments.getOrNull("UsdcRamp").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
+      // Bought in USDC once a wallet's free decryptions of the day are spent.
+      credits: await hre.deployments.getOrNull("DecryptionCredits").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
     };
     writeFileSync(out, JSON.stringify(slim, null, 2) + "\n");
     console.log(`wrote ${out}`);
