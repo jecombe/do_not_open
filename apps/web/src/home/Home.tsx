@@ -7,6 +7,7 @@ import { useLocale } from "../i18n/locale";
 import { buildName, catNames } from "../i18n/names";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
+import { Shipped } from "./Shipped";
 import { pageSound, setMuted } from "./sound";
 
 const REPO = "https://github.com/jecombe/do_not_open";
@@ -112,6 +113,8 @@ export function Home() {
           <span>{t("home.ticker")}</span>
         </div>
       </div>
+
+      <Shipped />
 
       <section id="how" className="home-section">
         <h2>{t("home.how.title")}</h2>

@@ -975,3 +975,297 @@ h2 {
     animation: none;
   }
 }
+
+/* --- Boxes shipped: a counter, a bar that turns to fog, and a conveyor belt --- */
+.shipped-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 40px;
+}
+
+.shipped-head .section-lede {
+  margin-bottom: 0;
+}
+
+.shipped-count {
+  text-align: center;
+}
+
+.shipped-count p {
+  margin: 8px 0 0;
+  font-weight: 700;
+}
+
+.odometer {
+  display: inline-flex;
+  gap: 6px;
+  padding: 10px;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  background: var(--ink);
+  box-shadow: 6px 6px 0 var(--red);
+}
+
+.odo-cell {
+  display: block;
+  width: 0.72em;
+  height: 1.1em;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--paper);
+  font-family: var(--stencil);
+  font-size: clamp(54px, 8vw, 92px);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.odo-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 1.6s cubic-bezier(0.2, 0.9, 0.25, 1.15);
+}
+
+.odo-strip span {
+  height: 1.1em;
+}
+
+.fogbar {
+  margin: 34px 0 0;
+}
+
+.fogbar-track {
+  display: flex;
+  height: 46px;
+  overflow: hidden;
+  border: 4px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.fogbar-known {
+  flex: none;
+  border-right: 4px solid var(--ink);
+  background: var(--orange);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 12px, rgb(28 24 20 / 0.12) 12px 18px);
+}
+
+.fogbar-fog {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: repeating-linear-gradient(-45deg, #c9c0ae 0 14px, #ddd5c3 14px 28px);
+  background-size: 200% 100%;
+  animation: fog-drift 9s linear infinite;
+}
+
+.fogbar-fog i {
+  position: absolute;
+  top: 50%;
+  font-family: var(--stencil);
+  font-size: 26px;
+  font-style: normal;
+  color: rgb(28 24 20 / 0.55);
+  transform: translateY(-50%);
+  animation: fog-blink 4.2s ease-in-out infinite;
+}
+
+@keyframes fog-drift {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fog-blink {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(-30%) scale(0.8);
+  }
+  40%,
+  60% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+.fogbar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 18px;
+  margin-top: 10px;
+  font-weight: 700;
+}
+
+.fogbar-legend .is-known::before,
+.fogbar-legend .is-fog::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  vertical-align: -1px;
+  background: var(--orange);
+}
+
+.fogbar-legend .is-fog::before {
+  background: #c9c0ae;
+}
+
+.belt {
+  position: relative;
+  margin: 24px calc(-1 * var(--gutter)) 0;
+  padding: 58px 0 18px;
+  overflow: hidden;
+}
+
+/* The rubber belt and its rollers. */
+.belt::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 22px;
+  border-block: 4px solid var(--ink);
+  background: repeating-linear-gradient(90deg, #3a322a 0 26px, #2a241e 26px 52px);
+  animation: belt-roll 1.2s linear infinite;
+}
+
+@keyframes belt-roll {
+  to {
+    background-position: 52px 0;
+  }
+}
+
+.belt-row {
+  display: flex;
+  gap: 34px;
+  width: max-content;
+  margin: 0;
+  padding: 0 0 22px;
+  list-style: none;
+  animation: belt 26s linear infinite;
+}
+
+@keyframes belt {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.belt-box {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 108px;
+}
+
+.belt-box svg {
+  width: 108px;
+  height: 108px;
+}
+
+.belt-serial {
+  margin-top: -6px;
+  padding: 0 8px;
+  border: 3px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--stencil);
+  font-size: 18px;
+  transform: rotate(-3deg);
+}
+
+.belt-box.is-talking svg {
+  animation: wobble 0.35s ease-in-out 3;
+}
+
+.belt-whisper {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: 1;
+  padding: 6px 12px 3px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  font-family: var(--stencil);
+  font-size: 20px;
+  white-space: nowrap;
+  transform: translate(-30%, 6px) rotate(-6deg);
+  animation: whisper 1.8s ease-out;
+}
+
+@keyframes whisper {
+  0% {
+    opacity: 0;
+    transform: translate(-30%, 20px) rotate(-6deg) scale(0.6);
+  }
+  20%,
+  80% {
+    opacity: 1;
+    transform: translate(-30%, 6px) rotate(-6deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-30%, 0) rotate(-6deg) scale(1);
+  }
+}
+
+.shipped-note {
+  max-width: 60ch;
+  margin: 18px 0 0;
+  font-size: 19px;
+}
+
+@media (max-width: 760px) {
+  .shipped-head {
+    align-items: stretch;
+  }
+
+  .shipped-count {
+    width: 100%;
+  }
+
+  .fogbar-track {
+    height: 38px;
+  }
+
+  .belt-row {
+    gap: 22px;
+  }
+
+  .belt-box,
+  .belt-box svg {
+    width: 84px;
+  }
+
+  .belt-box svg {
+    height: 84px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .odo-strip {
+    transition: none;
+  }
+
+  .fogbar-fog,
+  .belt::after,
+  .belt-row,
+  .belt-box.is-talking svg,
+  .belt-whisper {
+    animation: none;
+  }
+
+  .fogbar-fog i {
+    animation: none;
+    opacity: 1;
+  }
+}
