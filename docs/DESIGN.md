@@ -132,7 +132,8 @@ those objects with `<primitive>`.
 | Glitch wireframe echoes         | glitch breed | Phase 1  | Quantised jitter                              |
 | Ghost wisps fraying to the floor | ghost state | Phase 3  | Follows the cat wherever it is placed         |
 | Tape rip, flaps open, burst, cat rises | observe | Phase 3 | `BoxOpener`; light takes the room's colour, spectral for ghosts |
-| Kibble drop, lid gap, happy hop | feed         | Phase 3  | `FeedEffect`; two pieces always miss and rattle off |
+| Hand reaches in and strokes    | feed (pet)   | Done     | `PetEffect`; the back flap lifts, a sleeved hand dives into the dark and strokes three times while the box leans and purrs. Nothing of the cat is drawn |
+| Kibble drop, lid gap, happy hop | croquettes   | Phase 3  | `FeedEffect`, when serving croquettes; two pieces always miss and rattle off |
 | Spotlight face-off              | duel         | Phase 3  | `DuelArena`; loser left leaning in the dark   |
 | Glowing thread                  | entangle     | Phase 3  | `EntanglementThread`; one mesh, curve in the vertex shader |
 | Paper tags on the box           | duel, entangle | Done   | `BoxTags`; a red "On duel" tag with the time left (or the step it waits for) on the right front corner, a blue "Entangled, with DNO-…" on the left. Public facts only, worded by the app; swaying, rocks with the box. Not in the warehouse racks |

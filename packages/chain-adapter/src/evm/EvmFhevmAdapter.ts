@@ -1102,6 +1102,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.reading(this.at(this.eco().croq).balanceOf!(owner));
   }
 
+  async confidentialCroqHandle(owner: Address): Promise<string> {
+    return String(await this.reading(this.at(this.eco().cCroq).confidentialBalanceOf!(owner)));
+  }
+
   async confidentialBalance(opts?: ActionOptions): Promise<bigint> {
     const account = await this.signer().getAddress();
     const handle: string = await this.reading(this.at(this.eco().cCroq).confidentialBalanceOf!(account));

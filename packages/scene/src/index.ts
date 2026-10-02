@@ -12,6 +12,7 @@ export * from "./box/tags";
 export * from "./box/inspector";
 export * from "./box/unbox";
 export * from "./effects/feed";
+export * from "./effects/pet";
 export * from "./effects/thread";
 export * from "./effects/duel";
 export * from "./box/sound";

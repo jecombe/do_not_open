@@ -157,6 +157,7 @@ export class MockAdapter implements ChainAdapter {
   private readonly cUsdc = new Map<Address, bigint>();
   /** Bumped on every cUSDC move, standing in for the fresh ciphertext a real transfer makes. */
   private readonly cUsdcMoves = new Map<Address, number>();
+  private readonly hiddenMoves = new Map<Address, number>();
   private readonly listeners = new Set<(account: Address | null) => void>();
   private readonly latency: number;
   private block = 5_000_000;
@@ -682,6 +683,10 @@ export class MockAdapter implements ChainAdapter {
     return this.plain.get(owner) ?? 0n;
   }
 
+  async confidentialCroqHandle(owner: Address): Promise<string> {
+    return `mock-ccroq:${owner}:${this.hiddenMoves.get(owner) ?? 0}`;
+  }
+
   async confidentialBalance(opts?: ActionOptions): Promise<bigint> {
     const me = this.signer();
     opts?.onStep?.("decrypting");
@@ -887,6 +892,7 @@ export class MockAdapter implements ChainAdapter {
   private credit(book: Map<Address, bigint>, who: Address, delta: bigint): void {
     book.set(who, (book.get(who) ?? 0n) + delta);
     if (book === this.cUsdc) this.cUsdcMoves.set(who, (this.cUsdcMoves.get(who) ?? 0) + 1);
+    if (book === this.hidden) this.hiddenMoves.set(who, (this.hiddenMoves.get(who) ?? 0) + 1);
   }
 
   private get(tokenId: number): MockBox {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { formatAmount, shortAddress, type Address, type ChainAdapter, type DecryptionAllowance } from "@dno/chain-adapter";
+import { Balances, roundAmount } from "./Balances";
 import { useAction, useChain } from "./chain/ChainProvider";
 import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
@@ -29,7 +30,7 @@ export type View = (typeof VIEWS)[number]["key"] | "box" | "pair";
 const menuKey = (view: View) => (view === "box" ? "warehouse" : view === "pair" ? "duels" : view);
 
 /**
- * The stamp on the left; on the right, a small wallet tag and one manila tag
+ * The stamp on the left; in the middle, the balances on frosted glass; on the right, a small wallet tag and one manila tag
  * naming the current view. The tag opens a packing list with the other views,
  * the manual and the languages; the wallet tag opens a list of the browser's
  * wallets when there is more than one, and once connected, a slip with the
@@ -74,6 +75,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
   return (
     <header className="masthead">
       <h1 className="wordmark">Do not open</h1>
+      <Balances />
       <div className="controls" ref={root}>
         {mode !== "mock" &&
           (account ? (
@@ -350,16 +352,6 @@ function DecryptionCredits(props: { id: string; adapter: ChainAdapter; own: Retu
       <p className="fine">{t("credits.why", { input: allowance.inputUnits })}</p>
     </>
   );
-}
-
-/** "0.0123" for a balance: four decimals are plenty to see what is left, and never round a dust balance to zero. */
-function roundAmount(amount: bigint, decimals: number): string {
-  const full = formatAmount(amount, decimals);
-  const [whole, frac = ""] = full.split(".");
-  if (!frac || frac.length <= 4) return full;
-  const kept = frac.slice(0, 4).replace(/0+$/, "");
-  if (whole === "0" && !kept) return "< 0.0001";
-  return kept ? `${whole}.${kept}` : whole!;
 }
 
 /** Closes a pop-over on a click outside `root` or on Escape, which also hands focus back. */

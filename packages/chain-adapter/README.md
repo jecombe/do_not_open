@@ -91,7 +91,9 @@ so the interface has no owner field anywhere:
 - `openedCats()` lists every opened cat and who opened it: the only holders that are public.
 
 The croquette economy sits on the same interface: `economy()`, `boxPantry(tokenId)`,
-`croqBalance(owner)`, `confidentialBalance()` (a user decryption), `claimCroquettes`
+`croqBalance(owner)`, `confidentialBalance()` (a user decryption), `confidentialCroqHandle(owner)`
+(the public handle of that sealed balance, new after every move, so a decrypted figure can
+be told stale like a cUSDC one with `confidentialUsdcHandle`), `claimCroquettes`
 (paid into the boxes, collected from those the caller holds), `feedCroquettes` (the amount
 is encrypted in the page), `pantryDay` (today's meals and croquettes eaten, decrypted:
 zeros unless the caller holds the cat), `weigh`, `wrap`, `unwrap` (a public decryption of
