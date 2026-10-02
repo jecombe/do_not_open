@@ -196,6 +196,13 @@ the RPC when it is down, or behind the account's own last transaction. Duels are
 there, so the shelf lists every box up for a duel, and an account finds its open duels
 from any device. Deployment: [`deploy/README.md`](../deploy/README.md).
 
+It is also the only way the app reaches Zama's relayer, which bills whoever holds the API
+key. Its relayer proxy (`/relayer/v2`) keeps the key server-side, lets through only the
+protocol's own decryptions and inputs, and counts each wallet's private decryptions against
+a free daily allowance, then against the credits bought from `DecryptionCredits`. The
+adapter keeps every value it decrypted, by handle, in the browser, so nothing is paid for
+twice. Details: [`apps/api/README.md`](../apps/api/README.md#relayer-proxy).
+
 ### Gaps against the original brief
 
 - **No event subscription.** The brief's interface lists `subscribeEvents`. The adapter

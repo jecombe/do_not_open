@@ -431,6 +431,67 @@ sequenceDiagram
 Every amount here is public: ETH in, USDC out, and the amount wrapped. cUSDC hides what
 happens after.
 
+## Decryptions and credits
+
+Zama bills whoever holds the relayer API key for every value its KMS decrypts and every
+encrypted input it verifies; on mainnet that is the collection. So the app never talks to
+Zama's relayer directly: it goes through the proxy in [`apps/api`](../apps/api/README.md#relayer-proxy),
+which holds the key and counts what each wallet decrypts.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant App
+  participant P as API proxy
+  participant K as Zama relayer
+  participant DC as DecryptionCredits
+  App->>App: in the browser's cache? (a handle decrypts to the same value forever)
+  App->>P: user-decrypt (handles, permit signed by the player)
+  P->>P: our contracts only, signer = the account it is for
+  alt free units left today, or credits
+    P->>P: count: free units first, then credits
+    P->>K: forward, with the API key
+    K-->>App: values, re-encrypted for the session key
+  else none left
+    P-->>App: refused (dno:no-credits), nothing reaches Zama
+    U->>DC: buy(account, credits, maxPrice): plain USDC to the treasury
+    DC-->>P: CreditsBought, through the index
+  end
+```
+
+Public decryptions (an opening, an alive check, a duel, a milestone, a weigh-in, an
+unwrap) go through the same proxy, free: it checks that one of the protocol's contracts
+made the handles public (Zama's ACL logs it). The adapter checks the allowance before a
+shake or a mint, so no gas is spent on a result that could not be read.
+
+Credits are paid in plain USDC on purpose: `transferFrom` moves the whole price or
+reverts, where a cUSDC payment that falls short moves 0 without a word.
+
+## Where the money goes
+
+| Fee | Paid in | Goes to |
+| --- | --- | --- |
+| Mint (5 a box), open (1), pet (0.5) | cUSDC | `DoNotOpen`, withdrawn by the owner |
+| Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen` |
+| Decryption credits (0.01 each) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
+| USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
+| A croquette meal | cCROQ | 20% treasury, 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
+
+```mermaid
+flowchart LR
+  P[Players] -- "mint, open, pet" --> T[Treasury]
+  P -- "paid shake" --> S{split}
+  S -- 70% --> H[Box holder]
+  S -- 30% --> T
+  P -- "credits, plain USDC" --> T
+  P -- "ramp, 0.3% of ETH" --> T
+  T -- "free and public decryptions" --> Z[Zama]
+  T --> I[Indexer and API servers]
+```
+
+The treasury pays Zama for what players do not pay themselves: each wallet's free daily
+decryptions and every public decryption.
+
 ## Croquettes
 
 Rules and numbers are in [CROQ.md](CROQ.md). Two more participants:

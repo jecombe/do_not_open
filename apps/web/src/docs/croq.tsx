@@ -14,7 +14,7 @@ const BPS = 10_000;
 const pct = (bps: number) => bps / 100;
 
 // Drawing palette, the manual's colours (see docs.css).
-const C = {
+export const C = {
   ink: "#1c1814",
   paper: "#e9dfc8",
   tape: "#d9c28a",
@@ -24,15 +24,23 @@ const C = {
   kraft: "#b8895a",
 };
 
+/**
+ * Squeezes a line that would overflow its crate (a long word in another language) into the
+ * room there is. `perChar` is a rough width per character at the class's font size.
+ */
+function squeeze(text: string, room: number, perChar: number): { textLength?: number; lengthAdjust?: "spacingAndGlyphs" } {
+  return text.length * perChar > room ? { textLength: room, lengthAdjust: "spacingAndGlyphs" } : {};
+}
+
 /** A labelled crate: a title in stencil and one line underneath. */
-function Crate({ x, y, w, h, title, sub, fill, dashed }: { x: number; y: number; w: number; h: number; title: string; sub: string; fill: string; dashed?: boolean }) {
+export function Crate({ x, y, w, h, title, sub, fill, dashed }: { x: number; y: number; w: number; h: number; title: string; sub: string; fill: string; dashed?: boolean }) {
   return (
     <g>
       <rect x={x} y={y} width={w} height={h} rx={10} fill={fill} stroke={C.ink} strokeWidth={3} strokeDasharray={dashed ? "8 6" : undefined} />
-      <text x={x + w / 2} y={y + h / 2 - 6} textAnchor="middle" className="croq-svg-title">
+      <text x={x + w / 2} y={y + h / 2 - 6} textAnchor="middle" className="croq-svg-title" {...squeeze(title, w - 24, 15)}>
         {title}
       </text>
-      <text x={x + w / 2} y={y + h / 2 + 20} textAnchor="middle" className="croq-svg-sub">
+      <text x={x + w / 2} y={y + h / 2 + 20} textAnchor="middle" className="croq-svg-sub" {...squeeze(sub, w - 20, 8.6)}>
         {sub}
       </text>
     </g>
@@ -40,7 +48,7 @@ function Crate({ x, y, w, h, title, sub, fill, dashed }: { x: number; y: number;
 }
 
 /** An arrow along a path, with its label at (lx, ly). */
-function Pipe({ d, label, lx, ly, color = C.tape, anchor = "middle" }: { d: string; label: string; lx: number; ly: number; color?: string; anchor?: "start" | "middle" | "end" }) {
+export function Pipe({ d, label, lx, ly, color = C.tape, anchor = "middle" }: { d: string; label: string; lx: number; ly: number; color?: string; anchor?: "start" | "middle" | "end" }) {
   return (
     <g>
       <path d={d} fill="none" stroke={color} strokeWidth={4} markerEnd={`url(#croq-head-${color.slice(1)})`} strokeLinecap="round" />
@@ -52,7 +60,7 @@ function Pipe({ d, label, lx, ly, color = C.tape, anchor = "middle" }: { d: stri
 }
 
 /** A crate for the phone versions: the same box, drawn in HTML so its words wrap. */
-function Box({ title, sub, fill, dashed }: { title: string; sub: string; fill: string; dashed?: boolean }) {
+export function Box({ title, sub, fill, dashed }: { title: string; sub: string; fill: string; dashed?: boolean }) {
   return (
     <div className={dashed ? "croq-box is-dashed" : "croq-box"} style={{ background: fill }}>
       <strong>{title}</strong>
@@ -62,7 +70,7 @@ function Box({ title, sub, fill, dashed }: { title: string; sub: string; fill: s
 }
 
 /** One vertical pipe between two stacked crates, its label beside it. */
-function Lane({ label, note, color, up, side = "right" }: { label: string; note?: string; color: string; up?: boolean; side?: "left" | "right" }) {
+export function Lane({ label, note, color, up, side = "right" }: { label: string; note?: string; color: string; up?: boolean; side?: "left" | "right" }) {
   return (
     <div className={`croq-lane is-${side}`} style={{ color }}>
       <svg viewBox="0 0 16 56" aria-hidden="true">
@@ -77,7 +85,7 @@ function Lane({ label, note, color, up, side = "right" }: { label: string; note?
   );
 }
 
-function Heads() {
+export function Heads() {
   return (
     <defs>
       {[C.tape, C.sodium, C.spectral, C.red, C.kraft].map((color) => (

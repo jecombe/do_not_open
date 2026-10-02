@@ -1061,3 +1061,242 @@ h2 {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* --- Fees: coins running through the plumbing --- */
+.fees-coin-mark {
+  font-family: var(--stencil);
+  font-size: 15px;
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+.fees-phone .croq-box {
+  padding: 10px 6px;
+}
+
+.fees-phone .croq-box span {
+  overflow-wrap: anywhere;
+}
+
+
+.fees-phone .croq-box strong {
+  font-size: 16px;
+}
+
+.fees-phone .croq-box span {
+  font-size: 13px;
+}
+
+.fees-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* One row per kind of payment: the box on the left, where it goes on the right. */
+.fees-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 8px;
+  align-items: center;
+}
+
+.fees-dest {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fees-dest-pipe {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 16px;
+}
+
+.fees-dest-pipe svg {
+  display: block;
+  width: 44px;
+  height: 16px;
+}
+
+.fees-dest p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.fees-slide {
+  display: none;
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+
+.fees-phone.is-moving .fees-slide {
+  display: block;
+  animation: fees-slide 1.8s ease-in infinite;
+}
+
+@keyframes fees-slide {
+  0% {
+    transform: translateX(-4px);
+    opacity: 0;
+  }
+  15%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+}
+
+.fees-lane {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+}
+
+.fees-lane svg {
+  flex: none;
+  width: 16px;
+  height: 44px;
+}
+
+.fees-lane p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* A coin dropping down its pipe, only while motion is welcome. */
+.fees-drop {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(50% - 7px);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+
+.fees-lane:has(p) .fees-drop {
+  left: calc(50% - 7px - 0.9em);
+}
+
+.fees-phone.is-moving .fees-drop {
+  display: block;
+  animation: fees-drop 1.8s ease-in infinite;
+}
+
+@keyframes fees-drop {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(34px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fees-phone.is-moving .fees-drop,
+  .fees-phone.is-moving .fees-slide {
+    display: none;
+  }
+}
+
+/* --- The manual's three parts --- */
+.toc-group {
+  margin: 22px 0 8px;
+  font-family: var(--stencil);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(233 223 200 / 0.6);
+}
+
+.toc-group:first-child {
+  margin-top: 0;
+}
+
+.part {
+  padding: clamp(36px, 6vw, 64px) 0 0;
+  border-top: 4px double rgb(233 223 200 / 0.35);
+}
+
+.part h2 {
+  margin: 0;
+  font-family: var(--stencil);
+  color: var(--tape);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.part p {
+  max-width: var(--measure);
+  color: rgb(233 223 200 / 0.75);
+}
+
+.part + section {
+  border-top: 0;
+}
+
+.testnet-note {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 4px 10px;
+  background: var(--manifest);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.addresses {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.addresses li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.addresses a {
+  font-family: ui-monospace, monospace;
+  font-size: 15px;
+}
+
+@media (max-width: 860px) {
+  .toc-group {
+    display: none;
+  }
+
+  .addresses li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
