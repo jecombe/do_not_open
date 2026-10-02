@@ -10,6 +10,7 @@ import { ShelfScene, SHELF_CAPACITY } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
+import { TxPending } from "./TxPending";
 import { openExchange } from "./exchangeLink";
 
 interface Props {
@@ -132,73 +133,75 @@ export function PantryView({ quality, sound, onSelect }: Props) {
         <div className="slip-head">
           <span>{t("pantry.title")}</span>
         </div>
-        <div className="picker pantry-tabs" role="group" aria-label={t("pantry.title")}>
-          {TABS.map((tb) => (
-            <button type="button" key={tb.key} aria-pressed={tab === tb.key} onClick={() => setTab(tb.key)} disabled={!!action.busy}>
-              {t(tb.label)}
-            </button>
-          ))}
-        </div>
+        <TxPending busy={action.busy} step={action.step} title={t(action.busy === "collect" ? "pantry.collecting" : action.busy === "reveal" ? "pantry.revealing" : "tx.working")} secret={action.busy === "reveal"}>
+          <div className="picker pantry-tabs" role="group" aria-label={t("pantry.title")}>
+            {TABS.map((tb) => (
+              <button type="button" key={tb.key} aria-pressed={tab === tb.key} onClick={() => setTab(tb.key)} disabled={!!action.busy}>
+                {t(tb.label)}
+              </button>
+            ))}
+          </div>
 
-        {failed ? (
-          <p className="fine problem">{t("pantry.failed")}</p>
-        ) : !economy ? (
-          <p className="state-note">{t("pantry.reading")}</p>
-        ) : tab === "rules" ? (
-          <Rules economy={economy} />
-        ) : !account ? (
-          <>
-            <p className="state-note">{t("pantry.connectFirst")}</p>
-            <button type="button" className="stamp-button" onClick={() => void connect()}>
-              {t("nav.connect")}
-            </button>
-          </>
-        ) : tab === "stock" ? (
-          <>
-            <dl className="fields pantry-balances">
-              <div>
-                <dt>{economy.confidentialSymbol}</dt>
-                <dd>{hidden === null ? "••••" : hidden.toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt>{economy.symbol}</dt>
-                <dd>{plain === null ? "…" : plain.toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt>{t("pantry.boxes")}</dt>
-                <dd>{myBoxes.length}</dd>
-              </div>
-            </dl>
-            <div className="actions">
-              <button type="button" className="stamp-button" onClick={() => void collect()} disabled={!!action.busy || due.length === 0}>
-                {action.busy === "collect" ? t("pantry.collecting") : due.length === 0 ? t("pantry.upToDate") : t("pantry.collect", { count: Math.min(due.length, economy.maxBoxesPerClaim) })}
+          {failed ? (
+            <p className="fine problem">{t("pantry.failed")}</p>
+          ) : !economy ? (
+            <p className="state-note">{t("pantry.reading")}</p>
+          ) : tab === "rules" ? (
+            <Rules economy={economy} />
+          ) : !account ? (
+            <>
+              <p className="state-note">{t("pantry.connectFirst")}</p>
+              <button type="button" className="stamp-button" onClick={() => void connect()}>
+                {t("nav.connect")}
               </button>
-              <button type="button" className="plain-button" onClick={() => void reveal()} disabled={!!action.busy}>
-                {action.busy === "reveal" ? t("pantry.revealing") : hidden === null ? t("pantry.reveal") : t("pantry.revealAgain")}
-              </button>
-            </div>
+            </>
+          ) : tab === "stock" ? (
+            <>
+              <dl className="fields pantry-balances">
+                <div>
+                  <dt>{economy.confidentialSymbol}</dt>
+                  <dd>{hidden === null ? "••••" : hidden.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>{economy.symbol}</dt>
+                  <dd>{plain === null ? "…" : plain.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>{t("pantry.boxes")}</dt>
+                  <dd>{myBoxes.length}</dd>
+                </div>
+              </dl>
+              <div className="actions">
+                <button type="button" className="stamp-button" onClick={() => void collect()} disabled={!!action.busy || due.length === 0}>
+                  {action.busy === "collect" ? t("pantry.collecting") : due.length === 0 ? t("pantry.upToDate") : t("pantry.collect", { count: Math.min(due.length, economy.maxBoxesPerClaim) })}
+                </button>
+                <button type="button" className="plain-button" onClick={() => void reveal()} disabled={!!action.busy}>
+                  {action.busy === "reveal" ? t("pantry.revealing") : hidden === null ? t("pantry.reveal") : t("pantry.revealAgain")}
+                </button>
+              </div>
+              <Feedback busy={action.busy} step={action.step} error={action.error} done={done}>
+                {myBoxes.length === 0
+                  ? t("pantry.noBoxes")
+                  : due.length > 0
+                    ? t("pantry.dueHint", { bag: economy.welcomeBag, max: economy.purrMaxPerDay })
+                    : nextAt
+                      ? t("pantry.nextPurr", { time: new Date(nextAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
+                      : ""}
+                {due.length > economy.maxBoxesPerClaim ? t("pantry.batched", { n: economy.maxBoxesPerClaim }) : ""}
+              </Feedback>
+            </>
+          ) : tab === "market" ? (
+            <Market economy={economy} decimals={economy.market?.quote.decimals ?? 6} symbol={economy.market?.quote.symbol ?? "USDC"} busy={action.busy} />
+          ) : (
+            <Bridge economy={economy} hidden={hidden} plain={plain} busy={action.busy} run={action.run} onDone={(k) => void after(k)} />
+          )}
+
+          {tab !== "stock" && tab !== "rules" && account && (
             <Feedback busy={action.busy} step={action.step} error={action.error} done={done}>
-              {myBoxes.length === 0
-                ? t("pantry.noBoxes")
-                : due.length > 0
-                  ? t("pantry.dueHint", { bag: economy.welcomeBag, max: economy.purrMaxPerDay })
-                  : nextAt
-                    ? t("pantry.nextPurr", { time: new Date(nextAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
-                    : ""}
-              {due.length > economy.maxBoxesPerClaim ? t("pantry.batched", { n: economy.maxBoxesPerClaim }) : ""}
+              {null}
             </Feedback>
-          </>
-        ) : tab === "market" ? (
-          <Market economy={economy} decimals={economy.market?.quote.decimals ?? 6} symbol={economy.market?.quote.symbol ?? "USDC"} busy={action.busy} />
-        ) : (
-          <Bridge economy={economy} hidden={hidden} plain={plain} busy={action.busy} run={action.run} onDone={(k) => void after(k)} />
-        )}
-
-        {tab !== "stock" && tab !== "rules" && account && (
-          <Feedback busy={action.busy} step={action.step} error={action.error} done={done}>
-            {null}
-          </Feedback>
-        )}
+          )}
+        </TxPending>
       </section>
     </>
   );

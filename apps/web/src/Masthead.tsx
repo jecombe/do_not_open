@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { formatAmount, shortAddress, type Address, type ChainAdapter, type DecryptionAllowance } from "@dno/chain-adapter";
 import { useAction, useChain } from "./chain/ChainProvider";
-import { stepCopy } from "./chain/copy";
 import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
 import { openExchange } from "./views/exchangeLink";
+import { TxPending } from "./views/TxPending";
 import { ProblemNote } from "./views/ProblemNote";
 
 /** Any view may open the wallet slip: balances, decryption credits, the way out. */
@@ -236,39 +236,39 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
             </strong>
           </p>
           <div className="slip-section">
-            <p className="fine">
-              <button type="button" className="link" onClick={() => void own.run("reveal", shielded.reveal)} disabled={working}>
-                {known ? t("nav.decryptAgain") : t("nav.decrypt")}
-              </button>{" "}
-              {stale ? t("nav.decryptStale") : known ? t("nav.decryptKept") : t("nav.decryptHint")}
-            </p>
-
-            <p className="slip-heading">{t("nav.getTokens")}</p>
-            <div className="slip-exchange">
-              {payment.ramp && (
-                <button type="button" className="plain-button" onClick={() => openExchange({ from: "eth", to: "cusdc" })} disabled={working}>
-                  {t("nav.buyStable", { symbol: payment.symbol })}
-                </button>
-              )}
-              <button type="button" className="plain-button" onClick={() => openExchange({ from: "usdc", to: "cusdc" })} disabled={working}>
-                {t("nav.shieldUnshield")}
-              </button>
-            </div>
-            <p className="fine">{t("nav.exchangeHint")}</p>
-
-            {payment.faucet !== null && (
+            <TxPending busy={own.busy} step={own.step} title={t(own.busy === "credits" ? "credits.buying" : own.busy === "reveal" ? "pantry.revealing" : "tx.working")} secret={own.busy === "reveal"}>
               <p className="fine">
-                <button type="button" className="link" onClick={() => void own.run("faucet", (o) => adapter.faucetUsdc(o))} disabled={working}>
-                  {t("pay.faucet", { amount: amount(payment.faucet), symbol: payment.symbol })}
-                </button>
+                <button type="button" className="link" onClick={() => void own.run("reveal", shielded.reveal)} disabled={working}>
+                  {known ? t("nav.decryptAgain") : t("nav.decrypt")}
+                </button>{" "}
+                {stale ? t("nav.decryptStale") : known ? t("nav.decryptKept") : t("nav.decryptHint")}
               </p>
-            )}
 
-            <DecryptionCredits id={id} adapter={adapter} own={own} symbol={payment.symbol} decimals={payment.decimals} />
+              <p className="slip-heading">{t("nav.getTokens")}</p>
+              <div className="slip-exchange">
+                {payment.ramp && (
+                  <button type="button" className="plain-button" onClick={() => openExchange({ from: "eth", to: "cusdc" })} disabled={working}>
+                    {t("nav.buyStable", { symbol: payment.symbol })}
+                  </button>
+                )}
+                <button type="button" className="plain-button" onClick={() => openExchange({ from: "usdc", to: "cusdc" })} disabled={working}>
+                  {t("nav.shieldUnshield")}
+                </button>
+              </div>
+              <p className="fine">{t("nav.exchangeHint")}</p>
 
-            <div aria-live="polite">
-              {own.error ? <ProblemNote problem={own.error} /> : own.busy ? <p className="fine">{stepCopy(own.step, own.busy === "reveal")}</p> : null}
-            </div>
+              {payment.faucet !== null && (
+                <p className="fine">
+                  <button type="button" className="link" onClick={() => void own.run("faucet", (o) => adapter.faucetUsdc(o))} disabled={working}>
+                    {t("pay.faucet", { amount: amount(payment.faucet), symbol: payment.symbol })}
+                  </button>
+                </p>
+              )}
+
+              <DecryptionCredits id={id} adapter={adapter} own={own} symbol={payment.symbol} decimals={payment.decimals} />
+
+              <div aria-live="polite">{own.error && <ProblemNote problem={own.error} />}</div>
+            </TxPending>
           </div>
         </>
       )}

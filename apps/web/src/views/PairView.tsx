@@ -3,7 +3,7 @@ import { sameAddress, type ActionOptions, type BoxInfo, type BoxSummary, type Du
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
-import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
+import { catFromRevealed, fee, holderCopy, traitCopy } from "../chain/copy";
 import { usePayment } from "../chain/payment";
 import { FindMine } from "./FindMine";
 import { logTx, recallTxs, type LoggedTx } from "../chain/txLog";
@@ -12,7 +12,8 @@ import { useLocale } from "../i18n/locale";
 import { catNames } from "../i18n/names";
 import { PairScene, type PairSceneHandle } from "../scenes/Scenes";
 import { Stage } from "./Stage";
-import { StepTracker, type PlannedStep } from "./StepTracker";
+import { type PlannedStep } from "./StepTracker";
+import { TxPending } from "./TxPending";
 import { TxJournal } from "./TxJournal";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
@@ -368,161 +369,162 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
           {entangled && <span className="tier tier-entangled">{t("pair.entangled")}</span>}
         </div>
 
-        <div className="pair-pick">
-          {([0, 1] as const).map((slot) => (
-            <label key={slot}>
-              {account ? t(slot === 0 ? "pair.yourSide" : "pair.theirSide") : slot === 0 ? t("pair.left") : t("pair.right")}
-              <select
-                value={slot === 0 ? a : b}
-                disabled={!!busy}
-                onChange={(e) => {
-                  const id = Number(e.target.value);
-                  const other = slot === 0 ? b : a;
-                  // Picking the box that is already on the other side swaps them.
-                  setPicked(slot === 0 ? [id, id === other ? a : other] : [id === other ? b : other, id]);
-                }}
-              >
-                {options[slot].map((id) => (
-                  <option key={id} value={id}>
-                    {serial(id)}
-                    {mine(id) ? t("pair.yours") : ""}
-                  </option>
-                ))}
-              </select>
-              <span className="fine">
-                {(() => {
-                  const x = slot === 0 ? boxA : boxB;
-                  if (!x) return "…";
-                  return t("pair.status", { holder: holderCopy(mine(x.tokenId)), state: status(x) }) + (x.wins ? t("pair.won", { n: x.wins }) : "");
-                })()}
-              </span>
-              {account && pool && (slot === 0 ? yours : theirs).length === 0 && (
-                <span className="fine problem">{t(slot === 0 ? (focus === "entangle" ? "pair.noneYoursFree" : "pair.noneYours") : focus === "entangle" ? "pair.noneTheirsFree" : "pair.noneTheirs")}</span>
-              )}
-            </label>
-          ))}
-        </div>
-
-        {showResults && (
-          <ul className="results">
-            {opened.map((x) => {
-              const names = catNames(catFromRevealed(x.revealed!));
-              return (
-                <li key={x.tokenId}>
-                  <strong>{serial(x.tokenId)}</strong>
-                  {t("pair.result", { state: names.state.toLowerCase(), breed: names.breed.toLowerCase(), tier: names.tier.toLowerCase(), score: x.revealed!.score })}
-                  <button type="button" className="link" onClick={() => onInspect(x.tokenId)}>
-                    {t("pair.takeOut")}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {!account ? (
-          <div className="actions">
-            <button type="button" className="stamp-button" onClick={() => void connect()}>
-              {t("nav.connect")}
-            </button>
+        <TxPending
+          busy={action.busy}
+          step={action.step}
+          title={t(action.busy === "duel" ? "pair.fighting" : action.busy === "entangle" ? "pair.linking" : action.busy === "open" ? "box.opening" : "tx.working")}
+          plan={plan && plan.length > 0 ? plan : null}
+        >
+          <div className="pair-pick">
+            {([0, 1] as const).map((slot) => (
+              <label key={slot}>
+                {account ? t(slot === 0 ? "pair.yourSide" : "pair.theirSide") : slot === 0 ? t("pair.left") : t("pair.right")}
+                <select
+                  value={slot === 0 ? a : b}
+                  disabled={!!busy}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    const other = slot === 0 ? b : a;
+                    // Picking the box that is already on the other side swaps them.
+                    setPicked(slot === 0 ? [id, id === other ? a : other] : [id === other ? b : other, id]);
+                  }}
+                >
+                  {options[slot].map((id) => (
+                    <option key={id} value={id}>
+                      {serial(id)}
+                      {mine(id) ? t("pair.yours") : ""}
+                    </option>
+                  ))}
+                </select>
+                <span className="fine">
+                  {(() => {
+                    const x = slot === 0 ? boxA : boxB;
+                    if (!x) return "…";
+                    return t("pair.status", { holder: holderCopy(mine(x.tokenId)), state: status(x) }) + (x.wins ? t("pair.won", { n: x.wins }) : "");
+                  })()}
+                </span>
+                {account && pool && (slot === 0 ? yours : theirs).length === 0 && (
+                  <span className="fine problem">{t(slot === 0 ? (focus === "entangle" ? "pair.noneYoursFree" : "pair.noneYours") : focus === "entangle" ? "pair.noneTheirsFree" : "pair.noneTheirs")}</span>
+                )}
+              </label>
+            ))}
           </div>
-        ) : !boxesKnown ? (
-          <FindMine compact />
-        ) : (
-          opened.length < 2 && (
+
+          {showResults && (
+            <ul className="results">
+              {opened.map((x) => {
+                const names = catNames(catFromRevealed(x.revealed!));
+                return (
+                  <li key={x.tokenId}>
+                    <strong>{serial(x.tokenId)}</strong>
+                    {t("pair.result", { state: names.state.toLowerCase(), breed: names.breed.toLowerCase(), tier: names.tier.toLowerCase(), score: x.revealed!.score })}
+                    <button type="button" className="link" onClick={() => onInspect(x.tokenId)}>
+                      {t("pair.takeOut")}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {!account ? (
             <div className="actions">
-              {offerDuel && (
-                <button type="button" className="stamp-button" onClick={() => void runDuel()} disabled={!!busy || !duelStep || duelStep === "waiting"}>
-                  {busy === "duel"
-                    ? t("pair.fighting")
-                    : duelStep === "accept"
-                      ? t("pair.acceptDuel")
-                      : duelStep === "reveal"
-                        ? t("pair.reveal")
-                        : duelStep === "prove"
-                          ? t("pair.prove")
-                          : duelStep === "waiting"
-                            ? t("pair.challengeSent")
-                            : t("pair.startDuel")}
-                </button>
-              )}
-              {offerLink && (
-                <button type="button" className={focus === "entangle" ? "stamp-button" : "plain-button"} onClick={() => void runEntangle()} disabled={!!busy || !linkStep || linkStep === "waiting"}>
-                  {busy === "entangle" ? t("pair.linking") : entangled ? t("pair.entangled") : linkStep === "accept" ? t("pair.acceptLink") : linkStep === "waiting" ? t("pair.linkProposed") : t("pair.entangle")}
-                </button>
-              )}
-              <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy || !openable}>
-                {busy === "open"
-                  ? t("box.opening")
-                  : openable
-                    ? t(openable.status === "opening" ? "pair.finish" : "pair.openSerial", { serial: serial(openable.tokenId) })
-                    : t("pair.open")}
+              <button type="button" className="stamp-button" onClick={() => void connect()}>
+                {t("nav.connect")}
               </button>
             </div>
-          )
-        )}
-
-        <div className="felt" aria-live="polite">
-          {action.error ? (
-            <ProblemNote problem={action.error} />
-          ) : action.busy ? (
-            <>
-              {plan && plan.length > 0 && <StepTracker key={action.busy} plan={plan} step={action.step} />}
-              <p className="fine">{stepCopy(action.step)}</p>
-              {action.step === "decrypting" && <p className="fine">{t("track.slow")}</p>}
-            </>
-          ) : outcome && playing !== "duel" ? (
-            <>
-              <p className="felt-line">
-                <strong>{serial(outcome.winner)}</strong>
-                {t("pair.wins")}
-              </p>
-              <p className="fine">
-                {t("pair.loserShows", { loser: serial(outcome.loser), trait: traitCopy(outcome.shown).trait })}
-                <strong>{traitCopy(outcome.shown).variant}</strong>
-                {t("pair.winnerNothing")}
-              </p>
-            </>
-          ) : note ? (
-            <p className="fine">{t(note)}</p>
-          ) : showResults ? (
-            <p className="fine">{opened.length === 2 && entangled ? t("pair.bothOpenedEntangled") : opened.length === 2 ? t("pair.bothOpen") : t("pair.otherSealed")}</p>
-          ) : !boxes ? null : !account ? (
-            <p className="fine">{t("pair.duelConnect")}</p>
-          ) : offerDuel && duelStep === "waiting" && duel ? (
-            <p className="fine">
-              {t(duel.reserved ? "pair.waiting" : "pair.waitingShelf", { a: serial(duel.tokenA), b: serial(takerOf(duel)) })}
-              {sameAddress(duel.challenger, account) && (
-                <button type="button" className="link" onClick={() => void cancelDuel()}>
-                  {t("pair.withdraw")}
-                </button>
-              )}
-            </p>
-          ) : offerDuel && duelStep === "accept" && duel ? (
-            <p className="fine">{t(duel.reserved ? "pair.acceptExplain" : "pair.acceptShelf", { a: serial(duel.tokenA), b: serial(takerOf(duel)) })}</p>
-          ) : offerDuel && duelStep === "prove" ? (
-            <p className="fine">{t("pair.proveExplain")}</p>
-          ) : offerDuel && duelStep === "reveal" ? (
-            <p className="fine">{t("pair.revealExplain")}</p>
-          ) : offerLink && linkStep === "accept" && proposal ? (
-            <p className="fine">{t("pair.linkExplain", { from: serial(proposal.from), to: serial(proposal.to) })}</p>
-          ) : entangled ? (
-            <p className="fine">{t("pair.entangledExplain", { fee: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
-          ) : taken && offerLink ? (
-            <p className="fine">{t("pair.taken")}</p>
-          ) : challenger === null ? (
-            <p className="fine">{t("pair.neither")}</p>
+          ) : !boxesKnown ? (
+            <FindMine compact />
           ) : (
-            <p className="fine">{t(focus === "entangle" ? "pair.entangleExplain" : focus === "duel" ? "pair.duelOnlyExplain" : "pair.duelExplain")}</p>
+            opened.length < 2 && (
+              <div className="actions">
+                {offerDuel && (
+                  <button type="button" className="stamp-button" onClick={() => void runDuel()} disabled={!!busy || !duelStep || duelStep === "waiting"}>
+                    {busy === "duel"
+                      ? t("pair.fighting")
+                      : duelStep === "accept"
+                        ? t("pair.acceptDuel")
+                        : duelStep === "reveal"
+                          ? t("pair.reveal")
+                          : duelStep === "prove"
+                            ? t("pair.prove")
+                            : duelStep === "waiting"
+                              ? t("pair.challengeSent")
+                              : t("pair.startDuel")}
+                  </button>
+                )}
+                {offerLink && (
+                  <button type="button" className={focus === "entangle" ? "stamp-button" : "plain-button"} onClick={() => void runEntangle()} disabled={!!busy || !linkStep || linkStep === "waiting"}>
+                    {busy === "entangle" ? t("pair.linking") : entangled ? t("pair.entangled") : linkStep === "accept" ? t("pair.acceptLink") : linkStep === "waiting" ? t("pair.linkProposed") : t("pair.entangle")}
+                  </button>
+                )}
+                <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy || !openable}>
+                  {busy === "open"
+                    ? t("box.opening")
+                    : openable
+                      ? t(openable.status === "opening" ? "pair.finish" : "pair.openSerial", { serial: serial(openable.tokenId) })
+                      : t("pair.open")}
+                </button>
+              </div>
+            )
           )}
-          {focus && !action.busy && (
-            <p className="fine">
-              <button type="button" className="link" onClick={() => setFocus(focus === "duel" ? "entangle" : "duel")}>
-                {t(focus === "duel" ? "pair.ratherEntangle" : "pair.ratherDuel")}
-              </button>
-            </p>
-          )}
-        </div>
+
+          <div className="felt" aria-live="polite">
+            {action.error ? (
+              <ProblemNote problem={action.error} />
+            ) : outcome && playing !== "duel" ? (
+              <>
+                <p className="felt-line">
+                  <strong>{serial(outcome.winner)}</strong>
+                  {t("pair.wins")}
+                </p>
+                <p className="fine">
+                  {t("pair.loserShows", { loser: serial(outcome.loser), trait: traitCopy(outcome.shown).trait })}
+                  <strong>{traitCopy(outcome.shown).variant}</strong>
+                  {t("pair.winnerNothing")}
+                </p>
+              </>
+            ) : note ? (
+              <p className="fine">{t(note)}</p>
+            ) : showResults ? (
+              <p className="fine">{opened.length === 2 && entangled ? t("pair.bothOpenedEntangled") : opened.length === 2 ? t("pair.bothOpen") : t("pair.otherSealed")}</p>
+            ) : !boxes ? null : !account ? (
+              <p className="fine">{t("pair.duelConnect")}</p>
+            ) : offerDuel && duelStep === "waiting" && duel ? (
+              <p className="fine">
+                {t(duel.reserved ? "pair.waiting" : "pair.waitingShelf", { a: serial(duel.tokenA), b: serial(takerOf(duel)) })}
+                {sameAddress(duel.challenger, account) && (
+                  <button type="button" className="link" onClick={() => void cancelDuel()}>
+                    {t("pair.withdraw")}
+                  </button>
+                )}
+              </p>
+            ) : offerDuel && duelStep === "accept" && duel ? (
+              <p className="fine">{t(duel.reserved ? "pair.acceptExplain" : "pair.acceptShelf", { a: serial(duel.tokenA), b: serial(takerOf(duel)) })}</p>
+            ) : offerDuel && duelStep === "prove" ? (
+              <p className="fine">{t("pair.proveExplain")}</p>
+            ) : offerDuel && duelStep === "reveal" ? (
+              <p className="fine">{t("pair.revealExplain")}</p>
+            ) : offerLink && linkStep === "accept" && proposal ? (
+              <p className="fine">{t("pair.linkExplain", { from: serial(proposal.from), to: serial(proposal.to) })}</p>
+            ) : entangled ? (
+              <p className="fine">{t("pair.entangledExplain", { fee: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
+            ) : taken && offerLink ? (
+              <p className="fine">{t("pair.taken")}</p>
+            ) : challenger === null ? (
+              <p className="fine">{t("pair.neither")}</p>
+            ) : (
+              <p className="fine">{t(focus === "entangle" ? "pair.entangleExplain" : focus === "duel" ? "pair.duelOnlyExplain" : "pair.duelExplain")}</p>
+            )}
+            {focus && !action.busy && (
+              <p className="fine">
+                <button type="button" className="link" onClick={() => setFocus(focus === "duel" ? "entangle" : "duel")}>
+                  {t(focus === "duel" ? "pair.ratherEntangle" : "pair.ratherDuel")}
+                </button>
+              </p>
+            )}
+          </div>
+        </TxPending>
 
         <TxJournal txs={txs} locale={locale} />
       </section>

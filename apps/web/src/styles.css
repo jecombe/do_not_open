@@ -1200,6 +1200,132 @@ button {
   opacity: 0.7;
 }
 
+/* --- A slip at work: its content gives way to the rattled box and the steps --- */
+.tx-body {
+  display: contents;
+}
+
+.tx-body[hidden] {
+  display: none;
+}
+
+.tx-pending {
+  display: grid;
+  justify-items: center;
+  padding: 10px 0 4px;
+  text-align: center;
+  animation: tx-in 0.2s ease-out both;
+}
+
+.tx-pending .tracker {
+  justify-self: stretch;
+  width: fit-content;
+  max-width: 100%;
+  margin: 4px auto 8px;
+  text-align: left;
+}
+
+.tx-pending .fine {
+  max-width: 34ch;
+  margin: 0 auto 4px;
+}
+
+.tx-title {
+  margin: 8px 0 10px;
+  font-family: var(--stencil);
+  font-size: 22px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-red);
+}
+
+.tx-now {
+  font-weight: 600;
+}
+
+.tx-keep {
+  opacity: 0.7;
+}
+
+.box-spinner {
+  width: 76px;
+  height: 76px;
+  overflow: visible;
+}
+
+.box-spinner-ring {
+  fill: none;
+  stroke: var(--ink-red);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 7;
+  transform-origin: 32px 32px;
+  animation: tracker-spin 6s linear infinite;
+}
+
+.box-spinner-box {
+  transform-origin: 32px 48px;
+  animation: box-rattle 1.4s ease-in-out infinite;
+}
+
+.box-spinner-stamp {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: box-stamp 1.4s cubic-bezier(0.3, 1.5, 0.5, 1) infinite;
+}
+
+@keyframes box-rattle {
+  0%, 46%, 100% {
+    transform: rotate(0);
+  }
+  52% {
+    transform: rotate(-7deg) translateY(-2px);
+  }
+  60% {
+    transform: rotate(6deg) translateY(-1px);
+  }
+  68% {
+    transform: rotate(-4deg);
+  }
+  76% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes box-stamp {
+  0%, 12% {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1.7);
+  }
+  28%, 90% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+@keyframes tx-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tx-pending,
+  .box-spinner-ring,
+  .box-spinner-box {
+    animation: none;
+  }
+
+  .box-spinner-stamp {
+    animation: none;
+    transform: rotate(-8deg);
+  }
+}
+
 /* --- Step tracker: a slow chain action, one line per step --- */
 .tracker {
   display: grid;

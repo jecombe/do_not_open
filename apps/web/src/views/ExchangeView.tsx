@@ -27,6 +27,7 @@ import { useT, type AppKey } from "../i18n/app";
 import { takePreset, onOpenExchange, type ExchangePreset } from "./exchangeLink";
 import { parseAmount } from "./PantryView";
 import { ProblemNote } from "./ProblemNote";
+import { BoxSpinner } from "./TxPending";
 import "./exchange.css";
 
 /** Kept for gas when "Max" is pressed on the chain's own coin, in thousandths of a coin. */
@@ -159,6 +160,12 @@ export function ExchangeView() {
   const [settings, setSettings] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [inverted, setInverted] = useState(false);
+  const [details, setDetails] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  // Opened details unfold under the stamp: on a short screen, bring them up.
+  useEffect(() => {
+    if (details) detailsRef.current?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [details]);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [balances, setBalances] = useState<Partial<Record<TokenKey, bigint>>>({});
   const [sealedCroq, setSealedCroq] = useState<bigint | null>(null);
@@ -412,154 +419,175 @@ export function ExchangeView() {
       <div className="bureau-grid">
         <section className="counter" aria-label={t("ex.title")}>
           <div className="counter-tape" aria-hidden="true" />
-          <div className="counter-top">
-            <div className="quick" role="group" aria-label={t("ex.quickLabel")}>
-              {QUICK.filter((q) => desk && findRoute(desk, q.from, q.to)).map((q) => (
-                <button
-                  type="button"
-                  key={q.label}
-                  aria-pressed={from === q.from && to === q.to}
-                  onClick={() => applyPreset({ from: q.from, to: q.to })}
-                  disabled={running}
-                >
-                  {t(q.label)}
-                </button>
-              ))}
+          {/* While a route runs, the slip gives way to the rattled box and its steps. */}
+          {phase.kind === "running" && desk && route && (
+            <div className="tx-pending" role="status" aria-live="polite">
+              <BoxSpinner />
+              <p className="tx-title">{t("tx.working")}</p>
+              <Progress desk={desk} route={route} keepBps={keep} leg={phase.leg} step={phase.step} />
             </div>
-            <button
-              type="button"
-              className={`gear${settings ? " is-open" : ""}`}
-              aria-expanded={settings}
-              aria-controls={`${formId}-settings`}
-              onClick={() => setSettings((s) => !s)}
-              title={t("ex.settings")}
-            >
-              <span className="gear-value">{pct(slip)}</span>
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
-                  transform="translate(-1 0)"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {settings && <Settings id={`${formId}-settings`} onClose={() => setSettings(false)} />}
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!account) void connect();
-              else if (ready) void go();
-            }}
-          >
-            <div className="crate">
-              <div className="crate-row">
-                <label htmlFor={`${formId}-in`} className="crate-label">
-                  {t("ex.youGive")}
-                </label>
-                {account && fromInfo && (
-                  <Holding token={fromInfo} value={held(from)} onMax={setMax} onReveal={() => void reveal(from)} revealing={revealing === from} disabled={running} />
-                )}
+          )}
+          <div className="tx-body" hidden={running}>
+            <div className="counter-top">
+              <div className="quick" role="group" aria-label={t("ex.quickLabel")}>
+                {QUICK.filter((q) => desk && findRoute(desk, q.from, q.to)).map((q) => (
+                  <button
+                    type="button"
+                    key={q.label}
+                    aria-pressed={from === q.from && to === q.to}
+                    onClick={() => applyPreset({ from: q.from, to: q.to })}
+                    disabled={running}
+                  >
+                    {t(q.label)}
+                  </button>
+                ))}
               </div>
-              <div className="crate-row">
-                <input
-                  id={`${formId}-in`}
-                  className="crate-amount"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder="0"
-                  value={text}
-                  onChange={(e) => {
-                    setText(e.target.value);
-                    if (phase.kind !== "running") setPhase({ kind: "idle" });
-                  }}
-                  disabled={running}
-                  aria-invalid={short || undefined}
-                />
-                {fromInfo && <TokenButton token={fromInfo} onClick={() => setPicking(picking === "from" ? null : "from")} disabled={running} expanded={picking === "from"} />}
-              </div>
-              {picking === "from" && desk && (
-                <TokenList desk={desk} side="from" current={from} other={to} held={held} onPick={(k) => pick("from", k)} onClose={() => setPicking(null)} />
-              )}
-            </div>
-
-            <div className="flip-wrap">
-              <button type="button" className={`flip${flipped ? " is-flipped" : ""}`} onClick={flip} disabled={!canFlip || running} title={canFlip ? t("ex.flip") : t("ex.flipNo")} aria-label={t("ex.flip")}>
-                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                  <path fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="square" d="M12 4v15M6 13l6 6 6-6" />
+              <button
+                type="button"
+                className={`gear${settings ? " is-open" : ""}`}
+                aria-expanded={settings}
+                aria-controls={`${formId}-settings`}
+                onClick={() => setSettings((s) => !s)}
+                title={t("ex.settings")}
+              >
+                <span className="gear-value">{pct(slip)}</span>
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
+                    transform="translate(-1 0)"
+                  />
                 </svg>
               </button>
             </div>
 
-            <div className={`crate is-receive${toInfo?.sealed ? " is-sealed" : ""}`}>
-              <div className="crate-row">
-                <span className="crate-label">{t("ex.youGet")}</span>
-                {account && toInfo && <Holding token={toInfo} value={held(to)} onReveal={() => void reveal(to)} revealing={revealing === to} disabled={running} />}
-              </div>
-              <div className="crate-row">
-                <output className={`crate-amount${quoting && !quote ? " is-quoting" : ""}`} htmlFor={`${formId}-in`} aria-live="polite">
-                  {quote && toInfo ? (
-                    <>
-                      <span className="approx">≈</span>
-                      {show(quote.amountOut, toInfo.decimals)}
-                    </>
-                  ) : (
-                    <span className="crate-placeholder">0</span>
+            {settings && <Settings id={`${formId}-settings`} onClose={() => setSettings(false)} />}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!account) void connect();
+                else if (ready) void go();
+              }}
+            >
+              <div className="crate">
+                <div className="crate-row">
+                  <label htmlFor={`${formId}-in`} className="crate-label">
+                    {t("ex.youGive")}
+                  </label>
+                  {account && fromInfo && (
+                    <Holding token={fromInfo} value={held(from)} onMax={setMax} onReveal={() => void reveal(from)} revealing={revealing === from} disabled={running} />
                   )}
-                </output>
-                {toInfo && <TokenButton token={toInfo} onClick={() => setPicking(picking === "to" ? null : "to")} disabled={running} expanded={picking === "to"} />}
-              </div>
-              {quote && quote.kept > 0n && desk && (
-                <p className="crate-note crate-kept">
-                  {t("ex.keep.plus", { amount: show(quote.kept, desk.tokens.usdc.decimals), symbol: desk.tokens.usdc.symbol })}
-                </p>
-              )}
-              {toInfo?.sealed && <p className="crate-note">{t("ex.landsSealed", { symbol: toInfo.symbol })}</p>}
-              {route && canKeep(route) && desk && <KeepPicker id={`${formId}-keep`} desk={desk} keepBps={keepBps} onPick={chooseKeep} disabled={running} />}
-              {picking === "to" && desk && <TokenList desk={desk} side="to" current={to} other={from} held={held} onPick={(k) => pick("to", k)} onClose={() => setPicking(null)} />}
-            </div>
-
-            {desk && route && <RouteStrip desk={desk} route={route} keepBps={keep} active={phase.kind === "running" ? phase.leg : phase.kind === "done" ? route.length : -1} />}
-
-            {phase.kind === "running" ? (
-              <Progress desk={desk!} route={route!} keepBps={keep} leg={phase.leg} step={phase.step} />
-            ) : phase.kind === "done" ? (
-              <Done desk={desk!} phase={phase} onReveal={() => void reveal(phase.to)} revealing={revealing === phase.to} sealedShown={sealedValue(phase.to)} onAgain={() => setPhase({ kind: "idle" })} />
-            ) : (
-              <>
-                {quote && desk && route && fromInfo && toInfo && (
-                  <Manifest
-                    desk={desk}
-                    quote={quote}
-                    from={fromInfo}
-                    to={toInfo}
-                    slip={slip}
-                    inverted={inverted}
-                    onInvert={() => setInverted((v) => !v)}
-                    onSlippage={() => setSettings(true)}
-                    impact={worstImpact}
-                    route={route}
-                    keepBps={keep}
-                    creditPrice={creditPrice}
+                </div>
+                <div className="crate-row">
+                  <input
+                    id={`${formId}-in`}
+                    className="crate-amount"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    placeholder="0"
+                    value={text}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      if (phase.kind !== "running") setPhase({ kind: "idle" });
+                    }}
+                    disabled={running}
+                    aria-invalid={short || undefined}
                   />
+                  {fromInfo && <TokenButton token={fromInfo} onClick={() => setPicking(picking === "from" ? null : "from")} disabled={running} expanded={picking === "from"} />}
+                </div>
+                {picking === "from" && desk && (
+                  <TokenList desk={desk} side="from" current={from} other={to} held={held} onPick={(k) => pick("from", k)} onClose={() => setPicking(null)} />
                 )}
-                {phase.kind === "failed" && (
-                  <div className="counter-problem">
-                    <ProblemNote problem={phase.problem} />
-                  </div>
-                )}
-                {!!amount && desk?.tokens[from].sealed && heldFrom === null && <p className="fine counter-hint">{t("ex.sealedUnknown", { symbol: fromInfo!.symbol })}</p>}
-              </>
-            )}
+              </div>
 
-            {phase.kind !== "running" && phase.kind !== "done" && (
-              <button type="submit" className={`stamp-button counter-go${worstImpact > 0.05 && ready ? " is-risky" : ""}`} disabled={!!account && !ready}>
-                {stamp}
-              </button>
-            )}
-          </form>
+              <div className="flip-wrap">
+                <button type="button" className={`flip${flipped ? " is-flipped" : ""}`} onClick={flip} disabled={!canFlip || running} title={canFlip ? t("ex.flip") : t("ex.flipNo")} aria-label={t("ex.flip")}>
+                  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                    <path fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="square" d="M12 4v15M6 13l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className={`crate is-receive${toInfo?.sealed ? " is-sealed" : ""}`}>
+                <div className="crate-row">
+                  <span className="crate-label">{t("ex.youGet")}</span>
+                  {account && toInfo && <Holding token={toInfo} value={held(to)} onReveal={() => void reveal(to)} revealing={revealing === to} disabled={running} />}
+                </div>
+                <div className="crate-row">
+                  <output className={`crate-amount${quoting && !quote ? " is-quoting" : ""}`} htmlFor={`${formId}-in`} aria-live="polite">
+                    {quote && toInfo ? (
+                      <>
+                        <span className="approx">≈</span>
+                        {show(quote.amountOut, toInfo.decimals)}
+                      </>
+                    ) : (
+                      <span className="crate-placeholder">0</span>
+                    )}
+                  </output>
+                  {toInfo && <TokenButton token={toInfo} onClick={() => setPicking(picking === "to" ? null : "to")} disabled={running} expanded={picking === "to"} />}
+                </div>
+                {quote && quote.kept > 0n && desk && (
+                  <p className="crate-note crate-kept">
+                    {t("ex.keep.plus", { amount: show(quote.kept, desk.tokens.usdc.decimals), symbol: desk.tokens.usdc.symbol })}
+                  </p>
+                )}
+                {route && canKeep(route) && desk && !running && phase.kind !== "done" && <KeepPicker id={`${formId}-keep`} desk={desk} keepBps={keepBps} onPick={chooseKeep} disabled={running} />}
+                {picking === "to" && desk && <TokenList desk={desk} side="to" current={to} other={from} held={held} onPick={(k) => pick("to", k)} onClose={() => setPicking(null)} />}
+              </div>
+
+              {phase.kind === "running" ? null : phase.kind === "done" ? (
+                <Done desk={desk!} phase={phase} onReveal={() => void reveal(phase.to)} revealing={revealing === phase.to} sealedShown={sealedValue(phase.to)} onAgain={() => setPhase({ kind: "idle" })} />
+              ) : (
+                <>
+                  {desk && route && fromInfo && toInfo && (
+                    <div className="summary">
+                      <span className="summary-line">
+                        {quote ? (
+                          <button type="button" className="link" onClick={() => setInverted((v) => !v)} title={t("ex.invert")}>
+                            {inverted
+                              ? `1 ${toInfo.symbol} = ${rate(quote.amountIn, fromInfo.decimals, quote.amountOut + quote.kept, toInfo.decimals)} ${fromInfo.symbol}`
+                              : `1 ${fromInfo.symbol} = ${rate(quote.amountOut + quote.kept, toInfo.decimals, quote.amountIn, fromInfo.decimals)} ${toInfo.symbol}`}
+                          </button>
+                        ) : (
+                          <span>{t("ex.route")}</span>
+                        )}
+                        <span className="summary-txs">· {t("ex.txs", { n: txCount(route, keep) })}</span>
+                        {worstImpact > 0.02 && <span className={`summary-impact ${worstImpact > 0.05 ? "is-bad" : "is-warn"}`}>· {(worstImpact * 100).toFixed(1)}%</span>}
+                      </span>
+                      <button type="button" className="summary-toggle" aria-expanded={details} aria-controls={`${formId}-details`} onClick={() => setDetails((d) => !d)}>
+                        {t("ex.details")}
+                        <span className="caret" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )}
+                  {quote && worstImpact > 0.05 && <p className="fine problem counter-hint">{t("ex.impactWarn", { pct: (worstImpact * 100).toFixed(1) })}</p>}
+                  {phase.kind === "failed" && (
+                    <div className="counter-problem">
+                      <ProblemNote problem={phase.problem} />
+                    </div>
+                  )}
+                  {!!amount && desk?.tokens[from].sealed && heldFrom === null && <p className="fine counter-hint">{t("ex.sealedUnknown", { symbol: fromInfo!.symbol })}</p>}
+                </>
+              )}
+
+              {phase.kind !== "running" && phase.kind !== "done" && (
+                <button type="submit" className={`stamp-button counter-go${worstImpact > 0.05 && ready ? " is-risky" : ""}`} disabled={!!account && !ready}>
+                  {stamp}
+                </button>
+              )}
+              {details && phase.kind !== "running" && phase.kind !== "done" && desk && route && fromInfo && toInfo && (
+                <div className="details" id={`${formId}-details`} ref={detailsRef}>
+                  <RouteStrip desk={desk} route={route} keepBps={keep} />
+                  {toInfo.sealed && <p className="fine">{t("ex.landsSealed", { symbol: toInfo.symbol })}</p>}
+                  {canKeep(route) && <p className="fine">{t("ex.keep.hint", { symbol: desk.tokens.usdc.symbol, sealed: desk.tokens.cusdc.symbol })}</p>}
+                  {quote && (
+                    <Manifest desk={desk} quote={quote} to={toInfo} slip={slip} onSlippage={() => setSettings(true)} impact={worstImpact} route={route} keepBps={keep} creditPrice={creditPrice} />
+                  )}
+                </div>
+              )}
+            </form>
+          </div>
         </section>
 
         <Ledger desk={desk} held={held} sealedKnown={(k) => sealedValue(k) !== null} revealing={revealing} onReveal={(k) => void reveal(k)} onPick={(k) => pick("from", k)} current={from} onDone={() => setTick((n) => n + 1)} disabled={running} />
@@ -657,6 +685,11 @@ function Settings({ id, onClose }: { id: string; onClose: () => void }) {
   const t = useT();
   const slip = useSlippage();
   const [custom, setCustom] = useState(SLIPPAGE_PRESETS.includes(slip) ? "" : String(slip / 100));
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const applyCustom = (v: string) => {
     setCustom(v);
     const n = Number(v.replace(",", "."));
@@ -700,8 +733,8 @@ function KeepPicker({ id, desk, keepBps, onPick, disabled }: { id: string; desk:
   const usdc = desk.tokens.usdc.symbol;
   return (
     <div className="keep" role="group" aria-labelledby={`${id}-label`}>
-      <span id={`${id}-label`} className="keep-label">
-        {t("ex.keep.label", { symbol: usdc })}
+      <span id={`${id}-label`} className="keep-label" title={t("ex.keep.label", { symbol: usdc })}>
+        {t("ex.keep.short", { symbol: usdc })}
       </span>
       <div className="keep-row">
         {KEEP_PRESETS.map((bps) => (
@@ -710,26 +743,25 @@ function KeepPicker({ id, desk, keepBps, onPick, disabled }: { id: string; desk:
           </button>
         ))}
       </div>
-      <p className="fine">{t("ex.keep.hint", { symbol: usdc, sealed: desk.tokens.cusdc.symbol })}</p>
     </div>
   );
 }
 
-function RouteStrip({ desk, route, keepBps, active }: { desk: Desk; route: Leg[]; keepBps: number; active: number }) {
+function RouteStrip({ desk, route, keepBps }: { desk: Desk; route: Leg[]; keepBps: number }) {
   const t = useT();
   const txs = txCount(route, keepBps);
   return (
     <div className="route" aria-label={t("ex.route")}>
       <span className="route-title">{txs === 1 ? t("ex.oneTx") : t("ex.nTx", { n: txs })}</span>
       <ol className="route-line">
-        <li className={`route-stop${active > 0 || active >= route.length ? " is-past" : ""}`}>
+        <li className="route-stop">
           <Coin token={desk.tokens[route[0]!.from]} />
           {desk.tokens[route[0]!.from].symbol}
         </li>
         {route.map((leg, i) => (
           <li key={i} className="route-hop">
-            <span className={`route-leg${i < active ? " is-past" : i === active ? " is-now" : ""}`}>{t(LEG_LABEL[leg.kind], { pct: pct(desk.rampBps ?? 0) })}</span>
-            <span className={`route-stop${i < active ? " is-past" : ""}`}>
+            <span className="route-leg">{t(LEG_LABEL[leg.kind], { pct: pct(desk.rampBps ?? 0) })}</span>
+            <span className="route-stop">
               <Coin token={desk.tokens[leg.to]} />
               {desk.tokens[leg.to].symbol}
             </span>
@@ -743,18 +775,15 @@ function RouteStrip({ desk, route, keepBps, active }: { desk: Desk; route: Leg[]
 function Manifest(props: {
   desk: Desk;
   quote: Quote;
-  from: TokenInfo;
   to: TokenInfo;
   slip: number;
-  inverted: boolean;
-  onInvert: () => void;
   onSlippage: () => void;
   impact: number;
   route: Leg[];
   keepBps: number;
   creditPrice: bigint | null;
 }) {
-  const { desk, quote, from, to, slip, inverted, onInvert, onSlippage, impact, route, keepBps, creditPrice } = props;
+  const { desk, quote, to, slip, onSlippage, impact, route, keepBps, creditPrice } = props;
   const usdc = desk.tokens.usdc;
   const t = useT();
   const hasSwap = quote.legs.some((l) => SWAPS.has(l.kind));
@@ -763,21 +792,9 @@ function Manifest(props: {
   const slow = quote.legs.some((l) => DECRYPTS.has(l.kind));
   const publics = [...new Set(quote.legs.map((l) => LEG_PUBLIC[l.kind]))];
   if (quote.kept > 0n) publics.push("ex.keep.public");
-  // The rate counts the plain share too: USDC and cUSDC are the same dollar.
-  const got = quote.amountOut + quote.kept;
   const impactClass = impact > 0.05 ? "is-bad" : impact > 0.02 ? "is-warn" : "";
   return (
     <dl className="manifest">
-      <div>
-        <dt>{t("ex.rate")}</dt>
-        <dd>
-          <button type="button" className="link" onClick={onInvert} title={t("ex.invert")}>
-            {inverted
-              ? `1 ${to.symbol} = ${rate(quote.amountIn, from.decimals, got, to.decimals)} ${from.symbol}`
-              : `1 ${from.symbol} = ${rate(got, to.decimals, quote.amountIn, from.decimals)} ${to.symbol}`}
-          </button>
-        </dd>
-      </div>
       {ramp && desk.rampBps !== null && (
         <div>
           <dt>{t("ex.siteFee", { pct: pct(desk.rampBps) })}</dt>
@@ -845,7 +862,6 @@ function Manifest(props: {
           </ul>
         </dd>
       </div>
-      {impact > 0.05 && <p className="fine problem manifest-warn">{t("ex.impactWarn", { pct: (impact * 100).toFixed(1) })}</p>}
     </dl>
   );
 }
@@ -888,7 +904,7 @@ function Done(props: { desk: Desk; phase: Extract<Phase, { kind: "done" }>; onRe
   const t = useT();
   const token = desk.tokens[phase.to];
   return (
-    <div className="done" role="status">
+    <div className="ex-done" role="status">
       <p className="done-stamp" aria-hidden="true">
         {t("ex.doneStamp")}
       </p>
