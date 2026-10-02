@@ -229,4 +229,25 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
     `,
   },
+  {
+    version: 6,
+    name: "public decryption cache",
+    sql: /* sql */ `
+      -- What the relayer proxy sent Zama for public decryption. Not on the chain: a replay keeps
+      -- it. A handle decrypts to the same value forever: the same request is answered from here.
+      create table public_decryptions (
+        key text primary key,
+        job_id text not null,
+        queued jsonb not null,
+        result jsonb,
+        at bigint not null
+      );
+      create index public_decryptions_job on public_decryptions (job_id);
+      -- How many requests sent to Zama named each handle: past a few, the handle is refused.
+      create table public_decrypt_uses (
+        handle text primary key,
+        uses integer not null
+      );
+    `,
+  },
 ];

@@ -127,6 +127,9 @@ relayer proxy's counts. The indexer starts at `indexFrom`, the earliest block of
 protocol's live contracts: the decryption credits (block 11829380) were not redeployed, so
 purchases made before the new collection still count.
 
+Migration 6 adds the public decryption cache (`public_decryptions`, `public_decrypt_uses`):
+like the relayer meter, not a read model, and kept by a replay.
+
 ## Relayer proxy
 
 On mainnet Zama bills the collection for every value its relayer decrypts and every encrypted
@@ -139,7 +142,7 @@ adds `RELAYER_API_KEY` and forwards.
 | Request | Let through when | Counted |
 | --- | --- | --- |
 | user decryption | every contract named is the protocol's (collection, its cUSDC, Pantry, cCROQ), and the EIP-712 permit was signed by the `userAddress` it is for | one unit per value: the day's free units first (`RELAYER_FREE_PER_DAY`, 25, or `RELAYER_NEWCOMER_PER_DAY`, 16, for a wallet the index has never seen act on-chain or be sent a box; reset at midnight UTC), then the wallet's credits. Given back when Zama refuses |
-| public decryption | every handle was made public by the collection, the Pantry or cCROQ: the index follows Zama's ACL (`AllowedForDecryption` with one of them as caller), and the last `RELAYER_RECENT_BLOCKS` are read directly for what it has not caught up with | free: it settles something already on-chain |
+| public decryption | every handle was made public by the collection, the Pantry or cCROQ: the index follows Zama's ACL (`AllowedForDecryption` with one of them as caller), and the last `RELAYER_RECENT_BLOCKS` are read directly for what it has not caught up with | free: it settles something already on-chain. Sent to Zama once per exact request (handles in order + extra data, `public_decryptions`): asking the same again replays the same job, answered from the cache once done, so a loop over an old duel costs nothing. Reordering or recombining handles makes a new request, so a handle may only be named in `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent to Zama (`public_decrypt_uses`), past which it is refused (`bad-request`). A job Zama fails or loses, or still running after 5 minutes, is sent again |
 | encrypted input | for one of the protocol's contracts, on this chain, sent with `Authorization: Bearer <base64url of the JSON permit>`: the user-decryption permit of the `userAddress` the input is for (else `bad-permit`), so nobody spends another wallet's units | `RELAYER_INPUT_UNITS` (5) units, the same way: Zama charges an input five times a decryption. Given back when Zama refuses |
 
 Polling a queued job is passed through and not counted. A refusal answers in the relayer's
@@ -165,5 +168,5 @@ DATABASE_URL=postgres://... pnpm --filter @dno/api dev
 
 Configuration is environment variables, all optional in development: see `src/config.ts`
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
-`RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`...). Deployment is in
+`RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

@@ -355,6 +355,10 @@ players, so three things keep that bill bounded:
   returning player's old receipts and an unchanged cUSDC balance cost nothing.
 - **The relayer proxy** in `apps/api` holds the key and lets through only the protocol's
   own decryptions and inputs (see its README).
+- **A public decryption is paid once.** Free for players, so nothing else would stop someone
+  from asking for an old duel's result in a loop at the collection's expense: the proxy
+  keeps each request's job and answer, and a handle may be named in at most four requests
+  sent to Zama (`RELAYER_PUBLIC_PER_HANDLE`).
 - **Units and credits.** Everything a wallet asks Zama for is counted in units: a decrypted
   value is one, an encrypted input five (`RELAYER_INPUT_UNITS`: Zama charges an input five
   times a decryption, at every plan). Each player gets free units every day

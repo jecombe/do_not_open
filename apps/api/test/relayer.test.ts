@@ -66,13 +66,14 @@ async function userDecrypt(signer: Wallet | HDNodeWallet, n: number, opts: { con
 class FakeUpstream implements RelayerUpstream {
   calls: { method: string; path: string; body?: unknown }[] = [];
   status = 202;
+  getStatus = 200;
   async post(path: string, body: unknown): Promise<UpstreamReply> {
     this.calls.push({ method: "POST", path, body });
     return { status: this.status, body: { status: "queued", requestId: "r1", result: { jobId: "job-1" } }, retryAfter: "1" };
   }
   async get(path: string): Promise<UpstreamReply> {
     this.calls.push({ method: "GET", path });
-    return { status: 200, body: { status: "succeeded", path }, retryAfter: null };
+    return { status: this.getStatus, body: { status: "succeeded", path }, retryAfter: null };
   }
 }
 
@@ -108,7 +109,7 @@ describe("RelayerGate", () => {
       eip712PermitVerifier(DOMAIN),
       { recentlyPublished: async (hs) => hs.filter((h) => published.includes(h)) },
       { now: () => NOW },
-      { chainId: CHAIN_ID, contracts: async () => [GAME, CUSDC], freePerDay: 5, newcomerPerDay: 5, inputUnits: 2, maxHandles: 10, clockSkew: 600 },
+      { chainId: CHAIN_ID, contracts: async () => [GAME, CUSDC], freePerDay: 5, newcomerPerDay: 5, inputUnits: 2, maxHandles: 10, clockSkew: 600, publicPerHandle: 3 },
     );
   });
 
@@ -152,6 +153,42 @@ describe("RelayerGate", () => {
     expect(upstream.calls.map((c) => c.path)).toEqual(["public-decrypt", "public-decrypt"]);
     // Free: it settles something already on-chain.
     expect((await gate.allowance(ACCOUNT)).freeLeft).toBe(5);
+  });
+
+  it("sends each public decryption to Zama once, and answers the same request from the cache", async () => {
+    await store.transaction((tx) => tx.savePublished([handle(1), handle(2)], GAME, 10));
+    const ask = (hs: string[]) => gate.submit("public-decrypt", { ciphertextHandles: hs, extraData: "0x00" });
+    const first = await ask([handle(1), handle(2)]);
+    expect(first.status).toBe(202);
+    // Asked again while the job runs: the same job, nothing sent.
+    expect(await ask([handle(1), handle(2)])).toMatchObject({ status: 202, body: first.body });
+    expect((await gate.poll("public-decrypt", "job-1")).status).toBe(200);
+    // Done: the request and its polls are answered from the cache.
+    expect(await ask([handle(1), handle(2)])).toMatchObject({ status: 202, body: first.body });
+    expect(await gate.poll("public-decrypt", "job-1")).toMatchObject({ status: 200, body: { status: "succeeded", path: "public-decrypt/job-1" } });
+    expect(upstream.calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST public-decrypt", "GET public-decrypt/job-1"]);
+  });
+
+  it("refuses a handle already sent to Zama in too many different requests", async () => {
+    await store.transaction((tx) => tx.savePublished([handle(1), handle(2), handle(3)], GAME, 10));
+    const ask = (hs: string[]) => gate.submit("public-decrypt", { ciphertextHandles: hs, extraData: "0x00" });
+    await ask([handle(1)]);
+    await ask([handle(1), handle(2)]);
+    await ask([handle(2), handle(1)]);
+    expect(await refusal(ask([handle(1), handle(3)]))).toBe("bad-request");
+    // The requests already made are still answered.
+    expect((await ask([handle(2), handle(1)])).status).toBe(202);
+    expect(upstream.calls).toHaveLength(3);
+  });
+
+  it("sends a public decryption again when Zama lost the job", async () => {
+    await store.transaction((tx) => tx.savePublished([handle(1)], GAME, 10));
+    const ask = () => gate.submit("public-decrypt", { ciphertextHandles: [handle(1)], extraData: "0x00" });
+    await ask();
+    upstream.getStatus = 404;
+    await gate.poll("public-decrypt", "job-1");
+    await ask();
+    expect(upstream.calls.filter((c) => c.method === "POST")).toHaveLength(2);
   });
 
   const input = (contractAddress: string, chain = CHAIN_ID, userAddress = wallet.address) => ({
@@ -200,6 +237,7 @@ describe("RelayerGate", () => {
       inputUnits: 2,
       maxHandles: 10,
       clockSkew: 600,
+      publicPerHandle: 3,
     });
     expect((await strict.allowance(ACCOUNT)).freePerDay).toBe(2);
     await strict.submit("input-proof", input(GAME), await bearer(wallet));
@@ -239,6 +277,7 @@ describe("relayer proxy over HTTP", () => {
         inputUnits: 5,
         maxHandles: 10,
         clockSkew: 600,
+        publicPerHandle: 3,
       }),
       corsOrigins: ["*"],
       rateLimitPerMinute: 1000,
