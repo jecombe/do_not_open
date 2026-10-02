@@ -143,6 +143,21 @@ right to shake, open, duel or entangle: their attempts now do nothing.
 A buyer should assume the seller knows all five traits. The buyer can level that for the
 price of a few paid shakes before buying.
 
+## Decryption credits
+
+`DecryptionCredits` holds no funds and nothing encrypted: `bought[account]`, the credits
+ever bought for an account, `price` (plain USDC per credit, at most 1 USDC, set by the
+owner) and `treasury`, where payments go at once. What is spent is counted off-chain by
+the API, which keeps three things in Postgres:
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `credit_accounts` | credits bought, folded from `CreditsBought` | yes |
+| `published_handles` | handles the protocol's contracts made public, from Zama's ACL | yes |
+| `relayer_free_used`, `relayer_credits_spent` | free units used per account and UTC day, credits spent | no: not on the chain |
+
+A purchase is public: it shows which account bought how many credits.
+
 ## Croquettes
 
 The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CROQ.md).

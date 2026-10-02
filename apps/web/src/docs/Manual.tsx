@@ -4,18 +4,38 @@ import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
+import { FeesFigure, FeeTable, FREE_PER_DAY } from "./fees";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 
 const REPO = "https://github.com/jecombe/do_not_open";
 const DOCS = `${REPO}/blob/dev/docs`;
-const CONTRACT = "0xe8f699eEBc22767413A9edBb48826B10D3117f61";
+const EXPLORER = "https://sepolia.etherscan.io/address/";
 
-const SECTIONS = ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "transfer", "croquettes", "code", "solana", "mainnet", "more"] as const;
+/**
+ * Three parts: the manual itself, for players and anyone curious, with no code in it; a short
+ * part about the testnet, which goes away at mainnet; and the part for developers.
+ */
+const PARTS = [
+  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "transfer", "croquettes"] },
+  { key: "testnet", sections: ["testnet"] },
+  { key: "dev", sections: ["code", "solana", "more"] },
+] as const;
+const SECTIONS = PARTS.flatMap((p) => p.sections);
+
+/** The contracts on Sepolia, as `dno:export` last wrote them. */
+const CONTRACTS = [
+  { key: "collection", address: "0xB8e3b2238eF5D5782A661c406acc928895938fBa" },
+  { key: "pantry", address: "0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed" },
+  { key: "croq", address: "0xF4d9CE55b52417e503617186e923E1c0713c53b5" },
+  { key: "ccroq", address: "0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9" },
+  { key: "ramp", address: "0x2754B8568a3402f828DDAa1715F8290CDa498aAb" },
+  { key: "credits", address: "0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1" },
+] as const;
 
 /** Highlights the section being read in the routing slip. */
 function useCurrentSection(): string {
-  const [current, setCurrent] = useState<string>(SECTIONS[0]);
+  const [current, setCurrent] = useState<string>(SECTIONS[0]!);
   useEffect(() => {
     const seen = new IntersectionObserver(
       (entries) => {
@@ -72,6 +92,7 @@ const REFS = [
   { key: "r6", href: `${REPO}/blob/dev/packages/contracts-evm/README.md` },
   { key: "r7", href: `${DOCS}/CROQ.md` },
   { key: "r8", href: `${DOCS}/HIDDEN_OWNERS.md` },
+  { key: "r9", href: `${REPO}/blob/dev/apps/api/README.md#relayer-proxy` },
 ] as const;
 
 export function Manual() {
@@ -119,15 +140,20 @@ export function Manual() {
 
       <div className="layout">
         <nav className="toc" aria-label={t("docs.contents")}>
-          <ol>
-            {SECTIONS.map((id) => (
-              <li key={id}>
-                <a href={`#${id}`} aria-current={current === id ? "true" : undefined}>
-                  {t(`docs.section.${id}`)}
-                </a>
-              </li>
-            ))}
-          </ol>
+          {PARTS.map((part) => (
+            <div key={part.key}>
+              <p className="toc-group">{t(`docs.group.${part.key}`)}</p>
+              <ol>
+                {part.sections.map((id) => (
+                  <li key={id}>
+                    <a href={`#${id}`} aria-current={current === id ? "true" : undefined}>
+                      {t(`docs.section.${id}`)}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
         </nav>
 
         <main>
@@ -250,6 +276,20 @@ export function Manual() {
             </div>
           </section>
 
+          <section id="fees">
+            <h2>{t("docs.section.fees")}</h2>
+            <div className="prose">
+              <p>{t("docs.fees.p1")}</p>
+            </div>
+            <FeesFigure />
+            <FeeTable />
+            <div className="prose">
+              <p>{t("docs.fees.p2")}</p>
+              <p>{t("docs.fees.p3", { free: FREE_PER_DAY })}</p>
+              <p>{t("docs.fees.p4")}</p>
+            </div>
+          </section>
+
           <section id="transfer">
             <h2>{t("docs.section.transfer")}</h2>
             <div className="prose">
@@ -312,6 +352,54 @@ export function Manual() {
             </div>
           </section>
 
+          <div className="part" id="part-testnet">
+            <h2>{t("docs.group.testnet")}</h2>
+          </div>
+
+          <section id="testnet">
+            <h2>{t("docs.section.testnet")}</h2>
+            <p className="testnet-note">{t("docs.testnet.note")}</p>
+            <div className="prose">
+              <p>{t("docs.testnet.p1")}</p>
+              <p>{t("docs.testnet.contracts")}</p>
+            </div>
+            <ul className="addresses">
+              {CONTRACTS.map((c) => (
+                <li key={c.key}>
+                  <span>{t(`docs.testnet.c.${c.key}`)}</span>
+                  <a href={`${EXPLORER}${c.address}`}>
+                    {c.address.slice(0, 6)}…{c.address.slice(-4)}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <h3>{t("docs.section.mainnet")}</h3>
+            <div className="prose">
+              <p>{t("docs.mainnet.intro.before")}</p>
+            </div>
+            <ul className="findings">
+              {(["f1", "f2", "f3", "f4", "f5", "f6", "f8"] as const).map((k) => (
+                <li key={k}>
+                  <strong>{t(`docs.mainnet.${k}`)}</strong> {t(`docs.mainnet.${k}.v`)}
+                </li>
+              ))}
+              <li>
+                <strong>{t("docs.mainnet.f7")}</strong>
+              </li>
+            </ul>
+            <div className="prose">
+              <p>
+                <a href={`${DOCS}/AUDIT_CHECKLIST.md`}>{t("docs.mainnet.checklist.link")}</a>
+                {t("docs.mainnet.checklist.after")}
+              </p>
+            </div>
+          </section>
+
+          <div className="part" id="part-dev">
+            <h2>{t("docs.group.dev")}</h2>
+            <p>{t("docs.group.dev.v")}</p>
+          </div>
+
           <section id="code">
             <h2>{t("docs.section.code")}</h2>
             <div className="prose">
@@ -351,35 +439,6 @@ export function Manual() {
                 {t("docs.solana.check.before")}
                 <a href={`${DOCS}/SOLANA_PORTING.md`}>{t("docs.solana.check.link")}</a>
                 {t("docs.solana.check.after")}
-              </p>
-            </div>
-          </section>
-
-          <section id="mainnet">
-            <h2>{t("docs.section.mainnet")}</h2>
-            <div className="prose">
-              <p>
-                {t("docs.mainnet.intro.before")}
-                <a href={`https://sepolia.etherscan.io/address/${CONTRACT}`}>
-                  {CONTRACT.slice(0, 6)}…{CONTRACT.slice(-4)}
-                </a>
-                {t("docs.mainnet.intro.after")}
-              </p>
-            </div>
-            <ul className="findings">
-              {(["f1", "f2", "f3", "f4", "f5", "f6", "f8"] as const).map((k) => (
-                <li key={k}>
-                  <strong>{t(`docs.mainnet.${k}`)}</strong> {t(`docs.mainnet.${k}.v`)}
-                </li>
-              ))}
-              <li>
-                <strong>{t("docs.mainnet.f7")}</strong>
-              </li>
-            </ul>
-            <div className="prose">
-              <p>
-                <a href={`${DOCS}/AUDIT_CHECKLIST.md`}>{t("docs.mainnet.checklist.link")}</a>
-                {t("docs.mainnet.checklist.after")}
               </p>
             </div>
           </section>
