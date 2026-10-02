@@ -1,7 +1,7 @@
 {
   "chainId": 11155111,
-  "address": "0xDdC71FeBA832c961770F59d0be4B0b3ae536707B",
-  "deployBlock": 11822985,
+  "address": "0xB8e3b2238eF5D5782A661c406acc928895938fBa",
+  "deployBlock": 11828557,
   "abi": [
     {
       "inputs": [
@@ -1974,7 +1974,7 @@
     }
   ],
   "ramp": {
-    "address": "0x20FB2d7f2d3fb249924ce3871255bb417670ba50",
+    "address": "0x2754B8568a3402f828DDAa1715F8290CDa498aAb",
     "abi": [
       {
         "inputs": [

@@ -104,3 +104,6 @@ them; [`docs/CROQ.md`](../../docs/CROQ.md) explains them.
 See `mechanics` and `events` in `spec.json`. Each rule is written so that it can be
 implemented by any program that can compute on encrypted integers and publish a
 verified decryption.
+
+`mechanics.duel.lifetimeDays` (7) is how long a proven duel stays on the duel shelf. The
+contract's `DUEL_LIFETIME` matches it, and the mock adapter reads it.

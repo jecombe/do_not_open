@@ -62,6 +62,8 @@ const ROUTES: Record<FlowKey, Route[]> = {
   ],
   duel: [
     ["you", "contract", "tx"],
+    ["you", "kms", "cipher"],
+    ["you", "contract", "proof"],
     ["other", "contract", "tx"],
     ["contract", "copro", "cipher"],
     ["contract", "contract", "cipher"],

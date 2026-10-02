@@ -29,11 +29,11 @@ The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 | Owner              | `eaddress`                       | Nobody; the holder finds their boxes in their own receipts |
 | Seed               | `euint64`                        | Nobody until an opening is finalized       |
 | Affection          | `euint32`, exists once fed       | Nobody until an opening is finalized       |
-| Rarity score       | `euint16`, cached at first duel  | Nobody; only compared under encryption     |
+| Rarity score       | `euint16`, cached at its first duel | Nobody; only compared under encryption     |
 | Paid-shake earnings | `euint64`                       | Nobody; paid to whoever holds the box when claimed |
 | A shake result     | two fresh `euint8` per viewer    | The viewer who shook, nobody else          |
 | A transfer receipt | `ebool` "moved"                  | Its sender and recipient                   |
-| A request or a duel outcome | `ebool`s and values masked by "the caller holds it" | Everyone, once requested |
+| A request, a duel posting or outcome | `ebool`s and values masked by "the caller holds it" | Everyone, once requested |
 | Boxes sold         | `euint16`                        | Nobody; milestones only                    |
 | Status, badge, revealed contents, opener | plain storage, events | Everyone                       |
 | Weight, today's meals, stash | `euint64`/`euint8` in the Pantry | Nobody (the holder reads today's meals) |
@@ -52,17 +52,20 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `shake` / `paidShake` | ~421k / ~889k | ~0.9M / ~2.0M |
 | `feed` | ~530k | ~1.07M |
 | `observe` + `finalize` | ~698k + ~223k | ~1.12M |
-| `acceptDuel` (first score) | ~1.1M | ~2.77M |
+| `postDuel` (first score) + `finalizeDuel` | ~585k + ~139k | ~1.47M |
+| `acceptDuel` (first score) + `finalizeDuel` | ~1.12M + ~177k | ~2.77M |
 | `Pantry.feed` | ~1.23M | ~3.68M |
 | `Pantry.claim`, 10 boxes | | ~13M |
 
-Deployed size: `DoNotOpen` 24,093 bytes (limit 24,576), `Pantry` about 14,000.
+Deployed size: `DoNotOpen` 24,454 bytes (limit 24,576), `Pantry` about 14,000. To stay under
+the limit, the optimizer runs at 200 (`hardhat.config.ts`), and `onlySealed` calls
+`_requireSealed` rather than inlining its check.
 
 ## Commands
 
 ```bash
 pnpm compile
-pnpm test                 # 95 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp
+pnpm test                 # 99 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -118,6 +121,9 @@ anyone   -> finalize(requestId, cleartexts, proof)
             "holds" true: Revealed and Observed(tokenId, holder, ...); false: Refused, nothing happens
 ```
 
-Alive checks and entanglements work the same way; duels have their own `finalizeDuel`; a
+Alive checks and entanglements work the same way. Duels have their own `finalizeDuel`, run
+twice: once on "the challenger holds A" after `postDuel`, which puts the box on the duel
+shelf for 7 days or voids the duel, and once on the outcome after `acceptDuel`, which
+resolves it, voids it (A no longer held) or puts it back on the shelf (B not held). A
 milestone has `announceMilestone`. The CLI tasks and the app do both steps in one go. A
 request whose second step was never sent stays pending; anyone can finish it.

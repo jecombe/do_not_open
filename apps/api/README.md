@@ -74,8 +74,10 @@ Four layers keep it complete and right:
    replayed. What still differs is logged as an error.
 
 Both show their last result in `GET /health` (`indexer.tasks`). Their cost is a few RPC
-requests an hour. Read models only move forward (a resolved duel never goes back to
-pending), so a late or replayed event does no harm in between.
+requests an hour. Read models only move forward, so a late or replayed event does no harm
+in between. A duel can go back on the shelf (pending, then open again), so its events are
+ordered by block and log index, not by status; nothing moves it out of resolved, cancelled
+or void.
 
 Every answer of the API carries `block`, the last block indexed. The app trusts it only when
 it covers the account's own last transaction, and reads the chain otherwise.
@@ -92,8 +94,9 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /v1/boxes/:id` | Everything public about a box |
 | `GET /v1/boxes/:id/pantry` | Welcome bag, next claim, weigh-in |
 | `GET /v1/boxes/:id/activity` | The box's events, newest first (`before`, `limit`) |
-| `GET /v1/pairs/:a/:b` | Open duel and entanglement proposal between two boxes |
-| `GET /v1/duels?account=&tokens=&open=` | Duels an account took part in, or about these boxes. The token list is not stored or cached. |
+| `GET /v1/pairs/:a/:b` | The duels the two boxes can settle (`duels`, a list: both can be up at once) and the entanglement proposal between them |
+| `GET /v1/duels/shelf` | The duel shelf: every box up for a duel that can still be taken up, newest first |
+| `GET /v1/duels?account=&tokens=&open=` | Duels an account posted or took up, or about these boxes. `open` keeps posted, open and pending ones. The token list is not stored or cached. |
 | `GET /v1/duels/:id` | One duel |
 | `GET /v1/leaderboard` | Opened cats and their openers |
 | `GET /v1/accounts/:address` | Profile: user, duels, pending requests, opened cats, activity |
@@ -106,8 +109,15 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. |
 
+A duel carries `reserved`, `openUntil` (null until the holding is proven) and `tokenB`, null
+while a duel open to any box waits for a taker.
+
 Users are recorded from their first public act on-chain (mint, shake, opening, duel...) and
 when they sign in.
+
+Migration 3 (`src/infrastructure/db/migrations.ts`) is for the duel-shelf contract: it
+empties the index (sign-ins are kept) and the indexer rebuilds it from the new deployment
+block. Point the API at the new addresses before it runs.
 
 ## Run it
 

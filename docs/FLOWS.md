@@ -269,6 +269,10 @@ makes public that both callers held their boxes.
 
 ## Duel
 
+A duel takes four transactions: post, prove, take up, finalise. Box A goes on the duel
+shelf, open to any sealed box or reserved for one box B, and anyone with a sealed box
+can find it there.
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -277,25 +281,41 @@ sequenceDiagram
   participant C as Contract
   participant Co as Coprocessor
   participant R as Relayer / KMS
-  A->>C: challengeDuel(A, B)
+  A->>C: postDuel(A, B, reserved)
   C->>Co: score(A), computed once and cached
-  C-->>B: DuelChallenged(duelId, A, B)
-  B->>C: acceptDuel(duelId)
-  C->>C: both sealed?
-  C->>Co: valid = challenger holds A AND caller holds B
+  C->>Co: posted = caller holds A, publicly decryptable
+  C-->>A: DuelPosted(duelId, A, B, challenger, reserved)
+  A->>R: publicDecrypt(duelHandles(duelId))
+  R-->>A: posted + KMS proof
+  A->>C: finalizeDuel(duelId, posted, proof) (anyone may)
+  alt posted
+    C->>C: status = Open, openUntil = now + 7 days, an older listing of A is cancelled
+    C-->>A: DuelOpened(duelId, openUntil)
+  else
+    C->>C: status = Void, nothing shown
+    C-->>A: DuelVoided(duelId)
+  end
+  Note over A,B: B's holder finds A on the shelf
+  B->>C: acceptDuel(duelId, B)
+  C->>C: open, in time, B sealed and not A, B the reserved box if any, A still sealed
+  C->>Co: aHolds = challenger holds A
+  C->>Co: valid = aHolds AND caller holds B
   C->>Co: score(B), computed once and cached
   C->>Co: aWins = score(A) > score(B)
   C->>Co: pick = random trait offset
   C->>Co: loserRoll = select(aWins, roll(B, pick), roll(A, pick))
-  C->>C: publish valid, valid AND aWins, select(valid, pick, 0), select(valid, loserRoll, 0)
-  C-->>A: DuelAccepted(duelId)
-  A->>R: publicDecrypt(duelHandles(duelId))
-  R-->>A: four clear values + KMS proof
-  A->>C: finalizeDuel(duelId, values, proof) (anyone may)
+  C->>C: publish aHolds, valid, valid AND aWins, select(valid, pick, 0), select(valid, loserRoll, 0)
+  C-->>A: DuelAccepted(duelId, B, accepter)
+  B->>R: publicDecrypt(duelHandles(duelId))
+  R-->>B: five clear values + KMS proof
+  B->>C: finalizeDuel(duelId, values, proof) (anyone may)
   C->>C: checkSignatures
   alt valid
     C->>C: wins[winner] += 1, record the loser's trait as public
     C-->>B: DuelResolved(duelId, winner, loser, trait, roll)
+  else aHolds only
+    C->>C: status = Open again, accepter cleared
+    C-->>B: DuelReopened(duelId)
   else
     C->>C: status = Void, nothing happened
     C-->>B: DuelVoided(duelId)
@@ -304,17 +324,31 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Challenged: challengeDuel (anyone)
-  Challenged --> Cancelled: cancelDuel (challenger)
-  Challenged --> Pending: acceptDuel (anyone)
+  [*] --> Posted: postDuel (holder)
+  Posted --> Open: finalizeDuel, the challenger holds A
+  Posted --> Void: finalizeDuel, the challenger does not
+  Posted --> Cancelled: cancelDuel (challenger)
+  Open --> Cancelled: cancelDuel (challenger), or a newer proven posting of A
+  Open --> Pending: acceptDuel (any sealed box, or the reserved one), before openUntil
   Pending --> Resolved: finalizeDuel, both held their boxes
-  Pending --> Void: finalizeDuel, one side did not
+  Pending --> Open: finalizeDuel, the accepter did not hold B
+  Pending --> Void: finalizeDuel, the challenger no longer held A
 ```
+
+A box has one listing at a time: a newer proven posting of the same box cancels the
+older one. A proven duel can be taken up for 7 days (`DUEL_LIFETIME`); after that,
+`acceptDuel` reverts with `DuelExpired`. A reserved duel only takes the named box
+(`NotThisBox` otherwise); nobody can take up a duel with box A itself.
 
 The loser's roll is chosen with an encrypted `select`, so the winner's roll for that
 trait is never in a decryptable ciphertext. Ties go to B. The score compared is the base
-score; the golden bonus only exists once a box is opened. A void duel publishes four
-zeros: it says nothing about either box.
+score; the golden bonus only exists once a box is opened.
+
+Posting makes public that the challenger holds A: the shelf only shows boxes their
+challenger was proven to hold. At acceptance, "B is held" only shows when A was held. A
+duel voided by its challenger publishes `aHolds = false` and four zeros: it says nothing
+about the accepter. A duel whose accepter did not hold B publishes only that, and goes
+back on the shelf, so nobody can clear the shelf with boxes they do not have.
 
 ## Give a box away
 
@@ -562,7 +596,8 @@ Every two-step action can be picked up later, by anyone:
 | Left in | Shown in the app | Adapter call |
 | --- | --- | --- |
 | An opening, alive check or entanglement request `Pending` | The shelf lists the account's pending requests (`pendingRequests`); "Finish" | `finishRequest(requestId)`, or `finishObserve` / `finishProveAlive` for one box |
-| Duel `Pending` | "Reveal the result" | `finishDuel` (returns null for a void duel) |
+| Duel `Posted` (holding not proven) | Pair view: "Prove you hold it" | `finishDuel` (returns null) |
+| Duel `Pending` | "Reveal the result" | `finishDuel` (returns null for a void or reopened duel) |
 | A milestone reached, not announced | Announced after the next mint through the app | `announceMilestone` |
 | Box revealed, not weighed | "Weigh the cat" | `weigh` |
 | Weigh-in pending | "Weigh the cat" | `weigh` (picks up the pending one: `finalizeWeigh`) |

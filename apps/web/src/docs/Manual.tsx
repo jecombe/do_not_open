@@ -56,7 +56,7 @@ const MECHANICS = [
   { key: "m4", cost: "0.5 cUSDC" },
   { key: "m5", cost: "docs.gasOnly" },
   { key: "m6", cost: "docs.gasOnly" },
-  { key: "m7", who: "docs.mech.m6.who", cost: "docs.gasOnly" },
+  { key: "m7", who: "docs.mech.m7.who", cost: "docs.gasOnly" },
   { key: "m8", who: "docs.mech.m2.who", cost: "1 cUSDC" },
   { key: "m9", who: "docs.mech.m2.who", cost: "docs.mech.m9.cost" },
   { key: "m10", who: "docs.mech.m4.who", cost: "docs.gasOnly" },

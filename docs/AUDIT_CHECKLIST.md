@@ -7,7 +7,7 @@ contract, and it must not go to mainnet before one has.**
 Scope: `ConfidentialERC721.sol`, `DoNotOpen.sol` and `DoNotOpenConfig.sol` in this
 repository, the hidden-owner version (10,000 boxes, owners and sold count encrypted; see
 [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)), deployed on Sepolia at
-`0xDdC71FeBA832c961770F59d0be4B0b3ae536707B`; the croquette contracts
+`0xB8e3b2238eF5D5782A661c406acc928895938fBa` (with the duel shelf); the croquette contracts
 `Croq.sol`, `ConfidentialCroq.sol` and `Pantry.sol` (section 9); plus the parts of the
 adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
 `0xe8f699eEBc22767413A9edBb48826B10D3117f61` is the previous version, an ERC-721 with
@@ -28,7 +28,7 @@ mainnet), **Not done** (a check nobody has run).
 | O5 | Single-step `Ownable`; the owner is an externally owned account on Sepolia | Low on testnet, High on mainnet | admin |
 | O6 | `setBaseURI` can repoint every token's metadata, with no freeze | Medium (trust) | admin |
 | O7 | No ERC-4906 `MetadataUpdate` on reveal: marketplaces keep the sealed image | Low | `finalize` |
-| O8 | Unlimited open challenges: a box's pending duel can be buried by spam in the app | Low (front end) | `challengeDuel`, adapter `pair()` |
+| O8 | Anyone can take up an open duel with a box they do not hold: it is held up until the proof sends it back to the shelf | Low (griefing) | `acceptDuel`, `finalizeDuel` |
 | O9 | Mainnet relayer needs an API key behind a proxy; none exists | Blocker for mainnet | adapter |
 | O10 | Static analysis, fuzzing, Sepolia test suite and Etherscan verification not run | Process | see the end |
 | O11 | The reserve is unreadable: nobody can tell when it runs dry, and claims then pay nothing, silently | Low (UX) | `Pantry.claim` |
@@ -79,8 +79,9 @@ Details and the rest of the checks follow.
 | A transfer receipt is readable by its two sides only | Pass | `allow(moved, from)`, `allow(moved, to)`, transient for the calling contract. Test: "moves the token when the sender holds it, and tells only the two sides" |
 | `isOwner` answers only the account, its operators and trusted readers | Pass | Reverts `ConfidentialERC721UnauthorizedReader` otherwise. Tests: "answers the account itself, its operators and trusted contracts only", "refuses to read ownership unless the collection trusts the Pantry" |
 | **O15. Trusted readers** | Open | A trusted reader gets `isOwner` about anyone, with a transient grant. A malicious one could make the answer publicly decryptable and so publish who holds a box. Only the owner adds readers. Make the set immutable after deploy, or put it behind a timelock and a multisig |
-| A request by a non-holder reveals nothing about the box | Pass | Every published value is masked by `holds` (or `ok`, `valid`); a refused request decrypts to "no" and zeros. Tests: "refuses someone who does not hold the box…", "refuses a stranger, and is asked once per box", "is void, and shows nothing, unless both sides hold their boxes" |
-| What a successful request reveals | Accepted | That the caller held the box then: an opening, an alive check, an entanglement, a valid duel. `Observed` names the opener. Documented in HIDDEN_OWNERS.md |
+| A request by a non-holder reveals nothing about the box | Pass | Every published value is masked by `holds` (or `ok`, `valid`); a refused request decrypts to "no" and zeros. Tests: "refuses someone who does not hold the box…", "refuses a stranger, and is asked once per box", "goes back on the shelf when the accepter brought a box they do not hold, showing nothing" |
+| A void duel says nothing about the accepter | Pass | `valid = aHolds AND accepter holds B`: "B is held" only shows when A was. Test: "is void, and says nothing of the accepter, when the challenger gave the box away" |
+| What a successful request reveals | Accepted | That the caller held the box then: an opening, an alive check, an entanglement, a proven duel posting, a valid duel. `Observed` names the opener. A reopened duel shows that the accepter did not hold B. Documented in HIDDEN_OWNERS.md |
 | A buyer's holdings can be bounded from above | Accepted | Ids minted (`MintPlaced.count`) plus transfers naming the address. Never known exactly |
 | A milestone shows which mint crossed it | Accepted | Its bit decrypts to true. Nothing between two milestones |
 | **O16. Draft standard** | Open | `IConfidentialERC721` and its ERC-165 id `0x5f6463b8` are this project's. Have the standard reviewed, or align it with one Zama or OpenZeppelin publishes |
@@ -108,7 +109,7 @@ clear values and a KMS proof.
 | The handle list is taken from storage, never from the caller | Pass | Stored per request (`_requestHandles`), `duelHandles`, `_milestoneBit` |
 | A forged value is rejected | Pass | Tests: "rejects a forged seed, a proof made for another request, and a second settlement", "rejects a forged answer" (alive, milestones), "rejects a forged outcome and double finalisation" |
 | A valid proof for another request cannot be replayed | Pass | Same tests: the proof is bound to the handles stored at the request |
-| Finalisation happens once | Pass | Request status `Pending`, duel status `Pending`, `milestonesReached` moves on and clears the bit |
+| Finalisation happens once | Pass | Request status `Pending`, duel status `Posted` or `Pending` (each proof moves it on; a reopened duel needs a new acceptance and new handles), `milestonesReached` moves on and clears the bit |
 | A request cannot be finalised before it exists | Pass | `RequestNotPending` on an unknown id |
 | Repeated requests are harmless | Pass | Several openings of one box may be pending; the first finalised opens it, a later one by a holder refunds its fee. `proveAlive` reverts once the box has an answer. A stranger's requests are refused |
 | Handles cannot change between request and finalisation | Pass | A request publishes fresh masked copies (`select(ok, …)`), stored with the request; later feeds or transfers do not touch them |
@@ -116,9 +117,9 @@ clear values and a KMS proof.
 | Duplicate handles in one decryption | Pass | A public decryption refuses one handle twice: an unfed box publishes no affection (`Request.fed`). Test: "links two boxes with both holders' consent and opens them together" (one of the two unfed) |
 | The order of decoded values matches the order of handles | Pass | Covered by every finalisation test |
 | Anyone can finalise, including after a transfer | Pass | Test: "still opens for the holder at the time of the request, even if the box moved since" |
-| A duel still resolves if a box is opened meanwhile | Pass | `finalizeDuel` checks only the duel's status |
+| A duel still resolves if a box is opened meanwhile | Pass | `finalizeDuel` checks only the duel's status. `acceptDuel` refuses an opened box on either side |
 | Front-running a finalisation | Accepted | Whoever sends it, the result is the same. The slower sender's transaction reverts (`RequestNotPending`) and costs them gas. The adapter checks that a request is still `Pending` before sending its proof |
-| **O1. Liveness** | Open | If the KMS or relayer never answers, a request stays `Pending`. The box stays `Sealed` and usable, but an opening's fee is kept, and the masked seed stays marked public: if the KMS answers later, anyone can still finalise it. Options: a refund after a timeout, or accept and document. A pending alive check or duel is harmless |
+| **O1. Liveness** | Open | If the KMS or relayer never answers, a request stays `Pending`. The box stays `Sealed` and usable, but an opening's fee is kept, and the masked seed stays marked public: if the KMS answers later, anyone can still finalise it. Options: a refund after a timeout, or accept and document. A pending alive check or duel is harmless; a posted duel never reaches the shelf |
 
 ## 4. Mint
 
@@ -142,16 +143,18 @@ clear values and a KMS proof.
 | The encrypted score equals the plain one | Pass | Test: "resolves to the higher score..." compares against the mock's cleartext. Same weights and thresholds are read from the config |
 | **O3. Score overflow** | Open | The score is a `uint16` / `euint16`. With the shipped spec the maximum is 3,040. With other weights the plain `decode` would revert (bricking `finalize` of that box's opening) while the encrypted sum would wrap silently. Add a constructor check that `max(bonus) + 255 * sum(weights) + goldenBonus <= 65535` |
 | **O4. Offsets** | Open | The constructor checks each offset is in 16..56 but not that the five are distinct and multiples of 8. `configParamsFromSpec` produces valid values; the contract should not rely on that |
-| Ties in a duel go to B | Pass | Test: "lets the challenger win only on a strictly higher score" |
-| Duel and entanglement need both holders | Pass | Checked under encryption at acceptance. Tests: "links nothing unless the proposer holds A and the accepter holds B", "is void, and shows nothing, unless both sides hold their boxes" |
-| A proposal or challenge dies if the proposer's box is sold | Pass | The proposer's or challenger's holding is checked at acceptance, not at the proposal. Test: "lets one holder entangle two of their own boxes, and follows a transfer" |
+| Ties in a duel go to B | Pass | `FHE.gt(scoreA, scoreB)`. Test: "resolves to the higher score and reveals one trait of the loser only" expects A to win only on a strictly higher score |
+| Duel and entanglement need both holders | Pass | Checked under encryption at acceptance. Tests: "links nothing unless the proposer holds A and the accepter holds B", "is void, and says nothing of the accepter, when the challenger gave the box away", "goes back on the shelf when the accepter brought a box they do not hold, showing nothing" |
+| Only boxes their challenger holds go on the duel shelf | Pass | `postDuel` publishes "the caller holds A"; `finalizeDuel` opens the duel only on a proven true, and voids it otherwise. Test: "only goes on the shelf once the challenger is proven to hold the box" |
+| A reserved duel takes only its box; a box has one listing; a duel ends after 7 days | Pass | `NotThisBox`, `SameBox`, `DuelExpired`; a newer proven posting cancels the older one. Tests: "lets only the named box accept a reserved duel", "keeps one listing per box, and refuses its own box, opened boxes and late takers" |
+| A proposal or duel dies if the proposer's box is sold | Pass | The proposer's or challenger's holding is checked again at acceptance. Tests: "lets one holder entangle two of their own boxes, and follows a transfer", "is void, and says nothing of the accepter, when the challenger gave the box away" |
 | Entanglement is permanent and follows the token | Accepted | A buyer of an entangled box can have it opened by the partner's holder, at no cost to them and with no consent asked. Marketplaces and the app must show `partnerOf`. The app does |
 | Opening a partner costs its holder nothing and asks nothing | Accepted | That is what the two holders agreed to |
-| **O8. Challenge spam** | Open | Any holder can file unlimited challenges against any sealed box. On-chain this costs only the spammer. In the app, `pair()` looks at the last 40 duels, so a real pending challenge can be pushed out of view. Fix in the adapter (index by event) or on-chain (one open challenge per pair) |
+| **O8. Shelf griefing** | Open | Posting spam is bounded: only a proven holding goes on the shelf, and a box has one listing. But anyone can take up an open duel with a box they do not hold. Nothing shows about the duel's boxes and the duel goes back on the shelf (`DuelReopened`), yet it is out of reach until someone sends the proof, and that time counts against its 7 days. Each attempt costs the griefer gas. Options: extend `openUntil` on reopen, or accept. Without the API, the adapter only scans the latest duels (40 for `pair()`, 200 for the shelf) |
 | Unbounded loops | Pass | Mint loops at most `maxPerTx` (10) ids; `claimEarnings` at most `MAX_CLAIM` (10) boxes; score loops are fixed at 3 and 5 |
 | Casts | Pass | Token ids run past 10,000 (empty ids) and are stored as `uint32` in requests and duels: 4 billion ids, 400 million mints. `buildBoxSpec` accepts any 32-bit id |
 | HCU stays under the limit | Pass | Largest in `DoNotOpen`: a 10-id mint ~3.3M and `acceptDuel` ~2.8M of 20M. Tests pin the budgets |
-| **O18. Contract size** | Open | 24,093 bytes deployed, limit 24,576. Move logic to a library or a trusted-reader contract before the next feature |
+| **O18. Contract size** | Open | 24,454 bytes deployed, limit 24,576, after moving the `onlySealed` check into `_requireSealed` and lowering the optimizer to 200 runs. Move logic to a library or a trusted-reader contract before the next feature |
 
 ## 6. Administration and trust
 
