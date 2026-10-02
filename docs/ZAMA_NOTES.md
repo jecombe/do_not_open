@@ -361,7 +361,8 @@ players, so three things keep that bill bounded:
   (`RELAYER_FREE_PER_DAY`, 25); a wallet the index has never seen act on-chain or be sent a
   box gets fewer (`RELAYER_NEWCOMER_PER_DAY`, 16: one 10-id mint), so a farm of fresh
   wallets is worth little. Past them, the proxy spends credits bought from
-  `DecryptionCredits` in plain USDC, one credit a unit.
+  `DecryptionCredits` in plain USDC, one credit a unit. Since play is in cUSDC, the bureau
+  de change can keep a share of a cUSDC purchase plain (5 to 20%) for those credits.
 - **An input is charged to the wallet it is for**, which proves it is itself with the
   user-decryption permit it already signed (sent as a bearer token): nobody can spend
   another wallet's units by making inputs in its name.

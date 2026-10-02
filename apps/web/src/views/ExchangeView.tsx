@@ -3,6 +3,7 @@ import { formatAmount, type EconomyInfo, type Step } from "@dno/chain-adapter";
 import { useChain } from "../chain/ChainProvider";
 import { problemOf, stepCopy, type Problem } from "../chain/copy";
 import {
+  canKeep,
   DECRYPTS,
   deskOf,
   findRoute,
@@ -13,6 +14,7 @@ import {
   StoppedAt,
   SWAPS,
   TOKENS,
+  txCount,
   type Desk,
   type Leg,
   type LegKind,
@@ -59,6 +61,18 @@ const useSlippage = () =>
     },
     () => slippage,
   );
+
+/** Shares of a cUSDC purchase that can be kept as plain USDC, for decryption credits, in basis points. */
+const KEEP_PRESETS = [0, 500, 1000, 2000];
+const KEEP_KEY = "dno.keepUsdc";
+function storedKeep(): number {
+  try {
+    const n = Number(localStorage.getItem(KEEP_KEY));
+    return KEEP_PRESETS.includes(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
 
 /** "1,234.5678" for a token amount: grouped, at most six decimals, never a dust amount shown as zero. */
 function show(amount: bigint, decimals: number, places = 6): string {
@@ -122,7 +136,7 @@ const QUICK: { label: AppKey; from: TokenKey; to: TokenKey }[] = [
   { label: "ex.quick.wrap", from: "croq", to: "ccroq" },
 ];
 
-type Phase = { kind: "idle" } | { kind: "running"; leg: number; step: Step | null } | { kind: "done"; received: bigint | null; to: TokenKey; legs: number } | { kind: "failed"; problem: Problem; stoppedAt: number | null };
+type Phase = { kind: "idle" } | { kind: "running"; leg: number; step: Step | null } | { kind: "done"; received: bigint | null; kept: bigint; to: TokenKey; legs: number } | { kind: "failed"; problem: Problem; stoppedAt: number | null };
 
 /**
  * The bureau de change: hand over one token, get another. Buying USDC with ETH, shielding it
@@ -150,6 +164,8 @@ export function ExchangeView() {
   const [sealedCroq, setSealedCroq] = useState<bigint | null>(null);
   const [revealing, setRevealing] = useState<TokenKey | null>(null);
   const [tick, setTick] = useState(0);
+  const [keepBps, setKeepBps] = useState(storedKeep);
+  const [creditPrice, setCreditPrice] = useState<bigint | null>(null);
   const running = phase.kind === "running";
   const shielded = useShielded(running ? "running" : tick);
 
@@ -206,7 +222,29 @@ export function ExchangeView() {
     setSealedCroq(null);
   }, [account]);
 
+  // What a decryption credit costs, to tell how many the kept USDC buys. Null where nobody sells them.
+  useEffect(() => {
+    if (!account) return;
+    let live = true;
+    adapter.decryptionAllowance().then(
+      (a) => live && setCreditPrice(a?.price ?? null),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [adapter, account]);
+
   const route = useMemo(() => (desk ? findRoute(desk, from, to) : null), [desk, from, to]);
+  const keep = route && canKeep(route) ? keepBps : 0;
+  const chooseKeep = (bps: number) => {
+    setKeepBps(bps);
+    try {
+      localStorage.setItem(KEEP_KEY, String(bps));
+    } catch {
+      // Private mode: it lasts for this visit.
+    }
+  };
   const fromInfo = desk?.tokens[from];
   const toInfo = desk?.tokens[to];
   const amount = fromInfo ? parseAmount(text, fromInfo.decimals) : null;
@@ -224,7 +262,7 @@ export function ExchangeView() {
     let live = true;
     const ask = () => {
       setQuoting(true);
-      quoteRoute(adapter, desk, route, amount, slip).then(
+      quoteRoute(adapter, desk, route, amount, slip, keep).then(
         (q) => {
           if (!live) return;
           setQuote(q);
@@ -246,7 +284,7 @@ export function ExchangeView() {
       clearInterval(again);
       setQuoting(false);
     };
-  }, [adapter, desk, route, amount, slip, running]);
+  }, [adapter, desk, route, amount, slip, keep, running]);
 
   const pick = (side: "from" | "to", k: TokenKey) => {
     setPicking(null);
@@ -302,7 +340,7 @@ export function ExchangeView() {
     setPhase({ kind: "running", leg: 0, step: null });
     let leg = 0;
     try {
-      const received = await runRoute(
+      const { received, kept } = await runRoute(
         adapter,
         account,
         route,
@@ -313,8 +351,9 @@ export function ExchangeView() {
           leg = i;
           setPhase({ kind: "running", leg: i, step: null });
         },
+        keep,
       );
-      setPhase({ kind: "done", received, to, legs: route.length });
+      setPhase({ kind: "done", received, kept, to, legs: route.length });
       setText("");
       // A cCROQ balance decrypted before is out of date once the route went through it.
       if (route.some((l) => l.from === "ccroq" || l.to === "ccroq")) setSealedCroq(null);
@@ -472,14 +511,20 @@ export function ExchangeView() {
                 </output>
                 {toInfo && <TokenButton token={toInfo} onClick={() => setPicking(picking === "to" ? null : "to")} disabled={running} expanded={picking === "to"} />}
               </div>
+              {quote && quote.kept > 0n && desk && (
+                <p className="crate-note crate-kept">
+                  {t("ex.keep.plus", { amount: show(quote.kept, desk.tokens.usdc.decimals), symbol: desk.tokens.usdc.symbol })}
+                </p>
+              )}
               {toInfo?.sealed && <p className="crate-note">{t("ex.landsSealed", { symbol: toInfo.symbol })}</p>}
+              {route && canKeep(route) && desk && <KeepPicker id={`${formId}-keep`} desk={desk} keepBps={keepBps} onPick={chooseKeep} disabled={running} />}
               {picking === "to" && desk && <TokenList desk={desk} side="to" current={to} other={from} held={held} onPick={(k) => pick("to", k)} onClose={() => setPicking(null)} />}
             </div>
 
-            {desk && route && <RouteStrip desk={desk} route={route} active={phase.kind === "running" ? phase.leg : phase.kind === "done" ? route.length : -1} />}
+            {desk && route && <RouteStrip desk={desk} route={route} keepBps={keep} active={phase.kind === "running" ? phase.leg : phase.kind === "done" ? route.length : -1} />}
 
             {phase.kind === "running" ? (
-              <Progress desk={desk!} route={route!} leg={phase.leg} step={phase.step} />
+              <Progress desk={desk!} route={route!} keepBps={keep} leg={phase.leg} step={phase.step} />
             ) : phase.kind === "done" ? (
               <Done desk={desk!} phase={phase} onReveal={() => void reveal(phase.to)} revealing={revealing === phase.to} sealedShown={sealedValue(phase.to)} onAgain={() => setPhase({ kind: "idle" })} />
             ) : (
@@ -495,6 +540,9 @@ export function ExchangeView() {
                     onInvert={() => setInverted((v) => !v)}
                     onSlippage={() => setSettings(true)}
                     impact={worstImpact}
+                    route={route}
+                    keepBps={keep}
+                    creditPrice={creditPrice}
                   />
                 )}
                 {phase.kind === "failed" && (
@@ -646,11 +694,33 @@ function Settings({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
-function RouteStrip({ desk, route, active }: { desk: Desk; route: Leg[]; active: number }) {
+/** How much of a cUSDC purchase stays plain USDC, for decryption credits. */
+function KeepPicker({ id, desk, keepBps, onPick, disabled }: { id: string; desk: Desk; keepBps: number; onPick: (bps: number) => void; disabled: boolean }) {
   const t = useT();
+  const usdc = desk.tokens.usdc.symbol;
+  return (
+    <div className="keep" role="group" aria-labelledby={`${id}-label`}>
+      <span id={`${id}-label`} className="keep-label">
+        {t("ex.keep.label", { symbol: usdc })}
+      </span>
+      <div className="keep-row">
+        {KEEP_PRESETS.map((bps) => (
+          <button type="button" key={bps} aria-pressed={keepBps === bps} onClick={() => onPick(bps)} disabled={disabled}>
+            {bps === 0 ? t("ex.keep.none") : pct(bps)}
+          </button>
+        ))}
+      </div>
+      <p className="fine">{t("ex.keep.hint", { symbol: usdc, sealed: desk.tokens.cusdc.symbol })}</p>
+    </div>
+  );
+}
+
+function RouteStrip({ desk, route, keepBps, active }: { desk: Desk; route: Leg[]; keepBps: number; active: number }) {
+  const t = useT();
+  const txs = txCount(route, keepBps);
   return (
     <div className="route" aria-label={t("ex.route")}>
-      <span className="route-title">{route.length === 1 ? t("ex.oneTx") : t("ex.nTx", { n: route.length })}</span>
+      <span className="route-title">{txs === 1 ? t("ex.oneTx") : t("ex.nTx", { n: txs })}</span>
       <ol className="route-line">
         <li className={`route-stop${active > 0 || active >= route.length ? " is-past" : ""}`}>
           <Coin token={desk.tokens[route[0]!.from]} />
@@ -670,14 +740,31 @@ function RouteStrip({ desk, route, active }: { desk: Desk; route: Leg[]; active:
   );
 }
 
-function Manifest(props: { desk: Desk; quote: Quote; from: TokenInfo; to: TokenInfo; slip: number; inverted: boolean; onInvert: () => void; onSlippage: () => void; impact: number }) {
-  const { desk, quote, from, to, slip, inverted, onInvert, onSlippage, impact } = props;
+function Manifest(props: {
+  desk: Desk;
+  quote: Quote;
+  from: TokenInfo;
+  to: TokenInfo;
+  slip: number;
+  inverted: boolean;
+  onInvert: () => void;
+  onSlippage: () => void;
+  impact: number;
+  route: Leg[];
+  keepBps: number;
+  creditPrice: bigint | null;
+}) {
+  const { desk, quote, from, to, slip, inverted, onInvert, onSlippage, impact, route, keepBps, creditPrice } = props;
+  const usdc = desk.tokens.usdc;
   const t = useT();
   const hasSwap = quote.legs.some((l) => SWAPS.has(l.kind));
   const ramp = quote.legs.find((l) => l.kind === "ramp" || l.kind === "rampShield");
   const free = quote.legs.filter((l) => l.kind === "shield" || l.kind === "wrap" || l.kind === "unshield" || l.kind === "unwrap");
   const slow = quote.legs.some((l) => DECRYPTS.has(l.kind));
   const publics = [...new Set(quote.legs.map((l) => LEG_PUBLIC[l.kind]))];
+  if (quote.kept > 0n) publics.push("ex.keep.public");
+  // The rate counts the plain share too: USDC and cUSDC are the same dollar.
+  const got = quote.amountOut + quote.kept;
   const impactClass = impact > 0.05 ? "is-bad" : impact > 0.02 ? "is-warn" : "";
   return (
     <dl className="manifest">
@@ -686,8 +773,8 @@ function Manifest(props: { desk: Desk; quote: Quote; from: TokenInfo; to: TokenI
         <dd>
           <button type="button" className="link" onClick={onInvert} title={t("ex.invert")}>
             {inverted
-              ? `1 ${to.symbol} = ${rate(quote.amountIn, from.decimals, quote.amountOut, to.decimals)} ${from.symbol}`
-              : `1 ${from.symbol} = ${rate(quote.amountOut, to.decimals, quote.amountIn, from.decimals)} ${to.symbol}`}
+              ? `1 ${to.symbol} = ${rate(quote.amountIn, from.decimals, got, to.decimals)} ${from.symbol}`
+              : `1 ${from.symbol} = ${rate(got, to.decimals, quote.amountIn, from.decimals)} ${to.symbol}`}
           </button>
         </dd>
       </div>
@@ -723,6 +810,15 @@ function Manifest(props: { desk: Desk; quote: Quote; from: TokenInfo; to: TokenI
           </div>
         </>
       )}
+      {quote.kept > 0n && (
+        <div>
+          <dt>{t("ex.keep.row", { symbol: usdc.symbol })}</dt>
+          <dd>
+            {show(quote.kept, usdc.decimals)} {usdc.symbol}
+            {creditPrice !== null && creditPrice > 0n && <small className="manifest-sub">{t("ex.keep.credits", { n: (quote.keptMin / creditPrice).toLocaleString("en-US") })}</small>}
+          </dd>
+        </div>
+      )}
       {free.length > 0 && (
         <div>
           <dt>{t("ex.sealFee")}</dt>
@@ -731,7 +827,7 @@ function Manifest(props: { desk: Desk; quote: Quote; from: TokenInfo; to: TokenI
       )}
       <div>
         <dt>{t("ex.gas")}</dt>
-        <dd>{t("ex.gasValue", { coin: desk.tokens.eth.symbol, n: quote.legs.length })}</dd>
+        <dd>{t("ex.gasValue", { coin: desk.tokens.eth.symbol, n: txCount(route, keepBps) })}</dd>
       </div>
       {slow && (
         <div>
@@ -754,7 +850,7 @@ function Manifest(props: { desk: Desk; quote: Quote; from: TokenInfo; to: TokenI
   );
 }
 
-function Progress({ desk, route, leg, step }: { desk: Desk; route: Leg[]; leg: number; step: Step | null }) {
+function Progress({ desk, route, keepBps, leg, step }: { desk: Desk; route: Leg[]; keepBps: number; leg: number; step: Step | null }) {
   const t = useT();
   const [seconds, setSeconds] = useState(0);
   useEffect(() => setSeconds(0), [leg, step]);
@@ -769,7 +865,8 @@ function Progress({ desk, route, leg, step }: { desk: Desk; route: Leg[]; leg: n
           <li key={i} className={i < leg ? "done" : i === leg ? "now" : undefined} aria-current={i === leg ? "step" : undefined}>
             <span className="tick" aria-hidden="true" />
             <span>
-              {t("ex.stepOf", { n: i + 1, total: route.length })} · {desk.tokens[l.from].symbol} → {desk.tokens[l.to].symbol}
+              {t("ex.stepOf", { n: i + 1, total: route.length })} · {desk.tokens[l.from].symbol} → {keepBps > 0 && i === route.length - 1 ? `${desk.tokens.usdc.symbol} + ` : ""}
+              {desk.tokens[l.to].symbol}
               {i === leg && (
                 <small>
                   {stepCopy(step)}
@@ -811,6 +908,7 @@ function Done(props: { desk: Desk; phase: Extract<Phase, { kind: "done" }>; onRe
           </p>
         </>
       )}
+      {phase.kept > 0n && <p className="done-line">{t("ex.keep.received", { amount: show(phase.kept, desk.tokens.usdc.decimals), symbol: desk.tokens.usdc.symbol })}</p>}
       <button type="button" className="plain-button" onClick={onAgain}>
         {t("ex.again")}
       </button>
