@@ -42,7 +42,19 @@ Every action takes `onStep` and reports its steps, in order, from `encrypting`, 
 `code`, and for contract refusals the contract's error name in `reason`. Two codes come
 from encrypted checks rather than reverts: `unpaid` (the cUSDC did not cover the price,
 or the mint would pass the cap; nothing was taken) and `not-yours` (the caller did not
-hold the box; nothing happened, and nobody else learned it).
+hold the box; nothing happened, and nobody else learned it). The others are `rejected`,
+`wallet-busy` (the wallet already shows a request), `wrong-network`, `insufficient-funds`
+(the gas coin), `insufficient-usdc`, `nonce` (an earlier transaction in the way), `network`
+(an endpoint or the decryption service did not answer), `decryption`, `reverted`,
+`not-connected`, `no-wallet` and `unknown`.
+
+`ChainError.detail` says what the app needs to word a way out: `held` and `needed` for a
+missing balance, `txUrl` for the transaction that failed, `resumable` when the first
+transaction went through and running the action again picks it up, and `landed` when it
+did its work and only reading the result back failed (running it again would do it twice).
+The EVM adapter dry-runs every transaction against the read endpoint first, so a contract
+refusal or missing gas money is reported, with its reason, before the wallet opens.
+`src/evm/errors.ts` sorts what wallets and endpoints throw into these codes.
 
 In Node (scripts, metadata), import from `@dno/chain-adapter/node`.
 

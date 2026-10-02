@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createAdapter, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step, type WalletOption } from "@dno/chain-adapter";
-import { errorCopy } from "./copy";
+import { errorCopy, problemOf, type Problem, type ProblemContext } from "./copy";
 
 interface ChainState {
   adapter: ChainAdapter;
@@ -157,19 +157,23 @@ interface ActionState {
   /** Name of the action in flight, e.g. "shake". */
   busy: string | null;
   step: Step | null;
-  error: string | null;
+  /** Why the last action failed, worded, with what to try. */
+  error: Problem | null;
 }
 
 const IDLE: ActionState = { busy: null, step: null, error: null };
 
 /**
  * Runs one chain action at a time and tracks where it is. `run` resolves to the action's
- * result, or to undefined if it failed; the reason is then in `error`, already worded.
+ * result, or to undefined if it failed; the reason is then in `error`, already worded, with
+ * hints. `context` says where to finish an action that stopped half-way, when running it again
+ * would not.
  */
 export function useAction() {
   const [state, setState] = useState<ActionState>(IDLE);
+  const { collection } = useChain();
 
-  const run = useCallback(async <T,>(name: string, action: (opts: ActionOptions) => Promise<T>): Promise<T | undefined> => {
+  const run = useCallback(async <T,>(name: string, action: (opts: ActionOptions) => Promise<T>, context?: Omit<ProblemContext, "collection">): Promise<T | undefined> => {
     setState({ busy: name, step: null, error: null });
     try {
       const result = await action({ onStep: (step) => setState((s) => ({ ...s, step })) });
@@ -177,10 +181,10 @@ export function useAction() {
       return result;
     } catch (error) {
       console.error(`[chain] ${name} failed`, error);
-      setState({ busy: null, step: null, error: errorCopy(error) });
+      setState({ busy: null, step: null, error: problemOf(error, { ...context, collection }) });
       return undefined;
     }
-  }, []);
+  }, [collection]);
 
   const reset = useCallback(() => setState(IDLE), []);
   return { ...state, run, reset };

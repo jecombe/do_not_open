@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { onShelf, sameAddress, shortAddress, type DuelInfo } from "@dno/chain-adapter";
+import { ChainError, onShelf, sameAddress, shortAddress, type DuelInfo } from "@dno/chain-adapter";
 import { spec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -11,6 +11,7 @@ import { FindMine } from "./FindMine";
 import { Stage } from "./Stage";
 import { StepTracker, type PlannedStep } from "./StepTracker";
 import { useFold } from "./useFold";
+import { ProblemNote } from "./ProblemNote";
 
 interface Props {
   quality: QualitySettings;
@@ -32,6 +33,7 @@ const POST_PLAN: PlannedStep[] = [
   { step: "decrypting", label: "track.decryptHolding" },
   { step: "proving", label: "track.proof" },
 ];
+const PROVE_PLAN: PlannedStep[] = POST_PLAN.slice(2);
 const WITHDRAW_PLAN: PlannedStep[] = [
   { step: "wallet", label: "track.withdraw" },
   { step: "confirming", label: "track.chain" },
@@ -56,6 +58,10 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
   const [plan, setPlan] = useState<PlannedStep[] | null>(null);
   const [note, setNote] = useState<Note | null>(null);
 
+  // The account's duels posted without their proof (a decryption that failed, a tab closed):
+  // they are not on the shelf until it is relayed.
+  const [unproven, setUnproven] = useState<DuelInfo[]>([]);
+
   const load = useCallback(async () => {
     try {
       setShelf(await adapter.duelShelf());
@@ -63,7 +69,13 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
     } catch {
       setFailed(true);
     }
-  }, [adapter]);
+    if (!account) return setUnproven([]);
+    try {
+      setUnproven((await adapter.duels({ account, open: true })).filter((d) => d.status === "posted" && sameAddress(d.challenger, account)));
+    } catch {
+      // The next load tries again.
+    }
+  }, [adapter, account]);
   useEffect(() => void load(), [load, collection?.tokenCount]);
 
   // The account's sealed boxes: what it can put up, or take a duel up with.
@@ -98,11 +110,28 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
     sound.resume();
     setNote(null);
     setPlan(POST_PLAN);
-    const done = await action.run("post", (o) => adapter.postDuel(picked, { ...o, ...(onlyId !== null ? { reservedFor: onlyId } : {}) }));
+    const done = await action.run("post", (o) => adapter.postDuel(picked, { ...o, ...(onlyId !== null ? { reservedFor: onlyId } : {}) }), {
+      resume: "problem.resumeDuelShelf",
+    });
     if (done) {
       setNote("duels.posted");
       setOnly("");
     }
+    await load();
+  };
+
+  /** Relays the proof that the account holds a posted box, which puts it on the shelf. */
+  const prove = async (d: DuelInfo) => {
+    sound.resume();
+    setNote(null);
+    setPlan(PROVE_PLAN);
+    const done = await action.run("prove", async (o) => {
+      await adapter.finishDuel(d.duelId, o);
+      // A box the account no longer held voids the duel: the proof says so, and nothing else.
+      if (!(await adapter.duelShelf()).some((x) => x.duelId === d.duelId)) throw new ChainError("not-yours", "The box did not go on the duel shelf.");
+      return true;
+    });
+    if (done) setNote("duels.posted");
     await load();
   };
 
@@ -192,6 +221,28 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
           </ul>
         )}
 
+        {unproven.length > 0 && (
+          <>
+            <p className="slip-heading">{t("duels.unproven")}</p>
+            <ul className="tags duel-list" aria-label={t("duels.unproven")}>
+              {unproven.map((d) => (
+                <li key={d.duelId}>
+                  <button type="button" onClick={() => onSelect(d.tokenA)}>
+                    {serial(d.tokenA)}
+                    <span>{t("shelf.duelToProve")}</span>
+                  </button>
+                  <span className="tag-options">
+                    <button type="button" onClick={() => void prove(d)} disabled={!!action.busy}>
+                      {action.busy === "prove" ? t("duels.proving") : t("duels.prove")}
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="fine">{t("duels.unprovenHint")}</p>
+          </>
+        )}
+
         <p className="slip-heading">{t("duels.putUp")}</p>
         {!account ? (
           <>
@@ -242,7 +293,7 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
 
         <div className="felt" aria-live="polite">
           {action.error ? (
-            <p className="fine problem">{action.error}</p>
+            <ProblemNote problem={action.error} />
           ) : action.busy ? (
             <>
               {plan && <StepTracker key={action.busy} plan={plan} step={action.step} />}

@@ -15,6 +15,7 @@ import { Stage } from "./Stage";
 import { StepTracker, type PlannedStep } from "./StepTracker";
 import { TxJournal } from "./TxJournal";
 import { useFold } from "./useFold";
+import { ProblemNote } from "./ProblemNote";
 
 interface Props {
   quality: QualitySettings;
@@ -286,7 +287,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
       if (!mine(p.to)) return false;
       await adapter.acceptEntangle(p.from, p.to, o);
       return true;
-    });
+    }, { resume: "problem.resumeShelf" });
     if (linked) sound.reveal(false);
     if (linked === false) setNote("pair.noteProposal");
     void load();
@@ -457,7 +458,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
 
         <div className="felt" aria-live="polite">
           {action.error ? (
-            <p className="fine problem">{action.error}</p>
+            <ProblemNote problem={action.error} />
           ) : action.busy ? (
             <>
               {plan && plan.length > 0 && <StepTracker key={action.busy} plan={plan} step={action.step} />}

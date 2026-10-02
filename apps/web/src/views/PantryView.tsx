@@ -3,12 +3,13 @@ import { formatAmount, type BoxPantry, type EconomyInfo, type TradeSide } from "
 import { spec as gameSpec } from "@dno/game-spec";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
-import { stepCopy } from "../chain/copy";
+import { stepCopy, type Problem } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
 import { buildName } from "../i18n/names";
 import { ShelfScene, SHELF_CAPACITY } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
+import { ProblemNote } from "./ProblemNote";
 
 interface Props {
   quality: QualitySettings;
@@ -204,12 +205,12 @@ export function PantryView({ quality, sound, onSelect }: Props) {
 
 type Run = ReturnType<typeof useAction>["run"];
 
-function Feedback({ busy, step, error, done, children }: { busy: string | null; step: Parameters<typeof stepCopy>[0]; error: string | null; done: AppKey | null; children: React.ReactNode }) {
+function Feedback({ busy, step, error, done, children }: { busy: string | null; step: Parameters<typeof stepCopy>[0]; error: Problem | null; done: AppKey | null; children: React.ReactNode }) {
   const t = useT();
   return (
     <div className="felt" aria-live="polite">
       {error ? (
-        <p className="fine problem">{error}</p>
+        <ProblemNote problem={error} />
       ) : busy ? (
         <>
           <p className="fine">{stepCopy(step, busy === "reveal")}</p>

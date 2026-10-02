@@ -7,6 +7,7 @@ import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
 import { parseAmount } from "./views/PantryView";
+import { ProblemNote } from "./views/ProblemNote";
 
 /** Any view may open the wallet slip, to send the user where tokens are bought and shielded. */
 const openers = new Set<() => void>();
@@ -332,7 +333,7 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
               </p>
             )}
             <div aria-live="polite">
-              {own.error ? <p className="fine problem">{own.error}</p> : own.busy ? <p className="fine">{stepCopy(own.step, own.busy === "reveal")}</p> : null}
+              {own.error ? <ProblemNote problem={own.error} /> : own.busy ? <p className="fine">{stepCopy(own.step, own.busy === "reveal")}</p> : null}
             </div>
           </div>
         </>

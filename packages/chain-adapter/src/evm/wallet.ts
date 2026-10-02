@@ -1,5 +1,6 @@
 import { BrowserProvider, type Eip1193Provider, type Signer } from "ethers";
 import { ChainError, type WalletOption } from "../types";
+import { toChainError } from "./errors";
 import { approvesChain, loadWalletConnect, type WalletConnectProvider } from "./walletconnect";
 
 /** Where signatures come from: a browser wallet, or a fixed signer in scripts and tests. */
@@ -107,13 +108,9 @@ export class InjectedWallet implements WalletSource {
       remember(this.active!.id);
       return signer;
     } catch (error) {
-      if (error instanceof ChainError) throw error;
-      // 4001 from extensions, 5000 from WalletConnect wallets; closing the WalletConnect modal resets the request.
-      const { code, message } = error as { code?: number; message?: string };
-      if (code === 4001 || code === 5000 || message?.includes("Connection request reset")) {
-        throw new ChainError("rejected", "The request was declined in the wallet.");
-      }
-      throw new ChainError("unknown", (error as Error).message ?? "The wallet refused to connect.");
+      // 4001 from extensions, 5000 from WalletConnect wallets, closing its modal resets the request;
+      // -32002 when the wallet already shows a connection request.
+      throw toChainError(error, []);
     }
   }
 
