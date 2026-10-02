@@ -42,14 +42,40 @@ export const ARCH_EDGES: [from: string, to: string][] = [
 ];
 
 const SPACING = 1.5;
-const SHELF_Y = { portable: 1.55, chain: 0 } as const;
+const SHELF_GAP = 1.55;
+/** Crate centre above its plank. */
+const SIT = 0.36;
+/** Label offsets from a crate's centre: above it, or under its plank when a neighbour's name would cover it. */
+const LABEL_ABOVE = 0.62;
+const LABEL_BELOW = -0.58;
+
+/** Where a crate stands: x in crate spacings, and its shelf counted from the top. */
+type Spot = { col: number; row: number };
+
+/** Two long shelves: everything portable on top, one chain underneath. */
+const WIDE: Record<string, Spot> = Object.fromEntries(ARCH_NODES.map((n) => [n.id, { col: n.slot - 2, row: n.shelf === "portable" ? 0 : 1 }]));
+
+/** On a phone the long shelves would shrink the crates to crumbs: three short ones instead, the chain still at the bottom. */
+const NARROW: Record<string, Spot> = {
+  spec: { col: -1, row: 0 },
+  generator: { col: 0, row: 0 },
+  scene: { col: 1, row: 0 },
+  adapter: { col: -0.5, row: 1 },
+  web: { col: 0.5, row: 1 },
+  contracts: { col: -1, row: 2 },
+  evm: { col: 0, row: 2 },
+  solana: { col: 1, row: 2 },
+};
+const NARROW_SPACING = 1.6;
 
 interface Crate {
   node: ArchNode;
   group: Group;
+  base: number;
   lift: number;
   dim: number;
   label: HTMLElement;
+  labelAt: Vector3;
 }
 
 /**
@@ -64,25 +90,14 @@ export class ArchScene {
   private readonly crates = new Map<string, Crate>();
   private readonly threads: { from: string; to: string; mesh: Mesh; glow: number }[] = [];
   private active: string | null = null;
+  private readonly ground: Mesh;
+  /** Planks, posts and threads: rebuilt when the layout switches between wide and narrow. */
+  private rig: Group | null = null;
+  private narrow: boolean | null = null;
 
   constructor(host: HTMLElement) {
     const stage = (this.stage = new Stage(host));
-    stage.addGround(5, 1.6, -0.28);
-
-    // Two planks.
-    for (const shelf of ["portable", "chain"] as const) {
-      const geo = new BoxGeometry(SPACING * 5 + 0.6, 0.1, 1.3);
-      const plank = new Mesh(geo, toon(PALETTE.bench));
-      plank.position.set(0, SHELF_Y[shelf] - 0.05, 0);
-      plank.add(new Mesh(geo, outlineMaterial(PALETTE.ink, 0.012)));
-      stage.scene.add(plank);
-    }
-    for (const x of [-1, 1]) {
-      const geo = new BoxGeometry(0.1, SHELF_Y.portable + 1.3, 0.1);
-      const post = new Mesh(geo, toon(PALETTE.steel));
-      post.position.set(x * (SPACING * 2.5 + 0.25), (SHELF_Y.portable + 1.3) / 2 - 0.25, -0.55);
-      stage.scene.add(post);
-    }
+    this.ground = stage.addGround(5, 1.6, -0.28);
 
     for (const node of ARCH_NODES) {
       const group = new Group();
@@ -100,33 +115,22 @@ export class ArchScene {
         band.position.y = 0.12;
         group.add(body, band);
       }
-      group.position.set((node.slot - 2) * SPACING, SHELF_Y[node.shelf] + 0.36, 0);
       group.rotation.y = ((node.slot * 37) % 7) * 0.02 - 0.06;
       stage.scene.add(group);
       stage.pickables.push(group);
-      const label = stage.addLabel("crate", new Vector3(0, 0.62, 0), group);
+      const labelAt = new Vector3(0, LABEL_ABOVE, 0);
+      const label = stage.addLabel("crate", labelAt, group);
       label.textContent = node.name;
-      this.crates.set(node.id, { node, group, lift: 0, dim: 0, label });
-    }
-
-    for (const [from, to] of ARCH_EDGES) {
-      const a = this.crates.get(from)!.group.position;
-      const b = this.crates.get(to)!.group.position;
-      const mid = a.clone().lerp(b, 0.5);
-      mid.z += 0.95;
-      mid.y += a.y === b.y ? 0.55 : 0;
-      const curve = new CatmullRomCurve3([a.clone().setZ(0.42), mid, b.clone().setZ(0.42)]);
-      const ghost = this.crates.get(from)!.node.ghost;
-      const mesh = new Mesh(new TubeGeometry(curve, 32, 0.016, 6), new MeshBasicMaterial({ color: ghost ? PALETTE.spectral : PALETTE.tape, transparent: true, opacity: 0.4, depthWrite: false }));
-      stage.scene.add(mesh);
-      this.threads.push({ from, to, mesh, glow: 0 });
+      this.crates.set(node.id, { node, group, base: 0, lift: 0, dim: 0, label, labelAt });
     }
 
     stage.onHover = (id) => this.onHover?.(id);
     stage.onSelect = (id) => this.onSelect?.(id);
     stage.onLayout = (aspect) => {
       const narrow = aspect < 1.1;
-      stage.frame(new Vector3(0, 1.05, 0), SPACING * 5 + 1.9, narrow ? 4.4 : 3.6, new Vector3(narrow ? 0 : 0.18, 0.3, 1));
+      if (narrow !== this.narrow) this.arrange(narrow);
+      if (narrow) stage.frame(new Vector3(0, SHELF_GAP + 0.35, 0), NARROW_SPACING * 2 + 2.2, SHELF_GAP * 2 + 2.5, new Vector3(0, 0.3, 1));
+      else stage.frame(new Vector3(0, 1.05, 0), SPACING * 5 + 1.9, 3.6, new Vector3(0.18, 0.3, 1));
     };
     stage.onLayout(stage.camera.aspect);
     stage.onFrame((_time, dt) => this.update(dt));
@@ -139,6 +143,67 @@ export class ArchScene {
 
   dispose(): void {
     this.stage.dispose();
+  }
+
+  /** Puts the crates on their shelves, then builds the planks, posts and threads around them. */
+  private arrange(narrow: boolean): void {
+    this.narrow = narrow;
+    const spots = narrow ? NARROW : WIDE;
+    const spacing = narrow ? NARROW_SPACING : SPACING;
+    const rows = narrow ? 3 : 2;
+    const cols = narrow ? 3 : 5;
+    const shelfY = (row: number) => (rows - 1 - row) * SHELF_GAP;
+
+    for (const c of this.crates.values()) {
+      const spot = spots[c.node.id]!;
+      c.base = shelfY(spot.row) + SIT;
+      c.group.position.set(spot.col * spacing, c.base, 0);
+      // Under a phone's middle crate on the bottom shelf, its long name clears both neighbours.
+      c.labelAt.y = narrow && spot.row === rows - 1 && spot.col === 0 ? LABEL_BELOW : LABEL_ABOVE;
+    }
+    this.ground.scale.set(narrow ? 3.4 : 5, 1.6, 1);
+
+    if (this.rig) {
+      this.stage.scene.remove(this.rig);
+      this.rig.traverse((o) => {
+        const m = o as Mesh;
+        if (!m.isMesh) return;
+        m.geometry.dispose();
+        (m.material as MeshBasicMaterial).dispose();
+      });
+    }
+    const rig = (this.rig = new Group());
+    const width = spacing * cols + 0.6;
+    const top = shelfY(0);
+    for (let row = 0; row < rows; row++) {
+      const geo = new BoxGeometry(width, 0.1, 1.3);
+      const plank = new Mesh(geo, toon(PALETTE.bench));
+      plank.position.set(0, shelfY(row) - 0.05, 0);
+      plank.add(new Mesh(geo, outlineMaterial(PALETTE.ink, 0.012)));
+      rig.add(plank);
+    }
+    for (const x of [-1, 1]) {
+      const geo = new BoxGeometry(0.1, top + 1.3, 0.1);
+      const post = new Mesh(geo, toon(PALETTE.steel));
+      post.position.set(x * (width / 2 - 0.05), (top + 1.3) / 2 - 0.25, -0.55);
+      rig.add(post);
+    }
+
+    this.threads.length = 0;
+    for (const [from, to] of ARCH_EDGES) {
+      const a = this.crates.get(from)!.group.position;
+      const b = this.crates.get(to)!.group.position;
+      const mid = a.clone().lerp(b, 0.5);
+      mid.z += 0.95;
+      mid.y += a.y === b.y ? 0.55 : 0;
+      const curve = new CatmullRomCurve3([a.clone().setZ(0.42), mid, b.clone().setZ(0.42)]);
+      const ghost = this.crates.get(from)!.node.ghost;
+      const mesh = new Mesh(new TubeGeometry(curve, 32, 0.016, 6), new MeshBasicMaterial({ color: ghost ? PALETTE.spectral : PALETTE.tape, transparent: true, opacity: 0.4, depthWrite: false }));
+      rig.add(mesh);
+      this.threads.push({ from, to, mesh, glow: 0 });
+    }
+    this.stage.scene.add(rig);
+    this.stage.wake();
   }
 
   private update(dt: number): void {
@@ -154,7 +219,7 @@ export class ArchScene {
     for (const c of this.crates.values()) {
       c.lift = damp(c.lift, c.node.id === this.active ? 1 : 0, rate, dt);
       c.dim = damp(c.dim, this.active && !linked.has(c.node.id) ? 1 : 0, rate, dt);
-      c.group.position.y = SHELF_Y[c.node.shelf] + 0.36 + c.lift * 0.16;
+      c.group.position.y = c.base + c.lift * 0.16;
       c.group.scale.setScalar(1 - c.dim * 0.08);
       c.label.style.opacity = (1 - c.dim * 0.6).toFixed(2);
       c.label.classList.toggle("is-active", c.node.id === this.active);

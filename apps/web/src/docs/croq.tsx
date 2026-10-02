@@ -51,6 +51,32 @@ function Pipe({ d, label, lx, ly, color = C.tape, anchor = "middle" }: { d: stri
   );
 }
 
+/** A crate for the phone versions: the same box, drawn in HTML so its words wrap. */
+function Box({ title, sub, fill, dashed }: { title: string; sub: string; fill: string; dashed?: boolean }) {
+  return (
+    <div className={dashed ? "croq-box is-dashed" : "croq-box"} style={{ background: fill }}>
+      <strong>{title}</strong>
+      <span>{sub}</span>
+    </div>
+  );
+}
+
+/** One vertical pipe between two stacked crates, its label beside it. */
+function Lane({ label, note, color, up, side = "right" }: { label: string; note?: string; color: string; up?: boolean; side?: "left" | "right" }) {
+  return (
+    <div className={`croq-lane is-${side}`} style={{ color }}>
+      <svg viewBox="0 0 16 56" aria-hidden="true">
+        <path d={up ? "M8 54 L8 8" : "M8 2 L8 48"} stroke={color} strokeWidth={4} strokeLinecap="round" />
+        <path d={up ? "M1 12 L8 1 L15 12 Z" : "M1 44 L8 55 L15 44 Z"} fill={color} />
+      </svg>
+      <p>
+        {label}
+        {note && <small>{note}</small>}
+      </p>
+    </div>
+  );
+}
+
 function Heads() {
   return (
     <defs>
@@ -103,6 +129,34 @@ export function TwoTokensFigure() {
             {t("fig.croq.two.marketNote")}
           </text>
         </svg>
+      </div>
+      <div className="diagram-phone" role="img" aria-label={t("fig.croq.two.aria")}>
+        <div className="croq-zone" style={{ borderColor: C.sodium, background: "rgb(255 180 84 / 0.08)" }}>
+          <p className="croq-zone-head" style={{ color: C.sodium }}>
+            {t("fig.croq.two.public")}
+            <small>{t("fig.croq.two.marketNote")}</small>
+          </p>
+          <Box fill={C.sodium} title={t("fig.croq.two.market")} sub={t("fig.croq.two.marketSub")} />
+          <div className="croq-lanes">
+            <Lane side="left" color={C.sodium} label={t("fig.croq.two.buy")} />
+            <Lane up color={C.sodium} label={t("fig.croq.two.sell")} />
+          </div>
+          <Box fill={C.paper} title={symbol} sub={t("fig.croq.two.plainSub")} />
+        </div>
+        <div className="croq-lanes">
+          <Lane side="left" color={C.tape} label={t("fig.croq.two.wrap")} />
+          <Lane up color={C.tape} label={t("fig.croq.two.unwrap")} />
+        </div>
+        <p className="croq-note">{t("fig.croq.two.edgeNote")}</p>
+        <div className="croq-zone" style={{ borderColor: C.spectral, background: "rgb(125 227 208 / 0.07)" }}>
+          <p className="croq-zone-head" style={{ color: C.spectral }}>
+            {t("fig.croq.two.secret")}
+          </p>
+          <Box fill={C.spectral} title={confidentialSymbol} sub={t("fig.croq.two.confSub")} />
+          <div className="croq-lanes is-single">
+            <Lane color={C.spectral} label={t("fig.croq.two.game")} />
+          </div>
+        </div>
       </div>
       <figcaption>{t("fig.croq.two.caption", { symbol, csymbol: confidentialSymbol })}</figcaption>
     </figure>
@@ -174,6 +228,29 @@ export function TokenFlowFigure() {
           <Pipe d="M480 154 L480 296" label={t("fig.croq.flow.mealBurn", { burn })} lx={470} ly={232} color={C.red} anchor="end" />
           <Pipe d="M400 154 Q300 250 135 154" label={t("fig.croq.flow.back", { pct: back })} lx={250} ly={262} color={C.tape} />
         </svg>
+      </div>
+      <div className="diagram-phone" role="img" aria-label={t("fig.croq.flow.aria")}>
+        <Box fill={C.tape} title={t("fig.croq.flow.reserve")} sub={t("fig.croq.flow.reserveSub", { n: reserve.toLocaleString(locale) })} />
+        <div className="croq-lanes">
+          <Lane side="left" color={C.tape} label={t("fig.croq.flow.claim")} note={t("fig.croq.flow.claimNote", { bag: economy.welcomeBag.amount, max: economy.purr.maxPerDay })} />
+          <Lane up color={C.tape} label={t("fig.croq.flow.back", { pct: back })} />
+        </div>
+        <Box fill={C.spectral} title={t("fig.croq.flow.balance")} sub={t("fig.croq.flow.balanceSub")} />
+        <div className="croq-lanes is-single">
+          <Lane color={C.spectral} label={t("fig.croq.flow.meal", { cap: economy.meal.maxEatenPerDay.toLocaleString(locale) })} />
+        </div>
+        <Box fill={C.paper} dashed title={t("fig.croq.flow.cat")} sub={t("fig.croq.flow.catSub")} />
+        <p className="croq-note">{t("fig.croq.flow.weightNote")}</p>
+        <div className="croq-split">
+          <div>
+            <Lane color={C.kraft} label={t("fig.croq.flow.toTreasury", { pct: treasury })} />
+            <Box fill={C.kraft} title={t("fig.croq.flow.treasury")} sub={t("fig.croq.flow.treasurySub")} />
+          </div>
+          <div>
+            <Lane color={C.red} label={t("fig.croq.flow.mealBurn", { burn })} />
+            <Box fill={C.red} title={t("fig.croq.flow.burnt")} sub={t("fig.croq.flow.burntSub")} />
+          </div>
+        </div>
       </div>
       <figcaption>{t("fig.croq.flow.caption")}</figcaption>
     </figure>
