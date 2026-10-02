@@ -2,6 +2,7 @@ import { useChain } from "../chain/ChainProvider";
 import { gasFaucet, type Problem } from "../chain/copy";
 import { useT } from "../i18n/app";
 import { openWallet } from "../Masthead";
+import { openExchange } from "./exchangeLink";
 
 /** Why an action failed, what to try, and a way to get what was missing. */
 export function ProblemNote({ problem }: { problem: Problem }) {
@@ -18,11 +19,16 @@ export function ProblemNote({ problem }: { problem: Problem }) {
           ))}
         </ul>
       )}
-      {(problem.fix === "wallet" || faucet || problem.txUrl) && (
+      {(problem.fix === "wallet" || problem.fix === "exchange" || faucet || problem.txUrl) && (
         <p className="fine problem-ways">
           {problem.fix === "wallet" && (
             <button type="button" className="link" onClick={openWallet}>
               {t("problem.openWallet")}
+            </button>
+          )}
+          {problem.fix === "exchange" && (
+            <button type="button" className="link" onClick={() => openExchange(problem.wanted === "usdc" ? { from: "eth", to: "usdc" } : { from: "usdc", to: "cusdc" })}>
+              {t("problem.openExchange")}
             </button>
           )}
           {faucet && (

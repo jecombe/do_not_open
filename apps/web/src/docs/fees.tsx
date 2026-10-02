@@ -18,7 +18,7 @@ export const NEWCOMER_PER_DAY = 16;
 /** Units an encrypted input costs (RELAYER_INPUT_UNITS): Zama charges an input five times a decryption. */
 export const INPUT_UNITS = 5;
 /** The ramp's fee on ETH, in percent. */
-const RAMP_PCT = 0.3;
+export const RAMP_PCT = 0.3;
 
 const { meal } = spec.economy;
 

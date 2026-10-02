@@ -5,6 +5,7 @@ import {
   ChainError,
   sameAddress,
   type ActionOptions,
+  type SwapOptions,
   type Address,
   type AliveCheck,
   type BoxInfo,
@@ -330,8 +331,21 @@ export class MockAdapter implements ChainAdapter {
     return { usdcOut: ((coinIn - fee) * USDC_PER_ETH) / 10n ** 18n, fee };
   }
 
-  /** Gas is free in the mock, and so is the ETH: only the USDC side is tracked. */
-  async buyUsdc(coinIn: bigint, shield: boolean, opts?: ActionOptions): Promise<void> {
+  async unshieldUsdc(amount: bigint, opts?: ActionOptions): Promise<bigint> {
+    const me = this.signer();
+    if (amount <= 0n) throw revert("InvalidAmount");
+    await this.send(opts, "unwrap");
+    // Like cCROQ: the burn moves what the holder has, or nothing, and the decryption tells which.
+    const moved = (this.cUsdc.get(me) ?? 0n) >= amount ? amount : 0n;
+    await this.publish(opts, "finalizeUnwrap");
+    this.credit(this.cUsdc, me, -moved);
+    this.credit(this.usdc, me, moved);
+    return moved;
+  }
+
+  /** Gas is free in the mock, and so is the ETH: only the USDC side is tracked. The mock's
+   *  prices never move between quote and trade, so slippage never bites. */
+  async buyUsdc(coinIn: bigint, shield: boolean, opts?: SwapOptions): Promise<void> {
     const me = this.signer();
     const { usdcOut } = await this.quoteUsdc(coinIn);
     await this.send(opts, "buy");
@@ -785,7 +799,7 @@ export class MockAdapter implements ChainAdapter {
     return side === "buy" ? swapOut(amountIn, this.pool.usdc, this.pool.croq) : swapOut(amountIn, this.pool.croq, this.pool.usdc);
   }
 
-  async trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void> {
+  async trade(side: TradeSide, amountIn: bigint, opts?: SwapOptions): Promise<void> {
     const me = this.signer();
     if (amountIn <= 0n) throw revert("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
     if (side === "sell" && (this.plain.get(me) ?? 0n) < amountIn) throw revert("ERC20InsufficientBalance");

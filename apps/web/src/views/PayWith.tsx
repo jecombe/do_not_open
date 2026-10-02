@@ -4,7 +4,7 @@ import { useChain } from "../chain/ChainProvider";
 import { setPayment, usePayment } from "../chain/payment";
 import { useShielded } from "../chain/shielded";
 import { useT } from "../i18n/app";
-import { openWallet } from "../Masthead";
+import { openExchange } from "./exchangeLink";
 
 interface Props {
   /** The parent's running action: balances are read again once it is over. */
@@ -17,7 +17,7 @@ interface Props {
 
 /**
  * Picks how paid actions are paid: plain USDC, or cUSDC whose balance only its holder can read.
- * Shows what the chosen token holds, and sends to the wallet slip to buy or shield more.
+ * Shows what the chosen token holds, and sends to the bureau de change to buy or shield more.
  * The cUSDC balance is the one last decrypted there, if the user ever did.
  */
 export function PayWith({ busy, need, compact = false }: Props) {
@@ -61,7 +61,7 @@ export function PayWith({ busy, need, compact = false }: Props) {
             : stale
               ? t("pay.heldStale", { amount: amount(known.value), cSymbol })
               : t("pay.held", { amount: amount(known.value), symbol: cSymbol })}{" "}
-        <button type="button" className="link" onClick={openWallet}>
+        <button type="button" className="link" onClick={() => openExchange({ from: pay === "usdc" ? "eth" : "usdc", to: pay })}>
           {t("pay.getTokens")}
         </button>
       </p>

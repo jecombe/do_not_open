@@ -96,6 +96,18 @@ zeros unless the caller holds the cat), `weigh`, `wrap`, `unwrap` (a public decr
 the amount, then `finalizeUnwrap`), `sendCroquettes`, and `quote` / `trade` against the
 public market. See [`docs/CROQ.md`](../../docs/CROQ.md).
 
+USDC goes in and out the same way: `shieldUsdc(amount)` wraps plain USDC as cUSDC (the
+amount is public, the site takes nothing), and `unshieldUsdc(amount)` goes back through the
+cUSDC wrapper's `unwrap` (the amount encrypted in the page, a public decryption, then
+`finalizeUnwrap`, like a cCROQ unwrap). It returns what was paid out: 0 when the cUSDC
+balance did not cover `amount`, and then nothing moves. `quoteUsdc` / `buyUsdc(coinIn,
+shield)` buy USDC with the chain's coin through `UsdcRamp`, plain or shielded in the same
+transaction. `buyUsdc` and `trade` take `SwapOptions`: `slippageBps`, an integer from 1 to
+5000, 100 (1%) when left out, is how far under the quote the swap may land before it
+reverts; anything else throws before a transaction. The app's bureau de change
+(`apps/web/src/chain/exchange.ts`) chains these calls, one transaction per leg, to reach
+any pair.
+
 Where the API's relayer proxy pays Zama (`metered`), `decryptionAllowance()` returns the
 wallet's units: `freePerDay`, `freeLeft`, `credits`, `resetsAt`, the credit `price` in
 plain USDC and `inputUnits`, what one encrypted input costs (a decrypted value costs one).

@@ -87,6 +87,17 @@ describe("MockAdapter", () => {
     expect(await chain.confidentialUsdcBalance()).toBe(before + usdcOut);
   });
 
+  it("unshields cUSDC back to USDC, and moves nothing past the balance", async () => {
+    const chain = await fresh();
+    const usdc = await chain.usdcBalance(MOCK_YOU);
+    const cUsdc = await chain.confidentialUsdcBalance();
+    expect(await chain.unshieldUsdc(cUsdc + 1n)).toBe(0n);
+    expect(await chain.usdcBalance(MOCK_YOU)).toBe(usdc);
+    expect(await chain.unshieldUsdc(2_000_000n)).toBe(2_000_000n);
+    expect(await chain.usdcBalance(MOCK_YOU)).toBe(usdc + 2_000_000n);
+    expect(await chain.confidentialUsdcBalance()).toBe(cUsdc - 2_000_000n);
+  });
+
   it("announces milestones as the hidden sold count reaches them", async () => {
     const chain = await fresh();
     for (let i = 0; i < 5; i++) await chain.faucetUsdc();

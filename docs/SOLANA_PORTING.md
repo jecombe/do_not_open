@@ -153,6 +153,7 @@ a box and of a duel are the ones in [FLOWS.md](FLOWS.md).
 | `mint` ... `claimEarnings`, `sendBox` | one contract call each | one instruction each, with the accounts derived from token ids |
 | `shake` decryption | EIP-712 permit + `userDecrypt` | ed25519-signed permit + the SVM SDK's user decryption |
 | `finish*` | `publicDecrypt` then a `finalize*` call | same, possibly through a proof buffer account |
+| `buyUsdc`, `trade` with `slippageBps`; `shieldUsdc`, `unshieldUsdc`, `wrap`, `unwrap` | Uniswap V2 router with a minimum out; ERC-7984 `wrap`, and `unwrap` + public decryption + `finalizeUnwrap` | a Solana AMM swap with a minimum out; the confidential token program's deposit and withdraw, the withdrawn amount made public the same way |
 | steps `wallet`, `confirming`, `decrypting`, `proving` | as is | as is |
 | `ChainError.reason` | Solidity custom error name | Anchor error name, kept identical |
 | `ChainError.detail` | `held`/`needed` from a dry run (`estimateGas`) and the balances; `resumable`/`landed` after the first transaction | `simulateTransaction` for the dry run and the fee; the same flags |

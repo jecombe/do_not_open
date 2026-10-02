@@ -4,7 +4,7 @@ import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
-import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY } from "./fees";
+import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY, RAMP_PCT } from "./fees";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 
@@ -17,7 +17,7 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
  * part about the testnet, which goes away at mainnet; and the part for developers.
  */
 const PARTS = [
-  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "transfer", "croquettes"] },
+  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "exchange", "transfer", "croquettes"] },
   { key: "testnet", sections: ["testnet"] },
   { key: "dev", sections: ["code", "solana", "more"] },
 ] as const;
@@ -287,6 +287,16 @@ export function Manual() {
               <p>{t("docs.fees.p2")}</p>
               <p>{t("docs.fees.p3", { free: FREE_PER_DAY, newcomer: NEWCOMER_PER_DAY, input: INPUT_UNITS })}</p>
               <p>{t("docs.fees.p4")}</p>
+            </div>
+          </section>
+
+          <section id="exchange">
+            <h2>{t("docs.section.exchange")}</h2>
+            <div className="prose">
+              <p>{t("docs.exchange.p1")}</p>
+              <p>{t("docs.exchange.p2")}</p>
+              <p>{t("docs.exchange.p3", { pct: RAMP_PCT })}</p>
+              <p>{t("docs.exchange.p4")}</p>
             </div>
           </section>
 

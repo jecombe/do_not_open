@@ -1682,3 +1682,15 @@ button {
 .share-card.is-story img {
   width: 62%;
 }
+
+/* The wallet slip sends to the bureau de change rather than trading itself. */
+.slip-exchange {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 4px 0 6px;
+}
+
+.slip-exchange .plain-button {
+  font-size: 16px;
+}

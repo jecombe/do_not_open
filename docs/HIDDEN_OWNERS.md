@@ -124,6 +124,7 @@ The Pantry asks `DoNotOpen.isOwner` as a trusted reader (`setTrustedReader`, set
 | --- | --- |
 | A mint | the buyer's address and how many ids it created: an upper bound on what they bought |
 | Shielding USDC | the amount (cUSDC wrapping is public) |
+| Unshielding cUSDC | the amount (decrypted in public to be paid out as plain USDC) |
 | A transfer attempt | sender and recipient addresses, not whether it moved |
 | A paid shake, a feed, a claim | that the caller did it, not whether they hold the box |
 | An opening, an alive check, an accepted entanglement, a proven duel posting, a valid duel | that the caller held the box at that moment |

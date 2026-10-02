@@ -1,0 +1,903 @@
+/* --- The bureau de change: a counter at the back of the warehouse --- */
+.bureau {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: calc(var(--gutter) + 96px) var(--gutter) calc(var(--gutter) + 64px);
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 18%, rgb(255 180 84 / 0.16), transparent 70%),
+    repeating-linear-gradient(90deg, rgb(184 137 90 / 0.05) 0 2px, transparent 2px 120px),
+    var(--dock-shadow);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* A stencilled wall behind the counter, barely there. */
+.bureau-sign {
+  position: absolute;
+  top: 46%;
+  left: -10%;
+  width: 120%;
+  font-family: var(--stencil);
+  font-size: clamp(60px, 11vw, 160px);
+  line-height: 1;
+  white-space: nowrap;
+  color: rgb(194 38 29 / 0.06);
+  transform: rotate(-8deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+.bureau-head {
+  position: relative;
+  max-width: 940px;
+  margin: 0 auto 22px;
+  text-align: center;
+}
+
+.bureau-title {
+  display: inline-block;
+  margin: 0;
+  padding: 0.14em 0.5em 0.04em;
+  font-family: var(--stencil);
+  font-size: clamp(30px, 5vw, 56px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sodium);
+  border: 0.09em solid var(--sodium);
+  outline: 0.03em solid var(--sodium);
+  outline-offset: -0.2em;
+  transform: rotate(-1.5deg);
+}
+
+.bureau-tagline {
+  max-width: 52ch;
+  margin: 14px auto 0;
+  font-size: 18px;
+  color: rgb(233 223 200 / 0.78);
+}
+
+.bureau-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 540px) minmax(0, 300px);
+  justify-content: center;
+  align-items: start;
+  gap: 28px;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+/* --- The counter slip --- */
+.counter {
+  position: relative;
+  padding: 22px 22px 22px;
+  background: var(--manifest);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 6px var(--manifest), 0 28px 60px rgb(0 0 0 / 0.6);
+}
+
+.counter-tape {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  width: 150px;
+  height: 30px;
+  background: rgb(217 194 138 / 0.85);
+  transform: translateX(-50%) rotate(-2deg);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
+}
+
+.counter-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.quick button {
+  padding: 3px 9px 2px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.quick button[aria-pressed="true"],
+.quick button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.quick button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.gear {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.gear:hover,
+.gear.is-open {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.gear svg {
+  transition: transform 0.3s;
+}
+
+.gear.is-open svg {
+  transform: rotate(60deg);
+}
+
+/* --- Slippage settings --- */
+.settings {
+  margin: 0 0 14px;
+  padding: 10px 12px 12px;
+  border: 2px dashed var(--ink);
+  background: rgb(28 24 20 / 0.04);
+}
+
+.settings-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.settings-row > button {
+  min-width: 58px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-weight: 700;
+}
+
+.settings-row > button[aria-pressed="true"],
+.settings-row > button:hover {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.settings-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 2px solid var(--ink);
+}
+
+.settings-custom input {
+  width: 64px;
+  padding: 5px 0;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  outline: none;
+}
+
+/* --- The two crates: what goes over the counter, and what comes back --- */
+.crate {
+  position: relative;
+  padding: 12px 14px 14px;
+  background: #f3ecdb;
+  border: 2px solid var(--ink);
+}
+
+.crate.is-receive {
+  background: rgb(184 137 90 / 0.16);
+}
+
+/* A sealed token comes back taped shut: a strip of red tape down its left edge. */
+.crate.is-sealed {
+  box-shadow: inset 6px 0 0 rgb(194 38 29 / 0.55);
+}
+
+.crate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crate-row + .crate-row {
+  margin-top: 6px;
+}
+
+.crate-label {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.holding {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sealed-dots {
+  letter-spacing: 0.1em;
+}
+
+.max {
+  padding: 0 6px;
+  background: var(--ink-red);
+  color: var(--manifest);
+  border: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.max:hover:not(:disabled) {
+  background: var(--ink);
+}
+
+.crate-amount {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-family: var(--label);
+  font-size: clamp(34px, 6vw, 46px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crate-amount::placeholder,
+.crate-placeholder {
+  color: rgb(28 24 20 / 0.3);
+}
+
+input.crate-amount[aria-invalid="true"] {
+  color: var(--ink-red);
+}
+
+.crate-amount.is-quoting {
+  animation: bureau-pulse 1.1s ease-in-out infinite;
+}
+
+.approx {
+  margin-right: 4px;
+  opacity: 0.55;
+}
+
+.crate-note {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: var(--ink-red);
+  font-weight: 600;
+}
+
+.crate:focus-within:not(.is-receive) {
+  box-shadow: 0 0 0 3px var(--sodium);
+}
+
+/* --- Token button and coin badges --- */
+.token-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 7px;
+  background: var(--manifest);
+  border: 2px solid var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 80ms, box-shadow 80ms;
+}
+
+.token-button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.token-button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.token-button .caret {
+  margin-left: 2px;
+}
+
+.token-button[aria-expanded="true"] .caret {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+.coin {
+  position: relative;
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-family: var(--label);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--manifest);
+  border: 2px solid var(--ink);
+}
+
+.coin-eth {
+  background: #4a4f6b;
+}
+
+.coin-usdc,
+.coin-cusdc {
+  background: #2c6bb3;
+}
+
+.coin-croq,
+.coin-ccroq {
+  background: var(--kraft);
+}
+
+/* Sealed: a strip of red tape across the coin, and a wax dot. */
+.coin.is-sealed {
+  background-image: linear-gradient(-35deg, transparent 42%, var(--ink-red) 42%, var(--ink-red) 58%, transparent 58%);
+}
+
+.coin.is-sealed::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  border: 2px solid var(--manifest);
+}
+
+/* --- Token picker --- */
+.token-list {
+  position: absolute;
+  top: calc(100% - 6px);
+  right: 10px;
+  z-index: 5;
+  display: grid;
+  width: min(300px, calc(100% - 20px));
+  padding: 6px;
+  background: var(--manifest);
+  border: 2px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink), 0 20px 40px rgb(0 0 0 / 0.35);
+}
+
+.token-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+
+.token-list button:hover:not(:disabled),
+.token-list button:focus-visible {
+  background: rgb(28 24 20 / 0.08);
+}
+
+.token-list button[aria-selected="true"] {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.token-list button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.token-name {
+  display: grid;
+  line-height: 1.05;
+}
+
+.token-name strong {
+  font-size: 18px;
+}
+
+.token-name small {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.token-held {
+  margin-left: auto;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The flip stamp between the crates --- */
+.flip-wrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  height: 10px;
+}
+
+.flip {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-top: -18px;
+  background: var(--manifest);
+  color: var(--ink-red);
+  border: 3px solid var(--ink-red);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--manifest);
+  transition: transform 0.25s ease, background 0.15s;
+}
+
+.flip:hover:not(:disabled) {
+  background: var(--ink-red);
+  color: var(--manifest);
+}
+
+.flip.is-flipped {
+  transform: rotate(180deg);
+}
+
+.flip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* --- Route --- */
+.route {
+  margin: 16px 0 0;
+}
+
+.route-title {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.route-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.route-hop {
+  display: contents;
+}
+
+.route-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.route-stop .coin {
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+}
+
+.route-leg {
+  position: relative;
+  padding: 1px 8px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1.5px dashed var(--ink);
+}
+
+.route-leg::after {
+  content: "▸";
+  margin-left: 4px;
+}
+
+.route-leg.is-now {
+  border-style: solid;
+  border-color: var(--ink-red);
+  color: var(--ink-red);
+  animation: bureau-pulse 1.1s ease-in-out infinite;
+}
+
+.route-leg.is-past {
+  background: var(--ink);
+  color: var(--manifest);
+  border-style: solid;
+}
+
+/* --- Manifest: the fine print, set like a packing list --- */
+.manifest {
+  display: grid;
+  margin: 16px 0 0;
+  padding: 6px 0;
+  border-block: 2px solid var(--ink);
+  font-size: 16px;
+}
+
+.manifest > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgb(28 24 20 / 0.3);
+}
+
+.manifest > div:last-of-type {
+  border-bottom: 0;
+}
+
+.manifest dt {
+  font-weight: 500;
+}
+
+.manifest dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.manifest dd.is-warn {
+  color: #a85a00;
+}
+
+.manifest dd.is-bad {
+  color: var(--ink-red);
+}
+
+.manifest-public {
+  flex-direction: column;
+  gap: 2px !important;
+}
+
+.manifest-public dd {
+  text-align: left;
+  font-weight: 500;
+}
+
+.manifest-public ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 15px;
+}
+
+.manifest-warn {
+  margin: 6px 0 2px;
+  max-width: none;
+}
+
+.counter-problem {
+  margin-top: 14px;
+}
+
+.counter-hint {
+  margin-top: 10px;
+  max-width: none;
+}
+
+.counter-go {
+  margin-top: 16px;
+  padding: 16px 12px 11px;
+  font-size: 30px;
+}
+
+.counter-go.is-risky:not(:disabled) {
+  background: var(--ink-red);
+  color: var(--manifest);
+}
+
+/* --- Progress and receipt --- */
+.progress {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 2px solid var(--ink);
+  background: rgb(28 24 20 / 0.04);
+}
+
+.progress ol {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.progress li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 700;
+  opacity: 0.45;
+}
+
+.progress li.done,
+.progress li.now {
+  opacity: 1;
+}
+
+.progress li small {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-red);
+}
+
+.progress .tick {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+
+.progress li.done .tick {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--manifest);
+}
+
+.progress li.now .tick {
+  border-color: var(--ink-red);
+  border-top-color: transparent;
+  animation: tracker-spin 0.9s linear infinite;
+}
+
+.progress .fine + .fine {
+  margin-top: 4px;
+}
+
+.done {
+  position: relative;
+  margin-top: 16px;
+  padding: 18px 14px 14px;
+  border: 2px solid var(--ink);
+  text-align: center;
+}
+
+.done-stamp {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 4px 14px 0;
+  font-family: var(--stencil);
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--ink-red);
+  border: 4px solid var(--ink-red);
+  transform: rotate(-6deg);
+  animation: bureau-stamp 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+.done-line {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.done .fine {
+  margin: 0 auto 12px;
+}
+
+.done .plain-button {
+  min-width: 180px;
+}
+
+/* --- Ledger: what the account holds --- */
+.ledger {
+  position: sticky;
+  top: 96px;
+  padding: 16px 16px 14px;
+  background: rgb(233 223 200 / 0.06);
+  border: 2px solid rgb(233 223 200 / 0.35);
+  color: var(--manifest);
+}
+
+.ledger-title {
+  margin: 0 0 10px;
+  font-family: var(--stencil);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tape);
+}
+
+.ledger ul {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.ledger li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px dashed rgb(233 223 200 / 0.22);
+}
+
+.ledger li.is-current {
+  background: rgb(255 180 84 / 0.1);
+}
+
+.ledger-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  background: none;
+  border: 0;
+  text-align: left;
+}
+
+.ledger-pick:hover:not(:disabled) strong {
+  color: var(--sodium);
+}
+
+.ledger .coin {
+  border-color: var(--manifest);
+}
+
+.ledger-amount {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger .fine {
+  color: rgb(233 223 200 / 0.75);
+}
+
+.ledger .fine + .fine {
+  margin-top: 8px;
+}
+
+.ledger .link:hover {
+  color: var(--sodium);
+}
+
+/* The footer notice sits over the scrolling counter: give it a floor to stand on. */
+.app:has(.bureau) .notice {
+  inset: auto 0 0;
+  padding: 22px var(--gutter) var(--gutter);
+  background: linear-gradient(transparent, var(--dock-shadow) 55%);
+}
+
+@keyframes bureau-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes bureau-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.8) rotate(-12deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .bureau-grid {
+    grid-template-columns: minmax(0, 560px);
+  }
+
+  .ledger {
+    position: relative;
+    top: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .bureau {
+    padding-top: calc(var(--gutter) + 100px);
+  }
+
+  .bureau-sign {
+    display: none;
+  }
+
+  .bureau-tagline {
+    font-size: 16px;
+  }
+
+  .counter {
+    padding: 18px 12px 14px;
+    box-shadow: 0 0 0 4px var(--manifest), 0 18px 40px rgb(0 0 0 / 0.55);
+  }
+
+  .crate {
+    padding: 10px 10px 12px;
+  }
+
+  .token-button {
+    padding: 5px 9px 5px 5px;
+    font-size: 18px;
+  }
+
+  .counter-go {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip,
+  .gear svg,
+  .token-button {
+    transition: none;
+  }
+
+  .crate-amount.is-quoting,
+  .route-leg.is-now,
+  .progress li.now .tick,
+  .done-stamp {
+    animation: none;
+  }
+}

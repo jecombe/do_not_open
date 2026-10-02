@@ -2,14 +2,13 @@ import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 
 import { formatAmount, shortAddress, type Address, type ChainAdapter, type DecryptionAllowance } from "@dno/chain-adapter";
 import { useAction, useChain } from "./chain/ChainProvider";
 import { stepCopy } from "./chain/copy";
-import { usePayment } from "./chain/payment";
 import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
-import { parseAmount } from "./views/PantryView";
+import { openExchange } from "./views/exchangeLink";
 import { ProblemNote } from "./views/ProblemNote";
 
-/** Any view may open the wallet slip, to send the user where tokens are bought and shielded. */
+/** Any view may open the wallet slip: balances, decryption credits, the way out. */
 const openers = new Set<() => void>();
 export function openWallet(): void {
   for (const o of openers) o();
@@ -21,6 +20,7 @@ export const VIEWS = [
   { key: "duels", label: "nav.duels" },
   { key: "pair", label: "nav.pair" },
   { key: "pantry", label: "nav.pantry" },
+  { key: "exchange", label: "nav.exchange" },
   { key: "leaderboard", label: "nav.leaderboard" },
   { key: "specimens", label: "nav.specimens" },
 ] as const satisfies readonly { key: string; label: AppKey }[];
@@ -181,7 +181,8 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
   );
 }
 
-/** The connected account up close: its full address, what it holds, ways to get USDC and cUSDC, and the way out. */
+/** The connected account up close: its full address, what it holds, the way to the bureau de
+ *  change to get more, the test faucet, decryption credits, and the way out. */
 function WalletSlip({ id, account, onDisconnect }: { id: string; account: Address; onDisconnect: () => void }) {
   const { adapter, collection } = useChain();
   const t = useT();
@@ -189,11 +190,6 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
   const shielded = useShielded(own.busy);
   const [balance, setBalance] = useState<bigint | null | "unread">(null);
   const [usdc, setUsdc] = useState<bigint | null>(null);
-  const [shieldText, setShieldText] = useState("");
-  const [buyText, setBuyText] = useState("");
-  const pay = usePayment();
-  const [buyShielded, setBuyShielded] = useState(pay === "cusdc");
-  const [quote, setQuote] = useState<{ usdcOut: bigint; fee: bigint } | null>(null);
   const payment = collection?.payment;
   // Anything but a decryption may have moved money.
   const moving = own.busy === "reveal" ? null : own.busy;
@@ -213,35 +209,8 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
   }, [adapter, account, payment, moving]);
 
   const currency = collection?.currency ?? { symbol: "ETH", decimals: 18 };
-  const coinIn = parseAmount(buyText, currency.decimals);
-  const hasRamp = !!payment?.ramp;
-  useEffect(() => {
-    setQuote(null);
-    if (!coinIn || !hasRamp) return;
-    let live = true;
-    const timer = setTimeout(() => void adapter.quoteUsdc(coinIn).then((q) => live && setQuote(q), () => undefined), 250);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [adapter, coinIn, hasRamp]);
-
   const amount = (v: bigint) => (payment ? formatAmount(v, payment.decimals) : "");
-  const shieldAmount = payment ? parseAmount(shieldText, payment.decimals) : null;
-  const shieldTooMuch = !!shieldAmount && usdc !== null && shieldAmount > usdc;
   const working = !!own.busy;
-
-  const shield = async () => {
-    if (!shieldAmount || shieldTooMuch) return;
-    // `run` answers undefined on failure: return something on success to tell them apart.
-    if (!(await own.run("shield", (o) => adapter.shieldUsdc(shieldAmount, o).then(() => true)))) return;
-    setShieldText("");
-  };
-  const buy = async () => {
-    if (!coinIn) return;
-    if (!(await own.run("buy", (o) => adapter.buyUsdc(coinIn, buyShielded, o).then(() => true)))) return;
-    setBuyText("");
-  };
   const { known, stale } = shielded;
 
   return (
@@ -274,58 +243,18 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
               {stale ? t("nav.decryptStale") : known ? t("nav.decryptKept") : t("nav.decryptHint")}
             </p>
 
-            <DecryptionCredits id={id} adapter={adapter} own={own} symbol={payment.symbol} decimals={payment.decimals} />
-
             <p className="slip-heading">{t("nav.getTokens")}</p>
-            {payment.ramp && (
-              <>
-                <form
-                  className="find"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void buy();
-                  }}
-                >
-                  <label htmlFor={`${id}-buy`}>{t("pay.buyLabel", { coin: currency.symbol, symbol: buyShielded ? payment.confidentialSymbol : payment.symbol })}</label>
-                  <input id={`${id}-buy`} inputMode="decimal" autoComplete="off" value={buyText} onChange={(e) => setBuyText(e.target.value)} placeholder="0.01" disabled={working} />
-                  <button type="submit" className="plain-button" disabled={working || !coinIn}>
-                    {own.busy === "buy" ? t("pay.buying") : t("pay.buyGo")}
-                  </button>
-                </form>
-                <p className="fine">
-                  <label>
-                    <input type="checkbox" checked={buyShielded} onChange={(e) => setBuyShielded(e.target.checked)} disabled={working} />{" "}
-                    {t("pay.buyShielded", { cSymbol: payment.confidentialSymbol })}
-                  </label>
-                </p>
-                <p className="fine">
-                  {quote
-                    ? t("pay.buyQuote", {
-                        out: amount(quote.usdcOut),
-                        symbol: buyShielded ? payment.confidentialSymbol : payment.symbol,
-                        fee: formatAmount(quote.fee, currency.decimals),
-                        coin: currency.symbol,
-                        pct: payment.ramp.feeBps / 100,
-                      })
-                    : t("pay.buyHint", { pct: payment.ramp.feeBps / 100, coin: currency.symbol })}
-                </p>
-              </>
-            )}
-
-            <form
-              className="find"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void shield();
-              }}
-            >
-              <label htmlFor={`${id}-shield`}>{t("pay.shieldLabel", { symbol: payment.symbol, cSymbol: payment.confidentialSymbol })}</label>
-              <input id={`${id}-shield`} inputMode="decimal" autoComplete="off" value={shieldText} onChange={(e) => setShieldText(e.target.value)} placeholder={usdc ? amount(usdc) : "1"} disabled={working} />
-              <button type="submit" className="plain-button" disabled={working || !shieldAmount || shieldTooMuch}>
-                {own.busy === "shield" ? t("pay.shielding") : t("pay.shieldGo")}
+            <div className="slip-exchange">
+              {payment.ramp && (
+                <button type="button" className="plain-button" onClick={() => openExchange({ from: "eth", to: "cusdc" })} disabled={working}>
+                  {t("nav.buyStable", { symbol: payment.symbol })}
+                </button>
+              )}
+              <button type="button" className="plain-button" onClick={() => openExchange({ from: "usdc", to: "cusdc" })} disabled={working}>
+                {t("nav.shieldUnshield")}
               </button>
-            </form>
-            <p className="fine">{shieldTooMuch ? t("pay.short", { need: amount(shieldAmount!), symbol: payment.symbol }) : t("pay.shieldFree")}</p>
+            </div>
+            <p className="fine">{t("nav.exchangeHint")}</p>
 
             {payment.faucet !== null && (
               <p className="fine">
@@ -334,6 +263,9 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
                 </button>
               </p>
             )}
+
+            <DecryptionCredits id={id} adapter={adapter} own={own} symbol={payment.symbol} decimals={payment.decimals} />
+
             <div aria-live="polite">
               {own.error ? <ProblemNote problem={own.error} /> : own.busy ? <p className="fine">{stepCopy(own.step, own.busy === "reveal")}</p> : null}
             </div>

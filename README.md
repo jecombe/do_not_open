@@ -9,7 +9,8 @@ encrypted too: `DoNotOpen` is a Confidential ERC-721, and only milestones of the
 announced. See [`docs/HIDDEN_OWNERS.md`](docs/HIDDEN_OWNERS.md).
 
 Prices are in USDC and paid in cUSDC, Zama's confidential USDC, so no amount is public;
-the app shields plain USDC first when needed. Holders pet their cats (affection, which can turn the accessory golden) and feed
+the app shields plain USDC first when needed. The app's bureau de change swaps between ETH,
+USDC, cUSDC, CROQ and cCROQ in one form, with the route, fees and slippage shown before signing. Holders pet their cats (affection, which can turn the accessory golden) and feed
 them croquettes (CROQ), a game currency with encrypted balances. The cat eats every
 croquette and puts on a weight nobody can read; when the box is opened, the cat is
 weighed in public. The heavier it is, the rarer its build, and past a tolerance of its
@@ -76,7 +77,8 @@ VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app.html?ch
 ```
 
 You need a browser wallet with a little Sepolia ETH for gas. Prices are in Zama's test USDC
-on Sepolia; the shelf has a button that mints some, and another that shields it as cUSDC.
+on Sepolia; the wallet slip has a button that mints some, and the bureau de change (in the
+menu) shields it as cUSDC, buys it with ETH or trades it for croquettes.
 Who holds a box is encrypted, so the app finds yours from your own transfer receipts: one
 decryption signature per visit ("Show my boxes"). `?chain=mock` and `?chain=sepolia`
 switch modes without restarting.

@@ -11,8 +11,11 @@ export interface Problem {
   hints: string[];
   /** The transaction that failed, in a block explorer. */
   txUrl: string | null;
-  /** Where to get what was missing: the wallet slip (USDC, cUSDC, decryption credits), or a faucet for the gas coin. */
-  fix: "wallet" | "gas" | null;
+  /** Where to get what was missing: the wallet slip (decryption credits), the bureau de change
+   *  (USDC, cUSDC), or a faucet for the gas coin. */
+  fix: "wallet" | "exchange" | "gas" | null;
+  /** With `fix: "exchange"`, the token the bureau should offer. */
+  wanted?: "usdc" | "cusdc";
 }
 
 /** What an action says, instead of the generic line, when it stopped half-way. */
@@ -75,7 +78,8 @@ export function problemOf(error: unknown, ctx: ProblemContext = {}): Problem {
       p.text = t("error.usdc");
       if (held !== undefined && needed !== undefined && c) p.hints.push(t("problem.usdcHave", { held: usdc(held), needed: usdc(needed), symbol: c.payment.symbol }));
       p.hints.push(t("problem.usdcHint"));
-      p.fix = "wallet";
+      p.fix = "exchange";
+      p.wanted = "usdc";
       break;
     case "unpaid":
       p.text = t("error.unpaid");
@@ -86,7 +90,8 @@ export function problemOf(error: unknown, ctx: ProblemContext = {}): Problem {
         p.hints.push(t("problem.unpaidAfter"));
       }
       p.hints.push(t("problem.unpaidHint", { symbol: c?.payment.symbol ?? "USDC", cSymbol: c?.payment.confidentialSymbol ?? "cUSDC" }));
-      p.fix = "wallet";
+      p.fix = "exchange";
+      p.wanted = "cusdc";
       break;
     case "not-yours":
       p.text = t("error.notYours");
