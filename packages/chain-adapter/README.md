@@ -96,6 +96,13 @@ zeros unless the caller holds the cat), `weigh`, `wrap`, `unwrap` (a public decr
 the amount, then `finalizeUnwrap`), `sendCroquettes`, and `quote` / `trade` against the
 public market. See [`docs/CROQ.md`](../../docs/CROQ.md).
 
+Where the API's relayer proxy pays Zama (`metered`), `decryptionAllowance()` returns the
+wallet's units: `freePerDay`, `freeLeft`, `credits`, `resetsAt`, the credit `price` in
+plain USDC and `inputUnits`, what one encrypted input costs (a decrypted value costs one).
+Every encryption sends the session's decryption permit as a bearer token, so the input is
+charged to this wallet; a mint, a meal or a croquette send checks the allowance first and
+fails with `no-credits` before any gas. `buyCredits(n)` buys more.
+
 ## What happens in a shake
 
 ```mermaid

@@ -26,6 +26,7 @@ import { loadSpec } from "../lib/specParams";
  *   npx hardhat --network <net> dno:paid-shake --token 0        (caller must not hold the box)
  *   npx hardhat --network <net> dno:entangle --a 0 --b 1         (caller must hold both)
  *   npx hardhat --network <net> dno:duel --a 0 --b 1             (caller must hold both)
+ *   npx hardhat --network <net> dno:credit-price --zama 0.001 --margin 2   (owner: credits follow Zama's plan)
  *
  * With a second account, use the contract directly: propose/accept and challenge/accept
  * are separate calls, one per holder.
@@ -342,6 +343,24 @@ withAddress("dno:demo", "Full walkthrough: mint, shake twice, prove alive, obser
   console.log("");
   await observe(hre, args, tokenId!);
 });
+
+task("dno:credit-price", "Sets the decryption credit's USDC price from Zama's dollar price for one decryption")
+  .addOptionalParam("zama", "Zama's price for one decryption on the collection's plan, in US dollars (0.001 to 0.1)")
+  .addOptionalParam("margin", "Times Zama's price: covers the free allowance and the public decryptions", "2")
+  .addOptionalParam("usdc", "Or the price itself, in USDC")
+  .setAction(async (args: TaskArguments, hre) => {
+    const { creditPrice } = await import("../lib/creditPrice");
+    const deployment = await hre.deployments.get("DecryptionCredits");
+    const credits = await hre.ethers.getContractAt("DecryptionCredits", deployment.address);
+    const before: bigint = await credits.price();
+    if (!args.zama && !args.usdc) {
+      console.log(`DecryptionCredits ${deployment.address}: ${hre.ethers.formatUnits(before, 6)} USDC a credit`);
+      return;
+    }
+    const price = args.usdc ? hre.ethers.parseUnits(String(args.usdc), 6) : creditPrice(String(args.zama), String(args.margin));
+    await (await credits.setPrice(price)).wait();
+    console.log(`DecryptionCredits ${deployment.address}: ${hre.ethers.formatUnits(before, 6)} -> ${hre.ethers.formatUnits(price, 6)} USDC a credit`);
+  });
 
 task("dno:export", "Writes the address and ABI of this network's deployment where the chain adapter reads them").setAction(
   async (_args, hre) => {

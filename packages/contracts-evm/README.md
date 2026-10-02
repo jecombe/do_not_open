@@ -90,7 +90,12 @@ plus the welcome bags (11M), and, on a network listed in `UNISWAP_V2` (Sepolia),
 CROQ/USDC pool with the 4M liquidity share and `LIQUIDITY_USDC` USDC (default 4,000). The
 LP tokens are sent to `0x…dEaD`, so that liquidity is locked for good. The rest of the
 supply (the treasury) stays with the deployer, or goes to `COLLECTION_OWNER` if it is set.
-`deploy/ramp.ts` deploys the `UsdcRamp`.
+`deploy/ramp.ts` deploys the `UsdcRamp`. `deploy/credits.ts` deploys `DecryptionCredits`,
+priced at `CREDIT_PRICE_USDC`, or Zama's dollar price for one decryption (`ZAMA_DECRYPT_USD`)
+times `CREDIT_MARGIN` (2), rounded up (`lib/creditPrice.ts`): a credit follows Zama's dollar
+price, never $ZAMA's market price. Change it later without redeploying:
+`npx hardhat --network <net> dno:credit-price --zama 0.001 --margin 2` (or `--usdc 0.002`;
+no argument prints the current price).
 `CROQ_CONTRACT_URI` sets cCROQ's contract URI (default empty).
 
 `Pantry.fund` calls FHE, so the economy script fails on the bare in-process `hardhat`

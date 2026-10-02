@@ -186,7 +186,13 @@ interface Permit {
   privateKey: string;
   signature: string;
   start: number;
+  /** What the signature covers, besides the key and the start: the proxy checks it again. */
+  contracts: string[];
+  extraData: string;
 }
+
+/** An encrypted input being built, as the Relayer SDK hands it out. */
+type InputBuilder = ReturnType<Relayer["createEncryptedInput"]>;
 
 /**
  * DO NOT OPEN on an EVM chain running Zama's FHEVM.
@@ -719,16 +725,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const { fees, maxPerTx } = await this.collection();
     const ids = Math.min(maxPerTx, Math.max(quantity, opts?.ids ?? maxPerTx));
     // Each id's receipt is decrypted to learn which are real.
-    await this.ensureDecryptions(ids);
+    await this.ensureDecryptions(ids, 1);
     await this.prepay(opts, fees.mint * BigInt(quantity));
     const account = await this.signer().getAddress();
-    opts?.onStep?.("encrypting");
-    let input;
-    try {
-      input = await (await this.loadRelayer()).createEncryptedInput(this.opts.address, account).add8(quantity).encrypt();
-    } catch (error) {
-      throw new ChainError("decryption", `Could not encrypt the quantity: ${(error as Error)?.message ?? "unknown error"}`);
-    }
+    const input = await this.encrypt(this.opts.address, account, (b) => b.add8(quantity), "the quantity", opts);
     const receipt = await this.send(opts, (c) => c.mint!(input.handles[0], input.inputProof, ids));
     // The new ids that are the account's: its receipts say, and only it can read them.
     const transfers = this.events(receipt, "ConfidentialTransfer");
@@ -896,18 +896,21 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   /** What the wallet has left against what an action needs, for a `no-credits` error. */
   private async creditsDetail(needed: number): Promise<ChainErrorDetail> {
+    // `needed` is in units: an input counts `inputUnits`.
     const allowance = await this.decryptionAllowance().catch(() => null);
     return { needed: BigInt(needed), ...(allowance ? { held: BigInt(allowance.freeLeft + allowance.credits) } : {}) };
   }
 
   /**
-   * Stops an action before its transaction when the decryptions that follow it would be
-   * refused: better than paying gas for a shake whose result cannot be read. Lets it through
-   * when the allowance cannot be read; the decryption itself is the real check.
+   * Stops an action before its transaction when the inputs it encrypts or the decryptions
+   * that follow it would be refused: better than paying gas for a shake whose result cannot
+   * be read. Lets it through when the allowance cannot be read; the relayer proxy is the real
+   * check.
    */
-  private async ensureDecryptions(needed: number): Promise<void> {
+  private async ensureDecryptions(decryptions: number, inputs = 0): Promise<void> {
     const allowance = await this.decryptionAllowance().catch(() => null);
     if (!allowance) return;
+    const needed = decryptions + inputs * allowance.inputUnits;
     const held = allowance.freeLeft + allowance.credits;
     if (held < needed) {
       throw new ChainError("no-credits", "Not enough decryptions left today for this.", undefined, { held: BigInt(held), needed: BigInt(needed) });
@@ -1096,6 +1099,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   async feedCroquettes(tokenId: number, amount: bigint, opts?: ActionOptions): Promise<void> {
     const e = this.eco();
     const account = await this.signer().getAddress();
+    await this.ensureDecryptions(0, 1);
     await this.ensureOperator(e.cCroq, account, e.pantry.address, opts);
     const input = await this.encrypt64(e.pantry.address, account, amount, opts);
     await this.send(opts, () => this.writer(e.pantry).feed!(tokenId, input.handles[0], input.inputProof));
@@ -1197,12 +1201,39 @@ export class EvmFhevmAdapter implements ChainAdapter {
   /** Encrypts one 64-bit amount, in this page, for `contract` and `account` only. */
   private async encrypt64(contract: string, account: Address, amount: bigint, opts?: ActionOptions) {
     if (amount < 0n || amount >= 1n << 64n) throw new ChainError("unknown", "That amount does not fit.");
-    opts?.onStep?.("encrypting");
-    try {
-      const relayer = await this.loadRelayer();
-      return await relayer.createEncryptedInput(contract, account).add64(amount).encrypt();
-    } catch (error) {
-      throw new ChainError("decryption", `Could not encrypt the amount: ${(error as Error)?.message ?? "unknown error"}`);
+    return this.encrypt(contract, account, (b) => b.add64(amount), "the amount", opts);
+  }
+
+  /**
+   * Encrypts values in this page for `contract` and `account` only, and has the relayer verify
+   * them. Through the API's proxy an input is charged to the wallet, which proves it is itself
+   * with its decryption permit, sent as a bearer token: signed once a session, not per input.
+   */
+  private async encrypt(contract: string, account: Address, fill: (b: InputBuilder) => InputBuilder, what: string, opts?: ActionOptions) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const relayer = await this.loadRelayer();
+        let auth: { auth: { __type: "BearerToken"; token: string } } | undefined;
+        if (this.opts.metered) {
+          const permit = await this.permitFor(relayer, this.signer(), account, opts);
+          auth = { auth: { __type: "BearerToken", token: permitToken(permit) } };
+        }
+        opts?.onStep?.("encrypting");
+        return await fill(relayer.createEncryptedInput(contract, account)).encrypt(auth);
+      } catch (error) {
+        if (error instanceof ChainError || isError(error, "ACTION_REJECTED")) throw this.toChainError(error);
+        const refusal = gateRefusal(error);
+        if (refusal?.code === "no-credits") {
+          const units = (await this.decryptionAllowance().catch(() => null))?.inputUnits ?? 1;
+          throw new ChainError("no-credits", refusal.message).with(await this.creditsDetail(units));
+        }
+        // A permit the proxy will not take (expired): sign a fresh one and go again.
+        if (refusal?.code === "bad-permit" && attempt === 0) {
+          this.permit = null;
+          continue;
+        }
+        throw new ChainError("decryption", `Could not encrypt ${what}: ${refusal?.message ?? (error as Error)?.message ?? "unknown error"}`);
+      }
     }
   }
 
@@ -1409,13 +1440,30 @@ export class EvmFhevmAdapter implements ChainAdapter {
       eip712.message as never,
     );
     opts?.onStep?.("decrypting");
-    this.permit = { account, publicKey: keypair.publicKey, privateKey: keypair.privateKey, signature, start: now };
+    const contracts = await this.permitContracts();
+    this.permit = { account, publicKey: keypair.publicKey, privateKey: keypair.privateKey, signature, start: now, contracts, extraData: String(eip712.message.extraData ?? "0x00") };
     return this.permit;
   }
 
   private toChainError(error: unknown): ChainError {
     return toChainError(error, this.ifaces);
   }
+}
+
+/** A permit as the API's relayer proxy reads it from a bearer token: base64url of its JSON. */
+function permitToken(p: Permit): string {
+  const json = JSON.stringify({
+    publicKey: p.publicKey,
+    contractAddresses: p.contracts,
+    startTimestamp: String(p.start),
+    durationDays: String(PERMIT_DAYS),
+    extraData: p.extraData,
+    signature: p.signature,
+  });
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 /** What a dry run ends with when the transaction would have gone through: the transaction, filled. */

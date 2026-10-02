@@ -372,10 +372,12 @@ export interface BoxPantry {
 export type TradeSide = "buy" | "sell";
 
 /**
- * What a wallet may still decrypt where the collection pays the relayer (mainnet): a free
- * allowance each UTC day, then credits bought in plain USDC, one per decrypted value.
+ * What a wallet may still decrypt and encrypt where the collection pays the relayer (mainnet):
+ * a free allowance each UTC day, then credits bought in plain USDC. Both are counted in units:
+ * a decrypted value is one, an encrypted input (a mint's quantity, a meal) `inputUnits`.
  */
 export interface DecryptionAllowance {
+  /** Fewer before the wallet's first act on-chain. */
   freePerDay: number;
   freeLeft: number;
   /** Credits bought and not spent yet. */
@@ -384,6 +386,8 @@ export interface DecryptionAllowance {
   resetsAt: number;
   /** Plain USDC, smallest unit, per credit. Null where credits cannot be bought. */
   price: bigint | null;
+  /** Units one encrypted input costs. */
+  inputUnits: number;
 }
 
 /** A wallet the browser offers, as shown in a picker. */

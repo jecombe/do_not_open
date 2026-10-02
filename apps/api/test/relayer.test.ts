@@ -5,7 +5,7 @@ import { SignIn } from "../src/application/auth";
 import { Metadata } from "../src/application/metadata";
 import type { RelayerUpstream, UpstreamReply } from "../src/application/ports/relayer";
 import { Queries } from "../src/application/queries";
-import { RelayerGate, RelayerRefused } from "../src/application/relayerGate";
+import { encodePermitToken, RelayerGate, RelayerRefused } from "../src/application/relayerGate";
 import { allowanceOf, charge, dayOf, nextDayAt } from "../src/domain/relayer";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
 import { buildServer } from "../src/infrastructure/http/server";
@@ -24,10 +24,10 @@ const handle = (n: number) => `0x${n.toString(16).padStart(64, "0")}`;
 const wallet = Wallet.createRandom();
 const ACCOUNT = wallet.address.toLowerCase();
 
-/** A user-decryption request as the Relayer SDK sends it, signed by `signer`. */
-async function userDecrypt(signer: Wallet | HDNodeWallet, n: number, opts: { contract?: string; start?: number; userAddress?: string } = {}) {
+/** A user-decryption permit for the game's contracts, signed by `signer`. */
+async function permit(signer: Wallet | HDNodeWallet, start = NOW - 60) {
   const contractAddresses = [GAME, CUSDC];
-  const startTimestamp = String(opts.start ?? NOW - 60);
+  const startTimestamp = String(start);
   const publicKey = "0x" + "12".repeat(32);
   const signature = await signer.signTypedData(
     { name: "Decryption", version: "1", chainId: DOMAIN.chainId, verifyingContract: DOMAIN.verifyingContract },
@@ -42,6 +42,15 @@ async function userDecrypt(signer: Wallet | HDNodeWallet, n: number, opts: { con
     },
     { publicKey, contractAddresses, startTimestamp, durationDays: "1", extraData: "0x00" },
   );
+  return { publicKey, contractAddresses, startTimestamp, durationDays: "1", extraData: "0x00", signature };
+}
+
+/** The bearer token the app sends with an encrypted input. */
+const bearer = async (signer: Wallet | HDNodeWallet, start?: number) => `Bearer ${encodePermitToken(await permit(signer, start))}`;
+
+/** A user-decryption request as the Relayer SDK sends it, signed by `signer`. */
+async function userDecrypt(signer: Wallet | HDNodeWallet, n: number, opts: { contract?: string; start?: number; userAddress?: string } = {}) {
+  const { publicKey, contractAddresses, startTimestamp, signature } = await permit(signer, opts.start);
   return {
     handleContractPairs: Array.from({ length: n }, (_, i) => ({ handle: handle(i + 1), contractAddress: opts.contract ?? GAME })),
     requestValidity: { startTimestamp, durationDays: "1" },
@@ -73,12 +82,13 @@ describe("relayer meter", () => {
     expect(charge(3, { freeUsed: 4, spent: 0, bought: 10 }, 5)).toEqual({ free: 1, credits: 2 });
     expect(charge(3, { freeUsed: 5, spent: 9, bought: 10 }, 5)).toBeNull();
     expect(charge(0, { freeUsed: 5, spent: 10, bought: 10 }, 5)).toEqual({ free: 0, credits: 0 });
+    expect(allowanceOf({ freeUsed: 2, spent: 1, bought: 4 }, 5, NOW, 5)).toEqual({ freePerDay: 5, freeLeft: 3, credits: 3, resetsAt: nextDayAt(NOW), inputUnits: 5 });
   });
 
   it("starts a new free allowance at UTC midnight", () => {
     expect(dayOf(NOW)).toBe("2026-09-21");
     expect(nextDayAt(NOW)).toBe(Date.UTC(2026, 8, 22) / 1000);
-    expect(allowanceOf({ freeUsed: 7, spent: 3, bought: 10 }, 5, NOW)).toEqual({ freePerDay: 5, freeLeft: 0, credits: 7, resetsAt: nextDayAt(NOW) });
+    expect(allowanceOf({ freeUsed: 7, spent: 3, bought: 10 }, 5, NOW, 5)).toEqual({ freePerDay: 5, freeLeft: 0, credits: 7, resetsAt: nextDayAt(NOW), inputUnits: 5 });
   });
 });
 
@@ -98,7 +108,7 @@ describe("RelayerGate", () => {
       eip712PermitVerifier(DOMAIN),
       { recentlyPublished: async (hs) => hs.filter((h) => published.includes(h)) },
       { now: () => NOW },
-      { chainId: CHAIN_ID, contracts: async () => [GAME, CUSDC], freePerDay: 5, maxHandles: 10, clockSkew: 600 },
+      { chainId: CHAIN_ID, contracts: async () => [GAME, CUSDC], freePerDay: 5, newcomerPerDay: 5, inputUnits: 2, maxHandles: 10, clockSkew: 600 },
     );
   });
 
@@ -144,18 +154,59 @@ describe("RelayerGate", () => {
     expect((await gate.allowance(ACCOUNT)).freeLeft).toBe(5);
   });
 
+  const input = (contractAddress: string, chain = CHAIN_ID, userAddress = wallet.address) => ({
+    contractAddress,
+    userAddress,
+    ciphertextWithInputVerification: "abcd",
+    contractChainId: `0x${chain.toString(16)}`,
+    extraData: "0x00",
+  });
+
   it("makes encrypted inputs for the protocol's contracts only", async () => {
-    const input = (contractAddress: string, chain = CHAIN_ID) => ({
-      contractAddress,
-      userAddress: wallet.address,
-      ciphertextWithInputVerification: "abcd",
-      contractChainId: `0x${chain.toString(16)}`,
-      extraData: "0x00",
-    });
-    await gate.submit("input-proof", input(GAME));
-    expect(await refusal(gate.submit("input-proof", input(OTHER)))).toBe("not-ours");
-    expect(await refusal(gate.submit("input-proof", input(GAME, 1)))).toBe("bad-request");
+    const auth = await bearer(wallet);
+    await gate.submit("input-proof", input(GAME), auth);
+    expect(await refusal(gate.submit("input-proof", input(OTHER), auth))).toBe("not-ours");
+    expect(await refusal(gate.submit("input-proof", input(GAME, 1), auth))).toBe("bad-request");
     expect(upstream.calls).toHaveLength(1);
+  });
+
+  it("charges an input inputUnits to the wallet whose permit comes with it", async () => {
+    await gate.submit("input-proof", input(GAME), await bearer(wallet));
+    await gate.submit("input-proof", input(GAME), await bearer(wallet));
+    expect((await gate.allowance(ACCOUNT)).freeLeft).toBe(1);
+    expect(await refusal(gate.submit("input-proof", input(GAME), await bearer(wallet)))).toBe("no-credits");
+    await store.transaction((tx) => tx.addCredits(ACCOUNT, 1));
+    await gate.submit("input-proof", input(GAME), await bearer(wallet));
+    expect(await gate.allowance(ACCOUNT)).toMatchObject({ freeLeft: 0, credits: 0, inputUnits: 2 });
+    expect(upstream.calls).toHaveLength(3);
+  });
+
+  it("refuses an input without a permit, or with someone else's: it would spend their units", async () => {
+    const other = Wallet.createRandom();
+    expect(await refusal(gate.submit("input-proof", input(GAME)))).toBe("bad-permit");
+    expect(await refusal(gate.submit("input-proof", input(GAME), "Bearer not-base64-json"))).toBe("bad-permit");
+    expect(await refusal(gate.submit("input-proof", input(GAME), await bearer(other)))).toBe("bad-permit");
+    expect(await refusal(gate.submit("input-proof", input(GAME), await bearer(wallet, NOW - 2 * 86_400)))).toBe("bad-permit");
+    expect(upstream.calls).toHaveLength(0);
+    expect((await gate.allowance(ACCOUNT)).freeLeft).toBe(5);
+  });
+
+  it("gives a wallet the index has never seen act the smaller newcomer allowance", async () => {
+    const strict = new RelayerGate(store, upstream, eip712PermitVerifier(DOMAIN), { recentlyPublished: async () => [] }, { now: () => NOW }, {
+      chainId: CHAIN_ID,
+      contracts: async () => [GAME, CUSDC],
+      freePerDay: 5,
+      newcomerPerDay: 2,
+      inputUnits: 2,
+      maxHandles: 10,
+      clockSkew: 600,
+    });
+    expect((await strict.allowance(ACCOUNT)).freePerDay).toBe(2);
+    await strict.submit("input-proof", input(GAME), await bearer(wallet));
+    expect(await refusal(strict.submit("user-decrypt", await userDecrypt(wallet, 1)))).toBe("no-credits");
+    // Its mint is indexed: it is a player now, and gets the rest of a player's day.
+    await store.transaction((tx) => tx.saveUser({ address: ACCOUNT, firstBlock: 1, lastBlock: 1, firstSeenAt: NOW, lastSeenAt: NOW, actions: 1, registeredAt: null, lastLoginAt: null }));
+    expect(await strict.allowance(ACCOUNT)).toMatchObject({ freePerDay: 5, freeLeft: 3 });
   });
 
   it("passes polling through, and keeps the key URL a while", async () => {
@@ -184,6 +235,8 @@ describe("relayer proxy over HTTP", () => {
         chainId: CHAIN_ID,
         contracts: async () => [GAME, CUSDC],
         freePerDay: 1,
+        newcomerPerDay: 1,
+        inputUnits: 5,
         maxHandles: 10,
         clockSkew: 600,
       }),
@@ -208,6 +261,15 @@ describe("relayer proxy over HTTP", () => {
     expect(res.json()).toEqual({ status: "failed", requestId: "dno-gate", error: { label: "request_error", message: expect.stringMatching(/^dno:no-credits: /) } });
     const allowance = await app.inject({ method: "GET", url: `/v1/relayer/allowance/${wallet.address}` });
     expect(allowance.json().data).toMatchObject({ freePerDay: 1, freeLeft: 0, credits: 0 });
+  });
+
+  it("hands the Authorization header to the gate, so an input is charged to its wallet", async () => {
+    const payload = { contractAddress: GAME, userAddress: wallet.address, ciphertextWithInputVerification: "abcd", contractChainId: `0x${CHAIN_ID.toString(16)}`, extraData: "0x00" };
+    const without = await app.inject({ method: "POST", url: "/relayer/v2/input-proof", payload });
+    expect(without.json().error.message).toMatch(/^dno:bad-permit: /);
+    const res = await app.inject({ method: "POST", url: "/relayer/v2/input-proof", payload, headers: { authorization: await bearer(wallet) } });
+    // Five units an input, one free a day: refused for credits, so the token was read.
+    expect(res.json().error.message).toMatch(/^dno:no-credits: /);
   });
 
   it("lets the Relayer SDK's headers through CORS and exposes Retry-After", async () => {

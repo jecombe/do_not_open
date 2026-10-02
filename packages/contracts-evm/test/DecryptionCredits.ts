@@ -2,6 +2,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { DecryptionCredits, TestUSDC } from "../types";
+import { creditPrice, creditPriceFromEnv } from "../lib/creditPrice";
 import { usd } from "./helpers";
 
 describe("DecryptionCredits", function () {
@@ -67,5 +68,15 @@ describe("DecryptionCredits", function () {
     await expect(credits.setPrice(usd("1"))).to.emit(credits, "PriceSet").withArgs(usd("1"));
     await expect(credits.setTreasury(ethers.ZeroAddress)).to.be.revertedWithCustomError(credits, "ZeroAddress");
     await expect(credits.setTreasury(bob.address)).to.emit(credits, "TreasurySet").withArgs(bob.address);
+  });
+
+  it("prices a credit from Zama's dollar price for a decryption, rounded up, never from $ZAMA", function () {
+    expect(creditPrice("0.001", "2")).to.eq(usd("0.002"));
+    expect(creditPrice("0.1", "1.5")).to.eq(usd("0.15"));
+    expect(creditPrice("0.0000003", "1")).to.eq(1n);
+    expect(() => creditPrice("0.001", "0.5")).to.throw();
+    expect(creditPriceFromEnv({ ZAMA_DECRYPT_USD: "0.004" })).to.eq(usd("0.008"));
+    expect(creditPriceFromEnv({ CREDIT_PRICE_USDC: "0.03", ZAMA_DECRYPT_USD: "0.004" })).to.eq(usd("0.03"));
+    expect(creditPriceFromEnv({})).to.eq(usd("0.01"));
   });
 });

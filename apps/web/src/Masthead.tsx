@@ -404,7 +404,7 @@ function DecryptionCredits(props: { id: string; adapter: ChainAdapter; own: Retu
           {n > 0 && <p className="fine">{t("credits.price", { n, total: formatAmount(price * BigInt(n), decimals), symbol })}</p>}
         </>
       )}
-      <p className="fine">{t("credits.why")}</p>
+      <p className="fine">{t("credits.why", { input: allowance.inputUnits })}</p>
     </>
   );
 }

@@ -4,7 +4,7 @@ import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
-import { FeesFigure, FeeTable, FREE_PER_DAY } from "./fees";
+import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY } from "./fees";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 
@@ -285,7 +285,7 @@ export function Manual() {
             <FeeTable />
             <div className="prose">
               <p>{t("docs.fees.p2")}</p>
-              <p>{t("docs.fees.p3", { free: FREE_PER_DAY })}</p>
+              <p>{t("docs.fees.p3", { free: FREE_PER_DAY, newcomer: NEWCOMER_PER_DAY, input: INPUT_UNITS })}</p>
               <p>{t("docs.fees.p4")}</p>
             </div>
           </section>

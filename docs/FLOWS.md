@@ -436,7 +436,8 @@ happens after.
 Zama bills whoever holds the relayer API key for every value its KMS decrypts and every
 encrypted input it verifies; on mainnet that is the collection. So the app never talks to
 Zama's relayer directly: it goes through the proxy in [`apps/api`](../apps/api/README.md#relayer-proxy),
-which holds the key and counts what each wallet decrypts.
+which holds the key and counts, in units, what each wallet decrypts (one a value) and
+encrypts (`RELAYER_INPUT_UNITS`, five an input: Zama charges an input five times a decryption).
 
 ```mermaid
 sequenceDiagram
@@ -457,12 +458,17 @@ sequenceDiagram
     U->>DC: buy(account, credits, maxPrice): plain USDC to the treasury
     DC-->>P: CreditsBought, through the index
   end
+  App->>P: input-proof (mint quantity, meal), Bearer = the same permit
+  P->>P: our contracts only, permit signer = the input's userAddress
+  P->>P: count 5 units, the same way, then forward to Zama
 ```
 
 Public decryptions (an opening, an alive check, a duel, a milestone, a weigh-in, an
 unwrap) go through the same proxy, free: it checks that one of the protocol's contracts
 made the handles public (Zama's ACL logs it). The adapter checks the allowance before a
-shake or a mint, so no gas is spent on a result that could not be read.
+shake, a mint or a meal, so no gas is spent on a result that could not be read. A wallet
+the index has never seen act gets a newcomer's allowance (16, one mint) instead of a
+player's (25).
 
 Credits are paid in plain USDC on purpose: `transferFrom` moves the whole price or
 reverts, where a cUSDC payment that falls short moves 0 without a word.
@@ -473,7 +479,7 @@ reverts, where a cUSDC payment that falls short moves 0 without a word.
 | --- | --- | --- |
 | Mint (5 a box), open (1), pet (0.5) | cUSDC | `DoNotOpen`, withdrawn by the owner |
 | Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen` |
-| Decryption credits (0.01 each) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
+| Decryption credits (0.01 each on Sepolia; on mainnet Zama's dollar price for a decryption x 2) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury, 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 
