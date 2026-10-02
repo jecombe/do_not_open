@@ -66,7 +66,7 @@ numbers as public immutables (`welcomeBag`, `purrMaxPerDay`, `mealsPerDay`,
 ```mermaid
 flowchart LR
   base["ConfidentialERC721<br/>encrypted owners, isOwner,<br/>transfers that never revert on ownership"] -- "inherited by" --> dno
-  cfg["DoNotOpenConfig<br/>rules, decode(seed)"] --> dno["DoNotOpen<br/>seeds, hidden mint, milestones,<br/>shake, requests, duel"]
+  cfg["DoNotOpenConfig<br/>rules, decode(seed)"] --> dno["DoNotOpen<br/>seeds, hidden mint, milestones,<br/>shake, requests, duel shelf"]
   dno -- "pulls and pays" --> cusdc["cUSDC<br/>ERC-7984"]
   croq["Croq<br/>ERC-20, 20M fixed"] -- "underlying" --> ccroq["ConfidentialCroq<br/>ERC-7984 wrapper, cCROQ"]
   pantry["Pantry<br/>reserve, stashes, weights,<br/>treasury share, burnt pile, weigh-ins"] -- "isOwner (trusted reader), status,<br/>vetCertified, contentsOf" --> dno
@@ -165,9 +165,10 @@ flowchart TB
   app --> shelf["ShelfView<br/>mint, my boxes, pending requests,<br/>shake earnings, croquettes"]
   app --> box["BoxView<br/>shake, feed, alive check, open, send,<br/>take the cat out"]
   app --> pair["PairView<br/>duel, entangle, open"]
+  app --> duels["DuelShelfView<br/>boxes up for a duel: put up,<br/>withdraw, take up"]
   app --> board["LeaderboardView<br/>opened cats by score, and their openers"]
   app --> spec["SpecimensView<br/>fixture cats, no chain"]
-  shelf & box & pair --> action["useAction()<br/>one action at a time, step, error copy"]
+  shelf & box & pair & duels --> action["useAction()<br/>one action at a time, step, error copy"]
   shelf --> s1["ShelfScene"]
   box --> s2["BoxScene"]
   pair --> s3["PairScene"]
@@ -189,14 +190,15 @@ who holds what.
 ## The backend
 
 `apps/api` follows the protocol's logs into Postgres and serves the app's reads (box lists,
-leaderboard, duels, pending requests, receipts, economy, token metadata), so visitors do not
-each hit a public RPC. The EVM adapter reads it first and falls back on the RPC when it is
-down, or behind the account's own last transaction. Duels are kept there, so an account finds
-its open duels from any device. Deployment: [`deploy/README.md`](../deploy/README.md).
+leaderboard, the duel shelf and duels, pending requests, receipts, economy, token metadata),
+so visitors do not each hit a public RPC. The EVM adapter reads it first and falls back on
+the RPC when it is down, or behind the account's own last transaction. Duels are kept
+there, so the shelf lists every box up for a duel, and an account finds its open duels
+from any device. Deployment: [`deploy/README.md`](../deploy/README.md).
 
 ### Gaps against the original brief
 
 - **No event subscription.** The brief's interface lists `subscribeEvents`. The adapter
-  re-reads state after each action instead. Another holder's action (a challenge, a
-  paid shake) shows up on the next read, not live.
+  re-reads state after each action instead. Another holder's action (a duel taken
+  up, a paid shake) shows up on the next read, not live.
 - **Room props.** Rooms are a coloured floor and wall. See `assets/BLENDER_TODO.md`.

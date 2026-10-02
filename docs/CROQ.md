@@ -493,7 +493,16 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 
 ## Deployed on Sepolia
 
-The Pantry that reads the hidden-owner `DoNotOpen` (deployed 2026-10-01):
+The Pantry that reads the `DoNotOpen` with the duel shelf (deployed 2026-10-02):
+
+| Contract | Address |
+| --- | --- |
+| `Croq` | [`0xF4d9CE55b52417e503617186e923E1c0713c53b5`](https://sepolia.etherscan.io/address/0xF4d9CE55b52417e503617186e923E1c0713c53b5) |
+| `ConfidentialCroq` | [`0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9`](https://sepolia.etherscan.io/address/0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9) |
+| `Pantry` | [`0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed`](https://sepolia.etherscan.io/address/0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed) |
+| CROQ/USDC pair (Uniswap V2) | [`0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2`](https://sepolia.etherscan.io/address/0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2) |
+
+The one that read the hidden-owner `DoNotOpen` before the duel shelf (2026-10-01), replaced:
 
 | Contract | Address |
 | --- | --- |

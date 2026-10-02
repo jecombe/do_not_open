@@ -65,7 +65,7 @@ describe("EvmChainSource", () => {
     const logs = [
       log(c, collection, "MintPlaced", [10, ALICE, 3, "0x" + "11".repeat(32)], 200, 0),
       log(c, collection, "ConfidentialTransfer", [10, "0x0000000000000000000000000000000000000000", ALICE, "0x" + "22".repeat(32)], 200, 1),
-      log(c, collection, "DuelChallenged", [4, 10, 11], 201, 2),
+      log(c, collection, "DuelPosted", [4, 10, 0, ALICE, false], 201, 2),
       log(c, collection, "RequestPlaced", [9, 10, BOB, 2], 202, 3),
       log(c, collection, "RequestSettled", [9, 3], 203, 4),
       log(c, collection, "Observed", [12, ALICE, 8177263914793887761n, 2, 1600, false], 204, 5),
@@ -74,7 +74,7 @@ describe("EvmChainSource", () => {
       log(p, pantry, "Purred", [12, 3], 206, 8),
     ];
     const views = (_target: string, fn: string, args: unknown[]) => {
-      if (fn === "duelInfo") return [10, 11, ALICE, 3, BOB];
+      if (fn === "duelInfo") return [10, 11, ALICE, 4, BOB, false, 1_790_600_000];
       if (fn === "requestInfo") return [2, 3, BOB, 10, 12, []];
       if (fn === "contentsOf") return [{ seed: 8177263914793887761n, state: 2, traits: [232, 155, 52, 122, 123], score: 1600, affection: 3, golden: false }];
       if (fn === "weighIn") return [{ status: 2, build: 4, sick: true, disease: 1, weight: 1200, tolerance: 1100 }];
@@ -85,14 +85,15 @@ describe("EvmChainSource", () => {
 
     const batch = await source.read(200, 206);
     expect(batch.to).toBe(206);
-    expect(batch.events.map((e) => e.name)).toEqual(["MintPlaced", "ConfidentialTransfer", "DuelChallenged", "RequestPlaced", "RequestSettled", "Observed", "DuelResolved", "Weighed", "Purred"]);
+    expect(batch.events.map((e) => e.name)).toEqual(["MintPlaced", "ConfidentialTransfer", "DuelPosted", "RequestPlaced", "RequestSettled", "Observed", "DuelResolved", "Weighed", "Purred"]);
     expect(batch.events[0]).toMatchObject({ firstTokenId: 10, buyer: ALICE.toLowerCase(), count: 3, source: "collection", block: 200, timestamp: 1_790_000_200 });
+    expect(batch.events[2]).toMatchObject({ duelId: 4, tokenA: 10, tokenB: 0, challenger: ALICE.toLowerCase(), reserved: false });
     expect(batch.events[3]).toMatchObject({ requestId: 9, kind: "entangle", requester: BOB.toLowerCase() });
     expect(batch.events[4]).toMatchObject({ status: "refused" });
     expect(batch.events[5]).toMatchObject({ tokenId: 12, seed: "8177263914793887761", score: 1600 });
     expect(batch.events[7]).toMatchObject({ source: "pantry", weight: "1200", build: 4, sick: true, disease: 1 });
 
-    expect(batch.snapshots.duels.get(4)).toEqual({ tokenA: 10, tokenB: 11, challenger: ALICE.toLowerCase(), accepter: BOB.toLowerCase(), status: "resolved" });
+    expect(batch.snapshots.duels.get(4)).toEqual({ tokenA: 10, tokenB: 11, reserved: false, challenger: ALICE.toLowerCase(), accepter: BOB.toLowerCase(), status: "resolved", openUntil: 1_790_600_000 });
     expect(batch.snapshots.requests.get(9)).toEqual({ kind: "entangle", status: "refused", requester: BOB.toLowerCase(), tokenId: 10, other: 11 });
     expect(batch.snapshots.contents.get(12)).toMatchObject({ affection: 3, traits: [232, 155, 52, 122, 123] });
     expect(batch.snapshots.weighIns.get(12)).toEqual({ weight: "1200", build: "huge", sick: true, disease: "arthritic", tolerance: "1100" });
@@ -114,7 +115,7 @@ describe("EvmChainSource", () => {
     expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address].map((a) => a.toLowerCase()));
     const decryptionProof = collection.getEvent("PublicDecryptionVerified")!.topicHash;
     expect(filter!.topics[0]).not.toContain(decryptionProof);
-    expect(filter!.topics[0]).toContain(collection.getEvent("DuelChallenged")!.topicHash);
+    for (const name of ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened"]) expect(filter!.topics[0]).toContain(collection.getEvent(name)!.topicHash);
   });
 });
 

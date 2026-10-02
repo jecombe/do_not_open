@@ -595,6 +595,24 @@ button {
   pointer-events: none;
 }
 
+/* The duel shelf: one box per line, its details wrapping under the serial, the action beside. */
+.tags.duel-list {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  max-height: 228px;
+}
+
+.duel-list li > button:first-child {
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+  text-align: left;
+}
+
+.duel-list .tag-options button {
+  white-space: nowrap;
+}
+
 .order {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -649,20 +667,41 @@ button {
   background: #1f7d6d;
 }
 
-.pair-pick {
+.pair-pick,
+.duel-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin: 8px 0 12px;
 }
 
-.pair-pick label {
+.pair-pick label,
+.duel-form label {
   display: grid;
   gap: 2px;
   font-size: 15px;
 }
 
-.pair-pick select {
+.duel-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.duel-form input[aria-invalid="true"] {
+  border-color: var(--ink-red);
+}
+
+.pair-pick select,
+.duel-form select {
   width: 100%;
   padding: 4px 6px;
   background: transparent;

@@ -150,17 +150,29 @@ Accepting a duel computes, under encryption, `scoreA > scoreB`, a uniform trait 
 `select(aWins, rollOfB, rollOfA)`: the loser's roll for the picked trait. Only those three
 ciphertexts are made publicly decryptable, so one `finalizeDuel` settles everything and
 the winner's trait is never decryptable by anyone. Since 2026-10-01 a fourth value comes
-first, `valid` ("both sides held their boxes"), and the other three are masked by it; an
-invalid duel ends `Void`.
+first, `valid` ("both sides held their boxes"), and the other three are masked by it.
+Since 2026-10-02 a fifth comes before it, `aHolds` ("the challenger still holds A"), and
+`valid` is `aHolds AND accepter holds B`. A duel where A was no longer held ends `Void`
+and says nothing about the accepter; one where only B was not held goes back on the shelf.
+
+### Duel: posting is public, and proven
+
+Since 2026-10-02 a duel is not aimed at a box whose holder may never look. `postDuel` puts
+box A on a duel shelf, open to any sealed box or reserved for one, and makes "the caller
+holds A" publicly decryptable. One `finalizeDuel` with that bit's proof puts it on the
+shelf for 7 days (`DUEL_LIFETIME`), or voids it. Without the proof, anyone could fill the
+shelf with boxes they do not hold. A duel is a public act, so this reveals what a resolved
+duel would have revealed anyway, only earlier. A box has one listing at a time: a newer
+proven posting cancels the older one.
 
 Each box's encrypted score is computed once (about 1.35M HCU) and cached. The challenger
-pays for their box at `challengeDuel`, the accepter for theirs at `acceptDuel`.
+pays for their box at `postDuel`, the accepter for theirs at `acceptDuel`.
 
 ### Consent is two transactions
 
-`proposeEntangle` / `acceptEntangle` and `challengeDuel` / `acceptDuel`. A proposal or a
-challenge is void if the proposer's box changes hands before it is accepted: since
-2026-10-01 this is checked under encryption at acceptance (a refused entanglement, a
+`proposeEntangle` / `acceptEntangle` and `postDuel` / `acceptDuel`. A proposal or a
+duel is void if the proposer's or challenger's box changes hands before it is accepted:
+since 2026-10-01 this is checked under encryption at acceptance (a refused entanglement, a
 void duel). One holder may entangle or duel two of their own boxes.
 
 ### Entanglement is permanent and follows the token
@@ -190,9 +202,10 @@ who holds the box.
 
 ### Contract size
 
-`DoNotOpen` is 24,093 bytes of deployed bytecode against the 24,576 limit, since the
-hidden owners. The next feature must move logic to a library or a second contract that
-is a trusted reader.
+`DoNotOpen` is 24,454 bytes of deployed bytecode against the 24,576 limit, since the
+duel shelf (see the hidden owners' "Contract size" below for how it was brought back
+under). The next feature must move logic to a library or a second contract that is a
+trusted reader.
 
 ### Sepolia deployment (2026-10-01): prices in USDC and cUSDC
 
@@ -310,9 +323,10 @@ Because the app only sees `ChainAdapter`, moving to it later is a change inside 
 - **Retries on decryption.** The coprocessor computes a ciphertext a few seconds after
   the transaction that requested it. Asking the relayer too early fails, so decryptions
   are retried up to five times with a growing pause.
-- **Two-step actions can be resumed.** observe, proveAlive, acceptEntangle and duel each
-  end with a proof transaction. If the user closes the tab in between, the request (or
-  duel) stays pending; the app lists the account's pending requests and anyone can send
+- **Two-step actions can be resumed.** observe, proveAlive and acceptEntangle each end
+  with a proof transaction, a duel with two (the posting, then the outcome). If the user
+  closes the tab in between, the request (or duel) stays pending; the app lists the
+  account's pending requests and anyone can send
   the proof. The adapter exposes `pendingRequests`, `finishRequest`, `finishObserve`,
   `finishProveAlive` and `finishDuel`.
 - **Reads do not need a wallet.** They go to a public RPC endpoint. After each
@@ -458,8 +472,10 @@ proof for another request cannot be replayed.
 
 Every published value is `select(holds, value, 0)`, with `holds` published first. A
 refused request decrypts to "no" and zeros: it says nothing about the box, and a stranger
-can request as often as they like without learning anything. A duel publishes four values
-(`valid`, `aWins`, `pick`, `loserRoll`), the last three masked by the first.
+can request as often as they like without learning anything. A duel publishes one value
+at posting ("the challenger holds A"), then five at acceptance (`aHolds`, `valid`,
+`aWins`, `pick`, `loserRoll`), the last three masked by `valid`, and `valid` itself false
+whenever `aHolds` is.
 
 ### Empty token ids hide the quantity
 
@@ -493,12 +509,41 @@ never to make what it learns public: its holder checks only mask amounts.
 
 ### Contract size
 
-`DoNotOpen` is 24,093 bytes deployed, 483 under the limit. The next feature has to move
-logic out.
+`DoNotOpen` is 24,454 bytes deployed, 122 under the limit. The duel shelf took it past the
+limit; two changes brought it back: the `onlySealed` modifier calls `_requireSealed`
+instead of carrying the check, so its body is not copied into every function using it,
+and the optimizer runs at 200 instead of 800 (`hardhat.config.ts`), which favours size
+over the gas of each call. The next feature has to move logic out.
+
+### Sepolia deployment (2026-10-02): duel shelf
+
+Current. Deployed at block 11828557, again with a fresh croquette economy. A different
+deployer account (`0x590891F269720001435004A1089cAB5b2c20029A`) deployed it, so it owns
+the collection and receives the treasury's share. The optimizer change also changed every
+contract's bytecode, so all of them were deployed again:
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0xB8e3b2238eF5D5782A661c406acc928895938fBa`](https://sepolia.etherscan.io/address/0xB8e3b2238eF5D5782A661c406acc928895938fBa) |
+| `DoNotOpenConfig` | [`0x6909f7C5ebE00592F28Ab3597914d30D8b746976`](https://sepolia.etherscan.io/address/0x6909f7C5ebE00592F28Ab3597914d30D8b746976) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x684974FE67084A8cF94e6096fDcbc774892f560a`](https://sepolia.etherscan.io/address/0x684974FE67084A8cF94e6096fDcbc774892f560a) |
+| `Croq` (CROQ) | [`0xF4d9CE55b52417e503617186e923E1c0713c53b5`](https://sepolia.etherscan.io/address/0xF4d9CE55b52417e503617186e923E1c0713c53b5) |
+| `ConfidentialCroq` (cCROQ) | [`0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9`](https://sepolia.etherscan.io/address/0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9) |
+| `Pantry` | [`0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed`](https://sepolia.etherscan.io/address/0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed) |
+| CROQ/USDC pair, Uniswap V2 | [`0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2`](https://sepolia.etherscan.io/address/0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x2754B8568a3402f828DDAa1715F8290CDa498aAb`](https://sepolia.etherscan.io/address/0x2754B8568a3402f828DDAa1715F8290CDa498aAb) |
+
+`smoke:sepolia` ran against it: two mints, shakes, a feed, an alive check, then a box put
+up for a duel, its holding proven through the KMS, the duel taken up by another box and
+settled, all through the real coprocessor, relayer and KMS. The opening at the end ran
+out of cUSDC in the script's account, which has nothing to do with the contract. The
+index picked the duel up as posted, opened, taken up and resolved.
 
 ### Sepolia deployment (2026-10-01): hidden owners
 
-Current. Deployed at block 11822985 with a fresh croquette economy (a Pantry is tied to
+Replaced by the duel shelf above. Deployed at block 11822985 with a fresh croquette economy (a Pantry is tied to
 one collection, and the previous reserve is locked in the previous Pantry):
 
 | Contract | Address |

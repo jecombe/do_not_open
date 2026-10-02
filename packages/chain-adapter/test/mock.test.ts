@@ -165,30 +165,72 @@ describe("MockAdapter", () => {
     expect((await chain.box(0)).partner).toBeNull();
   });
 
-  it("runs a duel against the night shift, who accepts at once", async () => {
+  it("starts with two of the night shift's boxes on the duel shelf", async () => {
     const chain = await fresh();
-    const duelId = await chain.challengeDuel(0, 3);
-    expect((await chain.pair(0, 3)).openDuel?.status).toBe("pending");
-    const result = (await chain.finishDuel(duelId))!;
+    const shelf = await chain.duelShelf();
+    expect(shelf.map((d) => [d.tokenA, d.reserved, d.status])).toEqual([[4, false, "open"], [3, false, "open"]]);
+    expect((await chain.pair(0, 3)).duels.map((d) => d.tokenA)).toEqual([3]);
+  });
+
+  it("takes a duel up from the shelf and settles it in one go", async () => {
+    const chain = await fresh();
+    const listed = (await chain.duelShelf()).find((d) => d.tokenA === 3)!;
+    const result = (await chain.acceptDuel(listed.duelId, 0))!;
     expect([result.winner, result.loser].sort()).toEqual([0, 3]);
     expect((await chain.box(result.winner)).wins).toBe(1);
     expect((await chain.box(result.loser)).publicTraits).toEqual([result.shown]);
-    expect((await chain.pair(0, 3)).openDuel).toBeNull();
+    expect((await chain.duelShelf()).map((d) => d.tokenA)).toEqual([4]);
+    expect(await refusal(chain.acceptDuel(listed.duelId, 1))).toBe("WrongDuelStatus");
   });
 
-  it("voids a duel fought with a box the challenger does not hold", async () => {
+  it("puts a duel back on the shelf when the taker brought a box they do not hold", async () => {
     const chain = await fresh();
-    const duelId = await chain.challengeDuel(4, 3);
-    expect(await chain.finishDuel(duelId)).toBeNull();
+    const listed = (await chain.duelShelf()).find((d) => d.tokenA === 3)!;
+    expect(await refusal(chain.acceptDuel(listed.duelId, 5))).toBe("not-yours");
+    expect((await chain.duelShelf()).find((d) => d.duelId === listed.duelId)).toMatchObject({ status: "open", tokenB: null, accepter: null });
     expect((await chain.box(3)).publicTraits).toEqual([]);
   });
 
-  it("lets the challenger cancel a duel between two of their own boxes", async () => {
+  it("puts your box on the shelf once proven, one listing per box, until withdrawn", async () => {
     const chain = await fresh();
-    const duelId = await chain.challengeDuel(0, 1);
-    expect((await chain.pair(0, 1)).openDuel?.status).toBe("challenged");
-    await chain.cancelDuel(duelId);
-    expect(await refusal(chain.acceptDuel(duelId))).toBe("WrongDuelStatus");
+    const first = await chain.postDuel(0);
+    expect(first).toMatchObject({ tokenA: 0, tokenB: null, reserved: false, status: "open" });
+    expect(first.openUntil! - Date.now() / 1000).toBeGreaterThan(Number(spec.mechanics.duel!.lifetimeDays) * 86_400 - 60);
+    const second = await chain.postDuel(0);
+    const shelf = await chain.duelShelf();
+    expect(shelf.filter((d) => d.tokenA === 0).map((d) => d.duelId)).toEqual([second.duelId]);
+    expect(await refusal(chain.acceptDuel(second.duelId, 0))).toBe("SameBox");
+    await chain.cancelDuel(second.duelId);
+    expect((await chain.duelShelf()).some((d) => d.tokenA === 0)).toBe(false);
+    expect(await refusal(chain.cancelDuel(second.duelId))).toBe("WrongDuelStatus");
+  });
+
+  it("keeps a box nobody proved to hold off the shelf", async () => {
+    const chain = await fresh();
+    expect(await refusal(chain.postDuel(5))).toBe("not-yours");
+    expect((await chain.duelShelf()).some((d) => d.tokenA === 5)).toBe(false);
+  });
+
+  it("runs a reserved duel against the night shift, who takes it up at once", async () => {
+    const chain = await fresh();
+    expect(await refusal(chain.postDuel(0, { reservedFor: 0 }))).toBe("SameBox");
+    const duel = await chain.postDuel(0, { reservedFor: 5 });
+    expect(duel).toMatchObject({ tokenB: 5, reserved: true, status: "pending" });
+    expect((await chain.pair(0, 5)).duels.map((d) => d.status)).toEqual(["pending"]);
+    const result = (await chain.finishDuel(duel.duelId))!;
+    expect([result.winner, result.loser].sort()).toEqual([0, 5]);
+    expect((await chain.pair(0, 5)).duels).toEqual([]);
+  });
+
+  it("lets only the named box take a reserved duel up, and nobody once it is out of time", async () => {
+    let now = Date.now();
+    const chain = new MockAdapter({ latency: 0, now: () => now });
+    await chain.connect();
+    const duel = await chain.postDuel(0, { reservedFor: 1 });
+    expect(await refusal(chain.acceptDuel(duel.duelId, 2))).toBe("NotThisBox");
+    now += (Number(spec.mechanics.duel!.lifetimeDays) * 86_400 + 1) * 1000;
+    expect(await refusal(chain.acceptDuel(duel.duelId, 1))).toBe("DuelExpired");
+    expect(await chain.duelShelf()).toEqual([]);
   });
 
   it("gives a box away, and gives nothing when it is not yours", async () => {

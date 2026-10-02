@@ -41,14 +41,17 @@ const duelFrom = (r: Row): Duel => ({
   duelId: r.duel_id,
   tokenA: r.token_a,
   tokenB: r.token_b,
+  reserved: r.reserved,
   challenger: r.challenger,
   accepter: r.accepter,
   status: r.status,
+  openUntil: r.open_until,
   winner: r.winner,
   loser: r.loser,
   shown: r.shown,
   createdBlock: r.created_block,
   updatedBlock: r.updated_block,
+  updatedLog: r.updated_log,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -190,11 +193,14 @@ export class PgStore implements Store {
       duel: (id) => one(c, "select * from duels where duel_id = $1", [id], duelFrom),
       saveDuel: async (d) => {
         await c.query(
-          `insert into duels (duel_id, token_a, token_b, challenger, accepter, status, winner, loser, shown, created_block, updated_block, created_at, updated_at)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          `insert into duels (duel_id, token_a, token_b, challenger, accepter, status, winner, loser, shown, created_block, updated_block, created_at, updated_at,
+             reserved, open_until, updated_log)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
            on conflict (duel_id) do update set token_a = $2, token_b = $3, challenger = $4, accepter = $5, status = $6, winner = $7,
-             loser = $8, shown = $9, created_block = $10, updated_block = $11, created_at = $12, updated_at = $13`,
-          [d.duelId, d.tokenA, d.tokenB, d.challenger, d.accepter, d.status, d.winner, d.loser, json(d.shown), d.createdBlock, d.updatedBlock, d.createdAt, d.updatedAt],
+             loser = $8, shown = $9, created_block = $10, updated_block = $11, created_at = $12, updated_at = $13,
+             reserved = $14, open_until = $15, updated_log = $16`,
+          [d.duelId, d.tokenA, d.tokenB, d.challenger, d.accepter, d.status, d.winner, d.loser, json(d.shown), d.createdBlock, d.updatedBlock, d.createdAt, d.updatedAt,
+            d.reserved, d.openUntil, d.updatedLog],
         );
       },
       request: (id) => one(c, "select * from requests where request_id = $1", [id], requestFrom),
@@ -296,8 +302,9 @@ export class PgStore implements Store {
        where (($1::text is null and cardinality($2::int[]) = 0)
               or ($1::text is not null and (challenger = $1 or accepter = $1)) or token_a = any($2::int[]) or token_b = any($2::int[]))
          and ($3::text[] is null or status = any($3::text[]))
+         and ($5::bigint is null or status <> 'open' or open_until is null or open_until >= $5)
        order by duel_id desc limit $4`,
-      [q.account ?? null, q.tokenIds ?? [], q.statuses ?? null, q.limit],
+      [q.account ?? null, q.tokenIds ?? [], q.statuses ?? null, q.limit, q.inTimeAt ?? null],
     );
     return rows.map(duelFrom);
   }
@@ -349,7 +356,7 @@ export class PgStore implements Store {
         (select coalesce(max(first_token_id + count), 0)::int from mints) as minted,
         (select count(*)::int from boxes where status = 'revealed') as opened,
         (select count(*)::int from duels) as duels,
-        (select count(*)::int from duels where status in ('challenged', 'pending')) as open_duels,
+        (select count(*)::int from duels where status in ('posted', 'open', 'pending')) as open_duels,
         (select count(*)::int from events) as events`);
     const r = rows[0]!;
     return { users: r.users, registered: r.registered, minted: r.minted, opened: r.opened, duels: r.duels, openDuels: r.open_duels, events: r.events };

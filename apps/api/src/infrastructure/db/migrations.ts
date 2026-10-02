@@ -159,4 +159,25 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       create index indexed_ranges_to on indexed_ranges (to_block);
     `,
   },
+  {
+    version: 3,
+    name: "duel shelf",
+    sql: /* sql */ `
+      -- A new DoNotOpen contract, where duels go on a shelf: the old contract's events mean
+      -- nothing to it. The index is emptied and rebuilt from the new deployment block on.
+      -- Sign-ins are kept.
+      truncate events, boxes, duels, requests, entangle_proposals, mints, milestones, transfers, sync_state, indexed_ranges;
+      delete from users where registered_at is null;
+      update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
+
+      -- An open duel has no second box until someone takes it up.
+      alter table duels alter column token_b drop not null;
+      alter table duels add column reserved boolean not null default false;
+      alter table duels add column open_until bigint;
+      -- Events of one block are told apart by their position: a duel can go back on the shelf.
+      alter table duels add column updated_log integer not null default 0;
+      drop index duels_open;
+      create index duels_open on duels (duel_id) where status in ('posted', 'open', 'pending');
+    `,
+  },
 ];

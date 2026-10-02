@@ -1,13 +1,16 @@
 import { FhevmType } from "@fhevm/hardhat-plugin";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
+import { spec } from "@dno/game-spec";
 import { buildCatSpec } from "@dno/generator";
 import { configParamsFromSpec } from "../lib/specParams";
 import { DoNotOpen, TestConfidentialUSDC, TestUSDC } from "../types";
 import {
   confidentialUsdcOf,
   deploy,
+  DUEL,
   expectDenied,
   FEES,
   finalizeDuel,
@@ -18,6 +21,7 @@ import {
   open,
   parseEvents,
   peekSeed,
+  postDuel,
   REQUEST,
   requestIdOf,
   shakeAndDecrypt,
@@ -206,15 +210,16 @@ describe("DoNotOpen mechanics", function () {
     const baseScore = async (tokenId: number) => buildCatSpec({ seed: await peekSeed(dno, tokenId) }).rarity.score;
 
     it("resolves to the higher score and reveals one trait of the loser only", async function () {
-      let duelId = 0;
       for (const a of A) {
         for (const b of B.slice(0, 2)) {
           const expectedWinner = (await baseScore(a)) > (await baseScore(b)) ? a : b;
           const loser = expectedWinner === a ? b : a;
           const winsBefore = await dno.wins(expectedWinner);
 
-          await expect(dno.connect(alice).challengeDuel(a, b)).to.emit(dno, "DuelChallenged").withArgs(duelId, a, b);
-          await expect(dno.connect(bob).acceptDuel(duelId)).to.emit(dno, "DuelAccepted").withArgs(duelId);
+          const duelId = await dno.duelCount();
+          await expect(dno.connect(alice).postDuel(a, 0, false)).to.emit(dno, "DuelPosted").withArgs(duelId, a, 0, alice.address, false);
+          await expect(finalizeDuel(dno, duelId, carol)).to.emit(dno, "DuelOpened");
+          await expect(dno.connect(bob).acceptDuel(duelId, b)).to.emit(dno, "DuelAccepted").withArgs(duelId, b, bob.address);
           const receipt = await (await finalizeDuel(dno, duelId, carol)).wait();
           const [event] = parseEvents(dno, receipt!.logs, "DuelResolved");
           const [, winnerId, loserId, traitIndex, roll] = event!;
@@ -226,8 +231,7 @@ describe("DoNotOpen mechanics", function () {
           const [mask] = await dno.publicTraitsOf(loser);
           expect(Number(mask) & (1 << Number(traitIndex))).to.not.eq(0);
           const info = await dno.duelInfo(duelId);
-          expect([info.duelStatus, info.accepter]).to.deep.eq([3n, bob.address]);
-          duelId++;
+          expect([info.duelStatus, info.tokenIdB, info.accepter]).to.deep.eq([DUEL.Resolved, BigInt(b), bob.address]);
         }
       }
       for (const id of [...A, ...B]) {
@@ -236,60 +240,115 @@ describe("DoNotOpen mechanics", function () {
       }
     });
 
-    it("is void, and shows nothing, unless both sides hold their boxes", async function () {
-      // Carol challenges with a box she does not hold.
-      await dno.connect(carol).challengeDuel(A[0]!, B[0]!);
-      await dno.connect(bob).acceptDuel(0);
+    it("only goes on the shelf once the challenger is proven to hold the box", async function () {
+      // Carol posts a box she does not hold: the proof says no, and nobody can accept.
+      await dno.connect(carol).postDuel(A[0]!, 0, false);
+      await expect(dno.connect(bob).acceptDuel(0, B[0]!)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
       const clear = await fhevm.publicDecrypt([...(await dno.duelHandles(0))]);
-      expect(Object.values(clear.clearValues).map((v) => BigInt(v as bigint | boolean))).to.deep.eq([0n, 0n, 0n, 0n]);
-      await expect(finalizeDuel(dno, 0, carol)).to.emit(dno, "DuelVoided").withArgs(0);
-      expect((await dno.duelInfo(0)).duelStatus).to.eq(5n);
+      expect(Object.values(clear.clearValues)).to.deep.eq([false]);
+      await expect(finalizeDuel(dno, 0, bob)).to.emit(dno, "DuelVoided").withArgs(0);
+      expect((await dno.duelInfo(0)).duelStatus).to.eq(DUEL.Void);
+      await expect(dno.connect(bob).acceptDuel(0, B[0]!)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
+
+      // Alice posts her own: open for a week.
+      await dno.connect(alice).postDuel(A[0]!, 0, false);
+      await expect(finalizeDuel(dno, 1, bob)).to.emit(dno, "DuelOpened");
+      const info = await dno.duelInfo(1);
+      expect(info.duelStatus).to.eq(DUEL.Open);
+      expect(info.openUntil).to.eq(BigInt(await time.latest()) + (await dno.DUEL_LIFETIME()));
+      expect(await dno.DUEL_LIFETIME()).to.eq(BigInt(Number(spec.mechanics.duel!.lifetimeDays) * 86_400));
+    });
+
+    it("goes back on the shelf when the accepter brought a box they do not hold, showing nothing", async function () {
+      const duelId = await postDuel(dno, A[0]!, alice, carol);
+      await dno.connect(carol).acceptDuel(duelId, B[0]!);
+      const clear = await fhevm.publicDecrypt([...(await dno.duelHandles(duelId))]);
+      expect(Object.values(clear.clearValues).map((v) => BigInt(v as bigint | boolean))).to.deep.eq([1n, 0n, 0n, 0n, 0n]);
+      await expect(finalizeDuel(dno, duelId, carol)).to.emit(dno, "DuelReopened").withArgs(duelId);
+      const info = await dno.duelInfo(duelId);
+      expect([info.duelStatus, info.tokenIdB, info.accepter]).to.deep.eq([DUEL.Open, 0n, ethers.ZeroAddress]);
       expect((await dno.publicTraitsOf(B[0]!))[0]).to.eq(0);
 
-      // Alice challenges properly, carol accepts for a box she does not hold.
-      await dno.connect(alice).challengeDuel(A[0]!, B[0]!);
-      await dno.connect(carol).acceptDuel(1);
-      await expect(finalizeDuel(dno, 1, carol)).to.emit(dno, "DuelVoided").withArgs(1);
-      // A challenger who gave the box away meanwhile: void too.
-      await dno.connect(alice).challengeDuel(A[1]!, B[1]!);
+      // The real holder can still take it up.
+      await dno.connect(bob).acceptDuel(duelId, B[0]!);
+      await expect(finalizeDuel(dno, duelId, carol)).to.emit(dno, "DuelResolved");
+    });
+
+    it("is void, and says nothing of the accepter, when the challenger gave the box away", async function () {
+      const duelId = await postDuel(dno, A[1]!, alice, carol);
       await (await dno.connect(alice).confidentialTransfer(carol.address, A[1]!)).wait();
-      await dno.connect(bob).acceptDuel(2);
-      await expect(finalizeDuel(dno, 2, carol)).to.emit(dno, "DuelVoided").withArgs(2);
+      await dno.connect(bob).acceptDuel(duelId, B[1]!);
+      const clear = await fhevm.publicDecrypt([...(await dno.duelHandles(duelId))]);
+      expect(Object.values(clear.clearValues).map((v) => BigInt(v as bigint | boolean))).to.deep.eq([0n, 0n, 0n, 0n, 0n]);
+      await expect(finalizeDuel(dno, duelId, carol)).to.emit(dno, "DuelVoided").withArgs(duelId);
+      expect((await dno.duelInfo(duelId)).duelStatus).to.eq(DUEL.Void);
+    });
+
+    it("lets only the named box accept a reserved duel", async function () {
+      await expect(dno.connect(alice).postDuel(A[0]!, A[0]!, true)).to.be.revertedWithCustomError(dno, "SameBox");
+      const duelId = await postDuel(dno, A[0]!, alice, carol, B[1]!);
+      const info = await dno.duelInfo(duelId);
+      expect([info.reserved, info.tokenIdB]).to.deep.eq([true, BigInt(B[1]!)]);
+      await expect(dno.connect(bob).acceptDuel(duelId, B[0]!)).to.be.revertedWithCustomError(dno, "NotThisBox");
+      await dno.connect(bob).acceptDuel(duelId, B[1]!);
+      await expect(finalizeDuel(dno, duelId, carol)).to.emit(dno, "DuelResolved");
+    });
+
+    it("keeps one listing per box, and refuses its own box, opened boxes and late takers", async function () {
+      const first = await postDuel(dno, A[0]!, alice, carol);
+      await expect(dno.connect(alice).acceptDuel(first, A[0]!)).to.be.revertedWithCustomError(dno, "SameBox");
+      // Posting the same box again replaces the first listing.
+      const second = await dno.duelCount();
+      await dno.connect(alice).postDuel(A[0]!, 0, false);
+      await expect(finalizeDuel(dno, second, carol)).to.emit(dno, "DuelCancelled").withArgs(first);
+      expect((await dno.duelInfo(first)).duelStatus).to.eq(DUEL.Cancelled);
+
+      await time.increase(Number(await dno.DUEL_LIFETIME()) + 1);
+      await expect(dno.connect(bob).acceptDuel(second, B[0]!)).to.be.revertedWithCustomError(dno, "DuelExpired");
+
+      const third = await postDuel(dno, A[1]!, alice, carol);
+      await open(dno, B[1]!, bob, carol);
+      await expect(dno.connect(bob).acceptDuel(third, B[1]!)).to.be.revertedWithCustomError(dno, "NotSealed");
+      await open(dno, A[1]!, alice, carol);
+      await expect(dno.connect(bob).acceptDuel(third, B[2]!)).to.be.revertedWithCustomError(dno, "NotSealed");
     });
 
     it("can be cancelled by the challenger until accepted", async function () {
-      await dno.connect(alice).challengeDuel(A[0]!, B[0]!);
+      await dno.connect(alice).postDuel(A[0]!, 0, false);
       await expect(dno.connect(bob).cancelDuel(0)).to.be.revertedWithCustomError(dno, "NotChallenger");
       await expect(dno.connect(alice).cancelDuel(0)).to.emit(dno, "DuelCancelled").withArgs(0);
-      await expect(dno.connect(bob).acceptDuel(0)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
-    });
+      await expect(finalizeDuel(dno, 0, carol)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
 
-    it("refuses opened boxes and the same box twice", async function () {
-      await expect(dno.connect(alice).challengeDuel(A[0]!, A[0]!)).to.be.revertedWithCustomError(dno, "SameBox");
-      await dno.connect(alice).challengeDuel(A[1]!, B[1]!);
-      await open(dno, B[1]!, bob, carol);
-      await expect(dno.connect(bob).acceptDuel(0)).to.be.revertedWithCustomError(dno, "NotSealed");
+      const duelId = await postDuel(dno, A[0]!, alice, carol);
+      await expect(dno.connect(alice).cancelDuel(duelId)).to.emit(dno, "DuelCancelled").withArgs(duelId);
+      await expect(dno.connect(bob).acceptDuel(duelId, B[0]!)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
+      // Accepted duels can no longer be withdrawn.
+      const third = await postDuel(dno, A[1]!, alice, carol);
+      await dno.connect(bob).acceptDuel(third, B[1]!);
+      await expect(dno.connect(alice).cancelDuel(third)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
     });
 
     it("rejects a forged outcome and double finalisation", async function () {
-      await dno.connect(alice).challengeDuel(A[0]!, B[0]!);
-      await dno.connect(bob).acceptDuel(0);
-      const real = await fhevm.publicDecrypt([...(await dno.duelHandles(0))]);
+      const duelId = await postDuel(dno, A[0]!, alice, carol);
+      await dno.connect(bob).acceptDuel(duelId, B[0]!);
+      const real = await fhevm.publicDecrypt([...(await dno.duelHandles(duelId))]);
       const coder = ethers.AbiCoder.defaultAbiCoder();
-      const [valid, aWins, pick, roll] = coder.decode(["bool", "bool", "uint8", "uint8"], real.abiEncodedClearValues);
-      const flipped = coder.encode(["bool", "bool", "uint8", "uint8"], [valid, !aWins, pick, roll]);
-      await expect(dno.finalizeDuel(0, flipped, real.decryptionProof)).to.be.reverted;
-      await dno.finalizeDuel(0, real.abiEncodedClearValues, real.decryptionProof);
-      await expect(dno.finalizeDuel(0, real.abiEncodedClearValues, real.decryptionProof)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
+      const types = ["bool", "bool", "bool", "uint8", "uint8"];
+      const [aHolds, valid, aWins, pick, roll] = coder.decode(types, real.abiEncodedClearValues);
+      const flipped = coder.encode(types, [aHolds, valid, !aWins, pick, roll]);
+      await expect(dno.finalizeDuel(duelId, flipped, real.decryptionProof)).to.be.reverted;
+      await dno.finalizeDuel(duelId, real.abiEncodedClearValues, real.decryptionProof);
+      await expect(dno.finalizeDuel(duelId, real.abiEncodedClearValues, real.decryptionProof)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
     });
 
     it("computes each box's encrypted score once, within the HCU budget", async function () {
-      const first = await hcu(dno.connect(alice).challengeDuel(A[0]!, B[0]!));
-      expect(first.globalHCU).to.be.within(1_000_000, 1_400_000);
-      const accept = await hcu(dno.connect(bob).acceptDuel(0));
-      expect(accept.globalHCU).to.be.lessThan(3_500_000);
+      const first = await hcu(dno.connect(alice).postDuel(A[0]!, 0, false));
+      expect(first.globalHCU).to.be.within(1_000_000, 1_500_000);
+      await (await finalizeDuel(dno, 0, carol)).wait();
+      const accept = await hcu(dno.connect(bob).acceptDuel(0, B[0]!));
+      expect(accept.globalHCU).to.be.lessThan(3_600_000);
       expect(accept.maxHCUDepth).to.be.lessThan(5_000_000);
-      expect((await hcu(dno.connect(alice).challengeDuel(A[0]!, B[0]!))).globalHCU).to.eq(0);
+      expect((await hcu(dno.connect(alice).postDuel(A[0]!, 0, false))).globalHCU).to.be.lessThan(200_000);
     });
   });
 });

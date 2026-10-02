@@ -28,7 +28,8 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | 5     | Full docs, Solana porting map, audit checklist                        | **Done**    |
 | CROQ  | Croquette economy: CROQ + cCROQ, Pantry, Uniswap pool, 10,000 boxes   | **Done**, live on Sepolia |
 | Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done**, live on Sepolia |
-| Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done** on the FHEVM mock; not deployed on Sepolia yet |
+| Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
+| Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
 
 ## Layout
 
@@ -145,23 +146,33 @@ The rules, what leaks and the costs are in [`docs/CROQ.md`](docs/CROQ.md).
 
 ## On Sepolia
 
-The hidden-owner contracts, deployed on 2026-10-01 (block 11822985):
+The contracts with the duel shelf, deployed on 2026-10-02 (block 11828557), with a fresh
+croquette economy (a Pantry is tied to one collection):
 
 | Contract | Address |
 | --- | --- |
-| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0xDdC71FeBA832c961770F59d0be4B0b3ae536707B`](https://sepolia.etherscan.io/address/0xDdC71FeBA832c961770F59d0be4B0b3ae536707B) |
-| `DoNotOpenConfig` | [`0x2456fE3d2B27f044593C895fae553bA146084bFB`](https://sepolia.etherscan.io/address/0x2456fE3d2B27f044593C895fae553bA146084bFB) |
-| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0xEE2219018b765891eDB72954197E097e8E6A4FFc`](https://sepolia.etherscan.io/address/0xEE2219018b765891eDB72954197E097e8E6A4FFc) |
-| `Croq` (CROQ) | [`0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2`](https://sepolia.etherscan.io/address/0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2) |
-| `ConfidentialCroq` (cCROQ) | [`0x58B4e70B877afF540796c3ec38b54C2C7834B804`](https://sepolia.etherscan.io/address/0x58B4e70B877afF540796c3ec38b54C2C7834B804) |
-| `Pantry` | [`0x084C50597D83ab89D62F5FA4245A4a4e9909A77D`](https://sepolia.etherscan.io/address/0x084C50597D83ab89D62F5FA4245A4a4e9909A77D) |
-| CROQ/USDC pair, Uniswap V2 | [`0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60`](https://sepolia.etherscan.io/address/0x9E8C1e4D763F8Fc9CE3eD342a6C2103A5c51eF60) |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0xB8e3b2238eF5D5782A661c406acc928895938fBa`](https://sepolia.etherscan.io/address/0xB8e3b2238eF5D5782A661c406acc928895938fBa) |
+| `DoNotOpenConfig` | [`0x6909f7C5ebE00592F28Ab3597914d30D8b746976`](https://sepolia.etherscan.io/address/0x6909f7C5ebE00592F28Ab3597914d30D8b746976) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x684974FE67084A8cF94e6096fDcbc774892f560a`](https://sepolia.etherscan.io/address/0x684974FE67084A8cF94e6096fDcbc774892f560a) |
+| `Croq` (CROQ) | [`0xF4d9CE55b52417e503617186e923E1c0713c53b5`](https://sepolia.etherscan.io/address/0xF4d9CE55b52417e503617186e923E1c0713c53b5) |
+| `ConfidentialCroq` (cCROQ) | [`0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9`](https://sepolia.etherscan.io/address/0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9) |
+| `Pantry` | [`0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed`](https://sepolia.etherscan.io/address/0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed) |
+| CROQ/USDC pair, Uniswap V2 | [`0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2`](https://sepolia.etherscan.io/address/0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2) |
 | USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
 | cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
-| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x20FB2d7f2d3fb249924ce3871255bb417670ba50`](https://sepolia.etherscan.io/address/0x20FB2d7f2d3fb249924ce3871255bb417670ba50) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x2754B8568a3402f828DDAa1715F8290CDa498aAb`](https://sepolia.etherscan.io/address/0x2754B8568a3402f828DDAa1715F8290CDa498aAb) |
 
 The end-to-end smoke tests (`pnpm --filter @dno/chain-adapter smoke:sepolia` and
-`smoke:croq`) ran against them through the real coprocessor, relayer and KMS.
+`smoke:croq`) ran against the previous deployment through the real coprocessor, relayer and
+KMS; `smoke:sepolia` ran again against this one, the duel shelf included.
+
+The hidden-owner contracts before the duel shelf (2026-10-01, block 11822985), replaced:
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` | [`0xDdC71FeBA832c961770F59d0be4B0b3ae536707B`](https://sepolia.etherscan.io/address/0xDdC71FeBA832c961770F59d0be4B0b3ae536707B) |
+| `Pantry` | [`0x084C50597D83ab89D62F5FA4245A4a4e9909A77D`](https://sepolia.etherscan.io/address/0x084C50597D83ab89D62F5FA4245A4a4e9909A77D) |
+| `Croq` (CROQ) | [`0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2`](https://sepolia.etherscan.io/address/0x5ebF858ff01d40D8cbC707B8d1F873099F5a11E2) |
 
 The previous version, an ERC-721 with public owners, kept for the record:
 

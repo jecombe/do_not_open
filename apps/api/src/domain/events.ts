@@ -17,9 +17,11 @@ export type ProtocolEvent =
   | Ev<"AliveProven", { tokenId: number; alive: boolean }>
   | Ev<"EntangleProposed", { tokenA: number; tokenB: number; proposer: Address }>
   | Ev<"Entangled", { tokenA: number; tokenB: number }>
-  | Ev<"DuelChallenged", { duelId: number; tokenA: number; tokenB: number }>
+  | Ev<"DuelPosted", { duelId: number; tokenA: number; tokenB: number; challenger: Address; reserved: boolean }>
+  | Ev<"DuelOpened", { duelId: number; openUntil: number }>
   | Ev<"DuelCancelled", { duelId: number }>
-  | Ev<"DuelAccepted", { duelId: number }>
+  | Ev<"DuelAccepted", { duelId: number; tokenB: number; accepter: Address }>
+  | Ev<"DuelReopened", { duelId: number }>
   | Ev<"DuelResolved", { duelId: number; winner: number; loser: number; traitIndex: number; roll: number }>
   | Ev<"DuelVoided", { duelId: number }>
   | Ev<"ConfidentialTransfer", { tokenId: number; from: Address; to: Address; moved: string }>
@@ -35,16 +37,18 @@ export type EventName = ProtocolEvent["name"];
 export type EventOf<N extends EventName> = Extract<ProtocolEvent, { name: N }>;
 
 /**
- * What logs leave out and the contracts' views tell: who challenged or accepted a duel, the
- * other box of a request, the full contents of an opened box, the tolerance of a weighed cat.
+ * What logs leave out and the contracts' views tell: a duel's boxes and parties when its posting
+ * was missed, the other box of a request, the full contents of an opened box, the tolerance of a weighed cat.
  * Read once per batch, after the logs.
  */
 export interface DuelSnapshot {
   tokenA: number;
-  tokenB: number;
+  tokenB: number | null;
+  reserved: boolean;
   challenger: Address | null;
   accepter: Address | null;
   status: DuelStatus | null;
+  openUntil: number | null;
 }
 
 export interface RequestSnapshot {
@@ -75,11 +79,11 @@ export interface Enrichment {
   weighIn?: WeighIn;
 }
 
-const DUEL_EVENTS = new Set(["DuelChallenged", "DuelAccepted", "DuelCancelled", "DuelResolved", "DuelVoided"]);
+export const DUEL_EVENTS: readonly string[] = ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened", "DuelCancelled", "DuelResolved", "DuelVoided"];
 
 export function enrichmentOf(e: ProtocolEvent, s: Snapshots): Enrichment | null {
   const out: Enrichment = {};
-  if (DUEL_EVENTS.has(e.name) && "duelId" in e && s.duels.has(e.duelId)) out.duel = s.duels.get(e.duelId)!;
+  if (DUEL_EVENTS.includes(e.name) && "duelId" in e && s.duels.has(e.duelId)) out.duel = s.duels.get(e.duelId)!;
   if ((e.name === "RequestPlaced" || e.name === "RequestSettled") && s.requests.has(e.requestId)) out.request = s.requests.get(e.requestId)!;
   if (e.name === "Observed" && s.contents.has(e.tokenId)) out.contents = s.contents.get(e.tokenId)!;
   if (e.name === "Weighed" && s.weighIns.has(e.tokenId)) out.weighIn = s.weighIns.get(e.tokenId)!;
@@ -124,6 +128,10 @@ export function actorsOf(e: ProtocolEvent): Address[] {
       return [e.openedBy];
     case "EntangleProposed":
       return [e.proposer];
+    case "DuelPosted":
+      return [e.challenger];
+    case "DuelAccepted":
+      return [e.accepter];
     case "Claimed":
       return [e.caller];
     case "Bought":
@@ -138,8 +146,11 @@ export function tokensOf(e: ProtocolEvent): number[] {
   switch (e.name) {
     case "EntangleProposed":
     case "Entangled":
-    case "DuelChallenged":
       return [e.tokenA, e.tokenB];
+    case "DuelPosted":
+      return e.reserved ? [e.tokenA, e.tokenB] : [e.tokenA];
+    case "DuelAccepted":
+      return [e.tokenB];
     case "DuelResolved":
       return [e.winner, e.loser];
     case "MintPlaced":

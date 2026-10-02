@@ -17,7 +17,7 @@ flowchart LR
 | File | What it is |
 | --- | --- |
 | `src/types.ts` | The interface, its data types, `ChainError`, and a few chain-neutral helpers |
-| `src/mock/MockAdapter.ts` | The whole game in memory, with the contract's rules and refusals. The other holder accepts everything at once, so every flow can be played alone |
+| `src/mock/MockAdapter.ts` | The whole game in memory, with the contract's rules and refusals. The other holder (the night shift) keeps two of its boxes on the duel shelf, takes up at once any duel reserved for one of its boxes, and accepts every entanglement, so every flow can be played alone |
 | `src/evm/EvmFhevmAdapter.ts` | Sepolia: transactions through ethers, decryptions through `@zama-fhe/relayer-sdk` |
 | `src/evm/wallet.ts` | Where signatures come from: an injected browser wallet, or a fixed signer in Node |
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
@@ -63,7 +63,15 @@ so the interface has no owner field anywhere:
   (`milestones`, `reached`, `soldOut`) instead of a minted count.
 - Openings, alive checks and entanglements are requests: `pendingRequests(account)` lists
   the ones waiting for their proof, `finishRequest(requestId)` sends it (anyone may).
-- `DuelStatus` has `"void"`, and `finishDuel` returns `null` for a void duel.
+- Duels go on a shelf. `postDuel(tokenA, { reservedFor })` puts a box up, open to any
+  sealed box or reserved for one, and proves the caller holds it (that much becomes
+  public); it throws `not-yours` when they do not. `duelShelf()` lists every box up for a
+  duel that can still be taken up. `acceptDuel(duelId, tokenB)` takes one up and returns
+  the outcome, or `null` when the duel was void or went back on the shelf. `finishDuel`
+  sends whichever proof a duel waits for (the holding, or the outcome); `cancelDuel`
+  withdraws a box until someone takes it up. `pair(a, b).duels` lists the duels the two
+  boxes can settle: both can be up at once. `DuelStatus` is `"posted"`, `"open"`,
+  `"pending"`, `"resolved"`, `"cancelled"` or `"void"` (`"none"` for an unknown id).
 - `claimEarnings(tokenIds)` collects what paid shakes earned the boxes the caller holds;
   `sendBox(tokenId, to)` is a confidential transfer.
 - `openedCats()` lists every opened cat and who opened it: the only holders that are public.
@@ -106,7 +114,7 @@ boxes and reading a mint's result use the same user decryption as a shake.
 ## Tests
 
 ```bash
-pnpm --filter @dno/chain-adapter test            # the mock, 26 tests, no network
+pnpm --filter @dno/chain-adapter test            # the mock, 30 tests, no network
 pnpm --filter @dno/chain-adapter smoke:sepolia   # every mechanic on the deployed contracts
 pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap, unwrap, transfer, sell
 ```

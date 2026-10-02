@@ -10,7 +10,9 @@ export type BoxStatus = "sealed" | "revealed";
 export type AliveCheck = "none" | "alive" | "notAlive";
 export type RequestKind = "open" | "aliveCheck" | "entangle";
 export type RequestStatus = "pending" | "done" | "refused";
-export type DuelStatus = "challenged" | "pending" | "resolved" | "cancelled" | "void";
+/** "posted": waiting for the proof that the challenger holds the box. "open": on the duel shelf.
+ *  "pending": taken up, waiting for the outcome. "void": the challenger did not hold the box. */
+export type DuelStatus = "posted" | "open" | "pending" | "resolved" | "cancelled" | "void";
 export type Build = "thin" | "normal" | "chubby" | "fat" | "huge";
 export type Disease = "diabetic" | "arthritic" | "fattyLiver";
 export type Weighing = "none" | "pending" | "done";

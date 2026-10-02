@@ -42,7 +42,7 @@ const config: HardhatUserConfig = {
     version: "0.8.27",
     settings: {
       metadata: { bytecodeHash: "none" },
-      optimizer: { enabled: true, runs: 800 },
+      optimizer: { enabled: true, runs: 200 },
       evmVersion: "cancun",
     },
   },

@@ -87,8 +87,8 @@ milestones.
 | `proveAlive` | holder | request: `holds`, and `alive AND holds` | one bit, and that the caller held the box |
 | `proposeEntangle` | anyone | none yet | the proposal |
 | `acceptEntangle` | holder of B | request: proposer holds A AND caller holds B | the link, and both holders |
-| `challengeDuel` | anyone | none yet | the challenge |
-| `acceptDuel` | holder of B | `valid = challenger holds A AND accepter holds B`; outcome masked by `valid` | four values: valid, who won, which trait, the loser's roll; or a void duel |
+| `postDuel` | holder of A | `posted = caller holds A`, publicly decryptable; only a proven posting goes on the duel shelf | that the caller holds A; a void duel otherwise, which shows nothing |
+| `acceptDuel` | holder of B | `aHolds = challenger still holds A`, `valid = aHolds AND accepter holds B`; outcome masked by `valid` | five values: aHolds, valid, who won, which trait, the loser's roll. A void duel shows only that A left its challenger; a reopened one only that the accepter did not hold B |
 | `confidentialTransfer` | anyone | the transfer itself | that a transfer was attempted |
 
 **Requests.** What must become public is a request in two steps, like every decryption in
@@ -126,7 +126,7 @@ The Pantry asks `DoNotOpen.isOwner` as a trusted reader (`setTrustedReader`, set
 | Shielding USDC | the amount (cUSDC wrapping is public) |
 | A transfer attempt | sender and recipient addresses, not whether it moved |
 | A paid shake, a feed, a claim | that the caller did it, not whether they hold the box |
-| An opening, an alive check, an accepted entanglement, a valid duel | that the caller held the box at that moment |
+| An opening, an alive check, an accepted entanglement, a proven duel posting, a valid duel | that the caller held the box at that moment |
 | A milestone | which mint crossed it |
 | Operator approvals | that an account made an address its operator |
 
@@ -150,9 +150,8 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | `claimEarnings`, 1 box | 419,000 | 1,082,000 |
 | `feed` | 530,000 | 1,071,000 |
 | `proveAlive` + `finalize` | 314,000 + 126,000 | 200,000 |
-| `challengeDuel` (first score) | 497,000 | 1,351,000 |
-| `acceptDuel` (first score) | 1,098,000 | 2,766,000 |
-| `finalizeDuel` | 172,000 | 0 |
+| `postDuel` (first score) + `finalizeDuel` | 585,000 + 139,000 | 1,468,000 |
+| `acceptDuel` (first score) + `finalizeDuel` | 1,118,000 + 177,000 | 2,766,000 |
 | `acceptEntangle` + `finalize` | 220,000 + 148,000 | 259,000 |
 | `observe` + `finalize`, one box | 698,000 + 223,000 | 1,120,000 |
 | `observe` + `finalize`, entangled pair | 901,000 + 343,000 | 1,230,000 |
@@ -165,5 +164,6 @@ at 1 gwei and 3,000 USD per ETH, 1,000,000 gas is 3 USD. On Ethereum mainnet a h
 a few dollars; on the cheaper chains Zama supports it is cents. Zama's protocol fees
 (input proofs, decryptions) come on top on mainnet.
 
-`DoNotOpen` is 24,093 bytes deployed, close to the 24,576 limit. The next feature should move
-logic out (a library, or a second contract that is a trusted reader).
+`DoNotOpen` is 24,454 bytes deployed, close to the 24,576 limit, with the optimizer at 200
+runs. The next feature should move logic out (a library, or a second contract that is a
+trusted reader).

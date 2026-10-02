@@ -162,9 +162,21 @@ export async function proveAlive(dno: DoNotOpen, tokenId: number, holder: Hardha
   return Number((await dno.requestInfo(id))[1]);
 }
 
+/** Relays the current step of a duel: the holding proof after posting, the outcome after acceptance. */
 export async function finalizeDuel(dno: DoNotOpen, duelId: number | bigint, sender: HardhatEthersSigner) {
   const result = await fhevm.publicDecrypt([...(await dno.duelHandles(duelId))]);
   return dno.connect(sender).finalizeDuel(duelId, result.abiEncodedClearValues, result.decryptionProof);
+}
+
+/** DuelStatus in the contract. */
+export const DUEL = { None: 0n, Posted: 1n, Open: 2n, Pending: 3n, Resolved: 4n, Cancelled: 5n, Void: 6n } as const;
+
+/** Puts `tokenId` up for a duel, open to all or reserved for `forTokenId`, and relays the holding proof. Returns the duel id. */
+export async function postDuel(dno: DoNotOpen, tokenId: number, challenger: HardhatEthersSigner, relay: HardhatEthersSigner, forTokenId?: number) {
+  const duelId = await dno.duelCount();
+  await (await dno.connect(challenger).postDuel(tokenId, forTokenId ?? 0, forTokenId !== undefined)).wait();
+  await (await finalizeDuel(dno, duelId, relay)).wait();
+  return duelId;
 }
 
 /** Announces the next milestone if the last mint reached it. Returns whether it did. */

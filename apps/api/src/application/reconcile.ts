@@ -1,4 +1,5 @@
 import type { Box } from "../domain/box";
+import { OPEN_DUEL } from "../domain/duel";
 import { byChainOrder, enrichmentOf } from "../domain/events";
 import type { BoxView, ChainSource, ChainState, Counters } from "./ports/chain";
 import type { Logger } from "./ports/logger";
@@ -74,7 +75,7 @@ export class Reconciler {
     ]);
     const drift: Drift[] = [...this.countDrift(counters, tokenCount, milestones, duelIds, requestIds)];
 
-    const open = await this.store.duels({ statuses: ["challenged", "pending"], limit: 10_000 });
+    const open = await this.store.duels({ statuses: [...OPEN_DUEL], limit: 10_000 });
     const [duelViews, requestViews] = await Promise.all([
       this.state.duelViews(open.map((d) => d.duelId), block),
       this.state.requestViews(pending.map((r) => r.requestId), block),

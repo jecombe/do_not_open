@@ -63,7 +63,7 @@ were drawn for:
 | `FHE.allowThis(handle)` | after every computation | Allow the program, probably a PDA acting as its identity | Medium |
 | `FHE.allow(handle, viewer)`, permanent | `_shakeFor` | Allow a wallet public key on a handle | Medium. If grants become revocable on Solana, nothing here needs it |
 | No ACL on seed, score, affection or owner for any holder | design rule | Same rule. It is what makes transfers trivial | Ours to keep |
-| `FHE.makePubliclyDecryptable` | observe, proveAlive, acceptEntangle, acceptDuel, mint (the milestone bit) | A "mark public" instruction | Medium |
+| `FHE.makePubliclyDecryptable` | observe, proveAlive, acceptEntangle, postDuel, acceptDuel, mint (the milestone bit) | A "mark public" instruction | Medium |
 | `FHE.checkSignatures(handles, cleartexts, proof)` | `finalize`, `finalizeDuel`, `announceMilestone` | Verify KMS signatures inside the program | Low. See "transaction size" below |
 | A public decryption refuses one handle twice | `observe` of two unfed entangled boxes | Unknown | Low: check, and keep publishing nothing for an unfed box |
 | User decryption: EIP-712 permit signed with secp256k1, scoped to a contract and a duration | `EvmFhevmAdapter.permitFor` | A message signed with the wallet's ed25519 key (`signMessage`), scoped to a program id | Medium: the KMS must accept ed25519 |
@@ -77,6 +77,7 @@ were drawn for:
 | `mapping(tokenId => ...)` | all state | One PDA per box: seeds `["box", collection, tokenId]` | Rent: the minter pays for the box account |
 | `mapping(tokenId => mapping(viewer => Shake))` | `_shakes` | One PDA per (box, viewer): seeds `["shake", box, viewer]`, created on first shake, rent paid by the viewer | |
 | `mapping(duelId => Duel)` | `_duels` | One PDA per duel: seeds `["duel", collection, duelId]`; can be closed after resolution to refund rent | |
+| `_listing[tokenId]`, one duel on the shelf per box | `finalizeDuel` | A field in the box account | The older listing's duel account must be passed too, to cancel it |
 | `_earnings[tokenId]` + `claimEarnings(ids)` | paid shake earnings | An encrypted handle in the box account, paid in the confidential token to whoever holds the box | Must stay per box: a per-holder account would name the holder |
 | cUSDC `confidentialTransferFrom` that moves all or nothing | every paid action (`_pull`) | A CPI to the confidential token program, with the program as a delegate | The action stays masked by "paid == price"; no plain lamport fees, they would be public |
 | `Ownable`, `withdraw`, `setBaseURI`, `setTrustedReader` | admin | An authority public key in the config account, ideally a multisig (Squads); trusted readers as a list of program ids | |
@@ -92,11 +93,12 @@ were drawn for:
 
 - **Accounts must be declared up front.** `observe` on an entangled box writes the
   partner's box account too, so the instruction must list it. The adapter reads
-  `partner` first and passes both. Same for a duel: both box accounts and the duel account.
+  `partner` first and passes both. Same for a duel: both box accounts and the duel account,
+  plus, when a posting is proven, the duel account of the box's previous listing.
   A mint creates up to 10 box accounts, real and empty alike.
 - **Transaction size.** A Solana transaction is limited to 1,232 bytes. A KMS proof is
   a set of signatures from the threshold parties; `finalize` carries the proof and
-  the clear values (up to five for an entangled opening). If that does not fit, the proof has to be written to a buffer account
+  the clear values (up to five, for an entangled opening or a duel's outcome). If that does not fit, the proof has to be written to a buffer account
   across several transactions and then consumed. This is the single largest unknown.
 - **Signature verification cost.** Verifying secp256k1 or ed25519 signatures is done with
   the native precompile programs plus instruction introspection, not in program code.
@@ -118,10 +120,10 @@ flowchart TB
   subgraph accounts["Accounts (PDAs)"]
     cfg["Config<br/>spec numbers, specHash, fees, milestones,<br/>authority, trusted readers"]
     col["Collection<br/>tokenCount, sold handle, milestone bit,<br/>milestonesReached, duelCount, requestCount"]
-    box["Box<br/>owner handle, seed handle, affection handle,<br/>score handle, earnings handle, status, aliveCheck,<br/>partner, wins, public traits, revealed, opener"]
+    box["Box<br/>owner handle, seed handle, affection handle,<br/>score handle, earnings handle, status, aliveCheck,<br/>partner, wins, public traits, duel listing,<br/>revealed, opener"]
     shake["Shake (box, viewer)<br/>pick handle, roll handle"]
     req["Request<br/>kind, status, requester, boxes, fed, handles"]
-    duel["Duel<br/>boxes, challenger, accepter, status, four handles"]
+    duel["Duel<br/>boxes, reserved, openUntil, challenger, accepter,<br/>status, posting handle, five outcome handles"]
   end
   subgraph ix["Instructions"]
     i1["mint / announce_milestone"] --> box
@@ -130,7 +132,7 @@ flowchart TB
     i4["observe / prove_alive / accept_entangle"] --> req
     i5["finalize"] --> box
     i6["propose_entangle"] --> box
-    i7["challenge_duel / accept_duel / finalize_duel / cancel_duel"] --> duel
+    i7["post_duel / accept_duel / finalize_duel / cancel_duel"] --> duel
   end
   ix -. "CPI: FHE ops, ACL" .-> zama["Zama program (not published yet)"]
   ix -. "CPI: create and check the asset" .-> nft["NFT program"]

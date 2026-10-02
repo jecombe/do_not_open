@@ -70,11 +70,13 @@ export interface ProjectionTx {
 
 /** Without `account` or `tokenIds`, every duel (with `statuses`, every open one). */
 export interface DuelQuery {
-  /** Duels challenged or accepted by this address. */
+  /** Duels posted or taken up by this address. */
   account?: Address;
   /** Duels that involve any of these boxes. With `account`, either matches. */
   tokenIds?: number[];
   statuses?: DuelStatus[];
+  /** Unix seconds: leaves out duels on the shelf whose time ran out before then. */
+  inTimeAt?: number;
   limit: number;
 }
 

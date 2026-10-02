@@ -23,16 +23,22 @@ let nudges = 0;
 beforeAll(async () => {
   store = new MemoryStore();
   const chain = new FakeChain();
-  chain.snapshots.duels.set(0, { tokenA: 0, tokenB: 1, challenger: ALICE, accepter: BOB, status: "resolved" });
-  chain.snapshots.duels.set(1, { tokenA: 2, tokenB: 1, challenger: BOB, accepter: null, status: "challenged" });
+  chain.snapshots.duels.set(0, { tokenA: 0, tokenB: 1, reserved: false, challenger: ALICE, accepter: BOB, status: "resolved", openUntil: 1_800_000_000 });
+  chain.snapshots.duels.set(1, { tokenA: 2, tokenB: 1, reserved: true, challenger: BOB, accepter: null, status: "open", openUntil: 1_800_000_000 });
+  chain.snapshots.duels.set(2, { tokenA: 3, tokenB: null, reserved: false, challenger: BOB, accepter: null, status: "open", openUntil: 1_700_000_000 });
   chain.snapshots.contents.set(0, { seed: "8177263914793887761", state: 2, traits: [232, 155, 52, 122, 123], score: 1600, affection: 3, golden: false });
   chain.add(
     ev("MintPlaced", 100, { firstTokenId: 0, buyer: ALICE, count: 4 }),
     ev("ConfidentialTransfer", 100, { tokenId: 0, from: "0x0000000000000000000000000000000000000000", to: ALICE, moved: "0x01" }, { logIndex: 1 }),
-    ev("DuelChallenged", 101, { duelId: 0, tokenA: 0, tokenB: 1 }),
-    ev("DuelAccepted", 102, { duelId: 0 }),
+    ev("DuelPosted", 101, { duelId: 0, tokenA: 0, tokenB: 0, challenger: ALICE, reserved: false }),
+    ev("DuelOpened", 101, { duelId: 0, openUntil: 1_800_000_000 }, { logIndex: 1 }),
+    ev("DuelAccepted", 102, { duelId: 0, tokenB: 1, accepter: BOB }),
     ev("DuelResolved", 103, { duelId: 0, winner: 0, loser: 1, traitIndex: 1, roll: 50 }),
-    ev("DuelChallenged", 104, { duelId: 1, tokenA: 2, tokenB: 1 }),
+    // Box 2 on the shelf for box 1 only; box 3 on the shelf for anyone, out of time.
+    ev("DuelPosted", 104, { duelId: 1, tokenA: 2, tokenB: 1, challenger: BOB, reserved: true }),
+    ev("DuelOpened", 104, { duelId: 1, openUntil: 1_800_000_000 }, { logIndex: 1 }),
+    ev("DuelPosted", 104, { duelId: 2, tokenA: 3, tokenB: 0, challenger: BOB, reserved: false }, { logIndex: 2 }),
+    ev("DuelOpened", 104, { duelId: 2, openUntil: 1_700_000_000 }, { logIndex: 3 }),
     ev("EntangleProposed", 105, { tokenA: 2, tokenB: 3, proposer: BOB }),
     ev("RequestPlaced", 106, { requestId: 0, tokenId: 0, requester: ALICE, kind: "open" }),
     ev("Observed", 107, { tokenId: 0, openedBy: ALICE, seed: "8177263914793887761", state: 2, score: 1600, golden: false }),
@@ -42,7 +48,7 @@ beforeAll(async () => {
   await new SyncChain(chain, store, { startBlock: 100, confirmations: 0, rescan: 0, maxBlocksPerPass: 1000 }, silentLogger).pass();
 
   chainState = new FakeChainState();
-  const queries = new Queries(store, chainState);
+  const queries = new Queries(store, chainState, () => now);
   let n = 0;
   const signIn = new SignIn(store, ethersVerifier, new HmacSessions("x".repeat(32)), { now: () => now }, "donotopen.test", () => `nonce${++n}`);
   app = await buildServer({
@@ -66,7 +72,7 @@ describe("reads", () => {
   it("wraps every answer with the block it is true at", async () => {
     const r = await get("/v1/stats");
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ block: 108, data: expect.objectContaining({ minted: 4, opened: 1, duels: 2, openDuels: 1, users: 2 }) });
+    expect(r.body).toEqual({ block: 108, data: expect.objectContaining({ minted: 4, opened: 1, duels: 3, openDuels: 2, users: 2 }) });
     expect(r.headers["cache-control"]).toContain("max-age=5");
   });
 
@@ -86,7 +92,9 @@ describe("reads", () => {
 
   it("finds the open duel and the proposal between two boxes", async () => {
     const { body } = await get("/v1/pairs/1/2");
-    expect(body.data.openDuel).toMatchObject({ duelId: 1, challenger: BOB, status: "challenged" });
+    expect(body.data.duels).toMatchObject([{ duelId: 1, challenger: BOB, status: "open", reserved: true, tokenB: 1 }]);
+    // Box 3's duel ran out of time: nothing to settle with it.
+    expect((await get("/v1/pairs/1/3")).body.data.duels).toEqual([]);
     expect((await get("/v1/pairs/3/2")).body.data.entangleProposal).toEqual({ from: 2, to: 3, proposer: BOB });
     expect((await get("/v1/pairs/1/1")).status).toBe(400);
   });
@@ -98,6 +106,13 @@ describe("reads", () => {
     expect(byBoxes.headers["cache-control"]).toBe("private, no-store");
     expect((await get("/v1/duels")).status).toBe(400);
     expect((await get("/v1/duels?account=nope")).status).toBe(400);
+  });
+
+  it("serves the duel shelf: only what can still be taken up", async () => {
+    const { body, headers } = await get("/v1/duels/shelf");
+    expect(body.data.map((d: { duelId: number }) => d.duelId)).toEqual([1]);
+    expect(headers["cache-control"]).toContain("max-age=5");
+    expect((await get("/v1/duels/0")).body.data).toMatchObject({ status: "resolved", tokenB: 1, accepter: BOB });
   });
 
   it("ranks opened cats", async () => {
@@ -118,7 +133,7 @@ describe("reads", () => {
     const page = (await get("/v1/activity?limit=2")).body.data;
     expect(page.map((e: { block: number }) => e.block)).toEqual([108, 107]);
     const box = (await get("/v1/boxes/1/activity")).body.data;
-    expect(box.map((e: { name: string }) => e.name)).toEqual(["DuelChallenged", "DuelResolved", "DuelChallenged", "MintPlaced"]);
+    expect(box.map((e: { name: string }) => e.name)).toEqual(["DuelPosted", "DuelResolved", "DuelAccepted", "MintPlaced"]);
   });
 
   it("batches nothing it does not need: the pantry reads the claim time once per box", async () => {

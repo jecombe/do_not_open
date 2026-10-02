@@ -3,7 +3,7 @@ import { useT, type AppKey } from "../i18n/app";
 
 /** The contract calls a pair can see, worded for people. */
 const CALLS: Record<string, AppKey> = {
-  challengeDuel: "tx.challengeDuel",
+  postDuel: "tx.postDuel",
   acceptDuel: "tx.acceptDuel",
   cancelDuel: "tx.cancelDuel",
   finalizeDuel: "tx.finalizeDuel",

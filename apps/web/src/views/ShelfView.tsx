@@ -21,12 +21,14 @@ interface Props {
   onPair: (tokenId: number, intent: PairIntent) => void;
   /** Opens the pair view on two boxes, to answer or finish the duel between them. */
   onOpenPair: (tokenA: number, tokenB: number) => void;
+  /** Opens the duel shelf, offering to put `tokenId` up when given. */
+  onDuels: (tokenId?: number | null) => void;
 }
 
 /** How many of the account's boxes are read and listed. The newest come first. */
 const LIST_LIMIT = 40;
 
-export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Props) {
+export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuels }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, findMyBoxes, refresh, connect, mode } = useChain();
   const t = useT();
   const { foldClass, foldButton } = useFold();
@@ -59,8 +61,8 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Prop
     };
   }, [adapter, account, listed]);
 
-  // Open duels the account challenged, and those on its boxes once it found them: kept by the
-  // API, so they follow the account from one device to another.
+  // Open duels the account put up or took up, and those reserved for its boxes once it found
+  // them: kept by the API, so they follow the account from one device to another.
   useEffect(() => {
     let live = true;
     if (!account) setDuels([]);
@@ -75,7 +77,15 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Prop
   }, [adapter, account, boxesKnown, myBoxes]);
 
   const duelState = (d: DuelInfo) =>
-    d.status === "pending" ? t("shelf.duelToFinish") : sameAddress(d.challenger, account) ? t("shelf.duelTheirMove") : t("shelf.duelYourMove");
+    d.status === "pending"
+      ? t("shelf.duelToFinish")
+      : d.status === "posted"
+        ? t("shelf.duelToProve")
+        : sameAddress(d.challenger, account)
+          ? t("shelf.duelOnShelf")
+          : t("shelf.duelYourMove");
+  /** A duel between two known boxes opens in the pair view; one still waiting for a taker, on the duel shelf. */
+  const openDuel = (d: DuelInfo) => (d.tokenB === null ? onDuels() : onOpenPair(d.tokenA, d.tokenB));
 
   const onBench: ShelfBox[] = useMemo(
     () => infos.slice(0, SHELF_CAPACITY).map((b) => ({
@@ -171,7 +181,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Prop
                     {/* Both are opt-in, and only while the box is sealed: the contract refuses them after. */}
                     {b.status === "sealed" && (
                       <span className="tag-options" role="group" aria-label={t("shelf.boxActions", { serial: buildBoxSpec(b.tokenId).serial })}>
-                        <button type="button" onClick={() => onPair(b.tokenId, "duel")} disabled={!!action.busy}>
+                        <button type="button" onClick={() => onDuels(b.tokenId)} disabled={!!action.busy}>
                           {t("shelf.duel")}
                         </button>
                         {b.partner === null && (
@@ -193,8 +203,10 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Prop
                 <ul className="tags" aria-label={t("shelf.duels")}>
                   {duels.map((d) => (
                     <li key={d.duelId}>
-                      <button type="button" onClick={() => onOpenPair(d.tokenA, d.tokenB)}>
-                        {t("shelf.duelVs", { a: buildBoxSpec(d.tokenA).serial, b: buildBoxSpec(d.tokenB).serial })}
+                      <button type="button" onClick={() => openDuel(d)}>
+                        {d.tokenB === null
+                          ? t("shelf.duelUp", { a: buildBoxSpec(d.tokenA).serial })
+                          : t("shelf.duelVs", { a: buildBoxSpec(d.tokenA).serial, b: buildBoxSpec(d.tokenB).serial })}
                         <span>{duelState(d)}</span>
                       </button>
                     </li>

@@ -61,11 +61,15 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
 
     enum DuelStatus {
         None,
-        Challenged,
+        /// Posted, waiting for the proof that the challenger holds the box.
+        Posted,
+        /// Proven: on the duel shelf until accepted, cancelled or out of time.
+        Open,
+        /// Accepted, waiting for the outcome.
         Pending,
         Resolved,
         Cancelled,
-        /// Accepted, but one side did not hold its box: nothing happened.
+        /// The challenger did not hold the box, at posting or at acceptance: nothing happened.
         Void
     }
 
@@ -111,11 +115,20 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
 
     struct Duel {
         uint32 tokenA;
+        /// The box that accepted, or the only one allowed to when `reserved`.
         uint32 tokenB;
         address challenger;
         DuelStatus status;
+        /// Only `tokenB` may accept. Otherwise any sealed box may.
+        bool reserved;
+        /// Last moment it can be accepted, set once the holding is proven.
+        uint64 openUntil;
         address accepter;
-        /// Both sides held their boxes at acceptance.
+        /// At posting: the challenger holds A. Published, it is what puts the box on the shelf.
+        ebool posted;
+        /// At acceptance: the challenger still holds A.
+        ebool aHolds;
+        /// At acceptance: both sides hold their boxes.
         ebool valid;
         /// scoreA > scoreB, masked by `valid`. Ties go to B.
         ebool aWins;
@@ -146,6 +159,8 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     error NoSuchProposal();
     error WrongDuelStatus();
     error NotChallenger();
+    error NotThisBox();
+    error DuelExpired();
     error InvalidMilestones();
     error InvalidIdCount();
 
@@ -164,9 +179,15 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     event AliveProven(uint256 indexed tokenId, bool alive);
     event EntangleProposed(uint256 indexed tokenIdA, uint256 indexed tokenIdB, address proposer);
     event Entangled(uint256 indexed tokenIdA, uint256 indexed tokenIdB);
-    event DuelChallenged(uint256 indexed duelId, uint256 indexed tokenIdA, uint256 indexed tokenIdB);
+    /// @notice A box put up for a duel. `tokenIdB` is the only box that may accept when
+    ///         `reserved`, and meaningless otherwise.
+    event DuelPosted(uint256 indexed duelId, uint256 indexed tokenIdA, uint256 indexed tokenIdB, address challenger, bool reserved);
+    /// @notice The challenger proved they hold the box: it is on the duel shelf until `openUntil`.
+    event DuelOpened(uint256 indexed duelId, uint64 openUntil);
     event DuelCancelled(uint256 indexed duelId);
-    event DuelAccepted(uint256 indexed duelId);
+    event DuelAccepted(uint256 indexed duelId, uint256 indexed tokenIdB, address accepter);
+    /// @notice The accepter did not hold the box they brought: the duel is back on the shelf.
+    event DuelReopened(uint256 indexed duelId);
     event DuelResolved(
         uint256 indexed duelId,
         uint256 indexed winnerTokenId,
@@ -181,6 +202,8 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     uint8 public constant NOT_YOURS = 255;
     /// @notice Boxes one `claimEarnings` may cover.
     uint256 public constant MAX_CLAIM = 10;
+    /// @notice How long a proven duel stays on the shelf.
+    uint64 public constant DUEL_LIFETIME = 7 days;
 
     DoNotOpenConfig public immutable config;
     /// @notice Plain USDC: what cUSDC wraps. Prices are in its smallest unit.
@@ -240,6 +263,9 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     mapping(uint256 tokenId => uint256) private _partner;
     mapping(uint256 tokenIdA => mapping(uint256 tokenIdB => address proposer)) private _entangleProposal;
     mapping(uint256 duelId => Duel) private _duels;
+    /// @dev The box's open duel id plus one; zero means none. One per box: a newer proven
+    ///      posting replaces it.
+    mapping(uint256 tokenId => uint256) private _listing;
     mapping(uint256 tokenId => uint32) public wins;
     /// @dev Traits made public by lost duels: bit i set means trait i is known.
     mapping(uint256 tokenId => uint8) private _publicTraitMask;
@@ -291,9 +317,14 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     }
 
     modifier onlySealed(uint256 tokenId) {
+        _requireSealed(tokenId);
+        _;
+    }
+
+    /// @dev Out of the modifier so its body is not copied into every function using it.
+    function _requireSealed(uint256 tokenId) internal view {
         _requireExists(tokenId);
         if (status[tokenId] != BoxStatus.Sealed) revert NotSealed();
-        _;
     }
 
     // ------------------------------------------------------------------ mint
@@ -680,6 +711,12 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         return FHE.toBytes32(value);
     }
 
+    function _publish(euint8 value) internal returns (bytes32) {
+        FHE.allowThis(value);
+        FHE.makePubliclyDecryptable(value);
+        return FHE.toBytes32(value);
+    }
+
     function _publish(euint32 value) internal returns (bytes32) {
         FHE.allowThis(value);
         FHE.makePubliclyDecryptable(value);
@@ -701,109 +738,165 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
 
     // ------------------------------------------------------------------ duel
 
-    /// @notice Step 1 of 3: challenges box B with box A. Only counts if the caller still holds A
-    ///         when the holder of B accepts.
-    function challengeDuel(uint256 tokenIdA, uint256 tokenIdB) external returns (uint256 duelId) {
-        if (tokenIdA == tokenIdB) revert SameBox();
-        _requireExists(tokenIdA);
-        _requireExists(tokenIdB);
-        if (status[tokenIdA] != BoxStatus.Sealed || status[tokenIdB] != BoxStatus.Sealed) revert NotSealed();
-
+    /// @notice Step 1 of 4: puts box A up for a duel that any sealed box may accept, or only
+    ///         box B when `reserved`. Makes "the caller holds A" publicly decryptable: a duel is
+    ///         a public act, and the shelf only shows boxes their challenger was proven to hold.
+    ///         Anyone then calls `finalizeDuel` with the proof.
+    /// @param tokenIdB ignored unless `reserved`
+    function postDuel(uint256 tokenIdA, uint256 tokenIdB, bool reserved) external onlySealed(tokenIdA) returns (uint256 duelId) {
+        if (reserved) {
+            if (tokenIdA == tokenIdB) revert SameBox();
+            _requireSealed(tokenIdB);
+        } else tokenIdB = 0;
         // The challenger pays for their own box's score; the accepter pays for theirs.
         _ensureScore(tokenIdA);
-
         duelId = duelCount++;
         Duel storage d = _duels[duelId];
         d.tokenA = uint32(tokenIdA);
         d.tokenB = uint32(tokenIdB);
+        d.reserved = reserved;
         d.challenger = msg.sender;
-        d.status = DuelStatus.Challenged;
-        emit DuelChallenged(duelId, tokenIdA, tokenIdB);
+        d.status = DuelStatus.Posted;
+        d.posted = _isOwner(tokenIdA, msg.sender);
+        _publish(d.posted);
+        emit DuelPosted(duelId, tokenIdA, tokenIdB, msg.sender, reserved);
     }
 
+    /// @notice Takes a duel off the shelf, before anyone accepts it.
     function cancelDuel(uint256 duelId) external {
         Duel storage d = _duels[duelId];
-        if (d.status != DuelStatus.Challenged) revert WrongDuelStatus();
+        if (d.status != DuelStatus.Posted && d.status != DuelStatus.Open) revert WrongDuelStatus();
         if (d.challenger != msg.sender) revert NotChallenger();
-        d.status = DuelStatus.Cancelled;
+        _close(duelId, d, DuelStatus.Cancelled);
         emit DuelCancelled(duelId);
     }
 
-    /// @notice Step 2 of 3: the holder of B accepts. Computes, encrypted, whether both sides
-    ///         hold their boxes, who wins and which trait the loser must show, all masked by the
-    ///         first, and makes exactly those four values public.
+    /// @notice Step 3 of 4: box B takes the duel up. Computes, encrypted, whether the challenger
+    ///         still holds A, whether both sides hold their boxes, who wins and which trait the
+    ///         loser must show, the last three masked by the second, and makes those five values
+    ///         public.
     /// @dev The loser's roll is selected under encryption, so the winner's trait is never
-    ///      decryptable by anyone.
-    function acceptDuel(uint256 duelId) external {
+    ///      decryptable by anyone. "B is held by the caller" only ever shows when A was held:
+    ///      a duel voided by its challenger says nothing about the accepter.
+    function acceptDuel(uint256 duelId, uint256 tokenIdB) external onlySealed(tokenIdB) {
         Duel storage d = _duels[duelId];
-        if (d.status != DuelStatus.Challenged) revert WrongDuelStatus();
+        if (d.status != DuelStatus.Open) revert WrongDuelStatus();
+        if (block.timestamp > d.openUntil) revert DuelExpired();
         uint256 a = d.tokenA;
-        uint256 b = d.tokenB;
-        if (status[a] != BoxStatus.Sealed || status[b] != BoxStatus.Sealed) revert NotSealed();
+        if (tokenIdB == a) revert SameBox();
+        if (d.reserved && tokenIdB != d.tokenB) revert NotThisBox();
+        if (status[a] != BoxStatus.Sealed) revert NotSealed();
 
-        ebool valid = FHE.and(_isOwner(a, d.challenger), _isOwner(b, msg.sender));
-        ebool aWins = FHE.gt(_ensureScore(a), _ensureScore(b));
+        ebool aHolds = _isOwner(a, d.challenger);
+        ebool valid = FHE.and(aHolds, _isOwner(tokenIdB, msg.sender));
+        ebool aWins = FHE.gt(_ensureScore(a), _ensureScore(tokenIdB));
         euint8 pick = _randomPick();
-        euint8 loserRoll = FHE.select(aWins, _rollAt(b, pick), _rollAt(a, pick));
+        euint8 loserRoll = FHE.select(aWins, _rollAt(tokenIdB, pick), _rollAt(a, pick));
         euint8 zero = FHE.asEuint8(0);
 
+        d.aHolds = aHolds;
         d.valid = valid;
         d.aWins = FHE.and(valid, aWins);
         d.pick = FHE.select(valid, pick, zero);
         d.loserRoll = FHE.select(valid, loserRoll, zero);
-        _publish(d.valid);
+        _publish(aHolds);
+        _publish(valid);
         _publish(d.aWins);
-        _publish8(d.pick);
-        _publish8(d.loserRoll);
+        _publish(d.pick);
+        _publish(d.loserRoll);
+        d.tokenB = uint32(tokenIdB);
         d.accepter = msg.sender;
         d.status = DuelStatus.Pending;
-        emit DuelAccepted(duelId);
-    }
-
-    function _publish8(euint8 value) internal {
-        FHE.allowThis(value);
-        FHE.makePubliclyDecryptable(value);
+        emit DuelAccepted(duelId, tokenIdB, msg.sender);
     }
 
     /// @notice Handles to pass, in this order, to the relayer's publicDecrypt before calling
-    ///         `finalizeDuel`.
+    ///         `finalizeDuel`. After posting: "the challenger holds A". After acceptance: "A is
+    ///         still held", "both boxes are held", then masked by the latter "A wins" (ties go to
+    ///         B), the bit offset of the trait the loser shows, and the loser's roll for it.
+    ///         Only meaningful while the duel is Posted or Pending.
     function duelHandles(uint256 duelId) public view returns (bytes32[] memory handles) {
         Duel storage d = _duels[duelId];
-        handles = new bytes32[](4);
-        handles[0] = FHE.toBytes32(d.valid);
-        handles[1] = FHE.toBytes32(d.aWins);
-        handles[2] = FHE.toBytes32(d.pick);
-        handles[3] = FHE.toBytes32(d.loserRoll);
+        if (d.status == DuelStatus.Posted) {
+            handles = new bytes32[](1);
+            handles[0] = FHE.toBytes32(d.posted);
+        } else if (d.status == DuelStatus.Pending) {
+            handles = new bytes32[](5);
+            handles[0] = FHE.toBytes32(d.aHolds);
+            handles[1] = FHE.toBytes32(d.valid);
+            handles[2] = FHE.toBytes32(d.aWins);
+            handles[3] = FHE.toBytes32(d.pick);
+            handles[4] = FHE.toBytes32(d.loserRoll);
+        }
     }
 
-    /// @notice Step 3 of 3. Anyone may submit the decrypted outcome with its KMS proof.
+    /// @notice Steps 2 and 4 of 4. Anyone may submit the decrypted values with their KMS proof.
+    ///         After posting: puts the box on the shelf, or voids the duel if the challenger did
+    ///         not hold it. After acceptance: publishes the outcome; voids the duel if the
+    ///         challenger no longer held A; puts it back on the shelf if the accepter did not
+    ///         hold B, so nobody can clear the shelf with boxes they do not have.
     function finalizeDuel(uint256 duelId, bytes calldata abiEncodedCleartexts, bytes calldata decryptionProof) external {
         Duel storage d = _duels[duelId];
+        if (d.status == DuelStatus.Posted) {
+            FHE.checkSignatures(duelHandles(duelId), abiEncodedCleartexts, decryptionProof);
+            if (!abi.decode(abiEncodedCleartexts, (bool))) {
+                d.status = DuelStatus.Void;
+                emit DuelVoided(duelId);
+                return;
+            }
+            uint256 previous = _listing[d.tokenA];
+            if (previous != 0) {
+                _duels[previous - 1].status = DuelStatus.Cancelled;
+                emit DuelCancelled(previous - 1);
+            }
+            _listing[d.tokenA] = duelId + 1;
+            d.status = DuelStatus.Open;
+            d.openUntil = uint64(block.timestamp) + DUEL_LIFETIME;
+            emit DuelOpened(duelId, d.openUntil);
+            return;
+        }
         if (d.status != DuelStatus.Pending) revert WrongDuelStatus();
 
         FHE.checkSignatures(duelHandles(duelId), abiEncodedCleartexts, decryptionProof);
-        (bool valid, bool aWins, uint8 pick, uint8 roll) = abi.decode(abiEncodedCleartexts, (bool, bool, uint8, uint8));
-        if (!valid) {
-            d.status = DuelStatus.Void;
+        (bool aHolds, bool valid, bool aWins, uint8 pick, uint8 roll) = abi.decode(abiEncodedCleartexts, (bool, bool, bool, uint8, uint8));
+        if (!aHolds) {
+            _close(duelId, d, DuelStatus.Void);
             emit DuelVoided(duelId);
+            return;
+        }
+        if (!valid) {
+            d.status = DuelStatus.Open;
+            d.accepter = address(0);
+            if (!d.reserved) d.tokenB = 0;
+            emit DuelReopened(duelId);
             return;
         }
 
         (uint256 winner, uint256 loser) = aWins ? (uint256(d.tokenA), uint256(d.tokenB)) : (uint256(d.tokenB), uint256(d.tokenA));
         uint8 traitIndex = _traitIndexAt(pick);
 
-        d.status = DuelStatus.Resolved;
+        _close(duelId, d, DuelStatus.Resolved);
         wins[winner] += 1;
         _publicTraitMask[loser] |= uint8(1 << traitIndex);
         _publicTraitRoll[loser][traitIndex] = roll;
         emit DuelResolved(duelId, winner, loser, traitIndex, roll);
     }
 
+    /// @dev Ends a duel and takes it off its box's listing if it was the one there.
+    function _close(uint256 duelId, Duel storage d, DuelStatus final_) internal {
+        d.status = final_;
+        if (_listing[d.tokenA] == duelId + 1) delete _listing[d.tokenA];
+    }
+
     function duelInfo(
         uint256 duelId
-    ) external view returns (uint256 tokenIdA, uint256 tokenIdB, address challenger, DuelStatus duelStatus, address accepter) {
+    )
+        external
+        view
+        returns (uint256 tokenIdA, uint256 tokenIdB, address challenger, DuelStatus duelStatus, address accepter, bool reserved, uint64 openUntil)
+    {
         Duel storage d = _duels[duelId];
-        return (d.tokenA, d.tokenB, d.challenger, d.status, d.accepter);
+        return (d.tokenA, d.tokenB, d.challenger, d.status, d.accepter, d.reserved, d.openUntil);
     }
 
     /// @notice Traits of a still-sealed box made public by lost duels.

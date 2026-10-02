@@ -152,8 +152,9 @@ export class MemoryStore implements Store {
   async duels(q: DuelQuery) {
     const tokens = new Set(q.tokenIds ?? []);
     return [...this.s.duels.values()]
-      .filter((d) => (!q.account && !tokens.size) || (q.account && (d.challenger === q.account || d.accepter === q.account)) || tokens.has(d.tokenA) || tokens.has(d.tokenB))
+      .filter((d) => (!q.account && !tokens.size) || (q.account && (d.challenger === q.account || d.accepter === q.account)) || tokens.has(d.tokenA) || (d.tokenB !== null && tokens.has(d.tokenB)))
       .filter((d) => !q.statuses || q.statuses.includes(d.status))
+      .filter((d) => q.inTimeAt === undefined || d.status !== "open" || d.openUntil === null || d.openUntil >= q.inTimeAt)
       .sort((a, b) => b.duelId - a.duelId)
       .slice(0, q.limit)
       .map(clone);

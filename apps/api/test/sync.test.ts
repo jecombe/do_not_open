@@ -106,36 +106,42 @@ describe("SyncChain", () => {
 });
 
 describe("projection", () => {
-  it("follows a duel from challenge to result, with the challenger read from the contract", async () => {
-    chain.snapshots.duels.set(0, { tokenA: 0, tokenB: 1, challenger: ALICE, accepter: BOB, status: "resolved" });
+  it("follows a duel from posting to result, through a taker who did not hold their box", async () => {
     chain.add(
-      ev("MintPlaced", 100, { firstTokenId: 0, buyer: ALICE, count: 2 }),
-      ev("DuelChallenged", 101, { duelId: 0, tokenA: 0, tokenB: 1 }),
-      ev("DuelAccepted", 102, { duelId: 0 }),
-      ev("DuelResolved", 103, { duelId: 0, winner: 1, loser: 0, traitIndex: 2, roll: 77 }),
+      ev("MintPlaced", 100, { firstTokenId: 0, buyer: ALICE, count: 3 }),
+      ev("DuelPosted", 101, { duelId: 0, tokenA: 0, tokenB: 0, challenger: ALICE, reserved: false }),
+      ev("DuelOpened", 101, { duelId: 0, openUntil: 2_000_000_000 }, { logIndex: 1 }),
+      ev("DuelAccepted", 102, { duelId: 0, tokenB: 2, accepter: CAROL }),
+      ev("DuelReopened", 102, { duelId: 0 }, { logIndex: 1 }),
+      ev("DuelAccepted", 103, { duelId: 0, tokenB: 1, accepter: BOB }),
+      ev("DuelResolved", 104, { duelId: 0, winner: 1, loser: 0, traitIndex: 2, roll: 77 }),
     );
     await sync.pass();
     const duel = await store.duel(0);
-    expect(duel).toMatchObject({ status: "resolved", challenger: ALICE, accepter: BOB, winner: 1, loser: 0, shown: { traitIndex: 2, roll: 77 } });
+    expect(duel).toMatchObject({ status: "resolved", tokenB: 1, reserved: false, challenger: ALICE, accepter: BOB, openUntil: 2_000_000_000, winner: 1, loser: 0, shown: { traitIndex: 2, roll: 77 } });
     expect((await store.box(1))!.wins).toBe(1);
     expect((await store.box(0))!.publicTraits).toEqual([{ traitIndex: 2, roll: 77 }]);
-    // Both sides of a duel are users now, though the logs never named them.
+    expect((await store.box(2))!.publicTraits).toEqual([]);
+    // Every side of a duel is a user, the one who failed too.
     expect(await store.user(BOB)).not.toBeNull();
+    expect(await store.user(CAROL)).not.toBeNull();
     expect((await store.user(ALICE))!.actions).toBe(2);
   });
 
-  it("rebuilds a duel whose challenge it never saw, from the contract's view", async () => {
+  it("rebuilds a duel whose posting it never saw, from the contract's view", async () => {
     sync = new SyncChain(chain, store, { ...OPTS, startBlock: 102 }, silentLogger);
-    chain.snapshots.duels.set(4, { tokenA: 8, tokenB: 9, challenger: CAROL, accepter: BOB, status: "pending" });
-    chain.add(ev("DuelChallenged", 101, { duelId: 4, tokenA: 8, tokenB: 9 }), ev("DuelAccepted", 102, { duelId: 4 }));
+    chain.snapshots.duels.set(4, { tokenA: 8, tokenB: 9, reserved: false, challenger: CAROL, accepter: BOB, status: "pending", openUntil: 2_000_000_000 });
+    chain.add(
+      ev("DuelPosted", 101, { duelId: 4, tokenA: 8, tokenB: 0, challenger: CAROL, reserved: false }),
+      ev("DuelAccepted", 102, { duelId: 4, tokenB: 9, accepter: BOB }),
+    );
     await sync.pass();
-    expect(await store.duel(4)).toMatchObject({ tokenA: 8, tokenB: 9, challenger: CAROL, accepter: BOB, status: "pending" });
+    expect(await store.duel(4)).toMatchObject({ tokenA: 8, tokenB: 9, challenger: CAROL, accepter: BOB, status: "pending", openUntil: 2_000_000_000 });
   });
 
   it("does not count a duel's win twice when its result is replayed from another log", async () => {
-    chain.snapshots.duels.set(0, { tokenA: 0, tokenB: 1, challenger: ALICE, accepter: BOB, status: "resolved" });
     chain.add(
-      ev("DuelChallenged", 100, { duelId: 0, tokenA: 0, tokenB: 1 }),
+      ev("DuelPosted", 100, { duelId: 0, tokenA: 0, tokenB: 1, challenger: ALICE, reserved: true }),
       ev("DuelResolved", 101, { duelId: 0, winner: 0, loser: 1, traitIndex: 0, roll: 3 }),
       ev("DuelResolved", 102, { duelId: 0, winner: 0, loser: 1, traitIndex: 0, roll: 3 }),
     );

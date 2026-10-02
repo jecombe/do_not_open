@@ -8,14 +8,15 @@ flowchart TB
     owner["owner : eaddress<br/>address(0) for an empty id"]
     seed["seed : euint64<br/>drawn at mint by FHE.randEuint64"]
     aff["affection : euint32<br/>exists once a paid feed landed"]
-    score["score : euint16<br/>computed at the first duel, cached"]
+    score["score : euint16<br/>computed at the box's first duel, cached"]
     earn["earnings : euint64<br/>holder's share of paid shakes"]
   end
   subgraph fresh["Encrypted, handed out"]
     moved["transfer receipt : ebool moved<br/>ACL: contract + from + to"]
     shake["shake result : 2 x euint8<br/>ACL: contract + the one viewer<br/>NOT_YOURS (255) and 0 for a non-holder"]
     req["request answers : ok bit + values masked by it<br/>publicly decryptable once requested"]
-    duel["duel outcome : 2 x ebool + 2 x euint8<br/>valid, aWins, pick, loserRoll<br/>publicly decryptable once accepted"]
+    dpost["duel posting : ebool<br/>the challenger holds A<br/>publicly decryptable once posted"]
+    duel["duel outcome : 3 x ebool + 2 x euint8<br/>aHolds, valid, aWins, pick, loserRoll<br/>publicly decryptable once accepted"]
   end
   subgraph pub["Plain storage: everyone"]
     status["status (Sealed / Revealed), wins"]
@@ -28,6 +29,7 @@ flowchart TB
   owner -- "eq(owner, caller): holds" --> shake
   seed -- "shr + cast, fresh ciphertext" --> shake
   owner -- "holds" --> req
+  owner -- "holds" --> dpost
   seed -- "low 16 bits < threshold, AND holds" --> req
   seed -- "weighted sum under encryption" --> score
   score -- "gt, select, masked by valid" --> duel
@@ -65,7 +67,8 @@ is public.
 | One trait per shake | Yes, free, unlimited | Yes, by paying (`paidShake`) | User decryption of a fresh ciphertext. A free shake by a non-holder reads `NOT_YOURS` |
 | Which trait a shake picked | The viewer only | No | The pick is encrypted too, and absent from the event |
 | Whether it is alive | Everyone, if the holder asks | same | `proveAlive` publishes one bit, once per box. A request by a non-holder is refused and reveals nothing |
-| Who wins a duel, one trait of the loser | Everyone | same | Public decryption of four values: valid, aWins, pick, loserRoll. A void duel publishes zeros |
+| That the challenger holds the box they put up for a duel | Everyone | same | `postDuel` publishes one bit; only a proven posting goes on the shelf |
+| Who wins a duel, one trait of the loser | Everyone | same | Public decryption of five values: aHolds, valid, aWins, pick, loserRoll. The last three are zeros unless both boxes were held. "B is held" only shows when A was |
 | The winner's trait in a duel | No | No | Selected away under encryption, never decryptable |
 | That someone fed it | Everyone | same | `Fed(tokenId, feeder)`. Whether the fee was paid is not public, and the count is not kept |
 | How much affection that earned | No | No | Each paid feed adds an encrypted draw in 0..3; an unpaid one adds 0 |
@@ -129,7 +132,8 @@ sequenceDiagram
 | `isOwner` | the account on the answer; the asking contract for the transaction | Only the account, its operators and trusted readers (the Pantry) may ask |
 | proveAlive | "holds" and the alive bit become publicly decryptable | One bit, and that the caller held the box |
 | acceptEntangle | "both hold" becomes publicly decryptable | |
-| acceptDuel | four duel values become publicly decryptable | Masked by "both hold" |
+| postDuel | "the caller holds A" becomes publicly decryptable | A duel is a public act |
+| acceptDuel | five duel values become publicly decryptable | The last three masked by "both hold" |
 | observe | "holds and paid", seed and affection (masked by it) become publicly decryptable | Irreversible, like the grant |
 
 What a previous holder keeps after a sale: the traits they shook out, which no system

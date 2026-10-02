@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sameAddress, type ActionOptions, type BoxInfo, type BoxSummary, type DuelResult, type PairInfo } from "@dno/chain-adapter";
+import { sameAddress, type ActionOptions, type BoxInfo, type BoxSummary, type DuelInfo, type DuelResult, type PairInfo } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -39,6 +39,10 @@ type Note = Extract<AppKey, "pair.noteChallenge" | "pair.noteProposal" | "pair.n
 const SIGN_AND_MINE = (label: AppKey): PlannedStep[] => [
   { step: "wallet", label },
   { step: "confirming", label: "track.chain" },
+];
+const PROVE_HOLDING: PlannedStep[] = [
+  { step: "decrypting", label: "track.decryptHolding" },
+  { step: "proving", label: "track.proof" },
 ];
 const DECIDE: PlannedStep[] = [
   { step: "decrypting", label: "track.decryptDuel" },
@@ -181,10 +185,21 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
     setOutcome(null);
   };
 
-  // --- duel: challenge, accept, reveal. One click runs every step this account may take.
-  const duel = standing?.openDuel ?? null;
+  // --- duel. Facing another box, this account can put its own up for that box only, or take up
+  // the one facing it when it is on the shelf for anyone (or for this box). One click runs every
+  // step this account may take.
   const challenger = mine(a) ? a : mine(b) ? b : null;
-  const duelStep: "challenge" | "accept" | "waiting" | "reveal" | null = !bothSealed
+  /** The box on screen that would take `d` up: the one it is reserved for, or the other one. */
+  const takerOf = (d: DuelInfo) => (d.reserved ? d.tokenB! : d.tokenA === a ? b : a);
+  /** Both boxes can be up at once: of their duels, the one this account can move on first. */
+  const pickDuel = (list: DuelInfo[]): DuelInfo | null =>
+    list.find((d) => d.status === "pending") ??
+    list.find((d) => d.status === "posted" && sameAddress(d.challenger, account)) ??
+    list.find((d) => d.status === "open" && mine(takerOf(d)) && (!sameAddress(d.challenger, account) || (mine(a) && mine(b)))) ??
+    list[0] ??
+    null;
+  const duel = pickDuel(standing?.duels ?? []);
+  const duelStep: "challenge" | "accept" | "waiting" | "prove" | "reveal" | null = !bothSealed
     ? null
     : !duel
       ? challenger !== null
@@ -192,32 +207,37 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
         : null
       : duel.status === "pending"
         ? "reveal"
-        : mine(duel.tokenB)
-          ? "accept"
-          : "waiting";
+        : duel.status === "posted"
+          ? sameAddress(duel.challenger, account)
+            ? "prove"
+            : "waiting"
+          : mine(takerOf(duel))
+            ? "accept"
+            : "waiting";
 
   const runDuel = async () => {
     start();
     const iHoldBoth = mine(a) && mine(b);
     setPlan([
-      ...(duelStep === "challenge" ? SIGN_AND_MINE("track.challenge") : []),
+      ...(duelStep === "challenge" ? [...SIGN_AND_MINE("track.post"), ...PROVE_HOLDING] : []),
+      ...(duelStep === "prove" ? PROVE_HOLDING : []),
       ...(duelStep === "accept" || (duelStep === "challenge" && iHoldBoth) ? SIGN_AND_MINE("track.acceptDuel") : []),
       ...DECIDE,
     ]);
     const result = await action.run("duel", async (o0) => {
       const o = logged(o0);
-      let d = (await adapter.pair(a, b)).openDuel;
+      let d = pickDuel((await adapter.pair(a, b)).duels);
       if (!d) {
         const from = challenger!;
-        await adapter.challengeDuel(from, from === a ? b : a, o);
-        d = (await adapter.pair(a, b)).openDuel;
+        d = await adapter.postDuel(from, { ...o, reservedFor: from === a ? b : a });
+      } else if (d.status === "posted") {
+        await adapter.finishDuel(d.duelId, o);
+        d = pickDuel((await adapter.pair(a, b)).duels);
       }
-      if (d?.status === "challenged") {
-        if (!mine(d.tokenB)) return "waiting" as const;
-        await adapter.acceptDuel(d.duelId, o);
-        d = { ...d, status: "pending" };
-      }
-      return d ? adapter.finishDuel(d.duelId, o) : ("waiting" as const);
+      if (!d) return "waiting" as const;
+      if (d.status === "pending") return adapter.finishDuel(d.duelId, o);
+      if (d.status === "open" && mine(takerOf(d))) return adapter.acceptDuel(d.duelId, takerOf(d), o);
+      return "waiting" as const;
     });
     if (result === undefined || result === "waiting" || result === null) {
       if (result === "waiting") setNote("pair.noteChallenge");
@@ -412,9 +432,11 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
                       ? t("pair.acceptDuel")
                       : duelStep === "reveal"
                         ? t("pair.reveal")
-                        : duelStep === "waiting"
-                          ? t("pair.challengeSent")
-                          : t("pair.startDuel")}
+                        : duelStep === "prove"
+                          ? t("pair.prove")
+                          : duelStep === "waiting"
+                            ? t("pair.challengeSent")
+                            : t("pair.startDuel")}
                 </button>
               )}
               {offerLink && (
@@ -462,7 +484,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
             <p className="fine">{t("pair.duelConnect")}</p>
           ) : offerDuel && duelStep === "waiting" && duel ? (
             <p className="fine">
-              {t("pair.waiting", { a: serial(duel.tokenA), b: serial(duel.tokenB) })}
+              {t(duel.reserved ? "pair.waiting" : "pair.waitingShelf", { a: serial(duel.tokenA), b: serial(takerOf(duel)) })}
               {sameAddress(duel.challenger, account) && (
                 <button type="button" className="link" onClick={() => void cancelDuel()}>
                   {t("pair.withdraw")}
@@ -470,7 +492,9 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
               )}
             </p>
           ) : offerDuel && duelStep === "accept" && duel ? (
-            <p className="fine">{t("pair.acceptExplain", { a: serial(duel.tokenA), b: serial(duel.tokenB) })}</p>
+            <p className="fine">{t(duel.reserved ? "pair.acceptExplain" : "pair.acceptShelf", { a: serial(duel.tokenA), b: serial(takerOf(duel)) })}</p>
+          ) : offerDuel && duelStep === "prove" ? (
+            <p className="fine">{t("pair.proveExplain")}</p>
           ) : offerDuel && duelStep === "reveal" ? (
             <p className="fine">{t("pair.revealExplain")}</p>
           ) : offerLink && linkStep === "accept" && proposal ? (

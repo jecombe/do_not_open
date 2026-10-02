@@ -14,7 +14,7 @@ const DISEASES: Disease[] = ["diabetic", "arthritic", "fattyLiver"];
 /**
  * Folds one event into the read models. Called once per event, in chain order, inside the
  * batch's transaction, and only for events not recorded before: replays never get here.
- * Each transition is still forward-only, so an event that arrives late does no harm.
+ * A duel only takes events newer than the last it took, so one that arrives late does no harm.
  */
 export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: ProjectionTx): Promise<void> {
   for (const address of new Set(actorsOf(e))) {
@@ -57,21 +57,16 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
     }
     case "RequestSettled":
       return settleRequest(tx, e, snapshots);
-    case "DuelChallenged": {
-      const existing = await tx.duel(e.duelId);
-      if (existing) return;
-      const snap = snapshots.duels.get(e.duelId);
-      const duel = D.challenge({ duelId: e.duelId, tokenA: e.tokenA, tokenB: e.tokenB, challenger: snap?.challenger ?? null }, e);
-      await tx.saveDuel(duel);
-      if (duel.challenger) await tx.saveUser(seen(await tx.user(duel.challenger), duel.challenger, e));
-      return;
+    case "DuelPosted": {
+      if (await tx.duel(e.duelId)) return;
+      return tx.saveDuel(D.post({ duelId: e.duelId, tokenA: e.tokenA, tokenB: e.tokenB, reserved: e.reserved, challenger: e.challenger }, e));
     }
-    case "DuelAccepted": {
-      const accepter = snapshots.duels.get(e.duelId)?.accepter ?? null;
-      await updateDuel(tx, e, snapshots, (d) => D.accept(d, accepter, e));
-      if (accepter) await tx.saveUser(seen(await tx.user(accepter), accepter, e));
-      return;
-    }
+    case "DuelOpened":
+      return updateDuel(tx, e, snapshots, (d) => D.open(d, e.openUntil, e));
+    case "DuelAccepted":
+      return updateDuel(tx, e, snapshots, (d) => D.accept(d, e.tokenB, e.accepter, e));
+    case "DuelReopened":
+      return updateDuel(tx, e, snapshots, (d) => D.reopen(d, e));
     case "DuelCancelled":
       return updateDuel(tx, e, snapshots, (d) => D.cancel(d, e));
     case "DuelVoided":
@@ -117,13 +112,15 @@ async function updateBox(tx: ProjectionTx, tokenId: number, block: number, chang
   if (next !== box || !(await tx.box(tokenId))) await tx.saveBox(next);
 }
 
-async function updateDuel(tx: ProjectionTx, e: { duelId: number; block: number; timestamp: number | null }, snapshots: Snapshots, change: (d: D.Duel) => D.Duel) {
+async function updateDuel(tx: ProjectionTx, e: { duelId: number; block: number; logIndex: number; timestamp: number | null }, snapshots: Snapshots, change: (d: D.Duel) => D.Duel) {
   let duel = await tx.duel(e.duelId);
   if (!duel) {
-    // Its challenge was missed (the index started later, or a node lagged): rebuild it from the view.
+    // Its posting was missed (the index started later, or a node lagged): rebuild it from the
+    // view, as posted just before this event.
     const snap = snapshots.duels.get(e.duelId);
     if (!snap) return;
-    duel = D.challenge({ duelId: e.duelId, tokenA: snap.tokenA, tokenB: snap.tokenB, challenger: snap.challenger }, e);
+    duel = D.post({ duelId: e.duelId, tokenA: snap.tokenA, tokenB: snap.tokenB, reserved: snap.reserved, challenger: snap.challenger }, { ...e, logIndex: e.logIndex - 1 });
+    if (snap.openUntil !== null) duel = { ...duel, openUntil: snap.openUntil };
   }
   await tx.saveDuel(change(duel));
 }
