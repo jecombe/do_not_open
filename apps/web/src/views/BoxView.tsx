@@ -31,7 +31,6 @@ interface Props {
   onTokenChange: (tokenId: number) => void;
   onPair: (tokenId: number) => void;
   onShelf: () => void;
-  onOverview: () => void;
   /** The view the box was opened from, and the way back to it. */
   backTo: Exclude<View, "box">;
   onBack: () => void;
@@ -121,7 +120,7 @@ type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive"
 const { meal } = gameSpec.economy;
 const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
-export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onOverview, backTo, onBack }: Props) {
+export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, backTo, onBack }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
@@ -213,19 +212,21 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     void load();
   }, [load, reset]);
 
-  const step = (delta: number) => minted > 0 && onTokenChange((tokenId + delta + minted) % minted);
   const isHolder = myBoxes.includes(tokenId);
   const busy = action.busy ?? (opening ? "open" : null);
   const onOpened = useCallback(() => setOpening(false), []);
-  const steps = (
+  // Previous and next go round the player's own boxes only, in order.
+  const mine = useMemo(() => [...myBoxes].sort((a, b) => a - b), [myBoxes]);
+  const step = (delta: number) => {
+    const at = mine.indexOf(tokenId);
+    if (at >= 0) onTokenChange(mine[(at + delta + mine.length) % mine.length]!);
+  };
+  const steps = isHolder && mine.length > 1 && (
     <div className="box-steps">
-      <button type="button" className="plain-button overview" onClick={onOverview} disabled={!!busy}>
-        {t("box.overview")}
-      </button>
-      <button type="button" className="plain-button" onClick={() => step(-1)} disabled={!!busy || minted < 2}>
+      <button type="button" className="plain-button" onClick={() => step(-1)} disabled={!!busy}>
         {t("box.prev")}
       </button>
-      <button type="button" className="plain-button" onClick={() => step(1)} disabled={!!busy || minted < 2}>
+      <button type="button" className="plain-button" onClick={() => step(1)} disabled={!!busy}>
         {t("box.next")}
       </button>
     </div>
