@@ -29,7 +29,7 @@ mainnet), **Not done** (a check nobody has run).
 | O6 | `setBaseURI` can repoint every token's metadata, with no freeze | Medium (trust) | admin |
 | O7 | No ERC-4906 `MetadataUpdate` on reveal: marketplaces keep the sealed image | Low | `finalize` |
 | O8 | Anyone can take up an open duel with a box they do not hold: it is held up until the proof sends it back to the shelf | Low (griefing) | `acceptDuel`, `finalizeDuel` |
-| O9 | Mainnet relayer needs an API key behind a proxy; none exists | Blocker for mainnet | adapter |
+| O9 | Mainnet relayer needs an API key behind a proxy: built (`apps/api`), the key and Zama's plan are not set yet | Blocker for mainnet | `apps/api` relayer proxy |
 | O10 | Static analysis, fuzzing, Sepolia test suite and Etherscan verification not run | Process | see the end |
 | O11 | The reserve is unreadable: nobody can tell when it runs dry, and claims then pay nothing, silently | Low (UX) | `Pantry.claim` |
 | O12 | Welcome bags and purrs share one reserve: an active purr can leave late boxes without a bag | Low (fairness) | `Pantry.claim` |
@@ -181,7 +181,9 @@ clear values and a KMS proof.
 | The app cross-checks what the chain reveals | Pass | `catFromRevealed` rebuilds the cat from the seed and warns if score or golden flag differ |
 | Reads come from a public RPC the user did not choose | Accepted | A lying RPC can misreport state; it cannot make the wallet sign something else, and the wallet shows each transaction |
 | Wrong network | Pass | The adapter asks the wallet to switch, and refuses to sign otherwise. Not exercised with a real wallet extension |
-| **O9. Mainnet relayer key** | Open | The hosted mainnet relayer needs an API key that must stay server-side. A proxy has to be built |
+| **O9. Mainnet relayer key** | Open | The hosted mainnet relayer needs an API key that must stay server-side. The proxy in `apps/api` holds it; `RELAYER_API_KEY` and the credit price (`dno:credit-price` from Zama's plan) remain to be set |
+| Nobody spends another wallet's relayer units | Pass | A user decryption carries the wallet's EIP-712 permit; an encrypted input names a wallet but proves nothing, so the proxy requires that wallet's permit as a bearer token before charging it `RELAYER_INPUT_UNITS`. Test: "refuses an input without a permit, or with someone else's: it would spend their units" |
+| Fresh wallets cannot farm the free allowance | Accepted | A wallet the index has never seen act on-chain or be sent a box gets `RELAYER_NEWCOMER_PER_DAY` (16, one mint) instead of 25. Set it to 0 on Zama's pay-as-you-go plan. Test: "gives a wallet the index has never seen act the smaller newcomer allowance" |
 | Dependency pinning | Pass | `pnpm-lock.yaml` committed; the Relayer SDK is pinned to an exact version |
 | Real wallet extension tested | Not done | The browser run used a local signing proxy behind an injected provider |
 | Two-holder flows and `paidShake` / `claimEarnings` on Sepolia | Not done | Covered on the mock and in contract tests only |
@@ -245,7 +247,7 @@ clear values and a KMS proof.
 
 1. Decide O1, O2, O5, O6, O11 to O16. Fix O3, O4, O7, O17 (small and mechanical), and
    make room for O18.
-2. Build the relayer proxy (O9).
+2. Set the relayer key and the credit price from Zama's plan (O9).
 3. Run the "Not done" rows of section 8.
 4. Get an external audit, by a firm that has reviewed FHEVM contracts before.
 5. Test with real wallets and two accounts on Sepolia.

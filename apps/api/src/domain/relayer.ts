@@ -1,8 +1,9 @@
 /**
  * Metering the relayer. Zama bills the collection for every value it decrypts and every
- * encrypted input it verifies. Each wallet gets a free allowance a day, counted in units (one
- * unit, one value decrypted for that wallet); past it, units come out of the credits the
- * wallet bought on-chain.
+ * encrypted input it verifies. Each wallet gets a free allowance a day, counted in units: one
+ * unit is one value decrypted for that wallet, and an encrypted input costs as many units as
+ * Zama charges for it over a decryption (five on its price list, at every plan). Past the
+ * allowance, units come out of the credits the wallet bought on-chain, one credit a unit.
  */
 
 /** What a wallet has used: free units today, and credits ever spent. Credits ever bought come from the chain. */
@@ -19,12 +20,15 @@ export interface Charge {
 }
 
 export interface Allowance {
+  /** Free units a day for this wallet: fewer before its first act on-chain. */
   freePerDay: number;
   freeLeft: number;
   /** Credits bought and not spent yet. */
   credits: number;
   /** Unix seconds: when the free allowance is full again (next UTC midnight). */
   resetsAt: number;
+  /** Units one encrypted input costs. */
+  inputUnits: number;
 }
 
 const DAY = 86_400;
@@ -45,11 +49,12 @@ export function charge(units: number, m: Meter, freePerDay: number): Charge | nu
 
 export const refund = (c: Charge): Charge => ({ free: -c.free, credits: -c.credits });
 
-export function allowanceOf(m: Meter, freePerDay: number, now: number): Allowance {
+export function allowanceOf(m: Meter, freePerDay: number, now: number, inputUnits: number): Allowance {
   return {
     freePerDay,
     freeLeft: Math.max(0, freePerDay - m.freeUsed),
     credits: Math.max(0, m.bought - m.spent),
     resetsAt: nextDayAt(now),
+    inputUnits,
   };
 }

@@ -147,7 +147,8 @@ price of a few paid shakes before buying.
 
 `DecryptionCredits` holds no funds and nothing encrypted: `bought[account]`, the credits
 ever bought for an account, `price` (plain USDC per credit, at most 1 USDC, set by the
-owner) and `treasury`, where payments go at once. What is spent is counted off-chain by
+owner, from Zama's dollar price for one decryption: `dno:credit-price`) and `treasury`, where
+payments go at once. A credit is one unit: a decrypted value, or a fifth of an encrypted input. What is spent is counted off-chain by
 the API, which keeps three things in Postgres:
 
 | Table | What | Rebuilt by a replay |

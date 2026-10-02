@@ -192,7 +192,7 @@ export class IndexerClient {
 
   /** What the relayer proxy still lets the account decrypt today. Never cached. */
   allowance(account: Address): Promise<Indexed<Omit<DecryptionAllowance, "price">>> {
-    return this.get(`/v1/relayer/allowance/${account}`, (a: Json) => ({ freePerDay: a.freePerDay, freeLeft: a.freeLeft, credits: a.credits, resetsAt: a.resetsAt }));
+    return this.get(`/v1/relayer/allowance/${account}`, (a: Json) => ({ freePerDay: a.freePerDay, freeLeft: a.freeLeft, credits: a.credits, resetsAt: a.resetsAt, inputUnits: a.inputUnits ?? 0 }));
   }
 
   boxPantry(tokenId: number): Promise<Indexed<BoxPantry>> {

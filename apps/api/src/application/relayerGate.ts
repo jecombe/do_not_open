@@ -2,7 +2,7 @@ import { z } from "zod";
 import { allowanceOf, charge, dayOf, refund, type Allowance } from "../domain/relayer";
 import { normalizeAddress, type Address } from "../domain/types";
 import type { Clock } from "./auth";
-import type { PermitVerifier, PublicationCheck, RelayerUpstream, UpstreamReply } from "./ports/relayer";
+import type { PermitVerifier, PublicationCheck, RelayerUpstream, UpstreamReply, UserDecryptPermit } from "./ports/relayer";
 import type { Store } from "./ports/store";
 
 export type RelayerOp = "input-proof" | "user-decrypt" | "public-decrypt";
@@ -25,8 +25,13 @@ export interface GateConfig {
   chainId: number;
   /** Lowercase addresses of the contracts whose values may be decrypted, and inputs made for. */
   contracts: () => Promise<string[]>;
-  /** Free units a wallet gets each UTC day. */
+  /** Free units a wallet gets each UTC day, once it has acted on-chain or been sent a box. */
   freePerDay: number;
+  /** Free units a day for a wallet the index has never seen: enough for a first mint, little
+   *  for a farm of fresh wallets. */
+  newcomerPerDay: number;
+  /** Units one encrypted input costs: what Zama charges for one over what it charges for a decryption. */
+  inputUnits: number;
   /** Most handles one decryption may ask for. */
   maxHandles: number;
   /** A permit signed more than this far in the future is refused. Seconds. */
@@ -57,18 +62,37 @@ const inputProofBody = z.object({
   extraData: hex,
 });
 
+const permitToken = z.object({
+  publicKey: hex,
+  contractAddresses: z.array(address).min(1).max(10),
+  startTimestamp: uint,
+  durationDays: uint,
+  extraData: hex,
+  signature: hex,
+});
+
 const KEYURL_TTL_MS = 10 * 60_000;
+
+/**
+ * What the app sends as a bearer token with an encrypted input: the user-decryption permit it
+ * already signed, so an input is charged to the wallet that made it without asking for
+ * another signature. Base64url of its JSON.
+ */
+export function encodePermitToken(p: UserDecryptPermit): string {
+  return Buffer.from(JSON.stringify(p)).toString("base64url");
+}
 
 /**
  * The only way the app reaches Zama's relayer on a network where the collection pays for it.
  * It holds the API key, and lets through only what the game needs:
  *
  * - a user decryption of the protocol's own contracts, signed by the wallet it is for, out of
- *   that wallet's free daily units, then its credits;
+ *   that wallet's free daily units, then its credits: one unit a value;
+ * - an encrypted input for one of the protocol's contracts, sent with the permit of the wallet
+ *   it is for, charged the same way: `inputUnits` an input, since Zama bills an input several
+ *   times a decryption;
  * - a public decryption of handles the protocol's contracts made public (a request, a duel,
- *   a milestone, a weigh-in, an unwrap): free, it settles something already on-chain;
- * - an encrypted input for one of the protocol's contracts: free, the action it goes with is
- *   paid or costs gas.
+ *   a milestone, a weigh-in, an unwrap): free, it settles something already on-chain.
  */
 export class RelayerGate {
   private keyurl: { at: number; reply: UpstreamReply } | null = null;
@@ -84,17 +108,18 @@ export class RelayerGate {
 
   async allowance(account: Address): Promise<Allowance> {
     const now = this.clock.now();
-    return allowanceOf(await this.store.meterOf(account, dayOf(now)), this.cfg.freePerDay, now);
+    return allowanceOf(await this.store.meterOf(account, dayOf(now)), await this.freePerDay(account), now, this.cfg.inputUnits);
   }
 
-  async submit(op: RelayerOp, body: unknown): Promise<UpstreamReply> {
+  /** `authorization` is the request's Authorization header: an encrypted input needs it. */
+  async submit(op: RelayerOp, body: unknown, authorization?: string): Promise<UpstreamReply> {
     switch (op) {
       case "user-decrypt":
         return this.userDecrypt(body);
       case "public-decrypt":
         return this.publicDecrypt(body);
       case "input-proof":
-        return this.inputProof(body);
+        return this.inputProof(body, authorization);
     }
   }
 
@@ -118,46 +143,61 @@ export class RelayerGate {
     if (Number(body.contractsChainId) !== this.cfg.chainId) throw new RelayerRefused("bad-request", "wrong chain");
     if (body.handleContractPairs.length > this.cfg.maxHandles) throw new RelayerRefused("bad-request", `at most ${this.cfg.maxHandles} values at once`);
     const ours = new Set(await this.cfg.contracts());
-    const named = [...body.contractAddresses, ...body.handleContractPairs.map((p) => p.contractAddress)];
-    if (named.some((a) => !ours.has(a))) throw new RelayerRefused("not-ours", "only this game's contracts can be decrypted here");
+    if (body.handleContractPairs.some((p) => !ours.has(p.contractAddress))) throw new RelayerRefused("not-ours", "only this game's contracts can be decrypted here");
+    const signer = await this.permitSigner(
+      { ...body.requestValidity, publicKey: body.publicKey, contractAddresses: body.contractAddresses, extraData: body.extraData, signature: body.signature },
+      ours,
+    );
+    // Only the wallet itself spends its allowance and its credits.
+    if (signer !== body.userAddress) throw new RelayerRefused("bad-permit", "the permit was signed by another account");
+    const units = body.handleContractPairs.length;
+    return this.metered(body.userAddress, units, `${units} decryption${units === 1 ? "" : "s"}`, () => this.upstream.post("user-decrypt", raw));
+  }
 
+  /**
+   * Who signed a permit for the protocol's contracts that is valid now. Refuses one naming
+   * another app's contract, one out of its validity, and one that does not recover.
+   */
+  private async permitSigner(p: UserDecryptPermit, ours: Set<string>): Promise<Address> {
+    if (p.contractAddresses.some((a) => !ours.has(normalizeAddress(a)))) throw new RelayerRefused("not-ours", "only this game's contracts can be decrypted here");
     const now = this.clock.now();
-    const start = Number(body.requestValidity.startTimestamp);
-    const days = Number(body.requestValidity.durationDays);
+    const start = Number(p.startTimestamp);
+    const days = Number(p.durationDays);
     if (start > now + this.cfg.clockSkew || start + days * 86_400 <= now) throw new RelayerRefused("bad-permit", "the decryption permit has expired");
-    let signer: Address;
     try {
-      signer = this.verifier.signer({
-        publicKey: body.publicKey,
-        contractAddresses: body.contractAddresses,
-        startTimestamp: body.requestValidity.startTimestamp,
-        durationDays: body.requestValidity.durationDays,
-        extraData: body.extraData,
-        signature: body.signature,
-      });
+      return this.verifier.signer(p);
     } catch {
       throw new RelayerRefused("bad-permit", "unreadable permit signature");
     }
-    // Only the wallet itself spends its allowance and its credits.
-    if (signer !== body.userAddress) throw new RelayerRefused("bad-permit", "the permit was signed by another account");
+  }
 
-    const account = body.userAddress;
-    const day = dayOf(now);
-    const units = body.handleContractPairs.length;
-    const taken = await this.store.meter(account, day, (m) => charge(units, m, this.cfg.freePerDay));
-    if (!taken) {
-      throw new RelayerRefused("no-credits", `${units} decryption${units === 1 ? "" : "s"} needed: no free one left today, and not enough credits`, await this.allowance(account));
-    }
+  /**
+   * Takes `units` from the account's day (free units first, then credits), forwards, and gives
+   * them back when Zama turns the request away or cannot be reached: it is only billed for
+   * what it takes.
+   */
+  private async metered(account: Address, units: number, what: string, forward: () => Promise<UpstreamReply>): Promise<UpstreamReply> {
+    const day = dayOf(this.clock.now());
+    const freePerDay = await this.freePerDay(account);
+    const taken = await this.store.meter(account, day, (m) => charge(units, m, freePerDay));
+    if (!taken) throw new RelayerRefused("no-credits", `${what} needed: ${units} unit${units === 1 ? "" : "s"}, and no free one left today nor enough credits`, await this.allowance(account));
     let reply: UpstreamReply;
     try {
-      reply = await this.upstream.post("user-decrypt", raw);
+      reply = await forward();
     } catch (error) {
       await this.store.meter(account, day, () => refund(taken));
       throw error;
     }
-    // Turned away by Zama: not billed, so not counted.
     if (reply.status >= 400) await this.store.meter(account, day, () => refund(taken));
     return reply;
+  }
+
+  /** A wallet that has acted on-chain, or was sent a box, is a player; any other is a newcomer. */
+  private async freePerDay(account: Address): Promise<number> {
+    if (this.cfg.newcomerPerDay >= this.cfg.freePerDay) return this.cfg.freePerDay;
+    const user = await this.store.user(account);
+    if ((user?.actions ?? 0) > 0) return this.cfg.freePerDay;
+    return (await this.store.transfers(account, 0, 1)).length ? this.cfg.freePerDay : this.cfg.newcomerPerDay;
   }
 
   private async publicDecrypt(raw: unknown): Promise<UpstreamReply> {
@@ -173,11 +213,23 @@ export class RelayerGate {
     return this.upstream.post("public-decrypt", raw);
   }
 
-  private async inputProof(raw: unknown): Promise<UpstreamReply> {
+  private async inputProof(raw: unknown, authorization?: string): Promise<UpstreamReply> {
     const body = this.parse(inputProofBody, raw);
     if (BigInt(body.contractChainId) !== BigInt(this.cfg.chainId)) throw new RelayerRefused("bad-request", "wrong chain");
-    if (!(await this.cfg.contracts()).includes(body.contractAddress)) throw new RelayerRefused("not-ours", "inputs can only be made for this game's contracts");
-    return this.upstream.post("input-proof", raw);
+    const ours = new Set(await this.cfg.contracts());
+    if (!ours.has(body.contractAddress)) throw new RelayerRefused("not-ours", "inputs can only be made for this game's contracts");
+    // The input names the wallet it is for, but nothing in it proves who sent it: the permit
+    // does, or anyone could spend someone else's allowance and credits.
+    const token = /^Bearer\s+(\S+)$/i.exec(authorization ?? "")?.[1];
+    if (!token) throw new RelayerRefused("bad-permit", "an encrypted input needs the wallet's decryption permit");
+    let permit: UserDecryptPermit;
+    try {
+      permit = permitToken.parse(JSON.parse(Buffer.from(token, "base64url").toString("utf8")));
+    } catch {
+      throw new RelayerRefused("bad-permit", "unreadable permit");
+    }
+    if ((await this.permitSigner(permit, ours)) !== body.userAddress) throw new RelayerRefused("bad-permit", "the permit was signed by another account");
+    return this.metered(body.userAddress, this.cfg.inputUnits, "An encrypted input", () => this.upstream.post("input-proof", raw));
   }
 
   private parse<T>(schema: z.ZodType<T>, raw: unknown): T {

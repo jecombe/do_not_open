@@ -242,7 +242,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       { bodyLimit: 1024 * 1024, config: { rateLimit: { max: deps.relayerRatePerMinute ?? 60, timeWindow: "1 minute" } } },
       async (req, reply) => {
         const p = z.object({ op }).parse(req.params);
-        return guarded(reply, () => relayer.submit(p.op as RelayerOp, req.body));
+        return guarded(reply, () => relayer.submit(p.op as RelayerOp, req.body, req.headers.authorization));
       },
     );
 

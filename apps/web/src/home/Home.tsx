@@ -8,7 +8,7 @@ import { buildName, catNames } from "../i18n/names";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { Shipped } from "./Shipped";
-import { pageSound, setMuted } from "./sound";
+import { boxComplaint, pageSound, setMuted } from "./sound";
 
 const REPO = "https://github.com/jecombe/do_not_open";
 const APP = "/app.html";
@@ -173,6 +173,7 @@ export function Home() {
 
       <footer className="home-foot">
         <span>{t("home.foot")}</span>
+        <a href="https://lasonotheque.org">{t("home.foot.sounds")}</a>
         <a href={REPO}>{t("home.foot.source")}</a>
       </footer>
     </div>
@@ -304,7 +305,7 @@ function Toy() {
             setMutedState(!muted);
             if (muted) {
               pageSound.resume();
-              pageSound.complaint();
+              boxComplaint();
             }
           }}
         >

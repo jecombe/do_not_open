@@ -76,7 +76,10 @@ async function main() {
     eip712PermitVerifier({ chainId: deployment.chainId, verifyingContract: deployment.fhevm.verifyingContractDecryption }),
     new AclPublications(rpc, deployment, config.RELAYER_RECENT_BLOCKS),
     clock,
-    { chainId: deployment.chainId, contracts: () => chainState.decryptable(), freePerDay: config.RELAYER_FREE_PER_DAY, maxHandles: config.RELAYER_MAX_HANDLES, clockSkew: 600 },
+    { chainId: deployment.chainId, contracts: () => chainState.decryptable(), freePerDay: config.RELAYER_FREE_PER_DAY,
+      newcomerPerDay: config.RELAYER_NEWCOMER_PER_DAY,
+      inputUnits: config.RELAYER_INPUT_UNITS,
+      maxHandles: config.RELAYER_MAX_HANDLES, clockSkew: 600 },
   );
   if (!config.RELAYER_API_KEY) log.info("RELAYER_API_KEY is not set: the relayer proxy forwards without a key (fine on Sepolia, refused on mainnet)");
 

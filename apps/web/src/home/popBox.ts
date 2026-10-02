@@ -3,7 +3,7 @@ import { spec } from "@dno/game-spec";
 import { buildBoxSpec, buildCatSpec, type CatSpec } from "@dno/generator";
 import { BOX_SIZE, BoxOpener, BoxShaker, createBox, createCat, Unboxing, type BoxObject, type CatObject } from "@dno/scene";
 import { PALETTE, Stage } from "../docs/three/stage";
-import { catVoice, pageSound } from "./sound";
+import { boxComplaint, catVoice, pageSound } from "./sound";
 
 /** Shakes it takes before the box gives in. */
 export const SHAKES_TO_OPEN = 3;
@@ -77,7 +77,7 @@ export class PopBoxScene {
     } else {
       r.shaker.shake({ strength: 0.7 + this.shakes * 0.25, duration: 1.1 });
       // Whoever is inside does not like it, and says so the second time.
-      if (this.shakes === SHAKES_TO_OPEN - 1) setTimeout(() => pageSound.complaint(), 500);
+      if (this.shakes === SHAKES_TO_OPEN - 1) setTimeout(() => boxComplaint(), 500);
     }
     this.stage.wake();
   }

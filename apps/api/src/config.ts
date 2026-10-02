@@ -67,8 +67,12 @@ const schema = z.object({
   RELAYER_URL: z.string().url().optional(),
   /** The collection's key for Zama's hosted relayer: required on mainnet, unused on Sepolia. Never sent to browsers. */
   RELAYER_API_KEY: z.string().optional(),
-  /** Values a wallet may decrypt for free each UTC day, before its credits are used. */
-  RELAYER_FREE_PER_DAY: z.coerce.number().int().min(0).default(50),
+  /** Free units a player gets each UTC day (a decrypted value is one, an input RELAYER_INPUT_UNITS), before its credits are used. */
+  RELAYER_FREE_PER_DAY: z.coerce.number().int().min(0).default(25),
+  /** Free values a day for a wallet the index has never seen act: one 10-id mint (5 + 10 + 1). */
+  RELAYER_NEWCOMER_PER_DAY: z.coerce.number().int().min(0).default(16),
+  /** Units an encrypted input costs: Zama's price for one over its price for a decryption. */
+  RELAYER_INPUT_UNITS: z.coerce.number().int().min(0).default(5),
   /** Most values one decryption may ask for. */
   RELAYER_MAX_HANDLES: z.coerce.number().int().positive().default(64),
   RELAYER_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),

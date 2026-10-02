@@ -354,13 +354,40 @@ players, so three things keep that bill bounded:
   returning player's old receipts and an unchanged cUSDC balance cost nothing.
 - **The relayer proxy** in `apps/api` holds the key and lets through only the protocol's
   own decryptions and inputs (see its README).
-- **Decryption credits.** Each wallet gets free decryptions every day; past them, the
-  proxy spends credits bought from `DecryptionCredits` in plain USDC, one per value.
+- **Units and credits.** Everything a wallet asks Zama for is counted in units: a decrypted
+  value is one, an encrypted input five (`RELAYER_INPUT_UNITS`: Zama charges an input five
+  times a decryption, at every plan). Each player gets free units every day
+  (`RELAYER_FREE_PER_DAY`, 25); a wallet the index has never seen act on-chain or be sent a
+  box gets fewer (`RELAYER_NEWCOMER_PER_DAY`, 16: one 10-id mint), so a farm of fresh
+  wallets is worth little. Past them, the proxy spends credits bought from
+  `DecryptionCredits` in plain USDC, one credit a unit.
+- **An input is charged to the wallet it is for**, which proves it is itself with the
+  user-decryption permit it already signed (sent as a bearer token): nobody can spend
+  another wallet's units by making inputs in its name.
 
-How much a game action costs in decryptions, before the cache: a shake 2, a mint 1 per id
-it hides among (10 by default), an opening 2 to 5 public ones, a duel 6 public ones, a
-cUSDC payment 1 to read the balance first. Public decryptions are not charged to players.
+How much a game action costs, before the cache: a shake 2 units, a mint 5 for its input plus
+1 per id it hides among (10 by default) and 1 for the balance, a meal or a croquette send 5,
+a cUSDC payment 1 to read the balance first. An opening (2 to 5), a duel (6), a weigh-in, an
+alive check or a milestone are public decryptions: free for players, paid by the treasury.
+Checked on Sepolia through a local proxy: a newcomer's 1-box mint among 1 id took 7 units
+(5 + receipt + balance), and the wallet had a player's allowance once the mint was indexed.
 Open question for Zama: is a decryption billed per value or per request?
+
+**Does it pay for itself?** The paid actions do at any plan: a mint (5 USDC) costs Zama
+$0.016 to $1.60, an opening (1 USDC) up to $0.50, a pet (0.5) up to $0.10, a paid shake (0.75
+to the treasury) up to $0.30. What is free to players (their daily units, public
+decryptions) is paid from those fees. With a monthly plan ($0.001 a decryption) the margin is
+large; pay-as-you-go ($0.10) is not sustainable with a generous allowance.
+
+**Credit price.** Zama prices in dollars and takes $ZAMA at its oracle's rate, and credits
+are sold in USDC, so a credit's price follows Zama's dollar price for one decryption times a
+margin, never the token's market price (`packages/contracts-evm/lib/creditPrice.ts`, rounded
+up). It is set at deploy from `CREDIT_PRICE_USDC`, or `ZAMA_DECRYPT_USD` x `CREDIT_MARGIN`
+(2), and changed later with `dno:credit-price` without redeploying.
+
+Before mainnet: once the Zama plan is known, `dno:credit-price --zama <price> --margin 2`.
+On pay-as-you-go, set `RELAYER_NEWCOMER_PER_DAY=0`, lower `RELAYER_FREE_PER_DAY` and raise
+the credit price to at least $0.10 x margin.
 
 ### Not verified
 

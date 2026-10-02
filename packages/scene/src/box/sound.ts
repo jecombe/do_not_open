@@ -1,15 +1,17 @@
+import { playClip, type ClipFx } from "./clip";
 import { playMeow, type MeowOptions, type MeowPhrase, type MeowVoice } from "./meow";
 
 /** A plain tabby. */
 const PLAIN_VOICE: MeowVoice = { pitch: 520, formant: 1300, q: 3 };
 
 /**
- * Synthesised shake sounds: a cardboard thump per impact and, now and then,
- * a muffled complaint from inside. No audio files.
+ * Shake sounds: a cardboard thump per impact and, now and then, a complaint from inside,
+ * all synthesised; and recorded clips, which the app loads by URL, with effects on top.
  */
 export class ShakeSound {
   private ctx: AudioContext | null = null;
   private noise: AudioBuffer | null = null;
+  private readonly clips = new Map<string, Promise<AudioBuffer>>();
   muted = false;
 
   /** Must be called from a user gesture at least once (browser autoplay policy). */
@@ -368,6 +370,40 @@ export class ShakeSound {
     src.connect(band).connect(gain).connect(ctx.destination);
     src.start(now);
     src.stop(now + 0.55);
+  }
+
+  /** Fetches and decodes a recording once; later calls share it. Needs `resume()` first. */
+  loadClip(url: string): Promise<AudioBuffer> {
+    const ctx = this.ctx;
+    if (!ctx) return Promise.reject(new Error("audio is not started"));
+    let hit = this.clips.get(url);
+    if (!hit) {
+      hit = fetch(url)
+        .then((res) => {
+          if (!res.ok) throw new Error(`${res.status} on ${url}`);
+          return res.arrayBuffer();
+        })
+        .then((data) => ctx.decodeAudioData(data));
+      hit.catch(() => this.clips.delete(url));
+      this.clips.set(url, hit);
+    }
+    return hit;
+  }
+
+  /**
+   * Plays a recording with `fx`. Resolves to false, having played nothing, when sound is off
+   * or the file could not be had: the caller can fall back on a synthesised sound.
+   */
+  async clip(url: string, fx?: ClipFx): Promise<boolean> {
+    if (!this.ctx || this.muted) return false;
+    try {
+      const buffer = await this.loadClip(url);
+      if (!this.ctx || this.muted) return false;
+      playClip(this.ctx, buffer, fx);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   dispose(): void {
