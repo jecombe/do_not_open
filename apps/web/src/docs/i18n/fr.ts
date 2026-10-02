@@ -10,6 +10,7 @@ export const docsFr: Record<DocsKey, string> = {
   "docs.source": "Code source",
   "docs.contents": "Sommaire",
   "docs.foot": "DO NOT OPEN tourne sur un testnet. Rien ici n'a de valeur.",
+  "docs.foot.sounds": "Sons additionnels : Joseph SARDIN - LaSonotheque.org",
 
   "docs.hero.title": "Instructions de manutention",
   "docs.hero.lede": "{supply} boîtes scellées sur une chaîne publique. Il y a un chat dans chacune, et personne ne peut lire lequel : ni le détenteur, ni les gens qui l'ont déployée, ni la chaîne. Voici comment ça marche, et ce qu'il en coûte de regarder.",

@@ -10,6 +10,7 @@ export const docsIt: Record<DocsKey, string> = {
   "docs.source": "Codice sorgente",
   "docs.contents": "Indice",
   "docs.foot": "DO NOT OPEN gira su una testnet. Niente qui vale denaro.",
+  "docs.foot.sounds": "Suoni dei gatti: Joseph SARDIN, LaSonotheque.org",
 
   "docs.hero.title": "Istruzioni di movimentazione",
   "docs.hero.lede": "{supply} scatole sigillate su una chain pubblica. In ognuna c'è un gatto, e nessuno può leggere quale: né il detentore, né chi l'ha distribuita, né la chain. Ecco come funziona, e cosa costa guardare.",

@@ -66,6 +66,7 @@ export const homeEn = {
   "home.end.docs": "Read the manual",
   "home.foot": "DO NOT OPEN runs on a test network. Nothing here is worth money, only curiosity.",
   "home.foot.source": "Source code",
+  "home.foot.sounds": "Cat sounds: Joseph SARDIN, LaSonotheque.org",
   "home.nav.croq": "Croquettes",
   "home.croq.title": "Croquettes",
   "home.croq.bubble": "Crunch?",

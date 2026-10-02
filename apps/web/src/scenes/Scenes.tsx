@@ -29,6 +29,7 @@ import {
   type WaitKind,
   type WaitStage,
 } from "@dno/scene";
+import { boxComplaint } from "../home/sound";
 import { useLeash, type Leash } from "./leash";
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -218,11 +219,11 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
   useEffect(() => {
     rig.shaker.onImpact = (strength) => sound.impact(strength);
     rig.shaker.onDone = () => {
-      if (Math.random() < 0.6) sound.complaint();
+      if (Math.random() < 0.6) boxComplaint(sound);
       onShakeDone();
     };
     rig.waiter.onRattle = (strength) => sound.impact(strength);
-    rig.waiter.onMutter = () => sound.complaint();
+    rig.waiter.onMutter = () => boxComplaint(sound);
     rig.waiter.onBeat = () => sound.heartbeat();
     rig.feeder.onTick = () => sound.tick();
     rig.feeder.onEaten = () => {

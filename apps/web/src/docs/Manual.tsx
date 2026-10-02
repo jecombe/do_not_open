@@ -459,6 +459,7 @@ export function Manual() {
 
       <footer className="foot">
         <span>{t("docs.foot")}</span>
+        <a href="https://lasonotheque.org">{t("docs.foot.sounds")}</a>
         <a href="/app.html">{t("docs.back")}</a>
       </footer>
     </div>
