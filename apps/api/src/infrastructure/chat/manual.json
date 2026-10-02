@@ -1,0 +1,1397 @@
+{
+ "source": "apps/web/src/docs, rendered by apps/web/scripts/export-manual.mts",
+ "locales": {
+  "en": {
+   "sections": [
+    {
+     "id": "box",
+     "title": "What is in a box",
+     "part": "manual"
+    },
+    {
+     "id": "cats",
+     "title": "Who could be inside",
+     "part": "manual"
+    },
+    {
+     "id": "seed",
+     "title": "One number per cat",
+     "part": "manual"
+    },
+    {
+     "id": "holders",
+     "title": "Nobody knows who holds what",
+     "part": "manual"
+    },
+    {
+     "id": "privacy",
+     "title": "Who can read what",
+     "part": "manual"
+    },
+    {
+     "id": "flows",
+     "title": "How things come out",
+     "part": "manual"
+    },
+    {
+     "id": "mechanics",
+     "title": "Twelve things to do",
+     "part": "manual"
+    },
+    {
+     "id": "fees",
+     "title": "Fees, and where they go",
+     "part": "manual"
+    },
+    {
+     "id": "exchange",
+     "title": "The bureau de change",
+     "part": "manual"
+    },
+    {
+     "id": "transfer",
+     "title": "What a sale changes",
+     "part": "manual"
+    },
+    {
+     "id": "croquettes",
+     "title": "Croquettes",
+     "part": "manual"
+    },
+    {
+     "id": "testnet",
+     "title": "While on the testnet",
+     "part": "testnet"
+    },
+    {
+     "id": "code",
+     "title": "How the code is laid out",
+     "part": "dev"
+    },
+    {
+     "id": "solana",
+     "title": "Moving to Solana",
+     "part": "dev"
+    },
+    {
+     "id": "more",
+     "title": "Full reference",
+     "part": "dev"
+    }
+   ],
+   "passages": [
+    {
+     "id": "box-0",
+     "section": "box",
+     "heading": null,
+     "text": "DO NOT OPEN is a collection of 10,000 NFTs on Ethereum, built with Zama's encryption. Each token is a cardboard box. When a box is minted, the contract draws a random number for it and keeps that number encrypted. The cat inside, its state, its five traits and its rarity are all worked out from that one number. Who holds each box is encrypted too.\nEncrypted here does not mean hidden behind a server or revealed later from a list someone prepared. The number is a ciphertext on-chain from the moment it exists. The contract can still compute with it: compare it, cut a piece out of it, add to it. It does that without ever decrypting it, which is what fully homomorphic encryption is for.\nSo the game is about what you choose to find out, and what that costs you. Shake a box and you learn one thing about it, privately. Open it and everyone learns everything, for good."
+    },
+    {
+     "id": "cats-0",
+     "section": "cats",
+     "heading": null,
+     "text": "Every box holds one of these. Ten breeds, from the everyday tabby to the glitch that almost never turns up; four states, only one of them fully awake; and a few surprises on top. Spin the turntable and say hello. And then the ones you make yourself with croquettes, from thin to huge, all the way to sick.\n1 / 10"
+    },
+    {
+     "id": "cats-1",
+     "section": "cats",
+     "heading": "Tabby",
+     "text": "About 1 box in 5\nThe classic. Stripes, strong opinions, and a firm belief that your chair is theirs.\nThe odds under each cat come straight from the game's tables. How a box lands on one of them is the next section."
+    },
+    {
+     "id": "seed-0",
+     "section": "seed",
+     "heading": null,
+     "text": "A box holds a single 64-bit seed. Its bits are cut into seven fields. Sixteen decide whether the cat is alive, asleep, a ghost or quantum. Five bytes are the five traits. The last byte only changes how the cat looks.\nEncrypted\nFields of the seed\nA sealed seed Open it 0x ?? ?? ?? ?? ?? ?? ???? Cosmetic Room Thing it broke Accessory Mood Breed State roll Bits 0 to 15. Sixteen bits decide the state: alive 70%, asleep 20%, ghost 8.0%, quantum 2.0%. The alive check compares them with 45,875 under encryption and publishes the one-bit answer. A shake can never return these bits. On-chain it stays like this: a ciphertext that reads as noise. The contract computes on it without decrypting it. Draw another seed"
+    },
+    {
+     "id": "seed-1",
+     "section": "seed",
+     "heading": null,
+     "text": "Keeping one encrypted number instead of eight keeps a mint cheap. Everything else is worked out from it when a mechanic needs it: under encryption while the box is sealed, in the clear once the box is opened. The app reads a seed exactly the way the contract does, so the cat you see is the cat the chain holds.\nThe rarity score is a weighted sum: three times the breed roll, the mood roll, twice the accessory roll, the broken thing, the room, plus a bonus for the state. A quantum cat starts 1,000 points ahead. The highest possible score is 3,040."
+    },
+    {
+     "id": "holders-0",
+     "section": "holders",
+     "heading": null,
+     "text": "The owner of each box is encrypted, like its seed. That is not how NFTs usually work: an ordinary NFT says publicly who owns it. Here nothing does. Nobody can see who holds a box, or count anyone's boxes. The collection follows a new standard written for this, the confidential ERC-721.\nSending a box never fails because of who holds it. If you hold it, it moves; if you do not, nothing happens. Either way the sender and the receiver get an encrypted receipt that only they can read, saying whether the box moved, and everyone else sees a transfer that may or may not have happened. You find your own boxes the same way: the app reads the receipts that name you and decrypts them, with one signature per visit. That is what Show my boxes does."
+    },
+    {
+     "id": "holders-1",
+     "section": "holders",
+     "heading": null,
+     "text": "Minting works on the same idea. It is paid in cUSDC only, and your browser encrypts how many boxes you want. You also pick how many token ids to hide that number among, from 1 to 10, and that choice is public. The first ids, up to your quantity, are yours; the others are empty boxes owned by nobody, and from outside the two look the same. More ids hide the quantity better and cost more gas. A mint that would pass the cap, or that your cUSDC balance does not cover, gets nothing and pays nothing.\nThe number of boxes sold is an encrypted counter, capped at 10,000 under encryption. Only milestones are announced: 100, 500, 1,000, 2,500, 5,000, 7,500, 9,000, 10,000, the last one meaning sold out. Each mint makes public a single yes-or-no answer, whether the next milestone is reached, and anyone can announce it."
+    },
+    {
+     "id": "holders-2",
+     "section": "holders",
+     "heading": null,
+     "text": "Some things stay visible, by design. A mint shows the buyer's address and how many ids it created, which is an upper bound on what they bought. A transfer attempt shows who sent it and to whom, as a maybe. And an action that has to become public (an opening, an alive check, a box put up for a duel, or a duel or an entanglement that goes through) shows that its caller held that box at that moment. An attempt by someone who did not hold it settles as refused and shows nothing about the box.\nThis is also why the leaderboard ranks only opened cats, and the players who opened them: an opening publishes its opener, while who holds a sealed box stays hidden."
+    },
+    {
+     "id": "privacy-0",
+     "section": "privacy",
+     "heading": null,
+     "text": "Every ciphertext has an access list. For the seed, that list has one entry: the contract. No holder is ever added to it, because an address on the list could ask the key service to decrypt the seed directly and skip the game.\nFact | The holder | Everyone else\nWho holds a box | Yes, from their receipts | No\nHow many boxes an account holds | Yes, for their own account | No\nHow many boxes are sold | Nobody. Only milestones are announced\nThe seed, the state, the score | No | No\nOne trait per shake | Yes, free | Yes, by paying\nWhich trait a shake picked | Only whoever shook\nWhether it is alive | Everyone, if the holder asks. One bit, once per box\nWho won a duel, and one trait of the loser | Everyone\nThe winner's trait in a duel | No | No\nHow many times it was petted, and how many meals it ate | Nobody. Attempts are public, not whether they counted\nHow much affection that earned | No | No"
+    },
+    {
+     "id": "privacy-1",
+     "section": "privacy",
+     "heading": null,
+     "text": "Two consequences are deliberate. A holder who shakes often enough learns all five traits: a shake shows one of five at random, so about eleven cover them. What stays hidden even from the holder is the state, which is worth up to a third of the score, and the affection. And duels leak order: each one publishes which of two boxes scores higher. Putting a box up for a duel also shows that you hold it: that is how the duel shelf only carries boxes someone holds. That is the price of duelling."
+    },
+    {
+     "id": "flows-0",
+     "section": "flows",
+     "heading": null,
+     "text": "There are two ways out of encryption. A private decryption re-encrypts a value for one person, who must be on its access list. A public decryption publishes a value with signatures from the parties that share the key, and the contract verifies those signatures before it believes anything.\nThe contract never receives a callback. A reveal is a request on-chain, a decryption off-chain, and a second transaction that carries the proof back. Anyone may send that second transaction. Every request also checks, under encryption, that its caller holds the box; that bit is decrypted with the rest, and a no settles the request as refused, with zeros in place of the box's values.\nWhich flow\nWhat the parcels are"
+    },
+    {
+     "id": "flows-1",
+     "section": "flows",
+     "heading": null,
+     "text": "Mint Shake Open Duel Transfer A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing. You ask to open the box Only a holder is charged the 1 cUSDC fee. From here there is no way back. Holder and fee, checked blind Anyone may now ask for it The values, signed The proof goes on-chain Checked against its own records The box opens Play Next step Transaction Ciphertext Value with proof Clear value\nYou ask to open the box Only a holder is charged the 1 cUSDC fee. From here there is no way back.\nHolder and fee, checked blind\nAnyone may now ask for it\nThe values, signed\nThe proof goes on-chain\nChecked against its own records\nThe box opens\nTransaction\nCiphertext\nValue with proof\nClear value"
+    },
+    {
+     "id": "mechanics-0",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Action | Who | Cost | What becomes public\nMint | Anyone, hiding how many among 1 to 10 ids | 5 cUSDC a box | The buyer and how many ids, not how many are real\nShake | The holder | Gas only | That someone shook, not whether they hold it\nPaid shake | Anyone | 2.5 cUSDC, 70% waits in the box for its holder | That someone paid to shake\nCollect shake earnings | Anyone, for the boxes they hold | Gas only | That a claim happened, not how much\nPet | Anyone | 0.5 cUSDC | That someone petted it, not whether it counted or what it earned\nAlive check | The holder, once | Gas only | One bit, and that the caller held the box\nEntangle | Both holders | Gas only | The link, and that both held their boxes. Opening one then opens both\nDuel | The holder puts it up, any holder takes it up | Gas only | That the challenger holds the box, then who won and one trait of the loser, or a void duel"
+    },
+    {
+     "id": "mechanics-1",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Open | The holder | 1 cUSDC | Everything, permanently, and who opened it\nFeed croquettes | The holder | Up to 1,000 croquettes a day, all eaten | That someone served a meal, not whether it counted or what it held\nClaim croquettes | Anyone | Gas only | Which boxes, not how much or who holds them\nWeigh an opened cat | Anyone | Gas only | Its weight, its build, whether it is sick\nPetting adds a hidden amount between 0 and 3 to a hidden counter, and nothing at all if the pet was not paid. So the pets anyone can see on-chain say nothing about the counter, not even how many counted. Past 10, the accessory turns golden when the box is opened, and a cat with no accessory gets a golden bell collar."
+    },
+    {
+     "id": "mechanics-2",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Every price is in cUSDC, Zama's confidential USDC: nobody but you can read your balance or follow your payments, and the amount you paid is encrypted like the rest. A cUSDC payment cannot fail on-chain: a short balance just moves 0, and the action then does nothing. A mint gets no boxes, a paid shake reads \"not yours\", a pet adds nothing, an opening is refused. Paying from plain USDC means shielding the exact price into cUSDC first, in public, and for a mint that amount gives the quantity away. Shielding a round amount ahead of time, at the bureau de change, does not."
+    },
+    {
+     "id": "fees-0",
+     "section": "fees",
+     "heading": null,
+     "text": "Everything in the game is priced in USDC, a dollar stablecoin, and most of it is paid in cUSDC, its encrypted form: nobody but you can read your balance or follow your payments. Here is every fee, who receives it, and what it pays for.\nPlayers pay fees in USDC; they go to the collection's treasury, except 70% of a paid shake, which goes to the box's holder; the treasury pays Zama for decryptions and the servers\nDollars come in through three doors and almost all of them land in the treasury. The treasury pays Zama for the decryptions players do not pay for themselves: their free daily ones, and every public one.\nWhat you pay for | Price | Where it goes\nMinting a box | 5 USDC a box | The collection's treasury\nOpening a box | 1 USDC | The collection's treasury\nPetting a cat | 0.5 USDC | The collection's treasury"
+    },
+    {
+     "id": "fees-1",
+     "section": "fees",
+     "heading": null,
+     "text": "Shaking someone else's box | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
+    },
+    {
+     "id": "fees-2",
+     "section": "fees",
+     "heading": null,
+     "text": "Why decryptions cost anything: reading something encrypted takes work from Zama's network. The parties that share the decryption key each have to take part, and Zama charges for it, for every value read, from a tenth of a cent to ten cents depending on the plan. Checking the proof that comes with a value your browser encrypts costs five times as much. It charges the collection, not you. Shaking, finding your boxes, reading your own balance, the result of a duel: each one is a decryption. Minting, feeding a cat or sending croquettes: each one encrypts a value."
+    },
+    {
+     "id": "fees-3",
+     "section": "fees",
+     "heading": null,
+     "text": "So every wallet gets 25 free units a day, paid by the collection, and they come back at midnight UTC; a wallet that has not played yet gets 16, enough for a first mint. Reading a value is one unit: a shake uses 2, and finding the boxes from a mint uses one per box number it hid among. Encrypting a value, like a mint's quantity or a meal, is 5. What your browser has read once, it remembers, and it is never counted again. Past the free ones, you spend credits, one per unit, bought in the wallet slip. Their price follows what Zama charges the collection in dollars, not the price of Zama's token, so it does not swing with the market. They are paid in plain USDC on purpose: a balance that falls short cancels the purchase, where a cUSDC payment would quietly move nothing. Opening a box, settling a duel or announcing a milestone is never counted against anyone: the collection pays for those."
+    },
+    {
+     "id": "fees-4",
+     "section": "fees",
+     "heading": null,
+     "text": "The treasury pays what keeps the game running: Zama's fees for every free decryption and every public one, and the servers that follow the chain so the site stays fast. The rest goes to the project. The owner withdraws it."
+    },
+    {
+     "id": "exchange-0",
+     "section": "exchange",
+     "heading": null,
+     "text": "The game uses five tokens: ETH for the network's gas, USDC and CROQ, which are plain, and cUSDC and cCROQ, the same money sealed. A plain balance is public, like any ordinary token; a sealed one is encrypted, and only you can read it. To go from one to another, open the menu and choose Bureau de change: say what you hand over and what you want, and it finds the way and shows every cost before you sign. The rate and the number of transactions stay in sight under the form; Details unfolds the route, each fee and what becomes public. It also lists what you hold; sealed balances are decrypted on demand, for you alone, with one signature."
+    },
+    {
+     "id": "exchange-1",
+     "section": "exchange",
+     "heading": null,
+     "text": "Some exchanges take one transaction: buying USDC with ETH (it can arrive sealed, as cUSDC), shielding USDC into cUSDC or unshielding it back, buying or selling CROQ for USDC, sealing CROQ into cCROQ or unsealing it. Any other pair chains these steps: ETH to cCROQ, for example, is three. Each step is its own transaction, signed one after the other, and in between the money waits in your wallet as plain USDC or CROQ. If a step delivers nothing, because a sealed balance smaller than the amount moves nothing, without a word, the bureau stops and tells you where your money is. ETH can only be handed over, never received."
+    },
+    {
+     "id": "exchange-2",
+     "section": "exchange",
+     "heading": null,
+     "text": "Buying USDC with ETH costs 0.3% of the ETH, kept by the site. Shielding and unshielding are free. Every step pays the network's gas, like any transaction. A trade on a pool can land at a worse price than quoted if someone trades first: the slippage tolerance, 1% unless you change it (from 0.01% to 50%), is how much worse you accept before the transaction cancels itself, costing only the gas. The bureau also shows the price impact, how much your own trade moves the pool's price, and warns you above 2%.\nWhat becomes public: plain tokens move in the open, so every swap shows its amounts, and so does every crossing between plain and sealed. The amount you shield or seal is public, and so is the amount you unshield or unseal: it is decrypted in public to be paid out, which is why those steps take a minute longer. Once your money is sealed, what you do with it stays private."
+    },
+    {
+     "id": "exchange-3",
+     "section": "exchange",
+     "heading": null,
+     "text": "Decryption credits are bought in plain USDC only. So when what you want is cUSDC, from ETH or from USDC, the bureau can keep a share of it plain: none, 5%, 10% or 20%, the choice is remembered. From ETH that takes two buys on the ramp, one plain and one sealed, at the same fee; from USDC, only the rest is shielded. The bureau shows the USDC kept and how many credits it buys at least."
+    },
+    {
+     "id": "transfer-0",
+     "section": "transfer",
+     "heading": null,
+     "text": "On this protocol an access grant cannot be revoked. A design that put the holder on the seed's access list could never take the seller off it. This one never puts anyone on, so a sale has nothing to undo on the seed. What changes hands is the encrypted owner, along with what waits in the box: paid-shake earnings and croquettes go with it.\nMint Seed: the contract only. Owner: Alice, encrypted. The receipt: Alice only.\nAlice shakes A fresh ciphertext holding one trait: the contract and Alice.\nAlice sells to Bob She sends it. The owner changes under encryption, and the receipt, moved or not, is readable by Alice and Bob only. Nothing about the seed changes.\nBob shakes Another fresh ciphertext: the contract and Bob.\nAlice tries again No error. She reads \"not yours\"; everyone else sees a shake, not that it failed. She keeps what she already saw, and gets nothing new."
+    },
+    {
+     "id": "transfer-1",
+     "section": "transfer",
+     "heading": null,
+     "text": "Bob claims The paid-shake earnings and croquettes waiting in the box go to him now, not to Alice.\nIf you buy a sealed box, assume the seller knows its five traits. A few paid shakes before buying level that. And a transfer that names you is only a maybe until you decrypt its receipt: Show my boxes does it for you."
+    },
+    {
+     "id": "croquettes-0",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Croquettes are the game's money, and they come in two forms. CROQ is a plain ERC-20 with a fixed supply of 20,000,000: nothing can mint more, and it has no decimals, so one CROQ is one croquette. Being plain, any market can list it. cCROQ is the same croquette wrapped into a confidential token (ERC-7984): balances and transfer amounts are encrypted. The game only ever uses cCROQ.\nPlain CROQ trades on a public market; wrapped, it becomes confidential cCROQ, the one the game uses\nCrossing the border shows the amount: wrapping moves plain CROQ, and unwrapping goes through a public decryption. Everything that happens in cCROQ in between stays encrypted.\nThe whole supply was minted once, at deployment, and split like this:\nHow the 20,000,000 croquettes were split\nGame reserve 10,000,000 In the Pantry. Pays the daily purr, and takes back part of every meal."
+    },
+    {
+     "id": "croquettes-1",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Welcome bags 1,000,000 In the Pantry. One bag for each box that can ever exist.\nMarket 4,000,000 Put in the public pool on its own, with no USDC, and locked there for good.\nTreasury 5,000,000 Plain CROQ kept for events and more liquidity later."
+    },
+    {
+     "id": "croquettes-2",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Croquettes reach players from the Pantry, the contract that runs the economy. Every box brings a welcome bag of 100 the first time it is claimed for: once per box, whoever holds it, so a second wallet earns nothing. Then each box purrs: every day, an encrypted amount between 0 and 4, multiplied by 2 for a Vet Certified box, collected up to 7 days at a time. Bags and purrs are paid into the box, an encrypted stash, and whoever claims receives the stashes of the boxes they hold, and nothing for the others. So nobody can spend another holder's days, and a claim says nothing about what the claimer holds. The purr halves every year, and the reserve pays a whole claim or none of it. Nobody but the claimer sees how much arrived.\nCroquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire"
+    },
+    {
+     "id": "croquettes-3",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Every croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
+    },
+    {
+     "id": "croquettes-4",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Only the holder feeds their cat: at most 2 meals and 1,000 croquettes a day, however they are spread. Who holds the cat, how many meals it had today and the amount are all checked under encryption: a meal past the limits, or from someone who does not hold the cat, moves 0, silently. An offer past what is left of the day is cut down to it. Your browser encrypts the amount and the cat eats it all: its weight goes up by that much, encrypted, and nobody can read it while the box is sealed, the holder included. The croquettes are split: 20% to the collection's treasury, 60% back to the reserve that pays the purr, 20% burnt. If you hold less than you offered, the meal moves nothing, with no error and no hint."
+    },
+    {
+     "id": "croquettes-5",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Once the box is opened, anyone can weigh the cat: its weight is decrypted in public and sets its build. Each cat also has a tolerance of its own, drawn from its seed. Nobody can know it while the seed is encrypted, and once it is public the cat has stopped eating. Weighed at or past it, the cat is sick: an ultra-rare trophy, never a death.\nBuild | Croquettes eaten | Days at the daily cap | Score\nThin | 0 – 0 | – | +0\nNormal | 1 – 9,999 | 1 | +0\nChubby | 10,000 – 49,999 | 10 | +100\nFat | 50,000 – 149,999 | 50 | +300\nHuge | 150,000+ | 150 | +700\nSick (a limit of its own) | 300,000 – 600,000 | 300 – 600 | +2000\nThe weight follows the box, and so does its stash. A buyer knows nothing of its meals: not how many, not how much, and not how close it is to its tolerance. The seller at least knows what they served themselves. The market prices the rest."
+    },
+    {
+     "id": "croquettes-6",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Nobody can read a weight before the box is opened, the holder included, for the same reason nobody is ever allowed on a seed: an access grant cannot be taken back, so a past holder would keep reading it after a sale. What stays secret, and what does not:\nFact | Who can read it\nYour cCROQ balance | You\nThe amount of a transfer, a meal or a claim | The two sides of it\nA cat's weight | Nobody while the box is sealed. Everyone once the cat is weighed\nHow much has been burnt | Nobody\nWho tried to feed which cat | Everyone. Whether it counted: only the feeder\nWho claimed, and for which boxes | Everyone. How much, and from which boxes: only them\nHow heavy an opened cat came out, and whether it is sick | Everyone\nWrapping, unwrapping, market trades | Everyone, amounts included\nThe total supply | Everyone. How much still circulates: nobody"
+    },
+    {
+     "id": "croquettes-7",
+     "section": "croquettes",
+     "heading": null,
+     "text": "There is no official price. Their value shows up indirectly, in what a heavy sealed cat sells for.\nThe public market is a Uniswap pool where CROQ trades against USDC. The collection put only croquettes in it, no dollars, so they sell from 0.001 USDC each upward, and never for less: selling only gives back the USDC that buyers brought. Until someone has bought, there is nothing to sell into, and the bureau de change says so. The pool's croquettes are locked in it for good: nobody can take them out, the collection included. Each trade pays the pool a 1% fee, which goes to the collection's treasury."
+    },
+    {
+     "id": "testnet-0",
+     "section": "testnet",
+     "heading": null,
+     "text": "This part goes away at mainnet.\nThe game runs on Sepolia, Ethereum's test network. Nothing here is worth money. The USDC is Zama's test token, free from the wallet slip or the bureau de change; the ETH for gas comes from a faucet; the croquette pool only exists so the market can be tried; and every price in this manual is a test price.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x5eBa…2C6F\nThe Pantry (croquettes, meals, weigh-ins) 0xf506…6CDB\nCROQ, the plain croquette 0xbedb…51F7\ncCROQ, the encrypted croquette 0x5b4a…7952\nCROQ / USDC pool 0x399D…2100\nLiquidity locker 0xCA7E…3BF3\nThe USDC ramp (ETH to USDC) 0x2754…8aAb\nDecryption credits 0xfBF4…d3B1"
+    },
+    {
+     "id": "testnet-1",
+     "section": "testnet",
+     "heading": "Left to do before mainnet",
+     "text": "The contracts have been reviewed by the people who wrote them and by nobody else. They should not hold real money until that changes. These points are open:\nAn opening can hang between its two steps. If the key service never answers, there is no timeout and no refund. The box stays sealed, and its holder can only ask again and pay again.\nNothing limits one minter. A bot cannot pick good boxes, but it can mint all of them.\nThe owner can repoint the metadata. There is no freeze, and the owner is a single key.\nTwo deploy-time checks are missing. The config contract trusts that the score fits sixteen bits and that trait offsets do not overlap.\nMarketplaces are not told when a box opens. The contract does not emit a metadata update event."
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": "Left to do before mainnet",
+     "text": "Zama's relayer needs the collection's API key. The server that keeps it out of browsers and counts each wallet's decryptions is in place; the key itself is requested from Zama.\nCommon wallets and marketplaces do not know the confidential ERC-721. They cannot show these boxes or list them. A sale needs a market built for this standard.\nNo external audit, no static analysis, no fuzzing.\nThe audit checklist has each check, the test that backs it, and the rest of the findings."
+    },
+    {
+     "id": "code-0",
+     "section": "code",
+     "heading": null,
+     "text": "The repository is split so that most of it does not know which chain it runs on. The rules, the generator, the 3D scene and this app sit on one side. The contract and the code that talks to it sit on the other, behind one interface.\nTop shelf: runs on any chain game-spec generator scene ChainAdapter apps/web Bottom shelf: one chain each contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. The only door to a chain: one interface for accounts, reads and every mechanic, plus an in-memory implementation with the contract's rules. Nothing in it names a chain or a wallet library. A thread means \"depends on\". Pick a crate to see what it needs and what needs it.\nA sealed box is drawn from its token id and nothing else. The function that describes a box cannot see a seed, so no render, texture or metadata file of a sealed box can leak one. The cat exists as data only once the seed is public."
+    },
+    {
+     "id": "solana-0",
+     "section": "solana",
+     "heading": null,
+     "text": "Zama lists Solana support on its roadmap and has published no Solana SDK yet. So there is a map, and no port. What the map says: about two thirds of the code does not change, the contract becomes a program with one account per box, and one new adapter implements the same interface.\nToday on Ethereum | Expected on Solana\nEncrypted values in contract storage | Ciphertext handles in program accounts\nOne mapping entry per token | One account per box, derived from the token id\nPermit signed with the wallet's Ethereum key | A message signed with its ed25519 key\nProof verified in one transaction | Unknown. A transaction is limited to 1,232 bytes, and a proof may not fit\nFinding your boxes by decrypting the transfer receipts that name you | Unknown. It needs encrypted addresses there; an indexer can still list the receipts"
+    },
+    {
+     "id": "solana-1",
+     "section": "solana",
+     "heading": null,
+     "text": "Every line of the right-hand column has to be checked against the real SDK when it ships. The full porting map lists the open questions."
+    },
+    {
+     "id": "more-0",
+     "section": "more",
+     "heading": null,
+     "text": "Architecture Packages, data flow, the 3D pipeline\nData model What is encrypted, per token, and the access lists\nFlows Sequence diagrams for every mechanic\nZama notes Verified versions, and where the protocol differs from the first brief\nDesign Art direction, effects, performance budget\nContracts Cost of each function, deploy, command line\nCroquettes The two tokens, the Pantry, every number and what leaks\nHidden owners The confidential ERC-721, what still leaks, what it costs\nRelayer proxy How decryptions are metered, the free allowance and the credits"
+    }
+   ]
+  },
+  "fr": {
+   "sections": [
+    {
+     "id": "box",
+     "title": "Ce qu'il y a dans une boîte",
+     "part": "manual"
+    },
+    {
+     "id": "cats",
+     "title": "Qui pourrait être dedans",
+     "part": "manual"
+    },
+    {
+     "id": "seed",
+     "title": "Un nombre par chat",
+     "part": "manual"
+    },
+    {
+     "id": "holders",
+     "title": "Personne ne sait qui détient quoi",
+     "part": "manual"
+    },
+    {
+     "id": "privacy",
+     "title": "Qui peut lire quoi",
+     "part": "manual"
+    },
+    {
+     "id": "flows",
+     "title": "Comment les choses sortent",
+     "part": "manual"
+    },
+    {
+     "id": "mechanics",
+     "title": "Douze choses à faire",
+     "part": "manual"
+    },
+    {
+     "id": "fees",
+     "title": "Les frais, et où ils vont",
+     "part": "manual"
+    },
+    {
+     "id": "exchange",
+     "title": "Le bureau de change",
+     "part": "manual"
+    },
+    {
+     "id": "transfer",
+     "title": "Ce qu'une vente change",
+     "part": "manual"
+    },
+    {
+     "id": "croquettes",
+     "title": "Les croquettes",
+     "part": "manual"
+    },
+    {
+     "id": "testnet",
+     "title": "Tant qu'on est sur le testnet",
+     "part": "testnet"
+    },
+    {
+     "id": "code",
+     "title": "Comment le code est organisé",
+     "part": "dev"
+    },
+    {
+     "id": "solana",
+     "title": "Passer sur Solana",
+     "part": "dev"
+    },
+    {
+     "id": "more",
+     "title": "Référence complète",
+     "part": "dev"
+    }
+   ],
+   "passages": [
+    {
+     "id": "box-0",
+     "section": "box",
+     "heading": null,
+     "text": "DO NOT OPEN est une collection de 10 000 NFT sur Ethereum, construite avec le chiffrement de Zama. Chaque token est une boîte en carton. Quand une boîte est mintée, le contrat tire un nombre aléatoire pour elle et garde ce nombre chiffré. Le chat à l'intérieur, son état, ses cinq traits et sa rareté découlent tous de ce seul nombre. Qui détient chaque boîte est chiffré aussi.\nChiffré ne veut pas dire ici caché derrière un serveur ou révélé plus tard depuis une liste préparée par quelqu'un. Le nombre est un chiffré sur la chaîne dès l'instant où il existe. Le contrat peut quand même calculer avec : le comparer, en découper un morceau, lui ajouter quelque chose. Il le fait sans jamais le déchiffrer, c'est à ça que sert le chiffrement totalement homomorphe."
+    },
+    {
+     "id": "box-1",
+     "section": "box",
+     "heading": null,
+     "text": "Le jeu consiste donc à choisir ce que vous voulez découvrir, et ce que ça vous coûte. Secouez une boîte et vous apprenez une chose sur elle, en privé. Ouvrez-la et tout le monde apprend tout, pour de bon."
+    },
+    {
+     "id": "cats-0",
+     "section": "cats",
+     "heading": null,
+     "text": "Chaque boîte contient l'un d'eux. Dix races, du tigré de tous les jours au glitch qu'on ne croise presque jamais ; quatre états, dont un seul vraiment réveillé ; et quelques surprises en prime. Fais tourner le plateau et dis bonjour. Et puis ceux que tu fabriques toi-même à coups de croquettes, du maigre à l'énorme, jusqu'au malade.\n1 / 10"
+    },
+    {
+     "id": "cats-1",
+     "section": "cats",
+     "heading": "Tigré",
+     "text": "Environ 1 boîte sur 5\nLe classique. Des rayures, des opinions bien arrêtées, et la certitude que ta chaise est à lui.\nLes chances sous chaque chat viennent directement des tables du jeu. Comment une boîte tombe sur l'un d'eux, c'est la section suivante."
+    },
+    {
+     "id": "seed-0",
+     "section": "seed",
+     "heading": null,
+     "text": "Une boîte contient une seule graine de 64 bits. Ses bits sont découpés en sept champs. Seize décident si le chat est vivant, endormi, fantôme ou quantique. Cinq octets sont les cinq traits. Le dernier octet ne change que l'apparence du chat.\nChiffrée\nChamps de la graine\nUne graine scellée L'ouvrir 0x ?? ?? ?? ?? ?? ?? ???? Cosmétique Pièce Chose cassée Accessoire Humeur Race Tirage d'état Bits 0 à 15. Seize bits décident de l'état : vivant 70%, endormi 20%, fantôme 8.0%, quantique 2.0%. La vérification de vie les compare à 45 875 sous chiffrement et publie la réponse sur un bit. Un secouage ne peut jamais renvoyer ces bits. Sur la chaîne, elle reste comme ça : un chiffré qui ressemble à du bruit. Le contrat calcule dessus sans le déchiffrer. Tirer une autre graine"
+    },
+    {
+     "id": "seed-1",
+     "section": "seed",
+     "heading": null,
+     "text": "Garder un seul nombre chiffré au lieu de huit permet un mint bon marché. Tout le reste en est déduit quand une mécanique en a besoin : sous chiffrement tant que la boîte est scellée, en clair une fois la boîte ouverte. L'app lit une graine exactement comme le contrat, donc le chat que vous voyez est bien celui que détient la chaîne.\nLe score de rareté est une somme pondérée : trois fois le tirage de race, le tirage d'humeur, deux fois le tirage d'accessoire, la chose cassée, la pièce, plus un bonus pour l'état. Un chat quantique part avec 1 000 points d'avance. Le score maximal possible est 3 040."
+    },
+    {
+     "id": "holders-0",
+     "section": "holders",
+     "heading": null,
+     "text": "Le propriétaire de chaque boîte est chiffré, comme sa graine. Ce n'est pas comme ça que fonctionnent d'habitude les NFT : un NFT ordinaire dit publiquement qui le possède. Ici, rien ne le dit. Personne ne peut voir qui détient une boîte, ni compter les boîtes de quelqu'un. La collection suit un nouveau standard écrit pour ça, l'ERC-721 confidentiel.\nEnvoyer une boîte n'échoue jamais à cause de qui la détient. Si vous la détenez, elle part ; sinon, rien ne se passe. Dans les deux cas, l'expéditeur et le destinataire reçoivent un reçu chiffré qu'eux seuls peuvent lire, qui dit si la boîte a bougé, et tous les autres voient un transfert qui a peut-être eu lieu, ou peut-être pas. Vous retrouvez vos propres boîtes de la même façon : l'app lit les reçus qui vous nomment et les déchiffre, avec une signature par visite. C'est ce que fait Afficher mes boîtes."
+    },
+    {
+     "id": "holders-1",
+     "section": "holders",
+     "heading": null,
+     "text": "Le mint repose sur la même idée. Il se paie uniquement en cUSDC, et votre navigateur chiffre le nombre de boîtes voulu. Vous choisissez aussi parmi combien d'ids de token cacher ce nombre, de 1 à 10, et ce choix est public. Les premiers ids, jusqu'à votre quantité, sont à vous ; les autres sont des boîtes vides qui n'appartiennent à personne, et de l'extérieur les deux se ressemblent. Plus d'ids cachent mieux la quantité et coûtent plus de gas. Un mint qui dépasserait le plafond, ou que votre solde cUSDC ne couvre pas, n'obtient rien et ne paie rien.\nLe nombre de boîtes vendues est un compteur chiffré, plafonné à 10 000 sous chiffrement. Seuls des paliers sont annoncés : 100, 500, 1 000, 2 500, 5 000, 7 500, 9 000, 10 000, le dernier voulant dire épuisé. Chaque mint rend publique une seule réponse, oui ou non : le palier suivant est-il atteint ? Et n'importe qui peut l'annoncer."
+    },
+    {
+     "id": "holders-2",
+     "section": "holders",
+     "heading": null,
+     "text": "Certaines choses restent visibles, c'est voulu. Un mint montre l'adresse de l'acheteur et combien d'ids il a créés, ce qui borne par le haut ce qu'il a acheté. Une tentative de transfert montre qui l'a envoyée et à qui, comme un peut-être. Et une action qui doit devenir publique (une ouverture, une vérification de vie, une boîte mise en duel, ou un duel ou une intrication qui aboutit) montre que celui qui l'a lancée détenait cette boîte à ce moment-là. Une tentative de quelqu'un qui ne la détenait pas se solde par un refus et ne montre rien de la boîte.\nC'est aussi pour ça que le classement ne range que les chats ouverts, et les joueurs qui les ont ouverts : une ouverture publie qui l'a faite, alors que qui détient une boîte scellée reste caché."
+    },
+    {
+     "id": "privacy-0",
+     "section": "privacy",
+     "heading": null,
+     "text": "Chaque chiffré a une liste d'accès. Pour la graine, cette liste n'a qu'une entrée : le contrat. Aucun détenteur n'y est jamais ajouté, parce qu'une adresse sur la liste pourrait demander au service de clés de déchiffrer la graine directement et court-circuiter le jeu.\nInformation | Le détenteur | Tous les autres\nQui détient une boîte | Oui, grâce à ses reçus | Non\nCombien de boîtes un compte détient | Oui, pour son propre compte | Non\nCombien de boîtes sont vendues | Personne. Seuls des paliers sont annoncés\nLa graine, l'état, le score | Non | Non\nUn trait par secouage | Oui, gratuitement | Oui, en payant\nQuel trait un secouage a choisi | Seulement celui qui a secoué\nS'il est vivant | Tout le monde, si le détenteur le demande. Un bit, une fois par boîte\nQui a gagné un duel, et un trait du perdant | Tout le monde\nLe trait du gagnant dans un duel | Non | Non"
+    },
+    {
+     "id": "privacy-1",
+     "section": "privacy",
+     "heading": null,
+     "text": "Combien de fois il a été caressé, et combien de repas il a mangés | Personne. Les tentatives sont publiques, pas le fait qu'elles aient compté\nCombien d'affection ça a rapporté | Non | Non\nDeux conséquences sont voulues. Un détenteur qui secoue assez souvent apprend les cinq traits : un secouage en montre un sur cinq au hasard, donc une onzaine suffit à les couvrir. Ce qui reste caché même au détenteur, c'est l'état, qui vaut jusqu'à un tiers du score, et l'affection. Et les duels laissent fuir un ordre : chacun publie laquelle de deux boîtes a le score le plus haut. Mettre une boîte en duel montre aussi que vous la détenez : c'est ainsi que l'étagère des duels ne porte que des boîtes que quelqu'un détient. C'est le prix du duel."
+    },
+    {
+     "id": "flows-0",
+     "section": "flows",
+     "heading": null,
+     "text": "Il y a deux sorties du chiffrement. Un déchiffrement privé rechiffre une valeur pour une personne, qui doit figurer sur sa liste d'accès. Un déchiffrement public publie une valeur avec les signatures des parties qui se partagent la clé, et le contrat vérifie ces signatures avant de croire quoi que ce soit.\nLe contrat ne reçoit jamais de callback. Une révélation, c'est une demande sur la chaîne, un déchiffrement hors chaîne, et une seconde transaction qui rapporte la preuve. N'importe qui peut envoyer cette seconde transaction. Chaque demande vérifie aussi, sous chiffrement, que celui qui la fait détient la boîte ; ce bit est déchiffré avec le reste, et un non solde la demande par un refus, avec des zéros à la place des valeurs de la boîte.\nQuel flux\nCe que sont les colis"
+    },
+    {
+     "id": "flows-1",
+     "section": "flows",
+     "heading": null,
+     "text": "Mint Secouer Ouvrir Duel Transfert Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien. Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. À partir d'ici, pas de retour en arrière. Détenteur et frais, vérifiés à l'aveugle N'importe qui peut maintenant la demander Les valeurs, signées La preuve part sur la chaîne Vérifiée contre ses propres registres La boîte s'ouvre Lecture Étape suivante Transaction Chiffré Valeur avec preuve Valeur en clair\nVous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. À partir d'ici, pas de retour en arrière.\nDétenteur et frais, vérifiés à l'aveugle\nN'importe qui peut maintenant la demander\nLes valeurs, signées\nLa preuve part sur la chaîne\nVérifiée contre ses propres registres\nLa boîte s'ouvre\nTransaction\nChiffré"
+    },
+    {
+     "id": "flows-2",
+     "section": "flows",
+     "heading": null,
+     "text": "Valeur avec preuve\nValeur en clair"
+    },
+    {
+     "id": "mechanics-0",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Action | Qui | Coût | Ce qui devient public\nMint | N'importe qui, en cachant combien parmi 1 à 10 ids | 5 cUSDC la boîte | L'acheteur et combien d'ids, pas combien sont réels\nSecouer | Le détenteur | Gas seulement | Que quelqu'un a secoué, pas s'il détient la boîte\nSecouage payant | N'importe qui | 2,5 cUSDC, 70 % attendent dans la boîte son détenteur | Que quelqu'un a payé pour secouer\nRécupérer les gains des secouages | N'importe qui, pour les boîtes qu'il détient | Gas seulement | Qu'une récupération a eu lieu, pas combien\nCaresser | N'importe qui | 0.5 cUSDC | Que quelqu'un l'a caressé, pas si ça a compté ni ce que ça a rapporté\nVérification de vie | Le détenteur, une fois | Gas seulement | Un bit, et que celui qui demande détenait la boîte\nIntriquer | Les deux détenteurs | Gas seulement | Le lien, et que les deux détenaient leurs boîtes. Ouvrir une boîte ouvre alors les deux"
+    },
+    {
+     "id": "mechanics-1",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Duel | Le détenteur la met en jeu, n'importe quel détenteur la relève | Gas seulement | Que le challenger détient la boîte, puis qui a gagné et un trait du perdant, ou un duel annulé\nOuvrir | Le détenteur | 1 cUSDC | Tout, définitivement, et qui l'a ouverte\nDonner des croquettes | Le détenteur | Jusqu'à 1 000 croquettes par jour, toutes mangées | Que quelqu'un a servi un repas, pas si ça a compté ni ce qu'il contenait\nRéclamer des croquettes | N'importe qui | Gas seulement | Quelles boîtes, pas combien ni qui les détient\nPeser un chat ouvert | N'importe qui | Gas seulement | Son poids, sa corpulence, s'il est malade"
+    },
+    {
+     "id": "mechanics-2",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Caresser ajoute une quantité cachée entre 0 et 3 à un compteur caché, et rien du tout si la caresse n'a pas été payée. Les caresses visibles sur la chaîne ne disent donc rien du compteur, pas même combien ont compté. Au-delà de 10, l'accessoire devient doré à l'ouverture de la boîte, et un chat sans accessoire reçoit un collier à grelot en or."
+    },
+    {
+     "id": "mechanics-3",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Tous les prix sont en cUSDC, l'USDC confidentiel de Zama : personne d'autre que toi ne lit ton solde ni ne suit tes paiements, et le montant payé est chiffré comme le reste. Un paiement cUSDC ne peut pas échouer on-chain : un solde trop court déplace simplement 0, et l'action ne fait alors rien. Un mint n'obtient aucune boîte, un secouage payant lit « pas à toi », une caresse n'ajoute rien, une ouverture est refusée. Payer depuis de l'USDC ordinaire veut dire convertir d'abord le prix exact en cUSDC, en public, et pour un mint ce montant trahit la quantité. Convertir un montant rond à l'avance, au bureau de change, ne trahit rien."
+    },
+    {
+     "id": "fees-0",
+     "section": "fees",
+     "heading": null,
+     "text": "Tout dans le jeu a un prix en USDC, un stablecoin indexé sur le dollar, et presque tout se paie en cUSDC, sa forme chiffrée : personne d'autre que vous ne peut lire votre solde ni suivre vos paiements. Voici chaque frais, qui le reçoit, et ce qu'il paie.\nLes joueurs paient des frais en USDC ; ils vont à la trésorerie de la collection, sauf 70 % d'un secouage payant, qui vont au détenteur de la boîte ; la trésorerie paie Zama pour les déchiffrements, et les serveurs\nLes dollars entrent par trois portes et presque tous finissent dans la trésorerie. La trésorerie paie Zama pour les déchiffrements que les joueurs ne paient pas eux-mêmes : leurs gratuits du jour, et chaque déchiffrement public.\nCe que vous payez | Prix | Où ça va\nMinter une boîte | 5 USDC la boîte | La trésorerie de la collection\nOuvrir une boîte | 1 USDC | La trésorerie de la collection"
+    },
+    {
+     "id": "fees-1",
+     "section": "fees",
+     "heading": null,
+     "text": "Caresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien\nSecouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction"
+    },
+    {
+     "id": "fees-2",
+     "section": "fees",
+     "heading": null,
+     "text": "Pourquoi les déchiffrements coûtent quelque chose : lire une valeur chiffrée demande du travail au réseau de Zama. Les parties qui se partagent la clé de déchiffrement doivent chacune y prendre part, et Zama le facture, pour chaque valeur lue, d'un dixième de centime à dix centimes selon la formule. Vérifier la preuve qui accompagne une valeur chiffrée par votre navigateur coûte cinq fois plus. Il le facture à la collection, pas à vous. Secouer, retrouver vos boîtes, lire votre propre solde, le résultat d'un duel : chacun est un déchiffrement. Minter, nourrir un chat ou envoyer des croquettes : chacun chiffre une valeur."
+    },
+    {
+     "id": "fees-3",
+     "section": "fees",
+     "heading": null,
+     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés dans le volet du wallet. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie."
+    },
+    {
+     "id": "fees-4",
+     "section": "fees",
+     "heading": null,
+     "text": "La trésorerie paie ce qui fait tourner le jeu : les frais de Zama pour chaque déchiffrement gratuit et chaque déchiffrement public, et les serveurs qui suivent la chaîne pour que le site reste rapide. Le reste va au projet. Le propriétaire le retire."
+    },
+    {
+     "id": "exchange-0",
+     "section": "exchange",
+     "heading": null,
+     "text": "Le jeu utilise cinq jetons : l'ETH pour le gas du réseau, l'USDC et le CROQ, en clair, et le cUSDC et le cCROQ, la même monnaie scellée. Un solde en clair est public, comme n'importe quel jeton ; un solde scellé est chiffré, et toi seul peux le lire. Pour passer de l'un à l'autre, ouvre le menu et choisis Bureau de change : dis ce que tu donnes et ce que tu veux, il trouve le chemin et affiche chaque coût avant que tu signes. Le taux et le nombre de transactions restent sous le formulaire ; Détails déplie le trajet, chaque frais et ce qui devient public. Il liste aussi ce que tu détiens ; les soldes scellés se déchiffrent à la demande, pour toi seul, en une signature."
+    },
+    {
+     "id": "exchange-1",
+     "section": "exchange",
+     "heading": null,
+     "text": "Certains échanges tiennent en une transaction : acheter de l'USDC avec de l'ETH (il peut arriver scellé, en cUSDC), convertir de l'USDC en cUSDC ou l'inverse (Shield et Unshield), acheter ou vendre du CROQ contre de l'USDC, sceller du CROQ en cCROQ ou le desceller. Toute autre paire enchaîne ces étapes : de l'ETH au cCROQ, par exemple, il y en a trois. Chaque étape est une transaction à part, signée l'une après l'autre, et entre deux l'argent attend dans ton wallet en USDC ou en CROQ en clair. Si une étape ne livre rien, parce qu'un solde scellé plus petit que le montant ne déplace rien, sans un mot, le bureau s'arrête et te dit où est ton argent. L'ETH se donne seulement, il ne se reçoit jamais."
+    },
+    {
+     "id": "exchange-2",
+     "section": "exchange",
+     "heading": null,
+     "text": "Acheter de l'USDC avec de l'ETH coûte 0,3 % de l'ETH, gardés par le site. Shield et Unshield sont gratuits. Chaque étape paie le gas du réseau, comme toute transaction. Un échange sur un pool peut se faire à un prix moins bon que celui annoncé si quelqu'un passe avant : la tolérance de slippage, 1 % sauf si tu la changes (de 0,01 % à 50 %), est l'écart que tu acceptes avant que la transaction s'annule d'elle-même, en ne coûtant que le gas. Le bureau montre aussi l'impact sur le prix, de combien ton propre échange fait bouger le prix du pool, et te prévient au-delà de 2 %."
+    },
+    {
+     "id": "exchange-3",
+     "section": "exchange",
+     "heading": null,
+     "text": "Ce qui devient public : les jetons en clair circulent à découvert, donc chaque échange montre ses montants, comme chaque passage entre en clair et scellé. Le montant que tu convertis en cUSDC ou scelles est public, et celui que tu ramènes en clair aussi : il est déchiffré en public pour être versé, c'est pourquoi ces étapes prennent une minute de plus. Une fois ton argent scellé, ce que tu en fais reste privé.\nLes crédits de déchiffrement s'achètent seulement en USDC en clair. Alors quand tu veux du cUSDC, depuis de l'ETH ou de l'USDC, le bureau peut en garder une part en clair : rien, 5 %, 10 % ou 20 %, et il retient ton choix. Depuis l'ETH, cela fait deux achats sur la rampe, un en clair et un scellé, aux mêmes frais ; depuis l'USDC, seul le reste est converti en cUSDC. Le bureau affiche l'USDC gardé et le nombre minimum de crédits qu'il achète."
+    },
+    {
+     "id": "transfer-0",
+     "section": "transfer",
+     "heading": null,
+     "text": "Sur ce protocole, un droit d'accès ne peut pas être révoqué. Une conception qui mettrait le détenteur sur la liste d'accès de la graine ne pourrait jamais en retirer le vendeur. Celle-ci n'y met jamais personne, donc une vente n'a rien à défaire sur la graine. Ce qui change de mains, c'est le propriétaire chiffré, avec ce qui attend dans la boîte : les gains des secouages payants et les croquettes la suivent.\nMint Graine : le contrat seulement. Propriétaire : Alice, chiffrée. Le reçu : Alice seulement.\nAlice secoue Un nouveau chiffré contenant un trait : le contrat et Alice.\nAlice vend à Bob Elle l'envoie. Le propriétaire change sous chiffrement, et le reçu, déplacé ou non, n'est lisible que par Alice et Bob. Rien ne change pour la graine.\nBob secoue Un autre nouveau chiffré : le contrat et Bob."
+    },
+    {
+     "id": "transfer-1",
+     "section": "transfer",
+     "heading": null,
+     "text": "Alice réessaie Pas d'erreur. Elle lit « pas à toi » ; tous les autres voient un secouage, pas qu'il a échoué. Elle garde ce qu'elle a déjà vu, et n'obtient rien de nouveau.\nBob récupère Les gains des secouages payants et les croquettes qui attendent dans la boîte vont à lui maintenant, plus à Alice.\nSi vous achetez une boîte scellée, partez du principe que le vendeur connaît ses cinq traits. Quelques secouages payants avant d'acheter rétablissent l'équilibre. Et un transfert qui vous nomme n'est qu'un peut-être tant que vous n'avez pas déchiffré son reçu : Afficher mes boîtes le fait pour vous."
+    },
+    {
+     "id": "croquettes-0",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Les croquettes sont la monnaie du jeu, et elles existent sous deux formes. CROQ est un ERC-20 ordinaire avec une offre fixe de 20 000 000 : rien ne peut en créer d'autres, et il n'a pas de décimales, donc un CROQ vaut une croquette. Comme il est ordinaire, n'importe quel marché peut le lister. cCROQ est la même croquette emballée dans un jeton confidentiel (ERC-7984) : les soldes et les montants des transferts sont chiffrés. Le jeu n'utilise que cCROQ.\nLe CROQ ordinaire s'échange sur un marché public ; emballé, il devient le cCROQ confidentiel, celui du jeu\nPasser la frontière montre le montant : emballer déplace du CROQ ordinaire, et déballer passe par un déchiffrement public. Tout ce qui se passe en cCROQ entre les deux reste chiffré.\nToute l'offre a été créée une seule fois, au déploiement, et répartie ainsi :\nComment les 20 000 000 croquettes ont été réparties"
+    },
+    {
+     "id": "croquettes-1",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Réserve de jeu 10 000 000 Dans le Garde-manger. Paie le ronron quotidien, et récupère une part de chaque repas.\nSacs de bienvenue 1 000 000 Dans le Garde-manger. Un sac pour chaque boîte qui pourra exister.\nMarché 4 000 000 Versé seul dans le pool public, sans USDC, et bloqué là pour toujours.\nTrésorerie 5 000 000 Du CROQ ordinaire gardé pour des événements et plus de liquidité plus tard."
+    },
+    {
+     "id": "croquettes-2",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Les croquettes arrivent aux joueurs par le Garde-manger, le contrat qui gère l'économie. Chaque boîte apporte un sac de bienvenue de 100 à sa première réclamation : une fois par boîte, quel que soit son détenteur, donc un second wallet ne rapporte rien. Ensuite chaque boîte ronronne : chaque jour, un montant chiffré entre 0 et 4, multiplié par 2 pour une boîte Vet Certified, à récupérer jusqu'à 7 jours d'un coup. Sacs et ronrons sont versés dans la boîte, une réserve chiffrée, et celui qui réclame reçoit les réserves des boîtes qu'il détient, et rien pour les autres. Personne ne peut donc dépenser les jours d'un autre détenteur, et une réclamation ne dit rien de ce que détient celui qui la fait. Le ronron est divisé par deux chaque année, et la réserve paie une réclamation entière ou rien du tout. Personne d'autre que celui qui réclame ne voit combien il a reçu."
+    },
+    {
+     "id": "croquettes-3",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Les croquettes vont de la réserve aux joueurs et des joueurs à leurs chats ; chaque repas est partagé entre la trésorerie, la réserve et le feu\nChaque croquette du Garde-manger est dans exactement un tas chiffré : la réserve, la part de la trésorerie, ou le tas brûlé. Un repas ne laisse rien dans le chat, sauf du poids. Les croquettes brûlées restent bloquées dans le Garde-manger ; aucune fonction ne peut les déplacer, et personne ne peut lire combien il y en a."
+    },
+    {
+     "id": "croquettes-4",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Seul le détenteur nourrit son chat : au plus 2 repas et 1 000 croquettes par jour, quelle que soit la répartition. Qui détient le chat, combien de repas il a eus aujourd'hui et le montant sont tous vérifiés sous chiffrement : un repas qui dépasse les limites, ou servi par quelqu'un qui ne détient pas le chat, déplace 0, sans bruit. Une offre qui dépasse ce qui reste du jour est ramenée à ce reste. Ton navigateur chiffre le montant et le chat mange tout : son poids augmente d'autant, chiffré, et personne ne peut le lire tant que la boîte est scellée, détenteur compris. Les croquettes sont partagées : 20 % pour la trésorerie de la collection, 60 % retournent à la réserve qui paie le ronron, 20 % sont brûlés. Si tu en as moins que ce que tu offres, le repas ne déplace rien, sans erreur ni indice."
+    },
+    {
+     "id": "croquettes-5",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Une fois la boîte ouverte, n'importe qui peut peser le chat : son poids est déchiffré publiquement et fixe sa corpulence. Chaque chat a aussi sa propre tolérance, tirée de sa graine. Personne ne peut la connaître tant que la graine est chiffrée, et quand elle devient publique le chat a fini de manger. Pesé à sa tolérance ou au-delà, le chat est malade : un trophée ultra rare, jamais une mort.\nCorpulence | Croquettes mangées | Jours au plafond quotidien | Score\nMaigre | 0 – 0 | – | +0\nNormal | 1 – 9 999 | 1 | +0\nDodu | 10 000 – 49 999 | 10 | +100\nGros | 50 000 – 149 999 | 50 | +300\nÉnorme | 150 000+ | 150 | +700\nMalade (une limite bien à lui) | 300 000 – 600 000 | 300 – 600 | +2000"
+    },
+    {
+     "id": "croquettes-6",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Le poids suit la boîte, et sa réserve aussi. Un acheteur ne sait rien de ses repas : ni combien, ni la quantité, ni la distance qui sépare le chat de sa tolérance. Le vendeur sait au moins ce qu'il a servi lui-même. Le marché fait le prix du reste.\nPersonne ne peut lire un poids avant l'ouverture, détenteur compris, pour la même raison que personne n'a jamais accès à une graine : un droit d'accès ne se reprend pas, donc un ancien détenteur continuerait à le lire après une vente. Ce qui reste secret, et ce qui ne l'est pas :\nInformation | Qui peut le lire\nTon solde de cCROQ | Toi\nLe montant d'un transfert, d'un repas ou d'une réclamation | Les deux parties\nLe poids d'un chat | Personne tant que la boîte est scellée. Tout le monde une fois le chat pesé\nCombien a été brûlé | Personne\nQui a essayé de nourrir quel chat | Tout le monde. Si ça a compté : celui qui a nourri seulement"
+    },
+    {
+     "id": "croquettes-7",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Qui a réclamé, et pour quelles boîtes | Tout le monde. Combien, et de quelles boîtes : lui seul\nCe que pèse un chat ouvert, et s'il est malade | Tout le monde\nEmballer, déballer, échanges sur le marché | Tout le monde, montants compris\nL'offre totale | Tout le monde. Combien circule encore : personne\nIl n'y a pas de prix officiel. Leur valeur apparaît indirectement, dans le prix d'un chat scellé bien lourd."
+    },
+    {
+     "id": "croquettes-8",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Le marché public est un pool Uniswap où le CROQ s'échange contre de l'USDC. La collection n'y a mis que des croquettes, aucun dollar : elles se vendent à partir de 0,001 USDC pièce, en montant, et jamais moins cher, car vendre ne rend que l'USDC que des acheteurs ont apporté. Tant que personne n'a acheté, il n'y a rien contre quoi vendre, et le bureau de change le dit. Les croquettes du pool y sont bloquées pour toujours : personne ne peut les retirer, pas même la collection. Chaque échange paie au pool 1 % de frais, qui vont à la trésorerie de la collection."
+    },
+    {
+     "id": "testnet-0",
+     "section": "testnet",
+     "heading": null,
+     "text": "Cette partie disparaîtra au mainnet.\nLe jeu tourne sur Sepolia, le réseau de test d'Ethereum. Rien ici n'a de valeur. L'USDC est le jeton de test de Zama, gratuit depuis le volet du wallet ou le bureau de change ; l'ETH pour le gas vient d'un faucet ; le pool de croquettes n'existe que pour qu'on puisse essayer le marché ; et chaque prix de ce manuel est un prix de test.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x5eBa…2C6F\nLe Garde-manger (croquettes, repas, pesées) 0xf506…6CDB\nCROQ, la croquette ordinaire 0xbedb…51F7\ncCROQ, la croquette chiffrée 0x5b4a…7952\nPool CROQ / USDC 0x399D…2100\nCoffre de liquidité 0xCA7E…3BF3\nLa rampe USDC (de l'ETH vers l'USDC) 0x2754…8aAb\nCrédits de déchiffrement 0xfBF4…d3B1"
+    },
+    {
+     "id": "testnet-1",
+     "section": "testnet",
+     "heading": "Ce qui reste à faire avant le mainnet",
+     "text": "Les contrats ont été relus par les gens qui les ont écrits et par personne d'autre. Ils ne devraient pas détenir d'argent réel tant que ça ne change pas. Ces points sont ouverts :\nUne ouverture peut rester bloquée entre ses deux étapes. Si le service de clés ne répond jamais, il n'y a ni délai d'expiration ni remboursement. La boîte reste scellée, et son détenteur ne peut que redemander et repayer.\nRien ne limite un minteur. Un bot ne peut pas choisir les bonnes boîtes, mais il peut toutes les minter.\nLe propriétaire peut rediriger les métadonnées. Il n'y a pas de gel, et le propriétaire est une seule clé.\nDeux vérifications au déploiement manquent. Le contrat de configuration suppose que le score tient sur seize bits et que les décalages des traits ne se chevauchent pas."
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": "Ce qui reste à faire avant le mainnet",
+     "text": "Les places de marché ne sont pas prévenues quand une boîte s'ouvre. Le contrat n'émet pas d'événement de mise à jour des métadonnées.\nLe relayer de Zama a besoin de la clé d'API de la collection. Le serveur qui la tient à l'écart des navigateurs et compte les déchiffrements de chaque wallet est en place ; la clé elle-même est demandée à Zama.\nLes wallets et places de marché courants ne connaissent pas l'ERC-721 confidentiel. Ils ne peuvent ni afficher ces boîtes ni les lister. Une vente demande un marché conçu pour ce standard.\nPas d'audit externe, pas d'analyse statique, pas de fuzzing.\nLa checklist d'audit contient chaque vérification, le test qui la couvre, et le reste des constats."
+    },
+    {
+     "id": "code-0",
+     "section": "code",
+     "heading": null,
+     "text": "Le dépôt est découpé pour que l'essentiel ignore sur quelle chaîne il tourne. Les règles, le générateur, la scène 3D et cette app sont d'un côté. Le contrat et le code qui lui parle sont de l'autre, derrière une seule interface.\nÉtagère du haut : tourne sur n'importe quelle chaîne game-spec generator scene ChainAdapter apps/web Étagère du bas : une chaîne chacun contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. La seule porte vers une chaîne : une interface pour les comptes, les lectures et chaque mécanique, plus une implémentation en mémoire avec les règles du contrat. Rien dedans ne nomme une chaîne ou une bibliothèque de wallet. Un fil veut dire « dépend de ». Choisissez une caisse pour voir ce dont elle a besoin et ce qui a besoin d'elle."
+    },
+    {
+     "id": "code-1",
+     "section": "code",
+     "heading": null,
+     "text": "Une boîte scellée est dessinée à partir de son id de token et de rien d'autre. La fonction qui décrit une boîte ne peut pas voir de graine, donc aucun rendu, aucune texture ni aucun fichier de métadonnées d'une boîte scellée ne peut en laisser fuir une. Le chat n'existe comme donnée qu'une fois la graine publique."
+    },
+    {
+     "id": "solana-0",
+     "section": "solana",
+     "heading": null,
+     "text": "Zama inscrit le support de Solana sur sa feuille de route et n'a encore publié aucun SDK Solana. Il y a donc une carte, et pas de portage. Ce que dit la carte : environ deux tiers du code ne changent pas, le contrat devient un programme avec un compte par boîte, et un nouvel adaptateur implémente la même interface.\nAujourd'hui sur Ethereum | Attendu sur Solana\nValeurs chiffrées dans le stockage du contrat | Poignées de chiffrés dans des comptes du programme\nUne entrée de mapping par token | Un compte par boîte, dérivé de l'id du token\nPermis signé avec la clé Ethereum du wallet | Un message signé avec sa clé ed25519\nPreuve vérifiée en une transaction | Inconnu. Une transaction est limitée à 1 232 octets, et une preuve peut ne pas tenir"
+    },
+    {
+     "id": "solana-1",
+     "section": "solana",
+     "heading": null,
+     "text": "Retrouver vos boîtes en déchiffrant les reçus des transferts qui vous nomment | Inconnu. Il faut des adresses chiffrées là-bas ; un indexeur peut toujours lister les reçus\nChaque ligne de la colonne de droite devra être vérifiée contre le vrai SDK quand il sortira. La carte de portage complète liste les questions ouvertes."
+    },
+    {
+     "id": "more-0",
+     "section": "more",
+     "heading": null,
+     "text": "Architecture Packages, flux de données, la chaîne 3D\nModèle de données Ce qui est chiffré, par token, et les listes d'accès\nFlux Diagrammes de séquence pour chaque mécanique\nNotes Zama Versions vérifiées, et où le protocole diffère du premier brief\nDesign Direction artistique, effets, budget de performance\nContrats Coût de chaque fonction, déploiement, ligne de commande\nCroquettes Les deux jetons, le Garde-manger, tous les chiffres et ce qui fuit\nPropriétaires cachés L'ERC-721 confidentiel, ce qui fuit encore, ce que ça coûte\nProxy du relayer Comment les déchiffrements sont comptés, le quota gratuit et les crédits"
+    }
+   ]
+  },
+  "es": {
+   "sections": [
+    {
+     "id": "box",
+     "title": "Qué hay en una caja",
+     "part": "manual"
+    },
+    {
+     "id": "cats",
+     "title": "Quién podría estar dentro",
+     "part": "manual"
+    },
+    {
+     "id": "seed",
+     "title": "Un número por gato",
+     "part": "manual"
+    },
+    {
+     "id": "holders",
+     "title": "Nadie sabe quién tiene qué",
+     "part": "manual"
+    },
+    {
+     "id": "privacy",
+     "title": "Quién puede leer qué",
+     "part": "manual"
+    },
+    {
+     "id": "flows",
+     "title": "Cómo salen las cosas",
+     "part": "manual"
+    },
+    {
+     "id": "mechanics",
+     "title": "Doce cosas que hacer",
+     "part": "manual"
+    },
+    {
+     "id": "fees",
+     "title": "Las tarifas, y adónde van",
+     "part": "manual"
+    },
+    {
+     "id": "exchange",
+     "title": "La casa de cambio",
+     "part": "manual"
+    },
+    {
+     "id": "transfer",
+     "title": "Qué cambia una venta",
+     "part": "manual"
+    },
+    {
+     "id": "croquettes",
+     "title": "Las croquetas",
+     "part": "manual"
+    },
+    {
+     "id": "testnet",
+     "title": "Mientras estemos en la testnet",
+     "part": "testnet"
+    },
+    {
+     "id": "code",
+     "title": "Cómo está organizado el código",
+     "part": "dev"
+    },
+    {
+     "id": "solana",
+     "title": "Pasar a Solana",
+     "part": "dev"
+    },
+    {
+     "id": "more",
+     "title": "Referencia completa",
+     "part": "dev"
+    }
+   ],
+   "passages": [
+    {
+     "id": "box-0",
+     "section": "box",
+     "heading": null,
+     "text": "DO NOT OPEN es una colección de 10.000 NFT en Ethereum, construida con el cifrado de Zama. Cada token es una caja de cartón. Cuando se mintea una caja, el contrato sortea un número aleatorio para ella y mantiene ese número cifrado. El gato de dentro, su estado, sus cinco rasgos y su rareza se derivan todos de ese único número. Quién tiene cada caja también está cifrado.\nCifrado no significa aquí escondido detrás de un servidor o revelado más tarde desde una lista que alguien preparó. El número es un texto cifrado en la cadena desde el momento en que existe. El contrato todavía puede calcular con él: compararlo, recortarle un trozo, sumarle algo. Lo hace sin descifrarlo nunca, que es para lo que sirve el cifrado totalmente homomórfico."
+    },
+    {
+     "id": "box-1",
+     "section": "box",
+     "heading": null,
+     "text": "Así que el juego va de lo que eliges averiguar, y lo que eso te cuesta. Agita una caja y aprendes una cosa sobre ella, en privado. Ábrela y todos lo aprenden todo, para siempre."
+    },
+    {
+     "id": "cats-0",
+     "section": "cats",
+     "heading": null,
+     "text": "Cada caja guarda uno de estos. Diez razas, del atigrado de siempre al glitch que casi nunca aparece; cuatro estados, solo uno bien despierto; y algunas sorpresas de regalo. Gira la plataforma y saluda. Y luego los que fabricas tú mismo a base de croquetas, del flaco al enorme, hasta el enfermo.\n1 / 10"
+    },
+    {
+     "id": "cats-1",
+     "section": "cats",
+     "heading": "Atigrado",
+     "text": "Más o menos 1 caja de cada 5\nEl clásico. Rayas, opiniones firmes y la certeza de que tu silla es suya.\nLas probabilidades bajo cada gato salen directamente de las tablas del juego. Cómo una caja acaba en uno de ellos está en la sección siguiente."
+    },
+    {
+     "id": "seed-0",
+     "section": "seed",
+     "heading": null,
+     "text": "Una caja guarda una sola semilla de 64 bits. Sus bits se cortan en siete campos. Dieciséis deciden si el gato está vivo, dormido, es un fantasma o cuántico. Cinco bytes son los cinco rasgos. El último byte solo cambia el aspecto del gato.\nCifrada\nCampos de la semilla\nUna semilla sellada Abrirla 0x ?? ?? ?? ?? ?? ?? ???? Cosmético Habitación Cosa rota Accesorio Humor Raza Tirada de estado Bits 0 a 15. Dieciséis bits deciden el estado: vivo 70%, dormido 20%, fantasma 8.0%, cuántico 2.0%. La comprobación de vida los compara con 45.875 bajo cifrado y publica la respuesta de un bit. Una agitada nunca puede devolver estos bits. En la cadena se queda así: un texto cifrado que parece ruido. El contrato calcula sobre él sin descifrarlo. Sortear otra semilla"
+    },
+    {
+     "id": "seed-1",
+     "section": "seed",
+     "heading": null,
+     "text": "Guardar un solo número cifrado en lugar de ocho hace que mintear salga barato. Todo lo demás se calcula a partir de él cuando una mecánica lo necesita: bajo cifrado mientras la caja está sellada, en claro una vez abierta. La app lee una semilla exactamente igual que el contrato, así que el gato que ves es el gato que guarda la cadena.\nLa puntuación de rareza es una suma ponderada: tres veces la tirada de raza, la tirada de humor, dos veces la tirada de accesorio, la cosa rota, la habitación, más una bonificación por el estado. Un gato cuántico empieza con 1.000 puntos de ventaja. La puntuación máxima posible es 3040."
+    },
+    {
+     "id": "holders-0",
+     "section": "holders",
+     "heading": null,
+     "text": "El propietario de cada caja está cifrado, como su semilla. No es así como suelen funcionar los NFT: un NFT corriente dice públicamente quién es su dueño. Aquí nada lo dice. Nadie puede ver quién tiene una caja, ni contar las cajas de nadie. La colección sigue un estándar nuevo escrito para esto, el ERC-721 confidencial.\nEnviar una caja nunca falla por quién la tiene. Si la tienes, se mueve; si no, no pasa nada. En los dos casos el remitente y el destinatario reciben un recibo cifrado que solo ellos pueden leer, que dice si la caja se movió, y todos los demás ven una transferencia que puede haber ocurrido o no. Tus propias cajas las encuentras igual: la app lee los recibos que te nombran y los descifra, con una firma por visita. Eso es lo que hace Mostrar mis cajas."
+    },
+    {
+     "id": "holders-1",
+     "section": "holders",
+     "heading": null,
+     "text": "El minteo se basa en la misma idea. Se paga solo en cUSDC, y tu navegador cifra cuántas cajas quieres. También eliges entre cuántos ids de token esconder ese número, de 1 a 10, y esa elección es pública. Los primeros ids, hasta tu cantidad, son tuyos; los demás son cajas vacías que no son de nadie, y desde fuera unas y otras se ven iguales. Más ids esconden mejor la cantidad y cuestan más gas. Un minteo que superaría el tope, o que tu saldo de cUSDC no cubre, no consigue nada y no paga nada.\nEl número de cajas vendidas es un contador cifrado, con un tope de 10.000 bajo cifrado. Solo se anuncian hitos: 100, 500, 1000, 2500, 5000, 7500, 9000, 10.000, y el último significa agotado. Cada minteo hace pública una sola respuesta de sí o no, si se alcanzó el siguiente hito, y cualquiera puede anunciarlo."
+    },
+    {
+     "id": "holders-2",
+     "section": "holders",
+     "heading": null,
+     "text": "Algunas cosas siguen a la vista, a propósito. Un minteo muestra la dirección del comprador y cuántos ids creó, lo que pone un límite superior a lo que compró. Un intento de transferencia muestra quién la envió y a quién, como un quizás. Y una acción que tiene que hacerse pública (una apertura, una comprobación de vida, una caja puesta en duelo, o un duelo o un entrelazado que sale adelante) muestra que quien la lanzó tenía esa caja en ese momento. Un intento de alguien que no la tenía se resuelve como rechazado y no muestra nada de la caja.\nPor eso también la clasificación solo ordena gatos abiertos, y a los jugadores que los abrieron: una apertura publica quién la hizo, mientras que quién tiene una caja sellada sigue oculto."
+    },
+    {
+     "id": "privacy-0",
+     "section": "privacy",
+     "heading": null,
+     "text": "Cada texto cifrado tiene una lista de acceso. Para la semilla, esa lista tiene una entrada: el contrato. Ningún titular se añade nunca, porque una dirección de la lista podría pedir al servicio de claves que descifrara la semilla directamente y saltarse el juego.\nDato | El titular | Todos los demás\nQuién tiene una caja | Sí, por sus recibos | No\nCuántas cajas tiene una cuenta | Sí, para su propia cuenta | No\nCuántas cajas se han vendido | Nadie. Solo se anuncian hitos\nLa semilla, el estado, la puntuación | No | No\nUn rasgo por agitada | Sí, gratis | Sí, pagando\nQué rasgo eligió una agitada | Solo quien agitó\nSi está vivo | Todos, si el titular lo pide. Un bit, una vez por caja\nQuién ganó un duelo, y un rasgo del perdedor | Todos\nEl rasgo del ganador en un duelo | No | No\nCuántas veces fue acariciado, y cuántas comidas comió | Nadie. Los intentos son públicos, no si contaron"
+    },
+    {
+     "id": "privacy-1",
+     "section": "privacy",
+     "heading": null,
+     "text": "Cuánto afecto ganó con ello | No | No\nDos consecuencias son deliberadas. Un titular que agita lo suficiente aprende los cinco rasgos: una agitada muestra uno de cinco al azar, así que unas once los cubren. Lo que queda oculto incluso para el titular es el estado, que vale hasta un tercio de la puntuación, y el afecto. Y los duelos filtran orden: cada uno publica cuál de dos cajas puntúa más alto. Poner una caja en duelo también muestra que la tienes: así el estante de duelos solo lleva cajas que alguien tiene. Ese es el precio del duelo."
+    },
+    {
+     "id": "flows-0",
+     "section": "flows",
+     "heading": null,
+     "text": "Hay dos salidas del cifrado. Un descifrado privado vuelve a cifrar un valor para una persona, que debe estar en su lista de acceso. Un descifrado público publica un valor con firmas de las partes que comparten la clave, y el contrato verifica esas firmas antes de creerse nada.\nEl contrato nunca recibe un callback. Una revelación es una petición en la cadena, un descifrado fuera de la cadena, y una segunda transacción que trae la prueba de vuelta. Cualquiera puede enviar esa segunda transacción. Cada petición comprueba además, bajo cifrado, que quien la hace tiene la caja; ese bit se descifra con lo demás, y un no resuelve la petición como rechazada, con ceros en lugar de los valores de la caja.\nQué flujo\nQué son los paquetes"
+    },
+    {
+     "id": "flows-1",
+     "section": "flows",
+     "heading": null,
+     "text": "Mintear Agitar Abrir Duelo Transferir Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. A partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. A partir de aquí no hay vuelta atrás.\nTitular y tarifa, comprobados a ciegas\nCualquiera puede pedirla ahora\nLos valores, firmados\nLa prueba va a la cadena\nComprobada contra sus propios registros\nLa caja se abre\nTransacción\nTexto cifrado\nValor con prueba\nValor en claro"
+    },
+    {
+     "id": "mechanics-0",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Acción | Quién | Coste | Qué se hace público\nMintear | Cualquiera, escondiendo cuántas entre 1 y 10 ids | 5 cUSDC por caja | El comprador y cuántos ids, no cuántos son reales\nAgitar | El titular | Solo gas | Que alguien agitó, no si tiene la caja\nAgitada de pago | Cualquiera | 2,5 cUSDC, el 70 % espera en la caja a su titular | Que alguien pagó por agitar\nCobrar lo ganado con agitadas | Cualquiera, por las cajas que tiene | Solo gas | Que hubo un cobro, no cuánto\nAcariciar | Cualquiera | 0.5 cUSDC | Que alguien lo acarició, no si contó ni lo que ganó\nComprobación de vida | El titular, una vez | Solo gas | Un bit, y que quien lo pidió tenía la caja\nEntrelazar | Ambos titulares | Solo gas | El enlace, y que ambos tenían sus cajas. Abrir una caja abre entonces las dos"
+    },
+    {
+     "id": "mechanics-1",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Duelo | El titular la pone en juego, cualquier titular la acepta | Solo gas | Que el retador tiene la caja, luego quién ganó y un rasgo del perdedor, o un duelo nulo\nAbrir | El titular | 1 cUSDC | Todo, de forma permanente, y quién la abrió\nDar croquetas | El titular | Hasta 1000 croquetas al día, todas comidas | Que alguien sirvió una comida, no si contó ni lo que contenía\nReclamar croquetas | Cualquiera | Solo gas | Qué cajas, no cuánto ni quién las tiene\nPesar un gato abierto | Cualquiera | Solo gas | Su peso, su complexión, si está enfermo"
+    },
+    {
+     "id": "mechanics-2",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Acariciar añade una cantidad oculta entre 0 y 3 a un contador oculto, y nada en absoluto si la caricia no se pagó. Así que las caricias que cualquiera ve en la cadena no dicen nada del contador, ni siquiera cuántas contaron. Por encima de 10, el accesorio se vuelve de oro cuando se abre la caja, y un gato sin accesorio recibe un collar con cascabel de oro."
+    },
+    {
+     "id": "mechanics-3",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Todos los precios están en cUSDC, el USDC confidencial de Zama: nadie más que tú puede leer tu saldo ni seguir tus pagos, y el importe que pagaste está cifrado como lo demás. Un pago en cUSDC no puede fallar on-chain: un saldo corto simplemente mueve 0, y la acción entonces no hace nada. Un minteo no consigue cajas, una agitada de pago lee «no es tuya», una caricia no añade nada, una apertura se rechaza. Pagar desde USDC normal significa convertir antes el precio exacto a cUSDC, en público, y en un minteo ese importe delata la cantidad. Blindar un importe redondo con antelación, en la casa de cambio, no delata nada."
+    },
+    {
+     "id": "fees-0",
+     "section": "fees",
+     "heading": null,
+     "text": "Todo en el juego tiene precio en USDC, una stablecoin en dólares, y casi todo se paga en cUSDC, su forma cifrada: nadie más que tú puede leer tu saldo ni seguir tus pagos. Aquí está cada tarifa, quién la recibe y para qué sirve.\nLos jugadores pagan las tarifas en USDC; van a la tesorería de la colección, salvo el 70 % de una agitada de pago, que va al titular de la caja; la tesorería paga a Zama los descifrados y los servidores\nLos dólares entran por tres puertas y casi todos acaban en la tesorería. La tesorería paga a Zama los descifrados que los jugadores no pagan ellos mismos: sus gratuitos de cada día, y todos los públicos.\nLo que pagas | Precio | Adónde va\nMintear una caja | 5 USDC por caja | La tesorería de la colección\nAbrir una caja | 1 USDC | La tesorería de la colección\nAcariciar a un gato | 0,5 USDC | La tesorería de la colección"
+    },
+    {
+     "id": "fees-1",
+     "section": "fees",
+     "heading": null,
+     "text": "Agitar la caja de otro | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario\nAgitar tu propia caja, la comprobación de vida, entrelazar, los duelos, enviar una caja | Gratis | Solo el gas de la red, como cualquier transacción"
+    },
+    {
+     "id": "fees-2",
+     "section": "fees",
+     "heading": null,
+     "text": "Por qué los descifrados cuestan algo: leer algo cifrado le da trabajo a la red de Zama. Cada una de las partes que comparten la clave de descifrado tiene que intervenir, y Zama lo cobra, por cada valor leído, desde una décima de céntimo hasta diez céntimos según el plan. Verificar la prueba que acompaña a un valor que cifra tu navegador cuesta cinco veces más. Se lo cobra a la colección, no a ti. Agitar, encontrar tus cajas, leer tu propio saldo, el resultado de un duelo: cada uno es un descifrado. Mintear, alimentar a un gato o enviar croquetas: cada uno cifra un valor."
+    },
+    {
+     "id": "fees-3",
+     "section": "fees",
+     "heading": null,
+     "text": "Por eso cada cartera tiene 25 unidades gratis al día, pagadas por la colección, y vuelven a medianoche UTC; una cartera que aún no ha jugado tiene 16, lo justo para un primer minteo. Leer un valor es una unidad: una agitada usa 2, y encontrar las cajas de un minteo usa una por cada número de caja entre los que se escondió. Cifrar un valor, como la cantidad de un minteo o una comida, cuesta 5. Lo que tu navegador ya ha leído una vez, lo recuerda, y nunca se vuelve a contar. Pasadas las gratuitas, gastas créditos, uno por unidad, que se compran en la ficha del wallet. Su precio sigue lo que Zama le cobra a la colección en dólares, no el precio del token de Zama, así que no se mueve con el mercado. Se pagan en USDC sin cifrar a propósito: un saldo que no alcanza cancela la compra, mientras que un pago en cUSDC no movería nada sin avisar. Abrir una caja, resolver un duelo o anunciar un hito nunca se le cuenta a nadie: eso lo paga la colección."
+    },
+    {
+     "id": "fees-4",
+     "section": "fees",
+     "heading": null,
+     "text": "La tesorería paga lo que mantiene el juego en marcha: las tarifas de Zama por cada descifrado gratuito y cada descifrado público, y los servidores que siguen la cadena para que el sitio vaya rápido. El resto es para el proyecto. Lo retira el propietario."
+    },
+    {
+     "id": "exchange-0",
+     "section": "exchange",
+     "heading": null,
+     "text": "El juego usa cinco tokens: ETH para el gas de la red, USDC y CROQ, a la vista, y cUSDC y cCROQ, el mismo dinero sellado. Un saldo a la vista es público, como el de cualquier token; uno sellado está cifrado y solo tú puedes leerlo. Para pasar de uno a otro, abre el menú y elige Casa de cambio: di qué entregas y qué quieres, y ella encuentra el camino y muestra cada coste antes de que firmes. El tipo y el número de transacciones quedan a la vista bajo el formulario; Detalles despliega la ruta, cada comisión y lo que se hace público. También lista lo que tienes; los saldos sellados se descifran cuando lo pides, solo para ti, con una firma."
+    },
+    {
+     "id": "exchange-1",
+     "section": "exchange",
+     "heading": null,
+     "text": "Algunos cambios se hacen en una transacción: comprar USDC con ETH (puede llegar sellado, como cUSDC), blindar USDC en cUSDC o desblindarlo, comprar o vender CROQ por USDC, sellar CROQ en cCROQ o desellarlo. Cualquier otro par encadena estos pasos: de ETH a cCROQ, por ejemplo, son tres. Cada paso es su propia transacción, firmadas una tras otra, y entre medias el dinero espera en tu wallet como USDC o CROQ a la vista. Si un paso no entrega nada, porque un saldo sellado menor que el importe no mueve nada, sin avisar, la casa de cambio se detiene y te dice dónde está tu dinero. El ETH solo se entrega, nunca se recibe."
+    },
+    {
+     "id": "exchange-2",
+     "section": "exchange",
+     "heading": null,
+     "text": "Comprar USDC con ETH cuesta el 0,3 % del ETH, que se queda el sitio. Blindar y desblindar es gratis. Cada paso paga el gas de la red, como cualquier transacción. Un cambio en un pool puede salir a peor precio del anunciado si alguien opera antes: la tolerancia de slippage, 1 % salvo que la cambies (de 0,01 % a 50 %), es cuánto peor aceptas antes de que la transacción se anule sola, costando solo el gas. La casa de cambio también muestra el impacto en el precio, cuánto mueve tu propio cambio el precio del pool, y te avisa por encima del 2 %."
+    },
+    {
+     "id": "exchange-3",
+     "section": "exchange",
+     "heading": null,
+     "text": "Qué se hace público: los tokens a la vista se mueven a la vista, así que cada cambio muestra sus importes, igual que cada paso entre a la vista y sellado. El importe que blindas o sellas es público, y el que desblindas o desellas también: se descifra en público para pagarlo, por eso esos pasos tardan un minuto más. Una vez sellado tu dinero, lo que hagas con él queda privado.\nLos créditos de descifrado solo se compran en USDC en claro. Así que cuando quieres cUSDC, desde ETH o desde USDC, el bureau puede guardar una parte en claro: nada, 5 %, 10 % o 20 %, y recuerda tu elección. Desde ETH son dos compras en la rampa, una en claro y otra sellada, con la misma comisión; desde USDC, solo se protege el resto. El bureau muestra el USDC guardado y cuántos créditos compra como mínimo."
+    },
+    {
+     "id": "transfer-0",
+     "section": "transfer",
+     "heading": null,
+     "text": "En este protocolo un permiso de acceso no se puede revocar. Un diseño que pusiera al titular en la lista de acceso de la semilla nunca podría quitar de ella al vendedor. Este no pone nunca a nadie, así que una venta no tiene nada que deshacer en la semilla. Lo que cambia de manos es el propietario cifrado, junto con lo que espera en la caja: lo ganado con agitadas de pago y las croquetas van con ella.\nMintear Semilla: solo el contrato. Propietaria: Alice, cifrada. El recibo: solo Alice.\nAlice agita Un texto cifrado nuevo con un rasgo: el contrato y Alice.\nAlice vende a Bob Ella la envía. El propietario cambia bajo cifrado, y el recibo, movida o no, solo lo pueden leer Alice y Bob. Nada de la semilla cambia.\nBob agita Otro texto cifrado nuevo: el contrato y Bob."
+    },
+    {
+     "id": "transfer-1",
+     "section": "transfer",
+     "heading": null,
+     "text": "Alice lo intenta de nuevo Sin error. Lee «no es tuya»; los demás ven una agitada, no que falló. Se queda con lo que ya vio, y no consigue nada nuevo.\nBob cobra Lo ganado con agitadas de pago y las croquetas que esperan en la caja son ahora para él, no para Alice.\nSi compras una caja sellada, da por hecho que el vendedor conoce sus cinco rasgos. Unas cuantas agitadas de pago antes de comprar lo equilibran. Y una transferencia que te nombra es solo un quizás hasta que descifras su recibo: Mostrar mis cajas lo hace por ti."
+    },
+    {
+     "id": "croquettes-0",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Las croquetas son el dinero del juego, y existen en dos formas. CROQ es un ERC-20 corriente con una oferta fija de 20.000.000: nada puede crear más, y no tiene decimales, así que un CROQ es una croqueta. Al ser corriente, cualquier mercado puede listarlo. cCROQ es la misma croqueta envuelta en un token confidencial (ERC-7984): los saldos y los importes de las transferencias están cifrados. El juego solo usa cCROQ.\nEl CROQ corriente se negocia en un mercado público; envuelto, se vuelve cCROQ confidencial, el que usa el juego\nCruzar la frontera muestra el importe: envolver mueve CROQ corriente, y desenvolver pasa por un descifrado público. Todo lo que ocurre en cCROQ entre medias sigue cifrado.\nToda la oferta se creó una sola vez, en el despliegue, y se repartió así:\nCómo se repartieron las 20.000.000 croquetas"
+    },
+    {
+     "id": "croquettes-1",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Reserva del juego 10.000.000 En la Despensa. Paga el ronroneo diario, y recupera parte de cada comida.\nBolsas de bienvenida 1.000.000 En la Despensa. Una bolsa para cada caja que pueda existir.\nMercado 4.000.000 Aportado solo al pool público, sin USDC, y bloqueado allí para siempre.\nTesorería 5.000.000 CROQ corriente guardado para eventos y más liquidez más adelante."
+    },
+    {
+     "id": "croquettes-2",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Las croquetas llegan a los jugadores desde la Despensa, el contrato que lleva la economía. Cada caja trae una bolsa de bienvenida de 100 la primera vez que se reclama por ella: una vez por caja, la tenga quien la tenga, así que una segunda cartera no gana nada. Después cada caja ronronea: cada día, una cantidad cifrada entre 0 y 4, multiplicada por 2 para una caja Vet Certified, que se recoge hasta 7 días de golpe. Bolsas y ronroneos se pagan dentro de la caja, una reserva cifrada, y quien reclama recibe las reservas de las cajas que tiene, y nada por las demás. Así nadie puede gastar los días de otro titular, y una reclamación no dice nada de lo que tiene quien reclama. El ronroneo se reduce a la mitad cada año, y la reserva paga una reclamación entera o nada. Nadie más que quien reclama ve cuánto le llegó."
+    },
+    {
+     "id": "croquettes-3",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Las croquetas van de la reserva a los jugadores y de los jugadores a sus gatos; cada comida se reparte entre la tesorería, la reserva y el fuego\nCada croqueta de la Despensa está en exactamente un montón cifrado: la reserva, la parte de la tesorería o el quemado. Una comida no deja nada en el gato salvo peso. Las croquetas quemadas quedan bloqueadas en la Despensa; ninguna función puede moverlas y nadie puede leer cuántas hay."
+    },
+    {
+     "id": "croquettes-4",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Solo el titular alimenta a su gato: como mucho 2 comidas y 1000 croquetas al día, repartidas como quiera. Quién tiene el gato, cuántas comidas lleva hoy y la cantidad se comprueban todos bajo cifrado: una comida que supere los límites, o servida por alguien que no tiene el gato, mueve 0, sin avisar. Una oferta que supere lo que queda del día se recorta a ese resto. Tu navegador cifra la cantidad y el gato se lo come todo: su peso sube otro tanto, cifrado, y nadie puede leerlo mientras la caja esté sellada, ni siquiera el titular. Las croquetas se reparten: el 20 % a la tesorería de la colección, el 60 % vuelve a la reserva que paga el ronroneo, el 20 % se quema. Si tienes menos de lo que ofreces, la comida no mueve nada, sin error ni pista."
+    },
+    {
+     "id": "croquettes-5",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Una vez abierta la caja, cualquiera puede pesar al gato: su peso se descifra en público y fija su complexión. Cada gato tiene además su propia tolerancia, sacada de su semilla. Nadie puede conocerla mientras la semilla está cifrada, y cuando se hace pública el gato ya dejó de comer. Pesado en su tolerancia o por encima, el gato está enfermo: un trofeo ultra raro, nunca una muerte.\nComplexión | Croquetas comidas | Días al tope diario | Puntuación\nFlaco | 0 – 0 | – | +0\nNormal | 1 – 9999 | 1 | +0\nRellenito | 10.000 – 49.999 | 10 | +100\nGordo | 50.000 – 149.999 | 50 | +300\nEnorme | 150.000+ | 150 | +700\nEnfermo (un límite propio) | 300.000 – 600.000 | 300 – 600 | +2000"
+    },
+    {
+     "id": "croquettes-6",
+     "section": "croquettes",
+     "heading": null,
+     "text": "El peso sigue a la caja, y su reserva también. Un comprador no sabe nada de sus comidas: ni cuántas, ni cuánto, ni lo cerca que está de su tolerancia. El vendedor al menos sabe lo que sirvió él mismo. El mercado pone precio al resto.\nNadie puede leer un peso antes de abrir la caja, ni siquiera el titular, por la misma razón por la que nadie tiene nunca acceso a una semilla: un permiso de acceso no se puede retirar, así que un antiguo titular seguiría leyéndolo después de una venta. Lo que sigue en secreto, y lo que no:\nDato | Quién puede leerlo\nTu saldo de cCROQ | Tú\nEl importe de una transferencia, una comida o una reclamación | Las dos partes\nEl peso de un gato | Nadie mientras la caja está sellada. Todos una vez pesado el gato\nCuánto se ha quemado | Nadie\nQuién intentó alimentar a qué gato | Todo el mundo. Si contó: solo quien alimentó"
+    },
+    {
+     "id": "croquettes-7",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Quién reclamó, y para qué cajas | Todo el mundo. Cuánto, y de qué cajas: solo esa persona\nCuánto pesa un gato abierto, y si está enfermo | Todos\nEnvolver, desenvolver, operaciones en el mercado | Todo el mundo, importes incluidos\nLa oferta total | Todo el mundo. Cuánto sigue circulando: nadie\nNo hay precio oficial. Su valor aparece de forma indirecta, en lo que se paga por un gato sellado bien pesado."
+    },
+    {
+     "id": "croquettes-8",
+     "section": "croquettes",
+     "heading": null,
+     "text": "El mercado público es un pool de Uniswap donde el CROQ se cambia por USDC. La colección solo puso croquetas, ningún dólar: se venden desde 0,001 USDC cada una hacia arriba, y nunca por menos, porque vender solo devuelve los USDC que trajeron los compradores. Mientras nadie haya comprado, no hay contra qué vender, y la casa de cambio lo dice. Las croquetas del pool están bloqueadas en él para siempre: nadie puede sacarlas, ni siquiera la colección. Cada cambio paga al pool una comisión del 1 %, que va a la tesorería de la colección."
+    },
+    {
+     "id": "testnet-0",
+     "section": "testnet",
+     "heading": null,
+     "text": "Esta parte desaparece con mainnet.\nEl juego corre en Sepolia, la red de pruebas de Ethereum. Nada de aquí vale dinero. Los USDC son el token de prueba de Zama, gratis desde la ficha del wallet o la casa de cambio; el ETH para el gas sale de un faucet; el pool de croquetas solo existe para poder probar el mercado; y todos los precios de este manual son precios de prueba.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x5eBa…2C6F\nLa Despensa (croquetas, comidas, pesajes) 0xf506…6CDB\nCROQ, la croqueta sin cifrar 0xbedb…51F7\ncCROQ, la croqueta cifrada 0x5b4a…7952\nPool CROQ / USDC 0x399D…2100\nCofre de liquidez 0xCA7E…3BF3\nLa rampa USDC (de ETH a USDC) 0x2754…8aAb\nCréditos de descifrado 0xfBF4…d3B1"
+    },
+    {
+     "id": "testnet-1",
+     "section": "testnet",
+     "heading": "Lo que queda antes de mainnet",
+     "text": "Los contratos los han revisado quienes los escribieron y nadie más. No deberían guardar dinero real hasta que eso cambie. Estos puntos están abiertos:\nUna apertura puede quedarse atascada entre sus dos pasos. Si el servicio de claves nunca responde, no hay tiempo de espera ni reembolso. La caja sigue sellada, y su titular solo puede pedirlo otra vez y pagar otra vez.\nNada limita a un minteador. Un bot no puede elegir cajas buenas, pero puede mintearlas todas.\nEl propietario puede redirigir los metadatos. No hay congelación, y el propietario es una sola clave.\nFaltan dos comprobaciones en el despliegue. El contrato de configuración confía en que la puntuación cabe en dieciséis bits y en que los desplazamientos de los rasgos no se solapan.\nA los marketplaces no se les avisa cuando una caja se abre. El contrato no emite un evento de actualización de metadatos."
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": "Lo que queda antes de mainnet",
+     "text": "El relayer de Zama necesita la clave de API de la colección. El servidor que la mantiene fuera de los navegadores y cuenta los descifrados de cada cartera ya está en marcha; la clave en sí se ha pedido a Zama.\nLos wallets y marketplaces habituales no conocen el ERC-721 confidencial. No pueden mostrar estas cajas ni listarlas. Una venta necesita un mercado hecho para este estándar.\nSin auditoría externa, sin análisis estático, sin fuzzing.\nLa lista de auditoría tiene cada comprobación, la prueba que la respalda, y el resto de los hallazgos."
+    },
+    {
+     "id": "code-0",
+     "section": "code",
+     "heading": null,
+     "text": "El repositorio está dividido para que la mayor parte no sepa en qué cadena corre. Las reglas, el generador, la escena 3D y esta app están de un lado. El contrato y el código que habla con él están del otro, detrás de una sola interfaz.\nEstante de arriba: corre en cualquier cadena game-spec generator scene ChainAdapter apps/web Estante de abajo: una cadena cada uno contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. La única puerta a una cadena: una interfaz para cuentas, lecturas y cada mecánica, más una implementación en memoria con las reglas del contrato. Nada en ella nombra una cadena ni una biblioteca de wallet. Un hilo significa «depende de». Elige una caja para ver qué necesita y qué la necesita."
+    },
+    {
+     "id": "code-1",
+     "section": "code",
+     "heading": null,
+     "text": "Una caja sellada se dibuja a partir de su id de token y nada más. La función que describe una caja no puede ver una semilla, así que ningún render, textura ni archivo de metadatos de una caja sellada puede filtrar una. El gato existe como dato solo cuando la semilla es pública."
+    },
+    {
+     "id": "solana-0",
+     "section": "solana",
+     "heading": null,
+     "text": "Zama incluye el soporte de Solana en su hoja de ruta y todavía no ha publicado ningún SDK para Solana. Así que hay un mapa, y ningún port. Lo que dice el mapa: unos dos tercios del código no cambian, el contrato se convierte en un programa con una cuenta por caja, y un nuevo adaptador implementa la misma interfaz.\nHoy en Ethereum | Previsto en Solana\nValores cifrados en el almacenamiento del contrato | Handles de textos cifrados en cuentas del programa\nUna entrada de mapping por token | Una cuenta por caja, derivada del id del token\nPermiso firmado con la clave Ethereum del wallet | Un mensaje firmado con su clave ed25519\nPrueba verificada en una transacción | Desconocido. Una transacción está limitada a 1.232 bytes, y una prueba puede no caber"
+    },
+    {
+     "id": "solana-1",
+     "section": "solana",
+     "heading": null,
+     "text": "Encontrar tus cajas descifrando los recibos de las transferencias que te nombran | Desconocido. Hacen falta direcciones cifradas allí; un indexador puede seguir listando los recibos\nCada línea de la columna derecha tendrá que comprobarse contra el SDK real cuando salga. El mapa de portabilidad completo enumera las preguntas abiertas."
+    },
+    {
+     "id": "more-0",
+     "section": "more",
+     "heading": null,
+     "text": "Arquitectura Paquetes, flujo de datos, la cadena 3D\nModelo de datos Qué está cifrado, por token, y las listas de acceso\nFlujos Diagramas de secuencia para cada mecánica\nNotas sobre Zama Versiones verificadas, y dónde el protocolo difiere del primer brief\nDiseño Dirección de arte, efectos, presupuesto de rendimiento\nContratos Coste de cada función, despliegue, línea de comandos\nCroquetas Los dos tokens, la Despensa, cada cifra y lo que se filtra\nPropietarios ocultos El ERC-721 confidencial, lo que aún se filtra, lo que cuesta\nProxy del relayer Cómo se cuentan los descifrados, la cuota gratuita y los créditos"
+    }
+   ]
+  },
+  "it": {
+   "sections": [
+    {
+     "id": "box",
+     "title": "Cosa c'è in una scatola",
+     "part": "manual"
+    },
+    {
+     "id": "cats",
+     "title": "Chi potrebbe esserci dentro",
+     "part": "manual"
+    },
+    {
+     "id": "seed",
+     "title": "Un numero per gatto",
+     "part": "manual"
+    },
+    {
+     "id": "holders",
+     "title": "Nessuno sa chi ha cosa",
+     "part": "manual"
+    },
+    {
+     "id": "privacy",
+     "title": "Chi può leggere cosa",
+     "part": "manual"
+    },
+    {
+     "id": "flows",
+     "title": "Come escono le cose",
+     "part": "manual"
+    },
+    {
+     "id": "mechanics",
+     "title": "Dodici cose da fare",
+     "part": "manual"
+    },
+    {
+     "id": "fees",
+     "title": "Le commissioni, e dove vanno",
+     "part": "manual"
+    },
+    {
+     "id": "exchange",
+     "title": "Il cambiavalute",
+     "part": "manual"
+    },
+    {
+     "id": "transfer",
+     "title": "Cosa cambia una vendita",
+     "part": "manual"
+    },
+    {
+     "id": "croquettes",
+     "title": "Le crocchette",
+     "part": "manual"
+    },
+    {
+     "id": "testnet",
+     "title": "Finché siamo sulla testnet",
+     "part": "testnet"
+    },
+    {
+     "id": "code",
+     "title": "Com'è organizzato il codice",
+     "part": "dev"
+    },
+    {
+     "id": "solana",
+     "title": "Passare a Solana",
+     "part": "dev"
+    },
+    {
+     "id": "more",
+     "title": "Riferimento completo",
+     "part": "dev"
+    }
+   ],
+   "passages": [
+    {
+     "id": "box-0",
+     "section": "box",
+     "heading": null,
+     "text": "DO NOT OPEN è una collezione di 10.000 NFT su Ethereum, costruita con la cifratura di Zama. Ogni token è una scatola di cartone. Quando una scatola viene mintata, il contratto estrae per lei un numero casuale e lo tiene cifrato. Il gatto dentro, il suo stato, i suoi cinque tratti e la sua rarità derivano tutti da quell'unico numero. Anche chi detiene ogni scatola è cifrato.\nCifrato qui non significa nascosto dietro un server o rivelato più tardi da una lista che qualcuno ha preparato. Il numero è un testo cifrato on-chain dal momento in cui esiste. Il contratto può comunque farci dei calcoli: confrontarlo, ritagliarne un pezzo, aggiungergli qualcosa. Lo fa senza mai decifrarlo, che è ciò a cui serve la cifratura completamente omomorfica."
+    },
+    {
+     "id": "box-1",
+     "section": "box",
+     "heading": null,
+     "text": "Il gioco riguarda quindi cosa scegli di scoprire, e quanto ti costa. Scuoti una scatola e impari una cosa su di lei, in privato. Aprila e tutti imparano tutto, per sempre."
+    },
+    {
+     "id": "cats-0",
+     "section": "cats",
+     "heading": null,
+     "text": "Ogni scatola contiene uno di loro. Dieci razze, dal tigrato di tutti i giorni al glitch che non si vede quasi mai; quattro stati, di cui solo uno ben sveglio; e qualche sorpresa in più. Fai girare la pedana e saluta. E poi quelli che crei tu a forza di crocchette, dal magro all'enorme, fino al malato.\n1 / 10"
+    },
+    {
+     "id": "cats-1",
+     "section": "cats",
+     "heading": "Tigrato",
+     "text": "Circa 1 scatola su 5\nIl classico. Strisce, idee chiare e la certezza che la tua sedia sia sua.\nLe probabilità sotto ogni gatto vengono dritte dalle tabelle del gioco. Come una scatola finisce su uno di loro è nella sezione successiva."
+    },
+    {
+     "id": "seed-0",
+     "section": "seed",
+     "heading": null,
+     "text": "Una scatola contiene un solo seed a 64 bit. I suoi bit sono tagliati in sette campi. Sedici decidono se il gatto è vivo, addormentato, fantasma o quantistico. Cinque byte sono i cinque tratti. L'ultimo byte cambia solo l'aspetto del gatto.\nCifrato\nCampi del seed\nUn seed sigillato Aprilo 0x ?? ?? ?? ?? ?? ?? ???? Cosmetico Stanza Cosa rotta Accessorio Umore Razza Estrazione di stato Bit da 0 a 15. Sedici bit decidono lo stato: vivo 70%, addormentato 20%, fantasma 8.0%, quantistico 2.0%. Il controllo di vita li confronta con 45.875 sotto cifratura e pubblica la risposta a un bit. Uno scuotimento non può mai restituire questi bit. On-chain resta così: un testo cifrato che sembra rumore. Il contratto ci calcola sopra senza decifrarlo. Estrai un altro seed"
+    },
+    {
+     "id": "seed-1",
+     "section": "seed",
+     "heading": null,
+     "text": "Tenere un solo numero cifrato invece di otto rende un mint economico. Tutto il resto viene ricavato da quel numero quando una meccanica ne ha bisogno: sotto cifratura finché la scatola è sigillata, in chiaro una volta che la scatola è aperta. L'app legge un seed esattamente come lo legge il contratto, quindi il gatto che vedi è il gatto che custodisce la chain.\nIl punteggio di rarità è una somma pesata: tre volte l'estrazione della razza, l'estrazione dell'umore, due volte l'estrazione dell'accessorio, la cosa rotta, la stanza, più un bonus per lo stato. Un gatto quantistico parte con 1.000 punti di vantaggio. Il punteggio massimo possibile è 3040."
+    },
+    {
+     "id": "holders-0",
+     "section": "holders",
+     "heading": null,
+     "text": "Il proprietario di ogni scatola è cifrato, come il suo seed. Non è così che funzionano di solito gli NFT: un NFT normale dice pubblicamente chi lo possiede. Qui niente lo dice. Nessuno può vedere chi detiene una scatola, né contare le scatole di qualcuno. La collezione segue un nuovo standard scritto per questo, l'ERC-721 confidenziale.\nInviare una scatola non fallisce mai per via di chi la detiene. Se la detieni, si sposta; se non la detieni, non succede niente. In entrambi i casi il mittente e il destinatario ricevono una ricevuta cifrata che solo loro possono leggere, che dice se la scatola si è spostata, e tutti gli altri vedono un trasferimento che può essere avvenuto oppure no. Le tue scatole le trovi allo stesso modo: l'app legge le ricevute che ti nominano e le decifra, con una firma per visita. È quello che fa Mostra le mie scatole."
+    },
+    {
+     "id": "holders-1",
+     "section": "holders",
+     "heading": null,
+     "text": "Il mint si basa sulla stessa idea. Si paga solo in cUSDC, e il tuo browser cifra quante scatole vuoi. Scegli anche tra quanti id di token nascondere quel numero, da 1 a 10, e questa scelta è pubblica. I primi id, fino alla tua quantità, sono tuoi; gli altri sono scatole vuote che non appartengono a nessuno, e da fuori le due cose sembrano uguali. Più id nascondono meglio la quantità e costano più gas. Un mint che supererebbe il tetto, o che il tuo saldo in cUSDC non copre, non ottiene niente e non paga niente.\nIl numero di scatole vendute è un contatore cifrato, con un tetto di 10.000 sotto cifratura. Vengono annunciate solo delle soglie: 100, 500, 1000, 2500, 5000, 7500, 9000, 10.000, e l'ultima significa esaurito. Ogni mint rende pubblica una sola risposta, sì o no, se la soglia successiva è raggiunta, e chiunque può annunciarla."
+    },
+    {
+     "id": "holders-2",
+     "section": "holders",
+     "heading": null,
+     "text": "Alcune cose restano visibili, per scelta. Un mint mostra l'indirizzo di chi compra e quanti id ha creato, che è un limite superiore a quanto ha comprato. Un tentativo di trasferimento mostra chi l'ha inviato e a chi, come un forse. E un'azione che deve diventare pubblica (un'apertura, un controllo di vita, una scatola messa in duello, o un duello o un intreccio che va a buon fine) mostra che chi l'ha lanciata deteneva quella scatola in quel momento. Un tentativo di chi non la deteneva si chiude con un rifiuto e non mostra niente della scatola.\nPer questo anche la classifica ordina solo i gatti aperti, e i giocatori che li hanno aperti: un'apertura pubblica chi l'ha fatta, mentre chi detiene una scatola sigillata resta nascosto."
+    },
+    {
+     "id": "privacy-0",
+     "section": "privacy",
+     "heading": null,
+     "text": "Ogni testo cifrato ha una lista di accesso. Per il seed, quella lista ha una sola voce: il contratto. Nessun detentore vi viene mai aggiunto, perché un indirizzo nella lista potrebbe chiedere al servizio di chiavi di decifrare il seed direttamente e saltare il gioco.\nInformazione | Il detentore | Tutti gli altri\nChi detiene una scatola | Sì, dalle sue ricevute | No\nQuante scatole detiene un account | Sì, per il proprio account | No\nQuante scatole sono state vendute | Nessuno. Vengono annunciate solo delle soglie\nIl seed, lo stato, il punteggio | No | No\nUn tratto per scuotimento | Sì, gratis | Sì, pagando\nQuale tratto ha scelto uno scuotimento | Solo chi ha scosso\nSe è vivo | Tutti, se il detentore lo chiede. Un bit, una volta per scatola\nChi ha vinto un duello, e un tratto del perdente | Tutti\nIl tratto del vincitore in un duello | No | No"
+    },
+    {
+     "id": "privacy-1",
+     "section": "privacy",
+     "heading": null,
+     "text": "Quante volte è stato accarezzato, e quanti pasti ha mangiato | Nessuno. I tentativi sono pubblici, non se sono contati\nQuanto affetto ha guadagnato | No | No\nDue conseguenze sono volute. Un detentore che scuote abbastanza spesso impara tutti e cinque i tratti: uno scuotimento ne mostra uno su cinque a caso, quindi circa undici li coprono. Ciò che resta nascosto anche al detentore è lo stato, che vale fino a un terzo del punteggio, e l'affetto. E i duelli lasciano trapelare un ordine: ognuno pubblica quale di due scatole ha il punteggio più alto. Mettere una scatola in duello mostra anche che la detieni: così lo scaffale dei duelli porta solo scatole che qualcuno detiene. È il prezzo del duello."
+    },
+    {
+     "id": "flows-0",
+     "section": "flows",
+     "heading": null,
+     "text": "Ci sono due uscite dalla cifratura. Una decifratura privata ricifra un valore per una persona, che deve essere nella sua lista di accesso. Una decifratura pubblica pubblica un valore con le firme delle parti che condividono la chiave, e il contratto verifica quelle firme prima di credere a qualsiasi cosa.\nIl contratto non riceve mai un callback. Una rivelazione è una richiesta on-chain, una decifratura off-chain, e una seconda transazione che riporta la prova. Chiunque può inviare quella seconda transazione. Ogni richiesta controlla anche, sotto cifratura, che chi la fa detenga la scatola; quel bit viene decifrato con il resto, e un no chiude la richiesta con un rifiuto, con degli zeri al posto dei valori della scatola.\nQuale flusso\nCosa sono i pacchi"
+    },
+    {
+     "id": "flows-1",
+     "section": "flows",
+     "heading": null,
+     "text": "Mint Scuotere Aprire Duello Trasferire Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro\nChiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Da qui non si torna indietro.\nDetentore e tariffa, controllati alla cieca\nChiunque può ora chiederlo\nI valori, firmati\nLa prova va on-chain\nControllata contro i suoi stessi registri\nLa scatola si apre\nTransazione\nTesto cifrato\nValore con prova"
+    },
+    {
+     "id": "flows-2",
+     "section": "flows",
+     "heading": null,
+     "text": "Valore in chiaro"
+    },
+    {
+     "id": "mechanics-0",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Azione | Chi | Costo | Cosa diventa pubblico\nMint | Chiunque, nascondendo quante tra 1 e 10 id | 5 cUSDC a scatola | Chi compra e quanti id, non quanti sono veri\nScuotere | Il detentore | Solo gas | Che qualcuno ha scosso, non se detiene la scatola\nScuotimento a pagamento | Chiunque | 2,5 cUSDC, il 70% aspetta nella scatola il suo detentore | Che qualcuno ha pagato per scuotere\nRitirare i guadagni degli scuotimenti | Chiunque, per le scatole che detiene | Solo gas | Che c'è stato un ritiro, non quanto\nAccarezzare | Chiunque | 0.5 cUSDC | Che qualcuno l'ha accarezzato, non se è contato né quanto ha reso\nControllo di vita | Il detentore, una volta | Solo gas | Un bit, e che chi l'ha chiesto deteneva la scatola\nIntrecciare | Entrambi i detentori | Solo gas | Il legame, e che entrambi detenevano le loro scatole. Aprire una scatola apre poi entrambe"
+    },
+    {
+     "id": "mechanics-1",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Duello | Il detentore la mette in gioco, qualsiasi detentore la accetta | Solo gas | Che lo sfidante detiene la scatola, poi chi ha vinto e un tratto del perdente, o un duello nullo\nAprire | Il detentore | 1 cUSDC | Tutto, per sempre, e chi l'ha aperta\nDare crocchette | Il detentore | Fino a 1000 crocchette al giorno, tutte mangiate | Che qualcuno ha servito un pasto, non se è contato né cosa conteneva\nReclamare crocchette | Chiunque | Solo gas | Quali scatole, non quanto né chi le detiene\nPesare un gatto aperto | Chiunque | Solo gas | Il suo peso, la sua corporatura, se è malato"
+    },
+    {
+     "id": "mechanics-2",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Accarezzare aggiunge una quantità nascosta tra 0 e 3 a un contatore nascosto, e niente del tutto se la carezza non è stata pagata. Quindi le carezze che chiunque vede on-chain non dicono niente del contatore, nemmeno quante sono contate. Oltre 10, l'accessorio diventa d'oro all'apertura della scatola, e un gatto senza accessorio riceve un collare con campanello d'oro."
+    },
+    {
+     "id": "mechanics-3",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Tutti i prezzi sono in cUSDC, l'USDC confidenziale di Zama: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti, e l'importo che hai pagato è cifrato come il resto. Un pagamento in cUSDC non può fallire on-chain: un saldo insufficiente sposta semplicemente 0, e l'azione allora non fa niente. Un mint non ottiene scatole, uno scuotimento a pagamento legge «non è tua», una carezza non aggiunge niente, un'apertura viene rifiutata. Pagare da USDC normale significa convertire prima il prezzo esatto in cUSDC, in pubblico, e per un mint quell'importo tradisce la quantità. Schermare in anticipo un importo tondo, al cambiavalute, non tradisce niente."
+    },
+    {
+     "id": "fees-0",
+     "section": "fees",
+     "heading": null,
+     "text": "Tutto nel gioco ha un prezzo in USDC, una stablecoin in dollari, e quasi tutto si paga in cUSDC, la sua forma cifrata: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti. Ecco ogni commissione, chi la riceve, e cosa paga.\nI giocatori pagano le commissioni in USDC; vanno alla tesoreria della collezione, tranne il 70% di uno scuotimento a pagamento, che va a chi detiene la scatola; la tesoreria paga Zama per le decifrature e i server\nI dollari entrano da tre porte e quasi tutti finiscono nella tesoreria. La tesoreria paga Zama per le decifrature che i giocatori non pagano di tasca propria: quelle gratuite di ogni giorno, e ogni decifratura pubblica.\nCosa paghi | Prezzo | Dove va\nMintare una scatola | 5 USDC a scatola | La tesoreria della collezione\nAprire una scatola | 1 USDC | La tesoreria della collezione\nAccarezzare un gatto | 0,5 USDC | La tesoreria della collezione"
+    },
+    {
+     "id": "fees-1",
+     "section": "fees",
+     "heading": null,
+     "text": "Scuotere la scatola di qualcun altro | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane\nScuotere la propria scatola, il controllo di vita, intrecciare, i duelli, inviare una scatola | Gratis | Solo il gas della rete, come ogni transazione"
+    },
+    {
+     "id": "fees-2",
+     "section": "fees",
+     "heading": null,
+     "text": "Perché le decifrature costano qualcosa: leggere qualcosa di cifrato richiede lavoro alla rete di Zama. Le parti che condividono la chiave di decifratura devono partecipare tutte, e Zama lo fa pagare, per ogni valore letto, da un decimo di centesimo a dieci centesimi a seconda del piano. Verificare la prova che accompagna un valore cifrato dal tuo browser costa cinque volte tanto. Lo fa pagare alla collezione, non a te. Scuotere, trovare le tue scatole, leggere il tuo saldo, il risultato di un duello: ognuna di queste è una decifratura. Mintare, nutrire un gatto o inviare crocchette: ognuna cifra un valore."
+    },
+    {
+     "id": "fees-3",
+     "section": "fees",
+     "heading": null,
+     "text": "Per questo ogni wallet ha 25 unità gratuite al giorno, pagate dalla collezione, che tornano a mezzanotte UTC; un wallet che non ha ancora giocato ne ha 16, quanto basta per un primo mint. Leggere un valore costa un'unità: uno scuotimento ne usa 2, e trovare le scatole di un mint ne usa una per ogni numero di scatola tra cui si è nascosto. Cifrare un valore, come la quantità di un mint o un pasto, ne costa 5. Ciò che il tuo browser ha letto una volta, lo ricorda, e non viene mai contato di nuovo. Oltre quelle gratuite, spendi crediti, uno per unità, che si comprano nel pannello del wallet. Il loro prezzo segue quanto Zama fa pagare alla collezione in dollari, non il prezzo del token di Zama, quindi non oscilla con il mercato. Si pagano in USDC normali di proposito: un saldo insufficiente annulla l'acquisto, mentre un pagamento in cUSDC non sposterebbe nulla in silenzio. Aprire una scatola, chiudere un duello o annunciare una soglia non viene mai contato a nessuno: li paga la collezione."
+    },
+    {
+     "id": "fees-4",
+     "section": "fees",
+     "heading": null,
+     "text": "La tesoreria paga ciò che fa girare il gioco: le commissioni di Zama per ogni decifratura gratuita e ogni decifratura pubblica, e i server che seguono la chain perché il sito resti veloce. Il resto va al progetto. Lo ritira il proprietario."
+    },
+    {
+     "id": "exchange-0",
+     "section": "exchange",
+     "heading": null,
+     "text": "Il gioco usa cinque token: ETH per il gas della rete, USDC e CROQ, in chiaro, e cUSDC e cCROQ, la stessa moneta sigillata. Un saldo in chiaro è pubblico, come quello di qualsiasi token; uno sigillato è cifrato e solo tu puoi leggerlo. Per passare dall'uno all'altro, apri il menu e scegli Cambiavalute: dici cosa consegni e cosa vuoi, lui trova la strada e mostra ogni costo prima che tu firmi. Il tasso e il numero di transazioni restano in vista sotto il modulo; Dettagli apre il percorso, ogni commissione e ciò che diventa pubblico. Elenca anche quello che possiedi; i saldi sigillati si decifrano su richiesta, solo per te, con una firma."
+    },
+    {
+     "id": "exchange-1",
+     "section": "exchange",
+     "heading": null,
+     "text": "Alcuni cambi richiedono una sola transazione: comprare USDC con ETH (può arrivare sigillato, come cUSDC), schermare USDC in cUSDC o sbloccarlo, comprare o vendere CROQ contro USDC, sigillare CROQ in cCROQ o dissigillarlo. Ogni altra coppia concatena questi passi: da ETH a cCROQ, per esempio, sono tre. Ogni passo è una transazione a sé, firmate una dopo l'altra, e nel frattempo il denaro aspetta nel tuo wallet come USDC o CROQ in chiaro. Se un passo non consegna nulla, perché un saldo sigillato inferiore all'importo non sposta niente, senza avvisare, il cambiavalute si ferma e ti dice dove sono i tuoi soldi. L'ETH si consegna soltanto, non si riceve mai."
+    },
+    {
+     "id": "exchange-2",
+     "section": "exchange",
+     "heading": null,
+     "text": "Comprare USDC con ETH costa lo 0,3% dell'ETH, trattenuto dal sito. Schermare e sbloccare è gratis. Ogni passo paga il gas della rete, come qualsiasi transazione. Uno scambio su un pool può avvenire a un prezzo peggiore di quello indicato se qualcuno opera prima: la tolleranza di slippage, 1% se non la cambi (da 0,01% a 50%), è quanto peggio accetti prima che la transazione si annulli da sola, costando solo il gas. Il cambiavalute mostra anche l'impatto sul prezzo, quanto il tuo scambio sposta il prezzo del pool, e ti avvisa oltre il 2%."
+    },
+    {
+     "id": "exchange-3",
+     "section": "exchange",
+     "heading": null,
+     "text": "Cosa diventa pubblico: i token in chiaro si muovono allo scoperto, quindi ogni scambio mostra i suoi importi, come ogni passaggio tra in chiaro e sigillato. L'importo che schermi o sigilli è pubblico, e anche quello che sblocchi o dissigilli: viene decifrato in pubblico per essere pagato, per questo quei passi richiedono un minuto in più. Una volta sigillato il tuo denaro, quello che ne fai resta privato.\nI crediti di decifratura si comprano solo in USDC in chiaro. Quindi quando vuoi cUSDC, da ETH o da USDC, il bureau può tenerne una parte in chiaro: niente, 5%, 10% o 20%, e ricorda la scelta. Da ETH sono due acquisti sulla rampa, uno in chiaro e uno sigillato, con la stessa commissione; da USDC, si protegge solo il resto. Il bureau mostra gli USDC tenuti e quanti crediti comprano come minimo."
+    },
+    {
+     "id": "transfer-0",
+     "section": "transfer",
+     "heading": null,
+     "text": "Su questo protocollo un permesso di accesso non può essere revocato. Un design che mettesse il detentore nella lista di accesso del seed non potrebbe mai toglierne il venditore. Questo non ci mette mai nessuno, quindi una vendita non ha niente da annullare sul seed. Quello che passa di mano è il proprietario cifrato, insieme a ciò che aspetta nella scatola: i guadagni degli scuotimenti a pagamento e le crocchette la seguono.\nMint Seed: solo il contratto. Proprietaria: Alice, cifrata. La ricevuta: solo Alice.\nAlice scuote Un nuovo testo cifrato con un tratto: il contratto e Alice.\nAlice vende a Bob Lei la invia. Il proprietario cambia sotto cifratura, e la ricevuta, spostata o no, è leggibile solo da Alice e Bob. Niente del seed cambia.\nBob scuote Un altro nuovo testo cifrato: il contratto e Bob."
+    },
+    {
+     "id": "transfer-1",
+     "section": "transfer",
+     "heading": null,
+     "text": "Alice riprova Nessun errore. Legge «non è tua»; tutti gli altri vedono uno scuotimento, non che è fallito. Tiene ciò che ha già visto, e non ottiene niente di nuovo.\nBob ritira I guadagni degli scuotimenti a pagamento e le crocchette che aspettano nella scatola ora vanno a lui, non ad Alice.\nSe compri una scatola sigillata, dai per scontato che il venditore conosca i suoi cinque tratti. Qualche scuotimento a pagamento prima di comprare pareggia i conti. E un trasferimento che ti nomina è solo un forse finché non decifri la sua ricevuta: Mostra le mie scatole lo fa per te."
+    },
+    {
+     "id": "croquettes-0",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Le crocchette sono la moneta del gioco, ed esistono in due forme. CROQ è un normale ERC-20 con un'offerta fissa di 20.000.000: niente può crearne altre, e non ha decimali, quindi un CROQ è una crocchetta. Essendo normale, qualsiasi mercato può quotarlo. cCROQ è la stessa crocchetta avvolta in un token confidenziale (ERC-7984): saldi e importi dei trasferimenti sono cifrati. Il gioco usa solo cCROQ.\nIl CROQ normale si scambia su un mercato pubblico; avvolto, diventa il cCROQ confidenziale, quello del gioco\nPassare il confine mostra l'importo: avvolgere sposta CROQ normale, e svolgere passa per una decifrazione pubblica. Tutto ciò che succede in cCROQ nel mezzo resta cifrato.\nL'intera offerta è stata creata una volta sola, al deploy, e ripartita così:\nCome sono state ripartite le 20.000.000 crocchette"
+    },
+    {
+     "id": "croquettes-1",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Riserva di gioco 10.000.000 Nella Dispensa. Paga le fusa quotidiane, e si riprende parte di ogni pasto.\nSacchetti di benvenuto 1.000.000 Nella Dispensa. Un sacchetto per ogni scatola che potrà esistere.\nMercato 4.000.000 Versato da solo nel pool pubblico, senza USDC, e bloccato lì per sempre.\nTesoreria 5.000.000 CROQ normale tenuto per eventi e altra liquidità in futuro."
+    },
+    {
+     "id": "croquettes-2",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Le crocchette arrivano ai giocatori dalla Dispensa, il contratto che gestisce l'economia. Ogni scatola porta un sacchetto di benvenuto da 100 la prima volta che si reclama per lei: una volta per scatola, chiunque la detenga, quindi un secondo wallet non guadagna nulla. Poi ogni scatola fa le fusa: ogni giorno, un importo cifrato tra 0 e 4, moltiplicato per 2 per una scatola Vet Certified, da ritirare fino a 7 giorni alla volta. Sacchetti e fusa vengono versati nella scatola, una scorta cifrata, e chi reclama riceve le scorte delle scatole che detiene, e niente per le altre. Così nessuno può spendere i giorni di un altro detentore, e un reclamo non dice niente di ciò che detiene chi lo fa. Le fusa si dimezzano ogni anno, e la riserva paga un reclamo intero o niente. Nessuno tranne chi reclama vede quanto è arrivato."
+    },
+    {
+     "id": "croquettes-3",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Le crocchette vanno dalla riserva ai giocatori e dai giocatori ai loro gatti; ogni pasto si divide tra tesoreria, riserva e fuoco\nOgni crocchetta della Dispensa sta esattamente in un mucchio cifrato: la riserva, la parte della tesoreria o quello bruciato. Un pasto non lascia nel gatto altro che peso. Le crocchette bruciate restano bloccate nella Dispensa; nessuna funzione può spostarle e nessuno può leggere quante sono."
+    },
+    {
+     "id": "croquettes-4",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Solo chi lo detiene nutre il proprio gatto: al massimo 2 pasti e 1000 crocchette al giorno, comunque siano distribuiti. Chi detiene il gatto, quanti pasti ha fatto oggi e l'importo vengono tutti controllati sotto cifratura: un pasto oltre i limiti, o servito da chi non detiene il gatto, sposta 0, in silenzio. Un'offerta oltre quanto resta della giornata viene ridotta a quel resto. Il tuo browser cifra l'importo e il gatto mangia tutto: il suo peso sale di altrettanto, cifrato, e nessuno può leggerlo finché la scatola è sigillata, nemmeno chi la detiene. Le crocchette si dividono: il 20% alla tesoreria della collezione, il 60% torna alla riserva che paga le fusa, il 20% viene bruciato. Se ne hai meno di quanto offri, il pasto non sposta nulla, senza errori né indizi."
+    },
+    {
+     "id": "croquettes-5",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Una volta aperta la scatola, chiunque può pesare il gatto: il suo peso viene decifrato in pubblico e ne fissa la corporatura. Ogni gatto ha anche una tolleranza tutta sua, tratta dal suo seed. Nessuno può conoscerla finché il seed è cifrato, e quando diventa pubblico il gatto ha smesso di mangiare. Pesato alla sua tolleranza o oltre, il gatto è malato: un trofeo ultra raro, mai una morte.\nCorporatura | Crocchette mangiate | Giorni al tetto giornaliero | Punteggio\nMagro | 0 – 0 | – | +0\nNormale | 1 – 9999 | 1 | +0\nPaffuto | 10.000 – 49.999 | 10 | +100\nGrasso | 50.000 – 149.999 | 50 | +300\nEnorme | 150.000+ | 150 | +700\nMalato (un limite tutto suo) | 300.000 – 600.000 | 300 – 600 | +2000"
+    },
+    {
+     "id": "croquettes-6",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Il peso segue la scatola, e anche la sua scorta. Chi compra non sa niente dei suoi pasti: né quanti, né quanto, né quanto sia vicino alla sua tolleranza. Chi vende sa almeno cosa ha servito di persona. Il resto lo prezza il mercato.\nNessuno può leggere un peso prima dell'apertura, nemmeno chi detiene la scatola, per lo stesso motivo per cui nessuno ha mai accesso a un seed: un permesso di accesso non si può revocare, quindi un ex detentore continuerebbe a leggerlo dopo una vendita. Cosa resta segreto, e cosa no:\nInformazione | Chi può leggerlo\nIl tuo saldo di cCROQ | Tu\nL'importo di un trasferimento, un pasto o un reclamo | Le due parti\nIl peso di un gatto | Nessuno finché la scatola è sigillata. Tutti una volta pesato il gatto\nQuanto è stato bruciato | Nessuno\nChi ha provato a nutrire quale gatto | Tutti. Se è contato: solo chi ha nutrito"
+    },
+    {
+     "id": "croquettes-7",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Chi ha reclamato, e per quali scatole | Tutti. Quanto, e da quali scatole: solo chi ha reclamato\nQuanto pesa un gatto aperto, e se è malato | Tutti\nAvvolgere, svolgere, scambi sul mercato | Tutti, importi compresi\nL'offerta totale | Tutti. Quanto circola ancora: nessuno\nNon c'è un prezzo ufficiale. Il loro valore si vede indirettamente, in quanto si paga un gatto sigillato ben pesante."
+    },
+    {
+     "id": "croquettes-8",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Il mercato pubblico è un pool Uniswap dove il CROQ si scambia contro USDC. La collezione ci ha messo solo crocchette, nessun dollaro: si vendono da 0,001 USDC l'una in su, e mai a meno, perché vendere restituisce solo gli USDC portati dai compratori. Finché nessuno ha comprato, non c'è niente contro cui vendere, e il cambiavalute lo dice. Le crocchette del pool vi sono bloccate per sempre: nessuno può toglierle, nemmeno la collezione. Ogni scambio paga al pool una commissione dell'1%, che va alla tesoreria della collezione."
+    },
+    {
+     "id": "testnet-0",
+     "section": "testnet",
+     "heading": null,
+     "text": "Questa parte sparisce con la mainnet.\nIl gioco gira su Sepolia, la rete di prova di Ethereum. Niente qui vale denaro. Gli USDC sono il token di prova di Zama, gratis dal pannello del wallet o dal cambiavalute; l'ETH per il gas viene da un faucet; il pool delle crocchette esiste solo per poter provare il mercato; e ogni prezzo in questo manuale è un prezzo di prova.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x5eBa…2C6F\nLa Dispensa (crocchette, pasti, pesate) 0xf506…6CDB\nCROQ, la crocchetta normale 0xbedb…51F7\ncCROQ, la crocchetta cifrata 0x5b4a…7952\nPool CROQ / USDC 0x399D…2100\nCassaforte della liquidità 0xCA7E…3BF3\nLa rampa USDC (da ETH a USDC) 0x2754…8aAb\nCrediti di decifratura 0xfBF4…d3B1"
+    },
+    {
+     "id": "testnet-1",
+     "section": "testnet",
+     "heading": "Cosa resta da fare prima della mainnet",
+     "text": "I contratti sono stati rivisti da chi li ha scritti e da nessun altro. Non dovrebbero custodire denaro vero finché questo non cambia. Questi punti sono aperti:\nUn'apertura può bloccarsi tra i suoi due passi. Se il servizio di chiavi non risponde mai, non c'è timeout né rimborso. La scatola resta sigillata, e il suo detentore può solo chiedere di nuovo e pagare di nuovo.\nNiente limita un singolo minter. Un bot non può scegliere le scatole buone, ma può mintarle tutte.\nIl proprietario può reindirizzare i metadati. Non c'è un freeze, e il proprietario è una sola chiave.\nMancano due controlli al deploy. Il contratto di configurazione si fida che il punteggio stia in sedici bit e che gli offset dei tratti non si sovrappongano.\nI marketplace non vengono avvisati quando una scatola si apre. Il contratto non emette un evento di aggiornamento dei metadati."
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": "Cosa resta da fare prima della mainnet",
+     "text": "Il relayer di Zama ha bisogno della chiave API della collezione. Il server che la tiene fuori dai browser e conta le decifrature di ogni wallet è pronto; la chiave stessa è stata richiesta a Zama.\nWallet e marketplace comuni non conoscono l'ERC-721 confidenziale. Non possono mostrare queste scatole né elencarle. Una vendita richiede un mercato fatto per questo standard.\nNessun audit esterno, nessuna analisi statica, nessun fuzzing.\nLa checklist di audit contiene ogni controllo, il test che lo copre, e il resto dei rilievi."
+    },
+    {
+     "id": "code-0",
+     "section": "code",
+     "heading": null,
+     "text": "Il repository è diviso in modo che la maggior parte non sappia su quale chain gira. Le regole, il generatore, la scena 3D e questa app stanno da una parte. Il contratto e il codice che gli parla stanno dall'altra, dietro una sola interfaccia.\nScaffale in alto: gira su qualsiasi chain game-spec generator scene ChainAdapter apps/web Scaffale in basso: una chain ciascuno contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. L'unica porta verso una chain: un'interfaccia per account, letture e ogni meccanica, più un'implementazione in memoria con le regole del contratto. Niente al suo interno nomina una chain o una libreria di wallet. Un filo significa «dipende da». Scegli una cassa per vedere di cosa ha bisogno e chi ha bisogno di lei."
+    },
+    {
+     "id": "code-1",
+     "section": "code",
+     "heading": null,
+     "text": "Una scatola sigillata viene disegnata dal suo id di token e da nient'altro. La funzione che descrive una scatola non può vedere un seed, quindi nessun render, texture o file di metadati di una scatola sigillata può farne trapelare uno. Il gatto esiste come dato solo quando il seed è pubblico."
+    },
+    {
+     "id": "solana-0",
+     "section": "solana",
+     "heading": null,
+     "text": "Zama ha il supporto a Solana nella sua roadmap e non ha ancora pubblicato nessun SDK per Solana. Quindi c'è una mappa, e nessun port. Cosa dice la mappa: circa due terzi del codice non cambiano, il contratto diventa un programma con un account per scatola, e un nuovo adapter implementa la stessa interfaccia.\nOggi su Ethereum | Previsto su Solana\nValori cifrati nello storage del contratto | Handle di testi cifrati negli account del programma\nUna voce di mapping per token | Un account per scatola, derivato dall'id del token\nPermesso firmato con la chiave Ethereum del wallet | Un messaggio firmato con la sua chiave ed25519\nProva verificata in una transazione | Sconosciuto. Una transazione è limitata a 1.232 byte, e una prova potrebbe non entrarci"
+    },
+    {
+     "id": "solana-1",
+     "section": "solana",
+     "heading": null,
+     "text": "Trovare le tue scatole decifrando le ricevute dei trasferimenti che ti nominano | Sconosciuto. Servono indirizzi cifrati lì; un indexer può comunque elencare le ricevute\nOgni riga della colonna di destra andrà verificata contro il vero SDK quando uscirà. La mappa di porting completa elenca le domande aperte."
+    },
+    {
+     "id": "more-0",
+     "section": "more",
+     "heading": null,
+     "text": "Architettura Pacchetti, flusso dei dati, la pipeline 3D\nModello dei dati Cosa è cifrato, per token, e le liste di accesso\nFlussi Diagrammi di sequenza per ogni meccanica\nNote su Zama Versioni verificate, e dove il protocollo differisce dal primo brief\nDesign Direzione artistica, effetti, budget di prestazioni\nContratti Costo di ogni funzione, deploy, riga di comando\nCrocchette I due token, la Dispensa, ogni numero e cosa trapela\nProprietari nascosti L'ERC-721 confidenziale, cosa trapela ancora, quanto costa\nProxy del relayer Come vengono contate le decifrature, la quota gratuita e i crediti"
+    }
+   ]
+  }
+ }
+}

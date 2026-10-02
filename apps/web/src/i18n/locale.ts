@@ -55,4 +55,5 @@ function subscribe(fn: () => void): () => void {
 }
 
 /** The current locale, re-rendering the component when it changes. */
-export const useLocale = (): Locale => useSyncExternalStore(subscribe, getLocale, () => "en");
+// Rendered outside a browser (the manual's export for the API's chatbot), it follows `setLocale` too.
+export const useLocale = (): Locale => useSyncExternalStore(subscribe, getLocale, getLocale);

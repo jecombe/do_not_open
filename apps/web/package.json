@@ -8,7 +8,9 @@
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "render:metadata": "tsx scripts/render-metadata.cts"
+    "render:metadata": "tsx scripts/render-metadata.cts",
+    "export:manual": "tsx scripts/export-manual.mts",
+    "test": "tsx scripts/export-manual.mts --check"
   },
   "dependencies": {
     "@dno/chain-adapter": "workspace:*",

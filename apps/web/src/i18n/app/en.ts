@@ -770,6 +770,25 @@ export const en = {
   "ex.faucetBusy": "Minting…",
   "ex.faucetDone": "Done.",
   "ex.faucetFailed": "Did not go through.",
+
+  "chat.open": "Ask the clerk",
+  "chat.title": "The depot clerk",
+  "chat.close": "Close",
+  "chat.clear": "Start over",
+  "chat.hello": "Depot counter. I have read the handling instructions more times than I care to say. Ask me how anything here works.",
+  "chat.try1": "How do I know if my cat is alive without opening the box?",
+  "chat.try2": "Who can see what I hold?",
+  "chat.try3": "Why can't I sell my croquettes yet?",
+  "chat.placeholder": "Your question about the game",
+  "chat.send": "Ask",
+  "chat.looking": "Looking it up",
+  "chat.read": "In the manual:",
+  "chat.away": "The clerk is away from the counter. Here is what the manual says:",
+  "chat.quotaYou": "That is a lot of questions for one day. Here is what the manual says:",
+  "chat.nothing": "The clerk is away, and the manual has nothing under those words. Try other words, or browse the manual.",
+  "chat.busy": "Too many questions at once. Wait a minute and ask again.",
+  "chat.network": "The counter cannot be reached right now. Try again in a moment.",
+  "chat.fine": "Answers come from the manual, written by Google's Gemini: they can be wrong, and Google may use the questions. Never share a private key or seed phrase, here or anywhere.",
 } as const satisfies Record<string, string>;
 
 export type AppKey = keyof typeof en;

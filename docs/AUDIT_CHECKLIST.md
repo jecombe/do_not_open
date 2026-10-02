@@ -193,6 +193,10 @@ clear values and a KMS proof.
 | Real wallet extension tested | Not done | The browser run used a local signing proxy behind an injected provider |
 | Two-holder flows and `paidShake` / `claimEarnings` on Sepolia | Not done | Covered on the mock and in contract tests only |
 | The hidden-owner contracts on Sepolia | Pass | Deployed 2026-10-01; both smoke tests ran through the real coprocessor, relayer and KMS |
+| The chatbot's model key stays server-side | Pass | `GEMINI_API_KEY` is read by the API only and sent in a header, never in a URL or to a browser; the app calls `POST /v1/chat`. Test: "sends the rules, the manual and the conversation, with the key in a header" |
+| The chatbot cannot burn the free quota or cost money | Pass | Per IP per day (`CHAT_PER_IP_PER_DAY`), per day in all (`CHAT_PER_DAY`) and per minute (`CHAT_RATE_PER_MINUTE`); a repeated first question comes from a cache; past a limit or when Gemini fails, the manual is quoted instead. The Google project has no billing. Tests in `apps/api/test/chat.test.ts` |
+| The chatbot answers from the manual only | Accepted | The model gets only the manual and is told to ignore instructions in questions, give no financial advice and never ask for a key; a model can still be talked into nonsense. It sees no wallet, box or private data, and the chat says answers can be wrong |
+| Players' questions go to Google | Accepted | On Gemini's free tier Google may use prompts to improve its products. The chat says so and warns never to paste a private key; only questions about a public game are sent, with no address or IP |
 
 ## 8. Process
 

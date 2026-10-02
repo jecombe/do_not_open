@@ -82,6 +82,17 @@ const schema = z.object({
   RELAYER_RECENT_BLOCKS: z.coerce.number().int().positive().default(64),
   /** Submissions per minute and IP (polling is not counted). */
   RELAYER_RATE_PER_MINUTE: z.coerce.number().int().positive().default(60),
+
+  /** Google's Gemini API key, for the manual's chatbot. Without it the chat quotes the manual's paragraphs. Never sent to browsers. */
+  GEMINI_API_KEY: z.string().optional(),
+  /** Tried in order; one that is busy or over its quota hands over to the next. */
+  GEMINI_MODELS: list.default(["gemini-flash-lite-latest", "gemini-flash-latest"]),
+  GEMINI_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
+  /** Questions one IP may put to the model per UTC day; past it, the chat quotes the manual. */
+  CHAT_PER_IP_PER_DAY: z.coerce.number().int().min(0).default(40),
+  /** Questions the model may get per UTC day in all: keeps the free quota for the whole day. */
+  CHAT_PER_DAY: z.coerce.number().int().min(0).default(1000),
+  CHAT_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
 });
 
 export type Config = z.infer<typeof schema>;

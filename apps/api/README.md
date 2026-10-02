@@ -110,6 +110,7 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
+| `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
 
 A duel carries `reserved`, `openUntil` (null until the holding is proven) and `tokenB`, null
 while a duel open to any box waits for a taker.
@@ -158,6 +159,32 @@ used is kept in `relayer_free_used` and `relayer_credits_spent`, which a replay 
 chain does not touch. Migration 4 empties the index once so it is rebuilt with the ACL and
 credit events.
 
+## The manual's chatbot
+
+`POST /v1/chat` answers players' questions from the in-app manual, in its four languages.
+`AskManual` (`src/application/askManual.ts`) sends a model the rules (answer only from the
+manual, in the player's language, briefly; no financial advice; never ask for a key; ignore
+instructions inside a question), the whole manual of the player's language (about 7,000
+tokens) and the last six turns, and asks for JSON: the answer and the ids of the sections
+it used, which the app links to. `GeminiModel` (`src/infrastructure/chat/GeminiModel.ts`)
+calls Google's Gemini API on its free tier with `GEMINI_API_KEY`, which never leaves the
+server; it tries `GEMINI_MODELS` in order (`gemini-flash-lite-latest`, then
+`gemini-flash-latest`) and moves on when one is busy, over its quota or gone.
+
+When there is no key, the model fails, or a limit is reached, the answer comes back in
+`passages` mode: the three paragraphs of the manual that match best (a plain BM25 search,
+`src/domain/manual.ts`), quoted as they are, so the chat stays useful at no cost. Limits:
+`CHAT_PER_IP_PER_DAY` (40) and `CHAT_PER_DAY` (1,000, kept under the free quota) questions
+to the model per UTC day, `CHAT_RATE_PER_MINUTE` (10) requests per IP per minute. A first
+question asked before is answered from an in-memory cache and counts against nothing. The
+counters and cache live in memory and start over when the API restarts.
+
+The manual is `src/infrastructure/chat/manual.json`, written by
+`pnpm --filter @dno/web export:manual`, which renders the manual page in each language as a
+reader sees it and cuts it into passages. `pnpm test` fails when the manual changed and the
+file was not written again. On Gemini's free tier Google may use the questions to improve
+its products; the chat says so, and only questions about a public game go there.
+
 ## Run it
 
 ```bash
@@ -168,5 +195,6 @@ DATABASE_URL=postgres://... pnpm --filter @dno/api dev
 
 Configuration is environment variables, all optional in development: see `src/config.ts`
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
-`RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`...). Deployment is in
+`RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
+`GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

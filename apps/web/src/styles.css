@@ -382,6 +382,11 @@ button {
   pointer-events: none;
 }
 
+.notice-actions {
+  display: flex;
+  gap: 16px;
+}
+
 .link {
   padding: 0;
   background: none;
@@ -421,7 +426,7 @@ button {
     min-height: 0;
   }
 
-  .notice span {
+  .notice > span:first-child {
     display: none;
   }
 

@@ -205,6 +205,14 @@ a free daily allowance, then against the credits bought from `DecryptionCredits`
 adapter keeps every value it decrypted, by handle, in the browser, so nothing is paid for
 twice. Details: [`apps/api/README.md`](../apps/api/README.md#relayer-proxy).
 
+It also runs the manual's chatbot, the depot clerk (`POST /v1/chat`): Google's Gemini, on
+its free tier, answers from the whole manual of the player's language, with the key kept on
+the server; without a model, or past the day's limits, the clerk quotes the manual's best
+matching paragraphs instead. The manual reaches the API as a JSON export of the rendered
+page (`apps/web/scripts/export-manual.mts`). In the web app the clerk is `src/chat/Clerk.tsx`:
+a tab on the manual's edge and a link in the game's footer, shown only when `VITE_API_URL`
+is set. Details: [`apps/api/README.md`](../apps/api/README.md#the-manuals-chatbot).
+
 ### Gaps against the original brief
 
 - **No event subscription.** The brief's interface lists `subscribeEvents`. The adapter
