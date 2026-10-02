@@ -59,9 +59,10 @@ describe("Costs", function () {
     let r = await measure("proveAlive, request", dno.connect(alice).proveAlive(A[1]!));
     await measure("proveAlive, finalize", finalizeRequest(dno, requestIdOf(dno, r), carol));
 
-    await measure("challengeDuel (first score)", dno.connect(alice).challengeDuel(A[0]!, B[0]!));
-    await measure("acceptDuel (first score)", dno.connect(bob).acceptDuel(0));
-    await measure("finalizeDuel", finalizeDuel(dno, 0, carol));
+    await measure("postDuel (first score)", dno.connect(alice).postDuel(A[0]!, 0, false));
+    await measure("finalizeDuel, holding proof", finalizeDuel(dno, 0, carol));
+    await measure("acceptDuel (first score)", dno.connect(bob).acceptDuel(0, B[0]!));
+    await measure("finalizeDuel, outcome", finalizeDuel(dno, 0, carol));
 
     await measure("proposeEntangle", dno.connect(alice).proposeEntangle(A[0]!, B[1]!));
     r = await measure("acceptEntangle", dno.connect(bob).acceptEntangle(A[0]!, B[1]!));

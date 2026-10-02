@@ -228,17 +228,26 @@ async function entangle(hre: HardhatRuntimeEnvironment, args: TaskArguments, a: 
 
 async function duel(hre: HardhatRuntimeEnvironment, args: TaskArguments, a: number, b: number) {
   const { dno } = await connect(hre, args);
-  console.log(`Duel: box ${a} challenges box ${b}...`);
+  console.log(`Duel: box ${a} goes on the duel shelf, box ${b} takes it up...`);
   const duelId = await dno.duelCount();
-  await (await dno.challengeDuel(a, b)).wait();
-  await (await dno.acceptDuel(duelId)).wait();
+  const relay = async () => {
+    const result = await hre.fhevm.publicDecrypt([...(await dno.duelHandles(duelId))]);
+    const tx = await dno.finalizeDuel(duelId, result.abiEncodedClearValues, result.decryptionProof);
+    return { tx, receipt: await tx.wait() };
+  };
+  await (await dno.postDuel(a, 0, false)).wait();
+  console.log(`  posted; proving the box is held...`);
+  await relay();
+  if ((await dno.duelInfo(duelId)).duelStatus !== 2n) {
+    console.log(`  void: the caller does not hold box ${a}.`);
+    return;
+  }
+  await (await dno.acceptDuel(duelId, b)).wait();
   console.log(`  accepted; fetching the decrypted outcome and its KMS proof...`);
-  const result = await hre.fhevm.publicDecrypt([...(await dno.duelHandles(duelId))]);
-  const tx = await dno.finalizeDuel(duelId, result.abiEncodedClearValues, result.decryptionProof);
-  const receipt = await tx.wait();
+  const { tx, receipt } = await relay();
   const resolved = receipt!.logs.map((l) => dno.interface.parseLog(l)).find((e) => e?.name === "DuelResolved");
   if (!resolved) {
-    console.log(`  void: one side did not hold its box.`);
+    console.log(`  no duel: one side did not hold its box.`);
     return;
   }
   const [, winner, loser, traitIndex, roll] = resolved.args;
@@ -297,7 +306,7 @@ withAddress("dno:entangle", "Entangles two boxes held by the caller")
   .addParam("b", "Second token id")
   .setAction(async (args, hre) => entangle(hre, args, Number(args.a), Number(args.b)));
 
-withAddress("dno:duel", "Runs a duel between two boxes held by the caller: challenge, accept, finalise")
+withAddress("dno:duel", "Runs a duel between two boxes held by the caller: post, prove, accept, finalise")
   .addParam("a", "Challenger token id")
   .addParam("b", "Challenged token id")
   .setAction(async (args, hre) => duel(hre, args, Number(args.a), Number(args.b)));

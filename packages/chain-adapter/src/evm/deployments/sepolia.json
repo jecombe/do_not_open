@@ -122,6 +122,11 @@
     },
     {
       "inputs": [],
+      "name": "DuelExpired",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InvalidIdCount",
       "type": "error"
     },
@@ -148,6 +153,11 @@
     {
       "inputs": [],
       "name": "NotSealed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotThisBox",
       "type": "error"
     },
     {
@@ -276,6 +286,18 @@
           "internalType": "uint256",
           "name": "duelId",
           "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenIdB",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "accepter",
+          "type": "address"
         }
       ],
       "name": "DuelAccepted",
@@ -304,6 +326,25 @@
           "type": "uint256"
         },
         {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "openUntil",
+          "type": "uint64"
+        }
+      ],
+      "name": "DuelOpened",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "duelId",
+          "type": "uint256"
+        },
+        {
           "indexed": true,
           "internalType": "uint256",
           "name": "tokenIdA",
@@ -314,9 +355,34 @@
           "internalType": "uint256",
           "name": "tokenIdB",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "challenger",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "reserved",
+          "type": "bool"
         }
       ],
-      "name": "DuelChallenged",
+      "name": "DuelPosted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "duelId",
+          "type": "uint256"
+        }
+      ],
+      "name": "DuelReopened",
       "type": "event"
     },
     {
@@ -665,6 +731,19 @@
     },
     {
       "inputs": [],
+      "name": "DUEL_LIFETIME",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "MAX_CLAIM",
       "outputs": [
         {
@@ -694,6 +773,11 @@
         {
           "internalType": "uint256",
           "name": "duelId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenIdB",
           "type": "uint256"
         }
       ],
@@ -773,30 +857,6 @@
       ],
       "name": "cancelDuel",
       "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenIdA",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tokenIdB",
-          "type": "uint256"
-        }
-      ],
-      "name": "challengeDuel",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "duelId",
-          "type": "uint256"
-        }
-      ],
       "stateMutability": "nonpayable",
       "type": "function"
     },
@@ -1041,6 +1101,16 @@
           "internalType": "address",
           "name": "accepter",
           "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "reserved",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint64",
+          "name": "openUntil",
+          "type": "uint64"
         }
       ],
       "stateMutability": "view",
@@ -1443,6 +1513,35 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenIdA",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenIdB",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "reserved",
+          "type": "bool"
+        }
+      ],
+      "name": "postDuel",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "duelId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
