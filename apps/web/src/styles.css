@@ -258,20 +258,30 @@ button {
   margin-bottom: 0;
 }
 
-/* On a phone the slip takes the lower half: the tag keeps to the button and its one line. */
-@media (max-width: 700px) {
-  .find-over {
-    top: 76px;
-    padding: 10px 12px 8px;
-  }
+/* On a desktop the button hangs above the bench; the slip only points at it. */
+.find-in-slip {
+  display: none;
+}
 
-  .find-over .state-note {
+/* On a phone the slip takes the lower half and the bench the upper one: a tag hung there
+   would cover the shelf it is about, so the button moves to the top of the slip. */
+@media (max-width: 700px) {
+  .find-over,
+  .find-note {
     display: none;
   }
 
-  .find-over .stamp-button {
-    font-size: 20px;
-    padding: 9px 10px 6px;
+  .find-in-slip {
+    display: block;
+    margin: 4px 0 12px;
+  }
+
+  .find-in-slip .state-note {
+    font-size: 18px;
+  }
+
+  .find-in-slip .stamp-button {
+    margin-bottom: 6px;
   }
 }
 
@@ -678,9 +688,33 @@ button {
   margin-top: 10px;
 }
 
+/* On a phone the tags make one strip swiped sideways: every box stays a tap away without
+   the list pushing the order below the fold. */
 @media (max-width: 700px) {
   .tags {
-    max-height: 76px;
+    flex-wrap: nowrap;
+    max-height: none;
+    margin-inline: -12px;
+    padding: 0 12px 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  .tags li {
+    flex: none;
+    scroll-snap-align: start;
+  }
+
+  .tags button {
+    white-space: nowrap;
+  }
+
+  /* "Mint 10 boxes" fits on one line at 360px; longer labels in other languages wrap rather than overflow. */
+  .order .stamp-button {
+    padding-inline: 8px;
+    font-size: 18px;
   }
 }
 

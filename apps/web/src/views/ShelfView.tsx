@@ -123,7 +123,8 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Prop
         <ShelfScene boxes={onBench} arrivals={arrived} quality={quality} sound={sound} highlight={pointed} onSelect={onSelect} />
       </Stage>
 
-      {/* Hung above the empty shelf, where the boxes will land once they are found. */}
+      {/* Hung above the empty shelf, where the boxes will land once they are found. A phone has no
+          room above the slip: there the button goes in the slip instead (see .find-in-slip). */}
       {account && !boxesKnown && (
         <div className="find-over">
           <FindMine />
@@ -148,7 +149,12 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair }: Prop
         ) : (
           <>
             {!boxesKnown ? (
-              <p className="state-note">{t("mine.findAbove")}</p>
+              <>
+                <p className="state-note find-note">{t("mine.findAbove")}</p>
+                <div className="find-in-slip">
+                  <FindMine />
+                </div>
+              </>
             ) : myBoxes.length === 0 ? (
               <p className="state-note">{t("shelf.empty")}</p>
             ) : (
