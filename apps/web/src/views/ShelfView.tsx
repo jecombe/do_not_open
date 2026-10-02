@@ -3,7 +3,7 @@ import { sameAddress, type BoxInfo, type DuelInfo, type PendingRequest } from "@
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
-import { catFromRevealed, fee, saleCopy, stepCopy } from "../chain/copy";
+import { catFromRevealed, fee, saleCopy } from "../chain/copy";
 import { usePayment } from "../chain/payment";
 import { useT } from "../i18n/app";
 import { SHELF_CAPACITY, ShelfScene, type ShelfBox } from "../scenes/Scenes";
@@ -13,6 +13,7 @@ import { PayWith } from "./PayWith";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
+import { TxPending } from "./TxPending";
 import { boxTags } from "../chain/tags";
 
 interface Props {
@@ -192,90 +193,90 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
               {boxesKnown && <span>{myBoxes.length}</span>}
             </div>
 
-            {!boxesKnown ? (
-              <>
-                <p className="state-note find-note">{t("mine.findAbove")}</p>
-                <div className="find-in-slip">
-                  <FindMine />
-                </div>
-              </>
-            ) : myBoxes.length === 0 ? (
-              <p className="state-note">{t("shelf.empty")}</p>
-            ) : (
-              <ul className="tags" aria-label={t("shelf.boxes")}>
-                {(infos.length ? infos : listed.map((tokenId) => ({ tokenId, status: null, partner: null }))).map((b) => (
-                  <li key={b.tokenId} onPointerEnter={() => setPointed(b.tokenId)} onPointerLeave={() => setPointed(null)} onFocus={() => setPointed(b.tokenId)} onBlur={() => setPointed(null)}>
-                    <button type="button" onClick={() => onSelect(b.tokenId)} className={b.status === "revealed" ? "is-open" : ""}>
-                      {buildBoxSpec(b.tokenId).serial}
-                      <span>
-                        {b.status === null ? "…" : b.status === "revealed" ? t("status.open") : b.status === "opening" ? t("status.opening") : t("status.sealed")}
-                        {b.partner !== null ? `, ${t("shelf.linked")}` : ""}
-                      </span>
-                    </button>
-                    {/* Both are opt-in, and only while the box is sealed: the contract refuses them after. */}
-                    {b.status === "sealed" && (
-                      <span className="tag-options" role="group" aria-label={t("shelf.boxActions", { serial: buildBoxSpec(b.tokenId).serial })}>
-                        <button type="button" onClick={() => onDuels(b.tokenId)} disabled={!!action.busy}>
-                          {t("shelf.duel")}
-                        </button>
-                        {b.partner === null && (
-                          <button type="button" onClick={() => onPair(b.tokenId, "entangle")} disabled={!!action.busy}>
-                            {t("shelf.entangle")}
-                          </button>
-                        )}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {myBoxes.length > LIST_LIMIT && <p className="fine">{t("shelf.showing", { limit: LIST_LIMIT, total: myBoxes.length })}</p>}
-            {boxesKnown && myBoxes.length > 0 && <p className="fine">{t("shelf.private")}</p>}
-
-            {duels.length > 0 && (
-              <>
-                <ul className="tags" aria-label={t("shelf.duels")}>
-                  {duels.map((d) => (
-                    <li key={d.duelId}>
-                      <button type="button" onClick={() => openDuel(d)}>
-                        {d.tokenB === null
-                          ? t("shelf.duelUp", { a: buildBoxSpec(d.tokenA).serial })
-                          : t("shelf.duelVs", { a: buildBoxSpec(d.tokenA).serial, b: buildBoxSpec(d.tokenB).serial })}
-                        <span>{duelState(d)}</span>
+            <TxPending busy={here("boxes") ? action.busy : null} step={action.step} title={t("tx.working")} secret={action.busy === "collect"}>
+              {!boxesKnown ? (
+                <>
+                  <p className="state-note find-note">{t("mine.findAbove")}</p>
+                  <div className="find-in-slip">
+                    <FindMine />
+                  </div>
+                </>
+              ) : myBoxes.length === 0 ? (
+                <p className="state-note">{t("shelf.empty")}</p>
+              ) : (
+                <ul className="tags" aria-label={t("shelf.boxes")}>
+                  {(infos.length ? infos : listed.map((tokenId) => ({ tokenId, status: null, partner: null }))).map((b) => (
+                    <li key={b.tokenId} onPointerEnter={() => setPointed(b.tokenId)} onPointerLeave={() => setPointed(null)} onFocus={() => setPointed(b.tokenId)} onBlur={() => setPointed(null)}>
+                      <button type="button" onClick={() => onSelect(b.tokenId)} className={b.status === "revealed" ? "is-open" : ""}>
+                        {buildBoxSpec(b.tokenId).serial}
+                        <span>
+                          {b.status === null ? "…" : b.status === "revealed" ? t("status.open") : b.status === "opening" ? t("status.opening") : t("status.sealed")}
+                          {b.partner !== null ? `, ${t("shelf.linked")}` : ""}
+                        </span>
                       </button>
+                      {/* Both are opt-in, and only while the box is sealed: the contract refuses them after. */}
+                      {b.status === "sealed" && (
+                        <span className="tag-options" role="group" aria-label={t("shelf.boxActions", { serial: buildBoxSpec(b.tokenId).serial })}>
+                          <button type="button" onClick={() => onDuels(b.tokenId)} disabled={!!action.busy}>
+                            {t("shelf.duel")}
+                          </button>
+                          {b.partner === null && (
+                            <button type="button" onClick={() => onPair(b.tokenId, "entangle")} disabled={!!action.busy}>
+                              {t("shelf.entangle")}
+                            </button>
+                          )}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
-                <p className="fine">{t("shelf.duelsHint")}</p>
-              </>
-            )}
+              )}
+              {myBoxes.length > LIST_LIMIT && <p className="fine">{t("shelf.showing", { limit: LIST_LIMIT, total: myBoxes.length })}</p>}
+              {boxesKnown && myBoxes.length > 0 && <p className="fine">{t("shelf.private")}</p>}
+
+              {duels.length > 0 && (
+                <>
+                  <ul className="tags" aria-label={t("shelf.duels")}>
+                    {duels.map((d) => (
+                      <li key={d.duelId}>
+                        <button type="button" onClick={() => openDuel(d)}>
+                          {d.tokenB === null
+                            ? t("shelf.duelUp", { a: buildBoxSpec(d.tokenA).serial })
+                            : t("shelf.duelVs", { a: buildBoxSpec(d.tokenA).serial, b: buildBoxSpec(d.tokenB).serial })}
+                          <span>{duelState(d)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="fine">{t("shelf.duelsHint")}</p>
+                </>
+              )}
 
 
-            <div className="felt" aria-live="polite">
-              {here("boxes") && action.error ? (
-                <ProblemNote problem={action.error} />
-              ) : here("boxes") && action.busy ? (
-                <p className="fine">{stepCopy(action.step, action.busy === "collect")}</p>
-              ) : earned !== null ? (
-                <p className="fine">{earned > 0n ? t("shelf.earned", { fee: fee(earned, collection) }) : t("shelf.earnedNothing")}</p>
-              ) : null}
-              {pending.length > 0 && !action.busy && (
-                <p className="fine">
-                  {t("shelf.pendingRequest", { count: pending.length })}{" "}
-                  <button type="button" className="link" onClick={() => void finish(pending[0]!)}>
-                    {t("shelf.finishRequest")}
-                  </button>
-                </p>
-              )}
-              {boxesKnown && sealedMine && !action.busy && (
-                <p className="fine">
-                  {t("shelf.earnings")}{" "}
-                  <button type="button" className="link" onClick={() => void collect()}>
-                    {t("shelf.collectEarnings")}
-                  </button>
-                </p>
-              )}
-            </div>
+              <div className="felt" aria-live="polite">
+                {here("boxes") && action.error ? (
+                  <ProblemNote problem={action.error} />
+                ) : earned !== null ? (
+                  <p className="fine">{earned > 0n ? t("shelf.earned", { fee: fee(earned, collection) }) : t("shelf.earnedNothing")}</p>
+                ) : null}
+                {pending.length > 0 && !action.busy && (
+                  <p className="fine">
+                    {t("shelf.pendingRequest", { count: pending.length })}{" "}
+                    <button type="button" className="link" onClick={() => void finish(pending[0]!)}>
+                      {t("shelf.finishRequest")}
+                    </button>
+                  </p>
+                )}
+                {boxesKnown && sealedMine && !action.busy && (
+                  <p className="fine">
+                    {t("shelf.earnings")}{" "}
+                    <button type="button" className="link" onClick={() => void collect()}>
+                      {t("shelf.collectEarnings")}
+                    </button>
+                  </p>
+                )}
+              </div>
+            </TxPending>
           </section>
 
           <section className={`slip shelf-slip shelf-order${foldClass}${tab === "order" ? "" : " is-away"}`} aria-label={t("shelf.order")}>
@@ -286,50 +287,50 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
               {collection && <span>{saleCopy(collection)}</span>}
             </div>
 
-            <div className="order">
-              <div className="stepper" role="group" aria-label={t("shelf.howMany")}>
-                <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={!!action.busy || quantity <= 1} aria-label={t("shelf.fewer")}>
-                  −
-                </button>
-                <output aria-live="polite">{quantity}</output>
-                <button type="button" onClick={() => setQuantity((q) => Math.min(maxPerTx, q + 1))} disabled={!!action.busy || quantity >= maxPerTx} aria-label={t("shelf.more")}>
-                  +
+            <TxPending busy={here("order") ? action.busy : null} step={action.step} title={action.busy === "mint" ? t("shelf.ordering") : t("tx.working")} secret>
+              <div className="order">
+                <div className="stepper" role="group" aria-label={t("shelf.howMany")}>
+                  <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={!!action.busy || quantity <= 1} aria-label={t("shelf.fewer")}>
+                    −
+                  </button>
+                  <output aria-live="polite">{quantity}</output>
+                  <button type="button" onClick={() => setQuantity((q) => Math.min(maxPerTx, q + 1))} disabled={!!action.busy || quantity >= maxPerTx} aria-label={t("shelf.more")}>
+                    +
+                  </button>
+                </div>
+                <button type="button" className="stamp-button" onClick={() => void mint()} disabled={!!action.busy || !collection || soldOut}>
+                  {action.busy === "mint" ? t("shelf.ordering") : soldOut ? t("shelf.soldOut") : t("shelf.mint", { count: quantity })}
                 </button>
               </div>
-              <button type="button" className="stamp-button" onClick={() => void mint()} disabled={!!action.busy || !collection || soldOut}>
-                {action.busy === "mint" ? t("shelf.ordering") : soldOut ? t("shelf.soldOut") : t("shelf.mint", { count: quantity })}
-              </button>
-            </div>
 
-            <label className="fine hide-among">
-              {t("shelf.hideAmong")}{" "}
-              <select value={among} onChange={(e) => setIds(Number(e.target.value))} disabled={!!action.busy}>
-                {Array.from({ length: maxPerTx - quantity + 1 }, (_, i) => quantity + i).map((n) => (
-                  <option key={n} value={n}>
-                    {t("shelf.ids", { count: n })}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="fine">{among === quantity ? t("shelf.hideNone", { count: quantity }) : t("shelf.hideHint", { ids: among, count: quantity })}</p>
+              <label className="fine hide-among">
+                {t("shelf.hideAmong")}{" "}
+                <select value={among} onChange={(e) => setIds(Number(e.target.value))} disabled={!!action.busy}>
+                  {Array.from({ length: maxPerTx - quantity + 1 }, (_, i) => quantity + i).map((n) => (
+                    <option key={n} value={n}>
+                      {t("shelf.ids", { count: n })}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="fine">{among === quantity ? t("shelf.hideNone", { count: quantity }) : t("shelf.hideHint", { ids: among, count: quantity })}</p>
 
-            <PayWith busy={action.busy} need={total} />
-            {pay === "usdc" && <p className="fine problem">{t("shelf.usdcShows")}</p>}
+              <PayWith busy={action.busy} need={total} />
+              {pay === "usdc" && <p className="fine problem">{t("shelf.usdcShows")}</p>}
 
-            <div className="felt" aria-live="polite">
-              {here("order") && action.error ? (
-                <ProblemNote problem={action.error} />
-              ) : here("order") && action.busy ? (
-                <p className="fine">{stepCopy(action.step, true)}</p>
-              ) : arrived.length ? (
-                <p className="fine">{t("shelf.arrived", { serials: arrived.map((id) => buildBoxSpec(id).serial).join(", ") })}</p>
-              ) : (
-                <p className="fine">
-                  {t("shelf.price", { count: quantity, fee: fee(total, collection, pay) })}
-                  {mode === "mock" ? t("shelf.mockFree") : ""}
-                </p>
-              )}
-            </div>
+              <div className="felt" aria-live="polite">
+                {here("order") && action.error ? (
+                  <ProblemNote problem={action.error} />
+                ) : arrived.length ? (
+                  <p className="fine">{t("shelf.arrived", { serials: arrived.map((id) => buildBoxSpec(id).serial).join(", ") })}</p>
+                ) : (
+                  <p className="fine">
+                    {t("shelf.price", { count: quantity, fee: fee(total, collection, pay) })}
+                    {mode === "mock" ? t("shelf.mockFree") : ""}
+                  </p>
+                )}
+              </div>
+            </TxPending>
           </section>
         </>
       )}

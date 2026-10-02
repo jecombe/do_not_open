@@ -4,12 +4,12 @@ import { spec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
-import { stepCopy } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
 import { SHELF_CAPACITY, ShelfScene, type ShelfBox } from "../scenes/Scenes";
 import { FindMine } from "./FindMine";
 import { Stage } from "./Stage";
-import { StepTracker, type PlannedStep } from "./StepTracker";
+import { type PlannedStep } from "./StepTracker";
+import { TxPending } from "./TxPending";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
 import { boxTags, timeLeftCopy } from "../chain/tags";
@@ -177,135 +177,131 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
           {shelf && <span>{t("duels.count", { count: live.length })}</span>}
         </div>
 
-        <p className="fine">{t("duels.intro")}</p>
+        <TxPending busy={action.busy} step={action.step} title={action.busy === "post" ? t("duels.posting") : action.busy === "prove" ? t("duels.proving") : t("tx.working")} plan={plan}>
+          <p className="fine">{t("duels.intro")}</p>
 
-        {failed ? (
-          <p className="state-note">{t("duels.unreadable")}</p>
-        ) : !shelf ? (
-          <p className="state-note">{t("footer.reading")}</p>
-        ) : live.length === 0 ? (
-          <p className="state-note">{t("duels.empty")}</p>
-        ) : (
-          <ul className="tags duel-list" aria-label={t("duels.list")}>
-            {live.map((d) => {
-              const mine = sameAddress(d.challenger, account);
-              const with_ = mine ? null : taker(d);
-              return (
-                <li key={d.duelId} onPointerEnter={() => setPointed(d.tokenA)} onPointerLeave={() => setPointed(null)} onFocus={() => setPointed(d.tokenA)} onBlur={() => setPointed(null)}>
-                  <button type="button" onClick={() => onSelect(d.tokenA)}>
-                    {serial(d.tokenA)}
-                    <span>
-                      {mine ? t("duels.byYou") : t("duels.by", { who: shortAddress(d.challenger) })}
-                      {", "}
-                      {d.reserved && d.tokenB !== null ? t("duels.onlyFor", { serial: serial(d.tokenB) }) : t("duels.anyBox")}
-                      {", "}
-                      {timeLeft(d)}
-                    </span>
-                  </button>
-                  <span className="tag-options" role="group" aria-label={t("duels.actions", { serial: serial(d.tokenA) })}>
-                    {!account ? null : mine ? (
-                      <button type="button" onClick={() => void withdraw(d)} disabled={!!action.busy}>
-                        {t("duels.withdraw")}
-                      </button>
-                    ) : with_ !== null ? (
-                      <button type="button" onClick={() => onFight(with_, d.tokenA)} disabled={!!action.busy}>
-                        {t("duels.takeUp")}
-                      </button>
-                    ) : (
-                      <button type="button" disabled>
-                        {d.reserved ? t("duels.notForYou") : t("duels.noBox")}
-                      </button>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {unproven.length > 0 && (
-          <>
-            <p className="slip-heading">{t("duels.unproven")}</p>
-            <ul className="tags duel-list" aria-label={t("duels.unproven")}>
-              {unproven.map((d) => (
-                <li key={d.duelId}>
-                  <button type="button" onClick={() => onSelect(d.tokenA)}>
-                    {serial(d.tokenA)}
-                    <span>{t("shelf.duelToProve")}</span>
-                  </button>
-                  <span className="tag-options">
-                    <button type="button" onClick={() => void prove(d)} disabled={!!action.busy}>
-                      {action.busy === "prove" ? t("duels.proving") : t("duels.prove")}
+          {failed ? (
+            <p className="state-note">{t("duels.unreadable")}</p>
+          ) : !shelf ? (
+            <p className="state-note">{t("footer.reading")}</p>
+          ) : live.length === 0 ? (
+            <p className="state-note">{t("duels.empty")}</p>
+          ) : (
+            <ul className="tags duel-list" aria-label={t("duels.list")}>
+              {live.map((d) => {
+                const mine = sameAddress(d.challenger, account);
+                const with_ = mine ? null : taker(d);
+                return (
+                  <li key={d.duelId} onPointerEnter={() => setPointed(d.tokenA)} onPointerLeave={() => setPointed(null)} onFocus={() => setPointed(d.tokenA)} onBlur={() => setPointed(null)}>
+                    <button type="button" onClick={() => onSelect(d.tokenA)}>
+                      {serial(d.tokenA)}
+                      <span>
+                        {mine ? t("duels.byYou") : t("duels.by", { who: shortAddress(d.challenger) })}
+                        {", "}
+                        {d.reserved && d.tokenB !== null ? t("duels.onlyFor", { serial: serial(d.tokenB) }) : t("duels.anyBox")}
+                        {", "}
+                        {timeLeft(d)}
+                      </span>
                     </button>
-                  </span>
-                </li>
-              ))}
+                    <span className="tag-options" role="group" aria-label={t("duels.actions", { serial: serial(d.tokenA) })}>
+                      {!account ? null : mine ? (
+                        <button type="button" onClick={() => void withdraw(d)} disabled={!!action.busy}>
+                          {t("duels.withdraw")}
+                        </button>
+                      ) : with_ !== null ? (
+                        <button type="button" onClick={() => onFight(with_, d.tokenA)} disabled={!!action.busy}>
+                          {t("duels.takeUp")}
+                        </button>
+                      ) : (
+                        <button type="button" disabled>
+                          {d.reserved ? t("duels.notForYou") : t("duels.noBox")}
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
-            <p className="fine">{t("duels.unprovenHint")}</p>
-          </>
-        )}
+          )}
 
-        <p className="slip-heading">{t("duels.putUp")}</p>
-        {!account ? (
-          <>
-            <p className="fine">{t("duels.connect")}</p>
-            <button type="button" className="stamp-button" onClick={() => void connect()}>
-              {t("nav.connect")}
-            </button>
-          </>
-        ) : !boxesKnown ? (
-          <FindMine compact />
-        ) : postable.length === 0 ? (
-          <p className="fine">{sealed.length ? t("duels.allUp") : t("duels.noneSealed")}</p>
-        ) : (
-          <>
-            <div className="duel-form">
-              <label>
-                {t("duels.yourBox")}
-                <select value={picked ?? ""} onChange={(e) => setToPost(Number(e.target.value))} disabled={!!action.busy}>
-                  {postable.map((id) => (
-                    <option key={id} value={id}>
-                      {serial(id)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {t("duels.onlyBox")}
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder={t("duels.anyone")}
-                  value={only}
-                  onChange={(e) => setOnly(e.target.value)}
-                  disabled={!!action.busy}
-                  aria-invalid={onlyBad}
-                />
-              </label>
-            </div>
-            {onlyBad && <p className="fine problem">{t("duels.onlyBad")}</p>}
-            <div className="actions">
-              <button type="button" className="stamp-button" onClick={() => void post()} disabled={!!action.busy || picked === null || onlyBad}>
-                {action.busy === "post" ? t("duels.posting") : t("duels.post", { serial: picked === null ? "" : serial(picked) })}
-              </button>
-            </div>
-            <p className="fine">{t("duels.postExplain", { days: Number(spec.mechanics.duel?.lifetimeDays ?? 7) })}</p>
-          </>
-        )}
-
-        <div className="felt" aria-live="polite">
-          {action.error ? (
-            <ProblemNote problem={action.error} />
-          ) : action.busy ? (
+          {unproven.length > 0 && (
             <>
-              {plan && <StepTracker key={action.busy} plan={plan} step={action.step} />}
-              <p className="fine">{stepCopy(action.step)}</p>
-              {action.step === "decrypting" && <p className="fine">{t("track.slow")}</p>}
+              <p className="slip-heading">{t("duels.unproven")}</p>
+              <ul className="tags duel-list" aria-label={t("duels.unproven")}>
+                {unproven.map((d) => (
+                  <li key={d.duelId}>
+                    <button type="button" onClick={() => onSelect(d.tokenA)}>
+                      {serial(d.tokenA)}
+                      <span>{t("shelf.duelToProve")}</span>
+                    </button>
+                    <span className="tag-options">
+                      <button type="button" onClick={() => void prove(d)} disabled={!!action.busy}>
+                        {action.busy === "prove" ? t("duels.proving") : t("duels.prove")}
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="fine">{t("duels.unprovenHint")}</p>
             </>
-          ) : note ? (
-            <p className="fine">{t(note)}</p>
-          ) : null}
-        </div>
+          )}
+
+          <p className="slip-heading">{t("duels.putUp")}</p>
+          {!account ? (
+            <>
+              <p className="fine">{t("duels.connect")}</p>
+              <button type="button" className="stamp-button" onClick={() => void connect()}>
+                {t("nav.connect")}
+              </button>
+            </>
+          ) : !boxesKnown ? (
+            <FindMine compact />
+          ) : postable.length === 0 ? (
+            <p className="fine">{sealed.length ? t("duels.allUp") : t("duels.noneSealed")}</p>
+          ) : (
+            <>
+              <div className="duel-form">
+                <label>
+                  {t("duels.yourBox")}
+                  <select value={picked ?? ""} onChange={(e) => setToPost(Number(e.target.value))} disabled={!!action.busy}>
+                    {postable.map((id) => (
+                      <option key={id} value={id}>
+                        {serial(id)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {t("duels.onlyBox")}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder={t("duels.anyone")}
+                    value={only}
+                    onChange={(e) => setOnly(e.target.value)}
+                    disabled={!!action.busy}
+                    aria-invalid={onlyBad}
+                  />
+                </label>
+              </div>
+              {onlyBad && <p className="fine problem">{t("duels.onlyBad")}</p>}
+              <div className="actions">
+                <button type="button" className="stamp-button" onClick={() => void post()} disabled={!!action.busy || picked === null || onlyBad}>
+                  {action.busy === "post" ? t("duels.posting") : t("duels.post", { serial: picked === null ? "" : serial(picked) })}
+                </button>
+              </div>
+              <p className="fine">{t("duels.postExplain", { days: Number(spec.mechanics.duel?.lifetimeDays ?? 7) })}</p>
+            </>
+          )}
+
+          <div className="felt" aria-live="polite">
+            {action.error ? (
+              <ProblemNote problem={action.error} />
+            ) : note ? (
+              <p className="fine">{t(note)}</p>
+            ) : null}
+          </div>
+        </TxPending>
       </section>
     </>
   );

@@ -5,7 +5,7 @@ import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { VIEWS, type View } from "../Masthead";
-import { catFromRevealed, fee, holderCopy, stepCopy, traitCopy } from "../chain/copy";
+import { catFromRevealed, fee, holderCopy, traitCopy } from "../chain/copy";
 import { usePayment } from "../chain/payment";
 import { recallFelt, rememberFelt, type Felt } from "../chain/feltCache";
 import { useLocale } from "../i18n/locale";
@@ -16,7 +16,8 @@ import { Declaration } from "./Declaration";
 import { PayWith } from "./PayWith";
 import { ShareBox } from "./ShareBox";
 import { Stage } from "./Stage";
-import { StepTracker, type PlannedStep } from "./StepTracker";
+import { type PlannedStep } from "./StepTracker";
+import { TxPending } from "./TxPending";
 import { FindMine } from "./FindMine";
 import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
@@ -36,6 +37,16 @@ interface Props {
   onBack: () => void;
 }
 
+/** What the slip says while each action runs. */
+const WORKING: Record<string, AppKey> = {
+  open: "box.opening",
+  shake: "box.shaking",
+  feed: "box.feeding",
+  alive: "box.checking",
+  give: "box.giving",
+  serve: "box.serving",
+  weigh: "box.weighing",
+};
 const ANGLES: InspectAngle[] = ["front", "left", "back", "right", "above"];
 const noop = () => {};
 /** What each slow action goes through, in order, as the tracker lists it. */
@@ -372,260 +383,253 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
         <button type="button" className="link back-link keep" onClick={onBack} disabled={!!busy}>
           {t("box.backTo", { view: t(VIEWS.find((v) => v.key === backTo)!.label) })}
         </button>
-        {missing ? (
-          <>
-            <div className="slip-head">
-              <span>{t("box.consignment")}</span>
-            </div>
-            <p className="serial">{box.serial}</p>
-            <p className="state-note">{minted === 0 ? t("box.noneMinted") : t("box.notMinted")}</p>
-            <button type="button" className="stamp-button" onClick={minted > 0 ? () => onTokenChange(0) : onShelf}>
-              {minted > 0 ? t("box.backFirst") : t("box.goShelf")}
-            </button>
-          </>
-        ) : revealed && out ? (
-          <>
-            <div className="slip-head">
-              <span>{t("box.inspection", { serial: box.serial })}</span>
-              <span className={`tier tier-${cat.rarity.tier}`}>{names!.tier}</span>
-            </div>
-            <p className="state-note">{cap(t("box.catLine", { breed: names!.breed.toLowerCase(), mood: names!.mood.toLowerCase(), state: names!.state.toLowerCase() }))}</p>
-            <div className="picker" role="group" aria-label={t("box.lookFrom")}>
-              {ANGLES.map((a) => (
-                <button type="button" key={a} onClick={() => scene.current?.lookFrom(a)}>
-                  {t(`angle.${a}`)}
-                </button>
-              ))}
-            </div>
-            <p className="fine after-table">{t("box.dragHint")}</p>
-            <button type="button" className="stamp-button" onClick={() => inspect(false)}>
-              {t("box.putBack")}
-            </button>
-          </>
-        ) : revealed ? (
-          <Declaration cat={cat}>
-            <p className="fine after-table">
-              {t("box.openForGood", { serial: box.serial })}
-              {isHolder ? t("box.openYours") : ""}
-              {cat.rarity.golden ? t("box.goldenFed") : ""}
-              {info!.aliveCheck === "alive" ? t("box.vetBefore") : ""}
-              {info!.partner !== null ? t("box.entangledWith", { serial: buildBoxSpec(info!.partner).serial }) : ""}
-            </p>
-            {kitchen && !weighIn && (
-              <p className="fine">{t("box.weighPromptHidden")}</p>
-            )}
-            <div className="actions">
-              <button type="button" className="stamp-button" onClick={() => inspect(true)}>
-                {t("box.takeOut")}
+        <TxPending
+          busy={action.busy}
+          step={action.step}
+          title={t(WORKING[action.busy ?? ""] ?? "tx.working")}
+          secret={action.busy === "shake" || action.busy === "today"}
+          plan={
+            !action.busy || !PLANS[action.busy]
+              ? null
+              : (action.busy === "open" && info?.status === "opening") || (action.busy === "alive" && info?.aliveCheck === "pending") || (action.busy === "weigh" && kitchen?.weighing === "pending")
+                ? resumed(PLANS[action.busy]!)
+                : PLANS[action.busy]!
+          }
+        >
+          {missing ? (
+            <>
+              <div className="slip-head">
+                <span>{t("box.consignment")}</span>
+              </div>
+              <p className="serial">{box.serial}</p>
+              <p className="state-note">{minted === 0 ? t("box.noneMinted") : t("box.notMinted")}</p>
+              <button type="button" className="stamp-button" onClick={minted > 0 ? () => onTokenChange(0) : onShelf}>
+                {minted > 0 ? t("box.backFirst") : t("box.goShelf")}
               </button>
-              {kitchen && !weighIn && account && (
-                <button type="button" className="plain-button" onClick={() => void weigh()} disabled={!!busy}>
-                  {busy === "weigh" ? t("box.weighing") : kitchen.weighing === "pending" ? t("box.finishWeigh") : t("box.weigh")}
-                </button>
+            </>
+          ) : revealed && out ? (
+            <>
+              <div className="slip-head">
+                <span>{t("box.inspection", { serial: box.serial })}</span>
+                <span className={`tier tier-${cat.rarity.tier}`}>{names!.tier}</span>
+              </div>
+              <p className="state-note">{cap(t("box.catLine", { breed: names!.breed.toLowerCase(), mood: names!.mood.toLowerCase(), state: names!.state.toLowerCase() }))}</p>
+              <div className="picker" role="group" aria-label={t("box.lookFrom")}>
+                {ANGLES.map((a) => (
+                  <button type="button" key={a} onClick={() => scene.current?.lookFrom(a)}>
+                    {t(`angle.${a}`)}
+                  </button>
+                ))}
+              </div>
+              <p className="fine after-table">{t("box.dragHint")}</p>
+              <button type="button" className="stamp-button" onClick={() => inspect(false)}>
+                {t("box.putBack")}
+              </button>
+            </>
+          ) : revealed ? (
+            <Declaration cat={cat}>
+              <p className="fine after-table">
+                {t("box.openForGood", { serial: box.serial })}
+                {isHolder ? t("box.openYours") : ""}
+                {cat.rarity.golden ? t("box.goldenFed") : ""}
+                {info!.aliveCheck === "alive" ? t("box.vetBefore") : ""}
+                {info!.partner !== null ? t("box.entangledWith", { serial: buildBoxSpec(info!.partner).serial }) : ""}
+              </p>
+              {kitchen && !weighIn && (
+                <p className="fine">{t("box.weighPromptHidden")}</p>
               )}
-            </div>
-            {action.error ? (
-              <ProblemNote problem={action.error} />
-            ) : action.busy === "weigh" ? (
-              <>
-                <StepTracker key="weigh" plan={kitchen?.weighing === "pending" ? resumed(PLANS.weigh!) : PLANS.weigh!} step={action.step} />
-                <p className="fine">{stepCopy(action.step)}</p>
-              </>
-            ) : note === "box.noteWeighed" ? (
-              <p className="fine">{t(note)}</p>
-            ) : null}
-            {share}
-            {steps}
-          </Declaration>
-        ) : (
-          <>
-            <div className="slip-head">
-              <span>{t("box.consignment")}</span>
-            </div>
-            <p className="serial">{box.serial}</p>
-            <dl className="fields">
-              <div>
-                <dt>{t("box.dock")}</dt>
-                <dd>{box.dock}</dd>
-              </div>
-              <div>
-                <dt>{t("box.holder")}</dt>
-                <dd>{info ? holderCopy(isHolder) : "…"}</dd>
-              </div>
-            </dl>
-
-            {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0) && (
-              <ul className="marks">
-                {info.aliveCheck === "alive" && <li className="mark-good">{t("box.markVet")}</li>}
-                {info.aliveCheck === "notAlive" && <li>{t("box.markNotAlive")}</li>}
-                {info.partner !== null && <li className="mark-entangled">{t("box.markEntangled", { serial: buildBoxSpec(info.partner).serial })}</li>}
-                {info.wins > 0 && <li>{t("box.markWins", { count: info.wins })}</li>}
-                {info.publicTraits.map((r) => {
-                  const c = traitCopy(r);
-                  return <li key={r.traitIndex}>{t("box.markLost", { trait: c.trait.toLowerCase(), variant: c.variant })}</li>;
-                })}
-              </ul>
-            )}
-
-            {remembered.length > 0 && (
-              <div className="felt-log">
-                <p className="felt-log-head">{t("box.feltLog")}</p>
-                <ul>
-                  {remembered.map((f) => {
-                    const c = traitCopy(f);
-                    return (
-                      <li key={f.traitIndex}>
-                        {c.trait}: <strong>{c.variant}</strong>
-                        <span>{ago(f.at, locale)}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-
-            <div className="actions">
-              {!info ? (
-                <button type="button" className="stamp-button" disabled>
-                  {t("box.readingLabel")}
+              <div className="actions">
+                <button type="button" className="stamp-button" onClick={() => inspect(true)}>
+                  {t("box.takeOut")}
                 </button>
-              ) : !account ? (
-                <button type="button" className="stamp-button" onClick={() => void connect()}>
-                  {t("nav.connect")}
-                </button>
-              ) : !boxesKnown ? (
-                <FindMine compact />
-              ) : info.status === "opening" ? (
-                <button type="button" className="stamp-button" onClick={() => void open()} disabled={!!busy}>
-                  {busy === "open" ? t("box.opening") : t("box.finishOpening")}
-                </button>
-              ) : (
-                <>
-                  <button type="button" className="stamp-button" onClick={() => void shake()} disabled={!!busy}>
-                    {busy === "shake" ? t("box.shaking") : isHolder ? t("box.shake") : t("box.payShake")}
+                {kitchen && !weighIn && account && (
+                  <button type="button" className="plain-button" onClick={() => void weigh()} disabled={!!busy}>
+                    {busy === "weigh" ? t("box.weighing") : kitchen.weighing === "pending" ? t("box.finishWeigh") : t("box.weigh")}
                   </button>
-                  <button type="button" className="plain-button" onClick={() => void feed()} disabled={!!busy}>
-                    {busy === "feed" ? t("box.feeding") : t("box.feed")}
-                  </button>
-                  {kitchen && isHolder && (
-                    <button type="button" className="plain-button" onClick={() => void toggleServing()} disabled={!!busy || fullToday} aria-expanded={serving}>
-                      {busy === "serve" ? t("box.serving") : fullToday ? t("box.fullToday") : t("box.serve")}
-                    </button>
-                  )}
-                  {isHolder && (
-                    <>
-                      <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy}>
-                        {busy === "open" ? t("box.opening") : t("box.open")}
-                      </button>
-                      {(info.aliveCheck === "none" || info.aliveCheck === "pending") && (
-                        <button type="button" className="plain-button" onClick={() => void checkAlive()} disabled={!!busy}>
-                          {busy === "alive" ? t("box.checking") : info.aliveCheck === "pending" ? t("box.finishCheck") : t("box.isAlive")}
-                        </button>
-                      )}
-                      <button type="button" className="plain-button" onClick={() => setGiving((g) => !g)} disabled={!!busy} aria-expanded={giving}>
-                        {busy === "give" ? t("box.giving") : t("box.give")}
-                      </button>
-                    </>
-                  )}
-                  <button type="button" className="plain-button" onClick={() => onPair(tokenId)} disabled={!!busy}>
-                    {t("box.duelOrEntangle")}
-                  </button>
-                </>
-              )}
-            </div>
-
-            {account && boxesKnown && info?.status === "sealed" && <PayWith busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} compact />}
-
-            {giving && isHolder && (
-              <form
-                className="find pantry-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void give();
-                }}
-              >
-                <label htmlFor="give-to">{t("box.giveTo")}</label>
-                <input id="give-to" autoComplete="off" spellCheck={false} value={giveTo} onChange={(e) => setGiveTo(e.target.value)} placeholder="0x…" disabled={!!busy} />
-                <button type="submit" className="plain-button" disabled={!!busy || !/^0x[0-9a-fA-F]{40}$/.test(giveTo.trim())}>
-                  {t("box.giveGo")}
-                </button>
-              </form>
-            )}
-
-            {serving && info?.status === "sealed" && isHolder && !fullToday && (
-              <form
-                className="find pantry-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void serve();
-                }}
-              >
-                <label htmlFor="serve-amount">{t("box.serveLabel")}</label>
-                <input id="serve-amount" inputMode="numeric" autoComplete="off" value={croq} onChange={(e) => setCroq(e.target.value)} placeholder={String(leftToday ?? DAILY_CAP)} disabled={!!busy} />
-                <button type="submit" className="plain-button" disabled={!!busy || !croqAmount || tooMuch}>
-                  {t("box.serveGo")}
-                </button>
-              </form>
-            )}
-
-            <div className="felt" aria-live="polite">
+                )}
+              </div>
               {action.error ? (
                 <ProblemNote problem={action.error} />
-              ) : action.busy ? (
-                <>
-                  {PLANS[action.busy] && (
-                    <StepTracker
-                      key={action.busy}
-                      plan={
-                        (action.busy === "open" && info?.status === "opening") || (action.busy === "alive" && info?.aliveCheck === "pending")
-                          ? resumed(PLANS[action.busy]!)
-                          : PLANS[action.busy]!
-                      }
-                      step={action.step}
-                    />
-                  )}
-                  <p className="fine">{stepCopy(action.step, action.busy === "shake" || action.busy === "today")}</p>
-                  {action.step === "decrypting" && <p className="fine">{t("track.slow")}</p>}
-                </>
-              ) : felt ? (
-                <>
-                  <p className="felt-line">
-                    {traitCopy(felt).trait}: <strong>{traitCopy(felt).variant}</strong>
-                  </p>
-                  <p className="fine">{t("box.shakeOnlyYou")}</p>
-                </>
-              ) : serving ? (
-                <>
-                  <p className="fine">
-                    {today === null
-                      ? t("box.todayUnread")
-                      : t("box.today", { meals: today.meals, max: meal.mealsPerDay, eaten: String(today.eaten), cap: meal.maxEatenPerDay })}
-                    {tooMuch ? ` ${t("box.tooMuchToday", { left: String(leftToday) })}` : ""}
-                  </p>
-                  <p className="fine">
-                    {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
-                  </p>
-                </>
-              ) : giving ? (
-                <p className="fine">{t("box.giveHint")}</p>
-              ) : note ? (
+              ) : note === "box.noteWeighed" ? (
                 <p className="fine">{t(note)}</p>
-              ) : !info ? null : !account ? (
-                <p className="fine">{t("box.anyoneLook")}</p>
-              ) : info.status === "opening" ? (
-                <p className="fine">{t("box.stuckOpening")}</p>
-              ) : isHolder ? (
-                <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
-              ) : (
-                <p className="fine">
-                  {t("box.strangerHint", { paid: fee(collection?.fees.paidShake ?? 0n, collection, pay), share: HOLDER_SHARE, feed: fee(collection?.fees.feed ?? 0n, collection, pay) })}
-                </p>
+              ) : null}
+              {share}
+              {steps}
+            </Declaration>
+          ) : (
+            <>
+              <div className="slip-head">
+                <span>{t("box.consignment")}</span>
+              </div>
+              <p className="serial">{box.serial}</p>
+              <dl className="fields">
+                <div>
+                  <dt>{t("box.dock")}</dt>
+                  <dd>{box.dock}</dd>
+                </div>
+                <div>
+                  <dt>{t("box.holder")}</dt>
+                  <dd>{info ? holderCopy(isHolder) : "…"}</dd>
+                </div>
+              </dl>
+
+              {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0) && (
+                <ul className="marks">
+                  {info.aliveCheck === "alive" && <li className="mark-good">{t("box.markVet")}</li>}
+                  {info.aliveCheck === "notAlive" && <li>{t("box.markNotAlive")}</li>}
+                  {info.partner !== null && <li className="mark-entangled">{t("box.markEntangled", { serial: buildBoxSpec(info.partner).serial })}</li>}
+                  {info.wins > 0 && <li>{t("box.markWins", { count: info.wins })}</li>}
+                  {info.publicTraits.map((r) => {
+                    const c = traitCopy(r);
+                    return <li key={r.traitIndex}>{t("box.markLost", { trait: c.trait.toLowerCase(), variant: c.variant })}</li>;
+                  })}
+                </ul>
               )}
-            </div>
-            {share}
-            {steps}
-          </>
-        )}
+
+              {remembered.length > 0 && (
+                <div className="felt-log">
+                  <p className="felt-log-head">{t("box.feltLog")}</p>
+                  <ul>
+                    {remembered.map((f) => {
+                      const c = traitCopy(f);
+                      return (
+                        <li key={f.traitIndex}>
+                          {c.trait}: <strong>{c.variant}</strong>
+                          <span>{ago(f.at, locale)}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              <div className="actions">
+                {!info ? (
+                  <button type="button" className="stamp-button" disabled>
+                    {t("box.readingLabel")}
+                  </button>
+                ) : !account ? (
+                  <button type="button" className="stamp-button" onClick={() => void connect()}>
+                    {t("nav.connect")}
+                  </button>
+                ) : !boxesKnown ? (
+                  <FindMine compact />
+                ) : info.status === "opening" ? (
+                  <button type="button" className="stamp-button" onClick={() => void open()} disabled={!!busy}>
+                    {busy === "open" ? t("box.opening") : t("box.finishOpening")}
+                  </button>
+                ) : (
+                  <>
+                    <button type="button" className="stamp-button" onClick={() => void shake()} disabled={!!busy}>
+                      {busy === "shake" ? t("box.shaking") : isHolder ? t("box.shake") : t("box.payShake")}
+                    </button>
+                    <button type="button" className="plain-button" onClick={() => void feed()} disabled={!!busy}>
+                      {busy === "feed" ? t("box.feeding") : t("box.feed")}
+                    </button>
+                    {kitchen && isHolder && (
+                      <button type="button" className="plain-button" onClick={() => void toggleServing()} disabled={!!busy || fullToday} aria-expanded={serving}>
+                        {busy === "serve" ? t("box.serving") : fullToday ? t("box.fullToday") : t("box.serve")}
+                      </button>
+                    )}
+                    {isHolder && (
+                      <>
+                        <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy}>
+                          {busy === "open" ? t("box.opening") : t("box.open")}
+                        </button>
+                        {(info.aliveCheck === "none" || info.aliveCheck === "pending") && (
+                          <button type="button" className="plain-button" onClick={() => void checkAlive()} disabled={!!busy}>
+                            {busy === "alive" ? t("box.checking") : info.aliveCheck === "pending" ? t("box.finishCheck") : t("box.isAlive")}
+                          </button>
+                        )}
+                        <button type="button" className="plain-button" onClick={() => setGiving((g) => !g)} disabled={!!busy} aria-expanded={giving}>
+                          {busy === "give" ? t("box.giving") : t("box.give")}
+                        </button>
+                      </>
+                    )}
+                    <button type="button" className="plain-button" onClick={() => onPair(tokenId)} disabled={!!busy}>
+                      {t("box.duelOrEntangle")}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {account && boxesKnown && info?.status === "sealed" && <PayWith busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} compact />}
+
+              {giving && isHolder && (
+                <form
+                  className="find pantry-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void give();
+                  }}
+                >
+                  <label htmlFor="give-to">{t("box.giveTo")}</label>
+                  <input id="give-to" autoComplete="off" spellCheck={false} value={giveTo} onChange={(e) => setGiveTo(e.target.value)} placeholder="0x…" disabled={!!busy} />
+                  <button type="submit" className="plain-button" disabled={!!busy || !/^0x[0-9a-fA-F]{40}$/.test(giveTo.trim())}>
+                    {t("box.giveGo")}
+                  </button>
+                </form>
+              )}
+
+              {serving && info?.status === "sealed" && isHolder && !fullToday && (
+                <form
+                  className="find pantry-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void serve();
+                  }}
+                >
+                  <label htmlFor="serve-amount">{t("box.serveLabel")}</label>
+                  <input id="serve-amount" inputMode="numeric" autoComplete="off" value={croq} onChange={(e) => setCroq(e.target.value)} placeholder={String(leftToday ?? DAILY_CAP)} disabled={!!busy} />
+                  <button type="submit" className="plain-button" disabled={!!busy || !croqAmount || tooMuch}>
+                    {t("box.serveGo")}
+                  </button>
+                </form>
+              )}
+
+              <div className="felt" aria-live="polite">
+                {action.error ? (
+                  <ProblemNote problem={action.error} />
+                ) : felt ? (
+                  <>
+                    <p className="felt-line">
+                      {traitCopy(felt).trait}: <strong>{traitCopy(felt).variant}</strong>
+                    </p>
+                    <p className="fine">{t("box.shakeOnlyYou")}</p>
+                  </>
+                ) : serving ? (
+                  <>
+                    <p className="fine">
+                      {today === null
+                        ? t("box.todayUnread")
+                        : t("box.today", { meals: today.meals, max: meal.mealsPerDay, eaten: String(today.eaten), cap: meal.maxEatenPerDay })}
+                      {tooMuch ? ` ${t("box.tooMuchToday", { left: String(leftToday) })}` : ""}
+                    </p>
+                    <p className="fine">
+                      {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
+                    </p>
+                  </>
+                ) : giving ? (
+                  <p className="fine">{t("box.giveHint")}</p>
+                ) : note ? (
+                  <p className="fine">{t(note)}</p>
+                ) : !info ? null : !account ? (
+                  <p className="fine">{t("box.anyoneLook")}</p>
+                ) : info.status === "opening" ? (
+                  <p className="fine">{t("box.stuckOpening")}</p>
+                ) : isHolder ? (
+                  <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
+                ) : (
+                  <p className="fine">
+                    {t("box.strangerHint", { paid: fee(collection?.fees.paidShake ?? 0n, collection, pay), share: HOLDER_SHARE, feed: fee(collection?.fees.feed ?? 0n, collection, pay) })}
+                  </p>
+                )}
+              </div>
+              {share}
+              {steps}
+            </>
+          )}
+        </TxPending>
       </section>
     </>
   );
