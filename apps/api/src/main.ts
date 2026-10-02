@@ -48,7 +48,7 @@ async function main() {
   let indexer: Indexer | undefined;
   if (config.ROLE !== "api") {
     const source = new EvmChainSource(rpc, deployment, log);
-    const startBlock = deployment.collection.deployBlock;
+    const startBlock = deployment.indexFrom;
     const sync = new SyncChain(source, store, {
       startBlock,
       confirmations: config.CONFIRMATIONS,
@@ -62,7 +62,7 @@ async function main() {
       { name: "reconcile", everyMs: config.RECONCILE_EVERY_MS, run: () => reconciler.run() },
     ]);
     indexer.start();
-    log.info({ network: config.NETWORK, from: deployment.collection.deployBlock, endpoints: rpc.status().map((e) => e.name) }, "indexer started");
+    log.info({ network: config.NETWORK, from: deployment.indexFrom, endpoints: rpc.status().map((e) => e.name) }, "indexer started");
   }
 
   const secret = config.SESSION_SECRET ?? randomBytes(32).toString("hex");

@@ -2,7 +2,15 @@ import { parseEther, parseUnits } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { PAYMENT_TOKENS } from "./deploy";
-import { UNISWAP_V2 } from "./economy";
+
+/** Uniswap V2 on Sepolia, from Uniswap's deployment list: the ramp's ETH/USDC pool. */
+export const UNISWAP_V2: Record<string, { router: string; factory: string; weth: string }> = {
+  sepolia: {
+    router: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
+    factory: "0xF62c03E08ada871A0bEb309762E260a7a6a880E6",
+    weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  },
+};
 
 const ROUTER_ABI = [
   "function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) payable returns (uint, uint, uint)",

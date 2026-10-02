@@ -559,9 +559,50 @@ instead of carrying the check, so its body is not copied into every function usi
 and the optimizer runs at 200 instead of 800 (`hardhat.config.ts`), which favours size
 over the gas of each call. The next feature has to move logic out.
 
+### Sepolia deployment (2026-10-02): CROQ-only Uniswap V3 market
+
+Current. Deployed at block 11830294 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
+owns the collection, the locker, and is the treasury. The aim was only a new croquette
+economy, whose market is now a single-sided Uniswap V3 position (only CROQ, no USDC from
+the creator) held for good by `LiquidityLocker` (see [CROQ.md](CROQ.md#the-public-market)).
+`DoNotOpen` and its hooks were redeployed too, by accident: `COLLECTION_OWNER` was unset
+in the deploying `.env`, so the owner argument of the `DoNotOpen` constructor changed
+from `0x5908…029A` to the deployer and hardhat-deploy saw a different deployment. The
+previous collection and its index were left behind. For the next deploy: set
+`COLLECTION_OWNER` to the intended owner, and compare the constructor arguments of the
+saved deployments (not only the bytecode, which also depends on the network compiled
+for) before sending anything. `DoNotOpenConfig`, `UsdcRamp` and `DecryptionCredits` were
+kept: their arguments did not change, and none of them reads the collection.
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0x5eBaA496783146f712B9c075f8a6fd56cb612C6F`](https://sepolia.etherscan.io/address/0x5eBaA496783146f712B9c075f8a6fd56cb612C6F) |
+| `DoNotOpenConfig` (kept) | [`0x6909f7C5ebE00592F28Ab3597914d30D8b746976`](https://sepolia.etherscan.io/address/0x6909f7C5ebE00592F28Ab3597914d30D8b746976) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0xb891e9A343ccC18C070aB0b73341FF38f6D2E66B`](https://sepolia.etherscan.io/address/0xb891e9A343ccC18C070aB0b73341FF38f6D2E66B) |
+| `Croq` (CROQ) | [`0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7`](https://sepolia.etherscan.io/address/0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7) |
+| `ConfidentialCroq` (cCROQ) | [`0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952`](https://sepolia.etherscan.io/address/0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952) |
+| `Pantry` | [`0xf506832ab27DF17ece72924502537ecCf7586CDB`](https://sepolia.etherscan.io/address/0xf506832ab27DF17ece72924502537ecCf7586CDB) |
+| `LiquidityLocker` (holds position #233099) | [`0xCA7Eee59de903F9b6bfab466667131Fb58403BF3`](https://sepolia.etherscan.io/address/0xCA7Eee59de903F9b6bfab466667131Fb58403BF3) |
+| CROQ/USDC pool, Uniswap V3, 1% fee | [`0x399Dc7af546154998D302d0b3B312750DA962100`](https://sepolia.etherscan.io/address/0x399Dc7af546154998D302d0b3B312750DA962100) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (kept) | [`0x2754B8568a3402f828DDAa1715F8290CDa498aAb`](https://sepolia.etherscan.io/address/0x2754B8568a3402f828DDAa1715F8290CDa498aAb) |
+| `DecryptionCredits` (kept) | [`0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1`](https://sepolia.etherscan.io/address/0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1) |
+
+Uniswap V3 on Sepolia: factory `0x0227628f3F023bb0B980b67D528571c95c6DaC1c`,
+`NonfungiblePositionManager` `0x1238536071E1c677A632429e3655c799b22cDA52`, `SwapRouter02`
+`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`, `QuoterV2`
+`0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3`; the deploy script checks that all three
+point at the factory. Gas: `DoNotOpen` 5,785,044, `DoNotOpenHooks` 357,103, `Croq` 532,843,
+`ConfidentialCroq` 2,455,772, `Pantry` 3,158,436, `Pantry.fund` 441,798,
+`LiquidityLocker` 558,565. The position took 4,000,000 CROQ and 0 USDC, ticks -138200 to
+-69200 (CROQ is token1: it sorts after USDC), 0.001012 to 1.004 USDC per CROQ. Through
+the adapter: a sale quoted 0 before any buy, then 2 USDC bought 1,955 CROQ and 977 of them
+sold back for 0.979 USDC, as quoted.
+
 ### Sepolia deployment (2026-10-02): duel shelf
 
-Current. Deployed at block 11828557, again with a fresh croquette economy. A different
+Replaced by the V3 market above. Deployed at block 11828557, again with a fresh croquette economy. A different
 deployer account (`0x590891F269720001435004A1089cAB5b2c20029A`) deployed it, so it owns
 the collection and receives the treasury's share. The optimizer change also changed every
 contract's bytecode, so all of them were deployed again:
@@ -574,7 +615,7 @@ contract's bytecode, so all of them were deployed again:
 | `Croq` (CROQ) | [`0xF4d9CE55b52417e503617186e923E1c0713c53b5`](https://sepolia.etherscan.io/address/0xF4d9CE55b52417e503617186e923E1c0713c53b5) |
 | `ConfidentialCroq` (cCROQ) | [`0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9`](https://sepolia.etherscan.io/address/0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9) |
 | `Pantry` | [`0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed`](https://sepolia.etherscan.io/address/0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed) |
-| CROQ/USDC pair, Uniswap V2 | [`0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2`](https://sepolia.etherscan.io/address/0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2) |
+| CROQ/USDC pair, Uniswap V2 (LP tokens sent to `0x…dEaD`) | [`0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2`](https://sepolia.etherscan.io/address/0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2) |
 | USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
 | cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
 | `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x2754B8568a3402f828DDAa1715F8290CDa498aAb`](https://sepolia.etherscan.io/address/0x2754B8568a3402f828DDAa1715F8290CDa498aAb) |

@@ -50,9 +50,11 @@ import {
   type TxRecord,
   type WalletOption,
   type WeighIn,
+  type MarketInfo,
 } from "../types";
 import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
 import { gateRefusal, toChainError } from "./errors";
+import { rangePerThousand, virtualReserves } from "./uniswapV3";
 import type { IndexedTransfer, IndexerClient } from "./indexer";
 import type { ChainParams, WalletSource } from "./wallet";
 
@@ -69,8 +71,26 @@ export interface EconomyDeployment {
   croq: Deployed;
   cCroq: Deployed;
   pantry: Deployed;
-  /** A Uniswap V2 CROQ/USDC pool, when one was opened on this network. */
-  market: { pair: string; router: string; factory: string; usdc: string } | null;
+  /** A Uniswap V3 CROQ/USDC pool where CROQ is sold from one locked position, when one was opened. */
+  market: V3Market | null;
+}
+
+/** The CROQ/USDC pool, its locked position and the Uniswap V3 contracts to trade through. */
+export interface V3Market {
+  pool: string;
+  /** Fee tier in hundredths of a bip: 10000 is 1%. */
+  fee: number;
+  /** The position's NFT id, held for good by the locker. */
+  positionId: string;
+  tickLower: number;
+  tickUpper: number;
+  locker: string;
+  positionManager: string;
+  /** Uniswap's SwapRouter02. */
+  swapRouter: string;
+  /** Uniswap's QuoterV2. */
+  quoter: string;
+  usdc: string;
 }
 
 export interface EvmAdapterOptions {
@@ -104,9 +124,21 @@ export interface EvmAdapterOptions {
   credits?: Deployed;
 }
 
+/** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
 const ROUTER_ABI = [
-  "function getAmountsOut(uint amountIn, address[] path) view returns (uint[] amounts)",
-  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline) returns (uint[] amounts)",
+  "function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) payable returns (uint256 amountOut)",
+  "function multicall(uint256 deadline, bytes[] data) payable returns (bytes[] results)",
+];
+/** Uniswap's QuoterV2: simulates the swap and reverts with the result, so it is only ever static-called. */
+const QUOTER_ABI = [
+  "function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)",
+];
+const POOL_ABI = [
+  "function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)",
+  "function liquidity() view returns (uint128)",
+];
+const POSITIONS_ABI = [
+  "function positions(uint256 tokenId) view returns (uint96 nonce, address operator, address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)",
 ];
 /** The collection's payment tokens. Their addresses are read from the collection itself. */
 const USDC_ABI = [
@@ -137,7 +169,6 @@ const NOT_YOURS = 255;
 const LOG_SPAN = 40_000;
 /** How many handles one user decryption asks for. */
 const DECRYPT_BATCH = 50;
-const PAIR_ABI = ["function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)", "function token0() view returns (address)"];
 /** An operator approval given to the Pantry lasts this long. */
 const OPERATOR_DAYS = 365;
 /** A trade accepts at most this much less than its quote, in basis points, unless told otherwise. */
@@ -271,7 +302,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     this.ifaces = [
       this.iface,
       ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : [])].map((abi) => new Interface(abi)),
-      ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI].map((abi) => new Interface(abi)) : []),
+      ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
     void this.adopt(opts.wallet.current());
@@ -990,32 +1021,41 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }));
     this.economyConstants.catch(() => (this.economyConstants = null));
 
-    const market = e.market;
-    const [constants, wrapped, halvings, reserves, token0] = await this.reading(
-      Promise.all([
-        this.economyConstants,
-        croq.balanceOf!(e.cCroq.address),
-        pantry.halvings!(),
-        market ? this.at(market.pair, PAIR_ABI).getReserves!() : null,
-        market ? this.at(market.pair, PAIR_ABI).token0!() : null,
-      ]),
+    const [constants, wrapped, halvings, market] = await this.reading(
+      Promise.all([this.economyConstants, croq.balanceOf!(e.cCroq.address), pantry.halvings!(), e.market ? this.readMarket(e.market) : null]),
     );
-    const croqFirst = token0 && String(token0).toLowerCase() === e.croq.address.toLowerCase();
+    return { ...constants, wrapped, halvings: Number(halvings), market };
+  }
+
+  /** The locked position's liquidity never changes: read once. */
+  private positionLiquidity: Promise<bigint> | null = null;
+
+  private async readMarket(market: V3Market): Promise<MarketInfo> {
+    const e = this.eco();
+    const pool = this.at(market.pool, POOL_ABI);
+    this.positionLiquidity ??= this.at(market.positionManager, POSITIONS_ABI)
+      .positions!(market.positionId)
+      .then((p: { liquidity: bigint }) => p.liquidity);
+    this.positionLiquidity.catch(() => (this.positionLiquidity = null));
+    const [slot0, liquidity, positionLiquidity, croqHeld, quoteHeld] = await Promise.all([
+      pool.slot0!(),
+      pool.liquidity!(),
+      this.positionLiquidity,
+      this.at(e.croq).balanceOf!(market.pool),
+      this.at(market.usdc, USDC_ABI).balanceOf!(market.pool),
+    ]);
+    const position = { croq: e.croq.address, quote: market.usdc, tickLower: market.tickLower, tickUpper: market.tickUpper };
+    const reserves = virtualReserves(position, { sqrtPriceX96: slot0.sqrtPriceX96, liquidity, positionLiquidity });
     return {
-      ...constants,
-      wrapped,
-      halvings: Number(halvings),
-      market:
-        market && reserves
-          ? {
-              name: "Uniswap V2",
-              poolUrl: this.link(market.pair),
-              appUrl: `https://app.uniswap.org/swap?chain=sepolia&inputCurrency=${market.usdc}&outputCurrency=${e.croq.address}`,
-              quote: { symbol: "USDC", decimals: 6 },
-              croqReserve: croqFirst ? reserves[0] : reserves[1],
-              quoteReserve: croqFirst ? reserves[1] : reserves[0],
-            }
-          : null,
+      name: "Uniswap V3",
+      poolUrl: this.link(market.pool),
+      appUrl: `https://app.uniswap.org/swap?chain=sepolia&inputCurrency=${market.usdc}&outputCurrency=${e.croq.address}`,
+      quote: { symbol: "USDC", decimals: 6 },
+      croqReserve: reserves.croq,
+      quoteReserve: reserves.quote,
+      croqHeld,
+      quoteHeld,
+      range: rangePerThousand(position),
     };
   }
 
@@ -1184,23 +1224,38 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const { market, croq } = this.eco();
     if (!market) throw new ChainError("unknown", "There is no market on this network.");
     if (amountIn <= 0n) return 0n;
-    const path = side === "buy" ? [market.usdc, croq.address] : [croq.address, market.usdc];
-    const amounts: bigint[] = await this.reading(this.at(market.router, ROUTER_ABI).getAmountsOut!(amountIn, path));
-    return amounts[amounts.length - 1]!;
+    const [tokenIn, tokenOut] = side === "buy" ? [market.usdc, croq.address] : [croq.address, market.usdc];
+    const quoter = this.at(market.quoter, QUOTER_ABI);
+    try {
+      const [out]: [bigint] = await this.reading(
+        quoter.quoteExactInputSingle!.staticCall({ tokenIn, tokenOut, amountIn, fee: market.fee, sqrtPriceLimitX96: 0n }),
+      );
+      return out;
+    } catch (e) {
+      // The quoter reverts when the swap would move nothing: CROQ to sell and no USDC in range.
+      if (e instanceof ChainError && e.code === "network") throw e;
+      return 0n;
+    }
   }
 
   async trade(side: TradeSide, amountIn: bigint, opts?: SwapOptions): Promise<void> {
     const { market, croq } = this.eco();
     if (!market) throw new ChainError("unknown", "There is no market on this network.");
     const account = await this.signer().getAddress();
-    const minOut = withSlippage(await this.quote(side, amountIn), opts);
+    const quoted = await this.quote(side, amountIn);
+    // CROQ never sells below where the range starts: until someone buys, a sale finds no USDC.
+    if (quoted === 0n) throw new ChainError("reverted", "The pool has nothing to give for this yet.", "NoLiquidity");
+    const minOut = withSlippage(quoted, opts);
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
     const [tokenIn, tokenOut] = side === "buy" ? [{ address: market.usdc, abi: USDC_ABI }, croq] : [croq, { address: market.usdc, abi: USDC_ABI }];
     const held: bigint = side === "buy" ? await this.reading(this.at(tokenIn).balanceOf!(account)) : amountIn;
     if (held < amountIn) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: amountIn });
-    await this.ensureAllowance(tokenIn, market.router, account, amountIn, opts);
-    const router = { address: market.router, abi: ROUTER_ABI };
-    await this.send(opts, () => this.writer(router).swapExactTokensForTokens!(amountIn, minOut, [tokenIn.address, tokenOut.address], account, deadline));
+    await this.ensureAllowance(tokenIn, market.swapRouter, account, amountIn, opts);
+    const router = { address: market.swapRouter, abi: ROUTER_ABI };
+    const swap = new Interface(ROUTER_ABI).encodeFunctionData("exactInputSingle", [
+      { tokenIn: tokenIn.address, tokenOut: tokenOut.address, fee: market.fee, recipient: account, amountIn, amountOutMinimum: minOut, sqrtPriceLimitX96: 0n },
+    ]);
+    await this.send(opts, () => this.writer(router)["multicall(uint256,bytes[])"]!(deadline, [swap]));
   }
 
   private writer(deployed: Deployed): Contract {

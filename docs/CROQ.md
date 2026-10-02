@@ -52,7 +52,7 @@ function, no owner and no pause. Nothing can create more.
 | --- | --- | --- |
 | Game reserve | 10,000,000 (50%) | Wrapped into the Pantry. Pays the daily purr, and takes back 60% of every meal |
 | Welcome bags | 1,000,000 (5%) | Wrapped into the Pantry. 100 × 10,000 boxes |
-| Market liquidity | 4,000,000 (20%) | A CROQ/USDC pool on Uniswap V2 |
+| Market liquidity | 4,000,000 (20%) | A CROQ-only position in a CROQ/USDC Uniswap V3 pool, locked for good in the `LiquidityLocker` |
 | Treasury | 5,000,000 (25%) | Kept by the collection owner as plain CROQ, for events and future liquidity |
 
 `economyFromSpec()` in `packages/contracts-evm/lib/specParams.ts` refuses a spec whose
@@ -75,7 +75,7 @@ flowchart LR
     croq["Croq (ERC-20)"]
   end
   croq -- "11M, wrapped by Pantry.fund" --> reserve["Pantry reserve<br/>encrypted"]
-  croq -- "4M" --> pool["Uniswap V2<br/>CROQ/USDC pool"]
+  croq -- "4M, no USDC" --> pool["Uniswap V3<br/>CROQ/USDC pool<br/>position held by the LiquidityLocker"]
   croq -- "5M" --> treasury["Treasury<br/>plain CROQ"]
 
   reserve -- "welcome bag: 100 per box, once" --> players["Players<br/>cCROQ, encrypted balances"]
@@ -269,7 +269,8 @@ of 20M:
 - **The purr is not enough.** It pays about 2 a day per box in the first year: ~730 a year,
   less after each halving. Anything past normal is bought on the market.
 - **A sick cat moves the market.** 300,000 croquettes is 7.5% of the pool's starting 4M,
-  and buying it from a constant-product pool costs more with every croquette.
+  and buying it from the pool costs more with every croquette: the price climbs along the
+  position's range.
 - **The fire is a hard ceiling.** Each sick cat burns at least 60,000. If every one of the
   20M croquettes were eventually burnt, at most ~333 cats could ever get sick; with a
   reserve that only lets croquettes out through the purr, the real number is far lower.
@@ -309,20 +310,43 @@ The events are a weak signal: anyone can emit one for the price of gas.
 
 ## The public market
 
-A Uniswap V2 pool pairs CROQ with USDC, the collection's own currency (Zama's `USDCMock` on
-Sepolia). It was seeded at deployment with the 4M liquidity share and 4,000 USDC
-(`LIQUIDITY_USDC`), which puts the opening price at 0.001 USDC per CROQ: a welcome bag is
-worth 10 cents. The price then comes from trades. A player with no USDC can buy some with
-ETH through the site's ramp (see [FLOWS.md](FLOWS.md#getting-usdc)).
+A Uniswap V3 pool pairs CROQ with USDC, the collection's own currency (Zama's `USDCMock` on
+Sepolia), at the 1% fee tier. The creator put **no USDC** in it. The 4M liquidity share
+went in as one *single-sided* position: a V3 position covers a price range, and one that
+starts exactly at the pool's opening price holds only the token being sold. Buyers bring
+all the USDC.
+
+- **Range.** From 0.001 USDC per CROQ (`LIQUIDITY_START_PRICE`, rounded up to the next
+  usable tick: 0.001012 on Sepolia) up to 1,000 times that (`LIQUIDITY_RANGE`): about
+  1.004 USDC, where the last of the 4M goes. The fee tier is `LIQUIDITY_FEE` (10000, 1%).
+  At the start a welcome bag is worth about 10 cents.
+- **CROQ never sells below the start.** Selling only gives back USDC that buyers put in.
+  The pool's price can drift below the range when a seller empties it, but nothing trades
+  there: the next buyer crosses the gap for free and still pays at least the start price.
+- **Until someone buys, nobody can sell.** The pool starts with no USDC, so a welcome bag
+  finds nothing to sell into. The app says so ("nothing to get from the pool yet") instead
+  of sending a swap that would revert.
+- **Price.** Within the range, V3 trades like a constant-product pool on "virtual"
+  reserves (L/√P and L·√P). The adapter and the API report those as `croqReserve` and
+  `quoteReserve`, so the price and the price impact read the same way as before, and
+  report what the pool really holds as `croqHeld` and `quoteHeld`, and the range as
+  `range` (USDC units per 1,000 CROQ).
+
+A player with no USDC can buy some with ETH through the site's ramp (see
+[FLOWS.md](FLOWS.md#getting-usdc)). The app quotes with Uniswap's `QuoterV2` and swaps
+through `SwapRouter02` (`exactInputSingle` inside a `multicall` with a deadline), with the
+player's slippage tolerance under the quote.
 
 ```mermaid
 sequenceDiagram
   autonumber
   actor P as Player
-  participant U as Uniswap V2
+  participant Q as QuoterV2
+  participant U as SwapRouter02 (V3 pool, 1%)
   participant W as cCROQ (wrapper)
   participant Pa as Pantry
-  P->>U: swap USDC for CROQ (public amount)
+  P->>Q: quoteExactInputSingle (static call)
+  P->>U: multicall(deadline, exactInputSingle USDC to CROQ) (public amount)
   P->>W: approve, wrap(me, amount) (public amount)
   Note over P,W: from here on, amounts are encrypted
   P->>Pa: claim, feed
@@ -330,11 +354,33 @@ sequenceDiagram
   P->>W: unwrap(me, me, encrypted amount)
   W-->>P: UnwrapRequested(requestId)
   P->>W: finalizeUnwrap(requestId, amount, proof) (amount now public)
-  P->>U: swap CROQ for USDC (public amount)
+  P->>U: multicall(deadline, exactInputSingle CROQ to USDC) (public amount)
 ```
 
-The LP tokens of the seed liquidity were sent to `0x000000000000000000000000000000000000dEaD`:
-the pool's starting liquidity can never be withdrawn, by the deployer or anyone else.
+### The liquidity locker
+
+The position is an NFT of Uniswap's `NonfungiblePositionManager`. The deploy script mints
+it to the deployer and hands it straight to `LiquidityLocker` with `safeTransferFrom`.
+The locker:
+
+- has no function that removes liquidity, moves a position out or burns one: the market
+  stays open whoever owns the collection, the deployer included;
+- accepts NFTs only from the position manager (anything else would be stuck), and lists
+  what it holds (`positions()`, `Locked` events);
+- lets anyone call `collect(positionId)`, which sends the trading fees the position
+  earned (1% of every swap, in USDC and CROQ) to the `beneficiary`, the treasury. The
+  liquidity itself does not move;
+- lets its owner (`Ownable2Step`) change the beneficiary, and nothing else.
+
+`lib/uniswapV3.ts` lays the position out (`planSingleSided`: ticks, opening price, CROQ on
+the right side whatever the address order) and seeds it (`seedSingleSided`). It refuses
+to seed a pool someone opened first at another price, since a position minted there could
+need USDC or sell CROQ below the start. On Sepolia CROQ sorts after USDC, so it is the
+pool's token1 and is sold as the raw price falls.
+
+Before this, the market was a Uniswap V2 pool seeded with 4M CROQ and 4,000 USDC, its LP
+tokens sent to `0x…dEaD`. Single-sided V3 needs no USDC from the creator, and the fees
+come back to the project instead of being burnt with the LP tokens.
 
 On Sepolia none of this has a real value: test USDC and Sepolia ETH are free. The project does not sell
 CROQ and promises no value for it.
@@ -493,7 +539,27 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 
 ## Deployed on Sepolia
 
-The Pantry that reads the `DoNotOpen` with the duel shelf (deployed 2026-10-02):
+The economy of the current `DoNotOpen` (deployed 2026-10-02, block 11830294), with the
+CROQ-only V3 market:
+
+| Contract | Address |
+| --- | --- |
+| `Croq` | [`0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7`](https://sepolia.etherscan.io/address/0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7) |
+| `ConfidentialCroq` | [`0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952`](https://sepolia.etherscan.io/address/0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952) |
+| `Pantry` | [`0xf506832ab27DF17ece72924502537ecCf7586CDB`](https://sepolia.etherscan.io/address/0xf506832ab27DF17ece72924502537ecCf7586CDB) |
+| `LiquidityLocker` | [`0xCA7Eee59de903F9b6bfab466667131Fb58403BF3`](https://sepolia.etherscan.io/address/0xCA7Eee59de903F9b6bfab466667131Fb58403BF3) |
+| CROQ/USDC pool (Uniswap V3, 1%) | [`0x399Dc7af546154998D302d0b3B312750DA962100`](https://sepolia.etherscan.io/address/0x399Dc7af546154998D302d0b3B312750DA962100) |
+| Position | #233099, ticks -138200 to -69200, 4,000,000 CROQ, 0 USDC |
+| Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |
+| `NonfungiblePositionManager` | `0x1238536071E1c677A632429e3655c799b22cDA52` |
+| `SwapRouter02` | `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` |
+| `QuoterV2` | `0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3` |
+
+The treasury, and the locker's beneficiary and owner, is the deployer
+`0x6a18cFC3fAeef453B295B12246d40a82593b3208`. Deployment gas: `Croq` 533k,
+`ConfidentialCroq` 2.46M, `Pantry` 3.16M, `fund` 442k, `LiquidityLocker` 559k.
+
+The one that read the `DoNotOpen` with the duel shelf (2026-10-02, block 11828557), replaced:
 
 | Contract | Address |
 | --- | --- |

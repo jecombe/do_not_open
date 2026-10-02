@@ -297,7 +297,7 @@ export interface BoxSummary {
 
 /** Where plain CROQ trades against USDC. */
 export interface MarketInfo {
-  /** e.g. "Uniswap V2". */
+  /** e.g. "Uniswap V3". */
   name: string;
   /** The pool in a block explorer, if there is one. */
   poolUrl: string | null;
@@ -305,9 +305,21 @@ export interface MarketInfo {
   appUrl: string | null;
   /** What CROQ is priced in. */
   quote: { symbol: string; decimals: number };
-  /** Pool reserves: whole CROQ, and the quote token in its smallest unit. */
+  /**
+   * What the pool prices with, as a constant-product pool's reserves: whole CROQ, and the quote
+   * token in its smallest unit. Their ratio is the current price. On a concentrated-liquidity
+   * pool these are the "virtual" reserves of the active range, more than the pool holds.
+   */
   croqReserve: bigint;
   quoteReserve: bigint;
+  /** What the pool actually holds: whole CROQ, and the quote token in its smallest unit. */
+  croqHeld: bigint;
+  quoteHeld: bigint;
+  /**
+   * Where CROQ is sold, in the quote token's smallest unit per 1,000 CROQ: it never sells below
+   * `from`, and the last of it goes at `to`. Null for a pool with no such range.
+   */
+  range: { from: bigint; to: bigint } | null;
 }
 
 /** The croquette economy next to the collection. Amounts are whole croquettes. */

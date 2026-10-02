@@ -7,6 +7,7 @@ import type {
   DecryptionAllowance,
   DuelInfo,
   EconomyInfo,
+  MarketInfo,
   OpenedCat,
   PairInfo,
   PendingRequest,
@@ -186,7 +187,7 @@ export class IndexerClient {
       totalSupply: BigInt(e.totalSupply),
       wrapped: BigInt(e.wrapped),
       maxEatenPerDay: BigInt(e.maxEatenPerDay),
-      market: e.market ? { ...e.market, croqReserve: BigInt(e.market.croqReserve), quoteReserve: BigInt(e.market.quoteReserve) } : null,
+      market: e.market ? marketFrom(e.market) : null,
     }) as EconomyInfo);
   }
 
@@ -198,4 +199,16 @@ export class IndexerClient {
   boxPantry(tokenId: number): Promise<Indexed<BoxPantry>> {
     return this.get(`/v1/boxes/${tokenId}/pantry`, (p: Json) => ({ welcomed: p.welcomed, nextClaimAt: p.nextClaimAt, weighing: p.weighing, weighIn: weighInFrom(p.weighIn) }));
   }
+}
+
+/** An API older than the V3 pool sends neither the held amounts nor the range. */
+function marketFrom(m: Json): MarketInfo {
+  return {
+    ...m,
+    croqReserve: BigInt(m.croqReserve),
+    quoteReserve: BigInt(m.quoteReserve),
+    croqHeld: BigInt(m.croqHeld ?? m.croqReserve),
+    quoteHeld: BigInt(m.quoteHeld ?? m.quoteReserve),
+    range: m.range ? { from: BigInt(m.range.from), to: BigInt(m.range.to) } : null,
+  } as MarketInfo;
 }

@@ -91,8 +91,14 @@ export interface EconomyState {
     poolUrl: string | null;
     appUrl: string | null;
     quote: { symbol: string; decimals: number };
+    /** Constant-product reserves the pool prices with: on V3, the active range's virtual ones. */
     croqReserve: string;
     quoteReserve: string;
+    /** What the pool actually holds. */
+    croqHeld: string;
+    quoteHeld: string;
+    /** Quote units per 1,000 CROQ where the locked range starts and ends. */
+    range: { from: string; to: string } | null;
   } | null;
 }
 

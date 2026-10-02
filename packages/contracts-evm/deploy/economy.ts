@@ -1,37 +1,41 @@
-import { parseUnits } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { economyFromSpec, pantryParamsFromSpec } from "../lib/specParams";
+import { croqPriceAtTick, planSingleSided, seedSingleSided } from "../lib/uniswapV3";
 import { PAYMENT_TOKENS } from "./deploy";
 
-/** Uniswap V2 on Sepolia, from Uniswap's deployment list. Checked on-chain before use. */
-export const UNISWAP_V2: Record<string, { router: string; factory: string; weth: string }> = {
+/**
+ * Uniswap V3 on Sepolia, from Uniswap's deployment list. Checked on-chain before use: the position
+ * manager, the swap router and the quoter must all point at this factory.
+ */
+export const UNISWAP_V3: Record<string, { factory: string; positionManager: string; swapRouter: string; quoter: string }> = {
   sepolia: {
-    router: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
-    factory: "0xF62c03E08ada871A0bEb309762E260a7a6a880E6",
-    weth: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    factory: "0x0227628f3F023bb0B980b67D528571c95c6DaC1c",
+    positionManager: "0x1238536071E1c677A632429e3655c799b22cDA52",
+    swapRouter: "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+    quoter: "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",
   },
 };
 
-const ROUTER_ABI = [
-  "function factory() view returns (address)",
-  "function WETH() view returns (address)",
-  "function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) returns (uint, uint, uint)",
-];
-const USDC_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function approve(address, uint256) returns (bool)",
-  "function mint(address, uint256)",
-];
-const FACTORY_ABI = ["function getPair(address, address) view returns (address)"];
-const PAIR_ABI = ["function balanceOf(address) view returns (uint256)", "function transfer(address, uint256) returns (bool)"];
-/** LP tokens sent here are gone for good: the pool's liquidity can never be pulled. */
-export const DEAD = "0x000000000000000000000000000000000000dEaD";
+/** How the CROQ-only position is laid out, overridable from the environment. */
+export function marketParams() {
+  return {
+    /** USDC per CROQ where the range starts: the lowest price CROQ ever sells at. */
+    startPrice: process.env.LIQUIDITY_START_PRICE || "0.001",
+    /** Where the range ends, as a multiple of the start. */
+    rangeFactor: Number(process.env.LIQUIDITY_RANGE || "1000"),
+    /** 1%: the fee tier for volatile pairs. */
+    fee: Number(process.env.LIQUIDITY_FEE || "10000"),
+  };
+}
+
+const FACTORY_OF_ABI = ["function factory() view returns (address)"];
 
 /**
  * The CROQ economy: the plain token, its confidential wrapper and the Pantry, then the split
- * from the spec. Game reserve and welcome bags go into the Pantry; on a network with Uniswap V2,
- * the liquidity share opens a CROQ/USDC pool; the rest stays with the collection owner.
+ * from the spec. Game reserve and welcome bags go into the Pantry; on a network with Uniswap V3,
+ * the liquidity share opens a CROQ/USDC pool as a CROQ-only position, locked for good in the
+ * LiquidityLocker; the rest stays with the collection owner.
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -70,40 +74,56 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await execute("Pantry", { from: deployer, log: true }, "fund", reserve);
   }
 
-  const uniswap = UNISWAP_V2[hre.network.name];
+  const uniswap = UNISWAP_V3[hre.network.name];
   if (uniswap) {
     const signer = await ethers.getSigner(deployer);
-    const router = new ethers.Contract(uniswap.router, ROUTER_ABI, signer);
-    const factory = new ethers.Contract(uniswap.factory, FACTORY_ABI, signer);
-    if ((await router.factory()) !== uniswap.factory || (await router.WETH()) !== uniswap.weth) {
-      throw new Error("the Uniswap V2 router does not match the expected factory and WETH");
+    for (const periphery of [uniswap.positionManager, uniswap.swapRouter, uniswap.quoter]) {
+      const factory = await new ethers.Contract(periphery, FACTORY_OF_ABI, signer).factory!();
+      if (factory !== uniswap.factory) throw new Error(`${periphery} does not belong to the Uniswap V3 factory ${uniswap.factory}`);
     }
-    // CROQ trades against USDC, the collection's own currency. On Sepolia it is Zama's USDCMock,
-    // which anyone can mint: the deployer mints the USDC side of the pool.
+    // CROQ trades against USDC, the collection's own currency.
     const usdcAddress = PAYMENT_TOKENS[hre.network.name]?.usdc;
     if (!usdcAddress) throw new Error(`no USDC known on ${hre.network.name}`);
-    const usdc = new ethers.Contract(usdcAddress, USDC_ABI, signer);
-    let pair: string = await factory.getPair(croq.address, usdcAddress);
-    if (pair === ethers.ZeroAddress) {
-      const usdSide = parseUnits(process.env.LIQUIDITY_USDC || "4000", 6);
-      const held: bigint = await usdc.balanceOf(deployer);
-      if (held < usdSide) await (await usdc.mint(deployer, usdSide - held)).wait();
-      await (await usdc.approve(uniswap.router, usdSide)).wait();
-      await execute("Croq", { from: deployer, log: true }, "approve", uniswap.router, allocation.liquidity);
-      const deadline = Math.floor(Date.now() / 1000) + 3600;
-      const tx = await router.addLiquidity(croq.address, usdcAddress, allocation.liquidity, usdSide, allocation.liquidity, usdSide, deployer, deadline);
-      await tx.wait();
-      pair = await factory.getPair(croq.address, usdcAddress);
-      console.log(`CROQ/USDC pool  : ${pair} (${allocation.liquidity} CROQ + ${ethers.formatUnits(usdSide, 6)} USDC)`);
+    const { startPrice, rangeFactor, fee } = marketParams();
+    // Holds the position for good; the fees it earns go to the treasury.
+    const locker = await deploy("LiquidityLocker", {
+      from: deployer,
+      args: [uniswap.positionManager, treasury, process.env.COLLECTION_OWNER || deployer],
+      log: true,
+    });
+    const held = (await read("LiquidityLocker", "positions")) as bigint[];
+    const saved = await hre.deployments.getOrNull("CroqUsdcPool");
+    if (held.length === 0 || !saved) {
+      // Only CROQ goes in: the range starts at the pool's price, so buyers bring all the USDC.
+      const plan = planSingleSided({
+        croq: croq.address,
+        quote: usdcAddress,
+        croqDecimals: 0,
+        quoteDecimals: 6,
+        startPrice,
+        rangeFactor,
+        fee,
+        croqAmount: allocation.liquidity,
+      });
+      const seeded = await seedSingleSided(signer, uniswap.positionManager, locker.address, plan, console.log);
+      const startTick = plan.croqIsToken0 ? plan.tickLower : plan.tickUpper;
+      const endTick = plan.croqIsToken0 ? plan.tickUpper : plan.tickLower;
+      console.log(
+        `CROQ/USDC pool  : ${seeded.pool} (${seeded.croqIn} CROQ, 0 USDC, ` +
+          `${croqPriceAtTick(startTick, plan.croqIsToken0, 0, 6).toPrecision(4)} to ${croqPriceAtTick(endTick, plan.croqIsToken0, 0, 6).toPrecision(4)} USDC per CROQ)`,
+      );
+      await hre.deployments.save("CroqUsdcPool", {
+        address: seeded.pool,
+        abi: [],
+        linkedData: {
+          fee,
+          positionId: seeded.positionId.toString(),
+          tickLower: plan.tickLower,
+          tickUpper: plan.tickUpper,
+          croqIsToken0: plan.croqIsToken0,
+        },
+      });
     }
-    // Lock the liquidity: nobody, the deployer included, can take it back out.
-    const lp = new ethers.Contract(pair, PAIR_ABI, signer);
-    const held: bigint = await lp.balanceOf(deployer);
-    if (held > 0n) {
-      await (await lp.transfer(DEAD, held)).wait();
-      console.log(`LP tokens       : ${held} sent to ${DEAD}`);
-    }
-    await hre.deployments.save("CroqUsdcPair", { address: pair, abi: [] });
   }
 
   const owner = process.env.COLLECTION_OWNER;

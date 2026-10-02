@@ -71,7 +71,8 @@ flowchart LR
   croq["Croq<br/>ERC-20, 20M fixed"] -- "underlying" --> ccroq["ConfidentialCroq<br/>ERC-7984 wrapper, cCROQ"]
   pantry["Pantry<br/>reserve, stashes, weights,<br/>treasury share, burnt pile, weigh-ins"] -- "isOwner (trusted reader), status,<br/>vetCertified, contentsOf" --> dno
   pantry -- "confidentialTransferFrom,<br/>confidentialTransfer, wrap" --> ccroq
-  croq -- "4M + USDC" --> pair["Uniswap V2 pair<br/>CROQ/USDC"]
+  croq -- "4M, no USDC" --> pool["Uniswap V3 pool<br/>CROQ/USDC, 1%"]
+  locker["LiquidityLocker<br/>holds the position for good,<br/>fees to the treasury"] -- "owns the position" --> pool
 ```
 
 `DoNotOpen` knows the Pantry only as a trusted reader: the owner's `setTrustedReader`
@@ -90,7 +91,8 @@ flowchart LR
   user((User)) --> web["apps/web"]
   web -- "ChainAdapter calls" --> adapter["EvmFhevmAdapter"]
   adapter -- "transactions" --> wallet["Browser wallet"] --> chain["DoNotOpen, Pantry, cCROQ<br/>on the host chain"]
-  wallet --> uni["Uniswap V2 router<br/>CROQ market"]
+  wallet --> uni["Uniswap V3 SwapRouter02<br/>CROQ market"]
+  adapter -- "quotes" --> quoter["Uniswap V3 QuoterV2"]
   adapter -- "encrypted inputs<br/>(mint quantity, meal, transfer, unwrap)" --> sdk["Relayer SDK<br/>in the page"]
   adapter -- "reads" --> rpc["Public RPC"] --> chain
   chain -- "symbolic FHE ops, ACL" --> copro["Zama coprocessor"]

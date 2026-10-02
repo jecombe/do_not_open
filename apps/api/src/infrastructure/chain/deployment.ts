@@ -1,4 +1,5 @@
 import { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY } from "@dno/chain-adapter/deployments";
+import type { V3Market } from "@dno/chain-adapter/node";
 import type { InterfaceAbi } from "ethers";
 
 interface Deployed {
@@ -12,6 +13,11 @@ export interface ProtocolDeployment {
   name: string;
   explorerUrl: string | null;
   collection: Deployed & { deployBlock: number };
+  /**
+   * Where the index starts: the earliest of the protocol's contracts. The credits contract can be
+   * older than the collection when only the collection was redeployed, and its purchases count.
+   */
+  indexFrom: number;
   pantry: Deployed | null;
   croq: Deployed | null;
   cCroq: Deployed | null;
@@ -20,7 +26,8 @@ export interface ProtocolDeployment {
   credits: Deployed | null;
   /** Zama's contracts on this network, as the Relayer SDK's preset names them. */
   fhevm: FhevmConfig;
-  market: { pair: string; usdc: string } | null;
+  /** The Uniswap V3 CROQ/USDC pool and the locked position CROQ is sold from. */
+  market: V3Market | null;
   /** What one faucet call mints, on a test network. */
   usdcFaucet: bigint | null;
 }
@@ -54,13 +61,17 @@ export function deploymentFor(network: string, overrides: { address?: string; st
       abi: SEPOLIA_DEPLOYMENT.abi,
       deployBlock: overrides.startBlock ?? SEPOLIA_DEPLOYMENT.deployBlock,
     },
+    indexFrom: Math.min(
+      overrides.startBlock ?? SEPOLIA_DEPLOYMENT.deployBlock,
+      (own && SEPOLIA_DEPLOYMENT.credits?.deployBlock) || Number.MAX_SAFE_INTEGER,
+    ),
     pantry: own ? SEPOLIA_ECONOMY.pantry : null,
     croq: own ? SEPOLIA_ECONOMY.croq : null,
     cCroq: own ? SEPOLIA_ECONOMY.cCroq : null,
     ramp: own ? (SEPOLIA_DEPLOYMENT.ramp ?? null) : null,
     credits: own ? (SEPOLIA_DEPLOYMENT.credits ?? null) : null,
     fhevm: SEPOLIA_FHEVM,
-    market: own && SEPOLIA_ECONOMY.market ? { pair: SEPOLIA_ECONOMY.market.pair, usdc: SEPOLIA_ECONOMY.market.usdc } : null,
+    market: own ? SEPOLIA_ECONOMY.market : null,
     // Zama's USDCMock lets anyone mint: 100 test dollars a go.
     usdcFaucet: 100_000_000n,
   };

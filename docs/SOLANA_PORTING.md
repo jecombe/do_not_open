@@ -153,7 +153,7 @@ a box and of a duel are the ones in [FLOWS.md](FLOWS.md).
 | `mint` ... `claimEarnings`, `sendBox` | one contract call each | one instruction each, with the accounts derived from token ids |
 | `shake` decryption | EIP-712 permit + `userDecrypt` | ed25519-signed permit + the SVM SDK's user decryption |
 | `finish*` | `publicDecrypt` then a `finalize*` call | same, possibly through a proof buffer account |
-| `buyUsdc`, `trade` with `slippageBps`; `shieldUsdc`, `unshieldUsdc`, `wrap`, `unwrap` | Uniswap V2 router with a minimum out; ERC-7984 `wrap`, and `unwrap` + public decryption + `finalizeUnwrap` | a Solana AMM swap with a minimum out; the confidential token program's deposit and withdraw, the withdrawn amount made public the same way |
+| `buyUsdc`, `trade` with `slippageBps`; `shieldUsdc`, `unshieldUsdc`, `wrap`, `unwrap` | `trade`: Uniswap V3 `QuoterV2` and `SwapRouter02` with a minimum out (`buyUsdc`: the ramp, over a V2 pool); ERC-7984 `wrap`, and `unwrap` + public decryption + `finalizeUnwrap` | a Solana AMM swap with a minimum out (a concentrated-liquidity pool such as Orca Whirlpools or Raydium CLMM takes the same CROQ-only range); the confidential token program's deposit and withdraw, the withdrawn amount made public the same way |
 | steps `wallet`, `confirming`, `decrypting`, `proving` | as is | as is |
 | `ChainError.reason` | Solidity custom error name | Anchor error name, kept identical |
 | `ChainError.detail` | `held`/`needed` from a dry run (`estimateGas`) and the balances; `resumable`/`landed` after the first transaction | `simulateTransaction` for the dry run and the fee; the same flags |
@@ -174,6 +174,9 @@ Sepolia one. Nothing in `apps/web` changes except the wallet button's label.
    The croquette economy comes after: a confidential SPL token (or Zama's equivalent of
    ERC-7984) next to a plain SPL mint for markets, and a Pantry program with one weight
    account per box (encrypted weight, today's meals and amount, the weigh-in).
+   The market's liquidity locker has no FHE in it: a CROQ-only position in a
+   concentrated-liquidity pool, whose position NFT (or position account) goes to a program
+   with no withdraw instruction and a fee collect that pays the treasury.
 7. `SolanaAdapter`, then run the app in a third mode.
 8. Port the test suite: the 95 contract tests are written against behaviour, not against
    Solidity, and their names read as a specification.

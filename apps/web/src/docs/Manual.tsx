@@ -25,10 +25,12 @@ const SECTIONS = PARTS.flatMap((p) => p.sections);
 
 /** The contracts on Sepolia, as `dno:export` last wrote them. */
 const CONTRACTS = [
-  { key: "collection", address: "0xB8e3b2238eF5D5782A661c406acc928895938fBa" },
-  { key: "pantry", address: "0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed" },
-  { key: "croq", address: "0xF4d9CE55b52417e503617186e923E1c0713c53b5" },
-  { key: "ccroq", address: "0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9" },
+  { key: "collection", address: "0x5eBaA496783146f712B9c075f8a6fd56cb612C6F" },
+  { key: "pantry", address: "0xf506832ab27DF17ece72924502537ecCf7586CDB" },
+  { key: "croq", address: "0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7" },
+  { key: "ccroq", address: "0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952" },
+  { key: "pool", address: "0x399Dc7af546154998D302d0b3B312750DA962100" },
+  { key: "locker", address: "0xCA7Eee59de903F9b6bfab466667131Fb58403BF3" },
   { key: "ramp", address: "0x2754B8568a3402f828DDAa1715F8290CDa498aAb" },
   { key: "credits", address: "0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1" },
 ] as const;
@@ -359,6 +361,7 @@ export function Manual() {
             <LeakTable />
             <div className="prose">
               <p>{t("docs.croq.p8")}</p>
+              <p>{t("docs.croq.p9", { symbol: economy.token.symbol })}</p>
             </div>
           </section>
 

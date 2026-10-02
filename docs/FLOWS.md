@@ -558,14 +558,21 @@ Rules and numbers are in [CROQ.md](CROQ.md). Two more participants:
 
 ### Buy and wrap, unwrap and sell
 
+CROQ trades against USDC in a Uniswap V3 pool (1% fee) where one locked position sells
+CROQ from 0.001 USDC up. The app quotes with Uniswap's `QuoterV2`, then swaps through
+`SwapRouter02`, `exactInputSingle` wrapped in a `multicall` that carries a deadline.
+
 ```mermaid
 sequenceDiagram
   autonumber
   actor P as Player
-  participant U as Uniswap V2 router
+  participant Q as QuoterV2
+  participant U as SwapRouter02
   participant C as CROQ (ERC-20)
   participant W as cCROQ
-  P->>U: swapExactETHForTokens(min, [WETH, CROQ]) + ETH
+  P->>Q: quoteExactInputSingle(USDC, CROQ, amount, 1%) (static call)
+  Q-->>P: CROQ out
+  P->>U: multicall(deadline, [exactInputSingle(USDC, CROQ, amount, min)])
   U-->>P: CROQ (public)
   P->>C: approve(cCROQ, n)
   P->>W: wrap(player, n)
@@ -584,7 +591,7 @@ sequenceDiagram
   participant W as cCROQ
   participant R as Relayer / KMS
   participant C as CROQ (ERC-20)
-  participant U as Uniswap V2 router
+  participant U as SwapRouter02
   P->>P: encrypt n for (cCROQ, player)
   P->>W: unwrap(player, player, handle, proof)
   W->>W: burn up to n, makePubliclyDecryptable(burnt)
@@ -593,11 +600,32 @@ sequenceDiagram
   R-->>P: n + KMS proof
   P->>W: finalizeUnwrap(requestId, n, proof)
   W->>C: transfer(player, n)
-  P->>U: swapExactTokensForETH(n, min, [CROQ, WETH])
+  P->>U: multicall(deadline, [exactInputSingle(CROQ, USDC, n, min)])
 ```
 
 If the balance was short, the burn moves 0 and the decrypted amount is 0. Anyone can
 send `finalizeUnwrap`; the tokens go to the address set in the request.
+
+The pool started with CROQ only. Until someone has bought, a sale finds no USDC: the
+quoter reverts, the adapter quotes 0 and refuses the trade (`NoLiquidity`) instead of
+sending a swap that would fail. CROQ never sells below the start price.
+
+### The locked position and its fees
+
+```mermaid
+stateDiagram-v2
+  [*] --> Planned: planSingleSided (ticks, opening price)
+  Planned --> Opened: createAndInitializePoolIfNecessary
+  Opened --> Refused: the pool already trades at another price
+  Opened --> Minted: mint, CROQ only, to the deployer
+  Minted --> Locked: safeTransferFrom to LiquidityLocker
+  Locked --> Locked: collect(positionId), fees to the beneficiary
+  Refused --> [*]
+```
+
+Anyone can call `LiquidityLocker.collect(positionId)`; the fees (1% of every swap, in
+USDC and CROQ) always go to the beneficiary, the treasury. Nothing in the locker removes
+liquidity or moves the position out.
 
 ### Claim the welcome bag and the purr
 
