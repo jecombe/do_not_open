@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { formatAmount, type EconomyInfo, type Step } from "@dno/chain-adapter";
-import { useChain } from "../chain/ChainProvider";
+import { bumpLedger, useChain } from "../chain/ChainProvider";
 import { problemOf, stepCopy, type Problem } from "../chain/copy";
 import {
   canKeep,
@@ -380,6 +380,7 @@ export function ExchangeView() {
       }
     } finally {
       setTick((n) => n + 1);
+      bumpLedger();
     }
   };
 

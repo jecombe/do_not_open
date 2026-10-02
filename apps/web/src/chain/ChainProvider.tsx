@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createAdapter, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step, type WalletOption } from "@dno/chain-adapter";
 import { errorCopy, problemOf, type Problem, type ProblemContext } from "./copy";
 import { chainMode } from "./mode";
@@ -149,6 +149,26 @@ interface ActionState {
 
 const IDLE: ActionState = { busy: null, step: null, error: null };
 
+// Bumped each time an action ends, anywhere on the site: whatever shows balances reads them again.
+let ledger = 0;
+const ledgerListeners = new Set<() => void>();
+/** Tells every balance on screen to read itself again. `useAction` calls it after each action. */
+export function bumpLedger(): void {
+  ledger++;
+  for (const l of ledgerListeners) l();
+}
+
+/** A number that changes after every chain action, done or failed: something may have moved. */
+export function useLedger(): number {
+  return useSyncExternalStore(
+    (l) => {
+      ledgerListeners.add(l);
+      return () => ledgerListeners.delete(l);
+    },
+    () => ledger,
+  );
+}
+
 /**
  * Runs one chain action at a time and tracks where it is. `run` resolves to the action's
  * result, or to undefined if it failed; the reason is then in `error`, already worded, with
@@ -169,6 +189,8 @@ export function useAction() {
       console.error(`[chain] ${name} failed`, error);
       setState({ busy: null, step: null, error: problemOf(error, { ...context, collection }) });
       return undefined;
+    } finally {
+      bumpLedger();
     }
   }, [collection]);
 

@@ -541,6 +541,9 @@ export interface ChainAdapter {
   boxPantry(tokenId: number): Promise<BoxPantry>;
   /** Plain CROQ `owner` holds. Public. */
   croqBalance(owner: Address): Promise<bigint>;
+  /** The ciphertext handle of `owner`'s cCROQ balance. Public, and new after every move in or
+   *  out, like `confidentialUsdcHandle`. */
+  confidentialCroqHandle(owner: Address): Promise<string>;
   /** Decrypts the connected account's cCROQ balance, for its eyes only. */
   confidentialBalance(opts?: ActionOptions): Promise<bigint>;
   /** Pays welcome bags, then the daily purr, into the listed boxes, and the caller what waits in

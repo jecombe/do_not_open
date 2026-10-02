@@ -855,6 +855,127 @@ button {
   gap: 8px;
 }
 
+/* --- Balances: a strip of frosted glass across the masthead, the scene showing through --- */
+.balances {
+  display: flex;
+  align-items: stretch;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 4px;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: linear-gradient(180deg, rgb(233 223 200 / 0.14), rgb(233 223 200 / 0.04)), rgb(23 19 15 / 0.32);
+  border: 1px solid rgb(233 223 200 / 0.2);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 8px 24px rgb(0 0 0 / 0.3);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+}
+
+.balances::-webkit-scrollbar {
+  display: none;
+}
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 64px;
+  padding: 3px 12px 4px;
+  margin: 0;
+  background: none;
+  color: var(--manifest);
+  border: 0;
+  border-radius: 7px;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.balance + .balance {
+  box-shadow: -1px 0 0 rgb(233 223 200 / 0.12);
+}
+
+.balance-symbol {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.balance-value {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Sealed balances carry the spectral tint of anything encrypted, and decrypt on a click. */
+.balance.sealed {
+  color: var(--spectral);
+  transition: background-color 0.15s;
+}
+
+.balance.sealed:hover:not(:disabled) {
+  background: rgb(125 227 208 / 0.12);
+}
+
+.balance.sealed:disabled {
+  cursor: progress;
+}
+
+.balance.sealed.is-locked .balance-value {
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+}
+
+.balance.sealed.is-stale .balance-value {
+  opacity: 0.5;
+  text-decoration: line-through dotted;
+}
+
+.balance-lock {
+  flex-shrink: 0;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .balances {
+    background: rgb(23 19 15 / 0.78);
+  }
+}
+
+@media (max-width: 700px) {
+  .masthead {
+    flex-wrap: wrap;
+  }
+
+  /* On a phone the strip takes its own row under the stamp and the tags, and scrolls sideways. */
+  .balances {
+    order: 3;
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .balance {
+    min-width: 0;
+    padding: 2px 10px 3px;
+  }
+
+  .balance-value {
+    font-size: 15px;
+  }
+
+  /* Leaves room for that extra row: more specific than the general cap further down. */
+  body .slip {
+    max-height: calc(100dvh - var(--gutter) * 2 - 34px - 170px);
+  }
+}
+
 .menu-toggle {
   display: inline-flex;
   align-items: center;
