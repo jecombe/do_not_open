@@ -18,6 +18,7 @@ import {
   ChainError,
   sameAddress,
   type ActionOptions,
+  type SwapOptions,
   type Address,
   type AliveCheck,
   type BoxInfo,
@@ -121,6 +122,9 @@ const CUSDC_ABI = [
   "function isOperator(address holder, address spender) view returns (bool)",
   "function setOperator(address operator, uint48 until)",
   "function wrap(address to, uint256 amount)",
+  "function unwrap(address from, address to, bytes32 encryptedAmount, bytes inputProof) returns (bytes32)",
+  "function finalizeUnwrap(bytes32 unwrapRequestId, uint64 unwrapAmountCleartext, bytes decryptionProof)",
+  "event UnwrapRequested(address indexed receiver, bytes32 indexed unwrapRequestId, bytes32 amount)",
   "error ERC7984UnauthorizedSpender(address holder, address spender)",
 ];
 /** RequestKind and RequestStatus in the contract, by value. */
@@ -136,8 +140,14 @@ const DECRYPT_BATCH = 50;
 const PAIR_ABI = ["function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)", "function token0() view returns (address)"];
 /** An operator approval given to the Pantry lasts this long. */
 const OPERATOR_DAYS = 365;
-/** A trade accepts at most this much less than its quote, in basis points. */
-const SLIPPAGE_BPS = 100n;
+/** A trade accepts at most this much less than its quote, in basis points, unless told otherwise. */
+const SLIPPAGE_BPS = 100;
+/** The least a swap may promise: what is left of `quoted` after the caller's slippage. */
+function withSlippage(quoted: bigint, opts?: SwapOptions): bigint {
+  const bps = opts?.slippageBps ?? SLIPPAGE_BPS;
+  if (!Number.isInteger(bps) || bps < 1 || bps > 5_000) throw new ChainError("unknown", "Slippage must be between 0.01% and 50%.");
+  return (quoted * BigInt(10_000 - bps)) / 10_000n;
+}
 const ZERO_HANDLE = "0x" + "0".repeat(64);
 
 /** On-chain values; "opening" and "pending" come from the account's own requests. */
@@ -714,9 +724,15 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return { usdcOut: BigInt(usdcOut), fee: BigInt(fee) };
   }
 
-  async buyUsdc(coinIn: bigint, shield: boolean, opts?: ActionOptions): Promise<void> {
+  async unshieldUsdc(amount: bigint, opts?: ActionOptions): Promise<bigint> {
+    const { cUsdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    return this.unwrapFrom(cUsdc, account, amount, opts);
+  }
+
+  async buyUsdc(coinIn: bigint, shield: boolean, opts?: SwapOptions): Promise<void> {
     const ramp = this.theRamp();
-    const minOut = ((await this.quoteUsdc(coinIn)).usdcOut * (10_000n - SLIPPAGE_BPS)) / 10_000n;
+    const minOut = withSlippage((await this.quoteUsdc(coinIn)).usdcOut, opts);
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
     await this.send(opts, () => this.writer(ramp).buy!(minOut, shield, deadline, { value: coinIn }));
   }
@@ -1139,15 +1155,22 @@ export class EvmFhevmAdapter implements ChainAdapter {
   async unwrap(amount: bigint, opts?: ActionOptions): Promise<void> {
     const e = this.eco();
     const account = await this.signer().getAddress();
-    const input = await this.encrypt64(e.cCroq.address, account, amount, opts);
-    const receipt = await this.send(opts, () => this.writer(e.cCroq)["unwrap(address,address,bytes32,bytes)"]!(account, account, input.handles[0], input.inputProof));
-    const requested = this.events(receipt, "UnwrapRequested", e.cCroq.address)[0];
+    await this.unwrapFrom(e.cCroq, account, amount, opts);
+  }
+
+  /** Any ERC-7984 wrapper back to its plain token: request, public decryption, payout. Returns
+   *  what was paid out, which is 0 when the confidential balance did not cover `amount`. */
+  private async unwrapFrom(token: Deployed, account: Address, amount: bigint, opts?: ActionOptions): Promise<bigint> {
+    const input = await this.encrypt64(token.address, account, amount, opts);
+    const receipt = await this.send(opts, () => this.writer(token)["unwrap(address,address,bytes32,bytes)"]!(account, account, input.handles[0], input.inputProof));
+    const requested = this.events(receipt, "UnwrapRequested", token.address)[0];
     if (!requested) throw new ChainError("unknown", "The unwrap request was not found in the receipt.");
     const requestId: string = requested.unwrapRequestId;
     const decrypted = await this.publicDecrypt([requestId], opts);
     const cleartext = BigInt(decrypted.clearValues[requestId as `0x${string}`] as bigint);
     opts?.onStep?.("proving");
-    await this.send(opts, () => this.writer(e.cCroq).finalizeUnwrap!(requestId, cleartext, decrypted.decryptionProof), false);
+    await this.send(opts, () => this.writer(token).finalizeUnwrap!(requestId, cleartext, decrypted.decryptionProof), false);
+    return cleartext;
   }
 
   async sendCroquettes(to: Address, amount: bigint, opts?: ActionOptions): Promise<void> {
@@ -1166,11 +1189,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return amounts[amounts.length - 1]!;
   }
 
-  async trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void> {
+  async trade(side: TradeSide, amountIn: bigint, opts?: SwapOptions): Promise<void> {
     const { market, croq } = this.eco();
     if (!market) throw new ChainError("unknown", "There is no market on this network.");
     const account = await this.signer().getAddress();
-    const minOut = ((await this.quote(side, amountIn)) * (10_000n - SLIPPAGE_BPS)) / 10_000n;
+    const minOut = withSlippage(await this.quote(side, amountIn), opts);
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
     const [tokenIn, tokenOut] = side === "buy" ? [{ address: market.usdc, abi: USDC_ABI }, croq] : [croq, { address: market.usdc, abi: USDC_ABI }];
     const held: bigint = side === "buy" ? await this.reading(this.at(tokenIn).balanceOf!(account)) : amountIn;

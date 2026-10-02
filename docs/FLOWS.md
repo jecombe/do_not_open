@@ -408,7 +408,10 @@ USDC. Anywhere, `UsdcRamp.buy` swaps ETH for USDC on a public Uniswap V2 pool in
 transaction, keeping a fee of 0.3% of the ETH (set at deployment, never above 1%, withdrawn
 by the owner); with `shield`, the ramp wraps the USDC and the buyer receives cUSDC in the
 same transaction. And USDC already held is shielded as cUSDC by calling the cUSDC wrapper
-directly, which costs nothing but gas: the site takes no fee on it.
+directly, which costs nothing but gas: the site takes no fee on it. All of it happens in the
+app's bureau de change (menu, Bureau de change); the wallet slip, the Pantry and the payment
+notes only link to it with a pair already chosen. The router's `minOut` is the quote less
+the player's slippage tolerance (1% by default, 0.01% to 50%, `slippageBps` 1 to 5000).
 
 ```mermaid
 sequenceDiagram
@@ -430,6 +433,53 @@ sequenceDiagram
 
 Every amount here is public: ETH in, USDC out, and the amount wrapped. cUSDC hides what
 happens after.
+
+### Unshield: cUSDC back to plain USDC
+
+The way back is the cCROQ unwrap pattern on the cUSDC wrapper: the amount is encrypted in
+the page, burnt under encryption, then decrypted in public so plain USDC can move. No fee.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor P as Player
+  participant C as cUSDC
+  participant R as Relayer / KMS
+  participant U as USDC (ERC-20)
+  P->>P: encrypt n for (cUSDC, player)
+  P->>C: unwrap(player, player, handle, proof)
+  C->>C: burn up to n, makePubliclyDecryptable(burnt)
+  C-->>P: UnwrapRequested(player, requestId)
+  P->>R: publicDecrypt([requestId])
+  R-->>P: n + KMS proof
+  P->>C: finalizeUnwrap(requestId, n, proof)
+  C->>U: transfer(player, n)
+```
+
+A short cUSDC balance burns 0 and pays out 0: `unshieldUsdc` returns 0 and the app says
+nothing moved. The amount unshielded is public, like the amount shielded.
+
+### The bureau de change: routes over several legs
+
+Five tokens, and a direct leg only between some of them: ETH to USDC or to cUSDC (the
+ramp), USDC to and from cUSDC (shield, unshield), USDC to and from CROQ (the market), CROQ
+to and from cCROQ (wrap, unwrap). Nothing leads to ETH. Any other pair takes the shortest
+chain of legs (`apps/web/src/chain/exchange.ts`), one transaction each, sent one after the
+other.
+
+```mermaid
+flowchart LR
+  ETH -- "ramp 0.3%" --> USDC
+  ETH -- "ramp 0.3% + shield" --> cUSDC
+  USDC <-- "shield / unshield" --> cUSDC
+  USDC <-- "market" --> CROQ
+  CROQ <-- "wrap / unwrap" --> cCROQ
+```
+
+Every token in the middle of a route is plain (USDC or CROQ), so each leg spends exactly
+what the one before delivered, read as the difference in a public balance. A sealed balance
+that falls short moves 0 without a revert; if a leg delivers nothing, the run stops and says
+which token holds the funds. Minimum received compounds the slippage over every pool leg.
 
 ## Decryptions and credits
 
@@ -686,5 +736,5 @@ Nothing reaches the wallet in either case. What the dry run cannot tell (a busy
 endpoint) is left to the wallet. Wallet and endpoint failures are sorted into
 chain-neutral codes (`rejected`, `wallet-busy`, `wrong-network`, `insufficient-funds`,
 `nonce`, `network`, `reverted` with its `reason`), and the app words each one with what
-to try next: a faucet, the wallet slip, a stuck transaction to clear, the explorer link
+to try next: a faucet, the bureau de change, a stuck transaction to clear, the explorer link
 of the failed transaction.

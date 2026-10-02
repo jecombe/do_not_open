@@ -6,6 +6,8 @@ import { useT } from "./i18n/app";
 import { Masthead, type View } from "./Masthead";
 import { BoxView } from "./views/BoxView";
 import { DuelShelfView } from "./views/DuelShelfView";
+import { ExchangeView } from "./views/ExchangeView";
+import { onOpenExchange } from "./views/exchangeLink";
 import { LeaderboardView } from "./views/LeaderboardView";
 import { PairView, type PairIntent } from "./views/PairView";
 import { PantryView } from "./views/PantryView";
@@ -39,6 +41,8 @@ export function App() {
     sound.muted = muted;
   }, [sound, muted]);
   useEffect(() => () => sound.dispose(), [sound]);
+  // Any "buy" or "shield" link, anywhere, lands on the bureau de change.
+  useEffect(() => onOpenExchange(() => setView("exchange")), []);
 
   // The box view opens on one of the account's own boxes, once they are first known.
   const landed = useRef(linkedBox !== null);
@@ -91,6 +95,7 @@ export function App() {
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}
+      {view === "exchange" && <ExchangeView />}
 
       <Masthead
         view={view}

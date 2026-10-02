@@ -60,7 +60,9 @@ Details and the rest of the checks follow.
 | No `receive` or `fallback` | Pass | Plain ETH transfers to the contract revert, and no function is payable |
 | Paying from plain USDC shows the quantity | Accepted | The contract takes cUSDC only; the app's `pay: "usdc"` shields the exact price first, a public wrap. The app says so |
 | `UsdcRamp` fee is bounded and pulled | Pass | `feeBps` is an immutable checked against `MAX_FEE_BPS` (1%) in the constructor; fees accrue in the contract and only the owner withdraws them, after zeroing `fees`. Tests in `test/UsdcRamp.ts` |
-| `UsdcRamp` swaps are slippage-bounded | Pass | The caller passes `minUsdcOut` and a deadline to the router; the app asks for at most 1% under the quote. A sandwich can still take up to that 1% |
+| `UsdcRamp` swaps are slippage-bounded | Pass | The caller passes `minUsdcOut` and a deadline to the router; the app asks for at most the player's slippage tolerance under the quote, 1% by default. A sandwich can still take up to that much |
+| User-set slippage stays bounded | Pass | The bureau de change lets the player pick 0.01% to 50% (kept in `localStorage` `dno.slippage`); the adapter rejects a `SwapOptions.slippageBps` outside 1–5000 (an integer) before any transaction, for `buyUsdc` and `trade`. The bureau flags a price impact above 2% and warns in words above 5%. A wide setting is the player's choice, and the app says a bot may take it |
+| Unshielding cUSDC reveals the amount and fails silently | Accepted | `unshieldUsdc` is the wrapper's own `unwrap` + `finalizeUnwrap`, like a cCROQ unwrap: the amount is decrypted in public. A short balance burns 0 and pays out 0; the adapter returns 0 and the bureau stops a multi-leg route there, saying where the funds are. No contract of ours is involved |
 | `UsdcRamp` holds no buyer funds between calls | Pass | Unshielded USDC goes straight to the buyer; shielded USDC is wrapped to the buyer in the same call. With a wrapper `rate()` above 1, the remainder of the division would stay in the ramp: cUSDC's rate is 1 |
 
 ## 2. ACL and confidentiality

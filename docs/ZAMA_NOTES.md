@@ -308,7 +308,8 @@ Because the app only sees `ChainAdapter`, moving to it later is a change inside 
   in 0.4.1. The docs' snippets pass strings.
 - Every secret of a box is drawn on-chain. The encrypted inputs are the quantity of a
   mint (`add8`, since 2026-10-01) and croquette amounts: a meal, a confidential transfer
-  and an unwrap each carry an amount encrypted in the page with `createEncryptedInput`. Input proofs
+  and an unwrap (cCROQ, or cUSDC back to USDC: `unshieldUsdc`) each carry an amount encrypted
+  in the page with `createEncryptedInput`; an unwrap then decrypts it in public to pay it out. Input proofs
   run single-threaded; the cross-origin isolation headers that would enable threads are
   not set.
 - `createInstance` is given the read RPC URL, not `window.ethereum`, so decryption of
@@ -368,7 +369,7 @@ players, so three things keep that bill bounded:
 How much a game action costs, before the cache: a shake 2 units, a mint 5 for its input plus
 1 per id it hides among (10 by default) and 1 for the balance, a meal or a croquette send 5,
 a cUSDC payment 1 to read the balance first. An opening (2 to 5), a duel (6), a weigh-in, an
-alive check or a milestone are public decryptions: free for players, paid by the treasury.
+alive check, a milestone or an unwrap are public decryptions: free for players, paid by the treasury.
 Checked on Sepolia through a local proxy: a newcomer's 1-box mint among 1 id took 7 units
 (5 + receipt + balance), and the wallet had a player's allowance once the mint was indexed.
 Open question for Zama: is a decryption billed per value or per request?

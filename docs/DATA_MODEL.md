@@ -206,6 +206,7 @@ readable by its account. Each transfer amount is readable by its sender and reci
 | The reserve left, the total burnt | No | No | Pantry only |
 | A cCROQ balance | Its account | No | `confidentialBalanceOf` + user decryption |
 | Wrap, unwrap and market amounts | Yes | Yes | They move as a plain ERC-20 |
+| USDC shielded or unshielded (cUSDC wrap, unwrap) | Yes | Yes | Same: plain USDC moves; an unshield decrypts its amount in public first |
 
 Why nobody reads a sealed cat's weight, the holder included: `FHE.allow` cannot be
 revoked. A weight readable by its holder would stay readable by every previous holder

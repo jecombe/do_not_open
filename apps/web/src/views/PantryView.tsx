@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatAmount, type BoxPantry, type EconomyInfo, type TradeSide } from "@dno/chain-adapter";
+import { formatAmount, type BoxPantry, type EconomyInfo } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -10,6 +10,7 @@ import { ShelfScene, SHELF_CAPACITY } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
+import { openExchange } from "./exchangeLink";
 
 interface Props {
   quality: QualitySettings;
@@ -188,7 +189,7 @@ export function PantryView({ quality, sound, onSelect }: Props) {
             </Feedback>
           </>
         ) : tab === "market" ? (
-          <Market economy={economy} decimals={economy.market?.quote.decimals ?? 6} symbol={economy.market?.quote.symbol ?? "USDC"} busy={action.busy} run={action.run} onDone={(k) => void after(k, false)} />
+          <Market economy={economy} decimals={economy.market?.quote.decimals ?? 6} symbol={economy.market?.quote.symbol ?? "USDC"} busy={action.busy} />
         ) : (
           <Bridge economy={economy} hidden={hidden} plain={plain} busy={action.busy} run={action.run} onDone={(k) => void after(k)} />
         )}
@@ -225,57 +226,14 @@ function Feedback({ busy, step, error, done, children }: { busy: string | null; 
   );
 }
 
-function Market({
-  economy,
-  decimals,
-  symbol,
-  busy,
-  run,
-  onDone,
-}: {
-  economy: EconomyInfo;
-  decimals: number;
-  symbol: string;
-  busy: string | null;
-  run: Run;
-  onDone: (key: AppKey) => void;
-}) {
-  const { adapter } = useChain();
+/** The pool's price and depth. Trades happen at the bureau de change, with their quote and slippage. */
+function Market({ economy, decimals, symbol, busy }: { economy: EconomyInfo; decimals: number; symbol: string; busy: string | null }) {
   const t = useT();
-  const [side, setSide] = useState<TradeSide>("buy");
-  const [text, setText] = useState("");
-  const [quoted, setQuoted] = useState<bigint | null>(null);
   const market = economy.market;
-  const amount = parseAmount(text, side === "buy" ? decimals : 0);
-
-  useEffect(() => {
-    setQuoted(null);
-    if (!amount || !market) return;
-    let live = true;
-    const timer = setTimeout(() => {
-      adapter.quote(side, amount).then((q) => live && setQuoted(q), () => live && setQuoted(null));
-    }, 250);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [adapter, side, amount, market]);
-
   if (!market) return <p className="state-note">{t("pantry.noMarket")}</p>;
 
   // The pool's own price, before fees: coin per thousand croquettes.
   const perThousand = market.croqReserve > 0n ? (market.quoteReserve * 1000n) / market.croqReserve : 0n;
-  const trade = async () => {
-    if (!amount) return;
-    const ok = await run("trade", async (o) => {
-      await adapter.trade(side, amount, o);
-      return true;
-    });
-    if (ok) {
-      setText("");
-      onDone(side === "buy" ? "pantry.bought" : "pantry.sold");
-    }
-  };
 
   return (
     <>
@@ -294,34 +252,15 @@ function Market({
         </div>
       </dl>
       <p className="fine">{t("pantry.priceNote", { symbol, market: market.name })}</p>
-      <div className="picker" role="group" aria-label={t("pantry.tabMarket")}>
-        <button type="button" aria-pressed={side === "buy"} onClick={() => setSide("buy")} disabled={!!busy}>
+      <div className="actions">
+        <button type="button" className="plain-button" onClick={() => openExchange({ from: "usdc", to: "croq" })} disabled={!!busy}>
           {t("pantry.buy")}
         </button>
-        <button type="button" aria-pressed={side === "sell"} onClick={() => setSide("sell")} disabled={!!busy}>
+        <button type="button" className="plain-button" onClick={() => openExchange({ from: "croq", to: "usdc" })} disabled={!!busy}>
           {t("pantry.sell")}
         </button>
       </div>
-      <form
-        className="find pantry-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void trade();
-        }}
-      >
-        <label htmlFor="trade-amount">{side === "buy" ? t("pantry.payWith", { symbol }) : t("pantry.sellAmount")}</label>
-        <input id="trade-amount" inputMode="decimal" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder={side === "buy" ? "5" : "1000"} disabled={!!busy} />
-        <button type="submit" className="plain-button" disabled={!!busy || !amount}>
-          {busy === "trade" ? t("pantry.trading") : side === "buy" ? t("pantry.buy") : t("pantry.sell")}
-        </button>
-      </form>
-      <p className="fine">
-        {quoted !== null
-          ? side === "buy"
-            ? t("pantry.quoteBuy", { n: Number(quoted).toLocaleString() })
-            : t("pantry.quoteSell", { amount: coin(quoted, decimals), symbol })
-          : t("pantry.marketHint")}
-      </p>
+      <p className="fine">{t("pantry.marketHint")}</p>
       <p className="fine">
         {market.appUrl && (
           <a className="link" href={market.appUrl} target="_blank" rel="noreferrer">
@@ -362,17 +301,15 @@ function Bridge({
   const amount = parseAmount(text, 0);
   const validTo = /^0x[0-9a-fA-F]{40}$/.test(to.trim());
 
-  const go = async (name: "wrap" | "unwrap" | "send") => {
+  const send = async () => {
     if (!amount) return;
-    const ok = await run(name, async (o) => {
-      if (name === "wrap") await adapter.wrap(amount, o);
-      else if (name === "unwrap") await adapter.unwrap(amount, o);
-      else await adapter.sendCroquettes(to.trim(), amount, o);
+    const ok = await run("send", async (o) => {
+      await adapter.sendCroquettes(to.trim(), amount, o);
       return true;
     });
     if (ok) {
       setText("");
-      onDone(name === "wrap" ? "pantry.wrapped" : name === "unwrap" ? "pantry.unwrapped" : "pantry.sent");
+      onDone("pantry.sent");
     }
   };
 
@@ -384,18 +321,18 @@ function Bridge({
         <input id="bridge-amount" inputMode="numeric" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder="100" disabled={!!busy} />
       </form>
       <div className="actions">
-        <button type="button" className="plain-button" onClick={() => void go("wrap")} disabled={!!busy || !amount || (plain !== null && amount > plain)}>
-          {busy === "wrap" ? t("pantry.wrapping") : t("pantry.wrap", { plain: economy.symbol, hidden: economy.confidentialSymbol })}
+        <button type="button" className="plain-button" onClick={() => openExchange({ from: "croq", to: "ccroq", amount: amount ?? undefined })} disabled={!!busy}>
+          {t("pantry.wrap", { plain: economy.symbol, hidden: economy.confidentialSymbol })}
         </button>
-        <button type="button" className="plain-button" onClick={() => void go("unwrap")} disabled={!!busy || !amount}>
-          {busy === "unwrap" ? t("pantry.unwrapping") : t("pantry.unwrap", { plain: economy.symbol, hidden: economy.confidentialSymbol })}
+        <button type="button" className="plain-button" onClick={() => openExchange({ from: "ccroq", to: "croq", amount: amount ?? undefined })} disabled={!!busy}>
+          {t("pantry.unwrap", { plain: economy.symbol, hidden: economy.confidentialSymbol })}
         </button>
       </div>
       <form
         className="find pantry-form"
         onSubmit={(e) => {
           e.preventDefault();
-          void go("send");
+          void send();
         }}
       >
         <label htmlFor="send-to">{t("pantry.sendTo")}</label>

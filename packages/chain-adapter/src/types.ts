@@ -61,6 +61,12 @@ export interface PayOptions extends ActionOptions {
   pay?: Payment;
 }
 
+/** A swap on a public pool: the most it may come out below the quote before it reverts. */
+export interface SwapOptions extends ActionOptions {
+  /** In basis points, 1 to 5000. 100 (1%) when left out. */
+  slippageBps?: number;
+}
+
 export interface MintOptions extends PayOptions {
   /** How many token ids to hide the quantity among, from the quantity to `maxPerTx`. Public;
    *  more hide better and cost more gas. `maxPerTx` when left out. */
@@ -500,9 +506,12 @@ export interface ChainAdapter {
   shieldUsdc(amount: bigint, opts?: ActionOptions): Promise<void>;
   /** What `coinIn` (in the chain's coin) buys through the ramp, after its fee. */
   quoteUsdc(coinIn: bigint): Promise<{ usdcOut: bigint; fee: bigint }>;
-  /** Buys USDC with the chain's coin on a public pool, accepting at most 1% less than the quote.
-   *  With `shield`, it arrives as cUSDC in the same transaction. */
-  buyUsdc(coinIn: bigint, shield: boolean, opts?: ActionOptions): Promise<void>;
+  /** Buys USDC with the chain's coin on a public pool, accepting at most `slippageBps` (1% by
+   *  default) less than the quote. With `shield`, it arrives as cUSDC in the same transaction. */
+  buyUsdc(coinIn: bigint, shield: boolean, opts?: SwapOptions): Promise<void>;
+  /** cUSDC back to plain USDC: a request, a public decryption of the amount, then the payout.
+   *  Returns what arrived: 0 when the cUSDC balance did not cover `amount` (nothing moves). */
+  unshieldUsdc(amount: bigint, opts?: ActionOptions): Promise<bigint>;
 
   // --- croquettes (the Pantry) ---
   economy(): Promise<EconomyInfo>;
@@ -532,8 +541,8 @@ export interface ChainAdapter {
   sendCroquettes(to: Address, amount: bigint, opts?: ActionOptions): Promise<void>;
   /** What `amountIn` buys on the market: CROQ for USDC ("buy") or USDC for CROQ ("sell"). */
   quote(side: TradeSide, amountIn: bigint): Promise<bigint>;
-  /** Trades on the public market, accepting at most 1% less than the quote. */
-  trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void>;
+  /** Trades on the public market, accepting at most `slippageBps` (1% by default) less than the quote. */
+  trade(side: TradeSide, amountIn: bigint, opts?: SwapOptions): Promise<void>;
 
   // --- decryption credits ---
   /** The connected account's decryptions left. Null where nobody counts them (the mock, a free relayer). */
