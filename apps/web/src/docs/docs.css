@@ -809,17 +809,153 @@ h2 {
   margin: clamp(20px, 3vw, 36px) 0;
 }
 
-/* The diagrams keep their size on a phone and scroll sideways inside their frame. */
-.diagram-scroll {
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.diagram svg {
+.diagram-scroll svg {
   display: block;
   width: 100%;
-  min-width: 680px;
   height: auto;
+}
+
+/* On a phone the wide drawings would shrink past reading, so each one has a version
+   stacked top to bottom, in HTML so the words wrap in every language. */
+.diagram-phone {
+  display: none;
+  max-width: 460px;
+}
+
+@media (max-width: 720px) {
+  .diagram-scroll {
+    display: none;
+  }
+
+  .diagram-phone {
+    display: block;
+  }
+}
+
+.croq-zone {
+  padding: 12px 14px 14px;
+  border: 1.5px dashed;
+  border-radius: 14px;
+}
+
+.croq-zone-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin: 0 0 10px;
+  font-family: var(--stencil);
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.croq-zone-head small {
+  font-family: var(--label);
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgb(233 223 200 / 0.75);
+}
+
+.croq-box {
+  display: grid;
+  gap: 2px;
+  padding: 14px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.croq-box.is-dashed {
+  border-style: dashed;
+}
+
+.croq-box strong {
+  font-family: var(--stencil);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.croq-box span {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Two pipes side by side meet in the middle: down on the left, up on the right. */
+.croq-lanes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.croq-lanes.is-single {
+  grid-template-columns: 1fr;
+  padding-left: calc(50% - 8px);
+}
+
+.croq-lane {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 60px;
+}
+
+.croq-lane.is-left {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.croq-lane svg {
+  flex: none;
+  width: 16px;
+  height: 56px;
+}
+
+.croq-lane p {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.croq-lane small {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 400;
+  color: rgb(233 223 200 / 0.75);
+}
+
+.croq-note {
+  margin: 6px 0 4px;
+  font-size: 15px;
+  text-align: center;
+  color: rgb(233 223 200 / 0.75);
+}
+
+.croq-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.croq-split .croq-lane {
+  justify-content: center;
+}
+
+.croq-split .croq-box strong {
+  font-size: 19px;
+}
+
+.croq-split .croq-box span {
+  font-size: 15px;
 }
 
 .diagram figcaption {
