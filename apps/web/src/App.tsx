@@ -5,6 +5,7 @@ import { useChain } from "./chain/ChainProvider";
 import { useT } from "./i18n/app";
 import { Masthead, type View } from "./Masthead";
 import { BoxView } from "./views/BoxView";
+import { DuelShelfView } from "./views/DuelShelfView";
 import { LeaderboardView } from "./views/LeaderboardView";
 import { PairView, type PairIntent } from "./views/PairView";
 import { PantryView } from "./views/PantryView";
@@ -30,6 +31,8 @@ export function App() {
   const [focus, setFocus] = useState<number | null>(null);
   const [pair, setPair] = useState<[number, number] | null>(null);
   const [intent, setIntent] = useState<PairIntent | null>(null);
+  // The box the duel shelf offers to put up, when coming from one.
+  const [duelFocus, setDuelFocus] = useState<number | null>(null);
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
@@ -69,12 +72,19 @@ export function App() {
     setIntent(wanted);
     setView("pair");
   };
+  const showDuels = (focus: number | null = null) => {
+    setDuelFocus(focus);
+    setView("duels");
+  };
 
   const { collection, mode } = chain;
 
   return (
     <div className="app">
-      {view === "shelf" && <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} onOpenPair={(a, b) => showPair(a, b, "duel")} />}
+      {view === "shelf" && (
+        <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} onOpenPair={(a, b) => showPair(a, b, "duel")} onDuels={showDuels} />
+      )}
+      {view === "duels" && <DuelShelfView quality={quality} sound={sound} focus={duelFocus} onSelect={showBox} onFight={(mine, listed) => showPair(mine, listed, "duel")} />}
       {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onOverview={showWarehouse} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
       {view === "warehouse" && <WarehouseView quality={quality} focus={focus} onInspect={showBox} />}
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} />}
@@ -87,6 +97,7 @@ export function App() {
         onView={(v) => {
           // From the menu, the pair view offers both actions again.
           if (v === "pair") setIntent(null);
+          if (v === "duels") setDuelFocus(null);
           setView(v);
         }}
       />

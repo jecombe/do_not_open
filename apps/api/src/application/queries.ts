@@ -31,7 +31,8 @@ export interface BoxSummaryView {
 }
 
 export interface PairView {
-  openDuel: Duel | null;
+  /** Newest first: both boxes can be on the shelf at once. */
+  duels: Duel[];
   entangleProposal: { from: number; to: number; proposer: Address } | null;
 }
 
@@ -133,7 +134,7 @@ export class Queries {
     ]);
     const proposal: EntangleProposal | null = ab ?? ba;
     return {
-      openDuel: duels.find((d) => settles(d, a, b, now)) ?? null,
+      duels: duels.filter((d) => settles(d, a, b, now)),
       entangleProposal: proposal ? { from: proposal.tokenA, to: proposal.tokenB, proposer: proposal.proposer } : null,
     };
   }

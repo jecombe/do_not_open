@@ -110,8 +110,8 @@ describe("EvmFhevmAdapter with the API", () => {
 
   it("reads through the API, without touching the RPC", async () => {
     const node = new FakeNode(views);
-    const { client } = api({ "/v1/pairs/1/2": { block: 10, data: { openDuel: DUEL, entangleProposal: null } } });
-    expect((await adapter(node, client).pair(1, 2)).openDuel).toMatchObject({ duelId: 3 });
+    const { client } = api({ "/v1/pairs/1/2": { block: 10, data: { duels: [DUEL], entangleProposal: null } } });
+    expect((await adapter(node, client).pair(1, 2)).duels).toMatchObject([{ duelId: 3 }]);
     expect(node.calls).toEqual([]);
   });
 
@@ -119,7 +119,7 @@ describe("EvmFhevmAdapter with the API", () => {
     const node = new FakeNode(views);
     const { client } = api({});
     const pair = await adapter(node, client).pair(5, 6);
-    expect(pair.openDuel).toMatchObject({ duelId: 0, tokenA: 5, tokenB: 6, reserved: true, status: "open" });
+    expect(pair.duels).toMatchObject([{ duelId: 0, tokenA: 5, tokenB: 6, reserved: true, status: "open" }]);
     expect(node.calls).toContain("duelInfo");
   });
 

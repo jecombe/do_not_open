@@ -17,6 +17,7 @@ export function openWallet(): void {
 export const VIEWS = [
   { key: "shelf", label: "nav.shelf" },
   { key: "warehouse", label: "nav.boxes" },
+  { key: "duels", label: "nav.duels" },
   { key: "pair", label: "nav.pair" },
   { key: "pantry", label: "nav.pantry" },
   { key: "leaderboard", label: "nav.leaderboard" },

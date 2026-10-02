@@ -92,9 +92,9 @@ describe("reads", () => {
 
   it("finds the open duel and the proposal between two boxes", async () => {
     const { body } = await get("/v1/pairs/1/2");
-    expect(body.data.openDuel).toMatchObject({ duelId: 1, challenger: BOB, status: "open", reserved: true, tokenB: 1 });
+    expect(body.data.duels).toMatchObject([{ duelId: 1, challenger: BOB, status: "open", reserved: true, tokenB: 1 }]);
     // Box 3's duel ran out of time: nothing to settle with it.
-    expect((await get("/v1/pairs/1/3")).body.data.openDuel).toBeNull();
+    expect((await get("/v1/pairs/1/3")).body.data.duels).toEqual([]);
     expect((await get("/v1/pairs/3/2")).body.data.entangleProposal).toEqual({ from: 2, to: 3, proposer: BOB });
     expect((await get("/v1/pairs/1/1")).status).toBe(400);
   });

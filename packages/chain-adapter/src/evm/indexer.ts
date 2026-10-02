@@ -147,7 +147,7 @@ export class IndexerClient {
   }
 
   pair(a: number, b: number): Promise<Indexed<PairInfo>> {
-    return this.get(`/v1/pairs/${a}/${b}`, (p: Json) => ({ openDuel: p.openDuel ? duelFrom(p.openDuel) : null, entangleProposal: p.entangleProposal }));
+    return this.get(`/v1/pairs/${a}/${b}`, (p: Json) => ({ duels: (p.duels as Json[]).map(duelFrom), entangleProposal: p.entangleProposal }));
   }
 
   openedCats(): Promise<Indexed<OpenedCat[]>> {

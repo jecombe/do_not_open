@@ -496,13 +496,13 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const last = Number(count);
     const ids = Array.from({ length: Math.min(DUEL_SCAN, last) }, (_, i) => last - 1 - i);
     const duels = (await this.reading(Promise.all(ids.map((id) => c.duelInfo!(id))))).map((d, i) => duelFromView(ids[i]!, d));
-    const openDuel = duels.find((d) => duelSettles(d, tokenA, tokenB)) ?? null;
+    const settling = duels.filter((d) => duelSettles(d, tokenA, tokenB));
 
     // Whether the proposer still holds the box is checked, encrypted, when it is accepted.
     let entangleProposal: PairInfo["entangleProposal"] = null;
     if (BigInt(proposerAB) !== 0n) entangleProposal = { from: tokenA, to: tokenB, proposer: proposerAB };
     else if (BigInt(proposerBA) !== 0n) entangleProposal = { from: tokenB, to: tokenA, proposer: proposerBA };
-    return { openDuel, entangleProposal };
+    return { duels: settling, entangleProposal };
   }
 
   async balance(owner: Address): Promise<bigint> {

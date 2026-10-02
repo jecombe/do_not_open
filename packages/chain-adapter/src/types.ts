@@ -190,9 +190,10 @@ export interface DuelResult {
 
 /** The standing between two boxes: what the pair view needs to pick the next step. */
 export interface PairInfo {
-  /** The duel the two can settle, if any: one of them on the shelf that the other may take up
-   *  (open to all, or reserved for it), or a duel between them waiting for its outcome. */
-  openDuel: DuelInfo | null;
+  /** The duels the two can settle, newest first: one of them up for a duel that the other may
+   *  take up (open to all, or reserved for it), or a duel between them waiting for its outcome.
+   *  Both boxes can be on the shelf at once: which one to act on depends on who is asking. */
+  duels: DuelInfo[];
   /** Set when the holder of `from` proposed to entangle it with `to`. */
   entangleProposal: { from: number; to: number; proposer: Address } | null;
 }

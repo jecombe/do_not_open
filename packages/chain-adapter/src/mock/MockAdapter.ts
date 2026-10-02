@@ -248,16 +248,16 @@ export class MockAdapter implements ChainAdapter {
   }
 
   async pair(tokenA: number, tokenB: number): Promise<PairInfo> {
-    let openDuel: DuelInfo | null = null;
-    this.duelList.forEach((d, duelId) => {
-      if (duelSettles(d, tokenA, tokenB, this.seconds())) openDuel = { duelId, ...d };
-    });
+    const duels = this.duelList
+      .map((d, duelId): DuelInfo => ({ duelId, ...d }))
+      .filter((d) => duelSettles(d, tokenA, tokenB, this.seconds()))
+      .reverse();
     let entangleProposal: PairInfo["entangleProposal"] = null;
     for (const [from, to] of [[tokenA, tokenB], [tokenB, tokenA]] as const) {
       const proposer = this.proposals.get(`${from}:${to}`);
       if (proposer) entangleProposal = { from, to, proposer };
     }
-    return { openDuel, entangleProposal };
+    return { duels, entangleProposal };
   }
 
   async duels(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]> {

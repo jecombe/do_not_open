@@ -169,7 +169,7 @@ describe("MockAdapter", () => {
     const chain = await fresh();
     const shelf = await chain.duelShelf();
     expect(shelf.map((d) => [d.tokenA, d.reserved, d.status])).toEqual([[4, false, "open"], [3, false, "open"]]);
-    expect((await chain.pair(0, 3)).openDuel?.tokenA).toBe(3);
+    expect((await chain.pair(0, 3)).duels.map((d) => d.tokenA)).toEqual([3]);
   });
 
   it("takes a duel up from the shelf and settles it in one go", async () => {
@@ -216,10 +216,10 @@ describe("MockAdapter", () => {
     expect(await refusal(chain.postDuel(0, { reservedFor: 0 }))).toBe("SameBox");
     const duel = await chain.postDuel(0, { reservedFor: 5 });
     expect(duel).toMatchObject({ tokenB: 5, reserved: true, status: "pending" });
-    expect((await chain.pair(0, 5)).openDuel?.status).toBe("pending");
+    expect((await chain.pair(0, 5)).duels.map((d) => d.status)).toEqual(["pending"]);
     const result = (await chain.finishDuel(duel.duelId))!;
     expect([result.winner, result.loser].sort()).toEqual([0, 5]);
-    expect((await chain.pair(0, 5)).openDuel).toBeNull();
+    expect((await chain.pair(0, 5)).duels).toEqual([]);
   });
 
   it("lets only the named box take a reserved duel up, and nobody once it is out of time", async () => {
