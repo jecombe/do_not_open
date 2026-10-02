@@ -18,6 +18,7 @@ import {
   DuelArena,
   EntanglementThread,
   FeedEffect,
+  PetEffect,
   SPECTRAL,
   type BoxObject,
   type BoxTagSpec,
@@ -121,7 +122,10 @@ export type InspectAngle = "front" | "left" | "back" | "right" | "above";
 
 export interface BoxSceneHandle {
   shake(): void;
+  /** Croquettes rain on the lid and slip in under the front flap. */
   feed(): void;
+  /** A hand reaches in under the back flap and strokes the cat. */
+  pet(): void;
   /** Keeps the box busy while a chain action is pending; `null` lets it settle. */
   wait(stage: WaitStage | null, kind: WaitKind): void;
   /** The vet's stamp comes down on the box: green if alive, grey if not. */
@@ -158,7 +162,7 @@ const ANGLES: Record<InspectAngle, [azimuth: number, polar: number]> = {
   above: [0, 0.28],
 };
 
-/** The mail room with one box on the bench: shake it, feed it, open it, take the cat out. */
+/** The mail room with one box on the bench: shake it, pet it, feed it, open it, take the cat out. */
 export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
   const controls = useRef<CameraControls>(null);
   const opening = useRef<Opening | null>(null);
@@ -175,6 +179,7 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
       box,
       shaker: new BoxShaker(box, { reducedMotion: reducedMotion() }),
       feeder: new FeedEffect(box, reducedMotion()),
+      petter: new PetEffect(box, reducedMotion()),
       waiter: new BoxAnticipation(box, reducedMotion()),
       tags: new BoxTags(box, { reducedMotion: reducedMotion() }),
     };
@@ -191,6 +196,7 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
       vetMark.current?.dispose();
       vetMark.current = null;
       rig.feeder.dispose();
+      rig.petter.dispose();
       rig.waiter.dispose();
       rig.tags.dispose();
       rig.box.dispose();
@@ -227,6 +233,10 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
     rig.waiter.onBeat = () => sound.heartbeat();
     rig.feeder.onTick = () => sound.tick();
     rig.feeder.onEaten = () => {
+      sound.purr();
+      onFed();
+    };
+    rig.petter.onPetted = () => {
       sound.purr();
       onFed();
     };
@@ -267,6 +277,7 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
     () => ({
       shake: () => rig.shaker.shake(),
       feed: () => rig.feeder.drop(),
+      pet: () => rig.petter.pet(),
       wait: (stage, kind) => rig.waiter.set(stage, kind),
       certify: (alive) => {
         if (vetMark.current) return;
@@ -327,6 +338,7 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
     depot.update(state.clock.elapsedTime);
     rig.shaker.update(step);
     rig.feeder.update(step);
+    rig.petter.update(step);
     rig.waiter.update(step);
     vetMark.current?.update(step);
     rig.tags.update(state.clock.elapsedTime);
