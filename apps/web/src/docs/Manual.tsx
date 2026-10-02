@@ -299,6 +299,7 @@ export function Manual() {
               <p>{t("docs.exchange.p2")}</p>
               <p>{t("docs.exchange.p3", { pct: RAMP_PCT })}</p>
               <p>{t("docs.exchange.p4")}</p>
+              <p>{t("docs.exchange.p5")}</p>
             </div>
           </section>
 

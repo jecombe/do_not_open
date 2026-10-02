@@ -135,20 +135,71 @@ export interface Quote {
   amountIn: bigint;
   amountOut: bigint;
   minOut: bigint;
+  /** Plain USDC kept back from the last leg for decryption credits; 0 without a split. */
+  kept: bigint;
+  /** The least of it once slippage is counted. */
+  keptMin: bigint;
 }
+
+/**
+ * A route that ends by sealing plain USDC (or ETH bought into it) into cUSDC can keep a share
+ * of it plain: decryption credits are bought in plain USDC only.
+ */
+export const canKeep = (route: Leg[]) => {
+  const last = route[route.length - 1];
+  return last?.kind === "shield" || last?.kind === "rampShield";
+};
+
+/** The part of `amount` kept back, `keepBps` of it. */
+export const keptPart = (amount: bigint, keepBps: number) => (amount * BigInt(keepBps)) / 10_000n;
+
+/** Transactions a route takes: a ramp-and-shield split in two is two buys on the ramp. */
+export const txCount = (route: Leg[], keepBps: number) =>
+  route.length + (keepBps > 0 && route[route.length - 1]?.kind === "rampShield" ? 1 : 0);
 
 /** Slippage applied to a pool's quote, as the adapter will. */
 export const slipped = (amount: bigint, bps: number) => (amount * BigInt(10_000 - bps)) / 10_000n;
 
-/** Chains each leg's quote into the next. Pool legs ask the chain; the others are 1:1. */
-export async function quoteRoute(adapter: ChainAdapter, desk: Desk, route: Leg[], amountIn: bigint, slippageBps: number): Promise<Quote> {
+/**
+ * Chains each leg's quote into the next. Pool legs ask the chain; the others are 1:1. With
+ * `keepBps`, a route that ends in cUSDC keeps that share plain: the shield seals the rest, or
+ * the ramp buys the share plain and the rest sealed.
+ */
+export async function quoteRoute(adapter: ChainAdapter, desk: Desk, route: Leg[], amountIn: bigint, slippageBps: number, keepBps = 0): Promise<Quote> {
   const legs: LegQuote[] = [];
   let amount = amountIn;
   let floor = amountIn;
-  for (const leg of route) {
+  let kept = 0n;
+  let keptMin = 0n;
+  const split = keepBps > 0 && canKeep(route);
+  for (const [i, leg] of route.entries()) {
     let out = amount;
     let fee = 0n;
     let impact: number | null = null;
+    if (split && i === route.length - 1) {
+      const keptIn = keptPart(amount, keepBps);
+      const keptFloor = keptPart(floor, keepBps);
+      if (leg.kind === "rampShield") {
+        const [plain, sealed] = await Promise.all([adapter.quoteUsdc(keptIn), adapter.quoteUsdc(amount - keptIn)]);
+        kept = plain.usdcOut;
+        keptMin = slipped(keptIn > 0n ? (keptFloor * plain.usdcOut) / keptIn : 0n, slippageBps);
+        out = sealed.usdcOut;
+        fee = plain.fee + sealed.fee;
+        const sealedIn = amount - keptIn;
+        const minOut = slipped(sealedIn > 0n ? ((floor - keptFloor) * out) / sealedIn : 0n, slippageBps);
+        legs.push({ ...leg, amountIn: amount, amountOut: out, minOut, fee, impact });
+        amount = out;
+        floor = minOut;
+      } else {
+        // A shield is 1:1: what is not sealed stays in the wallet as it came.
+        kept = keptIn;
+        keptMin = keptFloor;
+        legs.push({ ...leg, amountIn: amount - keptIn, amountOut: amount - keptIn, minOut: floor - keptFloor, fee, impact });
+        amount -= keptIn;
+        floor -= keptFloor;
+      }
+      continue;
+    }
     if (leg.kind === "ramp" || leg.kind === "rampShield") {
       const q = await adapter.quoteUsdc(amount);
       out = q.usdcOut;
@@ -166,7 +217,7 @@ export async function quoteRoute(adapter: ChainAdapter, desk: Desk, route: Leg[]
     amount = out;
     floor = minOut;
   }
-  return { legs, amountIn, amountOut: amount, minOut: floor };
+  return { legs, amountIn, amountOut: amount, minOut: floor, kept, keptMin };
 }
 
 /** 1 − (what the trade gets) / (what the pool's current price promises), pool fee included. */
@@ -192,10 +243,17 @@ export async function publicBalance(adapter: ChainAdapter, account: Address, tok
   }
 }
 
+export interface RouteResult {
+  /** What the last leg delivered, or null when it landed in a sealed balance nobody can read for free. */
+  received: bigint | null;
+  /** Plain USDC kept back for decryption credits; 0 without a split. */
+  kept: bigint;
+}
+
 /**
  * Runs a route, leg after leg. The first leg spends `amountIn`; each next one spends what the
- * previous one actually delivered, read from the (public) balance it landed in. Returns what
- * the last leg delivered, or null when it landed in a sealed balance nobody can read for free.
+ * previous one actually delivered, read from the (public) balance it landed in. With
+ * `keepBps`, the last leg keeps that share in plain USDC (see `quoteRoute`).
  * Throws `StoppedAt` when a leg delivered nothing, so the caller can say where the money stopped.
  */
 export async function runRoute(
@@ -206,11 +264,25 @@ export async function runRoute(
   slippageBps: number,
   opts: ActionOptions,
   onLeg: (index: number) => void,
-): Promise<bigint | null> {
+  keepBps = 0,
+): Promise<RouteResult> {
   let amount = amountIn;
+  let kept = 0n;
   for (let i = 0; i < route.length; i++) {
     const leg = route[i]!;
     onLeg(i);
+    if (keepBps > 0 && i === route.length - 1 && canKeep(route)) {
+      const keptIn = keptPart(amount, keepBps);
+      if (leg.kind === "rampShield") {
+        // The plain share first: its USDC can be read, so a buy that gave nothing shows.
+        const before = await adapter.usdcBalance(account);
+        if (keptIn > 0n) await adapter.buyUsdc(keptIn, false, { ...opts, slippageBps });
+        kept = (await adapter.usdcBalance(account)) - before;
+      } else {
+        kept = keptIn;
+      }
+      amount -= keptIn;
+    }
     const before = await publicBalance(adapter, account, leg.to);
     let got: bigint | null;
     try {
@@ -229,11 +301,11 @@ export async function runRoute(
       }
     }
     if (delivered !== null && delivered <= 0n) throw new StoppedAt(i, leg);
-    if (i === route.length - 1) return delivered;
+    if (i === route.length - 1) return { received: delivered, kept };
     // Only the last leg may land in a sealed balance, so `delivered` is known here.
     amount = delivered!;
   }
-  return amount;
+  return { received: amount, kept };
 }
 
 /** What one leg delivered when the adapter says so (an unshield's decrypted amount), else null. */

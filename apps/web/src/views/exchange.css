@@ -317,6 +317,44 @@ input.crate-amount[aria-invalid="true"] {
   font-weight: 600;
 }
 
+.crate-note.crate-kept {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- The plain share of a cUSDC purchase, kept for decryption credits --- */
+.keep {
+  margin: 12px 0 0;
+  padding: 10px 12px 4px;
+  border: 2px dashed var(--ink);
+}
+
+.keep-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.keep-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.keep-row > button {
+  min-width: 58px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  font-weight: 700;
+}
+
+.keep-row > button[aria-pressed="true"],
+.keep-row > button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
 .crate:focus-within:not(.is-receive) {
   box-shadow: 0 0 0 3px var(--sodium);
 }
@@ -602,6 +640,12 @@ input.crate-amount[aria-invalid="true"] {
   font-weight: 700;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.manifest-sub {
+  display: block;
+  font-weight: 500;
+  font-size: 14px;
 }
 
 .manifest dd.is-warn {

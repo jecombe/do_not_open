@@ -481,6 +481,13 @@ what the one before delivered, read as the difference in a public balance. A sea
 that falls short moves 0 without a revert; if a leg delivers nothing, the run stops and says
 which token holds the funds. Minimum received compounds the slippage over every pool leg.
 
+A route that ends in cUSDC from plain money (`rampShield`, or a last `shield`) can keep a
+share as plain USDC, for [decryption credits](#decryptions-and-credits), which are bought in
+plain USDC only: none, 5%, 10% or 20% (`localStorage` `dno.keepUsdc`). From ETH the ramp is
+called twice, the kept share with `shield = false` first, then the rest sealed: two
+transactions, the same 0.3%. From USDC, the shield seals only the rest. The bureau shows the
+USDC kept and the credits its slippage floor buys at `DecryptionCredits.price`.
+
 ## Decryptions and credits
 
 Zama bills whoever holds the relayer API key for every value its KMS decrypts and every
