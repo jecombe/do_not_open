@@ -317,7 +317,8 @@ export class MockAdapter implements ChainAdapter {
 
   async shieldUsdc(amount: bigint, opts?: ActionOptions): Promise<void> {
     const me = this.signer();
-    if ((this.usdc.get(me) ?? 0n) < amount) throw new ChainError("insufficient-usdc", "Not enough USDC.");
+    const held = this.usdc.get(me) ?? 0n;
+    if (held < amount) throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held, needed: amount });
     await this.send(opts, "wrap");
     this.credit(this.usdc, me, -amount);
     this.credit(this.cUsdc, me, amount);
@@ -343,7 +344,9 @@ export class MockAdapter implements ChainAdapter {
   private async prepay(opts: PayOptions | undefined, amount: bigint): Promise<void> {
     const me = this.signer();
     if (opts?.pay === "usdc") await this.shieldUsdc(amount, opts);
-    else if ((this.cUsdc.get(me) ?? 0n) < amount) throw new ChainError("unpaid", "The cUSDC balance does not cover the price.");
+    else if ((this.cUsdc.get(me) ?? 0n) < amount) {
+      throw new ChainError("unpaid", "The cUSDC balance does not cover the price.", undefined, { held: this.cUsdc.get(me) ?? 0n, needed: amount });
+    }
   }
 
   /** Pulls `amount` cUSDC: all of it, or nothing. Returns whether it arrived. */
@@ -785,7 +788,9 @@ export class MockAdapter implements ChainAdapter {
     const me = this.signer();
     if (amountIn <= 0n) throw revert("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
     if (side === "sell" && (this.plain.get(me) ?? 0n) < amountIn) throw revert("ERC20InsufficientBalance");
-    if (side === "buy" && (this.usdc.get(me) ?? 0n) < amountIn) throw new ChainError("insufficient-usdc", "Not enough USDC.");
+    if (side === "buy" && (this.usdc.get(me) ?? 0n) < amountIn) {
+      throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held: this.usdc.get(me) ?? 0n, needed: amountIn });
+    }
     const out = await this.quote(side, amountIn);
     await this.send(opts, "swapExactTokensForTokens");
     if (side === "buy") {

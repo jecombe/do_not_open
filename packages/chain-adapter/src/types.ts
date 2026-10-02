@@ -216,7 +216,10 @@ export type ChainErrorCode =
   | "not-connected"
   /** The user said no in the wallet. */
   | "rejected"
+  /** The wallet already has a request open (a connection, a signature) the user has not answered. */
+  | "wallet-busy"
   | "wrong-network"
+  /** Not enough of the chain's coin for the gas. `detail` says how much it held and needed. */
   | "insufficient-funds"
   /** Not enough plain USDC for the price. */
   | "insufficient-usdc"
@@ -228,7 +231,31 @@ export type ChainErrorCode =
   | "reverted"
   /** The decryption service failed or timed out. */
   | "decryption"
+  /** The chain's endpoint, or the decryption service, could not be reached or turned the request
+   *  away (rate limit, timeout). Nothing was sent, or what was sent may still go through. */
+  | "network"
+  /** The wallet's account has an earlier transaction stuck, or the wallet's nonce is off. */
+  | "nonce"
   | "unknown";
+
+/** What an error knows beyond its code, for the app to word a way out. */
+export interface ChainErrorDetail {
+  /** The transaction that failed, or the last one that went through, in a block explorer. */
+  txUrl?: string | null;
+  /** The action's first transaction went through and only a later step failed (a decryption,
+   *  the proof, a declined second signature). Running the same action again picks it up from
+   *  there, without paying twice. */
+  resumable?: boolean;
+  /** The transaction went through and did what it does, but the step after it failed (reading the
+   *  result back): sending it again would do it twice. */
+  landed?: boolean;
+  /** The transaction made it into a block and failed there: its gas was spent. */
+  mined?: boolean;
+  /** For `insufficient-funds`, in the chain's coin; for `insufficient-usdc` and `unpaid`, in the
+   *  payment token. Smallest units. Either may be missing. */
+  held?: bigint;
+  needed?: bigint;
+}
 
 export class ChainError extends Error {
   constructor(
@@ -236,9 +263,15 @@ export class ChainError extends Error {
     message: string,
     /** Contract error name for `reverted`, e.g. "NotHolder". */
     readonly reason?: string,
+    readonly detail: ChainErrorDetail = {},
   ) {
     super(message);
     this.name = "ChainError";
+  }
+
+  /** The same error, with more detail. */
+  with(detail: ChainErrorDetail): ChainError {
+    return new ChainError(this.code, this.message, this.reason, { ...this.detail, ...detail });
   }
 }
 

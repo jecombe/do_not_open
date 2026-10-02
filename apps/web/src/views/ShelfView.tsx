@@ -12,6 +12,7 @@ import type { PairIntent } from "./PairView";
 import { PayWith } from "./PayWith";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
+import { ProblemNote } from "./ProblemNote";
 
 interface Props {
   quality: QualitySettings;
@@ -98,7 +99,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
 
   const mint = async () => {
     sound.resume();
-    const got = await action.run("mint", (o) => adapter.mint(quantity, { ...o, pay, ids: among }));
+    const got = await action.run("mint", (o) => adapter.mint(quantity, { ...o, pay, ids: among }), { landed: "problem.landedMint" });
     if (!got) return;
     setArrived(got);
     // Boxes never looked up yet: the shelf would stay on "Show my boxes" and hide the new ones.
@@ -248,7 +249,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
 
             <div className="felt" aria-live="polite">
               {action.error ? (
-                <p className="fine problem">{action.error}</p>
+                <ProblemNote problem={action.error} />
               ) : action.busy ? (
                 <p className="fine">{stepCopy(action.step, action.busy === "mint" || action.busy === "collect")}</p>
               ) : arrived.length ? (

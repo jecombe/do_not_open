@@ -2,11 +2,14 @@ import {
   Contract,
   Interface,
   isError,
+  VoidSigner,
   type ContractTransactionReceipt,
   type ContractTransactionResponse,
   type InterfaceAbi,
   type Provider,
   type Signer,
+  type TransactionRequest,
+  type TransactionResponse,
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
 import { duelSettles, duelUnderway, onShelf } from "../duels";
@@ -45,6 +48,7 @@ import {
   type WalletOption,
   type WeighIn,
 } from "../types";
+import { toChainError } from "./errors";
 import type { IndexedTransfer, IndexerClient } from "./indexer";
 import type { ChainParams, WalletSource } from "./wallet";
 
@@ -216,6 +220,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private readonly listeners = new Set<(account: Address | null) => void>();
   private relayer: Promise<Relayer> | null = null;
   private permit: Permit | null = null;
+  /** Set only while a dry run builds its transaction: `writer` hands it out instead of the wallet. */
+  private dry: DrySigner | null = null;
   private constants: Promise<{ fees: Fees; maxSupply: number; maxPerTx: number; milestones: number[] }> | null = null;
   private holdings: Holdings | null = null;
   /** The connected account's pending requests, read once until its next transaction. */
@@ -632,8 +638,9 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const { cUsdc } = await this.payment();
     const account = await this.signer().getAddress();
     if (opts?.pay === "usdc") await this.shieldUsdc(amount, opts);
-    else if ((await this.confidentialUsdcBalance(opts)) < amount) {
-      throw new ChainError("unpaid", "The cUSDC balance does not cover the price. Shield some USDC first.");
+    else {
+      const held = await this.confidentialUsdcBalance(opts);
+      if (held < amount) throw new ChainError("unpaid", "The cUSDC balance does not cover the price. Shield some USDC first.", undefined, { held, needed: amount });
     }
     await this.ensureOperator(cUsdc, account, this.opts.address, opts);
   }
@@ -642,7 +649,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private async request(opts: ActionOptions | undefined, call: (c: Contract) => Promise<ContractTransactionResponse>): Promise<number> {
     const receipt = await this.send(opts, call);
     const requestId = Number(this.events(receipt, "RequestPlaced")[0]!.requestId);
-    await this.finishRequest(requestId, opts);
+    await this.afterSent("resumable", () => this.finishRequest(requestId, opts));
     return requestId;
   }
 
@@ -670,7 +677,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const { usdc, cUsdc } = await this.payment();
     const account = await this.signer().getAddress();
     const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
-    if (held < amount) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.");
+    if (held < amount) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: amount });
     await this.ensureAllowance(usdc, cUsdc.address, account, amount, opts);
     await this.send(opts, () => this.writer(cUsdc).wrap!(account, amount));
   }
@@ -709,7 +716,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const receipt = await this.send(opts, (c) => c.mint!(input.handles[0], input.inputProof, ids));
     // The new ids that are the account's: its receipts say, and only it can read them.
     const transfers = this.events(receipt, "ConfidentialTransfer");
-    const moved = await this.decryptBools(transfers.map((t) => String(t.moved)), opts);
+    const moved = await this.afterSent("landed", () => this.decryptBools(transfers.map((t) => String(t.moved)), opts));
     const owned = transfers.filter((t) => moved.get(String(t.moved))).map((t) => Number(t.tokenId));
     if (this.holdings?.account === account) for (const id of owned) this.holdings.held.add(id);
     if (!owned.length) throw new ChainError("unpaid", "No box this time: sold out, or the cUSDC did not cover it. Nothing was taken.");
@@ -730,7 +737,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async shake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll> {
     await this.send(opts, (c) => c.shake!(tokenId));
-    const roll = await this.readShake(tokenId, opts);
+    const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
     if (!roll) throw new ChainError("not-yours", "This box is not yours: shaking it showed nothing.");
     return roll;
   }
@@ -739,7 +746,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const { fees } = await this.collection();
     await this.prepay(opts, fees.paidShake);
     await this.send(opts, (c) => c.paidShake!(tokenId));
-    const roll = await this.readShake(tokenId, opts);
+    const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
     if (!roll) throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
     return roll;
   }
@@ -790,7 +797,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const reserved = opts?.reservedFor !== undefined;
     const receipt = await this.send(opts, (c) => c.postDuel!(tokenA, opts?.reservedFor ?? 0, reserved));
     const duelId = Number(this.events(receipt, "DuelPosted")[0]!.duelId);
-    await this.finishDuel(duelId, opts);
+    await this.afterSent("resumable", () => this.finishDuel(duelId, opts));
     const duel = await this.duelInfo(duelId);
     if (duel.status === "void") throw new ChainError("not-yours", "This box is not yours: it did not go on the duel shelf.");
     return duel;
@@ -802,7 +809,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async acceptDuel(duelId: number, tokenB: number, opts?: ActionOptions): Promise<DuelResult | null> {
     await this.send(opts, (c) => c.acceptDuel!(duelId, tokenB));
-    const result = await this.finishDuel(duelId, opts);
+    const result = await this.afterSent("resumable", () => this.finishDuel(duelId, opts));
     if (!result && (await this.duelInfo(duelId)).status === "open") {
       throw new ChainError("not-yours", "This box is not yours: the duel went back on the shelf.");
     }
@@ -1072,17 +1079,16 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const account = await this.signer().getAddress();
     const minOut = ((await this.quote(side, amountIn)) * (10_000n - SLIPPAGE_BPS)) / 10_000n;
     const deadline = Math.floor(Date.now() / 1000) + 20 * 60;
-    const router = this.writer({ address: market.router, abi: ROUTER_ABI });
     const [tokenIn, tokenOut] = side === "buy" ? [{ address: market.usdc, abi: USDC_ABI }, croq] : [croq, { address: market.usdc, abi: USDC_ABI }];
-    if (side === "buy" && (await this.reading(this.at(tokenIn).balanceOf!(account))) < amountIn) {
-      throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.");
-    }
+    const held: bigint = side === "buy" ? await this.reading(this.at(tokenIn).balanceOf!(account)) : amountIn;
+    if (held < amountIn) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: amountIn });
     await this.ensureAllowance(tokenIn, market.router, account, amountIn, opts);
-    await this.send(opts, () => router.swapExactTokensForTokens!(amountIn, minOut, [tokenIn.address, tokenOut.address], account, deadline));
+    const router = { address: market.router, abi: ROUTER_ABI };
+    await this.send(opts, () => this.writer(router).swapExactTokensForTokens!(amountIn, minOut, [tokenIn.address, tokenOut.address], account, deadline));
   }
 
   private writer(deployed: Deployed): Contract {
-    return new Contract(deployed.address, deployed.abi, this.signer());
+    return new Contract(deployed.address, deployed.abi, this.dry ?? this.signer());
   }
 
   private async ensureAllowance(token: Deployed, spender: string, account: Address, amount: bigint, opts?: ActionOptions): Promise<void> {
@@ -1127,13 +1133,18 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return signer;
   }
 
-  /** Sends one transaction and waits until the read provider has seen its block. */
+  /**
+   * Sends one transaction and waits until the read provider has seen its block. `call` is played
+   * twice, a dry run first: it must reach for its contract through its argument or `writer`, in
+   * its own body, never through a contract built beforehand with the wallet's signer.
+   */
   private async send(
     opts: ActionOptions | undefined,
     call: (contract: Contract) => Promise<ContractTransactionResponse>,
     announce = true,
   ): Promise<ContractTransactionReceipt> {
     const signer = this.signer();
+    await this.dryRun(await signer.getAddress(), call);
     let sent: TxRecord | null = null;
     try {
       if (announce) opts?.onStep?.("wallet");
@@ -1154,7 +1165,59 @@ export class EvmFhevmAdapter implements ChainAdapter {
       return receipt;
     } catch (error) {
       if (sent) opts?.onTx?.({ ...sent, status: "failed" });
-      throw this.toChainError(error);
+      throw this.toChainError(error).with(sent ? { txUrl: sent.url } : {});
+    }
+  }
+
+  /**
+   * Plays a transaction against the read endpoint before the wallet sees it, so a refusal comes
+   * back with the contract's own error name (wallets often drop it), and checks the account holds
+   * enough of the chain's coin for the gas. Anything else this cannot tell (a busy endpoint) is
+   * left to the wallet.
+   */
+  private async dryRun(account: Address, call: (contract: Contract) => Promise<ContractTransactionResponse>): Promise<void> {
+    let tx: TransactionRequest;
+    try {
+      let pending: Promise<unknown>;
+      this.dry = new DrySigner(account, this.opts.readProvider);
+      try {
+        // `call` reaches for a signer synchronously: through the contract it is given, or `writer`.
+        pending = call(this.contract.connect(this.dry) as Contract);
+      } finally {
+        this.dry = null;
+      }
+      await pending;
+      return;
+    } catch (error) {
+      if (!(error instanceof DryRun)) {
+        const e = this.toChainError(error);
+        if ((e.code === "reverted" && e.reason) || e.code === "insufficient-funds") throw e;
+        return;
+      }
+      tx = error.tx;
+    }
+    try {
+      const [held, fees] = await Promise.all([this.opts.readProvider.getBalance(account), this.opts.readProvider.getFeeData()]);
+      const price = fees.gasPrice ?? fees.maxFeePerGas;
+      if (price === null || tx.gasLimit == null) return;
+      const needed = BigInt(tx.gasLimit) * price + BigInt(tx.value ?? 0);
+      if (held < needed) throw new ChainError("insufficient-funds", "Not enough funds for the gas.", undefined, { held, needed });
+    } catch (error) {
+      if (error instanceof ChainError) throw error;
+    }
+  }
+
+  /**
+   * Runs what follows an action's first transaction. A failure there is marked: "resumable" when
+   * running the action again picks it up where it stopped, "landed" when it would do it twice.
+   * The answers of the encrypted checks (`not-yours`, `unpaid`) are final, and left as they are.
+   */
+  private async afterSent<T>(how: "resumable" | "landed", run: () => Promise<T>): Promise<T> {
+    try {
+      return await run();
+    } catch (error) {
+      const e = this.toChainError(error);
+      throw e.code === "not-yours" || e.code === "unpaid" ? e : e.with({ [how]: true });
     }
   }
 
@@ -1254,25 +1317,21 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   private toChainError(error: unknown): ChainError {
-    if (error instanceof ChainError) return error;
-    if (isError(error, "ACTION_REJECTED")) return new ChainError("rejected", "The request was declined in the wallet.");
-    if (isError(error, "INSUFFICIENT_FUNDS")) return new ChainError("insufficient-funds", "Not enough funds for this transaction.");
-    if (isError(error, "CALL_EXCEPTION")) {
-      let reason = error.revert?.name;
-      if (!reason && error.data && error.data !== "0x") {
-        for (const iface of this.ifaces) {
-          try {
-            reason = iface.parseError(error.data)?.name;
-          } catch {
-            // Not one of this contract's errors.
-          }
-          if (reason) break;
-        }
-      }
-      return new ChainError("reverted", reason ? `The contract refused: ${reason}.` : (error.shortMessage ?? "The contract refused."), reason);
-    }
-    const e = error as { shortMessage?: string; message?: string; info?: { error?: { code?: number } } };
-    if (e.info?.error?.code === 4001) return new ChainError("rejected", "The request was declined in the wallet.");
-    return new ChainError("unknown", e.shortMessage ?? e.message ?? "Something went wrong.");
+    return toChainError(error, this.ifaces);
+  }
+}
+
+/** What a dry run ends with when the transaction would have gone through: the transaction, filled. */
+class DryRun extends Error {
+  constructor(readonly tx: TransactionRequest) {
+    super("dry run");
+  }
+}
+
+/** A signer that fills a transaction against the read endpoint (estimating its gas, which plays
+ *  it) and stops there. */
+class DrySigner extends VoidSigner {
+  override async sendTransaction(tx: TransactionRequest): Promise<TransactionResponse> {
+    throw new DryRun(await this.populateTransaction(tx));
   }
 }

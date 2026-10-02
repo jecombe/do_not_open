@@ -20,6 +20,7 @@ import { StepTracker, type PlannedStep } from "./StepTracker";
 import { FindMine } from "./FindMine";
 import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
+import { ProblemNote } from "./ProblemNote";
 
 interface Props {
   quality: QualitySettings;
@@ -410,7 +411,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               )}
             </div>
             {action.error ? (
-              <p className="fine problem">{action.error}</p>
+              <ProblemNote problem={action.error} />
             ) : action.busy === "weigh" ? (
               <>
                 <StepTracker key="weigh" plan={kitchen?.weighing === "pending" ? resumed(PLANS.weigh!) : PLANS.weigh!} step={action.step} />
@@ -555,7 +556,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
 
             <div className="felt" aria-live="polite">
               {action.error ? (
-                <p className="fine problem">{action.error}</p>
+                <ProblemNote problem={action.error} />
               ) : action.busy ? (
                 <>
                   {PLANS[action.busy] && (

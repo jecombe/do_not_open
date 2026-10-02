@@ -155,6 +155,7 @@ a box and of a duel are the ones in [FLOWS.md](FLOWS.md).
 | `finish*` | `publicDecrypt` then a `finalize*` call | same, possibly through a proof buffer account |
 | steps `wallet`, `confirming`, `decrypting`, `proving` | as is | as is |
 | `ChainError.reason` | Solidity custom error name | Anchor error name, kept identical |
+| `ChainError.detail` | `held`/`needed` from a dry run (`estimateGas`) and the balances; `resumable`/`landed` after the first transaction | `simulateTransaction` for the dry run and the fee; the same flags |
 
 Then add `"solana"` to `ChainMode` in `src/index.ts` and a dynamic import next to the
 Sepolia one. Nothing in `apps/web` changes except the wallet button's label.

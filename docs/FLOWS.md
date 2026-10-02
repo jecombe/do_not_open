@@ -596,8 +596,28 @@ Every two-step action can be picked up later, by anyone:
 | Left in | Shown in the app | Adapter call |
 | --- | --- | --- |
 | An opening, alive check or entanglement request `Pending` | The shelf lists the account's pending requests (`pendingRequests`); "Finish" | `finishRequest(requestId)`, or `finishObserve` / `finishProveAlive` for one box |
-| Duel `Posted` (holding not proven) | Pair view: "Prove you hold it" | `finishDuel` (returns null) |
+| Duel `Posted` (holding not proven) | Pair view: "Prove you hold it"; duel shelf: "Waiting for your proof", "Finish it" | `finishDuel` (returns null) |
 | Duel `Pending` | "Reveal the result" | `finishDuel` (returns null for a void or reopened duel) |
 | A milestone reached, not announced | Announced after the next mint through the app | `announceMilestone` |
 | Box revealed, not weighed | "Weigh the cat" | `weigh` |
 | Weigh-in pending | "Weigh the cat" | `weigh` (picks up the pending one: `finalizeWeigh`) |
+
+When the step after the first transaction fails (the decryption service is slow, the
+user declines the proof's signature), the adapter marks the `ChainError` `resumable`,
+and the app says the first transaction went through and where to finish it, so nobody
+pays twice. When the transaction itself did its work and only reading the result back
+failed (a mint, a shake), the error is marked `landed` and the app says not to send it
+again.
+
+### Errors, before and after the wallet
+
+The EVM adapter plays every transaction against the read endpoint before the wallet
+sees it (`estimateGas` through a signer that stops there). A refusal comes back with the
+contract's own error name, which wallets often drop, and the account's balance is
+checked against the gas: `insufficient-funds` carries what it holds and what it needs.
+Nothing reaches the wallet in either case. What the dry run cannot tell (a busy
+endpoint) is left to the wallet. Wallet and endpoint failures are sorted into
+chain-neutral codes (`rejected`, `wallet-busy`, `wrong-network`, `insufficient-funds`,
+`nonce`, `network`, `reverted` with its `reason`), and the app words each one with what
+to try next: a faucet, the wallet slip, a stuck transaction to clear, the explorer link
+of the failed transaction.

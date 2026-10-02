@@ -536,6 +536,28 @@ button {
   font-weight: 600;
 }
 
+.problem-note .problem {
+  margin-bottom: 0;
+}
+
+.problem-hints {
+  margin: 0;
+  padding: 6px 8px 6px 26px;
+  border-left: 4px solid var(--ink-red);
+  background: rgb(194 38 29 / 0.04);
+}
+
+.problem-hints li + li {
+  margin-top: 4px;
+}
+
+.problem-ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
