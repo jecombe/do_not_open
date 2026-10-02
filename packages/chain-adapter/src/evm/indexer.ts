@@ -109,6 +109,23 @@ export class IndexerClient {
     }
   }
 
+  /** Files a signed release form with the API, which checks the signature and keeps it. */
+  async recordTerms(address: Address, message: string, signature: string): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 6000);
+    try {
+      const res = await (this.opts.fetch ?? fetch)(`${this.baseUrl}/v1/terms`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address, message, signature }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`API ${res.status} on /v1/terms`);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   /** Tells the indexer a transaction just went through, so it looks sooner. Never fails, at most once every few seconds. */
   nudge(): void {
     if (this.now() - this.lastNudge < 3000 || !this.available()) return;

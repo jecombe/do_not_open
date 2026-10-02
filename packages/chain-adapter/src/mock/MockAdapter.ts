@@ -6,6 +6,7 @@ import {
   sameAddress,
   type ActionOptions,
   type SwapOptions,
+  type SignedTerms,
   type Address,
   type AliveCheck,
   type BoxInfo,
@@ -827,6 +828,16 @@ export class MockAdapter implements ChainAdapter {
     // Past the end of the range the pool takes only what it needed.
     this.credit(paid, me, -swap.used);
     this.credit(got, me, swap.out);
+  }
+
+  /** No wallet in the demo: a stand-in signature, derived from the message, kept by the browser only. */
+  async signTerms(message: string): Promise<SignedTerms> {
+    const account = this.signer();
+    await this.wait(1);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < message.length; i++) h = Math.imul(h ^ message.charCodeAt(i), 0x01000193) >>> 0;
+    const signature = `0x${h.toString(16).padStart(8, "0").repeat(16)}1b`;
+    return { account, message, signature, recorded: false };
   }
 
   /** The demo has no relayer, so nobody counts its decryptions. */

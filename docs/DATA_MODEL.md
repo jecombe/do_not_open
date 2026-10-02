@@ -159,6 +159,21 @@ the API, which keeps three things in Postgres:
 
 A purchase is public: it shows which account bought how many credits.
 
+## Release forms
+
+Before playing, a player signs the terms of play with their wallet (EIP-191, off-chain, no
+gas; see [FLOWS.md](FLOWS.md#release-form-before-the-first-box)). Nothing is stored on-chain.
+The API files the signature in Postgres when it is configured:
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `terms_acceptances` | `address`, `version`, `hash` (SHA-256 of the English text), the exact `message` and `signature`, `received_at`; one row per address and version, the first signature kept | no: not on the chain, so `replayAll` leaves it alone |
+
+The browser keeps its own record too (`localStorage` `dno.terms.<version>`: the initialed
+clauses and the signatures by address). What this tells the backend: that an address
+accepted a version of the terms, and when. Nothing about what it holds; no IP is stored.
+`GET /v1/terms/:address` answers it to anyone.
+
 ## Croquettes
 
 The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CROQ.md).

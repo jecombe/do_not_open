@@ -1825,3 +1825,8 @@ button {
 .slip-exchange .plain-button {
   font-size: 16px;
 }
+
+/* --- Duels tab: the open shelf and two boxes face to face --- */
+.duel-tabs {
+  margin: 0 0 10px;
+}

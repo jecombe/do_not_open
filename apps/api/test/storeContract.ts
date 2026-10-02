@@ -141,6 +141,15 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       expect(await store.takeNonce(BOB)).toBeNull();
     });
 
+    it("files one release form per address and version, and keeps the first", async () => {
+      const a = { address: ALICE, version: "v1", hash: "ab".repeat(32), message: "m1", signature: "0x01", receivedAt: 100 };
+      expect(await store.saveTermsAcceptance(a)).toBeNull();
+      expect(await store.saveTermsAcceptance({ ...a, signature: "0x02", receivedAt: 200 })).toEqual(a);
+      await store.saveTermsAcceptance({ ...a, version: "v2", receivedAt: 300 });
+      expect((await store.termsAcceptances(ALICE)).map((x) => [x.version, x.signature])).toEqual([["v1", "0x01"], ["v2", "0x01"]]);
+      expect(await store.termsAcceptances(BOB)).toEqual([]);
+    });
+
     it("stores events with their enrichment, pages them in chain order, and deletes them by key", async () => {
       const contents = { seed: "1", state: 0, traits: [1, 2, 3, 4, 5], score: 9, affection: 4, golden: false };
       const a = ev("Observed", 20, { tokenId: 1, openedBy: ALICE, seed: "1", state: 0, score: 9, golden: false }, { logIndex: 3 });

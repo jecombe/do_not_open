@@ -5,6 +5,7 @@ import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
+import type { TermsAcceptance } from "../terms";
 
 export interface EntangleProposal {
   tokenA: number;
@@ -142,6 +143,11 @@ export interface Store extends ReadStore {
   /** One-shot sign-in challenges. `takeNonce` deletes it, so a signature cannot be replayed. */
   saveNonce(address: Address, nonce: string, expiresAt: number): Promise<void>;
   takeNonce(address: Address): Promise<{ nonce: string; expiresAt: number } | null>;
+  /** Files a signed release form. Not a read model: a replay keeps it. Returns the one already
+   *  filed for that address and version, if any, and then keeps it instead. */
+  saveTermsAcceptance(a: TermsAcceptance): Promise<TermsAcceptance | null>;
+  /** Every version of the terms the address signed, oldest first. */
+  termsAcceptances(address: Address): Promise<TermsAcceptance[]>;
   /**
    * The relayer meter of an account on a UTC day. Not a read model: a replay of the chain keeps
    * it. `apply` sees the meter, locked against concurrent calls, and returns what to add to it,

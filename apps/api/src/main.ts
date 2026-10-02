@@ -3,6 +3,7 @@ import pg from "pg";
 import pino from "pino";
 import { AskManual } from "./application/askManual";
 import { SignIn } from "./application/auth";
+import { AcceptTerms } from "./application/terms";
 import type { Store } from "./application/ports/store";
 import { Metadata } from "./application/metadata";
 import { Queries } from "./application/queries";
@@ -102,6 +103,7 @@ async function main() {
           queries,
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, "")),
           signIn,
+          terms: new AcceptTerms(store, ethersVerifier, clock),
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           chat,

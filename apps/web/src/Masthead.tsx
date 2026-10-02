@@ -5,6 +5,7 @@ import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
 import { openExchange } from "./views/exchangeLink";
+import { openTerms } from "./terms/terms";
 import { TxPending } from "./views/TxPending";
 import { ProblemNote } from "./views/ProblemNote";
 
@@ -18,15 +19,14 @@ export const VIEWS = [
   { key: "shelf", label: "nav.shelf" },
   { key: "warehouse", label: "nav.boxes" },
   { key: "duels", label: "nav.duels" },
-  { key: "pair", label: "nav.pair" },
   { key: "pantry", label: "nav.pantry" },
   { key: "exchange", label: "nav.exchange" },
   { key: "leaderboard", label: "nav.leaderboard" },
   { key: "specimens", label: "nav.specimens" },
 ] as const satisfies readonly { key: string; label: AppKey }[];
-/** "box" is one box looked at closely: it sits under "See boxes" in the menu. */
-export type View = (typeof VIEWS)[number]["key"] | "box";
-const menuKey = (view: View) => (view === "box" ? "warehouse" : view);
+/** "box" is one box looked at closely: it sits under "See boxes" in the menu; "pair" is two boxes face to face, under "Duels". */
+export type View = (typeof VIEWS)[number]["key"] | "box" | "pair";
+const menuKey = (view: View) => (view === "box" ? "warehouse" : view === "pair" ? "duels" : view);
 
 /**
  * The stamp on the left; on the right, a small wallet tag and one manila tag
@@ -168,6 +168,17 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
               ))}
               <li className="menu-rule">
                 <a href="/docs.html">{t("nav.manual")}</a>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    openTerms();
+                  }}
+                >
+                  {t("nav.terms")}
+                </button>
               </li>
               <li>
                 <a href="/">{t("nav.home")}</a>

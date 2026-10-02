@@ -17,7 +17,7 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
  * part about the testnet, which goes away at mainnet; and the part for developers.
  */
 export const PARTS = [
-  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "exchange", "transfer", "croquettes"] },
+  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "exchange", "transfer", "croquettes", "terms"] },
   { key: "testnet", sections: ["testnet"] },
   { key: "dev", sections: ["code", "solana", "more"] },
 ] as const;
@@ -363,6 +363,15 @@ export function Manual() {
             <div className="prose">
               <p>{t("docs.croq.p8")}</p>
               <p>{t("docs.croq.p9", { symbol: economy.token.symbol })}</p>
+            </div>
+          </section>
+
+          <section id="terms">
+            <h2>{t("docs.section.terms")}</h2>
+            <div className="prose">
+              <p>{t("docs.terms.p1")}</p>
+              <p>{t("docs.terms.p2")}</p>
+              <p>{t("docs.terms.p3")}</p>
             </div>
           </section>
 

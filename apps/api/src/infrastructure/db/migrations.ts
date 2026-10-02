@@ -250,4 +250,21 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 7,
+    name: "terms acceptances",
+    sql: /* sql */ `
+      -- Release forms signed by players before playing: the exact message and its EIP-191
+      -- signature, as evidence. Not on the chain: a replay keeps them.
+      create table terms_acceptances (
+        address text not null,
+        version text not null,
+        hash text not null,
+        message text not null,
+        signature text not null,
+        received_at bigint not null,
+        primary key (address, version)
+      );
+    `,
+  },
 ];

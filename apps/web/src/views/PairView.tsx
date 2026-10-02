@@ -12,6 +12,7 @@ import { useLocale } from "../i18n/locale";
 import { catNames } from "../i18n/names";
 import { PairScene, type PairSceneHandle } from "../scenes/Scenes";
 import { Stage } from "./Stage";
+import { DuelTabs } from "./DuelTabs";
 import { type PlannedStep } from "./StepTracker";
 import { TxPending } from "./TxPending";
 import { TxJournal } from "./TxJournal";
@@ -26,6 +27,8 @@ interface Props {
   initial: [number, number] | null;
   intent: PairIntent | null;
   onInspect: (tokenId: number) => void;
+  /** The other page of the duels tab: the open duel shelf. */
+  onShelf: () => void;
 }
 
 /** What the holder came to do. Unset, both actions are offered. */
@@ -53,7 +56,7 @@ const DECIDE: PlannedStep[] = [
 ];
 const OPEN_PLAN: PlannedStep[] = [...SIGN_AND_MINE("track.sign"), { step: "decrypting", label: "track.decryptPublic" }, { step: "proving", label: "track.proof" }];
 
-export function PairView({ quality, sound, initial, intent, onInspect }: Props) {
+export function PairView({ quality, sound, initial, intent, onInspect, onShelf }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
@@ -333,6 +336,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
           <div className="slip-head">
             <span>{t("pair.title")}</span>
           </div>
+          <DuelTabs on="face" onSwitch={onShelf} />
           <p className="state-note">{collection ? t("pair.needTwo") : t("footer.reading")}</p>
         </section>
       </>
@@ -368,6 +372,7 @@ export function PairView({ quality, sound, initial, intent, onInspect }: Props) 
           <span>{t("pair.title")}</span>
           {entangled && <span className="tier tier-entangled">{t("pair.entangled")}</span>}
         </div>
+        <DuelTabs on="face" onSwitch={onShelf} />
 
         <TxPending
           busy={action.busy}
