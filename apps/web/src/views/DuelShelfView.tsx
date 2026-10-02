@@ -8,6 +8,7 @@ import { useT, type AppKey } from "../i18n/app";
 import { SHELF_CAPACITY, ShelfScene, type ShelfBox } from "../scenes/Scenes";
 import { FindMine } from "./FindMine";
 import { Stage } from "./Stage";
+import { DuelTabs } from "./DuelTabs";
 import { type PlannedStep } from "./StepTracker";
 import { TxPending } from "./TxPending";
 import { useFold } from "./useFold";
@@ -22,6 +23,8 @@ interface Props {
   onSelect: (tokenId: number) => void;
   /** Takes the duel up in the pair view: the account's box against the one on the shelf. */
   onFight: (mine: number, listed: number) => void;
+  /** The other page of the duels tab: two boxes face to face. */
+  onFace: () => void;
 }
 
 const serial = (id: number) => buildBoxSpec(id).serial;
@@ -48,7 +51,7 @@ type Note = Extract<AppKey, "duels.posted" | "duels.withdrawn">;
  * can take one up, or only the box it was reserved for. Who holds the boxes that take them up
  * stays unknown until the duel is decided.
  */
-export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Props) {
+export function DuelShelfView({ quality, sound, focus, onSelect, onFight, onFace }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, connect } = useChain();
   const t = useT();
   const { foldClass, foldButton } = useFold();
@@ -176,6 +179,7 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
           <span>{t("duels.title")}</span>
           {shelf && <span>{t("duels.count", { count: live.length })}</span>}
         </div>
+        <DuelTabs on="shelf" onSwitch={onFace} />
 
         <TxPending busy={action.busy} step={action.step} title={action.busy === "post" ? t("duels.posting") : action.busy === "prove" ? t("duels.proving") : t("tx.working")} plan={plan}>
           <p className="fine">{t("duels.intro")}</p>

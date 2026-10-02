@@ -77,6 +77,11 @@ export function App() {
     setIntent(wanted);
     setView("pair");
   };
+  /** The face-to-face page of the duels tab, offering both actions on the last pair shown. */
+  const showFace = () => {
+    setIntent(null);
+    setView("pair");
+  };
   const showDuels = (focus: number | null = null) => {
     setDuelFocus(focus);
     setView("duels");
@@ -89,10 +94,10 @@ export function App() {
       {view === "shelf" && (
         <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} onOpenPair={(a, b) => showPair(a, b, "duel")} onDuels={showDuels} />
       )}
-      {view === "duels" && <DuelShelfView quality={quality} sound={sound} focus={duelFocus} onSelect={showBox} onFight={(mine, listed) => showPair(mine, listed, "duel")} />}
+      {view === "duels" && <DuelShelfView quality={quality} sound={sound} focus={duelFocus} onSelect={showBox} onFight={(mine, listed) => showPair(mine, listed, "duel")} onFace={showFace} />}
       {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onOverview={showWarehouse} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
       {view === "warehouse" && <WarehouseView quality={quality} focus={focus} onInspect={showBox} />}
-      {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} />}
+      {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} onShelf={() => showDuels()} />}
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}
@@ -101,8 +106,6 @@ export function App() {
       <Masthead
         view={view}
         onView={(v) => {
-          // From the menu, the pair view offers both actions again.
-          if (v === "pair") setIntent(null);
           if (v === "duels") setDuelFocus(null);
           setView(v);
         }}
