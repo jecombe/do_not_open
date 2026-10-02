@@ -12,6 +12,7 @@ import { Stage } from "./Stage";
 import { StepTracker, type PlannedStep } from "./StepTracker";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
+import { boxTags, timeLeftCopy } from "../chain/tags";
 
 interface Props {
   quality: QualitySettings;
@@ -154,13 +155,14 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight }: Prop
     return free.find((id) => !upAlready.has(id)) ?? free[0] ?? null;
   };
 
-  const timeLeft = (d: DuelInfo) => {
-    const s = Math.max(0, (d.openUntil ?? now) - now);
-    // Rounded up: a duel posted a minute ago has its whole week ahead of it.
-    return s > 86_400 ? t("duels.daysLeft", { count: Math.ceil(s / 86_400) }) : t("duels.hoursLeft", { count: Math.max(1, Math.ceil(s / 3600)) });
-  };
+  const timeLeft = (d: DuelInfo) => timeLeftCopy(d.openUntil ?? now, now);
 
-  const onBench: ShelfBox[] = useMemo(() => live.slice(0, SHELF_CAPACITY).map((d) => ({ tokenId: d.tokenA, cat: null })), [live]);
+  const onBench: ShelfBox[] = useMemo(
+    () => live.slice(0, SHELF_CAPACITY).map((d) => ({ tokenId: d.tokenA, cat: null, tags: boxTags({ tokenId: d.tokenA, status: "sealed", partner: null }, [d], now) })),
+    // `t` changes with the language the tags are worded in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [live, t],
+  );
 
   return (
     <>

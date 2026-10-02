@@ -81,6 +81,7 @@ export const fr: Record<AppKey, string> = {
   "shelf.connectHint": "Connectez-en un pour voir vos boîtes et en commander de nouvelles.",
   "shelf.empty": "Rien sur votre étagère pour l'instant.",
   "shelf.boxes": "Vos boîtes",
+  "shelf.order": "Nouvelles boîtes",
   "shelf.boxActions": "Que faire de {serial}",
   "shelf.duel": "Duel",
   "shelf.entangle": "Intriquer",
@@ -659,4 +660,11 @@ export const fr: Record<AppKey, string> = {
   "duels.unprovenHint": "Publié, mais la preuve que vous détenez la boîte n'est jamais arrivée : en attendant, personne ne peut le relever.",
   "duels.prove": "Le terminer",
   "duels.proving": "Preuve en cours…",
+
+  "tag.duel": "En duel",
+  "tag.duelPending": "résultat en attente",
+  "tag.duelUnproven": "preuve en attente",
+  "tag.duelOpen": "sur l'étagère",
+  "tag.entangled": "Intriquée",
+  "tag.with": "avec {serial}",
 };

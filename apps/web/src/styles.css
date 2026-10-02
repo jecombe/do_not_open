@@ -1426,6 +1426,93 @@ button {
   }
 }
 
+/* --- The shelf: the boxes on a slip at the left, the order on another at the right --- */
+.slip.shelf-slip {
+  max-height: calc(100dvh - 2 * var(--gutter) - 150px);
+  overflow-y: auto;
+}
+
+.slip.shelf-order {
+  left: auto;
+  right: var(--gutter);
+  transform: rotate(0.5deg);
+}
+
+.shelf-order .order {
+  margin-top: 10px;
+}
+
+/* The boxes have the slip to themselves: the list may run longer before it scrolls. */
+.shelf-slip .tags {
+  max-height: clamp(132px, 100dvh - 520px, 280px);
+}
+
+.slip-tabs {
+  display: none;
+}
+
+/* A phone has room for one slip over the scene: tabs in its heading switch to the other. */
+@media (max-width: 700px) {
+  .slip.shelf-slip {
+    max-height: 58dvh;
+  }
+
+  .slip.shelf-slip.is-away,
+  .shelf-slip .slip-title {
+    display: none;
+  }
+
+  .slip.shelf-order {
+    left: var(--gutter);
+    right: var(--gutter);
+    transform: none;
+  }
+
+  .shelf-slip .slip-head {
+    gap: 8px;
+  }
+
+  .slip-tabs {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .slip-tabs button {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 3px 9px;
+    background: transparent;
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .slip-tabs button span {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .slip-tabs button[aria-selected="true"] {
+    background: var(--ink);
+    color: var(--manifest);
+  }
+
+  /* The count of boxes is already on the tab; the sale line stays, in smaller type. */
+  .shelf-slip .slip-head > span:last-child {
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .shelf-slip:not(.shelf-order) .slip-head > span:last-child {
+    display: none;
+  }
+}
+
 /* --- The pantry: croquettes, the market and the rules --- */
 .slip.pantry {
   max-height: calc(100dvh - 2 * var(--gutter) - 110px);

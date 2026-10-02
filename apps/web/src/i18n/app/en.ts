@@ -85,6 +85,7 @@ export const en = {
   "shelf.connectHint": "Connect one to see the boxes you hold and to order new ones.",
   "shelf.empty": "Nothing on your shelf yet.",
   "shelf.boxes": "Your boxes",
+  "shelf.order": "New boxes",
   "shelf.boxActions": "What to do with {serial}",
   "shelf.duel": "Duel",
   "shelf.entangle": "Entangle",
@@ -668,6 +669,13 @@ export const en = {
   "duels.unprovenHint": "Posted, but the proof that you hold the box never made it: until it does, nobody can take it up.",
   "duels.prove": "Finish it",
   "duels.proving": "Proving…",
+
+  "tag.duel": "On duel",
+  "tag.duelPending": "result pending",
+  "tag.duelUnproven": "proof pending",
+  "tag.duelOpen": "on the shelf",
+  "tag.entangled": "Entangled",
+  "tag.with": "with {serial}",
 } as const satisfies Record<string, string>;
 
 export type AppKey = keyof typeof en;

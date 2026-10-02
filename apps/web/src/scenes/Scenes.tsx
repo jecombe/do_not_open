@@ -9,6 +9,7 @@ import {
   BoxAnticipation,
   BoxOpener,
   BoxShaker,
+  BoxTags,
   createBox,
   createCat,
   createDepot,
@@ -19,6 +20,7 @@ import {
   FeedEffect,
   SPECTRAL,
   type BoxObject,
+  type BoxTagSpec,
   type CatObject,
   type QualitySettings,
   type ShakeSound,
@@ -35,6 +37,12 @@ const isNarrow = () => window.innerWidth < 700;
 const BENCH_LEASH: Leash = { min: [-1.0, 0.6, -0.8], max: [1.0, 1.9, 1.0], touch: "orbit" };
 /** How far round the bench the camera may swing: the front and both ends, never behind the racks. */
 const BENCH_AZIMUTH = { minAzimuthAngle: -1.15, maxAzimuthAngle: 1.3 };
+/** Hangs `tags` on a box's tags whenever their wording changes, not on every render. */
+function useTags(tags: BoxTags, specs: readonly BoxTagSpec[] | undefined) {
+  const key = JSON.stringify(specs ?? []);
+  useEffect(() => tags.set(specs ?? []), [tags, key]);
+}
+
 const glowFor = (cat: CatSpec) => (cat.state === "ghost" || cat.state === "quantum" ? SPECTRAL : cat.room.light);
 
 function Backdrop() {
@@ -132,6 +140,8 @@ interface BoxSceneProps {
   opened: CatSpec | null;
   /** The vet's verdict, if the box was checked: its stamp is on the box, visible to all. */
   vet: "alive" | "notAlive" | null;
+  /** Paper tags on the box: up for a duel, entangled. */
+  tags?: BoxTagSpec[];
   quality: QualitySettings;
   sound: ShakeSound;
   onShakeDone: () => void;
@@ -148,7 +158,7 @@ const ANGLES: Record<InspectAngle, [azimuth: number, polar: number]> = {
 };
 
 /** The mail room with one box on the bench: shake it, feed it, open it, take the cat out. */
-export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
+export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
   const controls = useRef<CameraControls>(null);
   const opening = useRef<Opening | null>(null);
   const vetMark = useRef<VetMark | null>(null);
@@ -165,8 +175,10 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
       shaker: new BoxShaker(box, { reducedMotion: reducedMotion() }),
       feeder: new FeedEffect(box, reducedMotion()),
       waiter: new BoxAnticipation(box, reducedMotion()),
+      tags: new BoxTags(box, { reducedMotion: reducedMotion() }),
     };
   }, [tokenId]);
+  useTags(rig.tags, tags);
 
   useEffect(() => {
     depot.benchAnchor.add(rig.box.group);
@@ -179,6 +191,7 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
       vetMark.current = null;
       rig.feeder.dispose();
       rig.waiter.dispose();
+      rig.tags.dispose();
       rig.box.dispose();
     };
   }, [depot, rig]);
@@ -315,6 +328,7 @@ export function BoxScene({ ref, tokenId, opened, vet, quality, sound, onShakeDon
     rig.feeder.update(step);
     rig.waiter.update(step);
     vetMark.current?.update(step);
+    rig.tags.update(state.clock.elapsedTime);
     if (opening.current) updateOpening(opening.current, step, state.clock.elapsedTime);
   });
 
@@ -342,6 +356,9 @@ interface PairSceneProps {
   openedB: CatSpec | null;
   /** Draws the thread between the two boxes. */
   entangled: boolean;
+  /** Paper tags on each box: up for a duel, entangled. */
+  tagsA?: BoxTagSpec[];
+  tagsB?: BoxTagSpec[];
   quality: QualitySettings;
   sound: ShakeSound;
   onDuelDone: () => void;
@@ -351,7 +368,7 @@ interface PairSceneProps {
 const PAIR_SCALE = 0.82;
 
 /** Two boxes on the bench: duel them, entangle them, open one and watch the other follow. */
-export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, quality, sound, onDuelDone, onOpened }: PairSceneProps) {
+export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, tagsA, tagsB, quality, sound, onDuelDone, onOpened }: PairSceneProps) {
   const controls = useRef<CameraControls>(null);
   const thread = useRef<EntanglementThread | null>(null);
   const openings = useRef<{ a?: Opening; b?: Opening }>({});
@@ -365,8 +382,11 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
     const arena = new DuelArena(boxA, boxB, { reducedMotion: reducedMotion() });
     arena.group.scale.setScalar(PAIR_SCALE);
     arena.setSpotlights(true);
-    return { boxA, boxB, arena };
+    const tags = { a: new BoxTags(boxA, { reducedMotion: reducedMotion() }), b: new BoxTags(boxB, { reducedMotion: reducedMotion() }) };
+    return { boxA, boxB, arena, tags };
   }, [tokenA, tokenB]);
+  useTags(rig.tags.a, tagsA);
+  useTags(rig.tags.b, tagsB);
 
   useEffect(() => {
     depot.benchAnchor.add(rig.arena.group);
@@ -375,6 +395,8 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
       for (const o of Object.values(openings.current)) disposeOpening(o);
       openings.current = {};
       rig.arena.dispose();
+      rig.tags.a.dispose();
+      rig.tags.b.dispose();
       rig.boxA.dispose();
       rig.boxB.dispose();
     };
@@ -449,6 +471,8 @@ export function PairScene({ ref, tokenA, tokenB, openedA, openedB, entangled, qu
     depot.update(t);
     rig.arena.update(step);
     thread.current?.update(t, step);
+    rig.tags.a.update(t);
+    rig.tags.b.update(t);
     for (const o of Object.values(openings.current)) updateOpening(o, step, t);
   });
 
@@ -467,6 +491,8 @@ export interface ShelfBox {
   cat: CatSpec | null;
   /** The vet's verdict, if it was checked. */
   vet?: "alive" | "notAlive" | null;
+  /** Paper tags on the box: up for a duel, entangled. */
+  tags?: BoxTagSpec[];
 }
 
 interface ShelfSceneProps {
@@ -507,7 +533,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
         if (opening) showOpened(opening);
         const vet = b.vet ? new VetMark(box, b.vet === "alive") : null;
         vet?.showInstant();
-        return { tokenId: b.tokenId, box, opening, vet };
+        return { tokenId: b.tokenId, box, opening, vet, tags: new BoxTags(box, { reducedMotion: reducedMotion(), scale: 1.5 }) };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key, sound],
@@ -517,11 +543,17 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
       for (const item of items) {
         if (item.opening) disposeOpening(item.opening);
         item.vet?.dispose();
+        item.tags.dispose();
         item.box.dispose();
       }
     },
     [items],
   );
+  const tagKey = JSON.stringify(boxes.map((b) => b.tags ?? []));
+  useEffect(() => {
+    for (const item of items) item.tags.set(boxes.find((b) => b.tokenId === item.tokenId)?.tags ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, tagKey]);
 
   const frame = (animate: boolean) => {
     const n = isNarrow();
@@ -556,7 +588,10 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
     const t = state.clock.elapsedTime;
     clock.current = t;
     depot.update(t);
-    for (const item of items) if (item.opening) updateOpening(item.opening, Math.min(dt, 0.1), t);
+    for (const item of items) {
+      if (item.opening) updateOpening(item.opening, Math.min(dt, 0.1), t);
+      item.tags.update(t);
+    }
 
     const calm = reducedMotion() ? 0 : 1;
     for (const item of items) {

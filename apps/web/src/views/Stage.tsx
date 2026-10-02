@@ -17,7 +17,8 @@ function AboveTheSlip() {
   const size = useThree((s) => s.size);
   const shift = useRef(0);
   useFrame(() => {
-    const slip = document.querySelector<HTMLElement>(".slip");
+    // A slip sent `.is-away` by its tabs is hidden on a phone: the one showing is the other.
+    const slip = document.querySelector<HTMLElement>(".slip:not(.is-away)");
     let goal = 0;
     if (slip && window.matchMedia(NARROW).matches) goal = Math.max(0, size.top + size.height - slip.getBoundingClientRect().top) / 2;
     const next = Math.abs(goal - shift.current) < 0.5 ? goal : shift.current + (goal - shift.current) * 0.18;
