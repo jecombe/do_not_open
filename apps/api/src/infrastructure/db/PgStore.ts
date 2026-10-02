@@ -7,6 +7,7 @@ import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
+import type { TermsAcceptance } from "../../application/terms";
 
 // Block numbers and unix times are int8 columns; they all fit a JS number.
 pg.types.setTypeParser(20, (v) => Number(v));
@@ -481,7 +482,30 @@ export class PgStore implements Store {
     return new Map(rows.map((r) => [r.handle as string, r.uses as number]));
   }
 
+  async saveTermsAcceptance(a: TermsAcceptance) {
+    const { rows } = await this.pool.query(
+      "insert into terms_acceptances (address, version, hash, message, signature, received_at) values ($1, $2, $3, $4, $5, $6) on conflict (address, version) do nothing returning address",
+      [a.address, a.version, a.hash, a.message, a.signature, a.receivedAt],
+    );
+    if (rows.length) return null;
+    return one(this.pool, "select * from terms_acceptances where address = $1 and version = $2", [a.address, a.version], termsFrom);
+  }
+
+  async termsAcceptances(address: Address) {
+    const { rows } = await this.pool.query("select * from terms_acceptances where address = $1 order by received_at, version", [address]);
+    return rows.map(termsFrom);
+  }
+
   takeNonce(address: Address) {
     return one(this.pool, "delete from auth_nonces where address = $1 returning nonce, expires_at", [address], (r) => ({ nonce: r.nonce as string, expiresAt: r.expires_at as number }));
   }
 }
+
+const termsFrom = (r: Record<string, unknown>): TermsAcceptance => ({
+  address: r.address as Address,
+  version: r.version as string,
+  hash: r.hash as string,
+  message: r.message as string,
+  signature: r.signature as string,
+  receivedAt: Number(r.received_at),
+});

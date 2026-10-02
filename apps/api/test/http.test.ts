@@ -2,6 +2,7 @@ import { Wallet } from "ethers";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SignIn } from "../src/application/auth";
+import { AcceptTerms } from "../src/application/terms";
 import { Metadata } from "../src/application/metadata";
 import { silentLogger } from "../src/application/ports/logger";
 import { Queries } from "../src/application/queries";
@@ -55,6 +56,7 @@ beforeAll(async () => {
     queries,
     metadata: new Metadata(queries, "https://api.test"),
     signIn,
+    terms: new AcceptTerms(store, ethersVerifier, { now: () => now }),
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
     corsOrigins: ["https://donotopen.vercel.app", "https://donotopen-*.vercel.app"],
     rateLimitPerMinute: 10_000,
@@ -230,5 +232,40 @@ describe("indexer hooks", () => {
     expect(res.statusCode).toBe(202);
     expect(nudges).toBe(1);
     expect((await get("/health")).body).toMatchObject({ ok: true, block: 108, indexer: { running: true } });
+  });
+});
+
+describe("release form", () => {
+  const form = (who: string, version = "2026-10-03") =>
+    [
+      `DO NOT OPEN · Release form ${version}`,
+      "",
+      `I, ${who}, have read and accept the terms of DO NOT OPEN, version ${version}, whose full English text has this SHA-256:`,
+      "c0ffee".padEnd(64, "0"),
+      "",
+      "Signed on 2026-10-03T10:00:00.000Z. This signature is free and sends no transaction.",
+    ].join("\n");
+
+  it("files a release form signed by the address it names, once", async () => {
+    const message = form(wallet.address);
+    const signature = await wallet.signMessage(message);
+    const res = await app.inject({ method: "POST", url: "/v1/terms", payload: { address: wallet.address, message, signature } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ address: WALLET, version: "2026-10-03", hash: "c0ffee".padEnd(64, "0") });
+    const again = await app.inject({ method: "POST", url: "/v1/terms", payload: { address: wallet.address, message, signature } });
+    expect(again.statusCode).toBe(200);
+    const list = await app.inject({ method: "GET", url: `/v1/terms/${wallet.address}` });
+    expect(list.json().data).toHaveLength(1);
+    expect(list.json().data[0]).toMatchObject({ version: "2026-10-03", signature, message });
+  });
+
+  it("refuses a form signed by someone else, naming someone else, or not a form at all", async () => {
+    const other = Wallet.createRandom();
+    const message = form(wallet.address, "v2");
+    const post = (payload: object) => app.inject({ method: "POST", url: "/v1/terms", payload });
+    expect((await post({ address: wallet.address, message, signature: await other.signMessage(message) })).statusCode).toBe(401);
+    expect((await post({ address: other.address, message, signature: await other.signMessage(message) })).statusCode).toBe(400);
+    expect((await post({ address: wallet.address, message: "hello", signature: await wallet.signMessage("hello") })).statusCode).toBe(400);
+    expect((await app.inject({ method: "GET", url: `/v1/terms/${other.address}` })).json().data).toEqual([]);
   });
 });

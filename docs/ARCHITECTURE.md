@@ -213,6 +213,11 @@ page (`apps/web/scripts/export-manual.mts`). In the web app the clerk is `src/ch
 a tab on the manual's edge and a link in the game's footer, shown only when `VITE_API_URL`
 is set. Details: [`apps/api/README.md`](../apps/api/README.md#the-manuals-chatbot).
 
+The backend also files the release form every player signs before playing (`POST /v1/terms`): the
+wallet's EIP-191 signature on the terms, checked and kept as a record. That tells it an
+address accepted the terms, nothing about what it holds. See
+[FLOWS.md](FLOWS.md#release-form-before-the-first-box).
+
 ### Gaps against the original brief
 
 - **No event subscription.** The brief's interface lists `subscribeEvents`. The adapter

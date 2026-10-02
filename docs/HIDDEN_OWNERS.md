@@ -130,6 +130,7 @@ The Pantry asks `DoNotOpen.isOwner` as a trusted reader (`setTrustedReader`, set
 | An opening, an alive check, an accepted entanglement, a proven duel posting, a valid duel | that the caller held the box at that moment |
 | A milestone | which mint crossed it |
 | Operator approvals | that an account made an address its operator |
+| Signing the terms of play (off-chain, filed by the API) | that an address signed the terms: address, version, signature, time. Nothing about holdings |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
 transfers naming it), never know them.

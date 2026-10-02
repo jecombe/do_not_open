@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { z } from "zod";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
+import type { AcceptTerms } from "../../application/terms";
 import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
 import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
@@ -15,6 +16,8 @@ export interface HttpDeps {
   queries: Queries;
   metadata: Metadata;
   signIn: SignIn;
+  /** Signed release forms. Absent: the app keeps its signatures in the browser only. */
+  terms?: AcceptTerms;
   /** The relayer proxy. Absent: the app talks to Zama's relayer directly. */
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
@@ -200,6 +203,25 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     reply.header("cache-control", "no-store");
     return deps.signIn.verify(body.address, body.signature);
   });
+
+  // --- release form ---
+
+  const terms = deps.terms;
+  if (terms) {
+    app.post("/v1/terms", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ address, message: z.string().min(1).max(4_000), signature: z.string().regex(/^0x[0-9a-fA-F]+$/) }).parse(req.body);
+      reply.header("cache-control", "no-store");
+      const a = await terms.accept(body.address, body.message, body.signature);
+      return { address: a.address, version: a.version, hash: a.hash, receivedAt: a.receivedAt };
+    });
+
+    app.get("/v1/terms/:address", async (req, reply) => {
+      const p = z.object({ address }).parse(req.params);
+      const all = await terms.of(p.address);
+      reply.header("cache-control", "no-store");
+      return { data: all.map((a) => ({ version: a.version, hash: a.hash, signature: a.signature, message: a.message, receivedAt: a.receivedAt })) };
+    });
+  }
 
   app.get("/v1/me", async (req, reply) => {
     const who = bearer(req);

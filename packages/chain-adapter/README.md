@@ -131,6 +131,13 @@ Every encryption sends the session's decryption permit as a bearer token, so the
 charged to this wallet; a mint, a meal or a croquette send checks the allowance first and
 fails with `no-credits` before any gas. `buyCredits(n)` buys more.
 
+`signTerms(message)` has the connected wallet sign the release form the app shows before
+play (a readable EIP-191 message naming the address, the terms version and the SHA-256 of
+the English text; free, no transaction), then files it with the API (`POST /v1/terms`) when
+one is configured. It returns `SignedTerms`: `account`, `message`, `signature` and
+`recorded`, false when only the browser keeps it (no API, or the API did not answer: that
+never blocks play). The mock returns a stand-in signature, never recorded.
+
 ## What happens in a shake
 
 ```mermaid

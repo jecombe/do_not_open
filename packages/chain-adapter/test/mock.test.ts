@@ -88,6 +88,15 @@ describe("MockAdapter", () => {
     expect(await chain.confidentialUsdcBalance()).toBe(before + usdcOut);
   });
 
+  it("signs a release form with a stand-in signature, the same for the same text", async () => {
+    const chain = await fresh();
+    const a = await chain.signTerms("form v1");
+    expect(a).toMatchObject({ account: MOCK_YOU, message: "form v1", recorded: false });
+    expect(a.signature).toMatch(/^0x[0-9a-f]{130}$/);
+    expect((await chain.signTerms("form v1")).signature).toBe(a.signature);
+    expect((await chain.signTerms("form v2")).signature).not.toBe(a.signature);
+  });
+
   it("unshields cUSDC back to USDC, and moves nothing past the balance", async () => {
     const chain = await fresh();
     const usdc = await chain.usdcBalance(MOCK_YOU);

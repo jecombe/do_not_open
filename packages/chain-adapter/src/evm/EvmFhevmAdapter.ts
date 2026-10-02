@@ -19,6 +19,7 @@ import {
   sameAddress,
   type ActionOptions,
   type SwapOptions,
+  type SignedTerms,
   type Address,
   type AliveCheck,
   type BoxInfo,
@@ -912,6 +913,25 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   // --- decryption credits ---
+
+  async signTerms(message: string): Promise<SignedTerms> {
+    const signer = this.signer();
+    const account = (await signer.getAddress()) as Address;
+    let signature: string;
+    try {
+      signature = await signer.signMessage(message);
+    } catch (error) {
+      throw this.toChainError(error);
+    }
+    // The API keeps it as evidence; if it is down, the browser still has it and the player plays.
+    const recorded = this.opts.indexer
+      ? await this.opts.indexer.recordTerms(account, message, signature).then(
+          () => true,
+          () => false,
+        )
+      : false;
+    return { account, message, signature, recorded };
+  }
 
   async decryptionAllowance(): Promise<DecryptionAllowance | null> {
     const account = this.address_;

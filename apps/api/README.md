@@ -18,7 +18,7 @@ flowchart LR
 | Layer | Folder | Knows about |
 | --- | --- | --- |
 | Domain | `src/domain` | Boxes, duels, requests, users, protocol events. Pure functions, no I/O. |
-| Application | `src/application` | Use cases (`SyncChain`, `Queries`, `SignIn`, `Metadata`), the projector, and the **ports** they need (`ChainSource`, `ChainState`, `Store`). |
+| Application | `src/application` | Use cases (`SyncChain`, `Queries`, `SignIn`, `AcceptTerms`, `Metadata`), the projector, and the **ports** they need (`ChainSource`, `ChainState`, `Store`). |
 | Infrastructure | `src/infrastructure` | Ethers + the RPC pool, Postgres, the in-memory store, Fastify, HMAC sessions. |
 | Composition | `src/main.ts` | The only file that picks concrete classes. |
 
@@ -106,6 +106,8 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /v1/activity` | Everything, newest first (`before`, `limit`, `account`) |
 | `GET /v1/stats` | Users, registered, minted, opened, duels |
 | `POST /v1/auth/nonce` · `POST /v1/auth/verify` · `GET /v1/me` | Sign-in with a wallet signature (no gas), then a bearer session |
+| `POST /v1/terms` | Files a signed release form (terms of play): `{ address, message, signature }`. The message must name the address, a version and the SHA-256 of the text, and be signed by that address (EIP-191, no gas). The first signature per address and version is kept. Answers `address`, `version`, `hash`, `receivedAt`; `400` if it is not a form or names another address, `401` if another account signed it. 10 a minute per IP |
+| `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
@@ -130,6 +132,11 @@ purchases made before the new collection still count.
 
 Migration 6 adds the public decryption cache (`public_decryptions`, `public_decrypt_uses`):
 like the relayer meter, not a read model, and kept by a replay.
+
+Migration 7 adds `terms_acceptances`, the release forms players sign before playing (address,
+version, hash, the exact message and signature, time received; one row per address and
+version). It is not a fold of the chain, so a replay keeps it. The backend learns only that an
+address accepted the terms: no holdings, no IP.
 
 ## Relayer proxy
 

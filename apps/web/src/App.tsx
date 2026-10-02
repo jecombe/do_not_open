@@ -5,6 +5,7 @@ import { useChain } from "./chain/ChainProvider";
 import { Clerk } from "./chat/Clerk";
 import { useT } from "./i18n/app";
 import { Masthead, type View } from "./Masthead";
+import { TermsGate } from "./terms/TermsGate";
 import { BoxView } from "./views/BoxView";
 import { DuelShelfView } from "./views/DuelShelfView";
 import { ExchangeView } from "./views/ExchangeView";
@@ -145,6 +146,7 @@ export function App() {
           </button>
         </span>
       </footer>
+      <TermsGate />
     </div>
   );
 }

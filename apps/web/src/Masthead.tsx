@@ -5,6 +5,7 @@ import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
 import { openExchange } from "./views/exchangeLink";
+import { openTerms } from "./terms/terms";
 import { TxPending } from "./views/TxPending";
 import { ProblemNote } from "./views/ProblemNote";
 
@@ -167,6 +168,17 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
               ))}
               <li className="menu-rule">
                 <a href="/docs.html">{t("nav.manual")}</a>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    openTerms();
+                  }}
+                >
+                  {t("nav.terms")}
+                </button>
               </li>
               <li>
                 <a href="/">{t("nav.home")}</a>

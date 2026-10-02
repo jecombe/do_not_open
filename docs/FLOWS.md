@@ -18,6 +18,45 @@ Two things differ from the original brief in every flow:
   it under encryption (`owner == caller`) and masks the result with it. Someone who does
   not hold the box gets nothing, and only they learn it.
 
+## Release form (before the first box)
+
+Before playing, every player signs the terms of play: the contracts are experimental and
+could be exploited, the site is only a window onto assets that live on-chain, nothing is
+custodial or refundable. The form (`apps/web/src/terms`) has one clause per line; the
+player initials each, then the wallet signs a readable EIP-191 message naming the address,
+the terms version and the SHA-256 of the full English text. It is free and sends no
+transaction. Translations are for reading; the English text is what is signed.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant App
+  participant W as Wallet
+  participant API
+  U->>App: open app.html
+  App->>App: local record for this version and wallet? then play
+  App-->>U: Form DNO-1, 8 clauses
+  U->>App: initial each clause
+  U->>App: Sign with my wallet (connects first if needed)
+  App->>W: personal_sign(message: address, version, SHA-256, summary, date)
+  W-->>App: signature (no gas)
+  alt API configured
+    App->>API: POST /v1/terms {address, message, signature}
+    API->>API: message names the address, version, hash; signer = address
+    API->>API: file it (first signature per address and version kept)
+    API-->>App: receivedAt: "Filed with the depot"
+  else no API, or it fails
+    App-->>U: "Kept in this browser" (play is not blocked)
+  end
+  App->>App: keep the record in localStorage (dno.terms.<version>)
+  U->>App: Enter the warehouse
+  Note over App,W: A new wallet, or a new terms version, asks again
+```
+
+Without a wallet, the player may continue after initialing; the signature is asked as
+soon as a wallet connects. The menu's "Terms of play" shows the form again with the
+signature. In mock mode the signature is a stand-in, kept locally.
+
 ## Mint
 
 ```mermaid

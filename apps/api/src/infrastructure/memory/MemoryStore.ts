@@ -6,6 +6,7 @@ import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
+import type { TermsAcceptance } from "../../application/terms";
 
 interface State {
   cursor: number | null;
@@ -29,6 +30,8 @@ interface State {
   /** Public decryptions sent to Zama, by key, and how many named each handle. Kept across replays. */
   publicDecryptions: Map<string, PublicDecryption>;
   publicUses: Map<string, number>;
+  /** Signed release forms, by `address:version`. Kept across replays. */
+  terms: Map<string, TermsAcceptance>;
 }
 
 const emptyState = (): State => ({
@@ -51,6 +54,7 @@ const emptyState = (): State => ({
   spent: new Map(),
   publicDecryptions: new Map(),
   publicUses: new Map(),
+  terms: new Map(),
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -285,6 +289,18 @@ export class MemoryStore implements Store {
 
   async publicDecryptionsOf(handles: string[]) {
     return new Map(handles.filter((h) => this.s.publicUses.has(h)).map((h) => [h, this.s.publicUses.get(h)!]));
+  }
+
+  async saveTermsAcceptance(a: TermsAcceptance) {
+    const key = `${a.address}:${a.version}`;
+    const kept = this.s.terms.get(key);
+    if (kept) return clone(kept);
+    this.s.terms.set(key, clone(a));
+    return null;
+  }
+
+  async termsAcceptances(address: Address) {
+    return [...this.s.terms.values()].filter((a) => a.address === address).sort((a, b) => a.receivedAt - b.receivedAt).map(clone);
   }
 
   async takeNonce(address: Address) {

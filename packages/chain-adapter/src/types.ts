@@ -408,6 +408,17 @@ export interface DecryptionAllowance {
   inputUnits: number;
 }
 
+/** A release form signed by the connected wallet. */
+export interface SignedTerms {
+  account: Address;
+  /** The exact text the wallet signed. */
+  message: string;
+  /** EIP-191 personal signature on EVM. */
+  signature: string;
+  /** True when the API filed it too; false when only this browser keeps it. */
+  recorded: boolean;
+}
+
 /** A wallet the browser offers, as shown in a picker. */
 export interface WalletOption {
   id: string;
@@ -555,6 +566,11 @@ export interface ChainAdapter {
   quote(side: TradeSide, amountIn: bigint): Promise<bigint>;
   /** Trades on the public market, accepting at most `slippageBps` (1% by default) less than the quote. */
   trade(side: TradeSide, amountIn: bigint, opts?: SwapOptions): Promise<void>;
+
+  // --- release form ---
+  /** Has the connected wallet sign `message` (the terms, naming its address), free and off-chain,
+   *  and files the signature with the API where there is one. Throws `rejected` if refused. */
+  signTerms(message: string): Promise<SignedTerms>;
 
   // --- decryption credits ---
   /** The connected account's decryptions left. Null where nobody counts them (the mock, a free relayer). */

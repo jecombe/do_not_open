@@ -1,0 +1,420 @@
+/* --- The release form: a customs waiver laid over the warehouse --- */
+.terms-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  background: rgb(10 8 6 / 0.82);
+  backdrop-filter: blur(3px);
+  animation: terms-fade 0.25s ease-out both;
+}
+
+.terms-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 2 * var(--gutter));
+  background:
+    repeating-linear-gradient(0deg, transparent 0 31px, rgb(28 24 20 / 0.06) 31px 32px),
+    var(--manifest);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 6px var(--manifest), 0 30px 80px rgb(0 0 0 / 0.7);
+  animation: terms-drop 0.35s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+.terms-head {
+  position: relative;
+  padding: 18px 22px 12px;
+  border-bottom: 3px double var(--ink);
+}
+
+.terms-formno {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.terms-title {
+  margin: 0;
+  font-family: var(--stencil);
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.terms-risk {
+  position: absolute;
+  top: 16px;
+  right: 22px;
+  max-width: 180px;
+  margin: 0;
+  padding: 6px 10px 3px;
+  font-family: var(--stencil);
+  font-size: 19px;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--ink-red);
+  border: 3px solid var(--ink-red);
+  outline: 1px solid var(--ink-red);
+  outline-offset: -6px;
+  transform: rotate(7deg);
+  opacity: 0.85;
+  mix-blend-mode: multiply;
+}
+
+.terms-form a.link {
+  color: inherit;
+}
+
+.terms-viewfoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.seal-text .terms-close {
+  margin-top: 8px;
+}
+
+.terms-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 22px 10px;
+}
+
+.terms-intro {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.terms-lang {
+  max-width: none;
+  margin-bottom: 10px;
+}
+
+.clauses {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clauses li {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgb(28 24 20 / 0.35);
+}
+
+.clause-no {
+  font-family: var(--stencil);
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--ink-red);
+}
+
+.clause-text strong {
+  display: block;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.clause-text p {
+  margin: 2px 0 0;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.clauses li.is-done .clause-text {
+  opacity: 0.8;
+}
+
+/* The box to initial, and the rubber stamp once it is. */
+.initial {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 52px;
+  padding: 0;
+  background: transparent;
+  border: 2px dashed var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.initial:hover:not(:disabled):not(.is-done) {
+  background: rgb(194 38 29 / 0.08);
+  border-color: var(--ink-red);
+  color: var(--ink-red);
+}
+
+.initial.is-done {
+  border-style: solid;
+  border-color: rgb(28 24 20 / 0.3);
+}
+
+.initial:disabled {
+  cursor: default;
+}
+
+.initial-ink {
+  padding: 3px 7px 1px;
+  font-family: var(--stencil);
+  font-size: 18px;
+  color: var(--ink-red);
+  border: 2.5px solid var(--ink-red);
+  border-radius: 4px;
+  transform: rotate(var(--tilt, -4deg));
+  mix-blend-mode: multiply;
+  animation: terms-stamp 0.28s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+.terms-hash {
+  max-width: none;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+  opacity: 0.75;
+}
+
+.terms-hash code {
+  font-size: 13px;
+}
+
+.terms-foot {
+  padding: 12px 22px 16px;
+  border-top: 3px double var(--ink);
+  background: rgb(184 137 90 / 0.12);
+}
+
+.terms-sign {
+  display: grid;
+  gap: 8px;
+}
+
+.terms-progress {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sign-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 4px 2px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.sign-x {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.sign-who {
+  font-family: "Brush Script MT", "Segoe Script", cursive;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.terms-wallets {
+  display: grid;
+  gap: 6px;
+}
+
+.terms-wallets .plain-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terms-leave {
+  text-align: right;
+  max-width: none;
+}
+
+/* --- The seal --- */
+.seal-block {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.wax {
+  flex-shrink: 0;
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.35));
+  animation: terms-seal 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+.wax-edge {
+  fill: #9e1c15;
+}
+
+.wax-face {
+  fill: var(--ink-red);
+  stroke: #7d140f;
+  stroke-width: 2;
+}
+
+.wax-ring {
+  font-family: var(--label);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  fill: rgb(233 223 200 / 0.85);
+}
+
+.wax-mark {
+  font-family: var(--stencil);
+  font-size: 24px;
+  text-anchor: middle;
+  fill: var(--manifest);
+}
+
+.wax-sig {
+  font-family: var(--label);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-anchor: middle;
+  fill: rgb(233 223 200 / 0.8);
+}
+
+.seal-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.seal-title {
+  margin: 0 0 2px;
+  font-family: var(--stencil);
+  font-size: 26px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--ink-red);
+}
+
+.barcode {
+  display: block;
+  width: 100%;
+  height: 30px;
+  margin: 8px 0 6px;
+  fill: var(--ink);
+}
+
+.seal-enter {
+  margin-top: 10px;
+}
+
+@keyframes terms-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes terms-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) rotate(-1.5deg);
+  }
+}
+
+@keyframes terms-stamp {
+  from {
+    opacity: 0;
+    transform: scale(2) rotate(-14deg);
+  }
+}
+
+@keyframes terms-seal {
+  from {
+    opacity: 0;
+    transform: scale(2.2) rotate(-30deg);
+  }
+}
+
+@media (max-width: 700px) {
+  .terms-head {
+    padding: 14px 14px 10px;
+  }
+
+  .terms-risk {
+    position: static;
+    display: inline-block;
+    max-width: none;
+    margin-top: 8px;
+    font-size: 15px;
+    transform: rotate(-2deg);
+  }
+
+  .terms-scroll,
+  .terms-foot {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .clauses li {
+    grid-template-columns: 28px 1fr;
+  }
+
+  .initial {
+    grid-column: 2;
+    width: 100%;
+    height: 40px;
+  }
+
+  .seal-block {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .wax svg {
+    width: 64px;
+    height: 64px;
+  }
+
+  .seal-title {
+    font-size: 20px;
+  }
+
+  .terms-foot {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terms-backdrop,
+  .terms-form,
+  .initial-ink,
+  .wax {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .terms-sign .stamp-button,
+  .seal-enter {
+    font-size: 20px;
+  }
+
+  .sign-who {
+    font-size: 22px;
+  }
+}
