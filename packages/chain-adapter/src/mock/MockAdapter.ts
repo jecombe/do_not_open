@@ -32,6 +32,7 @@ import {
   type WalletOption,
   type WeighIn,
 } from "../types";
+import { MockPool } from "./pool";
 
 /** The account the mock signs you in as, and the one that holds the other boxes. */
 export const MOCK_YOU: Address = "0x00000000000000000000000000000000000d0c4a";
@@ -83,9 +84,10 @@ interface MockBox {
 const ECONOMY = spec.economy;
 const BPS = 10_000n;
 const allocation = (key: string) => BigInt(ECONOMY.allocation.find((a) => a.key === key)!.amount);
-/** Uniswap V2 takes 0.3% of what goes in. */
-const swapOut = (amountIn: bigint, reserveIn: bigint, reserveOut: bigint) =>
-  (amountIn * 997n * reserveOut) / (reserveIn * 1000n + amountIn * 997n);
+/** The Sepolia market's layout: CROQ only, from 0.001 USDC up to 1,000 times that, at the 1% fee tier. */
+const POOL_START = 1_000;
+const POOL_RANGE = 1_000;
+const POOL_FEE_BPS = 100;
 
 type MockDuel = Omit<DuelInfo, "duelId">;
 
@@ -168,7 +170,7 @@ export class MockAdapter implements ChainAdapter {
   /** The treasury's uncollected share of the meals. */
   private treasury = 0n;
   private wrapped = allocation("gameReserve") + allocation("welcomeBags");
-  private pool = { croq: allocation("liquidity"), usdc: 4_000n * USD };
+  private readonly pool = new MockPool(allocation("liquidity"), POOL_START, POOL_RANGE, POOL_FEE_BPS);
   private purrs = 0;
 
   constructor(opts: MockOptions = {}) {
@@ -650,7 +652,17 @@ export class MockAdapter implements ChainAdapter {
       mealBurnBps: ECONOMY.meal.burnBps,
       maxBoxesPerClaim: 10,
       links: { croq: null, cCroq: null, pantry: null },
-      market: { name: "Mock pool", poolUrl: null, appUrl: null, quote: { symbol: "USDC", decimals: 6 }, croqReserve: this.pool.croq, quoteReserve: this.pool.usdc },
+      market: {
+        name: "Mock pool",
+        poolUrl: null,
+        appUrl: null,
+        quote: { symbol: "USDC", decimals: 6 },
+        croqReserve: this.pool.virtual().croq,
+        quoteReserve: this.pool.virtual().usdc,
+        croqHeld: this.pool.held().croq,
+        quoteHeld: this.pool.held().usdc,
+        range: this.pool.range(),
+      },
     };
   }
 
@@ -796,27 +808,25 @@ export class MockAdapter implements ChainAdapter {
 
   async quote(side: TradeSide, amountIn: bigint): Promise<bigint> {
     if (amountIn <= 0n) return 0n;
-    return side === "buy" ? swapOut(amountIn, this.pool.usdc, this.pool.croq) : swapOut(amountIn, this.pool.croq, this.pool.usdc);
+    return this.pool.swap(side, amountIn).out;
   }
 
   async trade(side: TradeSide, amountIn: bigint, opts?: SwapOptions): Promise<void> {
     const me = this.signer();
-    if (amountIn <= 0n) throw revert("UniswapV2: INSUFFICIENT_INPUT_AMOUNT");
+    if (amountIn <= 0n) throw revert("NoInput");
     if (side === "sell" && (this.plain.get(me) ?? 0n) < amountIn) throw revert("ERC20InsufficientBalance");
     if (side === "buy" && (this.usdc.get(me) ?? 0n) < amountIn) {
       throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held: this.usdc.get(me) ?? 0n, needed: amountIn });
     }
-    const out = await this.quote(side, amountIn);
-    await this.send(opts, "swapExactTokensForTokens");
-    if (side === "buy") {
-      this.pool = { usdc: this.pool.usdc + amountIn, croq: this.pool.croq - out };
-      this.credit(this.usdc, me, -amountIn);
-      this.credit(this.plain, me, out);
-    } else {
-      this.pool = { croq: this.pool.croq + amountIn, usdc: this.pool.usdc - out };
-      this.credit(this.plain, me, -amountIn);
-      this.credit(this.usdc, me, out);
-    }
+    const swap = this.pool.swap(side, amountIn);
+    // CROQ never sells below the start: until someone buys, a sale finds no USDC.
+    if (swap.out === 0n) throw revert("NoLiquidity");
+    await this.send(opts, "multicall");
+    this.pool.apply(swap);
+    const [paid, got] = side === "buy" ? [this.usdc, this.plain] : [this.plain, this.usdc];
+    // Past the end of the range the pool takes only what it needed.
+    this.credit(paid, me, -swap.used);
+    this.credit(got, me, swap.out);
   }
 
   /** The demo has no relayer, so nobody counts its decryptions. */

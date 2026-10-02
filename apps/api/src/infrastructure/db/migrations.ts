@@ -215,4 +215,18 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 5,
+    name: "uniswap v3 economy",
+    sql: /* sql */ `
+      -- A new DoNotOpen and a new croquette economy, whose CROQ sells from a locked Uniswap V3
+      -- position: the old contracts' events mean nothing to them. The index is emptied and
+      -- rebuilt from the oldest live contract on (the decryption credits, kept, so purchases
+      -- made before the redeploy still count). Sign-ins and the relayer proxy's counts are kept.
+      truncate events, boxes, duels, requests, entangle_proposals, mints, milestones, transfers, sync_state, indexed_ranges,
+        published_handles, credit_accounts;
+      delete from users where registered_at is null;
+      update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
+    `,
+  },
 ];

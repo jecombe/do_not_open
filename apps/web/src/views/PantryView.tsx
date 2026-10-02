@@ -232,7 +232,8 @@ function Market({ economy, decimals, symbol, busy }: { economy: EconomyInfo; dec
   const market = economy.market;
   if (!market) return <p className="state-note">{t("pantry.noMarket")}</p>;
 
-  // The pool's own price, before fees: coin per thousand croquettes.
+  // The pool's own price, before fees: coin per thousand croquettes. On V3 the reserves it
+  // prices with are the active range's, not what the pool holds.
   const perThousand = market.croqReserve > 0n ? (market.quoteReserve * 1000n) / market.croqReserve : 0n;
 
   return (
@@ -244,14 +245,17 @@ function Market({ economy, decimals, symbol, busy }: { economy: EconomyInfo; dec
         </div>
         <div>
           <dt>{t("pantry.poolCroq")}</dt>
-          <dd>{Number(market.croqReserve).toLocaleString()}</dd>
+          <dd>{Number(market.croqHeld).toLocaleString()}</dd>
         </div>
         <div>
           <dt>{t("pantry.poolCoin", { symbol })}</dt>
-          <dd>{coin(market.quoteReserve, decimals)}</dd>
+          <dd>{coin(market.quoteHeld, decimals)}</dd>
         </div>
       </dl>
       <p className="fine">{t("pantry.priceNote", { symbol, market: market.name })}</p>
+      {market.range && (
+        <p className="fine">{t("pantry.rangeNote", { symbol, from: coin(market.range.from, decimals), to: coin(market.range.to, decimals) })}</p>
+      )}
       <div className="actions">
         <button type="button" className="plain-button" onClick={() => openExchange({ from: "usdc", to: "croq" })} disabled={!!busy}>
           {t("pantry.buy")}

@@ -1,7 +1,7 @@
 {
   "chainId": 11155111,
-  "address": "0xB8e3b2238eF5D5782A661c406acc928895938fBa",
-  "deployBlock": 11828557,
+  "address": "0x5eBaA496783146f712B9c075f8a6fd56cb612C6F",
+  "deployBlock": 11830294,
   "abi": [
     {
       "inputs": [
@@ -2607,6 +2607,7 @@
         "stateMutability": "view",
         "type": "function"
       }
-    ]
+    ],
+    "deployBlock": 11829380
   }
 }

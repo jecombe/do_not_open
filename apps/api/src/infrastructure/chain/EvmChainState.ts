@@ -1,3 +1,4 @@
+import { rangePerThousand, virtualReserves } from "@dno/chain-adapter/uniswap-v3";
 import { Interface } from "ethers";
 import type { BoxView, ChainState, CollectionConstants, Counters, EconomyState } from "../../application/ports/chain";
 import type { DuelSnapshot, RequestSnapshot } from "../../domain/events";
@@ -9,7 +10,13 @@ import { multicall } from "./multicall";
 import type { RpcPool } from "./RpcPool";
 
 const ERC20 = new Interface(["function balanceOf(address) view returns (uint256)", "function totalSupply() view returns (uint256)"]);
-const PAIR = new Interface(["function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)", "function token0() view returns (address)"]);
+const POOL = new Interface([
+  "function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)",
+  "function liquidity() view returns (uint128)",
+]);
+const POSITIONS = new Interface([
+  "function positions(uint256 tokenId) view returns (uint96 nonce, address operator, address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)",
+]);
 const RAMP = new Interface(["function feeBps() view returns (uint16)"]);
 const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
 const ALIVE_CHECK: AliveCheck[] = ["none", "alive", "notAlive"];
@@ -139,24 +146,41 @@ export class EvmChainState implements ChainState {
       multicall(this.rpc, [
         { target: croq.address, iface: ERC20, fn: "balanceOf", args: [cCroq.address] },
         { ...p, fn: "halvings", args: [] },
-        ...(market ? [{ target: market.pair, iface: PAIR, fn: "getReserves", args: [] }, { target: market.pair, iface: PAIR, fn: "token0", args: [] }] : []),
+        ...(market
+          ? [
+              { target: market.pool, iface: POOL, fn: "slot0", args: [] },
+              { target: market.pool, iface: POOL, fn: "liquidity", args: [] },
+              { target: market.positionManager, iface: POSITIONS, fn: "positions", args: [market.positionId] },
+              { target: croq.address, iface: ERC20, fn: "balanceOf", args: [market.pool] },
+              { target: market.usdc, iface: ERC20, fn: "balanceOf", args: [market.pool] },
+            ]
+          : []),
       ]),
     ]);
-    const [wrapped, halvings, reserves, token0] = moving;
-    const croqFirst = token0 && String(token0[0]).toLowerCase() === croq.address.toLowerCase();
+    const [wrapped, halvings, slot0, liquidity, position, croqHeld, quoteHeld] = moving;
+    const readable = market && slot0 && liquidity && position && croqHeld && quoteHeld;
+    const where = market && { croq: croq.address, quote: market.usdc, tickLower: market.tickLower, tickUpper: market.tickUpper };
+    const reserves =
+      readable && where
+        ? virtualReserves(where, { sqrtPriceX96: slot0[0], liquidity: liquidity[0], positionLiquidity: position.liquidity })
+        : null;
+    const range = where ? rangePerThousand(where) : null;
     return {
       ...constants,
       wrapped: String(wrapped?.[0] ?? 0n),
       halvings: Number(halvings?.[0] ?? 0),
       market:
-        market && reserves
+        market && reserves && range
           ? {
-              name: "Uniswap V2",
-              poolUrl: this.link(market.pair),
+              name: "Uniswap V3",
+              poolUrl: this.link(market.pool),
               appUrl: `https://app.uniswap.org/swap?chain=sepolia&inputCurrency=${market.usdc}&outputCurrency=${croq.address}`,
               quote: { symbol: "USDC", decimals: 6 },
-              croqReserve: String(croqFirst ? reserves[0] : reserves[1]),
-              quoteReserve: String(croqFirst ? reserves[1] : reserves[0]),
+              croqReserve: String(reserves.croq),
+              quoteReserve: String(reserves.quote),
+              croqHeld: String(croqHeld![0]),
+              quoteHeld: String(quoteHeld![0]),
+              range: { from: String(range.from), to: String(range.to) },
             }
           : null,
     };

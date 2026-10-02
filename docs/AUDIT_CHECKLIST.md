@@ -7,8 +7,10 @@ contract, and it must not go to mainnet before one has.**
 Scope: `ConfidentialERC721.sol`, `DoNotOpen.sol` and `DoNotOpenConfig.sol` in this
 repository, the hidden-owner version (10,000 boxes, owners and sold count encrypted; see
 [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)), deployed on Sepolia at
-`0xB8e3b2238eF5D5782A661c406acc928895938fBa` (with the duel shelf); the croquette contracts
-`Croq.sol`, `ConfidentialCroq.sol` and `Pantry.sol` (section 9); plus the parts of the
+`0x5eBaA496783146f712B9c075f8a6fd56cb612C6F` (with the duel shelf, redeployed on
+2026-10-02 at block 11830294); the croquette contracts `Croq.sol`, `ConfidentialCroq.sol`
+and `Pantry.sol` (section 9) and `LiquidityLocker.sol`, which holds the CROQ market's
+Uniswap V3 position (section 10); plus the parts of the
 adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
 `0xe8f699eEBc22767413A9edBb48826B10D3117f61` is the previous version, an ERC-721 with
 public owners, and is not what this list reviews.
@@ -33,7 +35,7 @@ mainnet), **Not done** (a check nobody has run).
 | O10 | Static analysis, fuzzing, Sepolia test suite and Etherscan verification not run | Process | see the end |
 | O11 | The reserve is unreadable: nobody can tell when it runs dry, and claims then pay nothing, silently | Low (UX) | `Pantry.claim` |
 | O12 | Welcome bags and purrs share one reserve: an active purr can leave late boxes without a bag | Low (fairness) | `Pantry.claim` |
-| O13 | The 5M treasury sits with the deployer's hot key (the LP tokens were sent to `0x…dEaD`: the seed liquidity is locked) | Low on testnet, High on mainnet | deploy |
+| O13 | The 5M treasury, the locker's fees and its ownership sit with the deployer's hot key (the market's position is locked in `LiquidityLocker` for good) | Low on testnet, High on mainnet | deploy |
 | O14 | Selling CROQ or seeding its market on mainnet is regulated (MiCA in the EU) | Blocker for a mainnet market | economy |
 | O15 | The owner can make any contract a trusted reader, and a malicious one could publish who holds a box | Medium (trust) | `setTrustedReader` |
 | O16 | `IConfidentialERC721` is a draft standard written here; no third party has reviewed it | Medium | `ConfidentialERC721` |
@@ -195,7 +197,7 @@ clear values and a KMS proof.
 
 | Check | Status |
 | --- | --- |
-| Unit tests on the FHEVM mock | Pass: 95 tests (the standard, the boxes, the croquettes, the ramp, the market hooks) |
+| Unit tests on the FHEVM mock | Pass: 95 tests (the standard, the boxes, the croquettes, the ramp, the market hooks), plus 31 for the liquidity locker and the V3 seeding against Uniswap's own bytecode |
 | Every mechanic run on Sepolia through the real KMS | Pass for the previous version: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts`. Not done for the hidden-owner contracts |
 | Optional Hardhat suite on Sepolia (`pnpm test:sepolia`) | Not done |
 | Static analysis (Slither, Aderyn) | Not done |
@@ -241,9 +243,30 @@ clear values and a KMS proof.
 | `fund` amounts are public | Accepted | They move as a plain ERC-20 first |
 | **O11. Reserve unreadable** | Open | Decide whether to publish the reserve from time to time (a public decryption), or show a warning once claims start paying 0 |
 | **O12. Shared reserve** | Open | Ring-fence the 1M welcome bags in their own bucket if every box must get one |
-| **O13. Treasury custody** | Open | LP tokens burnt to `0x…dEaD` at deploy (done). Move the treasury to a multisig before mainnet |
+| **O13. Treasury custody** | Open | The market's liquidity is locked in `LiquidityLocker` at deploy (done). Move the treasury, and the locker's ownership and beneficiary, to a multisig before mainnet |
 | **O14. Regulation** | Open | Testnet only. Legal advice before any mainnet market |
 | Static analysis, fuzzing of the bucket invariant | Not done | |
+
+## 10. The market's liquidity: LiquidityLocker
+
+The CROQ/USDC market is one Uniswap V3 position holding only CROQ (no USDC from the
+creator), from 0.001 USDC per CROQ up to 1,000 times that, at the 1% fee tier. The
+position's NFT is held by `LiquidityLocker`. Tests in `test/LiquidityLocker.ts` run against
+Uniswap's own V3 bytecode (factory, position manager, router, quoter) deployed in Hardhat,
+with CROQ as token0 and as token1.
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| No path takes liquidity out | Pass | The locker has no function that calls `decreaseLiquidity`, `burn` or a transfer of the NFT; its whole ABI is pinned. Tests: "has no way to take liquidity out", "lets nobody take the liquidity out, the deployer included" |
+| Only the position manager's NFTs are accepted | Pass | `onERC721Received` reverts `NotPositionManager` for any other sender. Test: "takes no NFT but the position manager's" |
+| Fees go to the beneficiary only, whoever calls | Pass | `collect(positionId)` passes `beneficiary` as the recipient; the liquidity does not change. Tests: "sends trading fees to the beneficiary, leaving the liquidity", "follows the beneficiary when the owner changes it" |
+| The owner can only redirect fees | Accepted | `setBeneficiary` (never to address 0) under `Ownable2Step`. A compromised owner key redirects future fees, never the liquidity. See O13 |
+| The position takes no USDC | Pass | `seedSingleSided` mints with `amount{quote}Desired = 0` and checks the `IncreaseLiquidity` event took 0 of it. Test: "takes CROQ only, and the locker holds the position" |
+| CROQ never sells below the start price | Pass | The range starts at the pool's opening price; a sale only returns USDC buyers put in. Tests: "buys nothing back before anyone has bought", "never sells back below the start price" |
+| A pool opened first at another price is not seeded | Pass | `seedSingleSided` compares the pool's `sqrtPriceX96` with the plan's and stops. Test: "refuses to seed a pool someone opened at another price" |
+| Tick math matches Uniswap's | Pass | `sqrtRatioAtTick` is a bit-for-bit port of `TickMath`; tests put real pools exactly on a dozen ticks, and one unit lower on the tick below |
+| Front-running the pool's creation | Accepted | Anyone can create the CROQ/USDC pool between the `Croq` deployment and the seed. The deploy then stops instead of seeding at the wrong price; a redeploy of `Croq` (new address) gets around it |
+| A seller can push the pool's price below the range | Accepted | Nothing trades there: the next buyer crosses the empty ticks for free and still pays at least the start price. The adapter and the API hold the reported price at the range's edge |
 
 ## Before mainnet
 

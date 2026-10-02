@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { spec } from "@dno/game-spec";
 import { buildCatSpec } from "@dno/generator";
 import { ChainError, formatAmount, MOCK_NIGHT_SHIFT, MOCK_YOU, MockAdapter, mockSeedForToken, mockWeighIn, shortAddress, type Step } from "../src";
+import { MockPool } from "../src/mock/pool";
 
 const fresh = async () => {
   const chain = new MockAdapter({ latency: 0 });
@@ -279,7 +280,48 @@ describe("MockAdapter croquettes", () => {
     expect(e.totalSupply).toBe(BigInt(spec.economy.token.totalSupply));
     expect(e.welcomeBag).toBe(spec.economy.welcomeBag.amount);
     expect([e.mealsPerDay, e.maxEatenPerDay, e.mealTreasuryBps, e.mealBurnBps]).toEqual([2, 1_000n, 2_000, 2_000]);
-    expect(e.market?.croqReserve).toBe(4_000_000n);
+    // A CROQ-only market: all 4M in the pool, no USDC until someone buys, at 0.001 USDC each.
+    expect(e.market?.croqHeld).toBe(4_000_000n);
+    expect(e.market?.quoteHeld).toBe(0n);
+    expect(e.market?.range).toEqual({ from: 1_000_000n, to: 1_000_000_000n });
+    const perThousand = (e.market!.quoteReserve * 1000n) / e.market!.croqReserve;
+    expect(Number(perThousand)).toBeCloseTo(1_000_000, -2);
+  });
+
+  it("sells CROQ from the start price up, never back below it", async () => {
+    const { chain } = await clocked();
+    await chain.claimCroquettes([0]);
+    await chain.unwrap(100n);
+    // Nobody has bought yet: the welcome bag finds no USDC.
+    expect(await chain.quote("sell", 100n)).toBe(0n);
+    expect(await refusal(chain.trade("sell", 100n))).toBe("NoLiquidity");
+    // 1 USDC buys about 1,000 CROQ, less the 1% fee.
+    const bought = await chain.quote("buy", 1_000_000n);
+    expect(bought).toBeGreaterThan(985n);
+    expect(bought).toBeLessThan(990n);
+    await chain.trade("buy", 1_000_000n);
+    const usdcBefore = await chain.usdcBalance(MOCK_YOU);
+    // The bag now sells, at no more than the start price.
+    await chain.trade("sell", 100n);
+    const got = (await chain.usdcBalance(MOCK_YOU)) - usdcBefore;
+    expect(got).toBeGreaterThan(0n);
+    expect(got).toBeLessThanOrEqual(100n * 1_000n);
+    const after = (await chain.economy()).market!;
+    expect(after.quoteHeld).toBeGreaterThan(0n);
+    expect(after.croqHeld).toBeLessThan(4_000_000n);
+  });
+
+  it("stops selling at the end of the range, taking only what it needed", () => {
+    const pool = new MockPool(4_000_000n, 1_000, 1_000, 100);
+    // Far more than the whole range costs: about 4M CROQ x sqrt(0.001 x 1) USDC.
+    const swap = pool.swap("buy", 10n ** 12n);
+    expect(swap.out).toBeLessThanOrEqual(4_000_000n);
+    expect(swap.out).toBeGreaterThan(4_000_000n - 10n);
+    expect(swap.used).toBeLessThan(10n ** 12n);
+    expect(Number(swap.used) / 1e6 / Number(swap.out)).toBeCloseTo(Math.sqrt(0.001) / 0.99, 3);
+    pool.apply(swap);
+    expect(pool.held().croq).toBeLessThan(10n);
+    expect(pool.swap("buy", 1_000_000n).out).toBe(0n);
   });
 
   it("pays a welcome bag per box once, then a purr per whole day", async () => {

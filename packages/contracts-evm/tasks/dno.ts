@@ -376,7 +376,9 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
       // ETH in, USDC or cUSDC out, when a ramp was deployed on this network.
       ramp: await hre.deployments.getOrNull("UsdcRamp").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
       // Bought in USDC once a wallet's free decryptions of the day are spent.
-      credits: await hre.deployments.getOrNull("DecryptionCredits").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
+      credits: await hre.deployments
+        .getOrNull("DecryptionCredits")
+        .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
     };
     writeFileSync(out, JSON.stringify(slim, null, 2) + "\n");
     console.log(`wrote ${out}`);
@@ -386,17 +388,33 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
     if (!pantry) return;
     const croq = await hre.deployments.get("Croq");
     const cCroq = await hre.deployments.get("ConfidentialCroq");
-    const pair = await hre.deployments.getOrNull("CroqUsdcPair");
-    const { UNISWAP_V2 } = await import("../deploy/economy");
+    const pool = await hre.deployments.getOrNull("CroqUsdcPool");
+    const locker = await hre.deployments.getOrNull("LiquidityLocker");
+    const { UNISWAP_V3 } = await import("../deploy/economy");
     const { PAYMENT_TOKENS } = await import("../deploy/deploy");
-    const uniswap = UNISWAP_V2[hre.network.name];
+    const uniswap = UNISWAP_V3[hre.network.name];
     const usdc = PAYMENT_TOKENS[hre.network.name]?.usdc;
     const economyOut = resolve(__dirname, `../../chain-adapter/src/evm/deployments/${hre.network.name}-economy.json`);
     const economy = {
       croq: { address: croq.address, abi: croq.abi },
       cCroq: { address: cCroq.address, abi: cCroq.abi },
       pantry: { address: pantry.address, abi: pantry.abi },
-      market: pair && uniswap && usdc ? { pair: pair.address, router: uniswap.router, factory: uniswap.factory, usdc } : null,
+      // A Uniswap V3 pool where CROQ is sold from one locked position, when one was opened here.
+      market:
+        pool && locker && uniswap && usdc
+          ? {
+              pool: pool.address,
+              fee: pool.linkedData.fee,
+              positionId: pool.linkedData.positionId,
+              tickLower: pool.linkedData.tickLower,
+              tickUpper: pool.linkedData.tickUpper,
+              locker: locker.address,
+              positionManager: uniswap.positionManager,
+              swapRouter: uniswap.swapRouter,
+              quoter: uniswap.quoter,
+              usdc,
+            }
+          : null,
     };
     writeFileSync(economyOut, JSON.stringify(economy, null, 2) + "\n");
     console.log(`wrote ${economyOut}`);

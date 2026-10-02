@@ -10,7 +10,7 @@ flowchart LR
   iface --> evm["EvmFhevmAdapter<br/>ethers + Relayer SDK"]
   iface -.-> sol["solana/<br/>not started"]
   evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC on Sepolia"]
-  evm --> market["Uniswap V2: CROQ/USDC"]
+  evm --> market["Uniswap V3: CROQ/USDC<br/>QuoterV2, SwapRouter02"]
   evm --> relayer["Zama relayer + KMS"]
 ```
 
@@ -22,7 +22,9 @@ flowchart LR
 | `src/evm/wallet.ts` | Where signatures come from: an injected browser wallet, or a fixed signer in Node |
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
 | `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, written by `pnpm --filter @dno/contracts-evm export:sepolia` |
-| `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V2 market, written by the same command |
+| `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
+| `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
+| `src/mock/pool.ts` | `MockPool`: the mock's market, the same CROQ-only V3 range |
 | `src/solana/README.md` | What the Solana port needs |
 
 ## Using it
@@ -96,6 +98,20 @@ zeros unless the caller holds the cat), `weigh`, `wrap`, `unwrap` (a public decr
 the amount, then `finalizeUnwrap`), `sendCroquettes`, and `quote` / `trade` against the
 public market. See [`docs/CROQ.md`](../../docs/CROQ.md).
 
+The market is a Uniswap V3 pool where one locked position sells CROQ from a start price
+up. `quote` asks Uniswap's `QuoterV2` and returns 0 when the swap would move nothing (a
+sale before anyone has bought, a buy past the end of the range); `trade` then throws
+`reverted` with reason `NoLiquidity` instead of sending, and otherwise swaps through
+`SwapRouter02` (`exactInputSingle` in a `multicall` with a 20-minute deadline).
+`economy().market` (`MarketInfo`) carries:
+
+- `croqReserve` / `quoteReserve`: the reserves a constant-product pool would price with,
+  that is the active range's virtual reserves L/√P and L·√P. Their ratio is the price, and
+  price impact reads the same as on a V2 pool. When the pool's price has left the range,
+  they are held at its edge, since nothing trades past it;
+- `croqHeld` / `quoteHeld`: what the pool actually holds;
+- `range`: `{ from, to }` in USDC units per 1,000 CROQ, where CROQ starts and stops selling.
+
 USDC goes in and out the same way: `shieldUsdc(amount)` wraps plain USDC as cUSDC (the
 amount is public, the site takes nothing), and `unshieldUsdc(amount)` goes back through the
 cUSDC wrapper's `unwrap` (the amount encrypted in the page, a public decryption, then
@@ -145,12 +161,13 @@ boxes and reading a mint's result use the same user decryption as a shake.
 ## Tests
 
 ```bash
-pnpm --filter @dno/chain-adapter test            # the mock, 30 tests, no network
+pnpm --filter @dno/chain-adapter test            # the mock and the V3 math, no network
 pnpm --filter @dno/chain-adapter smoke:sepolia   # every mechanic on the deployed contracts
 pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap, unwrap, transfer, sell
 ```
 
 The smoke scripts spend testnet ETH (mints, fees, a small market buy) and need
-`PRIVATE_KEY` in the repo-root `.env`. `smoke:croq` passed against the previous Pantry,
-cCROQ and Uniswap pool on 2026-10-01. The hidden-owner contracts are not deployed on
-Sepolia yet, so neither script has run against them.
+`PRIVATE_KEY` in the repo-root `.env`. `smoke:croq` passed against the Uniswap V2 economy
+on 2026-10-01. Against the V3 market deployed on 2026-10-02 (block 11830294), its economy
+part ran up to the opening, which stopped on the script account's cUSDC balance; quote,
+buy and sell back on the V3 pool were checked through the adapter separately.

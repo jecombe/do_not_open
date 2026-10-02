@@ -102,7 +102,7 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /v1/accounts/:address` | Profile: user, duels, pending requests, opened cats, activity |
 | `GET /v1/accounts/:address/requests` | Pending openings, alive checks, entanglements |
 | `GET /v1/accounts/:address/transfers?after=` | Transfer receipts naming the account, for it to decrypt |
-| `GET /v1/economy` | Croquette economy, pool reserves |
+| `GET /v1/economy` | Croquette economy and its Uniswap V3 market: `croqReserve` / `quoteReserve` (the active range's virtual reserves, whose ratio is the price), `croqHeld` / `quoteHeld` (what the pool holds), `range` (USDC units per 1,000 CROQ where the locked position starts and stops selling) |
 | `GET /v1/activity` | Everything, newest first (`before`, `limit`, `account`) |
 | `GET /v1/stats` | Users, registered, minted, opened, duels |
 | `POST /v1/auth/nonce` · `POST /v1/auth/verify` · `GET /v1/me` | Sign-in with a wallet signature (no gas), then a bearer session |
@@ -120,6 +120,12 @@ when they sign in.
 Migration 3 (`src/infrastructure/db/migrations.ts`) is for the duel-shelf contract: it
 empties the index (sign-ins are kept) and the indexer rebuilds it from the new deployment
 block. Point the API at the new addresses before it runs.
+
+Migration 5 is for the redeploy of 2026-10-02 (`DoNotOpen` `0x5eBa…2C6F`, block 11830294,
+and the Uniswap V3 economy): it empties the index the same way, keeping sign-ins and the
+relayer proxy's counts. The indexer starts at `indexFrom`, the earliest block of the
+protocol's live contracts: the decryption credits (block 11829380) were not redeployed, so
+purchases made before the new collection still count.
 
 ## Relayer proxy
 

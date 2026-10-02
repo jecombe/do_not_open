@@ -5,6 +5,7 @@ import { IndexerClient } from "./indexer";
 import { StaticWallet } from "./wallet";
 
 export { EvmFhevmAdapter } from "./EvmFhevmAdapter";
+export type { EconomyDeployment, V3Market } from "./EvmFhevmAdapter";
 export { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY } from "./chains";
 export * from "../types";
 

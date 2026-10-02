@@ -1,6 +1,6 @@
 /**
  * End-to-end check of the croquette calls of EvmFhevmAdapter against the live Sepolia
- * Pantry, cCROQ and Uniswap V2 pool, through the real coprocessor, relayer and KMS.
+ * Pantry, cCROQ and Uniswap V3 pool, through the real coprocessor, relayer and KMS.
  * Spends test USDC (one mint, one opening, a 1 USDC market buy; minted from the faucet when
  * short) and testnet ETH for gas for about fifteen
  * transactions. Needs the Pantry with weigh-ins: redeploy the economy first.
@@ -29,7 +29,7 @@ async function main() {
   const onStep = (s: Step) => console.log(`    … ${s}`);
 
   const e = await chain.economy();
-  console.log(`${e.symbol}: ${e.totalSupply} total, ${e.wrapped} wrapped; pool ${e.market?.croqReserve} CROQ / ${formatAmount(e.market?.quoteReserve ?? 0n, 6)} USDC`);
+  console.log(`${e.symbol}: ${e.totalSupply} total, ${e.wrapped} wrapped; pool holds ${e.market?.croqHeld} CROQ / ${formatAmount(e.market?.quoteHeld ?? 0n, 6)} USDC, sells from ${formatAmount(e.market?.range?.from ?? 0n, 6)} USDC per 1,000`);
   check(e.totalSupply === BigInt(spec.economy.token.totalSupply), "total supply matches the spec");
 
   const ramp = await chain.quoteUsdc(10n ** 15n);

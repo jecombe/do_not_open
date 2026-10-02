@@ -1,6 +1,6 @@
 # @dno/contracts-evm
 
-Hardhat project built on the official Zama template. Six contracts, and a reusable base:
+Hardhat project built on the official Zama template. Seven contracts, and a reusable base:
 
 - **`DoNotOpenConfig`** — the game's numbers, read from `packages/game-spec/spec.json`
   at deploy (`lib/specParams.ts`), plus the plaintext rule that turns a revealed seed
@@ -19,6 +19,12 @@ Hardhat project built on the official Zama template. Six contracts, and a reusab
 - **`Pantry`** — the croquette economy: welcome bags, the daily purr, meals into
   encrypted weights, the weigh-in. Reads `DoNotOpen` (as a trusted reader of who holds a box),
   never writes to it. Parameters from the spec's `economy` section (`pantryParamsFromSpec()`).
+- **`LiquidityLocker`** — holds the CROQ market's Uniswap V3 position for good. No function
+  removes liquidity or moves a position out; anyone can `collect(positionId)`, which sends
+  the trading fees to the beneficiary (the treasury); the owner (`Ownable2Step`) can only
+  change the beneficiary. It takes NFTs from the position manager only. Tests in
+  `test/LiquidityLocker.ts` run against Uniswap's own V3 bytecode
+  (`@uniswap/v3-core`, `@uniswap/v3-periphery`, dev dependencies) deployed in Hardhat.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -57,6 +63,8 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `Pantry.feed` | ~1.23M | ~3.68M |
 | `Pantry.claim`, 10 boxes | | ~13M |
 
+`LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
+
 Deployed size: `DoNotOpen` 24,454 bytes (limit 24,576), `Pantry` about 14,000. To stay under
 the limit, the optimizer runs at 200 (`hardhat.config.ts`), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
@@ -86,10 +94,18 @@ pnpm verify:sepolia
 in local test tokens elsewhere. `deploy/economy.ts` then deploys `Croq`, `ConfidentialCroq`
 and `Pantry`, makes the Pantry a trusted reader of `DoNotOpen` (or prints the call when the
 collection owner is another key), approves and calls `Pantry.fund` with the game reserve
-plus the welcome bags (11M), and, on a network listed in `UNISWAP_V2` (Sepolia), opens a
-CROQ/USDC pool with the 4M liquidity share and `LIQUIDITY_USDC` USDC (default 4,000). The
-LP tokens are sent to `0x…dEaD`, so that liquidity is locked for good. The rest of the
-supply (the treasury) stays with the deployer, or goes to `COLLECTION_OWNER` if it is set.
+plus the welcome bags (11M), and, on a network listed in `UNISWAP_V3` (Sepolia), opens the
+CROQ/USDC market with **CROQ only**: it deploys `LiquidityLocker`, then
+`lib/uniswapV3.ts` lays out a single-sided position (`planSingleSided`) from
+`LIQUIDITY_START_PRICE` USDC per CROQ (default 0.001, rounded up to a usable tick) up to
+`LIQUIDITY_RANGE` times that (default 1000), at the `LIQUIDITY_FEE` tier (default 10000,
+1%), opens the pool at the range's edge, mints the 4M liquidity share with 0 USDC and
+hands the position to the locker (`seedSingleSided`). It stops if someone opened the pool
+first at another price. The script checks that the position manager, `SwapRouter02` and
+`QuoterV2` belong to the expected factory. The rest of the supply (the treasury) stays
+with the deployer, or goes to `COLLECTION_OWNER` if it is set. `COLLECTION_OWNER` also
+sets the collection's and the locker's owner: leave it unset and a redeploy uses the
+deployer, which is a constructor change, so hardhat-deploy redeploys `DoNotOpen` too.
 `deploy/ramp.ts` deploys the `UsdcRamp`. `deploy/credits.ts` deploys `DecryptionCredits`,
 priced at `CREDIT_PRICE_USDC`, or Zama's dollar price for one decryption (`ZAMA_DECRYPT_USD`)
 times `CREDIT_MARGIN` (2), rounded up (`lib/creditPrice.ts`): a credit follows Zama's dollar
@@ -103,8 +119,9 @@ network. Use `pnpm chain` + `pnpm deploy:localhost`, which runs the FHEVM mock.
 
 `pnpm export:sepolia` (run by `deploy:sepolia`) writes
 `packages/chain-adapter/src/evm/deployments/sepolia.json` (the box contract) and
-`sepolia-economy.json` (CROQ, cCROQ, Pantry addresses and ABIs, and the market: pair,
-router, factory, USDC).
+`sepolia-economy.json` (CROQ, cCROQ, Pantry addresses and ABIs, and the market: the V3
+pool, its fee, the locked position's id and ticks, the locker, the position manager,
+`SwapRouter02`, `QuoterV2` and USDC).
 
 Single steps: `npx hardhat --network <net> dno:mint --quantity <n> --ids <n>`,
 `dno:shake|dno:feed|dno:paid-shake|dno:prove-alive|dno:observe|dno:status --token <id>`,

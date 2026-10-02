@@ -350,6 +350,8 @@ export function ExchangeView() {
   else if (short) stamp = t("ex.short", { symbol: fromInfo!.symbol });
   else if (quoteFailed) stamp = t("ex.quoteFailed");
   else if (!quote) stamp = t("ex.quoting");
+  // A pool leg that gives nothing: CROQ before anyone has bought, or past the end of its range.
+  else if (quote.legs.some((l) => (l.kind === "buyCroq" || l.kind === "sellCroq") && l.amountOut === 0n)) stamp = t("ex.noBuyers");
   else {
     ready = true;
     const verb = route.length === 1 ? t(LEG_VERB[route[0]!.kind]) : t("ex.verb.swapSteps", { n: route.length });

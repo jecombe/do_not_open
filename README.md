@@ -27,7 +27,7 @@ Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 | 3     | duel, entangle, feed, paidShake and their 3D effects                  | **Done**, live on Sepolia |
 | 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render| **Done**    |
 | 5     | Full docs, Solana porting map, audit checklist                        | **Done**    |
-| CROQ  | Croquette economy: CROQ + cCROQ, Pantry, Uniswap pool, 10,000 boxes   | **Done**, live on Sepolia |
+| CROQ  | Croquette economy: CROQ + cCROQ, Pantry, a CROQ-only Uniswap V3 pool locked for good, 10,000 boxes | **Done**, live on Sepolia |
 | Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done**, live on Sepolia |
 | Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
@@ -127,7 +127,8 @@ once at deployment; nothing can mint more.
 
 ```mermaid
 flowchart LR
-  pool["Uniswap V2<br/>CROQ/USDC"] <-- "buy, sell<br/>public amounts" --> player(("Player"))
+  pool["Uniswap V3<br/>CROQ/USDC, CROQ only at launch"] <-- "buy, sell<br/>public amounts" --> player(("Player"))
+  locker["LiquidityLocker"] -- "holds the position for good<br/>fees, collect()" --> treasury
   player -- "wrap / unwrap<br/>public amounts" --> ccroq["cCROQ<br/>encrypted balances"]
   pantry["Pantry"] -- "welcome bag 100 per box<br/>purr 0..4 per box per day<br/>paid into the box, then its holder" --> ccroq
   ccroq -- "holder feeds a sealed cat<br/>2 meals, 1,000 a day" --> meal{{"meal, eaten whole<br/>weight += amount"}}
@@ -141,33 +142,59 @@ flowchart LR
 | --- | --- |
 | Game reserve (Pantry, pays the purr, takes back 60% of every meal) | 10,000,000 |
 | Welcome bags (Pantry, 100 per box) | 1,000,000 |
-| Market liquidity (Uniswap V2) | 4,000,000 |
+| Market liquidity (Uniswap V3, CROQ only, locked) | 4,000,000 |
 | Treasury | 5,000,000 |
+
+The market is one Uniswap V3 position that holds only CROQ: the creator put in no USDC.
+It sells CROQ from 0.001 USDC up to 1 USDC each, so CROQ never sells below 0.001 USDC, and
+until someone buys there is no USDC to sell into. The position is held for good by the
+`LiquidityLocker`; its 1% trading fees go to the treasury.
 
 The rules, what leaks and the costs are in [`docs/CROQ.md`](docs/CROQ.md).
 
 ## On Sepolia
 
-The contracts with the duel shelf, deployed on 2026-10-02 (block 11828557), with a fresh
-croquette economy (a Pantry is tied to one collection):
+The current contracts, deployed on 2026-10-02 (block 11830294) with a CROQ-only Uniswap V3
+market. The deployer `0x6a18cFC3fAeef453B295B12246d40a82593b3208` owns the collection and
+is the treasury:
 
 | Contract | Address |
 | --- | --- |
-| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0xB8e3b2238eF5D5782A661c406acc928895938fBa`](https://sepolia.etherscan.io/address/0xB8e3b2238eF5D5782A661c406acc928895938fBa) |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0x5eBaA496783146f712B9c075f8a6fd56cb612C6F`](https://sepolia.etherscan.io/address/0x5eBaA496783146f712B9c075f8a6fd56cb612C6F) |
 | `DoNotOpenConfig` | [`0x6909f7C5ebE00592F28Ab3597914d30D8b746976`](https://sepolia.etherscan.io/address/0x6909f7C5ebE00592F28Ab3597914d30D8b746976) |
-| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x684974FE67084A8cF94e6096fDcbc774892f560a`](https://sepolia.etherscan.io/address/0x684974FE67084A8cF94e6096fDcbc774892f560a) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0xb891e9A343ccC18C070aB0b73341FF38f6D2E66B`](https://sepolia.etherscan.io/address/0xb891e9A343ccC18C070aB0b73341FF38f6D2E66B) |
+| `Croq` (CROQ) | [`0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7`](https://sepolia.etherscan.io/address/0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7) |
+| `ConfidentialCroq` (cCROQ) | [`0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952`](https://sepolia.etherscan.io/address/0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952) |
+| `Pantry` | [`0xf506832ab27DF17ece72924502537ecCf7586CDB`](https://sepolia.etherscan.io/address/0xf506832ab27DF17ece72924502537ecCf7586CDB) |
+| `LiquidityLocker` (holds position #233099 for good) | [`0xCA7Eee59de903F9b6bfab466667131Fb58403BF3`](https://sepolia.etherscan.io/address/0xCA7Eee59de903F9b6bfab466667131Fb58403BF3) |
+| CROQ/USDC pool, Uniswap V3, 1% fee | [`0x399Dc7af546154998D302d0b3B312750DA962100`](https://sepolia.etherscan.io/address/0x399Dc7af546154998D302d0b3B312750DA962100) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee, kept from the previous deployment) | [`0x2754B8568a3402f828DDAa1715F8290CDa498aAb`](https://sepolia.etherscan.io/address/0x2754B8568a3402f828DDAa1715F8290CDa498aAb) |
+| `DecryptionCredits` (0.01 USDC a credit, kept from the previous deployment) | [`0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1`](https://sepolia.etherscan.io/address/0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1) |
+
+CROQ trades through Uniswap's own V3 contracts on Sepolia: `SwapRouter02`
+`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`, `QuoterV2`
+`0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3`, `NonfungiblePositionManager`
+`0x1238536071E1c677A632429e3655c799b22cDA52`. The adapter's market calls (a sale
+quoted at 0 before any buy, a buy, a sale back) were run against this deployment;
+`smoke:croq` as a whole stops at its box opening when the account lacks the cUSDC to pay.
+
+The contracts with the duel shelf (2026-10-02, block 11828557), replaced. They were owned
+by `0x590891F269720001435004A1089cAB5b2c20029A`:
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` | [`0xB8e3b2238eF5D5782A661c406acc928895938fBa`](https://sepolia.etherscan.io/address/0xB8e3b2238eF5D5782A661c406acc928895938fBa) |
+| `DoNotOpenHooks` | [`0x684974FE67084A8cF94e6096fDcbc774892f560a`](https://sepolia.etherscan.io/address/0x684974FE67084A8cF94e6096fDcbc774892f560a) |
 | `Croq` (CROQ) | [`0xF4d9CE55b52417e503617186e923E1c0713c53b5`](https://sepolia.etherscan.io/address/0xF4d9CE55b52417e503617186e923E1c0713c53b5) |
 | `ConfidentialCroq` (cCROQ) | [`0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9`](https://sepolia.etherscan.io/address/0x4f7415781ceef5C6A0C036A7B8813B7F49634bF9) |
 | `Pantry` | [`0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed`](https://sepolia.etherscan.io/address/0x28aC2bc964AfAAa10f51bf485C59D2C9CF6bC8Ed) |
-| CROQ/USDC pair, Uniswap V2 | [`0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2`](https://sepolia.etherscan.io/address/0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2) |
-| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
-| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
-| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x2754B8568a3402f828DDAa1715F8290CDa498aAb`](https://sepolia.etherscan.io/address/0x2754B8568a3402f828DDAa1715F8290CDa498aAb) |
-| `DecryptionCredits` (0.01 USDC a credit, deployed later at block 11829380) | [`0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1`](https://sepolia.etherscan.io/address/0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1) |
+| CROQ/USDC pair, Uniswap V2 (LP tokens burnt) | [`0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2`](https://sepolia.etherscan.io/address/0x7C117CA5f1f0d57Bcc9810E216aa6238799E43d2) |
 
 The end-to-end smoke tests (`pnpm --filter @dno/chain-adapter smoke:sepolia` and
-`smoke:croq`) ran against the previous deployment through the real coprocessor, relayer and
-KMS; `smoke:sepolia` ran again against this one, the duel shelf included.
+`smoke:croq`) ran against the deployments before it through the real coprocessor, relayer
+and KMS; `smoke:sepolia` ran again against it, the duel shelf included.
 
 The hidden-owner contracts before the duel shelf (2026-10-01, block 11822985), replaced:
 
