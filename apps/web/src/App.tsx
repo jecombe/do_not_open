@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { shortAddress } from "@dno/chain-adapter";
 import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
+import { Clerk } from "./chat/Clerk";
 import { useT } from "./i18n/app";
 import { Masthead, type View } from "./Masthead";
 import { BoxView } from "./views/BoxView";
@@ -133,9 +134,13 @@ export function App() {
             t("footer.reading")
           )}
         </span>
-        <button type="button" className="link" onClick={() => setMuted((m) => !m)} aria-pressed={muted}>
-          {muted ? t("footer.soundOff") : t("footer.soundOn")}
-        </button>
+        <span className="notice-actions">
+          {/* The manual opens in another tab: the game stays where it was. */}
+          <Clerk newTab inline />
+          <button type="button" className="link" onClick={() => setMuted((m) => !m)} aria-pressed={muted}>
+            {muted ? t("footer.soundOff") : t("footer.soundOn")}
+          </button>
+        </span>
       </footer>
     </div>
   );

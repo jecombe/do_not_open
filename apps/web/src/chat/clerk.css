@@ -1,0 +1,303 @@
+/* The depot's clerk: a tab on the edge of the page, and a counter slip that opens from it.
+   Shared by the manual and the game; it only uses the palette both pages define. */
+
+.clerk-tab {
+  position: fixed;
+  right: clamp(12px, 2.4vw, 28px);
+  bottom: 64px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 8px;
+  border: 2px solid var(--ink);
+  background: var(--tape);
+  color: var(--ink);
+  font-family: var(--label);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: rotate(-1.5deg);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.clerk-tab:hover {
+  transform: rotate(0deg) translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.clerk-tab.is-open {
+  transform: rotate(0deg);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.clerk-tab-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  color: var(--manifest);
+  font-family: var(--stencil);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.clerk {
+  /* The game's footer lets clicks through to the scene; the slip takes its own. */
+  pointer-events: auto;
+  position: fixed;
+  right: clamp(12px, 2.4vw, 28px);
+  bottom: 116px;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(640px, calc(100dvh - 140px));
+  border: 2px solid var(--ink);
+  background: var(--manifest);
+  color: var(--ink);
+  font-family: var(--label);
+  font-size: 18px;
+  line-height: 1.38;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+/* Opened from the game's footer: the slip stands just above it. */
+.clerk.is-inline {
+  bottom: 58px;
+  max-height: min(640px, calc(100dvh - 120px));
+}
+
+.clerk-inline .clerk-tab-label {
+  display: inline;
+}
+
+.clerk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 8px 14px;
+  border-bottom: 2px dashed var(--kraft);
+}
+
+.clerk-head h2 {
+  margin: 0;
+  font-family: var(--stencil);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ink-red);
+  text-transform: uppercase;
+}
+
+.clerk-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clerk-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 16px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.clerk-close {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.clerk-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overscroll-behavior: contain;
+}
+
+.clerk-line {
+  margin: 0;
+  max-width: 92%;
+  padding: 8px 11px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.clerk-line p {
+  margin: 0;
+}
+
+.clerk-line.is-clerk {
+  align-self: flex-start;
+  background: #fff8e8;
+  border: 1px solid var(--kraft);
+}
+
+.clerk-line.is-you {
+  align-self: flex-end;
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.clerk-line.is-problem {
+  border-color: var(--ink-red);
+  color: var(--ink-red);
+}
+
+.clerk-sources {
+  margin-top: 6px !important;
+  font-size: 15px;
+  color: #5b4a37;
+}
+
+.clerk-source {
+  color: var(--ink-red);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+.clerk-source + .clerk-source::before {
+  content: " · ";
+  color: #5b4a37;
+  font-weight: 500;
+}
+
+.clerk-quote {
+  margin: 8px 0 0;
+  padding: 6px 0 0 10px;
+  border-left: 3px solid var(--tape);
+  font-size: 16px;
+}
+
+.clerk-quote cite {
+  font-style: normal;
+  font-size: 15px;
+}
+
+.clerk-quote cite .clerk-source::before {
+  content: none;
+}
+
+.clerk-try {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.clerk-try button {
+  padding: 5px 10px;
+  border: 1px dashed var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  text-align: left;
+}
+
+.clerk-try button:hover {
+  background: var(--tape);
+}
+
+.clerk-dots::after {
+  content: "";
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  animation: clerk-dots 1.2s steps(4, end) infinite;
+}
+
+@keyframes clerk-dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
+.clerk-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 6px;
+  border-top: 2px dashed var(--kraft);
+}
+
+.clerk-form textarea {
+  flex: 1;
+  resize: none;
+  padding: 7px 9px;
+  border: 2px solid var(--ink);
+  background: #fffdf6;
+  color: var(--ink);
+  font: inherit;
+  font-size: 17px;
+}
+
+.clerk-send {
+  align-self: stretch;
+  padding: 0 14px;
+  border: 2px solid var(--ink);
+  background: var(--ink-red);
+  color: var(--manifest);
+  font-family: var(--stencil);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.clerk-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.clerk-fine {
+  margin: 0;
+  padding: 0 14px 10px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: #5b4a37;
+}
+
+@media (max-width: 560px) {
+  .clerk {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 82dvh;
+    border-width: 2px 0 0;
+    box-shadow: 0 -6px 0 var(--ink);
+  }
+
+  /* On a phone the tab is only its mark: the game needs the room. */
+  .clerk-tab {
+    bottom: 56px;
+    padding: 5px;
+  }
+
+  .clerk-tab-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clerk-tab,
+  .clerk-dots::after {
+    transition: none;
+    animation: none;
+  }
+}

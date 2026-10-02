@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
+import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
 import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
@@ -18,6 +19,10 @@ export interface HttpDeps {
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
   relayerRatePerMinute?: number;
+  /** The manual's chatbot. */
+  chat?: AskManual;
+  /** Chat questions per minute per IP. */
+  chatRatePerMinute?: number;
   /** Absent when this process does not index (ROLE=api). */
   indexer?: { status(): IndexerStatus; nudge(): void };
   rpcStatus?: () => EndpointStatus[];
@@ -255,6 +260,17 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     app.get("/v1/relayer/allowance/:address", async (req, reply) => {
       const p = z.object({ address }).parse(req.params);
       return send(reply, await relayer.allowance(p.address), "private, no-store");
+    });
+  }
+
+  // --- the manual's chatbot ---
+
+  const chat = deps.chat;
+  if (chat) {
+    app.post("/v1/chat", { config: { rateLimit: { max: deps.chatRatePerMinute ?? 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const input = askInput.parse(req.body);
+      reply.header("cache-control", "no-store");
+      return { data: await chat.ask(input, req.ip) };
     });
   }
 

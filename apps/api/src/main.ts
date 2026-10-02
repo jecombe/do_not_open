@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 import pino from "pino";
+import { AskManual } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import type { Store } from "./application/ports/store";
 import { Metadata } from "./application/metadata";
@@ -11,6 +12,8 @@ import { Reconciler } from "./application/reconcile";
 import { SyncChain } from "./application/syncChain";
 import { loadConfig } from "./config";
 import { ethersVerifier, HmacSessions, randomNonce } from "./infrastructure/auth/crypto";
+import { GeminiModel } from "./infrastructure/chat/GeminiModel";
+import manual from "./infrastructure/chat/manual.json";
 import { AclPublications } from "./infrastructure/chain/AclPublications";
 import { deploymentFor } from "./infrastructure/chain/deployment";
 import { EvmChainSource } from "./infrastructure/chain/EvmChainSource";
@@ -83,6 +86,15 @@ async function main() {
   );
   if (!config.RELAYER_API_KEY) log.info("RELAYER_API_KEY is not set: the relayer proxy forwards without a key (fine on Sepolia, refused on mainnet)");
 
+  // The manual's chatbot: Gemini answers from the whole manual; without a key, or past the
+  // day's quota, the chat quotes the manual's best paragraphs.
+  const chat = new AskManual(
+    manual.locales,
+    config.GEMINI_API_KEY ? new GeminiModel({ apiKey: config.GEMINI_API_KEY, models: config.GEMINI_MODELS, timeoutMs: config.GEMINI_TIMEOUT_MS, log }) : null,
+    { perIpPerDay: config.CHAT_PER_IP_PER_DAY, perDay: config.CHAT_PER_DAY, cacheSize: 500 },
+  );
+  if (!config.GEMINI_API_KEY) log.info("GEMINI_API_KEY is not set: the chat quotes the manual instead of answering");
+
   const server =
     config.ROLE === "indexer"
       ? null
@@ -92,6 +104,8 @@ async function main() {
           signIn,
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
+          chat,
+          chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
           indexer,
           rpcStatus: () => rpc.status(),
           corsOrigins: config.CORS_ORIGINS,

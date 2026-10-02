@@ -16,7 +16,7 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
  * Three parts: the manual itself, for players and anyone curious, with no code in it; a short
  * part about the testnet, which goes away at mainnet; and the part for developers.
  */
-const PARTS = [
+export const PARTS = [
   { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "exchange", "transfer", "croquettes"] },
   { key: "testnet", sections: ["testnet"] },
   { key: "dev", sections: ["code", "solana", "more"] },

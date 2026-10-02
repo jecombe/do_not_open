@@ -51,6 +51,11 @@ certificate. Then in GitHub, under Settings, Secrets and variables, Actions:
 
 And in Vercel, `VITE_API_URL=https://<api-domain>`. Without it the site reads the RPC as before.
 
+The manual's chatbot answers with Google's Gemini when `/opt/dno/.env` holds
+`GEMINI_API_KEY=...` (a free key from https://aistudio.google.com/apikey, on a project with
+no billing, so it can never cost anything), then `docker compose up -d api`. Without it, the
+chat quotes the manual.
+
 ## By hand
 
 ```bash
