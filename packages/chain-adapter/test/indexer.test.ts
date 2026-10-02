@@ -55,7 +55,7 @@ function api(routes: Record<string, unknown>, opts: { now?: () => number } = {})
   return { client: new IndexerClient("https://api.test/", { fetch: fetch as unknown as typeof globalThis.fetch, ...opts }), asked };
 }
 
-const DUEL = { duelId: 3, tokenA: 1, tokenB: 2, challenger: "0xaaa", accepter: null, status: "challenged", winner: null, createdBlock: 9 };
+const DUEL = { duelId: 3, tokenA: 1, tokenB: 2, reserved: true, challenger: "0xaaa", accepter: null, status: "open", openUntil: 2_000_000_000, winner: null, createdBlock: 9 };
 
 describe("IndexerClient", () => {
   it("turns the API's strings back into bigints", async () => {
@@ -93,7 +93,7 @@ describe("IndexerClient", () => {
   it("sends a duel query with the account and the boxes", async () => {
     const { client, asked } = api({ "/v1/duels?account=0xaaa&tokens=1%2C2&open=true": { block: 10, data: [DUEL] } });
     expect((await client.duels({ account: "0xaaa", tokenIds: [1, 2], open: true })).data).toEqual([
-      { duelId: 3, tokenA: 1, tokenB: 2, challenger: "0xaaa", accepter: null, status: "challenged" },
+      { duelId: 3, tokenA: 1, tokenB: 2, reserved: true, challenger: "0xaaa", accepter: null, status: "open", openUntil: 2_000_000_000 },
     ]);
     expect(asked).toEqual(["GET /v1/duels?account=0xaaa&tokens=1%2C2&open=true"]);
   });
@@ -103,7 +103,8 @@ describe("EvmFhevmAdapter with the API", () => {
   const views = (fn: string) => {
     if (fn === "duelCount") return [1];
     if (fn === "entangleProposer") return ["0x0000000000000000000000000000000000000000"];
-    if (fn === "duelInfo") return [5, 6, "0x00000000000000000000000000000000000000aa", 1, "0x0000000000000000000000000000000000000000"];
+    // Box 5 on the shelf, reserved for box 6, until far ahead.
+    if (fn === "duelInfo") return [5, 6, "0x00000000000000000000000000000000000000aa", 2, "0x0000000000000000000000000000000000000000", true, 4_000_000_000];
     throw new Error(fn);
   };
 
@@ -118,7 +119,7 @@ describe("EvmFhevmAdapter with the API", () => {
     const node = new FakeNode(views);
     const { client } = api({});
     const pair = await adapter(node, client).pair(5, 6);
-    expect(pair.openDuel).toMatchObject({ duelId: 0, tokenA: 5, tokenB: 6, status: "challenged" });
+    expect(pair.openDuel).toMatchObject({ duelId: 0, tokenA: 5, tokenB: 6, reserved: true, status: "open" });
     expect(node.calls).toContain("duelInfo");
   });
 
@@ -129,18 +130,27 @@ describe("EvmFhevmAdapter with the API", () => {
     expect(await adapter(node, undefined).duels({ tokenIds: [7] })).toEqual([]);
     expect(await adapter(node, undefined).duels({})).toEqual([]);
   });
+
+  it("reads the duel shelf from the API, or scans the chain without it", async () => {
+    const { client, asked } = api({ "/v1/duels/shelf": { block: 10, data: [DUEL] } });
+    expect((await adapter(new FakeNode(views), client).duelShelf()).map((d) => d.duelId)).toEqual([3]);
+    expect(asked).toContain("GET /v1/duels/shelf");
+    expect((await adapter(new FakeNode(views), undefined).duelShelf()).map((d) => d.duelId)).toEqual([0]);
+  });
 });
 
 describe("MockAdapter.duels", () => {
-  it("lists the duels an account challenged or that touch its boxes, newest first", async () => {
+  it("lists the duels an account posted or that touch its boxes, newest first", async () => {
     const chain = new MockAdapter({ latency: 0 });
     await chain.connect();
     const mine = await chain.mint(2);
     const ids = (await chain.boxSummaries(0, 50)).filter((b) => !b.mine).map((b) => b.tokenId);
-    const first = await chain.challengeDuel(mine[0]!, ids[0]!);
-    const second = await chain.challengeDuel(mine[1]!, ids[1]!);
+    const first = (await chain.postDuel(mine[0]!, { reservedFor: ids[0]! })).duelId;
+    const second = (await chain.postDuel(mine[1]!, { reservedFor: ids[1]! })).duelId;
     expect((await chain.duels({ account: MOCK_YOU })).map((d) => d.duelId)).toEqual([second, first]);
-    expect((await chain.duels({ tokenIds: [ids[1]!] })).map((d) => d.duelId)).toEqual([second]);
-    expect((await chain.duels({ account: MOCK_NIGHT_SHIFT, open: true })).map((d) => d.duelId)).toEqual([second, first]);
+    expect((await chain.duels({ tokenIds: [ids[1]!] })).map((d) => d.duelId)).toContain(second);
+    expect((await chain.duels({ tokenIds: [ids[1]!] })).map((d) => d.duelId)).not.toContain(first);
+    // The night shift took both up at once.
+    expect((await chain.duels({ account: MOCK_NIGHT_SHIFT, open: true })).map((d) => d.duelId).slice(0, 2)).toEqual([second, first]);
   });
 });

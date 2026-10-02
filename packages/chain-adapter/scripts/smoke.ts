@@ -66,11 +66,10 @@ async function main() {
   console.log(`prove alive ${b}`);
   console.log(`  alive: ${await chain.proveAlive(b, { onStep })} -> ${(await chain.box(b)).aliveCheck}`);
 
-  console.log(`duel ${a} vs ${b}`);
-  const duelId = await chain.challengeDuel(a, b, { onStep });
-  console.log(`  open duel: ${JSON.stringify((await chain.pair(a, b)).openDuel)}`);
-  await chain.acceptDuel(duelId, { onStep });
-  const duel = await chain.finishDuel(duelId, { onStep });
+  console.log(`duel ${a} on the shelf, taken up by ${b}`);
+  const posted = await chain.postDuel(a, { onStep });
+  console.log(`  on the shelf: ${JSON.stringify(posted)}`);
+  const duel = await chain.acceptDuel(posted.duelId, b, { onStep });
   console.log(duel ? `  winner ${duel.winner}, loser ${duel.loser} shows ${trait(duel.shown)}` : "  !! void");
 
   console.log(`entangle ${a} and ${c}`);

@@ -1,7 +1,7 @@
 import { Interface, type LogDescription, type Result } from "ethers";
 import type { ChainBatch, ChainSource, EntityQuery, ReadOptions } from "../../application/ports/chain";
 import type { Logger } from "../../application/ports/logger";
-import { emptySnapshots, type ProtocolEvent, type Snapshots, type Source } from "../../domain/events";
+import { DUEL_EVENTS, emptySnapshots, type DuelSnapshot, type ProtocolEvent, type Snapshots, type Source } from "../../domain/events";
 import { normalizeAddress, ZERO_ADDRESS, type Build, type DuelStatus, type RequestKind, type RequestStatus, type RevealedContents } from "../../domain/types";
 import type { ProtocolDeployment } from "./deployment";
 import { multicall, type ViewCall } from "./multicall";
@@ -9,7 +9,7 @@ import type { LogFilter, RawLog, RpcPool } from "./RpcPool";
 
 const REQUEST_KINDS: RequestKind[] = ["open", "aliveCheck", "entangle"];
 const REQUEST_STATUS: (RequestStatus | null)[] = [null, "pending", "done", "refused"];
-const DUEL_STATUS: (DuelStatus | null)[] = [null, "challenged", "pending", "resolved", "cancelled", "void"];
+const DUEL_STATUS: (DuelStatus | null)[] = [null, "posted", "open", "pending", "resolved", "cancelled", "void"];
 const BUILDS: Build[] = ["thin", "normal", "chubby", "fat", "huge"];
 const DISEASES = ["diabetic", "arthritic", "fattyLiver"] as const;
 
@@ -17,7 +17,7 @@ const DISEASES = ["diabetic", "arthritic", "fattyLiver"] as const;
 const INDEXED: Record<Source, string[]> = {
   collection: [
     "MintPlaced", "MilestoneReached", "Shaken", "Fed", "RequestPlaced", "RequestSettled", "Observed", "AliveProven",
-    "EntangleProposed", "Entangled", "DuelChallenged", "DuelCancelled", "DuelAccepted", "DuelResolved", "DuelVoided",
+    "EntangleProposed", "Entangled", ...DUEL_EVENTS,
     "ConfidentialTransfer",
   ],
   pantry: ["MealServed", "WelcomeBag", "Purred", "Claimed", "WeighInRequested", "Weighed"],
@@ -26,6 +26,20 @@ const INDEXED: Record<Source, string[]> = {
 
 const addr = (v: unknown) => normalizeAddress(String(v));
 const num = (v: unknown) => Number(v);
+
+/** A `duelInfo` row. An open duel nobody took up yet stores no second box. */
+export function duelSnapshot(r: Result): DuelSnapshot {
+  const accepter = r.accepter === ZERO_ADDRESS ? null : addr(r.accepter);
+  return {
+    tokenA: num(r.tokenIdA),
+    tokenB: r.reserved || accepter ? num(r.tokenIdB) : null,
+    reserved: Boolean(r.reserved),
+    challenger: r.challenger === ZERO_ADDRESS ? null : addr(r.challenger),
+    accepter,
+    status: DUEL_STATUS[num(r.duelStatus)] ?? null,
+    openUntil: num(r.openUntil) || null,
+  };
+}
 
 /** Reads the protocol's logs with one `eth_getLogs` per range, for all its contracts at once. */
 export class EvmChainSource implements ChainSource {
@@ -80,7 +94,7 @@ export class EvmChainSource implements ChainSource {
       filters.push({ address: this.addresses(), topics: [this.topics, null, null, ids] });
     }
     if (q.duelIds?.length) {
-      filters.push({ address: [this.d.collection.address], topics: [["DuelChallenged", "DuelAccepted", "DuelCancelled", "DuelResolved", "DuelVoided"].map(topic), q.duelIds.map(word)] });
+      filters.push({ address: [this.d.collection.address], topics: [DUEL_EVENTS.map(topic), q.duelIds.map(word)] });
     }
     if (q.requestIds?.length) {
       filters.push({ address: [this.d.collection.address], topics: [["RequestPlaced", "RequestSettled"].map(topic), q.requestIds.map(word)] });
@@ -159,7 +173,7 @@ export class EvmChainSource implements ChainSource {
     const opened = new Set<number>();
     const weighed = new Set<number>();
     for (const e of events) {
-      if (e.name === "DuelChallenged" || e.name === "DuelAccepted" || e.name === "DuelCancelled" || e.name === "DuelVoided" || e.name === "DuelResolved") duels.add(e.duelId);
+      if (DUEL_EVENTS.includes(e.name) && "duelId" in e) duels.add(e.duelId);
       if (e.name === "RequestPlaced" || e.name === "RequestSettled") requests.add(e.requestId);
       if (e.name === "Observed") opened.add(e.tokenId);
       if (e.name === "Weighed") weighed.add(e.tokenId);
@@ -168,13 +182,7 @@ export class EvmChainSource implements ChainSource {
     const calls: (ViewCall & { apply: (r: Result) => void })[] = [
       ...[...duels].map((id) => ({
         target: c, iface: this.collection, fn: "duelInfo", args: [id],
-        apply: (r: Result) => s.duels.set(id, {
-          tokenA: num(r.tokenIdA),
-          tokenB: num(r.tokenIdB),
-          challenger: r.challenger === ZERO_ADDRESS ? null : addr(r.challenger),
-          accepter: r.accepter === ZERO_ADDRESS ? null : addr(r.accepter),
-          status: DUEL_STATUS[num(r.duelStatus)] ?? null,
-        }),
+        apply: (r: Result) => s.duels.set(id, duelSnapshot(r)),
       })),
       ...[...requests].map((id) => ({
         target: c, iface: this.collection, fn: "requestInfo", args: [id],
@@ -253,10 +261,14 @@ function toBody(name: string, a: Result): Record<string, unknown> | null {
       return { name, tokenA: num(a.tokenIdA), tokenB: num(a.tokenIdB), proposer: addr(a.proposer) };
     case "Entangled":
       return { name, tokenA: num(a.tokenIdA), tokenB: num(a.tokenIdB) };
-    case "DuelChallenged":
-      return { name, duelId: num(a.duelId), tokenA: num(a.tokenIdA), tokenB: num(a.tokenIdB) };
-    case "DuelCancelled":
+    case "DuelPosted":
+      return { name, duelId: num(a.duelId), tokenA: num(a.tokenIdA), tokenB: num(a.tokenIdB), challenger: addr(a.challenger), reserved: Boolean(a.reserved) };
+    case "DuelOpened":
+      return { name, duelId: num(a.duelId), openUntil: num(a.openUntil) };
     case "DuelAccepted":
+      return { name, duelId: num(a.duelId), tokenB: num(a.tokenIdB), accepter: addr(a.accepter) };
+    case "DuelCancelled":
+    case "DuelReopened":
     case "DuelVoided":
       return { name, duelId: num(a.duelId) };
     case "DuelResolved":

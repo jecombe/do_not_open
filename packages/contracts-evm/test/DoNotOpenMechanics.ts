@@ -3,6 +3,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
+import { spec } from "@dno/game-spec";
 import { buildCatSpec } from "@dno/generator";
 import { configParamsFromSpec } from "../lib/specParams";
 import { DoNotOpen, TestConfidentialUSDC, TestUSDC } from "../types";
@@ -255,6 +256,7 @@ describe("DoNotOpen mechanics", function () {
       const info = await dno.duelInfo(1);
       expect(info.duelStatus).to.eq(DUEL.Open);
       expect(info.openUntil).to.eq(BigInt(await time.latest()) + (await dno.DUEL_LIFETIME()));
+      expect(await dno.DUEL_LIFETIME()).to.eq(BigInt(Number(spec.mechanics.duel!.lifetimeDays) * 86_400));
     });
 
     it("goes back on the shelf when the accepter brought a box they do not hold, showing nothing", async function () {

@@ -1,5 +1,5 @@
 import { minted, type Box } from "../domain/box";
-import { between, OPEN_DUEL, type Duel } from "../domain/duel";
+import { OPEN_DUEL, settles, type Duel } from "../domain/duel";
 import type { ProtocolEvent } from "../domain/events";
 import type { Address, DuelStatus } from "../domain/types";
 import type { User } from "../domain/user";
@@ -10,6 +10,8 @@ import type { EntangleProposal, ReadStore, Stats, Transfer } from "./ports/store
 export const MAX_BOX_WINDOW = 1000;
 /** How far back `pair` looks: an open duel between two boxes is a recent one. */
 const PAIR_DUEL_SCAN = 200;
+/** Most duels the shelf shows. */
+const SHELF_LIMIT = 500;
 
 export class NotFound extends Error {}
 export class BadRequest extends Error {}
@@ -67,6 +69,8 @@ export class Queries {
   constructor(
     private readonly store: ReadStore,
     private readonly chain: ChainState,
+    /** Unix seconds: when a duel on the shelf runs out of time. */
+    private readonly now: () => number = () => Math.floor(Date.now() / 1000),
   ) {}
 
   /** Last block indexed: every answer is true as of this block. */
@@ -121,14 +125,15 @@ export class Queries {
 
   async pair(a: number, b: number): Promise<PairView> {
     if (a === b) throw new BadRequest("a pair needs two boxes");
+    const now = this.now();
     const [duels, ab, ba] = await Promise.all([
-      this.store.duels({ tokenIds: [a, b], statuses: [...OPEN_DUEL], limit: PAIR_DUEL_SCAN }),
+      this.store.duels({ tokenIds: [a, b], statuses: [...OPEN_DUEL], inTimeAt: now, limit: PAIR_DUEL_SCAN }),
       this.store.proposal(a, b),
       this.store.proposal(b, a),
     ]);
     const proposal: EntangleProposal | null = ab ?? ba;
     return {
-      openDuel: duels.find((d) => between(d, a, b)) ?? null,
+      openDuel: duels.find((d) => settles(d, a, b, now)) ?? null,
       entangleProposal: proposal ? { from: proposal.tokenA, to: proposal.tokenB, proposer: proposal.proposer } : null,
     };
   }
@@ -140,13 +145,18 @@ export class Queries {
   }
 
   /**
-   * Duels an account challenged, or that involve the boxes it lists. The boxes it holds are its
-   * secret: they are passed with the query and never stored.
+   * Duels an account posted or took up, or that involve the boxes it lists. The boxes it holds
+   * are its secret: they are passed with the query and never stored.
    */
   duels(q: { account?: Address; tokenIds?: number[]; open?: boolean; limit?: number }): Promise<Duel[]> {
     if (!q.account && !q.tokenIds?.length) throw new BadRequest("give an account, some token ids, or both");
     const statuses: DuelStatus[] | undefined = q.open ? [...OPEN_DUEL] : undefined;
-    return this.store.duels({ account: q.account, tokenIds: q.tokenIds, statuses, limit: Math.min(q.limit ?? 100, 500) });
+    return this.store.duels({ account: q.account, tokenIds: q.tokenIds, statuses, inTimeAt: q.open ? this.now() : undefined, limit: Math.min(q.limit ?? 100, 500) });
+  }
+
+  /** The duel shelf: every box up for a duel that can still be taken up, newest first. */
+  duelShelf(): Promise<Duel[]> {
+    return this.store.duels({ statuses: ["open"], inTimeAt: this.now(), limit: SHELF_LIMIT });
   }
 
   async leaderboard(): Promise<OpenedCatView[]> {

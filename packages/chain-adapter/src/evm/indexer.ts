@@ -56,10 +56,12 @@ const weighInFrom = (w: Json | null): WeighIn | null => (w ? { ...w, weight: Big
 const duelFrom = (d: Json): DuelInfo => ({
   duelId: d.duelId,
   tokenA: d.tokenA,
-  tokenB: d.tokenB,
+  tokenB: d.tokenB ?? null,
+  reserved: !!d.reserved,
   challenger: d.challenger,
   accepter: d.accepter,
   status: d.status,
+  openUntil: d.openUntil ?? null,
 });
 
 /**
@@ -169,6 +171,11 @@ export class IndexerClient {
     if (q.tokenIds?.length) params.set("tokens", q.tokenIds.join(","));
     if (q.open) params.set("open", "true");
     return this.get(`/v1/duels?${params}`, (list: Json[]) => list.map(duelFrom));
+  }
+
+  /** Every box up for a duel that can still be taken up. */
+  duelShelf(): Promise<Indexed<DuelInfo[]>> {
+    return this.get("/v1/duels/shelf", (list: Json[]) => list.map(duelFrom));
   }
 
   economy(base: Pick<EconomyInfo, "links">): Promise<Indexed<EconomyInfo>> {

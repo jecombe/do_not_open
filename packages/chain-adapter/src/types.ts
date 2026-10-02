@@ -11,8 +11,12 @@ export type AliveCheck = "none" | "pending" | "alive" | "notAlive";
 /** How heavy an opened cat came out, lightest first. Same keys as the spec's builds. */
 export type Build = "thin" | "normal" | "chubby" | "fat" | "huge";
 export type Disease = "diabetic" | "arthritic" | "fattyLiver";
-/** "void": accepted, but one side did not hold its box. Nothing happened. */
-export type DuelStatus = "none" | "challenged" | "pending" | "resolved" | "cancelled" | "void";
+/**
+ * "posted": waiting for the proof that the challenger holds the box. "open": on the duel shelf,
+ * until someone takes it up or it runs out of time. "pending": taken up, waiting for the outcome.
+ * "void": the challenger did not hold the box, at posting or when it was taken up. Nothing happened.
+ */
+export type DuelStatus = "none" | "posted" | "open" | "pending" | "resolved" | "cancelled" | "void";
 
 /** What the user is waiting for, in the order it happens. */
 export type Step =
@@ -30,7 +34,7 @@ export type Step =
 /** A transaction an action sent, as it goes from the wallet to a block. */
 export interface TxRecord {
   hash: string;
-  /** The contract function it called, e.g. "challengeDuel". */
+  /** The contract function it called, e.g. "postDuel". */
   call: string;
   status: "sent" | "confirmed" | "failed";
   /** Where to look it up, if the chain has an explorer. */
@@ -153,14 +157,27 @@ export interface OpenedCat {
   revealed: RevealedContents;
 }
 
+/** A box put up for a duel, and how far that duel went. */
 export interface DuelInfo {
   duelId: number;
+  /** The challenger's box, the one on the shelf. */
   tokenA: number;
-  tokenB: number;
+  /** The box that took it up, or the only one allowed to when `reserved`. Null while an open
+   *  duel waits for a taker. */
+  tokenB: number | null;
+  /** Only `tokenB` may take it up. */
+  reserved: boolean;
   challenger: Address;
-  /** Who accepted, once someone did. */
+  /** Who took it up, while that is under way or done. */
   accepter: Address | null;
   status: DuelStatus;
+  /** Unix seconds after which nobody can take it up. Null until the holding is proven. */
+  openUntil: number | null;
+}
+
+export interface PostDuelOptions extends ActionOptions {
+  /** Only this box may take the duel up. Any sealed box may when left out. */
+  reservedFor?: number;
 }
 
 export interface DuelResult {
@@ -173,7 +190,8 @@ export interface DuelResult {
 
 /** The standing between two boxes: what the pair view needs to pick the next step. */
 export interface PairInfo {
-  /** Latest duel between the two that is still waiting for someone, if any. */
+  /** The duel the two can settle, if any: one of them on the shelf that the other may take up
+   *  (open to all, or reserved for it), or a duel between them waiting for its outcome. */
   openDuel: DuelInfo | null;
   /** Set when the holder of `from` proposed to entangle it with `to`. */
   entangleProposal: { from: number; to: number; proposer: Address } | null;
@@ -349,10 +367,12 @@ export interface ChainAdapter {
   pair(tokenA: number, tokenB: number): Promise<PairInfo>;
   /** Every opened box, with who opened it. */
   openedCats(): Promise<OpenedCat[]>;
-  /** Duels `account` challenged or accepted, and those that involve any of `tokenIds` (the
+  /** Duels `account` posted or took up, and those that involve any of `tokenIds` (the
    *  account's boxes, as `boxesOf` found them), newest first. With `open`, only those still
    *  waiting for someone. The same list from any device. */
   duels(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]>;
+  /** The duel shelf: every box up for a duel that can still be taken up, newest first. */
+  duelShelf(): Promise<DuelInfo[]>;
   /** Native coin `owner` holds, in the smallest unit (wei on EVM). */
   balance(owner: Address): Promise<bigint>;
   /** Plain USDC `owner` holds. Public. */
@@ -396,11 +416,18 @@ export interface ChainAdapter {
   /** Throws `not-yours` when the proposer no longer holds A or the caller does not hold B. */
   acceptEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void>;
 
-  /** Returns the duel id. */
-  challengeDuel(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<number>;
+  /** Puts `tokenA` on the duel shelf, open to any sealed box or reserved for one, and proves
+   *  that the caller holds it: that much becomes public. Returns the duel, open. Throws
+   *  `not-yours` when the caller does not hold it (the duel is void, nothing else shows). */
+  postDuel(tokenA: number, opts?: PostDuelOptions): Promise<DuelInfo>;
+  /** Takes a duel off the shelf, until someone takes it up. Challenger only. */
   cancelDuel(duelId: number, opts?: ActionOptions): Promise<void>;
-  acceptDuel(duelId: number, opts?: ActionOptions): Promise<void>;
-  /** Publishes the outcome of an accepted duel. Anyone may. Null when the duel was void. */
+  /** Takes the duel up with `tokenB` and publishes the outcome. Null when the challenger no
+   *  longer held their box (void). Throws `not-yours` when the caller does not hold `tokenB`:
+   *  the duel goes back on the shelf. */
+  acceptDuel(duelId: number, tokenB: number, opts?: ActionOptions): Promise<DuelResult | null>;
+  /** Relays whatever proof a duel waits for: the holding of a posted one, or the outcome of a
+   *  taken-up one. Anyone may. Returns the outcome when there is one. */
   finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult | null>;
 
   /** Pays the caller what paid shakes earned the listed boxes they hold, in cUSDC. Returns

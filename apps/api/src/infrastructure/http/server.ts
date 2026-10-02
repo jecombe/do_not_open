@@ -134,6 +134,9 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     return send(reply, await queries.duels({ account: q.account, tokenIds: q.tokens, open: q.open === "true", limit: q.limit }), q.tokens ? "private, no-store" : PUBLIC_CACHE);
   });
 
+  // Before /v1/duels/:id, which would read "shelf" as an id.
+  app.get("/v1/duels/shelf", async (_req, reply) => send(reply, await queries.duelShelf()));
+
   app.get("/v1/duels/:id", async (req, reply) => {
     const { id: duelId } = z.object({ id }).parse(req.params);
     return send(reply, await queries.duel(duelId));

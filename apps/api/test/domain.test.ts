@@ -6,39 +6,61 @@ import { settle, type Request } from "../src/domain/request";
 import { loggedIn, seen } from "../src/domain/user";
 import { ALICE, BOB, ev } from "./fixtures";
 
-const at = (block: number) => ({ block, timestamp: 1000 + block });
+const at = (block: number, logIndex = 0) => ({ block, logIndex, timestamp: 1000 + block });
 
 describe("duel", () => {
-  const challenged = D.challenge({ duelId: 1, tokenA: 3, tokenB: 7, challenger: ALICE }, at(10));
+  const posted = D.post({ duelId: 1, tokenA: 3, tokenB: 0, reserved: false, challenger: ALICE }, at(10));
+  const open = D.open(posted, 5000, at(11));
 
-  it("goes challenged, pending, resolved", () => {
-    const accepted = D.accept(challenged, BOB, at(11));
-    expect(accepted).toMatchObject({ status: "pending", accepter: BOB, updatedBlock: 11 });
-    const resolved = D.resolve(accepted, { winner: 3, loser: 7, shown: { traitIndex: 2, roll: 40 } }, at(12));
-    expect(resolved).toMatchObject({ status: "resolved", winner: 3, loser: 7, shown: { traitIndex: 2, roll: 40 }, createdBlock: 10, updatedBlock: 12 });
+  it("goes posted, open, pending, resolved", () => {
+    expect(posted).toMatchObject({ status: "posted", tokenB: null, openUntil: null });
+    expect(open).toMatchObject({ status: "open", openUntil: 5000, updatedBlock: 11 });
+    const accepted = D.accept(open, 7, BOB, at(12));
+    expect(accepted).toMatchObject({ status: "pending", tokenB: 7, accepter: BOB, updatedBlock: 12 });
+    const resolved = D.resolve(accepted, { winner: 3, loser: 7, shown: { traitIndex: 2, roll: 40 } }, at(13));
+    expect(resolved).toMatchObject({ status: "resolved", winner: 3, loser: 7, shown: { traitIndex: 2, roll: 40 }, createdBlock: 10, updatedBlock: 13 });
   });
 
-  it("never moves back: a late or replayed event changes nothing", () => {
-    const resolved = D.resolve(challenged, { winner: 3, loser: 7, shown: { traitIndex: 0, roll: 1 } }, at(12));
-    expect(D.accept(resolved, BOB, at(13))).toBe(resolved);
-    expect(D.cancel(resolved, at(13))).toBe(resolved);
-    expect(D.voidDuel(resolved, at(13))).toBe(resolved);
-    const cancelled = D.cancel(challenged, at(11));
-    expect(D.accept(cancelled, BOB, at(12))).toBe(cancelled);
+  it("goes back on the shelf when the taker did not hold their box, and can be taken up again", () => {
+    const back = D.reopen(D.accept(open, 7, BOB, at(12)), at(13));
+    expect(back).toMatchObject({ status: "open", tokenB: null, accepter: null, openUntil: 5000 });
+    expect(D.accept(back, 8, BOB, at(14))).toMatchObject({ status: "pending", tokenB: 8 });
+    const reserved = D.open(D.post({ duelId: 2, tokenA: 3, tokenB: 7, reserved: true, challenger: ALICE }, at(10)), 5000, at(11));
+    expect(D.reopen(D.accept(reserved, 7, BOB, at(12)), at(13)).tokenB).toBe(7);
   });
 
-  it("can be voided once accepted, and cancelled only before", () => {
-    expect(D.voidDuel(D.accept(challenged, BOB, at(11)), at(12)).status).toBe("void");
-    expect(D.cancel(challenged, at(11)).status).toBe("cancelled");
+  it("takes only newer events, and nothing after a final status", () => {
+    const accepted = D.accept(open, 7, BOB, at(12, 3));
+    expect(D.reopen(accepted, at(12, 3))).toBe(accepted);
+    expect(D.reopen(accepted, at(12, 1))).toBe(accepted);
+    expect(D.open(accepted, 6000, at(11))).toBe(accepted);
+    expect(D.reopen(accepted, at(12, 4)).status).toBe("open");
+    const resolved = D.resolve(accepted, { winner: 3, loser: 7, shown: { traitIndex: 0, roll: 1 } }, at(13));
+    expect(D.accept(resolved, 7, BOB, at(14))).toBe(resolved);
+    expect(D.cancel(resolved, at(14))).toBe(resolved);
+    expect(D.voidDuel(resolved, at(14))).toBe(resolved);
+    const cancelled = D.cancel(open, at(12));
+    expect(D.accept(cancelled, 7, BOB, at(13))).toBe(cancelled);
   });
 
-  it("tells open duels and the boxes involved", () => {
-    expect(D.isOpen(challenged)).toBe(true);
-    expect(D.isOpen(D.cancel(challenged, at(11)))).toBe(false);
-    expect(D.involves(challenged, 7)).toBe(true);
-    expect(D.involves(challenged, 8)).toBe(false);
-    expect(D.between(challenged, 7, 3)).toBe(true);
-    expect(D.between(challenged, 3, 8)).toBe(false);
+  it("tells open duels, the shelf, and the pairs that can settle one", () => {
+    expect(D.isOpen(posted)).toBe(true);
+    expect(D.isOpen(D.cancel(open, at(12)))).toBe(false);
+    expect(D.onShelf(open, 5000)).toBe(true);
+    expect(D.onShelf(open, 5001)).toBe(false);
+    expect(D.onShelf(posted, 0)).toBe(false);
+    // Open to all: any other box settles it with box 3, until it runs out of time.
+    expect(D.settles(open, 9, 3, 4000)).toBe(true);
+    expect(D.settles(open, 3, 9, 6000)).toBe(false);
+    expect(D.settles(open, 7, 9, 4000)).toBe(false);
+    const accepted = D.accept(open, 7, BOB, at(12));
+    expect(D.settles(accepted, 7, 3, 9999)).toBe(true);
+    expect(D.settles(accepted, 9, 3, 0)).toBe(false);
+    const reserved = D.open(D.post({ duelId: 2, tokenA: 3, tokenB: 7, reserved: true, challenger: ALICE }, at(10)), 5000, at(11));
+    expect(D.settles(reserved, 3, 7, 0)).toBe(true);
+    expect(D.settles(reserved, 3, 8, 0)).toBe(false);
+    expect(D.involves(accepted, 7)).toBe(true);
+    expect(D.involves(open, 7)).toBe(false);
   });
 });
 
@@ -102,8 +124,11 @@ describe("events", () => {
     expect(actorsOf(ev("MintPlaced", 1, { firstTokenId: 4, buyer: ALICE, count: 3 }))).toEqual([ALICE]);
     expect(tokensOf(ev("MintPlaced", 1, { firstTokenId: 4, buyer: ALICE, count: 3 }))).toEqual([4, 5, 6]);
     expect(tokensOf(ev("DuelResolved", 1, { duelId: 0, winner: 2, loser: 9, traitIndex: 0, roll: 1 }))).toEqual([2, 9]);
-    expect(tokensOf(ev("DuelAccepted", 1, { duelId: 0 }))).toEqual([]);
-    expect(actorsOf(ev("DuelAccepted", 1, { duelId: 0 }))).toEqual([]);
+    expect(tokensOf(ev("DuelAccepted", 1, { duelId: 0, tokenB: 6, accepter: BOB }))).toEqual([6]);
+    expect(actorsOf(ev("DuelAccepted", 1, { duelId: 0, tokenB: 6, accepter: BOB }))).toEqual([BOB]);
+    expect(tokensOf(ev("DuelPosted", 1, { duelId: 0, tokenA: 2, tokenB: 0, challenger: ALICE, reserved: false }))).toEqual([2]);
+    expect(tokensOf(ev("DuelPosted", 1, { duelId: 0, tokenA: 2, tokenB: 5, challenger: ALICE, reserved: true }))).toEqual([2, 5]);
+    expect(actorsOf(ev("DuelPosted", 1, { duelId: 0, tokenA: 2, tokenB: 0, challenger: ALICE, reserved: false }))).toEqual([ALICE]);
   });
 
   it("sort in chain order", () => {

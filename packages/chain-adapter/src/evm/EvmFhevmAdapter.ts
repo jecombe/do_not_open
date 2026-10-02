@@ -9,6 +9,7 @@ import {
   type Signer,
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
+import { duelSettles, duelUnderway, onShelf } from "../duels";
 import { traitIndexAtOffset } from "../layout";
 import {
   ChainError,
@@ -27,6 +28,7 @@ import {
   type DuelResult,
   type Disease,
   type DuelStatus,
+  type PostDuelOptions,
   type EconomyInfo,
   type Fees,
   type MintOptions,
@@ -125,10 +127,26 @@ const ZERO_HANDLE = "0x" + "0".repeat(64);
 /** On-chain values; "opening" and "pending" come from the account's own requests. */
 const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
 const ALIVE_CHECK: AliveCheck[] = ["none", "alive", "notAlive"];
-const DUEL_STATUS: DuelStatus[] = ["none", "challenged", "pending", "resolved", "cancelled", "void"];
+const DUEL_STATUS: DuelStatus[] = ["none", "posted", "open", "pending", "resolved", "cancelled", "void"];
 
 /** How far back `pair()` looks for a duel that is still open. */
 const DUEL_SCAN = 40;
+
+/** A `duelInfo` row as the contract returns it. */
+const duelFromView = (duelId: number, d: Record<string, any>): DuelInfo => {
+  const accepter = BigInt(d.accepter) === 0n ? null : String(d.accepter);
+  return {
+    duelId,
+    tokenA: Number(d.tokenIdA),
+    // An open duel nobody took up yet stores no second box.
+    tokenB: d.reserved || accepter ? Number(d.tokenIdB) : null,
+    reserved: Boolean(d.reserved),
+    challenger: String(d.challenger),
+    accepter,
+    status: DUEL_STATUS[Number(d.duelStatus)]!,
+    openUntil: Number(d.openUntil) || null,
+  };
+};
 /** `boxSummaries()` reads statuses in slices of this many calls. */
 const READ_CHUNK = 100;
 /** A user-decryption permit is signed once and reused for this long. */
@@ -477,20 +495,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
     );
     const last = Number(count);
     const ids = Array.from({ length: Math.min(DUEL_SCAN, last) }, (_, i) => last - 1 - i);
-    const duels: DuelInfo[] = (await this.reading(Promise.all(ids.map((id) => c.duelInfo!(id))))).map((d, i) => ({
-      duelId: ids[i]!,
-      tokenA: Number(d.tokenIdA),
-      tokenB: Number(d.tokenIdB),
-      challenger: d.challenger,
-      accepter: BigInt(d.accepter) === 0n ? null : String(d.accepter),
-      status: DUEL_STATUS[Number(d.duelStatus)]!,
-    }));
-    const openDuel =
-      duels.find(
-        (d) =>
-          (d.status === "challenged" || d.status === "pending") &&
-          ((d.tokenA === tokenA && d.tokenB === tokenB) || (d.tokenA === tokenB && d.tokenB === tokenA)),
-      ) ?? null;
+    const duels = (await this.reading(Promise.all(ids.map((id) => c.duelInfo!(id))))).map((d, i) => duelFromView(ids[i]!, d));
+    const openDuel = duels.find((d) => duelSettles(d, tokenA, tokenB)) ?? null;
 
     // Whether the proposer still holds the box is checked, encrypted, when it is accepted.
     let entangleProposal: PairInfo["entangleProposal"] = null;
@@ -546,29 +552,35 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   private async duelsFromChain(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]> {
+    const tokens = new Set(query.tokenIds ?? []);
+    return (await this.recentDuels()).filter((d) => {
+      const mine = sameAddress(d.challenger, query.account) || sameAddress(d.accepter, query.account) || tokens.has(d.tokenA) || (d.tokenB !== null && tokens.has(d.tokenB));
+      return mine && (!query.open || duelUnderway(d));
+    });
+  }
+
+  async duelShelf(): Promise<DuelInfo[]> {
+    return this.indexed(
+      (ix) => ix.duelShelf(),
+      async () => (await this.recentDuels()).filter((d) => onShelf(d)),
+    );
+  }
+
+  /** The latest duels, newest first, a chunk at a time, no further back than a public endpoint should be asked. */
+  private async recentDuels(): Promise<DuelInfo[]> {
     const c = this.contract;
     const last = Number(await this.reading(c.duelCount!()));
-    const tokens = new Set(query.tokenIds ?? []);
     const out: DuelInfo[] = [];
-    // Newest first, a chunk at a time, no further back than a public endpoint should be asked.
     for (let hi = last; hi > Math.max(0, last - DUEL_SCAN * 5); hi -= READ_CHUNK) {
       const ids = Array.from({ length: Math.min(READ_CHUNK, hi) }, (_, i) => hi - 1 - i);
       const rows = await this.reading(Promise.all(ids.map((id) => c.duelInfo!(id))));
-      rows.forEach((d, i) => {
-        const duel: DuelInfo = {
-          duelId: ids[i]!,
-          tokenA: Number(d.tokenIdA),
-          tokenB: Number(d.tokenIdB),
-          challenger: d.challenger,
-          accepter: BigInt(d.accepter) === 0n ? null : String(d.accepter),
-          status: DUEL_STATUS[Number(d.duelStatus)]!,
-        };
-        const mine = sameAddress(duel.challenger, query.account) || sameAddress(duel.accepter, query.account) || tokens.has(duel.tokenA) || tokens.has(duel.tokenB);
-        const open = duel.status === "challenged" || duel.status === "pending";
-        if (mine && (!query.open || open)) out.push(duel);
-      });
+      rows.forEach((d, i) => out.push(duelFromView(ids[i]!, d)));
     }
     return out;
+  }
+
+  private async duelInfo(duelId: number): Promise<DuelInfo> {
+    return duelFromView(duelId, await this.reading(this.contract.duelInfo!(duelId)));
   }
 
   private async pendingFromChain(owner: Address): Promise<PendingRequest[]> {
@@ -774,20 +786,32 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.request(opts, (c) => c.acceptEntangle!(tokenA, tokenB));
   }
 
-  async challengeDuel(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<number> {
-    const receipt = await this.send(opts, (c) => c.challengeDuel!(tokenA, tokenB));
-    return Number(this.events(receipt, "DuelChallenged")[0]!.duelId);
+  async postDuel(tokenA: number, opts?: PostDuelOptions): Promise<DuelInfo> {
+    const reserved = opts?.reservedFor !== undefined;
+    const receipt = await this.send(opts, (c) => c.postDuel!(tokenA, opts?.reservedFor ?? 0, reserved));
+    const duelId = Number(this.events(receipt, "DuelPosted")[0]!.duelId);
+    await this.finishDuel(duelId, opts);
+    const duel = await this.duelInfo(duelId);
+    if (duel.status === "void") throw new ChainError("not-yours", "This box is not yours: it did not go on the duel shelf.");
+    return duel;
   }
 
   async cancelDuel(duelId: number, opts?: ActionOptions): Promise<void> {
     await this.send(opts, (c) => c.cancelDuel!(duelId));
   }
 
-  async acceptDuel(duelId: number, opts?: ActionOptions): Promise<void> {
-    await this.send(opts, (c) => c.acceptDuel!(duelId));
+  async acceptDuel(duelId: number, tokenB: number, opts?: ActionOptions): Promise<DuelResult | null> {
+    await this.send(opts, (c) => c.acceptDuel!(duelId, tokenB));
+    const result = await this.finishDuel(duelId, opts);
+    if (!result && (await this.duelInfo(duelId)).status === "open") {
+      throw new ChainError("not-yours", "This box is not yours: the duel went back on the shelf.");
+    }
+    return result;
   }
 
   async finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult | null> {
+    const { status } = await this.duelInfo(duelId);
+    if (status !== "posted" && status !== "pending") throw new ChainError("reverted", "This duel is not waiting for a proof.", "WrongDuelStatus");
     const handles: string[] = [...(await this.reading(this.contract.duelHandles!(duelId)))];
     const decrypted = await this.publicDecrypt(handles, opts);
     opts?.onStep?.("proving");

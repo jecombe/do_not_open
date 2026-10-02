@@ -64,23 +64,32 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       expect(await store.tokenCount()).toBe(4);
     });
 
-    it("finds duels by challenger, accepter, boxes and status, newest first", async () => {
-      const at = { block: 10, timestamp: 1000 };
+    it("finds duels by challenger, accepter, boxes, status and time left, newest first", async () => {
+      const at = (block: number, logIndex = 0) => ({ block, logIndex, timestamp: 1000 + block });
+      const post = (duelId: number, tokenA: number, challenger: string, tokenB: number | null = null) =>
+        D.post({ duelId, tokenA, tokenB, reserved: tokenB !== null, challenger }, at(10));
       await store.transaction(async (tx) => {
-        await tx.saveDuel(D.challenge({ duelId: 0, tokenA: 1, tokenB: 2, challenger: ALICE }, at));
-        await tx.saveDuel(D.accept(D.challenge({ duelId: 1, tokenA: 3, tokenB: 1, challenger: BOB }, at), CAROL, { block: 11, timestamp: 1012 }));
-        await tx.saveDuel(D.resolve(D.challenge({ duelId: 2, tokenA: 4, tokenB: 5, challenger: ALICE }, at), { winner: 4, loser: 5, shown: { traitIndex: 0, roll: 1 } }, at));
+        await tx.saveDuel(D.open(post(0, 1, ALICE, 2), 5000, at(10, 1)));
+        await tx.saveDuel(D.accept(D.open(post(1, 3, BOB), 5000, at(10, 1)), 1, CAROL, at(12)));
+        await tx.saveDuel(D.resolve(D.accept(D.open(post(2, 4, ALICE), 5000, at(10, 1)), 5, BOB, at(11)), { winner: 4, loser: 5, shown: { traitIndex: 0, roll: 1 } }, at(12)));
+        // On the shelf for anyone, out of time at 4000.
+        await tx.saveDuel(D.open(post(3, 6, BOB), 4000, at(10, 1)));
       });
       const ids = (list: D.Duel[]) => list.map((d) => d.duelId);
       expect(ids(await store.duels({ account: ALICE, limit: 10 }))).toEqual([2, 0]);
       expect(ids(await store.duels({ account: CAROL, limit: 10 }))).toEqual([1]);
       expect(ids(await store.duels({ tokenIds: [1], limit: 10 }))).toEqual([1, 0]);
-      expect(ids(await store.duels({ account: BOB, tokenIds: [5], limit: 10 }))).toEqual([2, 1]);
-      expect(ids(await store.duels({ account: ALICE, statuses: ["challenged", "pending"], limit: 10 }))).toEqual([0]);
+      expect(ids(await store.duels({ account: BOB, tokenIds: [5], limit: 10 }))).toEqual([3, 2, 1]);
+      expect(ids(await store.duels({ account: ALICE, statuses: ["posted", "open", "pending"], limit: 10 }))).toEqual([0]);
       expect(ids(await store.duels({ account: ALICE, limit: 1 }))).toEqual([2]);
-      expect(await store.duel(1)).toMatchObject({ accepter: CAROL, status: "pending", updatedAt: 1012, shown: null });
+      expect(ids(await store.duels({ statuses: ["open"], limit: 10 }))).toEqual([3, 0]);
+      expect(ids(await store.duels({ statuses: ["open"], inTimeAt: 4500, limit: 10 }))).toEqual([0]);
+      expect(ids(await store.duels({ inTimeAt: 4500, limit: 10 }))).toEqual([2, 1, 0]);
+      expect(await store.duel(1)).toMatchObject({ tokenB: 1, reserved: false, accepter: CAROL, status: "pending", openUntil: 5000, updatedAt: 1012, updatedLog: 0, shown: null });
+      expect(await store.duel(0)).toMatchObject({ tokenB: 2, reserved: true, updatedBlock: 10, updatedLog: 1 });
+      expect(await store.duel(3)).toMatchObject({ tokenB: null, reserved: false });
       expect((await store.duel(2))!.shown).toEqual({ traitIndex: 0, roll: 1 });
-      expect(await store.stats()).toMatchObject({ duels: 3, openDuels: 2 });
+      expect(await store.stats()).toMatchObject({ duels: 4, openDuels: 3 });
     });
 
     it("keeps proposals, requests, milestones and receipts", async () => {
@@ -160,7 +169,7 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       await store.transaction(async (tx) => {
         await tx.insertEvent(ev("Fed", 10, { tokenId: 1, feeder: ALICE }), null);
         await tx.saveBox(B.minted(1, 10));
-        await tx.saveDuel(D.challenge({ duelId: 0, tokenA: 1, tokenB: 2, challenger: ALICE }, { block: 10, timestamp: null }));
+        await tx.saveDuel(D.post({ duelId: 0, tokenA: 1, tokenB: null, reserved: false, challenger: ALICE }, { block: 10, logIndex: 0, timestamp: null }));
         await tx.saveMint({ firstTokenId: 0, count: 2, buyer: ALICE, block: 10, txHash: "0x1" });
         await tx.saveUser({ address: ALICE, firstBlock: 10, lastBlock: 10, firstSeenAt: 1, lastSeenAt: 1, actions: 1, registeredAt: null, lastLoginAt: null });
         await tx.saveUser({ address: BOB, firstBlock: 10, lastBlock: 10, firstSeenAt: 1, lastSeenAt: 1, actions: 2, registeredAt: 50, lastLoginAt: 60 });
@@ -189,10 +198,10 @@ export function storeContract(name: string, make: () => Promise<Store>) {
     });
 
     it("lists known ids, every pending request, and every open duel", async () => {
-      const at = { block: 1, timestamp: null };
+      const at = (logIndex: number) => ({ block: 1, logIndex, timestamp: null });
       await store.transaction(async (tx) => {
-        await tx.saveDuel(D.challenge({ duelId: 3, tokenA: 1, tokenB: 2, challenger: ALICE }, at));
-        await tx.saveDuel(D.cancel(D.challenge({ duelId: 1, tokenA: 1, tokenB: 2, challenger: BOB }, at), at));
+        await tx.saveDuel(D.post({ duelId: 3, tokenA: 1, tokenB: 2, reserved: true, challenger: ALICE }, at(0)));
+        await tx.saveDuel(D.cancel(D.post({ duelId: 1, tokenA: 1, tokenB: null, reserved: false, challenger: BOB }, at(0)), at(1)));
         await tx.saveRequest({ requestId: 5, kind: "open", tokenId: 1, other: null, requester: ALICE, status: "pending", placedBlock: 1, settledBlock: null });
         await tx.saveRequest({ requestId: 2, kind: "open", tokenId: 1, other: null, requester: BOB, status: "pending", placedBlock: 1, settledBlock: null });
         await tx.saveRequest({ requestId: 4, kind: "open", tokenId: 1, other: null, requester: BOB, status: "refused", placedBlock: 1, settledBlock: 2 });
@@ -200,7 +209,7 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       expect(await store.knownDuelIds()).toEqual([1, 3]);
       expect(await store.knownRequestIds()).toEqual([2, 4, 5]);
       expect((await store.allPendingRequests()).map((r) => r.requestId)).toEqual([2, 5]);
-      expect((await store.duels({ statuses: ["challenged", "pending"], limit: 10 })).map((d) => d.duelId)).toEqual([3]);
+      expect((await store.duels({ statuses: ["posted", "open", "pending"], limit: 10 })).map((d) => d.duelId)).toEqual([3]);
       expect((await store.duels({ limit: 10 })).map((d) => d.duelId)).toEqual([3, 1]);
     });
   });

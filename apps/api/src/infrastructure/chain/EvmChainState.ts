@@ -4,6 +4,7 @@ import type { DuelSnapshot, RequestSnapshot } from "../../domain/events";
 import { normalizeAddress, ZERO_ADDRESS, type AliveCheck, type BoxStatus, type DuelStatus, type RequestKind, type RequestStatus } from "../../domain/types";
 import { Batcher, TtlCache } from "../cache";
 import type { ProtocolDeployment } from "./deployment";
+import { duelSnapshot } from "./EvmChainSource";
 import { multicall } from "./multicall";
 import type { RpcPool } from "./RpcPool";
 
@@ -12,7 +13,6 @@ const PAIR = new Interface(["function getReserves() view returns (uint112 reserv
 const RAMP = new Interface(["function feeBps() view returns (uint16)"]);
 const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
 const ALIVE_CHECK: AliveCheck[] = ["none", "alive", "notAlive"];
-const DUEL_STATUS: (DuelStatus | null)[] = [null, "challenged", "pending", "resolved", "cancelled", "void"];
 const REQUEST_KINDS: RequestKind[] = ["open", "aliveCheck", "entangle"];
 const REQUEST_STATUS: (RequestStatus | null)[] = [null, "pending", "done", "refused"];
 
@@ -165,13 +165,7 @@ export class EvmChainState implements ChainState {
     const out = new Map<number, DuelSnapshot>();
     r.forEach((x, i) => {
       if (!x) return;
-      out.set(ids[i]!, {
-        tokenA: Number(x.tokenIdA),
-        tokenB: Number(x.tokenIdB),
-        challenger: x.challenger === ZERO_ADDRESS ? null : normalizeAddress(x.challenger),
-        accepter: x.accepter === ZERO_ADDRESS ? null : normalizeAddress(x.accepter),
-        status: DUEL_STATUS[Number(x.duelStatus)] ?? null,
-      });
+      out.set(ids[i]!, duelSnapshot(x));
     });
     return out;
   }

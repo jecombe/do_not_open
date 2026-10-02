@@ -1,5 +1,6 @@
 import { spec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
+import { duelSettles, duelUnderway, onShelf } from "../duels";
 import {
   ChainError,
   sameAddress,
@@ -14,7 +15,7 @@ import {
   type CollectionInfo,
   type DuelInfo,
   type DuelResult,
-  type DuelStatus,
+  type PostDuelOptions,
   type EconomyInfo,
   type MintOptions,
   type OpenedCat,
@@ -84,13 +85,10 @@ const allocation = (key: string) => BigInt(ECONOMY.allocation.find((a) => a.key 
 const swapOut = (amountIn: bigint, reserveIn: bigint, reserveOut: bigint) =>
   (amountIn * 997n * reserveOut) / (reserveIn * 1000n + amountIn * 997n);
 
-interface MockDuel {
-  tokenA: number;
-  tokenB: number;
-  challenger: Address;
-  accepter: Address | null;
-  status: DuelStatus;
-}
+type MockDuel = Omit<DuelInfo, "duelId">;
+
+/** How long a proven duel stays on the shelf, in seconds. */
+const DUEL_LIFETIME = Number(spec.mechanics.duel?.lifetimeDays ?? 7) * 86_400;
 
 export interface MockOptions {
   /** Milliseconds each simulated step takes. 0 in tests. */
@@ -133,8 +131,8 @@ export function mockWeighIn(weight: bigint, seed: bigint): WeighIn {
  * The whole game in memory, with the same rules and the same refusals as the contract.
  * Who holds a box is known here, but only the connected account's own boxes are ever told,
  * as on chain. Requests settle in the same call, so none is left pending. The other holder
- * (the night shift) accepts every duel and every entanglement at once, so each flow can be
- * played alone.
+ * (the night shift) puts two of its boxes on the duel shelf, takes up at once every duel
+ * reserved for one of its boxes, and accepts every entanglement, so each flow can be played alone.
  */
 export class MockAdapter implements ChainAdapter {
   readonly kind = "mock" as const;
@@ -142,6 +140,8 @@ export class MockAdapter implements ChainAdapter {
   private me: Address | null = null;
   private readonly boxes: MockBox[] = [];
   private readonly duelList: MockDuel[] = [];
+  /** Box id to its duel on the shelf. */
+  private readonly listings = new Map<number, number>();
   private readonly proposals = new Map<string, Address>();
   /** Boxes sold: encrypted on a real chain. */
   private sold = 0;
@@ -180,6 +180,11 @@ export class MockAdapter implements ChainAdapter {
     for (let i = 0; i < (opts.theirs ?? 3); i++) this.boxes.push(this.newBox(MOCK_NIGHT_SHIFT));
     this.sold = this.boxes.length;
     this.settleMilestones();
+    const theirs = this.boxes.flatMap((b, id) => (b.owner === MOCK_NIGHT_SHIFT ? [id] : []));
+    for (const id of theirs.slice(0, 2)) {
+      this.duelList.push({ tokenA: id, tokenB: null, reserved: false, challenger: MOCK_NIGHT_SHIFT, accepter: null, status: "posted", openUntil: null });
+      this.openListing(this.duelList.length - 1);
+    }
   }
 
   // --- account ---
@@ -243,11 +248,9 @@ export class MockAdapter implements ChainAdapter {
   }
 
   async pair(tokenA: number, tokenB: number): Promise<PairInfo> {
-    const between = (d: MockDuel) =>
-      (d.tokenA === tokenA && d.tokenB === tokenB) || (d.tokenA === tokenB && d.tokenB === tokenA);
     let openDuel: DuelInfo | null = null;
     this.duelList.forEach((d, duelId) => {
-      if (between(d) && (d.status === "challenged" || d.status === "pending")) openDuel = { duelId, ...d };
+      if (duelSettles(d, tokenA, tokenB, this.seconds())) openDuel = { duelId, ...d };
     });
     let entangleProposal: PairInfo["entangleProposal"] = null;
     for (const [from, to] of [[tokenA, tokenB], [tokenB, tokenA]] as const) {
@@ -261,8 +264,15 @@ export class MockAdapter implements ChainAdapter {
     const tokens = new Set(query.tokenIds ?? []);
     return this.duelList
       .map((d, duelId): DuelInfo => ({ duelId, ...d }))
-      .filter((d) => sameAddress(d.challenger, query.account) || sameAddress(d.accepter, query.account) || tokens.has(d.tokenA) || tokens.has(d.tokenB))
-      .filter((d) => !query.open || d.status === "challenged" || d.status === "pending")
+      .filter((d) => sameAddress(d.challenger, query.account) || sameAddress(d.accepter, query.account) || tokens.has(d.tokenA) || (d.tokenB !== null && tokens.has(d.tokenB)))
+      .filter((d) => !query.open || duelUnderway(d, this.seconds()))
+      .reverse();
+  }
+
+  async duelShelf(): Promise<DuelInfo[]> {
+    return this.duelList
+      .map((d, duelId): DuelInfo => ({ duelId, ...d }))
+      .filter((d) => onShelf(d, this.seconds()))
       .reverse();
   }
 
@@ -478,53 +488,102 @@ export class MockAdapter implements ChainAdapter {
     this.entangle(tokenA, tokenB);
   }
 
-  async challengeDuel(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<number> {
+  async postDuel(tokenA: number, opts?: PostDuelOptions): Promise<DuelInfo> {
     const me = this.signer();
-    if (tokenA === tokenB) throw revert("SameBox");
-    if (this.get(tokenA).status !== "sealed" || this.get(tokenB).status !== "sealed") throw revert("NotSealed");
-    await this.send(opts, "challengeDuel");
-    const duel: MockDuel = { tokenA, tokenB, challenger: me, accepter: null, status: "challenged" };
-    this.duelList.push(duel);
-    if (this.get(tokenB).owner === MOCK_NIGHT_SHIFT) Object.assign(duel, { status: "pending", accepter: MOCK_NIGHT_SHIFT });
-    return this.duelList.length - 1;
+    this.requireSealed(tokenA);
+    const reserved = opts?.reservedFor !== undefined;
+    if (reserved) {
+      if (opts.reservedFor === tokenA) throw revert("SameBox");
+      this.requireSealed(opts.reservedFor!);
+    }
+    await this.send(opts, "postDuel");
+    this.duelList.push({ tokenA, tokenB: reserved ? opts.reservedFor! : null, reserved, challenger: me, accepter: null, status: "posted", openUntil: null });
+    const duelId = this.duelList.length - 1;
+    await this.finishDuel(duelId, opts);
+    const duel = this.duel(duelId);
+    if (duel.status === "void") throw notYours();
+    // The night shift takes up at once a duel reserved for one of its boxes.
+    if (reserved && this.get(duel.tokenB!).owner === MOCK_NIGHT_SHIFT) Object.assign(duel, { status: "pending", accepter: MOCK_NIGHT_SHIFT });
+    return { duelId, ...duel };
   }
 
   async cancelDuel(duelId: number, opts?: ActionOptions): Promise<void> {
     const me = this.signer();
     const duel = this.duel(duelId);
-    if (duel.status !== "challenged") throw revert("WrongDuelStatus");
+    if (duel.status !== "posted" && duel.status !== "open") throw revert("WrongDuelStatus");
     if (duel.challenger !== me) throw revert("NotChallenger");
     await this.send(opts, "cancelDuel");
-    duel.status = "cancelled";
+    this.close(duelId, "cancelled");
   }
 
-  async acceptDuel(duelId: number, opts?: ActionOptions): Promise<void> {
+  async acceptDuel(duelId: number, tokenB: number, opts?: ActionOptions): Promise<DuelResult | null> {
     const me = this.signer();
     const duel = this.duel(duelId);
-    if (duel.status !== "challenged") throw revert("WrongDuelStatus");
-    if (this.get(duel.tokenA).status !== "sealed" || this.get(duel.tokenB).status !== "sealed") throw revert("NotSealed");
+    this.requireSealed(tokenB);
+    if (duel.status !== "open") throw revert("WrongDuelStatus");
+    if (!onShelf(duel, this.seconds())) throw revert("DuelExpired");
+    if (tokenB === duel.tokenA) throw revert("SameBox");
+    if (duel.reserved && tokenB !== duel.tokenB) throw revert("NotThisBox");
+    this.requireSealed(duel.tokenA);
     await this.send(opts, "acceptDuel");
-    Object.assign(duel, { status: "pending", accepter: me });
+    Object.assign(duel, { status: "pending", tokenB, accepter: me });
+    const result = await this.finishDuel(duelId, opts);
+    if (this.duel(duelId).status === "open") throw notYours();
+    return result;
   }
 
   async finishDuel(duelId: number, opts?: ActionOptions): Promise<DuelResult | null> {
     const duel = this.duel(duelId);
-    if (duel.status !== "pending") throw revert("WrongDuelStatus");
+    if (duel.status !== "posted" && duel.status !== "pending") throw revert("WrongDuelStatus");
     await this.publish(opts, "finalizeDuel");
-    // Both sides must have held their boxes at acceptance; otherwise nothing happens.
-    if (this.get(duel.tokenA).owner !== duel.challenger || this.get(duel.tokenB).owner !== duel.accepter) {
-      duel.status = "void";
+    if (duel.status === "posted") {
+      if (this.get(duel.tokenA).owner === duel.challenger) this.openListing(duelId);
+      else duel.status = "void";
+      return null;
+    }
+    // A challenger who no longer holds the box voids the duel; an accepter who does not hold
+    // theirs only puts it back on the shelf.
+    if (this.get(duel.tokenA).owner !== duel.challenger) {
+      this.close(duelId, "void");
+      return null;
+    }
+    const tokenB = duel.tokenB!;
+    if (this.get(tokenB).owner !== duel.accepter) {
+      Object.assign(duel, { status: "open", accepter: null, tokenB: duel.reserved ? tokenB : null });
       return null;
     }
     const score = (id: number) => buildCatSpec({ seed: mockSeedForToken(id) }).rarity.score;
     // Strictly higher wins; ties go to B.
-    const aWins = score(duel.tokenA) > score(duel.tokenB);
-    const [winner, loser] = aWins ? [duel.tokenA, duel.tokenB] : [duel.tokenB, duel.tokenA];
+    const aWins = score(duel.tokenA) > score(tokenB);
+    const [winner, loser] = aWins ? [duel.tokenA, tokenB] : [tokenB, duel.tokenA];
     const shown = this.pickTrait(loser, 1000 + duelId);
-    duel.status = "resolved";
+    this.close(duelId, "resolved");
     this.get(winner).wins += 1;
     this.get(loser).publicTraits.set(shown.traitIndex, shown.roll);
     return { duelId, winner, loser, shown };
+  }
+
+  /** A proven posting goes on the shelf, replacing the box's earlier one. */
+  private openListing(duelId: number): void {
+    const duel = this.duel(duelId);
+    const previous = this.listings.get(duel.tokenA);
+    if (previous !== undefined) this.duel(previous).status = "cancelled";
+    this.listings.set(duel.tokenA, duelId);
+    Object.assign(duel, { status: "open", openUntil: Math.floor(this.seconds()) + DUEL_LIFETIME });
+  }
+
+  private close(duelId: number, status: "resolved" | "cancelled" | "void"): void {
+    const duel = this.duel(duelId);
+    duel.status = status;
+    if (this.listings.get(duel.tokenA) === duelId) this.listings.delete(duel.tokenA);
+  }
+
+  private seconds(): number {
+    return this.now() / 1000;
+  }
+
+  private requireSealed(tokenId: number): void {
+    if (this.get(tokenId).status !== "sealed") throw revert("NotSealed");
   }
 
   async claimEarnings(tokenIds: number[], opts?: ActionOptions): Promise<bigint> {

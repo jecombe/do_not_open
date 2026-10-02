@@ -154,8 +154,9 @@
     },
     "duel": {
       "paid": false,
-      "caller": "both holders (two-step: challenge, accept)",
-      "rule": "Challenge, accept, finalise. Accepting computes three encrypted values and makes them publicly decryptable: the bit (scoreA > scoreB), a uniformly picked trait offset, and the loser's roll for that trait. Ties go to B (the challenged box). Winner's win counter increments. The loser's picked trait becomes public, never the state."
+      "caller": "the holder posts, any holder takes it up",
+      "lifetimeDays": 7,
+      "rule": "Post, prove, take up, finalise. A holder puts box A on the duel shelf, open to any sealed box or reserved for one; the posting makes the bit (the caller holds A) publicly decryptable, and only a proven posting goes on the shelf, for lifetimeDays. One listing per box. Taking it up with box B makes public: A is still held, both boxes are held, then masked by the latter the bit (scoreA > scoreB), a uniformly picked trait offset, and the loser's roll for that trait. Ties go to B. If A was no longer held the duel is void; if only B was not held, the duel goes back on the shelf. Winner's win counter increments. The loser's picked trait becomes public, never the state."
     },
     "entangle": {
       "paid": false,
@@ -240,9 +241,12 @@
     "Observed": { "fields": ["tokenId", "seed", "state", "rarityScore", "golden"] },
     "AliveCheckRequested": { "fields": ["tokenId", "aliveHandle"] },
     "AliveProven": { "fields": ["tokenId", "alive"] },
-    "DuelChallenged": { "fields": ["duelId", "tokenIdA", "tokenIdB"] },
-    "DuelAccepted": { "fields": ["duelId"] },
+    "DuelPosted": { "fields": ["duelId", "tokenIdA", "tokenIdB", "challenger", "reserved"], "note": "tokenIdB only means something when reserved." },
+    "DuelOpened": { "fields": ["duelId", "openUntil"], "note": "The holding was proven: the box is on the duel shelf." },
+    "DuelAccepted": { "fields": ["duelId", "tokenIdB", "accepter"] },
+    "DuelReopened": { "fields": ["duelId"], "note": "The accepter did not hold their box: back on the shelf." },
     "DuelCancelled": { "fields": ["duelId"] },
+    "DuelVoided": { "fields": ["duelId"], "note": "The challenger did not hold their box." },
     "DuelResolved": { "fields": ["duelId", "winnerTokenId", "loserTokenId", "revealedTraitIndex", "revealedTraitRoll"] },
     "EntangleProposed": { "fields": ["tokenIdA", "tokenIdB"] },
     "Entangled": { "fields": ["tokenIdA", "tokenIdB"] },
