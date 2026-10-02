@@ -2,7 +2,7 @@ import type { ActivityQuery, DuelQuery, EntangleProposal, Mint, ProjectionTx, St
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
 import { actorsOf, byChainOrder, QUIET_EVENTS, tokensOf } from "../../domain/events";
-import type { Charge, Meter } from "../../domain/relayer";
+import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -26,6 +26,9 @@ interface State {
   /** Free units used, by `account:day`. Kept across replays, like the credits spent. */
   freeUsed: Map<string, number>;
   spent: Map<Address, number>;
+  /** Public decryptions sent to Zama, by key, and how many named each handle. Kept across replays. */
+  publicDecryptions: Map<string, PublicDecryption>;
+  publicUses: Map<string, number>;
 }
 
 const emptyState = (): State => ({
@@ -46,6 +49,8 @@ const emptyState = (): State => ({
   credits: new Map(),
   freeUsed: new Map(),
   spent: new Map(),
+  publicDecryptions: new Map(),
+  publicUses: new Map(),
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -253,6 +258,33 @@ export class MemoryStore implements Store {
       this.s.spent.set(account, (this.s.spent.get(account) ?? 0) + delta.credits);
     }
     return delta;
+  }
+
+  async publicDecryption(key: string) {
+    const d = this.s.publicDecryptions.get(key);
+    return d ? clone(d) : null;
+  }
+
+  async publicDecryptionOfJob(jobId: string) {
+    for (const d of this.s.publicDecryptions.values()) if (d.jobId === jobId) return clone(d);
+    return null;
+  }
+
+  async savePublicDecryption(d: Omit<PublicDecryption, "result">, handles: string[]) {
+    this.s.publicDecryptions.set(d.key, clone({ ...d, result: null }));
+    for (const h of handles) this.s.publicUses.set(h, (this.s.publicUses.get(h) ?? 0) + 1);
+  }
+
+  async finishPublicDecryption(jobId: string, result: unknown) {
+    for (const [k, d] of this.s.publicDecryptions) if (d.jobId === jobId) this.s.publicDecryptions.set(k, { ...d, result: clone(result) });
+  }
+
+  async dropPublicDecryption(jobId: string) {
+    for (const [k, d] of this.s.publicDecryptions) if (d.jobId === jobId && d.result === null) this.s.publicDecryptions.delete(k);
+  }
+
+  async publicDecryptionsOf(handles: string[]) {
+    return new Map(handles.filter((h) => this.s.publicUses.has(h)).map((h) => [h, this.s.publicUses.get(h)!]));
   }
 
   async takeNonce(address: Address) {

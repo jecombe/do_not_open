@@ -1,7 +1,7 @@
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
 import type { Enrichment, ProtocolEvent } from "../../domain/events";
-import type { Charge, Meter } from "../../domain/relayer";
+import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -149,4 +149,14 @@ export interface Store extends ReadStore {
    */
   meter(account: Address, day: string, apply: (m: Meter) => Charge | null): Promise<Charge | null>;
   meterOf(account: Address, day: string): Promise<Meter>;
+  /** Public decryptions sent to Zama, by exact request and by job. Not a read model either. */
+  publicDecryption(key: string): Promise<PublicDecryption | null>;
+  publicDecryptionOfJob(jobId: string): Promise<PublicDecryption | null>;
+  /** Records a request Zama queued (replacing a stale one under the same key) and counts it against each handle. */
+  savePublicDecryption(d: Omit<PublicDecryption, "result">, handles: string[]): Promise<void>;
+  finishPublicDecryption(jobId: string, result: unknown): Promise<void>;
+  /** Forgets a job Zama failed or lost, so the next same request is sent again. */
+  dropPublicDecryption(jobId: string): Promise<void>;
+  /** How many requests sent to Zama named each of these handles; absent ones never were. */
+  publicDecryptionsOf(handles: string[]): Promise<Map<string, number>>;
 }

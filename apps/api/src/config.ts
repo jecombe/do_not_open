@@ -75,6 +75,8 @@ const schema = z.object({
   RELAYER_INPUT_UNITS: z.coerce.number().int().min(0).default(5),
   /** Most values one decryption may ask for. */
   RELAYER_MAX_HANDLES: z.coerce.number().int().positive().default(64),
+  /** Public decryptions sent to Zama that may name one handle. The same request is served from the cache. */
+  RELAYER_PUBLIC_PER_HANDLE: z.coerce.number().int().positive().default(4),
   RELAYER_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   /** How far back the ACL is read for a handle the index has not caught up with. */
   RELAYER_RECENT_BLOCKS: z.coerce.number().int().positive().default(64),

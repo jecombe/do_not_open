@@ -31,6 +31,25 @@ export interface Allowance {
   inputUnits: number;
 }
 
+/**
+ * A public decryption sent to Zama, kept by its exact request. A handle decrypts to the same
+ * value forever, so asking again is answered from here and Zama is paid once.
+ */
+export interface PublicDecryption {
+  /** The handles in their order, and the extra data: what the KMS signs over. */
+  key: string;
+  jobId: string;
+  /** Zama's "queued" answer to the request, replayed to whoever asks the same again. */
+  queued: unknown;
+  /** Zama's "succeeded" answer once the job is done; null while it runs. */
+  result: unknown | null;
+  /** Unix seconds, when it was sent. */
+  at: number;
+}
+
+/** The cache key of a public decryption: order matters, the proof covers the list as given. */
+export const publicDecryptionKey = (handles: string[], extraData: string) => `${handles.join(",")}|${extraData.toLowerCase()}`;
+
 const DAY = 86_400;
 
 /** The UTC day a moment falls in, as "2026-10-02". */

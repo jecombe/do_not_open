@@ -522,7 +522,10 @@ sequenceDiagram
 
 Public decryptions (an opening, an alive check, a duel, a milestone, a weigh-in, an
 unwrap) go through the same proxy, free: it checks that one of the protocol's contracts
-made the handles public (Zama's ACL logs it). The adapter checks the allowance before a
+made the handles public (Zama's ACL logs it). A handle's value never changes, so each exact
+request is sent to Zama once and replayed from the proxy's cache after, and a handle may be
+named in at most `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent there: asking for an old duel
+in a loop costs the collection nothing. The adapter checks the allowance before a
 shake, a mint or a meal, so no gas is spent on a result that could not be read. A wallet
 the index has never seen act gets a newcomer's allowance (16, one mint) instead of a
 player's (25).

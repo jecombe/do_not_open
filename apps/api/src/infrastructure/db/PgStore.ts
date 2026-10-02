@@ -3,7 +3,7 @@ import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, S
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
 import { actorsOf, QUIET_EVENTS, tokensOf, type ProtocolEvent } from "../../domain/events";
-import type { Charge, Meter } from "../../domain/relayer";
+import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -117,6 +117,14 @@ async function meterOf(q: Q, account: Address, day: string, lock: boolean): Prom
   const spent = await one(q, `select spent from relayer_credits_spent where account = $1${forUpdate}`, [account], (r) => r.spent as number);
   return { freeUsed: freeUsed ?? 0, spent: spent ?? 0, bought: await creditsOf(q, account) };
 }
+
+const publicDecryptionFrom = (r: Record<string, unknown>): PublicDecryption => ({
+  key: r.key as string,
+  jobId: r.job_id as string,
+  queued: r.queued,
+  result: r.result ?? null,
+  at: Number(r.at),
+});
 
 const getUser = (q: Q, address: Address) => one(q, "select * from users where address = $1", [address], userFrom);
 
@@ -428,6 +436,49 @@ export class PgStore implements Store {
     } finally {
       client.release();
     }
+  }
+
+  publicDecryption(key: string) {
+    return one(this.pool, "select * from public_decryptions where key = $1", [key], publicDecryptionFrom);
+  }
+
+  publicDecryptionOfJob(jobId: string) {
+    return one(this.pool, "select * from public_decryptions where job_id = $1", [jobId], publicDecryptionFrom);
+  }
+
+  async savePublicDecryption(d: Omit<PublicDecryption, "result">, handles: string[]) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query(
+        `insert into public_decryptions (key, job_id, queued, result, at) values ($1, $2, $3, null, $4)
+         on conflict (key) do update set job_id = $2, queued = $3, result = null, at = $4`,
+        [d.key, d.jobId, JSON.stringify(d.queued), d.at],
+      );
+      await client.query(
+        "insert into public_decrypt_uses (handle, uses) select h, 1 from unnest($1::text[]) h on conflict (handle) do update set uses = public_decrypt_uses.uses + 1",
+        [handles],
+      );
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async finishPublicDecryption(jobId: string, result: unknown) {
+    await this.pool.query("update public_decryptions set result = $2 where job_id = $1", [jobId, JSON.stringify(result)]);
+  }
+
+  async dropPublicDecryption(jobId: string) {
+    await this.pool.query("delete from public_decryptions where job_id = $1 and result is null", [jobId]);
+  }
+
+  async publicDecryptionsOf(handles: string[]) {
+    const { rows } = await this.pool.query("select handle, uses from public_decrypt_uses where handle = any($1::text[])", [handles]);
+    return new Map(rows.map((r) => [r.handle as string, r.uses as number]));
   }
 
   takeNonce(address: Address) {

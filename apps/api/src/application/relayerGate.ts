@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { allowanceOf, charge, dayOf, refund, type Allowance } from "../domain/relayer";
+import { allowanceOf, charge, dayOf, publicDecryptionKey, refund, type Allowance } from "../domain/relayer";
 import { normalizeAddress, type Address } from "../domain/types";
 import type { Clock } from "./auth";
 import type { PermitVerifier, PublicationCheck, RelayerUpstream, UpstreamReply, UserDecryptPermit } from "./ports/relayer";
@@ -36,7 +36,13 @@ export interface GateConfig {
   maxHandles: number;
   /** A permit signed more than this far in the future is refused. Seconds. */
   clockSkew: number;
+  /** Requests sent to Zama that may name one handle: the same request is answered from the
+   *  cache, and this bounds what reshuffling the handles of a request can cost. */
+  publicPerHandle: number;
 }
+
+/** A public decryption still running after this long is taken as lost and sent again. Seconds. */
+const PUBLIC_PENDING_TTL = 300;
 
 const hex = z.string().regex(/^(0x)?[0-9a-fA-F]*$/, "not hex");
 const handle = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "not a handle").transform((h) => h.toLowerCase());
@@ -92,7 +98,9 @@ export function encodePermitToken(p: UserDecryptPermit): string {
  *   it is for, charged the same way: `inputUnits` an input, since Zama bills an input several
  *   times a decryption;
  * - a public decryption of handles the protocol's contracts made public (a request, a duel,
- *   a milestone, a weigh-in, an unwrap): free, it settles something already on-chain.
+ *   a milestone, a weigh-in, an unwrap): free, it settles something already on-chain. A
+ *   handle's value never changes, so each request is sent to Zama once and answered from the
+ *   cache after, and a handle may only be named in `publicPerHandle` requests sent there.
  */
 export class RelayerGate {
   private keyurl: { at: number; reply: UpstreamReply } | null = null;
@@ -126,7 +134,13 @@ export class RelayerGate {
   /** Where a queued job stands. Free: the job was metered when it was submitted. */
   async poll(op: RelayerOp, jobId: string): Promise<UpstreamReply> {
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(jobId)) throw new RelayerRefused("bad-request", "not a job id");
-    return this.upstream.get(`${op}/${jobId}`);
+    if (op !== "public-decrypt") return this.upstream.get(`${op}/${jobId}`);
+    const known = await this.store.publicDecryptionOfJob(jobId);
+    if (known?.result != null) return { status: 200, body: known.result, retryAfter: null };
+    const reply = await this.upstream.get(`${op}/${jobId}`);
+    if (known && reply.status === 200) await this.store.finishPublicDecryption(jobId, reply.body);
+    else if (known && reply.status >= 400) await this.store.dropPublicDecryption(jobId);
+    return reply;
   }
 
   /** Where the network's public key lives. The same for everyone: kept a few minutes. */
@@ -210,7 +224,23 @@ export class RelayerGate {
       missing = missing.filter((h) => !recent.has(h));
     }
     if (missing.length) throw new RelayerRefused("not-ours", "only values this game made public can be decrypted here");
-    return this.upstream.post("public-decrypt", raw);
+
+    // Asked before: the same job, answered from the cache once it is done.
+    const key = publicDecryptionKey(body.ciphertextHandles, body.extraData);
+    const now = this.clock.now();
+    const asked = await this.store.publicDecryption(key);
+    if (asked && (asked.result !== null || now - asked.at < PUBLIC_PENDING_TTL)) return { status: 202, body: asked.queued, retryAfter: "1" };
+
+    const uses = await this.store.publicDecryptionsOf(body.ciphertextHandles);
+    if (body.ciphertextHandles.some((h) => (uses.get(h) ?? 0) >= this.cfg.publicPerHandle)) {
+      throw new RelayerRefused("bad-request", "this value was already decrypted publicly; ask with the same handles as before");
+    }
+    const reply = await this.upstream.post("public-decrypt", raw);
+    const jobId = (reply.body as { result?: { jobId?: unknown } } | null)?.result?.jobId;
+    if (reply.status === 202 && typeof jobId === "string") {
+      await this.store.savePublicDecryption({ key, jobId, queued: reply.body, at: now }, [...new Set(body.ciphertextHandles)]);
+    }
+    return reply;
   }
 
   private async inputProof(raw: unknown, authorization?: string): Promise<UpstreamReply> {
