@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActionOptions, BoxInfo, BoxPantry, PantryDay, Step, TraitRoll } from "@dno/chain-adapter";
+import type { ActionOptions, BoxInfo, BoxPantry, DuelInfo, PantryDay, Step, TraitRoll } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -21,6 +21,7 @@ import { FindMine } from "./FindMine";
 import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
+import { boxTags } from "../chain/tags";
 
 interface Props {
   quality: QualitySettings;
@@ -118,6 +119,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const action = useAction();
   const [loaded, setInfo] = useState<BoxInfo | null>(null);
   const [pantry, setPantry] = useState<{ tokenId: number; at: BoxPantry } | null>(null);
+  const [duels, setDuels] = useState<{ tokenId: number; list: DuelInfo[] } | null>(null);
   const [serving, setServing] = useState(false);
   const [croq, setCroq] = useState("");
   // What the holder fed this cat today, decrypted for them: the input stops at what is left.
@@ -148,6 +150,11 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
       setMissingId(tokenId);
       return;
     }
+    // A duel it is up for, or in: a tag on the box. Without the list the box simply goes untagged.
+    adapter.duels({ tokenIds: [tokenId], open: true }).then(
+      (list) => setDuels({ tokenId, list }),
+      () => setDuels(null),
+    );
     // The cat's meals and weigh-in live next door, in the Pantry. Without it the box still works.
     adapter.boxPantry(tokenId).then(
       (at) => setPantry({ tokenId, at }),
@@ -155,6 +162,12 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     );
   }, [adapter, tokenId]);
   const kitchen = pantry?.tokenId === tokenId ? pantry.at : null;
+  const tags = useMemo(
+    () => (info ? boxTags(info, duels?.tokenId === tokenId ? duels.list : []) : []),
+    // `t` changes with the language the tags are worded in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [info, duels, tokenId, t],
+  );
   const weighIn = kitchen?.weighIn ?? null;
   const cat = useMemo(() => (info?.revealed ? catFromRevealed(info.revealed, weighIn) : null), [info, weighIn]);
   const today = day?.tokenId === tokenId ? day.value : null;
@@ -345,6 +358,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
           tokenId={tokenId}
           opened={cat}
           vet={info?.aliveCheck === "alive" || info?.aliveCheck === "notAlive" ? info.aliveCheck : null}
+          tags={tags}
           quality={quality}
           sound={sound}
           onShakeDone={noop}

@@ -81,6 +81,7 @@ export const it: Record<AppKey, string> = {
   "shelf.connectHint": "Collegane uno per vedere le scatole che possiedi e ordinarne di nuove.",
   "shelf.empty": "Ancora niente sul tuo scaffale.",
   "shelf.boxes": "Le tue scatole",
+  "shelf.order": "Nuove scatole",
   "shelf.boxActions": "Cosa fare con {serial}",
   "shelf.duel": "Duello",
   "shelf.entangle": "Intrecciare",
@@ -659,4 +660,11 @@ export const it: Record<AppKey, string> = {
   "duels.unprovenHint": "Pubblicato, ma la prova che hai la scatola non è mai arrivata: finché non arriva, nessuno può accettarlo.",
   "duels.prove": "Completalo",
   "duels.proving": "Prova in corso…",
+
+  "tag.duel": "In duello",
+  "tag.duelPending": "esito in attesa",
+  "tag.duelUnproven": "prova in attesa",
+  "tag.duelOpen": "sullo scaffale",
+  "tag.entangled": "Intrecciata",
+  "tag.with": "con {serial}",
 };

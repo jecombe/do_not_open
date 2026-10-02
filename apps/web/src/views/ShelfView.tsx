@@ -13,6 +13,7 @@ import { PayWith } from "./PayWith";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
+import { boxTags } from "../chain/tags";
 
 interface Props {
   quality: QualitySettings;
@@ -47,6 +48,11 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
   const [arrived, setArrived] = useState<number[]>([]);
   // The box whose tag is pointed at in the slip: it lifts on the bench.
   const [pointed, setPointed] = useState<number | null>(null);
+  // On a phone only one slip shows at a time: the boxes, or the order.
+  const [tab, setTab] = useState<"boxes" | "order">("boxes");
+  // The slip whose action is running or last failed: its step and its error show there.
+  const [ran, setRan] = useState<"boxes" | "order">("order");
+  const here = (slip: "boxes" | "order") => ran === slip;
 
   const listed = useMemo(() => [...myBoxes].reverse().slice(0, LIST_LIMIT), [myBoxes]);
 
@@ -93,12 +99,16 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
         tokenId: b.tokenId,
         cat: b.revealed ? catFromRevealed(b.revealed) : null,
         vet: b.aliveCheck === "alive" || b.aliveCheck === "notAlive" ? b.aliveCheck : null,
+        tags: boxTags(b, duels),
       })),
-    [infos],
+    // `t` changes with the language the tags are worded in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [infos, duels, t],
   );
 
   const mint = async () => {
     sound.resume();
+    setRan("order");
     const got = await action.run("mint", (o) => adapter.mint(quantity, { ...o, pay, ids: among }), { landed: "problem.landedMint" });
     if (!got) return;
     setArrived(got);
@@ -110,6 +120,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
 
   /** A request whose proof never made it, say because the tab was closed. */
   const finish = async (request: PendingRequest) => {
+    setRan("boxes");
     const done = await action.run("finish", async (o) => {
       await adapter.finishRequest(request.requestId, o);
       return true;
@@ -120,6 +131,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
 
   /** What strangers paid to shake these boxes, partly left inside for their holder. */
   const collect = async () => {
+    setRan("boxes");
     const got = await action.run("collect", (o) => adapter.claimEarnings(myBoxes.slice(-10), o));
     if (got !== undefined) setEarned(got);
   };
@@ -127,6 +139,19 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
   const soldOut = !!collection?.sale.soldOut;
   const total = collection ? collection.fees.mint * BigInt(quantity) : 0n;
   const sealedMine = infos.some((b) => b.status === "sealed");
+
+  // Shown on a phone only, in place of each slip's title.
+  const tabs = (
+    <div className="slip-tabs" role="tablist" aria-label={t("shelf.title")}>
+      <button type="button" role="tab" aria-selected={tab === "boxes"} onClick={() => setTab("boxes")}>
+        {t("shelf.boxes")}
+        {boxesKnown && myBoxes.length > 0 && <span>{myBoxes.length}</span>}
+      </button>
+      <button type="button" role="tab" aria-selected={tab === "order"} onClick={() => setTab("order")}>
+        {t("shelf.order")}
+      </button>
+    </div>
+  );
 
   return (
     <>
@@ -142,23 +167,31 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
         </div>
       )}
 
-      <section className={`slip${foldClass}`} aria-label={t("shelf.title")}>
-        {foldButton}
-        <div className="slip-head">
-          <span>{t("shelf.title")}</span>
-          {collection && <span>{saleCopy(collection)}</span>}
-        </div>
+      {!account ? (
+        <section className={`slip${foldClass}`} aria-label={t("shelf.title")}>
+          {foldButton}
+          <div className="slip-head">
+            <span>{t("shelf.title")}</span>
+            {collection && <span>{saleCopy(collection)}</span>}
+          </div>
+          <p className="state-note">{t("shelf.noWallet")}</p>
+          <p className="fine after-table">{t("shelf.connectHint")}</p>
+          <button type="button" className="stamp-button" onClick={() => void connect()}>
+            {t("nav.connect")}
+          </button>
+        </section>
+      ) : (
+        <>
+          {/* Two slips on a desktop: the boxes on the left, the order on the right, each short enough
+              to read without scrolling. A phone has room for one: the tabs switch between them. */}
+          <section className={`slip shelf-slip${foldClass}${tab === "boxes" ? "" : " is-away"}`} aria-label={t("shelf.boxes")}>
+            {foldButton}
+            <div className="slip-head">
+              {tabs}
+              <span className="slip-title">{t("shelf.boxes")}</span>
+              {boxesKnown && <span>{myBoxes.length}</span>}
+            </div>
 
-        {!account ? (
-          <>
-            <p className="state-note">{t("shelf.noWallet")}</p>
-            <p className="fine after-table">{t("shelf.connectHint")}</p>
-            <button type="button" className="stamp-button" onClick={() => void connect()}>
-              {t("nav.connect")}
-            </button>
-          </>
-        ) : (
-          <>
             {!boxesKnown ? (
               <>
                 <p className="state-note find-note">{t("mine.findAbove")}</p>
@@ -217,6 +250,42 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
               </>
             )}
 
+
+            <div className="felt" aria-live="polite">
+              {here("boxes") && action.error ? (
+                <ProblemNote problem={action.error} />
+              ) : here("boxes") && action.busy ? (
+                <p className="fine">{stepCopy(action.step, action.busy === "collect")}</p>
+              ) : earned !== null ? (
+                <p className="fine">{earned > 0n ? t("shelf.earned", { fee: fee(earned, collection) }) : t("shelf.earnedNothing")}</p>
+              ) : null}
+              {pending.length > 0 && !action.busy && (
+                <p className="fine">
+                  {t("shelf.pendingRequest", { count: pending.length })}{" "}
+                  <button type="button" className="link" onClick={() => void finish(pending[0]!)}>
+                    {t("shelf.finishRequest")}
+                  </button>
+                </p>
+              )}
+              {boxesKnown && sealedMine && !action.busy && (
+                <p className="fine">
+                  {t("shelf.earnings")}{" "}
+                  <button type="button" className="link" onClick={() => void collect()}>
+                    {t("shelf.collectEarnings")}
+                  </button>
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className={`slip shelf-slip shelf-order${foldClass}${tab === "order" ? "" : " is-away"}`} aria-label={t("shelf.order")}>
+            {foldButton}
+            <div className="slip-head">
+              {tabs}
+              <span className="slip-title">{t("shelf.order")}</span>
+              {collection && <span>{saleCopy(collection)}</span>}
+            </div>
+
             <div className="order">
               <div className="stepper" role="group" aria-label={t("shelf.howMany")}>
                 <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={!!action.busy || quantity <= 1} aria-label={t("shelf.fewer")}>
@@ -248,40 +317,22 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
             {pay === "usdc" && <p className="fine problem">{t("shelf.usdcShows")}</p>}
 
             <div className="felt" aria-live="polite">
-              {action.error ? (
+              {here("order") && action.error ? (
                 <ProblemNote problem={action.error} />
-              ) : action.busy ? (
-                <p className="fine">{stepCopy(action.step, action.busy === "mint" || action.busy === "collect")}</p>
+              ) : here("order") && action.busy ? (
+                <p className="fine">{stepCopy(action.step, true)}</p>
               ) : arrived.length ? (
                 <p className="fine">{t("shelf.arrived", { serials: arrived.map((id) => buildBoxSpec(id).serial).join(", ") })}</p>
-              ) : earned !== null ? (
-                <p className="fine">{earned > 0n ? t("shelf.earned", { fee: fee(earned, collection) }) : t("shelf.earnedNothing")}</p>
               ) : (
                 <p className="fine">
                   {t("shelf.price", { count: quantity, fee: fee(total, collection, pay) })}
                   {mode === "mock" ? t("shelf.mockFree") : ""}
                 </p>
               )}
-              {pending.length > 0 && !action.busy && (
-                <p className="fine">
-                  {t("shelf.pendingRequest", { count: pending.length })}{" "}
-                  <button type="button" className="link" onClick={() => void finish(pending[0]!)}>
-                    {t("shelf.finishRequest")}
-                  </button>
-                </p>
-              )}
-              {boxesKnown && sealedMine && !action.busy && (
-                <p className="fine">
-                  {t("shelf.earnings")}{" "}
-                  <button type="button" className="link" onClick={() => void collect()}>
-                    {t("shelf.collectEarnings")}
-                  </button>
-                </p>
-              )}
             </div>
-          </>
-        )}
-      </section>
+          </section>
+        </>
+      )}
     </>
   );
 }
