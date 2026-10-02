@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Unauthorized, type SignIn } from "../../application/auth";
 import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
+import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
 import { normalizeAddress } from "../../domain/types";
 import type { IndexerStatus } from "../Indexer";
 import type { EndpointStatus } from "../chain/RpcPool";
@@ -13,6 +14,10 @@ export interface HttpDeps {
   queries: Queries;
   metadata: Metadata;
   signIn: SignIn;
+  /** The relayer proxy. Absent: the app talks to Zama's relayer directly. */
+  relayer?: RelayerGate;
+  /** Relayer submissions per minute per IP. */
+  relayerRatePerMinute?: number;
   /** Absent when this process does not index (ROLE=api). */
   indexer?: { status(): IndexerStatus; nudge(): void };
   rpcStatus?: () => EndpointStatus[];
@@ -51,7 +56,9 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
   await app.register(cors, {
     origin: deps.corsOrigins.includes("*") ? true : deps.corsOrigins.map(originPattern),
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["content-type", "authorization"],
+    // The Relayer SDK names itself in two headers, and polls on Retry-After.
+    allowedHeaders: ["content-type", "authorization", "zama-sdk-version", "zama-sdk-name"],
+    exposedHeaders: ["retry-after"],
     maxAge: 86_400,
   });
   await app.register(rateLimit, { max: deps.rateLimitPerMinute, timeWindow: "1 minute" });
@@ -201,6 +208,55 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     deps.indexer?.nudge();
     return reply.status(202).send({ ok: true });
   });
+
+  // --- relayer proxy (the Relayer SDK's relayerUrl is <this API>/relayer/v2) ---
+
+  const relayer = deps.relayer;
+  if (relayer) {
+    const op = z.enum(["input-proof", "user-decrypt", "public-decrypt"]);
+    const pass = (reply: FastifyReply, r: { status: number; body: unknown; retryAfter: string | null }) => {
+      reply.header("cache-control", "no-store");
+      if (r.retryAfter) reply.header("retry-after", r.retryAfter);
+      return reply.status(r.status).send(r.body);
+    };
+    // In the relayer's own error shape, so the SDK reports it as it would one of Zama's.
+    const refused = (reply: FastifyReply, e: RelayerRefused) =>
+      reply
+        .status(400)
+        .header("cache-control", "no-store")
+        .send({ status: "failed", requestId: "dno-gate", error: { label: "request_error", message: `dno:${e.code}: ${e.message}` } });
+    const guarded = async (reply: FastifyReply, run: () => Promise<{ status: number; body: unknown; retryAfter: string | null }>) => {
+      try {
+        return pass(reply, await run());
+      } catch (error) {
+        if (error instanceof RelayerRefused) return refused(reply, error);
+        throw error;
+      }
+    };
+
+    app.get("/relayer/v2/keyurl", async (_req, reply) => guarded(reply, () => relayer.keyUrl()));
+
+    app.post(
+      "/relayer/v2/:op",
+      // An encrypted input carries its proof: far bigger than the API's other bodies.
+      { bodyLimit: 1024 * 1024, config: { rateLimit: { max: deps.relayerRatePerMinute ?? 60, timeWindow: "1 minute" } } },
+      async (req, reply) => {
+        const p = z.object({ op }).parse(req.params);
+        return guarded(reply, () => relayer.submit(p.op as RelayerOp, req.body));
+      },
+    );
+
+    // The SDK polls a queued job every second or two: not counted against the IP.
+    app.get("/relayer/v2/:op/:jobId", { config: { rateLimit: false } }, async (req, reply) => {
+      const p = z.object({ op, jobId: z.string() }).parse(req.params);
+      return guarded(reply, () => relayer.poll(p.op as RelayerOp, p.jobId));
+    });
+
+    app.get("/v1/relayer/allowance/:address", async (req, reply) => {
+      const p = z.object({ address }).parse(req.params);
+      return send(reply, await relayer.allowance(p.address), "private, no-store");
+    });
+  }
 
   // --- token metadata (point the contract's base URI at /metadata/) ---
 

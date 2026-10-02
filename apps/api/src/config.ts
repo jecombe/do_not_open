@@ -62,6 +62,20 @@ const schema = z.object({
   /** Shown in the sign-in message the wallet displays. */
   SIGN_IN_DOMAIN: z.string().default("donotopen"),
   TRUST_PROXY: z.stringbool().default(false),
+
+  /** Zama's relayer, versioned. Defaults to the network's. */
+  RELAYER_URL: z.string().url().optional(),
+  /** The collection's key for Zama's hosted relayer: required on mainnet, unused on Sepolia. Never sent to browsers. */
+  RELAYER_API_KEY: z.string().optional(),
+  /** Values a wallet may decrypt for free each UTC day, before its credits are used. */
+  RELAYER_FREE_PER_DAY: z.coerce.number().int().min(0).default(50),
+  /** Most values one decryption may ask for. */
+  RELAYER_MAX_HANDLES: z.coerce.number().int().positive().default(64),
+  RELAYER_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  /** How far back the ACL is read for a handle the index has not caught up with. */
+  RELAYER_RECENT_BLOCKS: z.coerce.number().int().positive().default(64),
+  /** Submissions per minute and IP (polling is not counted). */
+  RELAYER_RATE_PER_MINUTE: z.coerce.number().int().positive().default(60),
 });
 
 export type Config = z.infer<typeof schema>;

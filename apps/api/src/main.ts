@@ -5,11 +5,13 @@ import { SignIn } from "./application/auth";
 import type { Store } from "./application/ports/store";
 import { Metadata } from "./application/metadata";
 import { Queries } from "./application/queries";
+import { RelayerGate } from "./application/relayerGate";
 import { FinalitySweep } from "./application/finalitySweep";
 import { Reconciler } from "./application/reconcile";
 import { SyncChain } from "./application/syncChain";
 import { loadConfig } from "./config";
 import { ethersVerifier, HmacSessions, randomNonce } from "./infrastructure/auth/crypto";
+import { AclPublications } from "./infrastructure/chain/AclPublications";
 import { deploymentFor } from "./infrastructure/chain/deployment";
 import { EvmChainSource } from "./infrastructure/chain/EvmChainSource";
 import { EvmChainState } from "./infrastructure/chain/EvmChainState";
@@ -19,6 +21,8 @@ import { PgStore } from "./infrastructure/db/PgStore";
 import { buildServer } from "./infrastructure/http/server";
 import { Indexer } from "./infrastructure/Indexer";
 import { MemoryStore } from "./infrastructure/memory/MemoryStore";
+import { HttpRelayerUpstream } from "./infrastructure/relayer/HttpRelayerUpstream";
+import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
 
 /** The composition root: the one place that knows every concrete class. */
 async function main() {
@@ -65,6 +69,17 @@ async function main() {
   if (!config.SESSION_SECRET) log.warn("SESSION_SECRET is not set: sessions end when the process restarts");
   const signIn = new SignIn(store, ethersVerifier, new HmacSessions(secret), { now: () => Math.floor(Date.now() / 1000) }, config.SIGN_IN_DOMAIN, randomNonce);
 
+  const clock = { now: () => Math.floor(Date.now() / 1000) };
+  const relayer = new RelayerGate(
+    store,
+    new HttpRelayerUpstream(config.RELAYER_URL ?? deployment.fhevm.relayerUrl, config.RELAYER_API_KEY, config.RELAYER_TIMEOUT_MS),
+    eip712PermitVerifier({ chainId: deployment.chainId, verifyingContract: deployment.fhevm.verifyingContractDecryption }),
+    new AclPublications(rpc, deployment, config.RELAYER_RECENT_BLOCKS),
+    clock,
+    { chainId: deployment.chainId, contracts: () => chainState.decryptable(), freePerDay: config.RELAYER_FREE_PER_DAY, maxHandles: config.RELAYER_MAX_HANDLES, clockSkew: 600 },
+  );
+  if (!config.RELAYER_API_KEY) log.info("RELAYER_API_KEY is not set: the relayer proxy forwards without a key (fine on Sepolia, refused on mainnet)");
+
   const server =
     config.ROLE === "indexer"
       ? null
@@ -72,6 +87,8 @@ async function main() {
           queries,
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, "")),
           signIn,
+          relayer,
+          relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           indexer,
           rpcStatus: () => rpc.status(),
           corsOrigins: config.CORS_ORIGINS,

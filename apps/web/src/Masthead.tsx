@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
-import { formatAmount, shortAddress, type Address } from "@dno/chain-adapter";
+import { formatAmount, shortAddress, type Address, type ChainAdapter, type DecryptionAllowance } from "@dno/chain-adapter";
 import { useAction, useChain } from "./chain/ChainProvider";
 import { stepCopy } from "./chain/copy";
 import { usePayment } from "./chain/payment";
@@ -274,6 +274,8 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
               {stale ? t("nav.decryptStale") : known ? t("nav.decryptKept") : t("nav.decryptHint")}
             </p>
 
+            <DecryptionCredits id={id} adapter={adapter} own={own} symbol={payment.symbol} decimals={payment.decimals} />
+
             <p className="slip-heading">{t("nav.getTokens")}</p>
             {payment.ramp && (
               <>
@@ -346,6 +348,64 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
         </li>
       </ul>
     </div>
+  );
+}
+
+/**
+ * Where the collection pays Zama for each decryption (mainnet): what the wallet may still
+ * decrypt today, and a way to buy more. Nothing shows where nobody counts.
+ */
+function DecryptionCredits(props: { id: string; adapter: ChainAdapter; own: ReturnType<typeof useAction>; symbol: string; decimals: number }) {
+  const { id, adapter, own, symbol, decimals } = props;
+  const t = useT();
+  const [allowance, setAllowance] = useState<DecryptionAllowance | null>(null);
+  const [count, setCount] = useState("100");
+
+  // Again after every action: a decryption or a purchase changes it.
+  useEffect(() => {
+    if (own.busy) return;
+    let live = true;
+    adapter.decryptionAllowance().then(
+      (a) => live && setAllowance(a),
+      () => live && setAllowance(null),
+    );
+    return () => {
+      live = false;
+    };
+  }, [adapter, own.busy]);
+
+  if (!allowance) return null;
+  const n = /^\d{1,7}$/.test(count.trim()) ? Number(count.trim()) : 0;
+  const price = allowance.price;
+  const buy = () => {
+    if (n > 0) void own.run("credits", (o) => adapter.buyCredits(n, o));
+  };
+  return (
+    <>
+      <p className="slip-heading">{t("credits.heading")}</p>
+      <p className="fine" aria-live="polite">
+        {t("credits.left", { free: allowance.freeLeft, perDay: allowance.freePerDay, credits: allowance.credits })}
+      </p>
+      {price !== null && (
+        <>
+          <form
+            className="find"
+            onSubmit={(e) => {
+              e.preventDefault();
+              buy();
+            }}
+          >
+            <label htmlFor={`${id}-credits`}>{t("credits.label")}</label>
+            <input id={`${id}-credits`} inputMode="numeric" autoComplete="off" value={count} onChange={(e) => setCount(e.target.value)} disabled={!!own.busy} />
+            <button type="submit" className="plain-button" disabled={!!own.busy || n <= 0}>
+              {own.busy === "credits" ? t("credits.buying") : t("credits.go")}
+            </button>
+          </form>
+          {n > 0 && <p className="fine">{t("credits.price", { n, total: formatAmount(price * BigInt(n), decimals), symbol })}</p>}
+        </>
+      )}
+      <p className="fine">{t("credits.why")}</p>
+    </>
   );
 }
 

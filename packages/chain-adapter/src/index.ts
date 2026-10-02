@@ -17,6 +17,8 @@ export interface AdapterConfig {
   apiUrl?: string;
   /** sepolia: Reown (WalletConnect) project id, so wallet apps on phones can connect. */
   walletConnectProjectId?: string;
+  /** sepolia: encrypt and decrypt through the API's relayer proxy (needs `apiUrl`). */
+  relayerProxy?: boolean;
   mock?: MockOptions;
 }
 
@@ -32,6 +34,7 @@ export async function createAdapter(config: AdapterConfig): Promise<ChainAdapter
       address: config.address,
       apiUrl: config.apiUrl,
       walletConnectProjectId: config.walletConnectProjectId,
+      relayerProxy: config.relayerProxy,
     });
   }
   return new MockAdapter(config.mock);

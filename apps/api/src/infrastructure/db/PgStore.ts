@@ -2,7 +2,8 @@ import pg, { type Pool, type PoolClient } from "pg";
 import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
-import { actorsOf, tokensOf, type ProtocolEvent } from "../../domain/events";
+import { actorsOf, QUIET_EVENTS, tokensOf, type ProtocolEvent } from "../../domain/events";
+import type { Charge, Meter } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -107,6 +108,16 @@ async function saveUser(q: Q, u: User) {
   );
 }
 
+const creditsOf = async (q: Q, account: Address) => (await one(q, "select bought from credit_accounts where account = $1", [account], (r) => r.bought as number)) ?? 0;
+
+/** With `lock`, inside a transaction: the rows stay locked until it ends. */
+async function meterOf(q: Q, account: Address, day: string, lock: boolean): Promise<Meter> {
+  const forUpdate = lock ? " for update" : "";
+  const freeUsed = await one(q, `select units from relayer_free_used where account = $1 and day = $2${forUpdate}`, [account, day], (r) => r.units as number);
+  const spent = await one(q, `select spent from relayer_credits_spent where account = $1${forUpdate}`, [account], (r) => r.spent as number);
+  return { freeUsed: freeUsed ?? 0, spent: spent ?? 0, bought: await creditsOf(q, account) };
+}
+
 const getUser = (q: Q, address: Address) => one(q, "select * from users where address = $1", [address], userFrom);
 
 /** The index in Postgres. */
@@ -162,7 +173,7 @@ export class PgStore implements Store {
         return rows.map((r) => ({ event: eventFrom(r), enrichment: r.enrichment }));
       },
       resetReadModels: async () => {
-        await c.query("truncate boxes, duels, requests, entangle_proposals, mints, milestones, transfers");
+        await c.query("truncate boxes, duels, requests, entangle_proposals, mints, milestones, transfers, published_handles, credit_accounts");
         // Sign-ins stay; on-chain activity is counted again by the replay.
         await c.query("delete from users where registered_at is null");
         await c.query("update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0");
@@ -234,6 +245,15 @@ export class PgStore implements Store {
       },
       saveMilestone: async (m) => {
         await c.query("insert into milestones (idx, sold, block) values ($1, $2, $3) on conflict do nothing", [m.index, m.sold, m.block]);
+      },
+      savePublished: async (handles, caller, block) => {
+        await c.query(
+          "insert into published_handles (handle, caller, block) select h, $2, $3 from unnest($1::text[]) as h on conflict do nothing",
+          [handles.map((h) => h.toLowerCase()), caller, block],
+        );
+      },
+      addCredits: async (account, credits) => {
+        await c.query("insert into credit_accounts (account, bought) values ($1, $2) on conflict (account) do update set bought = credit_accounts.bought + $2", [account, credits]);
       },
       saveTransfer: async (t) => {
         await c.query(
@@ -339,11 +359,12 @@ export class PgStore implements Store {
   async activity(q: ActivityQuery): Promise<ProtocolEvent[]> {
     const { rows } = await this.pool.query(
       `select * from events
-       where ($1::bigint is null or block < $1)
+       where name <> all($5::text[])
+         and ($1::bigint is null or block < $1)
          and ($2::int is null or tokens @> array[$2::int])
          and ($3::text is null or actors @> array[$3::text])
        order by block desc, log_index desc limit $4`,
-      [q.beforeBlock ?? null, q.tokenId ?? null, q.account ?? null, q.limit],
+      [q.beforeBlock ?? null, q.tokenId ?? null, q.account ?? null, q.limit, QUIET_EVENTS],
     );
     return rows.map(eventFrom);
   }
@@ -372,6 +393,41 @@ export class PgStore implements Store {
       nonce,
       expiresAt,
     ]);
+  }
+
+  async publishedAmong(handles: string[]) {
+    const { rows } = await this.pool.query("select handle from published_handles where handle = any($1::text[])", [handles.map((h) => h.toLowerCase())]);
+    return rows.map((r) => r.handle as string);
+  }
+
+  async creditsBought(account: Address) {
+    return creditsOf(this.pool, account);
+  }
+
+  async meterOf(account: Address, day: string): Promise<Meter> {
+    return meterOf(this.pool, account, day, false);
+  }
+
+  async meter(account: Address, day: string, apply: (m: Meter) => Charge | null): Promise<Charge | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      // Rows to lock even on a first call of the day.
+      await client.query("insert into relayer_free_used (account, day, units) values ($1, $2, 0) on conflict do nothing", [account, day]);
+      await client.query("insert into relayer_credits_spent (account, spent) values ($1, 0) on conflict do nothing", [account]);
+      const delta = apply(await meterOf(client, account, day, true));
+      if (delta) {
+        await client.query("update relayer_free_used set units = units + $3 where account = $1 and day = $2", [account, day, delta.free]);
+        await client.query("update relayer_credits_spent set spent = spent + $2 where account = $1", [account, delta.credits]);
+      }
+      await client.query("commit");
+      return delta;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   takeNonce(address: Address) {

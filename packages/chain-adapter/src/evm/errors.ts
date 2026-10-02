@@ -103,3 +103,14 @@ function revertName(error: unknown, ifaces: readonly Interface[]): string | unde
   }
   return /custom error '?(\w+)\(/.exec(messages(error))?.[1];
 }
+
+export type GateRefusalCode = "no-credits" | "not-ours" | "bad-permit" | "bad-request";
+
+/**
+ * The API's relayer proxy turned a request away before it reached Zama. It answers in the
+ * relayer's own error shape with a message the SDK passes on: "dno:<code>: <why>".
+ */
+export function gateRefusal(error: unknown): { code: GateRefusalCode; message: string } | null {
+  const m = /dno:(no-credits|not-ours|bad-permit|bad-request): ([^\n]*)/.exec(messages(error));
+  return m ? { code: m[1] as GateRefusalCode, message: m[2]! } : null;
+}

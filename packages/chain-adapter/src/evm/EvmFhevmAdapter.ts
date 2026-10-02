@@ -26,7 +26,9 @@ import {
   type BoxSummary,
   type Build,
   type ChainAdapter,
+  type ChainErrorDetail,
   type CollectionInfo,
+  type DecryptionAllowance,
   type DuelInfo,
   type DuelResult,
   type Disease,
@@ -48,7 +50,8 @@ import {
   type WalletOption,
   type WeighIn,
 } from "../types";
-import { toChainError } from "./errors";
+import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
+import { gateRefusal, toChainError } from "./errors";
 import type { IndexedTransfer, IndexerClient } from "./indexer";
 import type { ChainParams, WalletSource } from "./wallet";
 
@@ -89,6 +92,15 @@ export interface EvmAdapterOptions {
   deployBlock?: number;
   /** The DO NOT OPEN API. Reads go there first, and to the chain when it is behind or away. */
   indexer?: IndexerClient;
+  /** Where decrypted values are kept by handle, so none is paid for twice. In memory by default. */
+  decryptCache?: DecryptCache;
+  /**
+   * Decryptions go through the API's relayer proxy, which counts them against a free daily
+   * allowance and the wallet's credits. Needs `indexer`: the allowance is read from it.
+   */
+  metered?: boolean;
+  /** The DecryptionCredits contract. Without it, credits cannot be bought. */
+  credits?: Deployed;
 }
 
 const ROUTER_ABI = [
@@ -233,14 +245,16 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private readonly ifaces: Interface[];
   /** Block of this account's last transaction: the API must have indexed it to be believed. */
   private minBlock = 0;
+  private readonly decryptCache: DecryptCache;
 
   constructor(private readonly opts: EvmAdapterOptions) {
+    this.decryptCache = opts.decryptCache ?? new MemoryDecryptCache();
     this.iface = new Interface(opts.abi);
     this.contract = new Contract(opts.address, this.iface, opts.readProvider);
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -704,6 +718,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   async mint(quantity: number, opts?: MintOptions): Promise<number[]> {
     const { fees, maxPerTx } = await this.collection();
     const ids = Math.min(maxPerTx, Math.max(quantity, opts?.ids ?? maxPerTx));
+    // Each id's receipt is decrypted to learn which are real.
+    await this.ensureDecryptions(ids);
     await this.prepay(opts, fees.mint * BigInt(quantity));
     const account = await this.signer().getAddress();
     opts?.onStep?.("encrypting");
@@ -736,6 +752,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async shake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll> {
+    await this.ensureDecryptions(2);
     await this.send(opts, (c) => c.shake!(tokenId));
     const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
     if (!roll) throw new ChainError("not-yours", "This box is not yours: shaking it showed nothing.");
@@ -744,6 +761,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
     const { fees } = await this.collection();
+    await this.ensureDecryptions(2);
     await this.prepay(opts, fees.paidShake);
     await this.send(opts, (c) => c.paidShake!(tokenId));
     const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
@@ -844,6 +862,56 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, (c) => c["confidentialTransfer(address,uint256)"]!(to, tokenId));
     // Read the receipt back: if the box was the account's, it is gone now.
     if (this.holdings?.account === account) await this.boxesOf(account);
+  }
+
+  // --- decryption credits ---
+
+  async decryptionAllowance(): Promise<DecryptionAllowance | null> {
+    const account = this.address_;
+    if (!this.opts.metered || !this.opts.indexer || !account) return null;
+    const [{ data }, price] = await Promise.all([this.opts.indexer.allowance(account), this.creditPrice()]);
+    return { ...data, price };
+  }
+
+  async buyCredits(credits: number, opts?: ActionOptions): Promise<void> {
+    const deployed = this.opts.credits;
+    if (!deployed) throw new ChainError("unknown", "Decryption credits cannot be bought on this network.");
+    if (!Number.isInteger(credits) || credits <= 0) throw new ChainError("unknown", "Buy at least one credit.");
+    const { usdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    const price = (await this.creditPrice())!;
+    const total = price * BigInt(credits);
+    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
+    if (held < total) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: total });
+    await this.ensureAllowance(usdc, deployed.address, account, total, opts);
+    // At most today's price: a change meanwhile reverts instead of charging more.
+    await this.send(opts, () => this.writer(deployed).buy!(account, credits, price));
+  }
+
+  private async creditPrice(): Promise<bigint | null> {
+    const deployed = this.opts.credits;
+    if (!deployed) return null;
+    return BigInt(await this.reading(this.at(deployed).price!()));
+  }
+
+  /** What the wallet has left against what an action needs, for a `no-credits` error. */
+  private async creditsDetail(needed: number): Promise<ChainErrorDetail> {
+    const allowance = await this.decryptionAllowance().catch(() => null);
+    return { needed: BigInt(needed), ...(allowance ? { held: BigInt(allowance.freeLeft + allowance.credits) } : {}) };
+  }
+
+  /**
+   * Stops an action before its transaction when the decryptions that follow it would be
+   * refused: better than paying gas for a shake whose result cannot be read. Lets it through
+   * when the allowance cannot be read; the decryption itself is the real check.
+   */
+  private async ensureDecryptions(needed: number): Promise<void> {
+    const allowance = await this.decryptionAllowance().catch(() => null);
+    if (!allowance) return;
+    const held = allowance.freeLeft + allowance.credits;
+    if (held < needed) {
+      throw new ChainError("no-credits", "Not enough decryptions left today for this.", undefined, { held: BigInt(held), needed: BigInt(needed) });
+    }
   }
 
   // --- croquettes ---
@@ -967,14 +1035,26 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return BigInt((await this.userDecrypt([handle], contractAddress, opts))[handle] as bigint);
   }
 
-  /** Decrypts handles of one contract the connected account is allowed on, with its session permit. */
-  private async userDecrypt(handles: string[], contractAddress: string, opts?: ActionOptions) {
+  /**
+   * Decrypts handles of one contract the connected account is allowed on, with its session
+   * permit. Handles it decrypted before come from the cache: no fee, no signature.
+   */
+  private async userDecrypt(handles: string[], contractAddress: string, opts?: ActionOptions): Promise<Record<string, Clear>> {
     const signer = this.signer();
     const account = await signer.getAddress();
+    const key = (handle: string) => `${this.opts.chain.chainId}:${account.toLowerCase()}:${handle.toLowerCase()}`;
+    const out: Record<string, Clear> = {};
+    const missing: string[] = [];
+    for (const handle of new Set(handles)) {
+      const hit = this.decryptCache.get(key(handle));
+      if (hit === null) missing.push(handle);
+      else out[handle] = decodeClear(hit);
+    }
+    if (!missing.length) return out;
     const values = await this.decrypting(opts, async (relayer) => {
       const permit = await this.permitFor(relayer, signer, account, opts);
       return relayer.userDecrypt(
-        handles.map((handle) => ({ handle, contractAddress })),
+        missing.map((handle) => ({ handle, contractAddress })),
         permit.privateKey,
         permit.publicKey,
         permit.signature.replace("0x", ""),
@@ -983,8 +1063,17 @@ export class EvmFhevmAdapter implements ChainAdapter {
         permit.start,
         PERMIT_DAYS,
       );
+    }).catch(async (error: unknown) => {
+      if (error instanceof ChainError && error.code === "no-credits") throw error.with(await this.creditsDetail(missing.length));
+      throw error;
     });
-    return values as Record<string, bigint | boolean | string>;
+    for (const handle of missing) {
+      const value = (values as Record<string, Clear>)[handle];
+      if (value === undefined) continue;
+      out[handle] = value;
+      this.decryptCache.set(key(handle), encodeClear(value));
+    }
+    return out;
   }
 
   /** Decrypts "moved" bits of the collection, in batches. Handle -> value. */
@@ -1272,6 +1361,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
         return await run(await this.loadRelayer());
       } catch (error) {
         if (error instanceof ChainError || isError(error, "ACTION_REJECTED")) throw this.toChainError(error);
+        const refusal = gateRefusal(error);
+        if (refusal?.code === "no-credits") throw new ChainError("no-credits", refusal.message);
+        // A permit the proxy will not take (expired): sign a fresh one and go again.
+        if (refusal?.code === "bad-permit" && attempt === 0) {
+          this.permit = null;
+          continue;
+        }
+        if (refusal) throw new ChainError("decryption", refusal.message);
         last = error;
         await sleep(3000 + attempt * 2000);
       }

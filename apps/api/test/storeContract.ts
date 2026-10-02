@@ -197,6 +197,30 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       expect((await store.servedBy(0, 99)).sort()).toEqual(["rpc-b", "rpc-c"]);
     });
 
+    it("keeps published handles and credits as read models, and the relayer meter across replays", async () => {
+      const h = "0x" + "ab".repeat(32);
+      await store.transaction(async (tx) => {
+        await tx.savePublished([h, h], ALICE, 5);
+        await tx.addCredits(BOB, 100);
+        await tx.addCredits(BOB, 50);
+      });
+      expect(await store.publishedAmong([h.toUpperCase().replace("0X", "0x"), "0x" + "cd".repeat(32)])).toEqual([h]);
+      expect(await store.creditsBought(BOB)).toBe(150);
+
+      const day = "2026-10-02";
+      expect(await store.meterOf(BOB, day)).toEqual({ freeUsed: 0, spent: 0, bought: 150 });
+      expect(await store.meter(BOB, day, (m) => (m.bought === 150 ? { free: 10, credits: 5 } : null))).toEqual({ free: 10, credits: 5 });
+      expect(await store.meter(BOB, day, () => null)).toBeNull();
+      expect(await store.meter(BOB, day, () => ({ free: -2, credits: 0 }))).toEqual({ free: -2, credits: 0 });
+      expect(await store.meterOf(BOB, day)).toEqual({ freeUsed: 8, spent: 5, bought: 150 });
+      expect(await store.meterOf(BOB, "2026-10-03")).toEqual({ freeUsed: 0, spent: 5, bought: 150 });
+
+      // A replay folds the chain again: purchases and publications are rebuilt, what was used stays.
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.publishedAmong([h])).toEqual([]);
+      expect(await store.meterOf(BOB, day)).toEqual({ freeUsed: 8, spent: 5, bought: 0 });
+    });
+
     it("lists known ids, every pending request, and every open duel", async () => {
       const at = (logIndex: number) => ({ block: 1, logIndex, timestamp: null });
       await store.transaction(async (tx) => {

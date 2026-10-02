@@ -1,11 +1,11 @@
 import type { Address, ChainRef, DuelStatus, RequestKind, RequestStatus, RevealedContents, WeighIn } from "./types";
 
 /** Which deployed contract emitted an event. */
-export type Source = "collection" | "pantry" | "ramp";
+export type Source = "collection" | "pantry" | "ramp" | "credits" | "acl";
 
 type Ev<N extends string, B> = ChainRef & { source: Source; name: N } & B;
 
-/** A decoded log of the collection, the Pantry or the USDC ramp. */
+/** A decoded log of the collection, the Pantry, the USDC ramp, the decryption credits, or Zama's ACL about them. */
 export type ProtocolEvent =
   | Ev<"MintPlaced", { firstTokenId: number; buyer: Address; count: number }>
   | Ev<"MilestoneReached", { index: number; sold: number }>
@@ -31,7 +31,13 @@ export type ProtocolEvent =
   | Ev<"Claimed", { caller: Address; boxes: number }>
   | Ev<"WeighInRequested", { tokenId: number }>
   | Ev<"Weighed", { tokenId: number; weight: string; build: number; sick: boolean; disease: number }>
-  | Ev<"Bought", { buyer: Address; ethIn: string; fee: string; usdcOut: string; shielded: boolean }>;
+  | Ev<"Bought", { buyer: Address; ethIn: string; fee: string; usdcOut: string; shielded: boolean }>
+  | Ev<"CreditsBought", { payer: Address; account: Address; credits: number; paid: string }>
+  /** Zama's ACL: one of the protocol's contracts made these handles publicly decryptable. */
+  | Ev<"PubliclyDecryptable", { caller: Address; handles: string[] }>;
+
+/** Bookkeeping, not activity: left out of the feeds. */
+export const QUIET_EVENTS: readonly string[] = ["PubliclyDecryptable"];
 
 export type EventName = ProtocolEvent["name"];
 export type EventOf<N extends EventName> = Extract<ProtocolEvent, { name: N }>;
@@ -136,6 +142,8 @@ export function actorsOf(e: ProtocolEvent): Address[] {
       return [e.caller];
     case "Bought":
       return [e.buyer];
+    case "CreditsBought":
+      return [e.payer];
     default:
       return [];
   }

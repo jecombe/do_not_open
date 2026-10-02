@@ -1,7 +1,8 @@
 import type { ActivityQuery, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
-import { actorsOf, byChainOrder, tokensOf } from "../../domain/events";
+import { actorsOf, byChainOrder, QUIET_EVENTS, tokensOf } from "../../domain/events";
+import type { Charge, Meter } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -20,6 +21,11 @@ interface State {
   milestones: Map<number, { index: number; sold: number; block: number }>;
   transfers: Map<string, Transfer>;
   nonces: Map<Address, { nonce: string; expiresAt: number }>;
+  published: Map<string, { caller: Address; block: number }>;
+  credits: Map<Address, number>;
+  /** Free units used, by `account:day`. Kept across replays, like the credits spent. */
+  freeUsed: Map<string, number>;
+  spent: Map<Address, number>;
 }
 
 const emptyState = (): State => ({
@@ -36,6 +42,10 @@ const emptyState = (): State => ({
   milestones: new Map(),
   transfers: new Map(),
   nonces: new Map(),
+  published: new Map(),
+  credits: new Map(),
+  freeUsed: new Map(),
+  spent: new Map(),
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -74,7 +84,7 @@ export class MemoryStore implements Store {
           .slice(0, limit)
           .map(clone),
       resetReadModels: async () => {
-        for (const m of [s.boxes, s.duels, s.requests, s.proposals, s.mints, s.milestones, s.transfers] as Map<unknown, unknown>[]) m.clear();
+        for (const m of [s.boxes, s.duels, s.requests, s.proposals, s.mints, s.milestones, s.transfers, s.published, s.credits] as Map<unknown, unknown>[]) m.clear();
         // Sign-ins stay; on-chain activity is counted again by the replay.
         for (const [a, u] of s.users) {
           if (u.registeredAt === null) s.users.delete(a);
@@ -98,6 +108,10 @@ export class MemoryStore implements Store {
       saveMint: async (m) => void s.mints.set(m.firstTokenId, clone(m)),
       saveMilestone: async (m) => void s.milestones.set(m.index, clone(m)),
       saveTransfer: async (t) => void s.transfers.set(ref(t.txHash, t.logIndex), clone(t)),
+      savePublished: async (handles, caller, block) => {
+        for (const h of handles) if (!s.published.has(h)) s.published.set(h, { caller, block });
+      },
+      addCredits: async (account, credits) => void s.credits.set(account, (s.credits.get(account) ?? 0) + credits),
     };
   }
 
@@ -183,6 +197,7 @@ export class MemoryStore implements Store {
   async activity(q: ActivityQuery) {
     return [...this.s.events.values()]
       .map((s) => s.event)
+      .filter((e) => !QUIET_EVENTS.includes(e.name))
       .filter((e) => q.beforeBlock === undefined || e.block < q.beforeBlock)
       .filter((e) => q.tokenId === undefined || tokensOf(e).includes(q.tokenId))
       .filter((e) => q.account === undefined || actorsOf(e).includes(q.account))
@@ -211,6 +226,33 @@ export class MemoryStore implements Store {
 
   async saveNonce(address: Address, nonce: string, expiresAt: number) {
     this.s.nonces.set(address, { nonce, expiresAt });
+  }
+
+  async publishedAmong(handles: string[]) {
+    return handles.map((h) => h.toLowerCase()).filter((h) => this.s.published.has(h));
+  }
+
+  async creditsBought(account: Address) {
+    return this.s.credits.get(account) ?? 0;
+  }
+
+  async meterOf(account: Address, day: string): Promise<Meter> {
+    return this.meterNow(account, day);
+  }
+
+  private meterNow(account: Address, day: string): Meter {
+    return { freeUsed: this.s.freeUsed.get(`${account}:${day}`) ?? 0, spent: this.s.spent.get(account) ?? 0, bought: this.s.credits.get(account) ?? 0 };
+  }
+
+  async meter(account: Address, day: string, apply: (m: Meter) => Charge | null) {
+    // No await between the read and the write: no other call can come in between.
+    const delta = apply(this.meterNow(account, day));
+    if (delta) {
+      const k = `${account}:${day}`;
+      this.s.freeUsed.set(k, (this.s.freeUsed.get(k) ?? 0) + delta.free);
+      this.s.spent.set(account, (this.s.spent.get(account) ?? 0) + delta.credits);
+    }
+    return delta;
   }
 
   async takeNonce(address: Address) {

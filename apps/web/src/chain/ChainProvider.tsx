@@ -68,6 +68,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       address: import.meta.env.VITE_DNO_ADDRESS,
       apiUrl: import.meta.env.VITE_API_URL,
       walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
+      relayerProxy: import.meta.env.VITE_RELAYER_PROXY === "true",
     }).then((a) => {
       if (!live) return;
       unsubscribe = a.onAccountChange(setAccount);

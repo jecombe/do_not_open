@@ -30,8 +30,10 @@ function node(logs: ReturnType<typeof log>[], views: (target: string, fn: string
     switch (m.method) {
       case "eth_blockNumber":
         return "0x100";
-      case "eth_getLogs":
-        return logs;
+      case "eth_getLogs": {
+        const wanted: string[] = m.params[0].address.map((a: string) => a.toLowerCase());
+        return logs.filter((l) => wanted.includes(l.address));
+      }
       case "eth_getBlockByNumber":
         return { timestamp: `0x${(1_790_000_000 + Number(m.params[0])).toString(16)}` };
       case "eth_call": {
@@ -98,24 +100,39 @@ describe("EvmChainSource", () => {
     expect(batch.snapshots.contents.get(12)).toMatchObject({ affection: 3, traits: [232, 155, 52, 122, 123] });
     expect(batch.snapshots.weighIns.get(12)).toEqual({ weight: "1200", build: "huge", sick: true, disease: "arthritic", tolerance: "1100" });
 
-    // One getLogs, one batch of block headers, one multicall: whatever the number of events.
-    expect(asked.filter((m) => m === "eth_getLogs")).toHaveLength(1);
+    // One getLogs for the protocol and one for the ACL, one batch of block headers, one
+    // multicall: whatever the number of events.
+    expect(asked.filter((m) => m === "eth_getLogs")).toHaveLength(2);
     expect(multicalls()).toBe(1);
   });
 
   it("asks for the protocol's contracts and event topics only", async () => {
-    let filter: { address: string[]; topics: string[][] } | null = null;
+    const filters: { address: string[]; topics: (string | string[])[] }[] = [];
     const fetch = (async (_u: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
-      if (body.method === "eth_getLogs") filter = body.params[0];
+      if (body.method === "eth_getLogs") filters.push(body.params[0]);
       return new Response(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: [] }));
     }) as unknown as typeof globalThis.fetch;
     const source = new EvmChainSource(new RpcPool({ urls: ["https://n"], rps: 100, maxLogRange: 100, fetch }), d, silentLogger);
     expect(await source.read(1, 50)).toMatchObject({ to: 50, events: [] });
-    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address].map((a) => a.toLowerCase()));
+    const [filter, acl] = filters;
+    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : [])].map((a) => a.toLowerCase()));
     const decryptionProof = collection.getEvent("PublicDecryptionVerified")!.topicHash;
     expect(filter!.topics[0]).not.toContain(decryptionProof);
     for (const name of ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened"]) expect(filter!.topics[0]).toContain(collection.getEvent(name)!.topicHash);
+    // The ACL, only where the protocol's own contracts are the caller.
+    expect(acl!.address).toEqual([d.fhevm.acl.toLowerCase()]);
+    expect(acl!.topics[1]).toEqual([d.collection.address, d.pantry!.address, d.cCroq!.address].map((a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`));
+  });
+
+  it("reads which handles the protocol made public from the ACL", async () => {
+    const acl = new Interface(["event AllowedForDecryption(address indexed caller, bytes32[] handlesList)"]);
+    const h1 = "0x" + "AB".repeat(32);
+    const h2 = "0x" + "cd".repeat(32);
+    const logs = [log(d.fhevm.acl, acl, "AllowedForDecryption", [d.collection.address, [h1, h2]], 300, 0)];
+    const { rpc } = node(logs, () => null);
+    const batch = await new EvmChainSource(rpc, d, silentLogger).read(300, 300);
+    expect(batch.events).toEqual([expect.objectContaining({ name: "PubliclyDecryptable", source: "acl", caller: d.collection.address.toLowerCase(), handles: [h1.toLowerCase(), h2] })]);
   });
 });
 

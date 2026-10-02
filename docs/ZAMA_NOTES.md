@@ -343,8 +343,24 @@ Because the app only sees `ChainAdapter`, moving to it later is a change inside 
 ### Mainnet
 
 The Sepolia relayer is open. The Zama-hosted **mainnet relayer needs an API key**, which
-must not reach the browser: the documented pattern is a small backend proxy that adds
-the `x-api-key` header. That proxy does not exist in this repo yet; it is a mainnet task.
+must not reach the browser, and Zama bills the key's holder monthly for every decryption
+and every encrypted input verified (checked on docs.zama.org on 2026-10-02: fees are priced
+in USD, paid in $ZAMA, $0.001 to $0.10 a decryption and $0.005 to $0.50 an input, the low
+end with a monthly plan; FHE computation itself is free). The game would pay for its
+players, so three things keep that bill bounded:
+
+- **Nothing is decrypted twice.** A handle names one ciphertext forever: the adapter keeps
+  every value it decrypted, by handle, in the browser (`LocalStorageDecryptCache`). A
+  returning player's old receipts and an unchanged cUSDC balance cost nothing.
+- **The relayer proxy** in `apps/api` holds the key and lets through only the protocol's
+  own decryptions and inputs (see its README).
+- **Decryption credits.** Each wallet gets free decryptions every day; past them, the
+  proxy spends credits bought from `DecryptionCredits` in plain USDC, one per value.
+
+How much a game action costs in decryptions, before the cache: a shake 2, a mint 1 per id
+it hides among (10 by default), an opening 2 to 5 public ones, a duel 6 public ones, a
+cUSDC payment 1 to read the balance first. Public decryptions are not charged to players.
+Open question for Zama: is a decryption billed per value or per request?
 
 ### Not verified
 

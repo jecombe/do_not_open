@@ -180,4 +180,39 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       create index duels_open on duels (duel_id) where status in ('posted', 'open', 'pending');
     `,
   },
+  {
+    version: 4,
+    name: "relayer meter",
+    sql: /* sql */ `
+      -- The index now follows Zama's ACL (handles the protocol made public) and the decryption
+      -- credits. Older blocks were read without them: the index is rebuilt from the deployment
+      -- block on. Sign-ins are kept.
+      truncate events, boxes, duels, requests, entangle_proposals, mints, milestones, transfers, sync_state, indexed_ranges;
+      delete from users where registered_at is null;
+      update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
+
+      -- Read models, rebuilt by a replay.
+      create table published_handles (
+        handle text primary key,
+        caller text not null,
+        block bigint not null
+      );
+      create table credit_accounts (
+        account text primary key,
+        bought bigint not null
+      );
+
+      -- What the relayer proxy counted. Not on the chain: a replay keeps it.
+      create table relayer_free_used (
+        account text not null,
+        day date not null,
+        units integer not null,
+        primary key (account, day)
+      );
+      create table relayer_credits_spent (
+        account text primary key,
+        spent bigint not null
+      );
+    `,
+  },
 ];

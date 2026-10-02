@@ -236,6 +236,9 @@ export type ChainErrorCode =
   | "network"
   /** The wallet's account has an earlier transaction stuck, or the wallet's nonce is off. */
   | "nonce"
+  /** The day's free decryptions are spent and the wallet's decryption credits do not cover what
+   *  this needs. Nothing was sent. `held` and `needed` count decryptions. */
+  | "no-credits"
   | "unknown";
 
 /** What an error knows beyond its code, for the app to word a way out. */
@@ -252,7 +255,7 @@ export interface ChainErrorDetail {
   /** The transaction made it into a block and failed there: its gas was spent. */
   mined?: boolean;
   /** For `insufficient-funds`, in the chain's coin; for `insufficient-usdc` and `unpaid`, in the
-   *  payment token. Smallest units. Either may be missing. */
+   *  payment token, smallest units; for `no-credits`, in decryptions. Either may be missing. */
   held?: bigint;
   needed?: bigint;
 }
@@ -367,6 +370,21 @@ export interface BoxPantry {
 }
 
 export type TradeSide = "buy" | "sell";
+
+/**
+ * What a wallet may still decrypt where the collection pays the relayer (mainnet): a free
+ * allowance each UTC day, then credits bought in plain USDC, one per decrypted value.
+ */
+export interface DecryptionAllowance {
+  freePerDay: number;
+  freeLeft: number;
+  /** Credits bought and not spent yet. */
+  credits: number;
+  /** Unix seconds: when the free allowance is full again. */
+  resetsAt: number;
+  /** Plain USDC, smallest unit, per credit. Null where credits cannot be bought. */
+  price: bigint | null;
+}
 
 /** A wallet the browser offers, as shown in a picker. */
 export interface WalletOption {
@@ -512,6 +530,12 @@ export interface ChainAdapter {
   quote(side: TradeSide, amountIn: bigint): Promise<bigint>;
   /** Trades on the public market, accepting at most 1% less than the quote. */
   trade(side: TradeSide, amountIn: bigint, opts?: ActionOptions): Promise<void>;
+
+  // --- decryption credits ---
+  /** The connected account's decryptions left. Null where nobody counts them (the mock, a free relayer). */
+  decryptionAllowance(): Promise<DecryptionAllowance | null>;
+  /** Buys decryption credits for the connected account, in plain USDC: the whole price or a revert. */
+  buyCredits(credits: number, opts?: ActionOptions): Promise<void>;
 }
 
 /** "0.002" for 2000000000000000n at 18 decimals. No trailing zeros. */

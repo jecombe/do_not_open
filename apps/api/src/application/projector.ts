@@ -82,6 +82,10 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
     }
     case "WelcomeBag":
       return updateBox(tx, e.tokenId, e.block, B.welcome);
+    case "PubliclyDecryptable":
+      return tx.savePublished(e.handles, e.caller, e.block);
+    case "CreditsBought":
+      return tx.addCredits(e.account, e.credits);
     case "WeighInRequested":
       return updateBox(tx, e.tokenId, e.block, B.weighRequested);
     case "Weighed":
