@@ -293,7 +293,6 @@ export const fr: Record<AppKey, string> = {
   "vice.none": "Sobre",
   "vice.stoned": "Défoncé",
   "vice.drunk": "Ivre",
-  "box.overview": "Vue d'ensemble",
   "wh.title": "Entrepôt",
   "wh.count_one": "{count} boîte, {open} ouverte(s)",
   "wh.count_other": "{count} boîtes, {open} ouverte(s)",

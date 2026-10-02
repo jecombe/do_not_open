@@ -301,7 +301,6 @@ export const en = {
   "vice.none": "Sober",
   "vice.stoned": "Stoned",
   "vice.drunk": "Drunk",
-  "box.overview": "Overview",
   "wh.title": "Warehouse",
   "wh.count_one": "{count} box, {open} open",
   "wh.count_other": "{count} boxes, {open} open",

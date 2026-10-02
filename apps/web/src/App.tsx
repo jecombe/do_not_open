@@ -32,7 +32,6 @@ export function App() {
   const [view, setView] = useState<View>(linkedBox === null ? "shelf" : "box");
   const [tokenId, setTokenId] = useState(linkedBox ?? 0);
   // The box the warehouse opens in front of: the one last looked at, when coming from it.
-  const [focus, setFocus] = useState<number | null>(null);
   const [pair, setPair] = useState<[number, number] | null>(null);
   const [intent, setIntent] = useState<PairIntent | null>(null);
   // The box the duel shelf offers to put up, when coming from one.
@@ -69,10 +68,6 @@ export function App() {
     setTokenId(id);
     setView("box");
   };
-  const showWarehouse = () => {
-    setFocus(tokenId);
-    setView("warehouse");
-  };
   const showPair = (a: number, b?: number, wanted: PairIntent | null = null) => {
     setPair(b === undefined ? [a, -1] : [a, b]);
     setIntent(wanted);
@@ -96,8 +91,8 @@ export function App() {
         <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} onOpenPair={(a, b) => showPair(a, b, "duel")} onDuels={showDuels} />
       )}
       {view === "duels" && <DuelShelfView quality={quality} sound={sound} focus={duelFocus} onSelect={showBox} onFight={(mine, listed) => showPair(mine, listed, "duel")} onFace={showFace} />}
-      {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onOverview={showWarehouse} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
-      {view === "warehouse" && <WarehouseView quality={quality} focus={focus} onInspect={showBox} />}
+      {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
+      {view === "warehouse" && <WarehouseView quality={quality} focus={null} onInspect={showBox} />}
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} onShelf={() => showDuels()} />}
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}

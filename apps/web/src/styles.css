@@ -1098,10 +1098,6 @@ button {
   font-weight: 600;
 }
 
-.box-steps .overview {
-  grid-column: 1 / -1;
-}
-
 /* --- Warehouse: find a box, and what the marks on the racks mean --- */
 .find {
   display: grid;
