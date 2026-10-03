@@ -92,7 +92,7 @@ export function App() {
         <ShelfView quality={quality} sound={sound} onSelect={showBox} onPair={(id, wanted) => showPair(id, undefined, wanted)} onOpenPair={(a, b) => showPair(a, b, "duel")} onDuels={showDuels} />
       )}
       {view === "duels" && <DuelShelfView quality={quality} sound={sound} focus={duelFocus} onSelect={showBox} onFight={(mine, listed) => showPair(mine, listed, "duel")} onFace={showFace} />}
-      {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
+      {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onPantry={() => setView("pantry")} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
       {view === "warehouse" && <WarehouseView quality={quality} focus={null} onInspect={showBox} />}
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} onShelf={() => showDuels()} />}
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}

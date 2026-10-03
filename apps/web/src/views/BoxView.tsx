@@ -23,6 +23,7 @@ import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
 import { boxTags } from "../chain/tags";
+import { Hint } from "./Hint";
 
 interface Props {
   quality: QualitySettings;
@@ -31,6 +32,8 @@ interface Props {
   onTokenChange: (tokenId: number) => void;
   onPair: (tokenId: number) => void;
   onShelf: () => void;
+  /** To the croquettes tab, where the boxes' bags and purrs are collected. */
+  onPantry: () => void;
   /** The view the box was opened from, and the way back to it. */
   backTo: Exclude<View, "box">;
   onBack: () => void;
@@ -122,7 +125,7 @@ type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive"
 const { meal } = gameSpec.economy;
 const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
-export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, backTo, onBack }: Props) {
+export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onPantry, backTo, onBack }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
@@ -175,6 +178,16 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     );
   }, [adapter, tokenId]);
   const kitchen = pantry?.tokenId === tokenId ? pantry.at : null;
+  // A welcome bag or a purr waits for this box in the Pantry.
+  const claimable = !!kitchen && (!kitchen.welcomed || kitchen.nextClaimAt <= Date.now() / 1000);
+  const collectLine = (
+    <p className="fine">
+      {t(claimable ? "box.claimWaiting" : "box.croquettesFrom")}{" "}
+      <button type="button" className="link" onClick={onPantry}>
+        {t("box.goCollect")}
+      </button>
+    </p>
+  );
   const tags = useMemo(
     () => (info ? boxTags(info, duels?.tokenId === tokenId ? duels.list : []) : []),
     // `t` changes with the language the tags are worded in.
@@ -612,10 +625,11 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                         ? t("box.todayUnread")
                         : t("box.today", { meals: today.meals, max: meal.mealsPerDay, eaten: String(today.eaten), cap: meal.maxEatenPerDay })}
                       {tooMuch ? ` ${t("box.tooMuchToday", { left: String(leftToday) })}` : ""}
+                      <Hint label={t("box.serveHelp")}>
+                        {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
+                      </Hint>
                     </p>
-                    <p className="fine">
-                      {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
-                    </p>
+                    {collectLine}
                   </>
                 ) : giving ? (
                   <p className="fine">
@@ -629,7 +643,10 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 ) : info.status === "opening" ? (
                   <p className="fine">{t("box.stuckOpening")}</p>
                 ) : isHolder ? (
-                  <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
+                  <>
+                    <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
+                    {claimable && collectLine}
+                  </>
                 ) : (
                   <p className="fine">
                     {t("box.strangerHint", { paid: fee(collection?.fees.paidShake ?? 0n, collection, pay), share: HOLDER_SHARE, feed: fee(collection?.fees.feed ?? 0n, collection, pay) })}
