@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { formatAmount, type Address, type ChainAdapter } from "@dno/chain-adapter";
 import { useAction, useChain, useLedger } from "./chain/ChainProvider";
+import { useLive } from "./chain/useLive";
 import { useSealed, type SealedToken } from "./chain/shielded";
 import { useT } from "./i18n/app";
 
-/** Public balances are read again this often, on top of after every action. */
-const POLL_MS = 30_000;
 
 interface Plain {
   coin: bigint | null;
@@ -27,17 +26,14 @@ export function Balances() {
   const [plain, setPlain] = useState<Plain>({ coin: null, usdc: null, croq: null, croqSymbols: null });
   const payment = collection?.payment;
 
-  useEffect(() => {
-    if (!account) return;
-    let live = true;
-    const read = () => void readPlain(adapter, account, !!payment).then((p) => live && setPlain(p));
-    read();
-    const timer = setInterval(read, POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
-  }, [adapter, account, payment, ledger]);
+  // Public balances: after every action, every block or so, and on coming back to the tab.
+  useLive(
+    (live) => {
+      if (account) void readPlain(adapter, account, !!payment).then((p) => live() && setPlain(p));
+    },
+    [adapter, account, payment, ledger],
+    !!account,
+  );
 
   // A new account starts blank rather than showing the last one's figures.
   useEffect(() => setPlain({ coin: null, usdc: null, croq: null, croqSymbols: null }), [account]);

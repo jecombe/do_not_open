@@ -141,8 +141,10 @@ plain USDC and `inputUnits`, what one encrypted input costs (a decrypted value c
 Every encryption sends the session's decryption permit as a bearer token, so the input is
 charged to this wallet; a mint, a meal or a croquette send checks the allowance first and
 fails with `no-credits` before any gas. `buyCredits(n)` buys more. Only the API counts units, so
-`decryptionAllowance()` has no chain fallback: after a transaction it waits (about 30 s at most)
-for the API to index it, so credits just bought are never read as missing.
+`decryptionAllowance()` has no chain fallback and never waits: credits this adapter bought and
+the API has not indexed yet (a purchase shows once its block is indexed, two confirmations
+later) are added on top of the API's count, so the figure is right as soon as `buyCredits`
+resolves.
 
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its
 account picker again (EIP-2255 `wallet_requestPermissions`) rather than handing back the

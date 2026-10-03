@@ -1,12 +1,11 @@
 import { useEffect, useId, useState } from "react";
 import type { DecryptionAllowance } from "@dno/chain-adapter";
 import { useChain, useLedger } from "./chain/ChainProvider";
+import { useLive } from "./chain/useLive";
 import { useT } from "./i18n/app";
 import { useLocale } from "./i18n/locale";
 import { openExchange } from "./views/exchangeLink";
 
-/** Read again this often, on top of after every action: the free ones come back at midnight UTC. */
-const POLL_MS = 30_000;
 /** At or under this many units the meter starts blinking: about two shakes left. */
 const LOW = 4;
 
@@ -23,21 +22,17 @@ export function CreditMeter() {
   const tipId = useId();
   const [allowance, setAllowance] = useState<DecryptionAllowance | null>(null);
 
-  useEffect(() => {
-    if (!account) return;
-    let live = true;
-    const read = () =>
+  // Read again after every action, every block or so, and on coming back to the tab: the free
+  // ones come back at midnight UTC.
+  useLive(
+    (live) =>
       void adapter.decryptionAllowance().then(
-        (a) => live && setAllowance(a),
+        (a) => live() && setAllowance(a),
         () => undefined,
-      );
-    read();
-    const timer = setInterval(read, POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
-  }, [adapter, account, ledger]);
+      ),
+    [adapter, account, ledger],
+    !!account,
+  );
 
   // A new account starts blank rather than showing the last one's count.
   useEffect(() => setAllowance(null), [account]);
