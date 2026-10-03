@@ -29,6 +29,8 @@ import { buildServer } from "./infrastructure/http/server";
 import { Indexer, type PeriodicTask } from "./infrastructure/Indexer";
 import { MemoryStore } from "./infrastructure/memory/MemoryStore";
 import { HttpRelayerUpstream } from "./infrastructure/relayer/HttpRelayerUpstream";
+import { DiscordClerk } from "./infrastructure/discord/DiscordClerk";
+import { DiscordNetwork } from "./infrastructure/social/DiscordNetwork";
 import { RehearsalNetwork } from "./infrastructure/social/RehearsalNetwork";
 import { XNetwork } from "./infrastructure/social/XNetwork";
 import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
@@ -73,8 +75,7 @@ async function main() {
       { name: "finalitySweep", everyMs: config.SWEEP_EVERY_MS, run: () => sweep.run() },
       { name: "reconcile", everyMs: config.RECONCILE_EVERY_MS, run: () => reconciler.run() },
     ];
-    const herald = heraldOf(config, store, model, log);
-    if (herald) tasks.push({ name: "herald", everyMs: config.HERALD_EVERY_MS, run: () => herald.run() });
+    for (const herald of heraldsOf(config, store, model, log)) tasks.push({ name: `herald:${herald.channel}`, everyMs: config.HERALD_EVERY_MS, run: () => herald.run() });
     indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, tasks);
     indexer.start();
     log.info({ network: config.NETWORK, from: deployment.indexFrom, endpoints: rpc.status().map((e) => e.name) }, "indexer started");
@@ -107,6 +108,15 @@ async function main() {
   );
   if (!config.GEMINI_API_KEY) log.info("GEMINI_API_KEY is not set: the chat quotes the manual instead of answering");
 
+  // The same clerk on Discord, as `/ask`.
+  const discord =
+    config.DISCORD_APPLICATION_ID && config.DISCORD_PUBLIC_KEY
+      ? {
+          clerk: new DiscordClerk(chat, { applicationId: config.DISCORD_APPLICATION_ID, manualUrl: config.DISCORD_MANUAL_URL ?? config.HERALD_MANUAL_URL ?? null }, log),
+          publicKey: config.DISCORD_PUBLIC_KEY,
+        }
+      : undefined;
+
   const server =
     config.ROLE === "indexer"
       ? null
@@ -119,7 +129,8 @@ async function main() {
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           chat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
-          herald: config.HERALD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
+          discord,
+          herald: config.HERALD === "off" && config.HERALD_DISCORD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
           indexer,
           rpcStatus: () => rpc.status(),
           corsOrigins: config.CORS_ORIGINS,
@@ -140,30 +151,47 @@ async function main() {
   process.once("SIGINT", () => void shutdown("SIGINT"));
 }
 
-/** The collection's account: sent to X with its keys, rehearsed without them. */
-function heraldOf(config: ReturnType<typeof loadConfig>, store: Store & PostStore, model: AnswerModel | null, log: pino.Logger): Herald | null {
-  if (config.HERALD === "off") return null;
-  let network: SocialNetwork = new RehearsalNetwork(log);
-  if (config.HERALD === "x") {
-    const { X_API_KEY: apiKey, X_API_SECRET: apiSecret, X_ACCESS_TOKEN: accessToken, X_ACCESS_SECRET: accessSecret } = config;
-    if (apiKey && apiSecret && accessToken && accessSecret) network = new XNetwork({ apiKey, apiSecret, accessToken, accessSecret }, config.X_HANDLE ?? null);
-    else log.warn("HERALD=x but the X keys are not all set: rehearsing instead");
-  }
-  log.info({ network: network.name }, "herald on");
-  return new Herald(store, network, {
-    maxPerDay: config.HERALD_MAX_PER_DAY,
-    minGapSeconds: config.HERALD_MIN_GAP_MINUTES * 60,
-    digestHourUtc: config.HERALD_DIGEST_HOUR_UTC < 0 ? null : config.HERALD_DIGEST_HOUR_UTC,
-    // The lessons teach the players' manual in English, the account's language.
-    lesson: config.HERALD_LESSON_HOUR_UTC < 0 ? null : {
+/**
+ * The collection's accounts, one herald each: X, sent with its keys and rehearsed without them,
+ * and the Discord channel, sent through its webhook. Each keeps its own queue and quota.
+ */
+function heraldsOf(config: ReturnType<typeof loadConfig>, store: Store & PostStore, model: AnswerModel | null, log: pino.Logger): Herald[] {
+  // The lessons teach the players' manual in English, the accounts' language; each account gets its own wording.
+  const lesson = () =>
+    config.HERALD_LESSON_HOUR_UTC < 0 ? null : {
       hourUtc: config.HERALD_LESSON_HOUR_UTC,
       writer: new LessonWriter(manual.locales.en, model, { manualUrl: config.HERALD_MANUAL_URL ?? null, tries: 2 }, log),
-    },
+    };
+  const common = {
+    digestHourUtc: config.HERALD_DIGEST_HOUR_UTC < 0 ? null : config.HERALD_DIGEST_HOUR_UTC,
     staleAfterSeconds: config.HERALD_STALE_HOURS * 3600,
     boxUrl: config.HERALD_BOX_URL ?? null,
     batch: 500,
     maxAttempts: 3,
-  }, log);
+  };
+  const heralds: Herald[] = [];
+
+  if (config.HERALD !== "off") {
+    let network: SocialNetwork = new RehearsalNetwork(log);
+    if (config.HERALD === "x") {
+      const { X_API_KEY: apiKey, X_API_SECRET: apiSecret, X_ACCESS_TOKEN: accessToken, X_ACCESS_SECRET: accessSecret } = config;
+      if (apiKey && apiSecret && accessToken && accessSecret) network = new XNetwork({ apiKey, apiSecret, accessToken, accessSecret }, config.X_HANDLE ?? null);
+      else log.warn("HERALD=x but the X keys are not all set: rehearsing instead");
+    }
+    heralds.push(new Herald(store, network, { ...common, channel: "x", maxPerDay: config.HERALD_MAX_PER_DAY, minGapSeconds: config.HERALD_MIN_GAP_MINUTES * 60, lesson: lesson() }, log));
+    log.info({ channel: "x", network: network.name }, "herald on");
+  }
+
+  if (config.HERALD_DISCORD !== "off") {
+    let network: SocialNetwork = new RehearsalNetwork(log);
+    if (config.HERALD_DISCORD === "live") {
+      if (config.DISCORD_WEBHOOK_URL) network = new DiscordNetwork(config.DISCORD_WEBHOOK_URL);
+      else log.warn("HERALD_DISCORD=live but DISCORD_WEBHOOK_URL is not set: rehearsing instead");
+    }
+    heralds.push(new Herald(store, network, { ...common, channel: "discord", maxPerDay: config.HERALD_DISCORD_MAX_PER_DAY, minGapSeconds: config.HERALD_DISCORD_MIN_GAP_MINUTES * 60, lesson: lesson() }, log));
+    log.info({ channel: "discord", network: network.name }, "herald on");
+  }
+  return heralds;
 }
 
 main().catch((error) => {

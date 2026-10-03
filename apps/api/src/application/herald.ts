@@ -5,7 +5,9 @@ import { NetworkBusy, type PostStore, type SocialNetwork } from "./ports/herald"
 import type { Store } from "./ports/store";
 
 export interface HeraldOptions extends HeraldContext {
-  /** Posts sent per rolling 24 hours, at most: the network's free quota is small. */
+  /** The queue this herald fills and empties, named after the account ("x", "discord"), rehearsed or not. */
+  channel: string;
+  /** Posts sent per rolling 24 hours, at most: X's quota is small, Discord's is not. */
   maxPerDay: number;
   /** Seconds between two posts sent, at least. */
   minGapSeconds: number;
@@ -27,7 +29,8 @@ export interface HeraldResult {
 }
 
 /**
- * The collection's account on a social network. Each pass reads the events indexed since the
+ * The collection's account on a social network (one herald per network, each with its own
+ * queue, cursor and quota). Each pass reads the events indexed since the
  * last one, words the notable ones (`domain/herald`), queues them, writes the day's digest once
  * its hour has come, the day's lesson likewise, and sends at most one queued post, within the quota and the gap between
  * posts. On a first run it starts from the present: the history is not told again.
@@ -42,6 +45,10 @@ export class Herald {
     private readonly now: () => number = () => Math.floor(Date.now() / 1000),
   ) {}
 
+  get channel(): string {
+    return this.opts.channel;
+  }
+
   async run(): Promise<HeraldResult> {
     const queued = (await this.compose()) + (await this.composeLesson()) + (await this.composeDigest());
     const sent = await this.publish();
@@ -49,20 +56,21 @@ export class Herald {
   }
 
   private async compose(): Promise<number> {
-    let cursor = await this.store.heraldCursor();
+    const channel = this.opts.channel;
+    const cursor = await this.store.heraldCursor(channel);
     if (!cursor) {
       const indexed = await this.store.cursor();
       if (indexed === null) return 0;
       // Everything up to now is history: start after it.
-      await this.store.queuePosts([], { block: indexed, logIndex: 2 ** 31 - 1 }, this.now());
-      this.log.info({ block: indexed }, "herald starts from the present");
+      await this.store.queuePosts(channel, [], { block: indexed, logIndex: 2 ** 31 - 1 }, this.now());
+      this.log.info({ channel, block: indexed }, "herald starts from the present");
       return 0;
     }
     const events = await this.store.transaction((tx) => tx.storedEvents(cursor, this.opts.batch));
     if (!events.length) return 0;
     const last = events[events.length - 1]!.event;
     const drafts = draftsFor(events, this.opts);
-    return this.store.queuePosts(drafts, { block: last.block, logIndex: last.logIndex }, this.now());
+    return this.store.queuePosts(channel, drafts, { block: last.block, logIndex: last.logIndex }, this.now());
   }
 
   private async composeDigest(): Promise<number> {
@@ -71,15 +79,15 @@ export class Herald {
     const date = new Date(now * 1000);
     if (date.getUTCHours() < this.opts.digestHourUtc) return 0;
     const day = date.toISOString().slice(0, 10);
-    if (await this.store.hasPost(`digest:${day}`)) return 0;
+    if (await this.store.hasPost(this.opts.channel, `digest:${day}`)) return 0;
     // The last 24 hours, newest first: stop at the first event older than that.
     const since = now - 86_400;
     const recent = (await this.store.activity({ limit: 5_000 })).filter((e) => e.timestamp !== null && e.timestamp >= since);
-    const cursor = await this.store.heraldCursor();
+    const cursor = await this.store.heraldCursor(this.opts.channel);
     if (!cursor) return 0;
     // A quiet day still records its digest, as skipped, so it is not reconsidered every pass.
     const draft = digest(day, tallyOf(recent)) ?? { key: `digest:${day}`, kind: "digest" as const, text: "", skipped: "nothing happened" };
-    return this.store.queuePosts([draft], cursor, now);
+    return this.store.queuePosts(this.opts.channel, [draft], cursor, now);
   }
 
   private async composeLesson(): Promise<number> {
@@ -89,41 +97,42 @@ export class Herald {
     const date = new Date(now * 1000);
     if (date.getUTCHours() < lesson.hourUtc) return 0;
     const day = date.toISOString().slice(0, 10);
-    if (await this.store.hasPost(`lesson:${day}`)) return 0;
-    const cursor = await this.store.heraldCursor();
+    if (await this.store.hasPost(this.opts.channel, `lesson:${day}`)) return 0;
+    const cursor = await this.store.heraldCursor(this.opts.channel);
     if (!cursor) return 0;
     const draft = await lesson.writer.write(day);
-    return draft ? this.store.queuePosts([draft], cursor, now) : 0;
+    return draft ? this.store.queuePosts(this.opts.channel, [draft], cursor, now) : 0;
   }
 
   /** Sends the oldest queued post, if its turn has come. Returns its key, or null. */
   private async publish(): Promise<string | null> {
     const now = this.now();
-    let post = await this.store.nextQueuedPost();
+    const channel = this.opts.channel;
+    let post = await this.store.nextQueuedPost(channel);
     while (post && now - post.createdAt > this.opts.staleAfterSeconds) {
       await this.store.updatePost(post.id, { status: "skipped", error: "stale" });
-      post = await this.store.nextQueuedPost();
+      post = await this.store.nextQueuedPost(channel);
     }
     if (!post) return null;
 
     const rehearsal = this.network.name === "rehearsal";
     if (!rehearsal) {
-      const last = await this.store.lastPostedAt();
+      const last = await this.store.lastPostedAt(channel);
       if (last !== null && now - last < this.opts.minGapSeconds) return null;
-      if ((await this.store.postedSince(now - 86_400)) >= this.opts.maxPerDay) return null;
+      if ((await this.store.postedSince(channel, now - 86_400)) >= this.opts.maxPerDay) return null;
     }
 
     try {
       const sent = await this.network.post(post.text);
       await this.store.updatePost(post.id, sent ? { status: "posted", postedAt: now, externalId: sent.id, url: sent.url, error: null } : { status: "rehearsed", postedAt: now });
-      this.log.info({ key: post.key, network: this.network.name, url: sent?.url }, sent ? "herald posted" : "herald rehearsed a post");
+      this.log.info({ key: post.key, channel, network: this.network.name, url: sent?.url }, sent ? "herald posted" : "herald rehearsed a post");
       return post.key;
     } catch (error) {
       const attempts = post.attempts + 1;
       const busy = error instanceof NetworkBusy;
       const failed = !busy && attempts >= this.opts.maxAttempts;
       await this.store.updatePost(post.id, { attempts: busy ? post.attempts : attempts, status: failed ? "failed" : "queued", error: (error as Error).message });
-      this.log.warn({ key: post.key, attempts, err: (error as Error).message }, failed ? "herald gave up a post" : "herald could not post, will retry");
+      this.log.warn({ key: post.key, channel, attempts, err: (error as Error).message }, failed ? "herald gave up a post" : "herald could not post, will retry");
       return null;
     }
   }

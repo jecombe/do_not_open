@@ -71,7 +71,7 @@ class FakeNetwork implements SocialNetwork {
   }
 }
 
-const OPTS: HeraldOptions = { maxPerDay: 2, minGapSeconds: 600, digestHourUtc: null, staleAfterSeconds: 3_600, batch: 100, maxAttempts: 2 };
+const OPTS: HeraldOptions = { channel: "x", maxPerDay: 2, minGapSeconds: 600, digestHourUtc: null, staleAfterSeconds: 3_600, batch: 100, maxAttempts: 2 };
 
 describe("the herald", () => {
   let store: MemoryStore;
@@ -113,7 +113,7 @@ describe("the herald", () => {
     now += 601;
     await herald().run();
     expect(network.sent).toHaveLength(2); // two a day
-    expect((await store.nextQueuedPost())!.key).toBe("opening:4");
+    expect((await store.nextQueuedPost("x"))!.key).toBe("opening:4");
   });
 
   it("drops old news, retries a failure, and gives up after the last try", async () => {
@@ -127,7 +127,7 @@ describe("the herald", () => {
     expect(posts.find((p) => p.key === "opening:2")).toMatchObject({ status: "failed", attempts: 2, error: "boom" });
     network.fail = new NetworkBusy(null);
     await herald().run();
-    expect((await store.nextQueuedPost())).toMatchObject({ key: "opening:3", attempts: 0 });
+    expect((await store.nextQueuedPost("x"))).toMatchObject({ key: "opening:3", attempts: 0 });
     network.fail = null;
     now += 3_601;
     await herald().run();
@@ -149,7 +149,7 @@ describe("the herald", () => {
     now = Date.UTC(2026, 9, 3, 17, 0) / 1000;
     await index(ev("MintPlaced", 10, { firstTokenId: 0, buyer: ALICE, count: 10 }, { timestamp: now - 60 }));
     await herald({ digestHourUtc: 18 }).run();
-    expect(await store.hasPost("digest:2026-10-03")).toBe(false);
+    expect(await store.hasPost("x", "digest:2026-10-03")).toBe(false);
     now += 3_600;
     await herald({ digestHourUtc: 18 }).run();
     await herald({ digestHourUtc: 18 }).run();
@@ -189,7 +189,8 @@ describe("X's OAuth 1.0a signature", () => {
 describe("GET /v1/herald", () => {
   it("lists the posts, behind the token when there is one", async () => {
     const store = new MemoryStore();
-    await store.queuePosts([{ key: "opening:1", kind: "opening", text: "📦 DNO-0001 has been opened." }], { block: 1, logIndex: 0 }, 1);
+    await store.queuePosts("x", [{ key: "opening:1", kind: "opening", text: "📦 DNO-0001 has been opened." }], { block: 1, logIndex: 0 }, 1);
+    await store.queuePosts("discord", [{ key: "opening:1", kind: "opening", text: "📦 DNO-0001 has been opened." }], { block: 1, logIndex: 0 }, 1);
     const queries = new Queries(store, new FakeChainState());
     const app = await buildServer({
       queries,
@@ -202,7 +203,9 @@ describe("GET /v1/herald", () => {
     expect((await app.inject({ method: "GET", url: "/v1/herald" })).statusCode).toBe(401);
     const ok = await app.inject({ method: "GET", url: "/v1/herald?token=secret" });
     expect(ok.statusCode).toBe(200);
-    expect(ok.json().data[0]).toMatchObject({ key: "opening:1", status: "queued" });
+    expect(ok.json().data).toHaveLength(2);
+    const discord = await app.inject({ method: "GET", url: "/v1/herald?token=secret&network=discord" });
+    expect(discord.json().data).toEqual([expect.objectContaining({ network: "discord", key: "opening:1", status: "queued" })]);
     await app.close();
   });
 });

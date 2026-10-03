@@ -248,24 +248,24 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
     });
 
     it("queues the herald's posts once per fact, in order, and keeps where it read up to", async () => {
-      expect(await store.heraldCursor()).toBeNull();
+      expect(await store.heraldCursor("x")).toBeNull();
       const drafts = [
         { key: "opening:1", kind: "opening" as const, text: "one" },
         { key: "digest:2026-10-03", kind: "digest" as const, text: "", skipped: "nothing happened" },
         { key: "opening:2", kind: "opening" as const, text: "two" },
       ];
-      expect(await store.queuePosts(drafts, { block: 5, logIndex: 2 }, 100)).toBe(2);
-      expect(await store.queuePosts(drafts, { block: 6, logIndex: 0 }, 200)).toBe(0);
-      expect(await store.heraldCursor()).toEqual({ block: 6, logIndex: 0 });
-      expect(await store.hasPost("digest:2026-10-03")).toBe(true);
+      expect(await store.queuePosts("x", drafts, { block: 5, logIndex: 2 }, 100)).toBe(2);
+      expect(await store.queuePosts("x", drafts, { block: 6, logIndex: 0 }, 200)).toBe(0);
+      expect(await store.heraldCursor("x")).toEqual({ block: 6, logIndex: 0 });
+      expect(await store.hasPost("x", "digest:2026-10-03")).toBe(true);
 
-      const first = await store.nextQueuedPost();
+      const first = await store.nextQueuedPost("x");
       expect(first).toMatchObject({ key: "opening:1", status: "queued", createdAt: 100, attempts: 0 });
       await store.updatePost(first!.id, { status: "posted", postedAt: 150, externalId: "9", url: "https://x.com/i/web/status/9" });
-      expect((await store.nextQueuedPost())!.key).toBe("opening:2");
-      expect(await store.postedSince(100)).toBe(1);
-      expect(await store.postedSince(151)).toBe(0);
-      expect(await store.lastPostedAt()).toBe(150);
+      expect((await store.nextQueuedPost("x"))!.key).toBe("opening:2");
+      expect(await store.postedSince("x", 100)).toBe(1);
+      expect(await store.postedSince("x", 151)).toBe(0);
+      expect(await store.lastPostedAt("x")).toBe(150);
       expect((await store.posts(10)).map((p) => [p.key, p.status])).toEqual([
         ["opening:2", "queued"],
         ["digest:2026-10-03", "skipped"],
@@ -273,11 +273,31 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       ]);
     });
 
+    it("keeps one queue, quota and cursor per network", async () => {
+      await store.queuePosts("x", [{ key: "opening:1", kind: "opening", text: "one" }], { block: 5, logIndex: 0 }, 100);
+      expect(await store.heraldCursor("discord")).toBeNull();
+      expect(await store.queuePosts("discord", [{ key: "opening:1", kind: "opening", text: "one" }], { block: 7, logIndex: 1 }, 100)).toBe(1);
+      expect(await store.heraldCursor("x")).toEqual({ block: 5, logIndex: 0 });
+      expect(await store.heraldCursor("discord")).toEqual({ block: 7, logIndex: 1 });
+      const discord = await store.nextQueuedPost("discord");
+      expect(discord).toMatchObject({ network: "discord", key: "opening:1" });
+      await store.updatePost(discord!.id, { status: "posted", postedAt: 150 });
+      expect(await store.postedSince("discord", 100)).toBe(1);
+      expect(await store.postedSince("x", 100)).toBe(0);
+      expect(await store.lastPostedAt("x")).toBeNull();
+      expect((await store.nextQueuedPost("x"))!.network).toBe("x");
+      expect(await store.hasPost("discord", "opening:2")).toBe(false);
+      expect((await store.posts(10, "discord")).map((p) => p.network)).toEqual(["discord"]);
+      expect(await store.posts(10)).toHaveLength(2);
+    });
+
+    
+
     it("keeps the herald's posts through a replay", async () => {
-      await store.queuePosts([{ key: "opening:1", kind: "opening", text: "one" }], { block: 1, logIndex: 0 }, 1);
+      await store.queuePosts("x", [{ key: "opening:1", kind: "opening", text: "one" }], { block: 1, logIndex: 0 }, 1);
       await store.transaction((tx) => tx.resetReadModels());
-      expect(await store.hasPost("opening:1")).toBe(true);
-      expect(await store.heraldCursor()).toEqual({ block: 1, logIndex: 0 });
+      expect(await store.hasPost("x", "opening:1")).toBe(true);
+      expect(await store.heraldCursor("x")).toEqual({ block: 1, logIndex: 0 });
     });
   });
 }
