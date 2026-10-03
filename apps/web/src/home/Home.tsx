@@ -173,7 +173,6 @@ export function Home() {
 
       <footer className="home-foot">
         <span>{t("home.foot")}</span>
-        <a href="https://lasonotheque.org">{t("home.foot.sounds")}</a>
         <a href={REPO}>{t("home.foot.source")}</a>
       </footer>
     </div>

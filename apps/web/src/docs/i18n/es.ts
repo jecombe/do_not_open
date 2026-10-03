@@ -10,7 +10,6 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.source": "Código fuente",
   "docs.contents": "Contenido",
   "docs.foot": "DO NOT OPEN funciona en una testnet. Nada de esto vale dinero.",
-  "docs.foot.sounds": "Sonidos de gatos: Joseph SARDIN, LaSonotheque.org",
 
   "docs.hero.title": "Instrucciones de manipulación",
   "docs.hero.lede": "{supply} cajas selladas en una cadena pública. Hay un gato en cada una, y nadie puede leer cuál es: ni el titular, ni quienes la desplegaron, ni la cadena. Así es como funciona, y lo que cuesta mirar.",
