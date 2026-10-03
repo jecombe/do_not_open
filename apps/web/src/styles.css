@@ -210,6 +210,13 @@ button {
   opacity: 0.55;
 }
 
+/* The action under way stays inked, so the player sees which one they clicked. */
+.stamp-button[aria-busy="true"] {
+  background: var(--ink-red);
+  color: var(--manifest);
+  opacity: 1;
+}
+
 .felt {
   position: relative;
   min-height: 84px;
@@ -488,6 +495,14 @@ button {
 .stepper button:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* An open form or the action under way stays inked, so the player sees which one they clicked. */
+.plain-button[aria-expanded="true"],
+.plain-button[aria-busy="true"] {
+  background: var(--ink);
+  color: var(--manifest);
+  opacity: 1;
 }
 
 .serial.pair {
