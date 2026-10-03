@@ -18,9 +18,9 @@ Two things differ from the original brief in every flow:
   it under encryption (`owner == caller`) and masks the result with it. Someone who does
   not hold the box gets nothing, and only they learn it.
 
-## Release form (before the first box)
+## Release form (when a wallet connects)
 
-Before playing, every player signs the terms of play: the contracts are experimental and
+Before playing with a wallet, every player signs the terms of play: the contracts are experimental and
 could be exploited, the site is only a window onto assets that live on-chain, nothing is
 custodial or refundable. The form (`apps/web/src/terms`) has one clause per line; the
 player initials each, then the wallet signs a readable EIP-191 message naming the address,
@@ -33,11 +33,12 @@ sequenceDiagram
   participant App
   participant W as Wallet
   participant API
-  U->>App: open /app
+  U->>App: open /app (browse freely, nothing asked)
+  U->>App: connect a wallet
   App->>App: local record for this version and wallet? then play
   App-->>U: Form DNO-1, 8 clauses
   U->>App: initial each clause
-  U->>App: Sign with my wallet (connects first if needed)
+  U->>App: Sign with my wallet
   App->>W: personal_sign(message: address, version, SHA-256, summary, date)
   W-->>App: signature (no gas)
   alt API configured
@@ -53,8 +54,8 @@ sequenceDiagram
   Note over App,W: A new wallet, or a new terms version, asks again
 ```
 
-Without a wallet, the player may continue after initialing; the signature is asked as
-soon as a wallet connects. The menu's "Terms of play" shows the form again with the
+Without a wallet nothing is asked: a visitor browses the depot, the shelf and the manual
+freely, and the form comes up when a wallet that has not signed it connects. The menu's "Terms of play" shows the form again with the
 signature. In mock mode the signature is a stand-in, kept locally.
 
 ## Mint

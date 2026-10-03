@@ -5,11 +5,11 @@ import { problemOf } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
 import { getLocale } from "../i18n/locale";
 import { homePath } from "../site";
-import { CLAUSES, keepSignature, markInitialed, onOpenTerms, setGateUp, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
+import { CLAUSES, keepSignature, onOpenTerms, setGateUp, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
 import "./terms.css";
 
 /**
- * The release form, before the first box: every clause initialed by hand, then signed with the
+ * The release form, when a wallet connects: every clause initialed by hand, then signed with the
  * wallet (free, off-chain), and the signature filed with the API as a record. It comes back for
  * each new wallet and each new version of the terms. From the menu, it shows what was signed.
  */
@@ -22,9 +22,9 @@ export function TermsGate() {
   useEffect(() => onOpenTerms(() => setViewing(true)), []);
 
   const mine = account ? record.signed[account.toLowerCase()] : undefined;
-  // Without a wallet (none installed, or not connected yet) the clauses can still be read and
-  // initialed; the signature is asked as soon as a wallet connects.
-  const required = !record.initialed || (!!account && !mine);
+  // Nothing is asked of a visitor without a wallet: the form comes up when a wallet connects
+  // that has not signed it.
+  const required = !!account && !mine;
   const shown = required || !!sealed || viewing;
   useEffect(() => setGateUp(shown), [shown]);
   useEffect(() => () => setGateUp(false), []);
@@ -48,7 +48,7 @@ export function TermsGate() {
 function Form(props: { required: boolean; viewOnly: boolean; signedOnly: boolean; sealed: SignedTerms | null; mock: boolean; onSealed: (s: SignedTerms) => void; onClose: () => void }) {
   const { required, viewOnly, signedOnly, sealed, mock, onSealed, onClose } = props;
   const chain = useChain();
-  const { account, adapter, picking } = chain;
+  const { account, adapter } = chain;
   const t = useT();
   const [initials, setInitials] = useState<Set<number>>(() => new Set(signedOnly ? CLAUSES.map((_, i) => i) : []));
   const [english, setEnglish] = useState(false);
@@ -170,7 +170,7 @@ function Form(props: { required: boolean; viewOnly: boolean; signedOnly: boolean
               <p className="terms-progress" aria-live="polite">
                 {t("terms.progress", { done: initials.size, total: CLAUSES.length })}
               </p>
-              {account ? (
+              {account && (
                 <>
                   <div className="sign-line">
                     <span className="sign-x" aria-hidden="true">
@@ -182,27 +182,6 @@ function Form(props: { required: boolean; viewOnly: boolean; signedOnly: boolean
                     {signing ? t("terms.signing") : t("terms.sign")}
                   </button>
                   <p className="fine">{mock ? t("terms.mockSign") : t("terms.free")}</p>
-                </>
-              ) : picking ? (
-                <div className="terms-wallets" role="group" aria-label={t("nav.pickWallet")}>
-                  <p className="fine">{t("nav.pickWallet")}</p>
-                  {picking.map((w) => (
-                    <button type="button" key={w.id} className="plain-button" onClick={() => void chain.connect(w.id)}>
-                      {w.icon && <img src={w.icon} alt="" width={20} height={20} />} {w.name}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  <button type="button" className="stamp-button" onClick={() => void chain.connect()} disabled={!allInitialed}>
-                    {t("terms.connect")}
-                  </button>
-                  <p className="fine">
-                    {t("terms.noWallet")}{" "}
-                    <button type="button" className="link" onClick={markInitialed} disabled={!allInitialed}>
-                      {t("terms.continueAnyway")}
-                    </button>
-                  </p>
                 </>
               )}
               {(error || chain.connectError) && (
