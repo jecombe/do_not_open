@@ -9,7 +9,6 @@ export const docsEn = {
   "docs.source": "Source",
   "docs.contents": "Contents",
   "docs.foot": "DO NOT OPEN runs on a testnet. Nothing here is worth money.",
-  "docs.foot.sounds": "Cat sounds: Joseph SARDIN, LaSonotheque.org",
 
   "docs.hero.title": "Handling instructions",
   "docs.hero.lede": "{supply} sealed boxes on a public chain. There is a cat in each one, and nobody can read what it is: not the holder, not the people who deployed it, not the chain. This is how that works, and what it takes to look.",

@@ -67,7 +67,6 @@ export const homeIt: Record<HomeKey, string> = {
   "home.end.docs": "Leggi il manuale",
   "home.foot": "DO NOT OPEN gira su una rete di prova. Niente qui vale soldi, solo curiosità.",
   "home.foot.source": "Codice sorgente",
-  "home.foot.sounds": "Suoni dei gatti: Joseph SARDIN, LaSonotheque.org",
   "home.nav.croq": "Crocchette",
   "home.croq.title": "Crocchette",
   "home.croq.bubble": "Crunch?",

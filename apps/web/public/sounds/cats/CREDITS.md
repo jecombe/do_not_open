@@ -1,8 +1,8 @@
 # Cat sounds
 
 Recorded by Joseph SARDIN for [La Sonothèque](https://lasonotheque.org), released CC0
-(public domain): free for any use, commercial included, no attribution required. The site
-credits them anyway: "Sons additionnels : Joseph SARDIN - LaSonotheque.org".
+(public domain): free for any use, commercial included, no attribution required, so the site
+shows no credit; this file keeps the source.
 
 Each clip is a cut of one original, faded in and out, and brought to one loudness, mono,
 80 kbps MP3. The number is the original's id on the site (`https://lasonotheque.org/UPLOAD/mp3/<id>.mp3`).
