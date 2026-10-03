@@ -25,14 +25,14 @@ const SECTIONS = PARTS.flatMap((p) => p.sections);
 
 /** The contracts on Sepolia, as `dno:export` last wrote them. */
 const CONTRACTS = [
-  { key: "collection", address: "0x5eBaA496783146f712B9c075f8a6fd56cb612C6F" },
-  { key: "pantry", address: "0xf506832ab27DF17ece72924502537ecCf7586CDB" },
-  { key: "croq", address: "0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7" },
-  { key: "ccroq", address: "0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952" },
-  { key: "pool", address: "0x399Dc7af546154998D302d0b3B312750DA962100" },
-  { key: "locker", address: "0xCA7Eee59de903F9b6bfab466667131Fb58403BF3" },
-  { key: "ramp", address: "0x2754B8568a3402f828DDAa1715F8290CDa498aAb" },
-  { key: "credits", address: "0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1" },
+  { key: "collection", address: "0x816a39b04e0672B4746A5B696E14145F4F852d37" },
+  { key: "pantry", address: "0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d" },
+  { key: "croq", address: "0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308" },
+  { key: "ccroq", address: "0x358E932457A2F19B20BF49264875E94432941D81" },
+  { key: "pool", address: "0xc1eFDaC0c240F9BbCE8788E18427666310E267ce" },
+  { key: "locker", address: "0x85b827d5F40C15F0842F48C830B956cf8C5Da108" },
+  { key: "ramp", address: "0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1" },
+  { key: "credits", address: "0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e" },
 ] as const;
 
 /** Highlights the section being read in the routing slip. */
@@ -200,6 +200,7 @@ export function Manual() {
               <p>{t("docs.holders.p4", { supply, list: milestones })}</p>
               <p>{t("docs.holders.p5")}</p>
               <p>{t("docs.holders.p6")}</p>
+              <p>{t("docs.holders.p7")}</p>
             </div>
           </section>
 

@@ -1,12 +1,12 @@
 {
-  "address": "0x399Dc7af546154998D302d0b3B312750DA962100",
+  "address": "0xc1eFDaC0c240F9BbCE8788E18427666310E267ce",
   "abi": [],
   "numDeployments": 1,
   "linkedData": {
     "fee": 10000,
-    "positionId": "233099",
-    "tickLower": -138200,
-    "tickUpper": -69200,
-    "croqIsToken0": false
+    "positionId": "233138",
+    "tickLower": 69200,
+    "tickUpper": 138200,
+    "croqIsToken0": true
   }
 }

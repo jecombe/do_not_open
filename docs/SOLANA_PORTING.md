@@ -50,6 +50,7 @@ were drawn for:
 | --- | --- | --- | --- |
 | `euint64`, `euint32`, `euint16`, `euint8`, `ebool`, `eaddress` handles in contract storage | `DoNotOpen.sol`, `ConfidentialERC721.sol` state | Ciphertext handles (32 bytes) stored in program accounts | High: handles are chain-agnostic identifiers |
 | `eaddress` owner, `FHE.eq(owner, caller)` and `select` on it | every ownership check, transfers | An encrypted 32-byte public key and equality on it | Low: the whole hidden-owner design rests on it. Ask Zama |
+| `externalEbool` input and `FHE.and` | `confidentialTransferIf` (a holder's decoys) | An encrypted bool input with its proof, and `and` on bools | Medium: needs encrypted inputs, as the hidden mint quantity does |
 | `FHE.fromExternal` with an input proof bound to (contract, sender) | `mint` (the quantity), the Pantry | The same, bound to (program, signer) | Medium |
 | `FHE.randEuint64()` and bounded `randEuintN(2^k)` | mint, shake, feed, duel | An encrypted-randomness instruction through CPI to Zama's program | Medium: must exist for the protocol to be useful; bounds may differ |
 | `FHE.shr`, `select`, `ge`, `gt`, `lt`, `add`, `mul`, casts | shake, proveAlive, score, duel | The same operator set through CPI | Medium: check that encrypted-amount shifts exist; if not, the five trait bytes can be extracted with `and` + scalar shifts |
@@ -77,10 +78,10 @@ were drawn for:
 | `mapping(tokenId => ...)` | all state | One PDA per box: seeds `["box", collection, tokenId]` | Rent: the minter pays for the box account |
 | `mapping(tokenId => mapping(viewer => Shake))` | `_shakes` | One PDA per (box, viewer): seeds `["shake", box, viewer]`, created on first shake, rent paid by the viewer | |
 | `mapping(duelId => Duel)` | `_duels` | One PDA per duel: seeds `["duel", collection, duelId]`; can be closed after resolution to refund rent | |
-| `_listing[tokenId]`, one duel on the shelf per box | `finalizeDuel` | A field in the box account | The older listing's duel account must be passed too, to cancel it |
+| `_listing[tokenId]`, one duel on the shelf per box | `finalizeDuel` | A field in the box account | The older listing's duel account must be passed too, to cancel it, or to see that it was accepted and let the new posting give way |
 | `_earnings[tokenId]` + `claimEarnings(ids)` | paid shake earnings | An encrypted handle in the box account, paid in the confidential token to whoever holds the box | Must stay per box: a per-holder account would name the holder |
 | cUSDC `confidentialTransferFrom` that moves all or nothing | every paid action (`_pull`) | A CPI to the confidential token program, with the program as a delegate | The action stays masked by "paid == price"; no plain lamport fees, they would be public |
-| `Ownable`, `withdraw`, `setBaseURI`, `setTrustedReader` | admin | An authority public key in the config account, ideally a multisig (Squads); trusted readers as a list of program ids | |
+| `Ownable`, `withdraw`, `setBaseURI`, `setTrustedReader` | admin | An authority public key in the config account, ideally a multisig (Squads); trusted readers as a list of program ids | Nobody may read the revenue; `withdraw` at most once per 7 days, with the last time in the config account |
 | `DoNotOpenConfig` contract, immutable | rules | A config account written once at initialisation, with `specHash` | |
 | Events | `MintPlaced`, `ConfidentialTransfer`, `Shaken`, `RequestPlaced`, ... | Anchor events (program logs) | Same names and fields as `spec.events` |
 | Custom errors | `NotSealed`, ... | Anchor error codes with the same names | The app's error copy is keyed on these names. Nothing reverts on ownership |

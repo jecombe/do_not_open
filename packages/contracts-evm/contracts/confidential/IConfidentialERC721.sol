@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ebool, eaddress} from "@fhevm/solidity/lib/FHE.sol";
+import {ebool, eaddress, externalEbool} from "@fhevm/solidity/lib/FHE.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /// @title Confidential ERC-721 (draft)
@@ -26,6 +26,11 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 ///
 ///  5. Approvals are operators with an expiry, as in ERC-7984: a holder lets one address move any
 ///     of their tokens until a date. There are no per-token approvals: they would name the owner.
+///
+///  6. A holder may send a decoy: a transfer with an encrypted `really` set to false moves nothing,
+///     though it looks like any other. Once something public shows that an address holds a token,
+///     its next plain transfer of it is certainly real; decoys sent with the real one keep the
+///     doubt. Optional: a plain transfer is a transfer with `really` true.
 interface IConfidentialERC721 is IERC165 {
     /// @notice `tokenId` may have moved from `from` to `to`. `moved` says if it did; `from`, `to`
     ///         and the contract that asked can decrypt it. A mint has `from` = address(0).
@@ -58,6 +63,13 @@ interface IConfidentialERC721 is IERC165 {
 
     /// @notice Moves `tokenId` to `to` if the caller holds it. Never reverts on ownership.
     function confidentialTransfer(address to, uint256 tokenId) external returns (ebool moved);
+
+    /// @notice `confidentialTransfer`, but moves nothing unless `really`, encrypted by the caller,
+    ///         is true: false sends a decoy. `really` is made for this contract and the caller
+    ///         with the Relayer SDK.
+    function confidentialTransferIf(address to, uint256 tokenId, externalEbool really, bytes calldata inputProof)
+        external
+        returns (ebool moved);
 
     /// @notice Moves `tokenId` from `from` to `to` if `from` holds it. The caller must be `from`
     ///         or one of `from`'s operators.

@@ -11,6 +11,7 @@ import {
   deployEconomy,
   expectDenied,
   giveCroquettes,
+  grantedIn,
   mintBoxes,
   open as openBox,
   peek64,
@@ -315,6 +316,21 @@ describe("CROQ economy", function () {
       await expect(pantry.connect(alice).claim([9999])).to.be.revertedWithCustomError(dno, "ConfidentialERC721NonexistentToken");
     });
 
+    it("pays nothing into an empty id, so free empty ids cannot drain the reserve", async function () {
+      // A mint of 0 boxes costs only gas and still creates ten ids, held by nobody.
+      const { created, owned } = await mintBoxes(dno, carol, 0);
+      expect(owned).to.deep.eq([]);
+      await (await pantry.connect(carol).claim(created)).wait();
+      await time.increase(3 * DAY);
+      await (await pantry.connect(carol).claim(created)).wait();
+      expect(await reserve()).to.eq(FUNDED);
+      for (const id of created) expect(await peek64(await pantry.stashHandle(id))).to.eq(0n);
+      // A box someone holds still gets its bag.
+      await (await pantry.connect(alice).claim([A[0]!])).wait();
+      expect(await balanceOf(cCroq, alice)).to.eq(WELCOME);
+      expect(await reserve()).to.eq(FUNDED - WELCOME);
+    });
+
     it("refuses to read ownership unless the collection trusts the Pantry", async function () {
       await (await dno.connect(deployer).setTrustedReader(pantryAddress, false)).wait();
       await expect(pantry.connect(alice).claim([A[0]!])).to.be.revertedWithCustomError(dno, "ConfidentialERC721UnauthorizedReader");
@@ -325,8 +341,9 @@ describe("CROQ economy", function () {
       await (await pantry.connect(carol).claim(owned)).wait();
       await time.increase(DAY);
       const used = await hcu(pantry.connect(carol).claim(owned));
-      // Protocol limits: 20M HCU per transaction, 5M along the longest dependency chain.
-      expect(used.globalHCU).to.be.lessThan(14_000_000);
+      // Protocol limits: 20M HCU per transaction, 5M along the longest dependency chain. The
+      // "is this id empty" check adds about 80,000 a box.
+      expect(used.globalHCU).to.be.lessThan(15_500_000);
       expect(used.maxHCUDepth).to.be.lessThan(5_000_000);
       expect(await balanceOf(cCroq, carol)).to.be.greaterThanOrEqual(BigInt(params.maxBoxesPerClaim) * WELCOME);
     });
@@ -428,20 +445,26 @@ describe("CROQ economy", function () {
   });
 
   describe("collect", function () {
-    it("pays the treasury its share, which only the treasury can read", async function () {
+    it("pays the treasury its share once a week, and lets nobody read it in between", async function () {
       await expect(pantry.collect()).to.be.revertedWithCustomError(pantry, "NothingToCollect");
       await giveCroquettes(croq, cCroq, alice, 1_000n);
       await approvePantry(alice);
-      await (await feed(alice, A[0]!, 1_000n)).wait();
+      const meal = await (await feed(alice, A[0]!, 1_000n)).wait();
 
+      // A share readable after each meal would tell the treasury who fed which cat, and how much.
+      expect(grantedIn(meal)).to.not.include(deployer.address);
       const share = await pantry.treasuryShareHandle();
-      expect(await fhevm.userDecryptEuint(FhevmType.euint64, share, pantryAddress, deployer)).to.eq(200n);
+      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, share, pantryAddress, deployer));
       await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, share, pantryAddress, alice));
+      await expect(pantry.connect(bob).collect()).to.be.revertedWithCustomError(pantry, "CollectTooSoon");
 
+      await time.increase(7 * DAY);
       const before = await balanceOf(cCroq, deployer);
       await expect(pantry.connect(bob).collect()).to.emit(pantry, "Collected").withArgs(deployer.address);
       expect((await balanceOf(cCroq, deployer)) - before).to.eq(200n);
       expect(await treasuryShare()).to.eq(0n);
+      await expect(pantry.collect()).to.be.revertedWithCustomError(pantry, "CollectTooSoon");
+      await time.increase(7 * DAY);
       expect((await hcu(pantry.collect())).globalHCU).to.be.lessThan(650_000);
       expect((await balanceOf(cCroq, deployer)) - before).to.eq(200n);
     });
@@ -452,6 +475,7 @@ describe("CROQ economy", function () {
       await (await feed(alice, A[0]!, 777n)).wait();
       await (await feed(alice, A[1]!, 333n)).wait();
       await (await pantry.connect(alice).claim(A)).wait();
+      await time.increase(7 * DAY);
       await (await pantry.collect()).wait();
       await (await feed(alice, A[2]!, 1_001n)).wait();
       const held = await peek64(await cCroq.confidentialBalanceOf(pantryAddress));

@@ -156,7 +156,7 @@
       "paid": false,
       "caller": "the holder posts, any holder takes it up",
       "lifetimeDays": 7,
-      "rule": "Post, prove, take up, finalise. A holder puts box A on the duel shelf, open to any sealed box or reserved for one; the posting makes the bit (the caller holds A) publicly decryptable, and only a proven posting goes on the shelf, for lifetimeDays. One listing per box. Taking it up with box B makes public: A is still held, both boxes are held, then masked by the latter the bit (scoreA > scoreB), a uniformly picked trait offset, and the loser's roll for that trait. Ties go to B. If A was no longer held the duel is void; if only B was not held, the duel goes back on the shelf. Winner's win counter increments. The loser's picked trait becomes public, never the state."
+      "rule": "Post, prove, take up, finalise. A holder puts box A on the duel shelf, open to any sealed box or reserved for one; the posting makes the bit (the caller holds A) publicly decryptable, and only a proven posting goes on the shelf, for lifetimeDays. One listing per box: a newer proven posting replaces one nobody accepted, and gives way to one accepted and waiting for its outcome, so nobody can escape a duel they are losing. Taking it up with box B makes public: A is still held, both boxes are held, then masked by the latter the bit (scoreA > scoreB), a uniformly picked trait offset, and the loser's roll for that trait. Ties go to B. If A was no longer held the duel is void; if only B was not held, the duel goes back on the shelf. Winner's win counter increments. The loser's picked trait becomes public, never the state."
     },
     "entangle": {
       "paid": false,
@@ -172,7 +172,7 @@
       "paid": true,
       "caller": "anyone but the holder",
       "holderShareBps": 7000,
-      "rule": "Same trait pick as shake, but the decryption right goes to the payer only. 70% of the fee goes to the holder."
+      "rule": "Same trait pick as shake, but the decryption right goes to the payer only. 70% of the fee waits in the box for its holder; for an id nobody holds, the whole fee goes to the collection."
     }
   },
   "economy": {
@@ -193,7 +193,7 @@
     ],
     "welcomeBag": {
       "amount": 100,
-      "rule": "Paid once per box, not per wallet, on the box's first claim. A box that changes hands does not get a second bag."
+      "rule": "Paid once per box, not per wallet, on the box's first claim. A box that changes hands does not get a second bag. An id nobody holds (a mint's empty ids) gets no bag and no purr."
     },
     "purr": {
       "maxPerDay": 4,
@@ -207,7 +207,7 @@
       "maxEatenPerDay": 1000,
       "treasuryBps": 2000,
       "burnBps": 2000,
-      "rule": "Only the holder feeds a sealed cat, an encrypted amount of cCROQ. The cat eats it all: its encrypted weight goes up by the amount. The meal is split: treasuryBps to the collection's treasury, burnBps burnt, the rest (60%) back to the game reserve that pays the purr, so croquettes go round. At most mealsPerDay meals and maxEatenPerDay croquettes per cat and per UTC day, however they are spread: an offer past what is left of the day is cut down to it, silently. A feeder who holds too little moves 0, with no revert and no leak. Nobody can read a weight while the box is sealed. The number of meals is public."
+      "rule": "Only the holder feeds a sealed cat, an encrypted amount of cCROQ. The cat eats it all: its encrypted weight goes up by the amount. The meal is split: treasuryBps to the collection's treasury (readable by nobody, sent by collect at most once every 7 days), burnBps burnt, the rest (60%) back to the game reserve that pays the purr, so croquettes go round. At most mealsPerDay meals and maxEatenPerDay croquettes per cat and per UTC day, however they are spread: an offer past what is left of the day is cut down to it, silently. A feeder who holds too little moves 0, with no revert and no leak. Nobody can read a weight while the box is sealed. The number of meals is public."
     },
     "weight": {
       "builds": [
@@ -235,12 +235,17 @@
     }
   },
   "events": {
-    "Minted": { "fields": ["tokenId", "owner"] },
+    "MintPlaced": { "fields": ["firstTokenId", "buyer", "count", "quantity"], "note": "count ids are created; how many the buyer holds is the encrypted quantity, readable by the buyer only." },
+    "ConfidentialTransfer": { "fields": ["tokenId", "from", "to", "moved"], "note": "moved is an encrypted bool readable by from and to: a transfer from a non-holder, or a decoy, moves nothing and looks the same." },
+    "MilestoneReached": { "fields": ["index", "sold"] },
     "Shaken": { "fields": ["tokenId", "viewer", "paid"], "note": "The trait index is NOT emitted; it stays encrypted-side knowledge of the viewer." },
-    "ObserveRequested": { "fields": ["tokenId"] },
-    "Observed": { "fields": ["tokenId", "seed", "state", "rarityScore", "golden"] },
-    "AliveCheckRequested": { "fields": ["tokenId", "aliveHandle"] },
+    "Fed": { "fields": ["tokenId", "feeder"] },
+    "RequestPlaced": { "fields": ["requestId", "tokenId", "requester", "kind"], "note": "An observe, alive check, entangle or duel step waiting for its public decryption." },
+    "RequestSettled": { "fields": ["requestId", "status"], "note": "Refused when the requester did not hold the box." },
+    "Observed": { "fields": ["tokenId", "openedBy", "seed", "state", "rarityScore", "golden"], "note": "openedBy is the one holder a box ever makes public." },
     "AliveProven": { "fields": ["tokenId", "alive"] },
+    "EntangleProposed": { "fields": ["tokenIdA", "tokenIdB", "proposer"] },
+    "Entangled": { "fields": ["tokenIdA", "tokenIdB"] },
     "DuelPosted": { "fields": ["duelId", "tokenIdA", "tokenIdB", "challenger", "reserved"], "note": "tokenIdB only means something when reserved." },
     "DuelOpened": { "fields": ["duelId", "openUntil"], "note": "The holding was proven: the box is on the duel shelf." },
     "DuelAccepted": { "fields": ["duelId", "tokenIdB", "accepter"] },
@@ -248,12 +253,11 @@
     "DuelCancelled": { "fields": ["duelId"] },
     "DuelVoided": { "fields": ["duelId"], "note": "The challenger did not hold their box." },
     "DuelResolved": { "fields": ["duelId", "winnerTokenId", "loserTokenId", "revealedTraitIndex", "revealedTraitRoll"] },
-    "EntangleProposed": { "fields": ["tokenIdA", "tokenIdB"] },
-    "Entangled": { "fields": ["tokenIdA", "tokenIdB"] },
-    "Fed": { "fields": ["tokenId", "feeder"] },
-    "MealServed": { "fields": ["tokenId", "feeder", "meals"], "note": "Pantry. The amount is not emitted." },
-    "WelcomeBag": { "fields": ["tokenId", "holder"], "note": "Pantry." },
-    "Purred": { "fields": ["holder", "boxes"], "note": "Pantry. The amount is not emitted." },
+    "Funded": { "fields": ["from", "amount"], "note": "Pantry." },
+    "MealServed": { "fields": ["tokenId", "feeder"], "note": "Pantry. The amount is not emitted." },
+    "WelcomeBag": { "fields": ["tokenId"], "note": "Pantry. The holder is not emitted." },
+    "Purred": { "fields": ["tokenId", "days"], "note": "Pantry. The amount and the holder are not emitted." },
+    "Claimed": { "fields": ["caller", "boxes"], "note": "Pantry. The app claims whole windows of ten ids, so the ids named are not the ones held." },
     "WeighInRequested": { "fields": ["tokenId", "weightHandle"], "note": "Pantry." },
     "Weighed": { "fields": ["tokenId", "weight", "build", "sick", "disease"], "note": "Pantry. The weight is public once the box is open." },
     "Collected": { "fields": ["treasury"], "note": "Pantry. The amount is not emitted." }

@@ -78,7 +78,7 @@ flowchart LR
 `DoNotOpen` knows the Pantry only as a trusted reader: the owner's `setTrustedReader`
 lets it ask `isOwner(tokenId, account)`, an encrypted answer, about anyone. Nothing else
 links them; the Pantry never writes to a box, and the economy could be replaced without
-touching one. `ConfidentialERC721` is a reusable base, ERC-165 id `0x5f6463b8`, described in
+touching one. `ConfidentialERC721` is a reusable base, ERC-165 id `0x87ffe7a2`, described in
 [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md). The Pantry holds all its croquettes as one
 cCROQ balance and splits it into encrypted buckets: the reserve, the treasury's
 uncollected share, and the burnt pile. A cat's weight is a counter, not a bucket: the

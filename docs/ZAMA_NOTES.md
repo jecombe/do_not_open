@@ -163,7 +163,9 @@ holds A" publicly decryptable. One `finalizeDuel` with that bit's proof puts it 
 shelf for 7 days (`DUEL_LIFETIME`), or voids it. Without the proof, anyone could fill the
 shelf with boxes they do not hold. A duel is a public act, so this reveals what a resolved
 duel would have revealed anyway, only earlier. A box has one listing at a time: a newer
-proven posting cancels the older one.
+proven posting cancels the older one, unless that one was accepted and waits for its
+outcome. Then the new posting gives way: the outcome is public from the acceptance on, and
+a challenger able to cancel it could read it and escape every loss (fixed on 2026-10-03).
 
 Each box's encrypted score is computed once (about 1.35M HCU) and cached. The challenger
 pays for their box at `postDuel`, the accepter for theirs at `acceptDuel`.
@@ -202,8 +204,8 @@ who holds the box.
 
 ### Contract size
 
-`DoNotOpen` is 24,454 bytes of deployed bytecode against the 24,576 limit, since the
-duel shelf (see the hidden owners' "Contract size" below for how it was brought back
+`DoNotOpen` is 24,512 bytes of deployed bytecode against the 24,576 limit, since the
+duel shelf, the 2026-10-03 security fixes and decoy transfers (see the hidden owners' "Contract size" below for how it was brought back
 under). The next feature must move logic to a library or a second contract that is a
 trusted reader.
 
@@ -504,8 +506,12 @@ this section records why, from the protocol's side.
 ### A Confidential ERC-721, written here
 
 Neither Zama nor OpenZeppelin ships a confidential NFT standard (ERC-7984 is fungible).
-`IConfidentialERC721` (ERC-165 `0x5f6463b8`) stores each owner as an `eaddress` and borrows
-ERC-7984's shape: operators with an expiry, transfers that return an encrypted bool.
+`IConfidentialERC721` (ERC-165 `0x87ffe7a2`) stores each owner as an `eaddress` and borrows
+ERC-7984's shape: operators with an expiry, transfers that return an encrypted bool. As a
+zero amount does in ERC-7984, `confidentialTransferIf` lets a holder send a decoy: an
+encrypted `really` set to false moves nothing. Once a holder is public, decoys sent with the
+real transfer keep the doubt about where the box went. A decoy needs an input proof; one
+encryption holds the bits for every transfer of a send, each used in its own transaction.
 `ownerOf` and `balanceOf` cannot exist: their answer would be the secret.
 
 ### Nothing reverts on ownership, so everything is a request
@@ -558,15 +564,55 @@ never to make what it learns public: its holder checks only mask amounts.
 
 ### Contract size
 
-`DoNotOpen` is 24,454 bytes deployed, 122 under the limit. The duel shelf took it past the
+`DoNotOpen` is 24,512 bytes deployed, 64 under the limit. The duel shelf took it past the
 limit; two changes brought it back: the `onlySealed` modifier calls `_requireSealed`
 instead of carrying the check, so its body is not copied into every function using it,
 and the optimizer runs at 200 instead of 800 (`hardhat.config.ts`), which favours size
-over the gas of each call. The next feature has to move logic out.
+over the gas of each call. The 2026-10-03 security fixes then fit by dropping
+`revenueHandle` (nobody may read the revenue any more) and keeping the withdrawal clock
+private. Decoy transfers (`confidentialTransferIf`, 217 bytes) fit by compiling
+`DoNotOpen` alone with the optimizer at 1 run (a per-file override in `hardhat.config.ts`;
+the other contracts stay at 200): gas per call barely moves, as FHE operations dominate.
+The next feature has to move logic out.
+
+### Sepolia deployment (2026-10-03): decoys and the security review
+
+Current. Deployed at block 11836238 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
+owns every contract and is the treasury. Everything was deployed again: the security
+review changed `DoNotOpen`, `Pantry` and `DecryptionCredits`, decoy transfers changed the
+token, and the spec's rule texts changed its hash, so `DoNotOpenConfig` too. A new `Pantry`
+needs a funded reserve, so the croquette economy (CROQ, cCROQ, the locker and its pool)
+started fresh. `UsdcRamp` was redeployed because its owner argument still named
+`0x5908…029A`; every contract is now owned by the deployer. Credits bought from the old
+`DecryptionCredits` stay there.
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0x816a39b04e0672B4746A5B696E14145F4F852d37`](https://sepolia.etherscan.io/address/0x816a39b04e0672B4746A5B696E14145F4F852d37) |
+| `DoNotOpenConfig` | [`0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D`](https://sepolia.etherscan.io/address/0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x2861240671f6a46522297427FE2BF59F2f9C1074`](https://sepolia.etherscan.io/address/0x2861240671f6a46522297427FE2BF59F2f9C1074) |
+| `Croq` (CROQ) | [`0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308`](https://sepolia.etherscan.io/address/0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308) |
+| `ConfidentialCroq` (cCROQ) | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
+| `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
+| `LiquidityLocker` (holds position #233138) | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
+| CROQ/USDC pool, Uniswap V3, 1% fee | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
+| `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
+
+Gas: `DoNotOpenConfig` 914,027, `DoNotOpen` 5,792,149, `DoNotOpenHooks` 357,103,
+`DecryptionCredits` 478,835, `Croq` 532,843, `ConfidentialCroq` 2,455,772, `Pantry` 3,253,237,
+`Pantry.fund` 441,798, `LiquidityLocker` 558,565, `UsdcRamp` 759,846. The position took
+4,000,000 CROQ and 0 USDC, ticks 69200 to 138200 (CROQ is token0 this time), 0.001012 to
+1.004 USDC per CROQ. `smoke:sepolia` and `smoke:croq` passed in full against it (mints,
+shakes, a refused shake, a feed, an alive check, a duel, an entanglement, an opening that
+matches the generator; welcome bag, meal, weighing, buy, wrap, unwrap, transfer, sell), and
+a box sent with three decoys left the sender's holdings after four transactions.
 
 ### Sepolia deployment (2026-10-02): CROQ-only Uniswap V3 market
 
-Current. Deployed at block 11830294 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
+Replaced by the one above. Deployed at block 11830294 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
 owns the collection, the locker, and is the treasury. The aim was only a new croquette
 economy, whose market is now a single-sided Uniswap V3 position (only CROQ, no USDC from
 the creator) held for good by `LiquidityLocker` (see [CROQ.md](CROQ.md#the-public-market)).

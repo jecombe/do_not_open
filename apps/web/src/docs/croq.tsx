@@ -307,7 +307,7 @@ export function BuildTable() {
   );
 }
 
-const LEAKS = ["l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l9"] as const;
+const LEAKS = ["l1", "l2", "l3", "l4", "l5", "l6", "l7", "l8", "l9", "l10"] as const;
 
 /** What the economy keeps secret, and what it cannot. */
 export function LeakTable() {

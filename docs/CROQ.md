@@ -97,7 +97,9 @@ flowchart LR
 **100 cCROQ per box, once.** It is paid into the box on the box's first claim, whoever
 asks, and its holder collects it. It belongs to the box, not to the wallet: a box that
 changes hands does not get a second bag, and minting more wallets gives nothing more.
-Getting bags means holding boxes, and boxes cost USDC.
+Getting bags means holding boxes, and boxes cost USDC. An id nobody holds (one of a mint's
+empty ids) gets no bag and no purr: a mint of 0 boxes costs only gas, and its empty ids
+would otherwise pour the reserve into stashes nobody can ever claim.
 
 ### Purr
 
@@ -279,10 +281,13 @@ of 20M:
 
 ### Treasury share
 
-The treasury's 20% piles up in an encrypted bucket that only the treasury can read
-(`treasuryShareHandle`). `collect()` sends it all to the treasury in one confidential
-transfer. Anyone may call it; it always pays the treasury. The treasury address is set at
-deployment (`COLLECTION_OWNER`, or the deployer) and cannot change.
+The treasury's 20% piles up in an encrypted bucket that nobody can read, the treasury
+included (`treasuryShareHandle`). `collect()` sends it all to the treasury in one
+confidential transfer, at most once every 7 days (`COLLECT_INTERVAL`). Anyone may call it;
+it always pays the treasury. Were the bucket readable after each meal, or collectable after
+each one, the difference would tell the treasury who fed which cat and how much. The
+treasury address is set at deployment (`COLLECTION_OWNER`, or the deployer) and cannot
+change.
 
 ### The burnt pile
 
@@ -527,9 +532,9 @@ HCU for every function, with what they mean in dollars, are in
 
 | Function | FHE work | HCU |
 | --- | --- | --- |
-| `feed` | holder check, meal count, input check, `min`, confidential `transferFrom`, the feeder's masked copies, two `mul` + `div` for the split, `sub`s and `add`s | ~3,680,000 (1.23M gas) |
-| `claim`, 3 boxes | per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; one `le` and `sub` on the reserve; per box with a stash: `isOwner`, two `select`s, `add`; one transfer | ~2.6M to ~4.5M (about 1M gas) |
-| `claim`, 10 boxes | the same | ~13M |
+| `feed` | holder check, meal count, input check, `min`, confidential `transferFrom`, the feeder's masked copies, two `mul` + `div` for the split, `sub`s and `add`s | ~3,680,000 (1.20M gas) |
+| `claim`, 3 boxes | per box owed something: `isOwner(id, address(0))` and a `select`; per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; one `le` and `sub` on the reserve; per box with a stash: `isOwner`, two `select`s, `add`; one transfer | ~3.1M to ~5.0M (1.15M to 1.34M gas) |
+| `claim`, 10 boxes | the same | ~14.8M |
 | `weigh`, never fed | none | 0 |
 | `weigh` + `finalizeWeigh` | one public decryption request, then plain arithmetic | ~0 |
 | `collect` | one confidential transfer | ~590,000 |
@@ -539,8 +544,27 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 
 ## Deployed on Sepolia
 
-The economy of the current `DoNotOpen` (deployed 2026-10-02, block 11830294), with the
+The economy of the current `DoNotOpen` (deployed 2026-10-03, block 11836238), with the
 CROQ-only V3 market:
+
+| Contract | Address |
+| --- | --- |
+| `Croq` | [`0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308`](https://sepolia.etherscan.io/address/0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308) |
+| `ConfidentialCroq` | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
+| `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
+| `LiquidityLocker` | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
+| CROQ/USDC pool (Uniswap V3, 1%) | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
+| Position | #233138, ticks 69200 to 138200, 4,000,000 CROQ, 0 USDC |
+| Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |
+| `NonfungiblePositionManager` | `0x1238536071E1c677A632429e3655c799b22cDA52` |
+| `SwapRouter02` | `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` |
+| `QuoterV2` | `0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3` |
+
+The treasury, and the locker's beneficiary and owner, is the deployer
+`0x6a18cFC3fAeef453B295B12246d40a82593b3208`. Deployment gas: `Croq` 533k,
+`ConfidentialCroq` 2.46M, `Pantry` 3.25M, `fund` 442k, `LiquidityLocker` 559k.
+
+The one that read the `DoNotOpen` of the CROQ-only V3 market (2026-10-02, block 11830294), replaced:
 
 | Contract | Address |
 | --- | --- |
@@ -549,15 +573,6 @@ CROQ-only V3 market:
 | `Pantry` | [`0xf506832ab27DF17ece72924502537ecCf7586CDB`](https://sepolia.etherscan.io/address/0xf506832ab27DF17ece72924502537ecCf7586CDB) |
 | `LiquidityLocker` | [`0xCA7Eee59de903F9b6bfab466667131Fb58403BF3`](https://sepolia.etherscan.io/address/0xCA7Eee59de903F9b6bfab466667131Fb58403BF3) |
 | CROQ/USDC pool (Uniswap V3, 1%) | [`0x399Dc7af546154998D302d0b3B312750DA962100`](https://sepolia.etherscan.io/address/0x399Dc7af546154998D302d0b3B312750DA962100) |
-| Position | #233099, ticks -138200 to -69200, 4,000,000 CROQ, 0 USDC |
-| Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |
-| `NonfungiblePositionManager` | `0x1238536071E1c677A632429e3655c799b22cDA52` |
-| `SwapRouter02` | `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` |
-| `QuoterV2` | `0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3` |
-
-The treasury, and the locker's beneficiary and owner, is the deployer
-`0x6a18cFC3fAeef453B295B12246d40a82593b3208`. Deployment gas: `Croq` 533k,
-`ConfidentialCroq` 2.46M, `Pantry` 3.16M, `fund` 442k, `LiquidityLocker` 559k.
 
 The one that read the `DoNotOpen` with the duel shelf (2026-10-02, block 11828557), replaced:
 

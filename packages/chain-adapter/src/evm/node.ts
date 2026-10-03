@@ -27,7 +27,7 @@ export function createSepoliaNodeAdapter(opts: NodeEvmOptions = {}): EvmFhevmAda
   const chain = { ...SEPOLIA, rpcUrl: opts.rpcUrl || SEPOLIA.rpcUrl };
   const provider = new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true });
   const signer = opts.signer?.connect(provider) ?? (opts.privateKey ? new Wallet(opts.privateKey, provider) : null);
-  const indexer = opts.apiUrl && !opts.address ? new IndexerClient(opts.apiUrl) : null;
+  const indexer = opts.apiUrl && !opts.address ? new IndexerClient(opts.apiUrl, { collection: SEPOLIA_DEPLOYMENT.address }) : null;
   const proxy = indexer && opts.relayerProxy ? `${opts.apiUrl!.replace(/\/$/, "")}/relayer/v2` : null;
 
   return new EvmFhevmAdapter({
@@ -50,7 +50,7 @@ export function createSepoliaNodeAdapter(opts: NodeEvmOptions = {}): EvmFhevmAda
       : { current: () => null, options: () => [], connect: () => Promise.reject(new Error("no signer configured")), disconnect: async () => undefined, onChange: () => () => undefined },
     loadRelayer: async () => {
       const { createInstance, SepoliaConfig } = await import("@zama-fhe/relayer-sdk/node");
-      return createInstance({ ...SepoliaConfig, network: chain.rpcUrl, ...(proxy ? { relayerUrl: proxy } : {}) });
+      return createInstance({ ...SepoliaConfig, network: chain.rpcUrl, ...(proxy && (await indexer!.matches()) ? { relayerUrl: proxy } : {}) });
     },
   });
 }

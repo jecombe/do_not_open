@@ -10,15 +10,17 @@ Hardhat project built on the official Zama template. Seven contracts, and a reus
   holder's own receipts. Any collection can inherit it. See
   [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNERS.md).
 - **`DoNotOpen`** — a Confidential ERC-721 and all FHE logic of the boxes. 10,000 boxes; who
-  holds them and how many were sold are encrypted. Paid in cUSDC.
+  holds them and how many were sold are encrypted. Paid in cUSDC. Nobody may read the
+  revenue, the owner included; `withdraw` pays it out at most once a week.
 - **`UsdcRamp`** — ETH in, USDC or cUSDC out, through a public pool, for a small fee.
 - **`Croq`** — CROQ, a plain ERC-20 with 0 decimals. 20,000,000 minted once in the
   constructor; no mint function, no owner.
 - **`ConfidentialCroq`** — cCROQ, OpenZeppelin's `ERC7984ERC20Wrapper` around CROQ,
   unmodified. Encrypted balances and transfer amounts, 1:1 with CROQ.
 - **`Pantry`** — the croquette economy: welcome bags, the daily purr, meals into
-  encrypted weights, the weigh-in. Reads `DoNotOpen` (as a trusted reader of who holds a box),
-  never writes to it. Parameters from the spec's `economy` section (`pantryParamsFromSpec()`).
+  encrypted weights, the weigh-in. Reads `DoNotOpen` (as a trusted reader of who holds a box,
+  and of which ids nobody holds: those get no bag or purr), never writes to it. The
+  treasury's share of each meal is readable by nobody and `collect` runs at most once a week. Parameters from the spec's `economy` section (`pantryParamsFromSpec()`).
 - **`LiquidityLocker`** — holds the CROQ market's Uniswap V3 position for good. No function
   removes liquidity or moves a position out; anyone can `collect(positionId)`, which sends
   the trading fees to the beneficiary (the treasury); the owner (`Ownable2Step`) can only
@@ -55,25 +57,27 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `mint`, 1 box among 10 ids | ~2.6M | ~3.3M |
 | `mint`, 1 box among 1 id | ~1.0M | ~1.9M |
 | `confidentialTransfer` | ~184k | ~200k |
-| `shake` / `paidShake` | ~421k / ~889k | ~0.9M / ~2.0M |
-| `feed` | ~530k | ~1.07M |
-| `observe` + `finalize` | ~698k + ~223k | ~1.12M |
+| `confidentialTransferIf` (a decoy, or the real one sent among decoys) | ~278k | ~225k |
+| `shake` / `paidShake` | ~421k / ~896k | ~0.9M / ~2.17M |
+| `feed` | ~502k | ~1.07M |
+| `observe` + `finalize` | ~625k + ~291k | ~1.12M |
 | `postDuel` (first score) + `finalizeDuel` | ~585k + ~139k | ~1.47M |
 | `acceptDuel` (first score) + `finalizeDuel` | ~1.12M + ~177k | ~2.77M |
-| `Pantry.feed` | ~1.23M | ~3.68M |
-| `Pantry.claim`, 10 boxes | | ~13M |
+| `Pantry.feed` | ~1.20M | ~3.68M |
+| `Pantry.claim`, 10 boxes | | ~14.8M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
 
-Deployed size: `DoNotOpen` 24,454 bytes (limit 24,576), `Pantry` about 14,000. To stay under
-the limit, the optimizer runs at 200 (`hardhat.config.ts`), and `onlySealed` calls
+Deployed size: `DoNotOpen` 24,512 bytes (limit 24,576), `Pantry` about 14,000. To stay under
+the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
+override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
 
 ## Commands
 
 ```bash
 pnpm compile
-pnpm test                 # 99 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp
+pnpm test                 # 147 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the locker
 
 # Local walkthrough
 pnpm chain                # terminal 1

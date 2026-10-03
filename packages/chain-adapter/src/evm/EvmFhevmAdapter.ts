@@ -12,6 +12,7 @@ import {
   type TransactionResponse,
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
+import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf } from "../duels";
 import { traitIndexAtOffset } from "../layout";
 import {
@@ -36,6 +37,7 @@ import {
   type Disease,
   type DuelStatus,
   type PostDuelOptions,
+  type SendBoxOptions,
   type EconomyInfo,
   type Fees,
   type MintOptions,
@@ -866,6 +868,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.afterSent("resumable", () => this.finishDuel(duelId, opts));
     const duel = await this.duelInfo(duelId);
     if (duel.status === "void") throw new ChainError("not-yours", "This box is not yours: it did not go on the duel shelf.");
+    // An accepted duel of the same box runs to its end: the new posting gave way to it.
+    if (duel.status === "cancelled") throw new ChainError("reverted", "This box already has an accepted duel: it runs to its end first. Post it again once that duel is over.", "DuelPending");
     return duel;
   }
 
@@ -905,9 +909,21 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return (await this.confidentialUsdcBalance(opts)) - before;
   }
 
-  async sendBox(tokenId: number, to: Address, opts?: ActionOptions): Promise<void> {
+  async sendBox(tokenId: number, to: Address, opts?: SendBoxOptions): Promise<void> {
     const account = await this.signer().getAddress();
-    await this.send(opts, (c) => c["confidentialTransfer(address,uint256)"]!(to, tokenId));
+    const plan = decoyPlan(to, opts?.decoys ?? 0);
+    if (plan.length === 1) {
+      await this.send(opts, (c) => c["confidentialTransfer(address,uint256)"]!(to, tokenId));
+    } else {
+      if (!this.contract.interface.getFunction("confidentialTransferIf")) {
+        throw new ChainError("unknown", "This deployment cannot send decoys: send the box without them.");
+      }
+      // One encryption for every "really" bit; the real transfer goes the same way as the decoys.
+      const input = await this.encrypt(this.opts.address, account, (b) => plan.reduce((acc, p) => acc.addBool(p.really), b), "the decoys", opts);
+      for (const [i, p] of plan.entries()) {
+        await this.send(opts, (c) => c.confidentialTransferIf!(p.to, tokenId, input.handles[i], input.inputProof));
+      }
+    }
     // Read the receipt back: if the box was the account's, it is gone now.
     if (this.holdings?.account === account) await this.boxesOf(account);
   }
@@ -933,10 +949,15 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return { account, message, signature, recorded };
   }
 
+  /** Through the API's proxy, as long as that API indexes this collection (see `loadRelayer`). */
+  private async metered(): Promise<boolean> {
+    return !!this.opts.metered && (await (this.opts.indexer?.matches() ?? true));
+  }
+
   async decryptionAllowance(): Promise<DecryptionAllowance | null> {
     const account = this.address_;
     const ix = this.opts.indexer;
-    if (!this.opts.metered || !ix || !account) return null;
+    if (!ix || !account || !(await this.metered())) return null;
     const [data, price] = await Promise.all([this.allowanceSince(ix, account), this.creditPrice()]);
     return { ...data, price };
   }
@@ -1330,7 +1351,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       try {
         const relayer = await this.loadRelayer();
         let auth: { auth: { __type: "BearerToken"; token: string } } | undefined;
-        if (this.opts.metered) {
+        if (await this.metered()) {
           const permit = await this.permitFor(relayer, this.signer(), account, opts);
           auth = { auth: { __type: "BearerToken", token: permitToken(permit) } };
         }

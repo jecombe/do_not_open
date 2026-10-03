@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {FHE, ebool, eaddress} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, ebool, eaddress, externalEbool} from "@fhevm/solidity/lib/FHE.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IConfidentialERC721} from "./IConfidentialERC721.sol";
 
@@ -12,7 +12,8 @@ import {IConfidentialERC721} from "./IConfidentialERC721.sol";
 ///      decides how tokens are minted (`_mint`) and which contracts may read ownership
 ///      (`_isTrustedReader`).
 ///
-///      HCU: a transfer is one `eq` and one `select` on an `eaddress`, about 200,000.
+///      HCU: a transfer is one `eq` and one `select` on an `eaddress`, about 200,000; a transfer
+///      that may be a decoy adds one `and`.
 ///      `isOwner` is one `eq`, about 115,000. A mint is one `select`, about 83,000.
 abstract contract ConfidentialERC721 is IConfidentialERC721 {
     string private _name;
@@ -68,12 +69,20 @@ abstract contract ConfidentialERC721 is IConfidentialERC721 {
     }
 
     function confidentialTransfer(address to, uint256 tokenId) public virtual returns (ebool moved) {
-        moved = _transfer(msg.sender, to, tokenId);
+        moved = _transfer(msg.sender, to, tokenId, ebool.wrap(0));
+    }
+
+    function confidentialTransferIf(address to, uint256 tokenId, externalEbool really, bytes calldata inputProof)
+        public
+        virtual
+        returns (ebool moved)
+    {
+        moved = _transfer(msg.sender, to, tokenId, FHE.fromExternal(really, inputProof));
     }
 
     function confidentialTransferFrom(address from, address to, uint256 tokenId) public virtual returns (ebool moved) {
         if (!isOperator(from, msg.sender)) revert ConfidentialERC721UnauthorizedSpender(from, msg.sender);
-        moved = _transfer(from, to, tokenId);
+        moved = _transfer(from, to, tokenId, ebool.wrap(0));
     }
 
     function isOwner(uint256 tokenId, address account) public virtual returns (ebool owns) {
@@ -129,10 +138,12 @@ abstract contract ConfidentialERC721 is IConfidentialERC721 {
         emit ConfidentialTransfer(tokenId, address(0), to, real);
     }
 
-    /// @dev Moves `tokenId` from `from` to `to` if `from` holds it; nothing happens otherwise.
-    function _transfer(address from, address to, uint256 tokenId) internal virtual returns (ebool moved) {
+    /// @dev Moves `tokenId` from `from` to `to` if `from` holds it and `really` is true or left
+    ///      uninitialized; nothing happens otherwise.
+    function _transfer(address from, address to, uint256 tokenId, ebool really) internal virtual returns (ebool moved) {
         if (to == address(0)) revert ConfidentialERC721InvalidReceiver(address(0));
         moved = _isOwner(tokenId, from);
+        if (FHE.isInitialized(really)) moved = FHE.and(moved, really);
         eaddress owner = FHE.select(moved, FHE.asEaddress(to), _owners[tokenId]);
         FHE.allowThis(owner);
         _owners[tokenId] = owner;

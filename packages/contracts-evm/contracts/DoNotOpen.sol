@@ -163,6 +163,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     error DuelExpired();
     error InvalidMilestones();
     error InvalidIdCount();
+    error WithdrawTooSoon();
 
     /// @notice A mint created `count` token ids from `firstTokenId`. How many are owned is the
     ///         encrypted `quantity`, readable by the buyer.
@@ -204,6 +205,9 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     uint256 public constant MAX_CLAIM = 10;
     /// @notice How long a proven duel stays on the shelf.
     uint64 public constant DUEL_LIFETIME = 7 days;
+    /// @dev The least time between two withdrawals: the owner learns the revenue only in
+    ///         sums this long, never mint by mint.
+    uint64 private constant WITHDRAW_INTERVAL = 7 days;
 
     DoNotOpenConfig public immutable config;
     /// @notice Plain USDC: what cUSDC wraps. Prices are in its smallest unit.
@@ -246,8 +250,11 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     euint16 private _sold;
     /// @dev "The sold count reached the next milestone", publicly decryptable after each mint.
     ebool private _milestoneBit;
-    /// @dev cUSDC the collection earned. The owner may read it.
+    /// @dev cUSDC the collection earned. Nobody may read it: a readable total would tell the
+    ///      owner each mint's hidden quantity, one difference at a time.
     euint64 private _revenue;
+    /// @dev When the revenue was last withdrawn (the deployment counts as one).
+    uint64 private _lastWithdrawal;
 
     mapping(address reader => bool) public trustedReader;
     mapping(uint256 tokenId => euint64) private _seed;
@@ -313,7 +320,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         FHE.allowThis(_sold);
         _revenue = FHE.asEuint64(0);
         FHE.allowThis(_revenue);
-        FHE.allow(_revenue, owner_);
+        _lastWithdrawal = uint64(block.timestamp);
     }
 
     modifier onlySealed(uint256 tokenId) {
@@ -419,7 +426,8 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         euint64 fee = FHE.asEuint64(paidShakeFee);
         euint64 paid = _pull(fee);
         ebool ok = FHE.eq(paid, fee);
-        euint64 share = FHE.select(ok, FHE.asEuint64(_holderShare), FHE.asEuint64(0));
+        // An empty id has no holder to claim its share: the whole fee is revenue then.
+        euint64 share = FHE.select(FHE.and(ok, FHE.not(_isOwner(tokenId, address(0)))), FHE.asEuint64(_holderShare), FHE.asEuint64(0));
         euint64 earnings = FHE.add(_earnings[tokenId], share);
         FHE.allowThis(earnings);
         _earnings[tokenId] = earnings;
@@ -508,9 +516,9 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     function observe(uint256 tokenId) external onlySealed(tokenId) returns (uint256 requestId) {
         ebool holds = _isOwner(tokenId, msg.sender);
         euint64 fee = FHE.asEuint64(observeFee);
-        // Only a holder is charged.
+        // Only a holder is charged. The fee is revenue once the box opens, and goes back if its
+        // entangled partner opened it first: until then it is in no account.
         euint64 paid = _pull(FHE.select(holds, fee, FHE.asEuint64(0)));
-        _addRevenue(paid);
         ebool ok = FHE.and(holds, FHE.eq(paid, fee));
 
         uint256 partner = _partner[tokenId];
@@ -650,11 +658,13 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     }
 
     function _settleOpen(Request storage r, bytes calldata cleartexts) internal {
+        euint64 fee = FHE.asEuint64(observeFee);
         if (status[r.tokenId] != BoxStatus.Sealed) {
             // Opened meanwhile, by its entangled partner: the fee goes back.
-            _payBack(r.requester, observeFee);
+            _pay(r.requester, fee);
             return;
         }
+        _addRevenue(fee);
         // Words after the "ok" bit: seed, [affection], then the partner's seed, [affection].
         uint256 at = 1;
         uint64 seed = uint64(_word(cleartexts, at++));
@@ -846,7 +856,15 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
             }
             uint256 previous = _listing[d.tokenA];
             if (previous != 0) {
-                _duels[previous - 1].status = DuelStatus.Cancelled;
+                Duel storage p = _duels[previous - 1];
+                // An accepted duel runs to its end: the new posting gives way to it, or its
+                // challenger could read the outcome and escape a loss.
+                if (p.status == DuelStatus.Pending) {
+                    d.status = DuelStatus.Cancelled;
+                    emit DuelCancelled(duelId);
+                    return;
+                }
+                p.status = DuelStatus.Cancelled;
                 emit DuelCancelled(previous - 1);
             }
             _listing[d.tokenA] = duelId + 1;
@@ -954,25 +972,10 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         confidentialUsdc.confidentialTransfer(to, amount);
     }
 
-    function _payBack(address to, uint64 amount) internal {
-        euint64 value = FHE.asEuint64(amount);
-        euint64 revenue = FHE.sub(_revenue, value);
-        FHE.allowThis(revenue);
-        FHE.allow(revenue, owner());
-        _revenue = revenue;
-        _pay(to, value);
-    }
-
     function _addRevenue(euint64 amount) internal {
         euint64 revenue = FHE.add(_revenue, amount);
         FHE.allowThis(revenue);
-        FHE.allow(revenue, owner());
         _revenue = revenue;
-    }
-
-    /// @notice Handle of the collection's cUSDC revenue, readable by the owner.
-    function revenueHandle() external view returns (bytes32) {
-        return FHE.toBytes32(_revenue);
     }
 
     // ----------------------------------------------------------------- admin
@@ -986,12 +989,13 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         _baseTokenURI = baseURI_;
     }
 
-    /// @notice Sends the cUSDC revenue to `to`.
+    /// @notice Sends the cUSDC revenue to `to`, at most once per `WITHDRAW_INTERVAL`.
     function withdraw(address to) external onlyOwner {
+        if (block.timestamp < _lastWithdrawal + WITHDRAW_INTERVAL) revert WithdrawTooSoon();
+        _lastWithdrawal = uint64(block.timestamp);
         euint64 amount = _revenue;
         euint64 zero = FHE.asEuint64(0);
         FHE.allowThis(zero);
-        FHE.allow(zero, owner());
         _revenue = zero;
         _pay(to, amount);
     }

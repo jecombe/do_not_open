@@ -23,6 +23,7 @@ import { parseAmount } from "./PantryView";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
 import { boxTags } from "../chain/tags";
+import { Hint } from "./Hint";
 
 interface Props {
   quality: QualitySettings;
@@ -31,6 +32,8 @@ interface Props {
   onTokenChange: (tokenId: number) => void;
   onPair: (tokenId: number) => void;
   onShelf: () => void;
+  /** To the croquettes tab, where the boxes' bags and purrs are collected. */
+  onPantry: () => void;
   /** The view the box was opened from, and the way back to it. */
   backTo: Exclude<View, "box">;
   onBack: () => void;
@@ -48,6 +51,8 @@ const WORKING: Record<string, AppKey> = {
 };
 const ANGLES: InspectAngle[] = ["front", "left", "back", "right", "above"];
 const noop = () => {};
+/** Decoys sent with a box given away, when the holder asks for them. */
+const DECOYS = 3;
 /** What each slow action goes through, in order, as the tracker lists it. */
 const PLANS: Record<string, PlannedStep[]> = {
   open: [
@@ -120,7 +125,7 @@ type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive"
 const { meal } = gameSpec.economy;
 const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
-export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, backTo, onBack }: Props) {
+export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onPantry, backTo, onBack }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
@@ -136,6 +141,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const [day, setDay] = useState<{ tokenId: number; value: PantryDay } | null>(null);
   const [giving, setGiving] = useState(false);
   const [giveTo, setGiveTo] = useState("");
+  const [decoys, setDecoys] = useState(false);
   const [missingId, setMissingId] = useState<number | null>(null);
   const [felt, setFelt] = useState<TraitRoll | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -172,6 +178,16 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     );
   }, [adapter, tokenId]);
   const kitchen = pantry?.tokenId === tokenId ? pantry.at : null;
+  // A welcome bag or a purr waits for this box in the Pantry.
+  const claimable = !!kitchen && (!kitchen.welcomed || kitchen.nextClaimAt <= Date.now() / 1000);
+  const collectLine = (
+    <p className="fine">
+      {t(claimable ? "box.claimWaiting" : "box.croquettesFrom")}{" "}
+      <button type="button" className="link" onClick={onPantry}>
+        {t("box.goCollect")}
+      </button>
+    </p>
+  );
   const tags = useMemo(
     () => (info ? boxTags(info, duels?.tokenId === tokenId ? duels.list : []) : []),
     // `t` changes with the language the tags are worded in.
@@ -280,7 +296,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     if (!/^0x[0-9a-fA-F]{40}$/.test(to)) return;
     start();
     const done = await action.run("give", async (o) => {
-      await adapter.sendBox(tokenId, to, o);
+      await adapter.sendBox(tokenId, to, { ...o, decoys: decoys ? DECOYS : 0 });
       return true;
     });
     if (!done) return;
@@ -569,6 +585,10 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   <button type="submit" className="plain-button" disabled={!!busy || !/^0x[0-9a-fA-F]{40}$/.test(giveTo.trim())}>
                     {t("box.giveGo")}
                   </button>
+                  <label className="check">
+                    <input type="checkbox" checked={decoys} onChange={(e) => setDecoys(e.target.checked)} disabled={!!busy} />
+                    {t("box.giveDecoys", { n: DECOYS })}
+                  </label>
                 </form>
               )}
 
@@ -605,13 +625,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                         ? t("box.todayUnread")
                         : t("box.today", { meals: today.meals, max: meal.mealsPerDay, eaten: String(today.eaten), cap: meal.maxEatenPerDay })}
                       {tooMuch ? ` ${t("box.tooMuchToday", { left: String(leftToday) })}` : ""}
+                      <Hint label={t("box.serveHelp")}>
+                        {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
+                      </Hint>
                     </p>
-                    <p className="fine">
-                      {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
-                    </p>
+                    {collectLine}
                   </>
                 ) : giving ? (
-                  <p className="fine">{t("box.giveHint")}</p>
+                  <p className="fine">
+                    {t("box.giveHint", { serial: box.serial })}
+                    {decoys ? ` ${t("box.giveDecoysHint", { n: DECOYS })}` : ""}
+                  </p>
                 ) : note ? (
                   <p className="fine">{t(note)}</p>
                 ) : !info ? null : !account ? (
@@ -619,7 +643,10 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 ) : info.status === "opening" ? (
                   <p className="fine">{t("box.stuckOpening")}</p>
                 ) : isHolder ? (
-                  <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
+                  <>
+                    <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
+                    {claimable && collectLine}
+                  </>
                 ) : (
                   <p className="fine">
                     {t("box.strangerHint", { paid: fee(collection?.fees.paidShake ?? 0n, collection, pay), share: HOLDER_SHARE, feed: fee(collection?.fees.feed ?? 0n, collection, pay) })}

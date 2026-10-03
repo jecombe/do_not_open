@@ -77,6 +77,6 @@ export const homeEs: Record<HomeKey, string> = {
   "home.croq.sick": "Enfermo",
   "home.croq.sickText": "más allá de un límite secreto propio ({min}–{max}): ultra raro",
   "home.croq.p2": "Un gato come como mucho {meals} comidas y {cap} croquetas al día, así que un gato gordo lleva meses. Cada comida se reparte: el {treasury} % a la tesorería, el {reserve} % vuelve al ronroneo que todos cobran, el {burn} % se quema.",
-  "home.croq.p3": "Cada caja trae una bolsa de bienvenida de {bag} croquetas y ronronea unas cuantas más cada día. Las croquetas también se negocian en un mercado público: puedes comprar más o venderlas. Dentro del juego son secretas: nadie ve tu saldo.",
+  "home.croq.p3": "Cada caja comprada trae una bolsa de bienvenida de {bag} croquetas y ronronea unas cuantas más cada día. Las croquetas también se negocian en un mercado público: puedes comprar más o venderlas. Dentro del juego son secretas: nadie ve tu saldo.",
   "home.croq.link": "Cómo funcionan las croquetas",
 };

@@ -1,5 +1,6 @@
 import { FhevmType } from "@fhevm/hardhat-plugin";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import type { ContractTransactionReceipt, Log } from "ethers";
 import { ethers, fhevm } from "hardhat";
@@ -267,3 +268,18 @@ export async function balanceOf(cCroq: ConfidentialCroq, who: HardhatEthersSigne
 /** Mock only: reads any euint64 straight from the local coprocessor. */
 export const peek64 = async (handle: string) =>
   handle === ethers.ZeroHash ? 0n : fhevm.debugger.decryptEuint(FhevmType.euint64, handle);
+
+const ALLOWED = ethers.id("Allowed(address,address,bytes32)");
+
+/** Accounts the transaction allowed, for good, on any handle: read from the FHEVM ACL's `Allowed` events. */
+export function grantedIn(receipt: ContractTransactionReceipt | null) {
+  return receipt!.logs.filter((l) => l.topics[0] === ALLOWED).map((l) => ethers.getAddress(ethers.dataSlice(l.topics[2]!, 12)));
+}
+
+/** Waits out the withdrawal interval, has the owner withdraw to `to`, and returns what arrived. */
+export async function withdrawAll(dno: DoNotOpen, cUsdc: TestConfidentialUSDC, to: HardhatEthersSigner) {
+  await time.increase(7 * 86_400);
+  const before = await confidentialUsdcOf(cUsdc, to);
+  await (await dno.withdraw(to.address)).wait();
+  return (await confidentialUsdcOf(cUsdc, to)) - before;
+}

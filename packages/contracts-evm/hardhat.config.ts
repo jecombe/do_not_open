@@ -39,11 +39,26 @@ const config: HardhatUserConfig = {
   },
   paths: { artifacts: "./artifacts", cache: "./cache", sources: "./contracts", tests: "./test" },
   solidity: {
-    version: "0.8.27",
-    settings: {
-      metadata: { bytecodeHash: "none" },
-      optimizer: { enabled: true, runs: 200 },
-      evmVersion: "cancun",
+    compilers: [
+      {
+        version: "0.8.27",
+        settings: {
+          metadata: { bytecodeHash: "none" },
+          optimizer: { enabled: true, runs: 200 },
+          evmVersion: "cancun",
+        },
+      },
+    ],
+    overrides: {
+      // DoNotOpen sits at the 24,576-byte limit: optimized for size, not for repeated calls.
+      "contracts/DoNotOpen.sol": {
+        version: "0.8.27",
+        settings: {
+          metadata: { bytecodeHash: "none" },
+          optimizer: { enabled: true, runs: 1 },
+          evmVersion: "cancun",
+        },
+      },
     },
   },
   typechain: { outDir: "types", target: "ethers-v6" },

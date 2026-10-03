@@ -313,4 +313,22 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       alter table herald_state add primary key (network);
     `,
   },
+  {
+    version: 10,
+    name: "decoys and closed holes",
+    sql: /* sql */ `
+      -- A new DoNotOpen (decoy transfers, the security review's fixes), a new croquette economy
+      -- and new decryption credits: the old contracts' events mean nothing to them. The index is
+      -- emptied and rebuilt from the oldest live contract on. Credits bought from the old
+      -- contract stay with it, so what was spent of them is forgotten too. Sign-ins, release
+      -- forms, the free daily counts and the decryption cache are kept.
+      truncate events, boxes, duels, requests, entangle_proposals, mints, milestones, transfers, sync_state, indexed_ranges,
+        published_handles, credit_accounts, relayer_credits_spent;
+      delete from users where registered_at is null;
+      update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
+      -- Posts are keyed by the fact they tell (opening:0, duel:0...): the new collection's own
+      -- would read as already posted. The old ones keep their text under a prefixed key.
+      update posts set key = 'v0x5eBa:' || key where kind not in ('digest', 'lesson');
+    `,
+  },
 ];

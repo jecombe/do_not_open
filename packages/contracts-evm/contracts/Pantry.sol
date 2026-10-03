@@ -46,7 +46,9 @@ interface IDoNotOpen {
 ///  2. NOBODY is allowed on a weight, the reserve or the burnt pile, holder and deployer
 ///     included. FHE.allow grants are permanent, so a weight readable by its holder would stay
 ///     readable by every past holder after a sale. The weight is made public only once the box
-///     is opened. A feeder may read what their own meals added today, and the treasury its share.
+///     is opened. A feeder may read what their own meals added today. The treasury reads its share
+///     only as what `collect` pays it, at most once a week: a share readable after every meal
+///     would tell it who fed which cat, and how much.
 ///
 ///  3. A cat eats at most `mealsPerDay` meals and `maxEatenPerDay` croquettes per UTC day,
 ///     however they are spread. Who holds a box is encrypted (see `ConfidentialERC721`), so
@@ -146,6 +148,7 @@ contract Pantry is ZamaEthereumConfig {
     error NothingToClaim();
     error NothingToCollect();
     error InvalidBoxCount();
+    error CollectTooSoon();
 
     event Funded(address indexed from, uint64 amount);
     event MealServed(uint256 indexed tokenId, address indexed feeder);
@@ -162,6 +165,9 @@ contract Pantry is ZamaEthereumConfig {
     /// @notice Receives the treasury's share of every meal, through `collect`.
     address public immutable treasury;
     uint256 public immutable startedAt;
+    /// @notice The least time between two collections, so the treasury only ever learns its
+    ///         share in weekly sums.
+    uint64 public constant COLLECT_INTERVAL = 7 days;
 
     uint64 public immutable welcomeBag;
     uint8 public immutable purrMaxPerDay;
@@ -185,6 +191,8 @@ contract Pantry is ZamaEthereumConfig {
     euint64 private _reserve;
     euint64 private _burnt;
     euint64 private _treasuryShare;
+    /// @notice When the treasury last collected (the deployment counts as one).
+    uint64 public lastCollected;
     mapping(uint256 tokenId => euint64) private _weight;
     mapping(uint256 tokenId => euint64) private _eatenToday;
     mapping(uint256 tokenId => euint8) private _mealsToday;
@@ -222,6 +230,7 @@ contract Pantry is ZamaEthereumConfig {
         croq = IERC20(cCroq_.underlying());
         treasury = treasury_;
         startedAt = block.timestamp;
+        lastCollected = uint64(block.timestamp);
         welcomeBag = p.welcomeBag;
         purrMaxPerDay = p.purrMaxPerDay;
         vetMultiplier = p.vetMultiplier;
@@ -327,13 +336,15 @@ contract Pantry is ZamaEthereumConfig {
         return (FHE.toBytes32(s.meals), FHE.toBytes32(s.eaten));
     }
 
-    /// @notice Sends the treasury its share of every meal so far. Anyone may call it.
+    /// @notice Sends the treasury its share of every meal so far. Anyone may call it, at most
+    ///         once per `COLLECT_INTERVAL`.
     function collect() external {
         euint64 owed = _treasuryShare;
         if (!FHE.isInitialized(owed)) revert NothingToCollect();
+        if (block.timestamp < lastCollected + COLLECT_INTERVAL) revert CollectTooSoon();
+        lastCollected = uint64(block.timestamp);
         euint64 zero = FHE.asEuint64(0);
         FHE.allowThis(zero);
-        FHE.allow(zero, treasury);
         _treasuryShare = zero;
         _pay(treasury, owed);
         emit Collected(treasury);
@@ -355,6 +366,9 @@ contract Pantry is ZamaEthereumConfig {
         euint64 totalDue;
         for (uint256 i = 0; i < count; i++) {
             dues[i] = _accrue(tokenIds[i], era);
+            // An id nobody holds (a mint's empty ids) gets nothing: its stash could never be
+            // claimed, and free empty ids would drain the reserve.
+            if (FHE.isInitialized(dues[i])) dues[i] = FHE.select(boxes.isOwner(tokenIds[i], address(0)), FHE.asEuint64(0), dues[i]);
             if (FHE.isInitialized(dues[i])) totalDue = FHE.isInitialized(totalDue) ? FHE.add(totalDue, dues[i]) : dues[i];
         }
         // The reserve pays all of this claim or, once it can no longer, none of it.
@@ -507,7 +521,7 @@ contract Pantry is ZamaEthereumConfig {
         return FHE.toBytes32(_burnt);
     }
 
-    /// @notice Handle of the treasury's uncollected share, readable by the treasury.
+    /// @notice Handle of the treasury's uncollected share, readable by nobody.
     function treasuryShareHandle() external view returns (bytes32) {
         return FHE.toBytes32(_treasuryShare);
     }
@@ -533,7 +547,6 @@ contract Pantry is ZamaEthereumConfig {
 
         euint64 share = FHE.add(_treasuryShare, toTreasury);
         FHE.allowThis(share);
-        FHE.allow(share, treasury);
         _treasuryShare = share;
 
         euint64 burnt = FHE.add(_burnt, toFire);

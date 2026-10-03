@@ -79,7 +79,9 @@ so the interface has no owner field anywhere:
   the ones waiting for their proof, `finishRequest(requestId)` sends it (anyone may).
 - Duels go on a shelf. `postDuel(tokenA, { reservedFor })` puts a box up, open to any
   sealed box or reserved for one, and proves the caller holds it (that much becomes
-  public); it throws `not-yours` when they do not. `duelShelf()` lists every box up for a
+  public); it throws `not-yours` when they do not, and `reverted` with reason `DuelPending`
+  when the box's listed duel was accepted and still waits for its outcome (the new posting
+  gives way to it). `duelShelf()` lists every box up for a
   duel that can still be taken up. `acceptDuel(duelId, tokenB)` takes one up and returns
   the outcome, or `null` when the duel was void or went back on the shelf. `finishDuel`
   sends whichever proof a duel waits for (the holding, or the outcome); `cancelDuel`
@@ -87,7 +89,14 @@ so the interface has no owner field anywhere:
   boxes can settle: both can be up at once. `DuelStatus` is `"posted"`, `"open"`,
   `"pending"`, `"resolved"`, `"cancelled"` or `"void"` (`"none"` for an unknown id).
 - `claimEarnings(tokenIds)` collects what paid shakes earned the boxes the caller holds;
-  `sendBox(tokenId, to)` is a confidential transfer.
+  `sendBox(tokenId, to)` is a confidential transfer. `sendBox(tokenId, to, { decoys: n })`
+  (up to `MAX_DECOYS`, 5) also sends `n` decoys to fresh random addresses through
+  `confidentialTransferIf`, in a random order with the real one, from one encryption: one
+  transaction each. `decoyPlan(to, n)` is the plan it follows.
+- A claim lists its ids in the clear, so never list the held boxes alone:
+  `claimWindows(tokenIds, tokenCount)` turns them into whole windows of `CLAIM_WINDOW` (10)
+  ids, 0-9, 10-19…, the same every time. Claim each window with `claimEarnings` or
+  `claimCroquettes`.
 - `openedCats()` lists every opened cat and who opened it: the only holders that are public.
 
 The croquette economy sits on the same interface: `economy()`, `boxPantry(tokenId)`,
@@ -179,6 +188,5 @@ pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap,
 
 The smoke scripts spend testnet ETH (mints, fees, a small market buy) and need
 `PRIVATE_KEY` in the repo-root `.env`. `smoke:croq` passed against the Uniswap V2 economy
-on 2026-10-01. Against the V3 market deployed on 2026-10-02 (block 11830294), its economy
-part ran up to the opening, which stopped on the script account's cUSDC balance; quote,
-buy and sell back on the V3 pool were checked through the adapter separately.
+on 2026-10-01. Both passed in full against the contracts deployed on 2026-10-03 (block
+11836238), and a box sent there with three decoys left the sender's holdings.

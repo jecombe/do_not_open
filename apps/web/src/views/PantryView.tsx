@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatAmount, type BoxPantry, type EconomyInfo } from "@dno/chain-adapter";
+import { claimWindows, formatAmount, type BoxPantry, type EconomyInfo } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -12,6 +12,7 @@ import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
 import { TxPending } from "./TxPending";
 import { openExchange } from "./exchangeLink";
+import { Hint } from "./Hint";
 
 interface Props {
   quality: QualitySettings;
@@ -45,6 +46,25 @@ const coin = (wei: bigint, decimals: number) => {
   const kept = frac.slice(0, 6).replace(/0+$/, "");
   return kept ? `${whole}.${kept}` : whole!;
 };
+
+const DAY = 86_400;
+
+/**
+ * What a claim would pay these boxes right now: welcome bags are known to the croquette, each
+ * purr is an encrypted draw, so only its ceiling can be told (for a box without the vet's stamp).
+ */
+export function owed(boxes: BoxPantry[], economy: EconomyInfo, now: number): { bags: number; purrUpTo: number } {
+  let bags = 0;
+  let purrUpTo = 0;
+  for (const b of boxes) {
+    if (!b.welcomed) bags += economy.welcomeBag;
+    else if (b.nextClaimAt <= now) {
+      const days = Math.min(Math.floor((now - b.nextClaimAt) / DAY) + 1, economy.purrMaxDays);
+      purrUpTo += Math.floor((economy.purrMaxPerDay * days) / 2 ** economy.halvings);
+    }
+  }
+  return { bags, purrUpTo };
+}
 
 /**
  * The pantry: the croquettes the account holds, the bags and purrs its boxes owe it, the
@@ -93,6 +113,12 @@ export function PantryView({ quality, sound, onSelect }: Props) {
     const b = boxes.get(id);
     return b && (!b.welcomed || b.nextClaimAt <= now);
   }), [myBoxes, boxes, now]);
+  // Whole windows of ten ids, never the held boxes alone: a claim names its ids in the clear.
+  const windows = useMemo(() => claimWindows(due, collection?.tokenCount ?? 0), [due, collection?.tokenCount]);
+  const waiting = useMemo(
+    () => (economy ? owed(due.map((id) => boxes.get(id)!), economy, now) : null),
+    [due, boxes, economy, now],
+  );
   const nextAt = useMemo(() => {
     const later = myBoxes.map((id) => boxes.get(id)).filter((b): b is BoxPantry => !!b && b.welcomed && b.nextClaimAt > now);
     return later.length ? Math.min(...later.map((b) => b.nextClaimAt)) : null;
@@ -112,9 +138,9 @@ export function PantryView({ quality, sound, onSelect }: Props) {
 
   const collect = async () => {
     setDone(null);
-    const ids = due.slice(0, economy?.maxBoxesPerClaim ?? 10);
+    if (!windows.length) return;
     const ok = await action.run("collect", async (o) => {
-      await adapter.claimCroquettes(ids, o);
+      for (const ids of windows) await adapter.claimCroquettes(ids, o);
       return true;
     });
     if (ok) await after("pantry.collected");
@@ -171,9 +197,20 @@ export function PantryView({ quality, sound, onSelect }: Props) {
                   <dd>{myBoxes.length}</dd>
                 </div>
               </dl>
+              {waiting && due.length > 0 && (
+                <div className="claim-due">
+                  <span>{t("pantry.toClaim")}</span>
+                  <strong>
+                    {waiting.purrUpTo === 0
+                      ? t("pantry.toClaimExact", { n: waiting.bags.toLocaleString() })
+                      : t("pantry.toClaimUpTo", { n: (waiting.bags + waiting.purrUpTo).toLocaleString() })}
+                    <Hint label={t("pantry.toClaimHelp")}>{t("pantry.toClaimNote", { bag: economy.welcomeBag, max: economy.purrMaxPerDay, vet: economy.vetMultiplier })}</Hint>
+                  </strong>
+                </div>
+              )}
               <div className="actions">
                 <button type="button" className="stamp-button" onClick={() => void collect()} disabled={!!action.busy || due.length === 0}>
-                  {action.busy === "collect" ? t("pantry.collecting") : due.length === 0 ? t("pantry.upToDate") : t("pantry.collect", { count: Math.min(due.length, economy.maxBoxesPerClaim) })}
+                  {action.busy === "collect" ? t("pantry.collecting") : due.length === 0 ? t("pantry.upToDate") : t("pantry.collect", { count: due.length })}
                 </button>
                 <button type="button" className="plain-button" onClick={() => void reveal()} disabled={!!action.busy}>
                   {action.busy === "reveal" ? t("pantry.revealing") : hidden === null ? t("pantry.reveal") : t("pantry.revealAgain")}
@@ -187,7 +224,7 @@ export function PantryView({ quality, sound, onSelect }: Props) {
                     : nextAt
                       ? t("pantry.nextPurr", { time: new Date(nextAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
                       : ""}
-                {due.length > economy.maxBoxesPerClaim ? t("pantry.batched", { n: economy.maxBoxesPerClaim }) : ""}
+                {due.length > 0 ? t("pantry.batched") : ""}
               </Feedback>
             </>
           ) : tab === "market" ? (

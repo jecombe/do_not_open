@@ -1,5 +1,6 @@
 import { spec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
+import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf } from "../duels";
 import {
   ChainError,
@@ -19,6 +20,7 @@ import {
   type DuelInfo,
   type DuelResult,
   type PostDuelOptions,
+  type SendBoxOptions,
   type EconomyInfo,
   type MintOptions,
   type OpenedCat,
@@ -423,7 +425,8 @@ export class MockAdapter implements ChainAdapter {
       await this.decrypting(opts);
       throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
     }
-    box.earnings += (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
+    // An empty id has no holder to claim the share: the contract books the whole fee as revenue.
+    if (box.owner !== null) box.earnings += (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
     return this.decryptShake(tokenId, opts);
   }
 
@@ -524,6 +527,7 @@ export class MockAdapter implements ChainAdapter {
     await this.finishDuel(duelId, opts);
     const duel = this.duel(duelId);
     if (duel.status === "void") throw notYours();
+    if (duel.status === "cancelled") throw revert("DuelPending");
     // The night shift takes up at once a duel reserved for one of its boxes.
     if (reserved && this.get(duel.tokenB!).owner === MOCK_NIGHT_SHIFT) Object.assign(duel, { status: "pending", accepter: MOCK_NIGHT_SHIFT });
     return { duelId, ...duel };
@@ -589,6 +593,11 @@ export class MockAdapter implements ChainAdapter {
   private openListing(duelId: number): void {
     const duel = this.duel(duelId);
     const previous = this.listings.get(duel.tokenA);
+    // An accepted duel runs to its end: the new posting gives way to it.
+    if (previous !== undefined && this.duel(previous).status === "pending") {
+      duel.status = "cancelled";
+      return;
+    }
     if (previous !== undefined) this.duel(previous).status = "cancelled";
     this.listings.set(duel.tokenA, duelId);
     Object.assign(duel, { status: "open", openUntil: Math.floor(this.seconds()) + DUEL_LIFETIME });
@@ -625,12 +634,19 @@ export class MockAdapter implements ChainAdapter {
     return total;
   }
 
-  async sendBox(tokenId: number, to: Address, opts?: ActionOptions): Promise<void> {
+  async sendBox(tokenId: number, to: Address, opts?: SendBoxOptions): Promise<void> {
     const me = this.signer();
     if (!/^0x[0-9a-fA-F]{40}$/.test(to) || /^0x0{40}$/.test(to)) throw revert("ConfidentialERC721InvalidReceiver");
     const box = this.get(tokenId);
-    await this.send(opts, "confidentialTransfer");
-    if (box.owner === me) box.owner = to;
+    const plan = decoyPlan(to, opts?.decoys ?? 0);
+    if (plan.length > 1) {
+      opts?.onStep?.("encrypting");
+      await this.wait(0.4);
+    }
+    for (const p of plan) {
+      await this.send(opts, plan.length > 1 ? "confidentialTransferIf" : "confidentialTransfer");
+      if (p.really && box.owner === me) box.owner = to;
+    }
   }
 
   // --- croquettes ---
@@ -704,7 +720,8 @@ export class MockAdapter implements ChainAdapter {
       const b = this.get(id);
       if (b.lastPurr === null) {
         b.lastPurr = now;
-        dues.push([b, BigInt(ECONOMY.welcomeBag.amount)]);
+        // An id nobody holds gets nothing: its stash could never be claimed.
+        dues.push([b, b.owner === null ? 0n : BigInt(ECONOMY.welcomeBag.amount)]);
         continue;
       }
       let days = Math.floor((now - b.lastPurr) / this.dayMs);
@@ -716,7 +733,7 @@ export class MockAdapter implements ChainAdapter {
       this.purrs += 1;
       const roll = Math.floor(mulberry32(Math.imul(id + 3, 0x51ed27) + this.purrs * 7919)() * (ECONOMY.purr.maxPerDay + 1));
       const factor = days * (b.aliveCheck === "alive" ? ECONOMY.purr.vetMultiplier : 1);
-      dues.push([b, BigInt(roll * factor) >> BigInt(Math.min(halvings, 63))]);
+      dues.push([b, b.owner === null ? 0n : BigInt(roll * factor) >> BigInt(Math.min(halvings, 63))]);
     }
     await this.send(opts, "claim");
     // The reserve pays the whole claim into the boxes, or none of it.
