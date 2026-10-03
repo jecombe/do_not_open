@@ -110,7 +110,7 @@ describe("the herald's lesson", () => {
   // 2027-01-15 08:00 UTC.
   let now = Date.parse("2027-01-15T08:00:00Z") / 1000;
   const herald = (writer: LessonWriter) =>
-    new Herald(store, network, { maxPerDay: 12, minGapSeconds: 0, digestHourUtc: null, staleAfterSeconds: 86_400, batch: 100, maxAttempts: 2, lesson: { hourUtc: 14, writer } }, silentLogger, () => now);
+    new Herald(store, network, { channel: "x", maxPerDay: 12, minGapSeconds: 0, digestHourUtc: null, staleAfterSeconds: 86_400, batch: 100, maxAttempts: 2, lesson: { hourUtc: 14, writer } }, silentLogger, () => now);
 
   beforeEach(async () => {
     store = new MemoryStore();

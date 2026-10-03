@@ -33,9 +33,9 @@ interface State {
   publicUses: Map<string, number>;
   /** Signed release forms, by `address:version`. Kept across replays. */
   terms: Map<string, TermsAcceptance>;
-  /** The herald's queue, by id, and where it read up to. Kept across replays. */
+  /** The herald's queues, by id, and where each network read up to. Kept across replays. */
   posts: Map<number, Post>;
-  heraldCursor: EventPosition | null;
+  heraldCursors: Map<string, EventPosition>;
 }
 
 const emptyState = (): State => ({
@@ -60,7 +60,7 @@ const emptyState = (): State => ({
   publicUses: new Map(),
   terms: new Map(),
   posts: new Map(),
-  heraldCursor: null,
+  heraldCursors: new Map(),
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -317,26 +317,26 @@ export class MemoryStore implements Store, PostStore {
 
   // --- the herald's queue
 
-  async heraldCursor() {
-    return clone(this.s.heraldCursor);
+  async heraldCursor(network: string) {
+    return clone(this.s.heraldCursors.get(network) ?? null);
   }
 
-  async queuePosts(drafts: QueuedDraft[], cursor: EventPosition, now: number) {
-    const keys = new Set([...this.s.posts.values()].map((p) => p.key));
+  async queuePosts(network: string, drafts: QueuedDraft[], cursor: EventPosition, now: number) {
+    const keys = new Set(this.queue(network).map((p) => p.key));
     let added = 0;
     for (const d of drafts) {
       if (keys.has(d.key)) continue;
       keys.add(d.key);
       const id = this.s.posts.size + 1;
-      this.s.posts.set(id, { id, key: d.key, kind: d.kind, text: d.text, status: d.skipped ? "skipped" : "queued", createdAt: now, postedAt: null, externalId: null, url: null, attempts: 0, error: d.skipped ?? null });
+      this.s.posts.set(id, { id, network, key: d.key, kind: d.kind, text: d.text, status: d.skipped ? "skipped" : "queued", createdAt: now, postedAt: null, externalId: null, url: null, attempts: 0, error: d.skipped ?? null });
       if (!d.skipped) added++;
     }
-    this.s.heraldCursor = { ...cursor };
+    this.s.heraldCursors.set(network, { ...cursor });
     return added;
   }
 
-  async nextQueuedPost() {
-    return clone([...this.s.posts.values()].filter((p) => p.status === "queued").sort((a, b) => a.id - b.id)[0] ?? null);
+  async nextQueuedPost(network: string) {
+    return clone(this.queue(network).filter((p) => p.status === "queued").sort((a, b) => a.id - b.id)[0] ?? null);
   }
 
   async updatePost(id: number, patch: Partial<Post>) {
@@ -344,20 +344,24 @@ export class MemoryStore implements Store, PostStore {
     if (p) this.s.posts.set(id, { ...p, ...patch });
   }
 
-  async hasPost(key: string) {
-    return [...this.s.posts.values()].some((p) => p.key === key);
+  async hasPost(network: string, key: string) {
+    return this.queue(network).some((p) => p.key === key);
   }
 
-  async postedSince(since: number) {
-    return [...this.s.posts.values()].filter((p) => p.status === "posted" && (p.postedAt ?? 0) >= since).length;
+  async postedSince(network: string, since: number) {
+    return this.queue(network).filter((p) => p.status === "posted" && (p.postedAt ?? 0) >= since).length;
   }
 
-  async lastPostedAt() {
-    const times = [...this.s.posts.values()].filter((p) => p.status === "posted").map((p) => p.postedAt ?? 0);
+  async lastPostedAt(network: string) {
+    const times = this.queue(network).filter((p) => p.status === "posted").map((p) => p.postedAt ?? 0);
     return times.length ? Math.max(...times) : null;
   }
 
-  async posts(limit: number) {
-    return [...this.s.posts.values()].sort((a, b) => b.id - a.id).slice(0, limit).map(clone);
+  async posts(limit: number, network?: string) {
+    return (network ? this.queue(network) : [...this.s.posts.values()]).sort((a, b) => b.id - a.id).slice(0, limit).map(clone);
+  }
+
+  private queue(network: string): Post[] {
+    return [...this.s.posts.values()].filter((p) => p.network === network);
   }
 }

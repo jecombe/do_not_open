@@ -67,6 +67,17 @@ account's access token, then add `HERALD=x`, `X_API_KEY`, `X_API_SECRET`, `X_ACC
 X bills each post from prepaid credits (Developer Console, Billing, Credits), and a post with a
 link costs about 13 times more: leave the two URL variables unset to keep it cheap.
 
+The same posts go to a Discord channel for free: in the channel's settings, Integrations,
+Webhooks, create one and copy its URL, then add `HERALD_DISCORD=live` and
+`DISCORD_WEBHOOK_URL=...` (`HERALD_DISCORD=rehearse` first to read them at
+`/v1/herald?network=discord`). The manual's chatbot answers `/ask` in the server too: create an
+application at https://discord.com/developers/applications, add its `DISCORD_APPLICATION_ID` and
+`DISCORD_PUBLIC_KEY` to `/opt/dno/.env`, run `docker compose up -d api`, set the Interactions
+Endpoint URL to `https://<api-domain>/v1/discord/interactions`, then, from a machine with the
+repo and `DISCORD_BOT_TOKEN` in its `.env`, run `pnpm --filter @dno/api discord:commands` and open
+the link it prints to add the command to the server. All in
+[`apps/api/README.md`](../apps/api/README.md#on-discord-ask).
+
 ## By hand
 
 ```bash

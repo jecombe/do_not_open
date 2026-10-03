@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps dist/main.js",
     "build": "node build.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "discord:commands": "tsx scripts/discordCommands.ts"
   },
   "dependencies": {
     "@dno/chain-adapter": "workspace:*",

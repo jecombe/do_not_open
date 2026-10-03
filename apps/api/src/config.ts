@@ -119,6 +119,19 @@ const schema = z.object({
   X_ACCESS_SECRET: z.string().optional(),
   /** The account's handle, without @, for links to its posts. */
   X_HANDLE: z.string().optional(),
+
+  /** The collection's Discord channel, the herald's second account. "off": nothing; "rehearse": posts are written and kept, never sent; "live": sent. */
+  HERALD_DISCORD: z.enum(["off", "rehearse", "live"]).default("off"),
+  /** The channel's webhook (channel settings → Integrations → Webhooks). A secret: whoever has it can post there. */
+  DISCORD_WEBHOOK_URL: z.string().url().optional(),
+  /** Discord has no small quota: every post goes out, a few minutes apart at most. */
+  HERALD_DISCORD_MAX_PER_DAY: z.coerce.number().int().min(0).default(200),
+  HERALD_DISCORD_MIN_GAP_MINUTES: z.coerce.number().int().min(0).default(0),
+  /** The Discord application behind `/ask` (Developer Portal → General Information): its id and public key. Both set: the command is served. */
+  DISCORD_APPLICATION_ID: z.string().optional(),
+  DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "64 hex characters").optional(),
+  /** The manual page `/ask` links its sections to, e.g. https://<site>/docs.html. Defaults to HERALD_MANUAL_URL. */
+  DISCORD_MANUAL_URL: z.string().url().optional(),
 });
 
 export type Config = z.infer<typeof schema>;

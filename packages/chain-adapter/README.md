@@ -131,7 +131,9 @@ wallet's units: `freePerDay`, `freeLeft`, `credits`, `resetsAt`, the credit `pri
 plain USDC and `inputUnits`, what one encrypted input costs (a decrypted value costs one).
 Every encryption sends the session's decryption permit as a bearer token, so the input is
 charged to this wallet; a mint, a meal or a croquette send checks the allowance first and
-fails with `no-credits` before any gas. `buyCredits(n)` buys more.
+fails with `no-credits` before any gas. `buyCredits(n)` buys more. Only the API counts units, so
+`decryptionAllowance()` has no chain fallback: after a transaction it waits (about 30 s at most)
+for the API to index it, so credits just bought are never read as missing.
 
 `signTerms(message)` has the connected wallet sign the release form the app shows before
 play (a readable EIP-191 message naming the address, the terms version and the SHA-256 of
