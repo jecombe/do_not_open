@@ -1,0 +1,78 @@
+<!doctype html><meta charset="utf-8"><style>@font-face{font-family:S;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+stardos-stencil@5.3.0/node_modules/@fontsource/stardos-stencil/files/stardos-stencil-latin-700-normal.woff2)}@font-face{font-family:B;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2)}html,body{margin:0;background:#17130f}svg{display:block}</style>
+<!-- The bot's profile banner, 680×240 drawn at 2×. Discord lays the avatar over the bottom left, so that corner stays plain. -->
+<svg width="1360" height="480" viewBox="0 0 1360 480" xmlns="http://www.w3.org/2000/svg">
+<defs>
+ <radialGradient id="lamp" cx="62%" cy="0%" r="75%"><stop offset="0" stop-color="#ffb454" stop-opacity=".5"/><stop offset=".5" stop-color="#ffb454" stop-opacity=".12"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0e0b08" stop-opacity="0"/><stop offset="1" stop-color="#0e0b08" stop-opacity=".85"/></linearGradient>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.2 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3"/><feDisplacementMap in="SourceGraphic" scale="5"/></filter>
+ <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="6"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <!-- one sealed box: lid band, tape and a number label -->
+ <symbol id="box" viewBox="0 0 100 80" overflow="visible">
+  <rect width="100" height="80" fill="#8a6238"/>
+  <rect width="100" height="80" fill="#8a6238" filter="url(#grain)"/>
+  <rect width="100" height="14" fill="#a8925e"/>
+  <rect x="44" width="12" height="80" fill="#d9c28a" opacity=".55"/>
+  <rect x="12" y="40" width="26" height="16" fill="#f6eedb" opacity=".85"/>
+ </symbol>
+</defs>
+<rect width="1360" height="480" fill="#2a221b"/>
+<rect width="1360" height="480" fill="url(#lamp)"/>
+
+<!-- shelves -->
+<g>
+ <rect x="0" y="168" width="1360" height="12" fill="#0e0b08"/>
+ <rect x="0" y="330" width="1360" height="12" fill="#0e0b08"/>
+ <!-- top shelf -->
+ <use href="#box" x="40" y="96" width="90" height="72"/>
+ <use href="#box" x="140" y="110" width="72" height="58"/>
+ <use href="#box" x="222" y="88" width="100" height="80"/>
+ <use href="#box" x="340" y="104" width="84" height="64"/>
+ <use href="#box" x="434" y="90" width="98" height="78"/>
+ <use href="#box" x="542" y="112" width="70" height="56"/>
+ <use href="#box" x="622" y="98" width="90" height="70"/>
+ <use href="#box" x="760" y="100" width="86" height="68"/>
+ <use href="#box" x="856" y="84" width="104" height="84"/>
+ <use href="#box" x="970" y="112" width="70" height="56"/>
+ <use href="#box" x="1050" y="94" width="92" height="74"/>
+ <use href="#box" x="1152" y="106" width="78" height="62"/>
+ <use href="#box" x="1240" y="90" width="100" height="78"/>
+ <!-- bottom shelf, the left end stays free for the avatar -->
+ <use href="#box" x="330" y="256" width="94" height="74"/>
+ <use href="#box" x="512" y="262" width="88" height="68"/>
+ <use href="#box" x="610" y="250" width="100" height="80"/>
+ <use href="#box" x="760" y="250" width="100" height="80"/>
+ <use href="#box" x="870" y="270" width="74" height="60"/>
+ <use href="#box" x="954" y="254" width="96" height="76"/>
+ <use href="#box" x="1060" y="266" width="80" height="64"/>
+ <use href="#box" x="1150" y="248" width="104" height="82"/>
+ <use href="#box" x="1264" y="262" width="84" height="68"/>
+</g>
+
+<!-- a cat's eyes in the dark between two boxes -->
+<g filter="url(#glow)">
+ <ellipse cx="452" cy="300" rx="9" ry="11" fill="#ffd66b"/>
+ <ellipse cx="484" cy="300" rx="9" ry="11" fill="#ffd66b"/>
+</g>
+<ellipse cx="452" cy="301" rx="2.6" ry="9" fill="#17130f"/>
+<ellipse cx="484" cy="301" rx="2.6" ry="9" fill="#17130f"/>
+
+<rect y="330" width="1360" height="150" fill="url(#floor)"/>
+
+<!-- the stencil -->
+<g transform="translate(400 -6) rotate(-4 560 220)">
+ <rect x="372" y="132" width="380" height="164" rx="10" fill="#f6eedb"/>
+ <rect x="372" y="132" width="380" height="164" rx="10" fill="#f6eedb" filter="url(#grain)"/>
+ <text x="562" y="204" text-anchor="middle" font-family="S" font-size="68" fill="#1c1814" letter-spacing="8">DO NOT</text>
+ <text x="562" y="274" text-anchor="middle" font-family="S" font-size="68" fill="#1c1814" letter-spacing="8">OPEN</text>
+</g>
+<g transform="translate(400 0) rotate(10 712 316)" filter="url(#rough)">
+ <rect x="618" y="280" width="188" height="70" rx="8" fill="#17130f" fill-opacity=".25" stroke="#d8342a" stroke-width="8"/>
+ <text x="712" y="333" text-anchor="middle" font-family="S" font-size="50" fill="#d8342a" letter-spacing="6">/ASK</text>
+</g>
+
+<!-- counter edge along the bottom -->
+<rect y="440" width="1360" height="40" fill="#b8895a"/>
+<rect y="440" width="1360" height="40" fill="#b8895a" filter="url(#grain)"/>
+<rect y="440" width="1360" height="6" fill="#d9c28a"/>
+</svg>

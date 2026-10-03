@@ -6,6 +6,7 @@ Pictures for the collection's Discord server.
 | --- | --- |
 | `herald.png` | The webhook that posts the herald's announcements (channel settings, Integrations, Webhooks): a Maine Coon in a golden crown, seed `0x1c4530fcbaf41ea7`, affection 11 |
 | `clerk.png` | The application behind `/ask` (Developer Portal, App Icon, and the Bot's avatar) |
+| `banner.png` | The bot's profile banner (Developer Portal, Bot, Banner), 680×240 drawn at 2×; the bottom left stays plain under the avatar; `banner-680.png` is the same at 680×240 |
 | `channel.png` | The server icon, if wanted: the DO NOT OPEN stamp on a box lid |
 | `emoji/*.png`, `emoji/*.gif` | Server emoji (Server Settings, Emoji), 128×128, under Discord's 256 KB |
 
@@ -13,7 +14,8 @@ Pictures for the collection's Discord server.
 (`createCat`, `createBox`, `BoxShaker` from `@dno/scene`), drawn on a transparent background from
 real seeds and cropped square; the GIFs are 24 to 30 frames of the same animations. `clerk.png`,
 `channel.png` and `emoji/dno_stamp.png` are SVG drawings in the game's palette and fonts, sources
-in `clerk.html` and `channel.html` (open in Chrome headless at 1024×1024 to render again).
+in `clerk.html` and `channel.html` (open in Chrome headless at 1024×1024 to render again); the banner's in
+`banner.html` (1360×480).
 
 The emoji seeds, all alive unless named after a state:
 
