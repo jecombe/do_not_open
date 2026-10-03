@@ -1,6 +1,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { Intersection, Object3D } from "three";
 import type { QualitySettings } from "@dno/scene";
 import { useT } from "../i18n/app";
 import { ASTRAY, RECENTER } from "../scenes/leash";
@@ -32,6 +33,25 @@ function AboveTheSlip() {
   return null;
 }
 
+/** Whether an object is drawn at all: it and every one of its parents visible. */
+function shown(o: Object3D) {
+  for (let p: Object3D | null = o; p; p = p.parent) if (!p.visible) return false;
+  return true;
+}
+
+/**
+ * The raycaster tests hidden objects too, and Points with a one-unit reach. An opened box keeps
+ * its hidden carton, light beam and dust around its cat, and they would take the pointer from
+ * the box next to it. Only what is drawn can be pointed at, and dust never.
+ */
+function PickWhatIsDrawn() {
+  const setEvents = useThree((s) => s.setEvents);
+  useEffect(() => {
+    setEvents({ filter: (hits: Intersection[]) => hits.filter((h) => !(h.object as { isPoints?: boolean }).isPoints && shown(h.object)) });
+  }, [setEvents]);
+  return null;
+}
+
 /** The full-bleed 3D canvas every view draws into, and a way back once the view is lost. */
 export function Stage({ quality, children }: { quality: QualitySettings; children: ReactNode }) {
   const t = useT();
@@ -52,6 +72,7 @@ export function Stage({ quality, children }: { quality: QualitySettings; childre
         camera={{ fov: 38, near: 0.1, far: 60, position: [5.5, 3.2, 8.5] }}
       >
         <AboveTheSlip />
+        <PickWhatIsDrawn />
         {children}
         {quality.postprocessing && (
           <EffectComposer>
