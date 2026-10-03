@@ -11,23 +11,12 @@ interface Props {
   busy: string | null;
   /** What the next action costs, in USDC units. */
   need: bigint;
-  /** Only the USDC / cUSDC switch, the balance and the link to the wallet. */
-  compact?: boolean;
 }
 
-/**
- * Picks how paid actions are paid: plain USDC, or cUSDC whose balance only its holder can read.
- * Shows what the chosen token holds, and sends to the bureau de change to buy or shield more.
- * The cUSDC balance is the one last decrypted there, if the user ever did.
- */
-export function PayWith({ busy, need, compact = false }: Props) {
-  const { adapter, account, collection } = useChain();
-  const t = useT();
-  const pay = usePayment();
-  const { known, stale } = useShielded(busy);
+/** The plain balance of the connected account, read again once the parent's action is over. */
+function usePlainUsdc(busy: string | null): bigint | null {
+  const { adapter, account } = useChain();
   const [usdc, setUsdc] = useState<bigint | null>(null);
-  const payment = collection?.payment;
-
   useEffect(() => {
     if (!account || busy) return;
     let live = true;
@@ -36,6 +25,21 @@ export function PayWith({ busy, need, compact = false }: Props) {
       live = false;
     };
   }, [adapter, account, busy]);
+  return usdc;
+}
+
+/**
+ * Picks how paid actions are paid: plain USDC, or cUSDC whose balance only its holder can read.
+ * Shows what the chosen token holds, and sends to the bureau de change to buy or shield more.
+ * The cUSDC balance is the one last decrypted there, if the user ever did.
+ */
+export function PayWith({ busy, need }: Props) {
+  const { account, collection } = useChain();
+  const t = useT();
+  const pay = usePayment();
+  const { known, stale } = useShielded(busy);
+  const usdc = usePlainUsdc(busy);
+  const payment = collection?.payment;
 
   if (!payment || !account) return null;
   const amount = (v: bigint) => formatAmount(v, payment.decimals);
@@ -44,7 +48,7 @@ export function PayWith({ busy, need, compact = false }: Props) {
   const short = held !== null && held < need;
 
   return (
-    <div className={compact ? "pay-with is-compact" : "pay-with"}>
+    <div className="pay-with">
       <div className="picker" role="group" aria-label={t("pay.label")}>
         <button type="button" aria-pressed={pay === "usdc"} onClick={() => setPayment("usdc")} disabled={!!busy}>
           {payment.symbol}
@@ -66,7 +70,77 @@ export function PayWith({ busy, need, compact = false }: Props) {
         </button>
       </p>
       {short && <p className="fine problem">{t("pay.short", { need: amount(need), symbol: pay === "usdc" ? payment.symbol : cSymbol })}</p>}
-      {!compact && <p className="fine">{pay === "cusdc" ? t("pay.cusdcHint", { cSymbol }) : t("pay.usdcHint", { cSymbol })}</p>}
+      <p className="fine">{pay === "cusdc" ? t("pay.cusdcHint", { cSymbol }) : t("pay.usdcHint", { cSymbol })}</p>
+    </div>
+  );
+}
+
+/**
+ * One quiet line under a box's actions, whose buttons carry their own price: what pays, what it
+ * holds, and a way to change it. The other token only comes up when this one falls short.
+ */
+export function PayLine({ busy, need }: Props) {
+  const { account, collection } = useChain();
+  const t = useT();
+  const pay = usePayment();
+  const { known, stale } = useShielded(busy);
+  const usdc = usePlainUsdc(busy);
+  const [changing, setChanging] = useState(false);
+  const payment = collection?.payment;
+
+  if (!payment || !account) return null;
+  const amount = (v: bigint) => formatAmount(v, payment.decimals);
+  const symbol = (p: typeof pay) => (p === "usdc" ? payment.symbol : payment.confidentialSymbol);
+  const sealed = known && !stale ? known.value : null;
+  const heldBy = (p: typeof pay) => (p === "usdc" ? usdc : sealed);
+  const other = pay === "usdc" ? "cusdc" : "usdc";
+  const held = heldBy(pay);
+  const short = need > 0n && held !== null && held < need;
+  const otherHeld = heldBy(other);
+  const otherCovers = otherHeld !== null && otherHeld >= need;
+
+  return (
+    <div className="pay-line">
+      <p className="fine">
+        {t("pay.paidIn", { symbol: symbol(pay) })} ·{" "}
+        {held !== null ? t("pay.balance", { amount: amount(held) }) : pay === "cusdc" ? t("pay.balanceSealed") : "…"} ·{" "}
+        <button type="button" className="link" onClick={() => setChanging((c) => !c)} disabled={!!busy} aria-expanded={changing}>
+          {t("pay.change")}
+        </button>
+      </p>
+      {changing && (
+        <div className="picker" role="group" aria-label={t("pay.label")}>
+          {(["cusdc", "usdc"] as const).map((p) => (
+            <button
+              type="button"
+              key={p}
+              aria-pressed={pay === p}
+              onClick={() => {
+                setPayment(p);
+                setChanging(false);
+              }}
+              disabled={!!busy}
+            >
+              {symbol(p)}
+            </button>
+          ))}
+        </div>
+      )}
+      {changing && <p className="fine">{pay === "cusdc" ? t("pay.cusdcHint", { cSymbol: payment.confidentialSymbol }) : t("pay.usdcHint", { cSymbol: payment.confidentialSymbol })}</p>}
+      {short && (
+        <p className="fine problem">
+          {t("pay.short", { need: amount(need), symbol: symbol(pay) })}{" "}
+          {otherCovers ? (
+            <button type="button" className="link" onClick={() => setPayment(other)} disabled={!!busy}>
+              {t(other === "usdc" ? "pay.switchToUsdc" : "pay.switchToCusdc", { symbol: symbol(other) })}
+            </button>
+          ) : (
+            <button type="button" className="link" onClick={() => openExchange({ from: pay === "usdc" ? "eth" : "usdc", to: pay })}>
+              {t("pay.getTokens")} →
+            </button>
+          )}
+        </p>
+      )}
     </div>
   );
 }

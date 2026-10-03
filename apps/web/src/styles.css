@@ -373,8 +373,19 @@ button {
   margin-bottom: 6px;
 }
 
-.pay-with.is-compact {
+.button-price {
+  display: block;
+  font-size: 0.8em;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.pay-line {
   margin: 0 0 10px;
+}
+
+.pay-line .picker {
+  margin-block: 6px;
 }
 
 /* --- Footer notice --- */
@@ -1970,20 +1981,24 @@ button {
   }
 }
 
-/* --- A "?" with its explanation: hover, focus or tap. The body spans the slip under the line. */
+/* --- A "?" with its explanation: opens on click or tap, closes with its ×. The body spans the slip under the line. */
 .hint-q {
   display: inline-grid;
   place-items: center;
   width: 1.25em;
   height: 1.25em;
   margin-left: 6px;
+  padding: 0;
   border: 2px solid currentColor;
   border-radius: 50%;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-size: 0.85em;
   font-weight: 700;
   line-height: 1;
   vertical-align: 0.1em;
-  cursor: help;
+  cursor: pointer;
 }
 
 .hint-q-body {
@@ -1991,9 +2006,9 @@ button {
   left: 0;
   right: 0;
   z-index: 3;
-  display: none;
+  display: block;
   margin-top: 1.6em;
-  padding: 8px 10px;
+  padding: 8px 34px 8px 10px;
   background: var(--manifest);
   color: var(--ink);
   border: 2px solid var(--ink);
@@ -2007,10 +2022,18 @@ button {
   cursor: auto;
 }
 
-.hint-q:hover .hint-q-body,
-.hint-q:focus .hint-q-body,
-.hint-q:focus-within .hint-q-body {
-  display: block;
+.hint-q-close {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 700 22px/1 var(--label);
+  cursor: pointer;
 }
 
 .fine + .fine {

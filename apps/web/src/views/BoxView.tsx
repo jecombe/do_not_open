@@ -13,7 +13,7 @@ import { useT, type AppKey } from "../i18n/app";
 import { cap, catNames } from "../i18n/names";
 import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scenes";
 import { Declaration } from "./Declaration";
-import { PayWith } from "./PayWith";
+import { PayLine } from "./PayWith";
 import { ShareBox } from "./ShareBox";
 import { Stage } from "./Stage";
 import { type PlannedStep } from "./StepTracker";
@@ -180,6 +180,16 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const kitchen = pantry?.tokenId === tokenId ? pantry.at : null;
   // A welcome bag or a purr waits for this box in the Pantry.
   const claimable = !!kitchen && (!kitchen.welcomed || kitchen.nextClaimAt <= Date.now() / 1000);
+  // A paid action says its price on its button, in what the holder pays with.
+  const priced = (label: string, amount: bigint | undefined) =>
+    amount ? (
+      <>
+        {label}
+        <small className="button-price">{fee(amount, collection, pay)}</small>
+      </>
+    ) : (
+      label
+    );
   const collectLine = (
     <p className="fine">
       {t(claimable ? "box.claimWaiting" : "box.croquettesFrom")}{" "}
@@ -538,10 +548,10 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 ) : (
                   <>
                     <button type="button" className="stamp-button" onClick={() => void shake()} disabled={!!busy}>
-                      {busy === "shake" ? t("box.shaking") : isHolder ? t("box.shake") : t("box.payShake")}
+                      {busy === "shake" ? t("box.shaking") : isHolder ? t("box.shake") : priced(t("box.payShake"), collection?.fees.paidShake)}
                     </button>
                     <button type="button" className="plain-button" onClick={() => void feed()} disabled={!!busy}>
-                      {busy === "feed" ? t("box.feeding") : t("box.feed")}
+                      {busy === "feed" ? t("box.feeding") : priced(t("box.feed"), collection?.fees.feed)}
                     </button>
                     {kitchen && isHolder && (
                       <button type="button" className="plain-button" onClick={() => void toggleServing()} disabled={!!busy || fullToday} aria-expanded={serving}>
@@ -551,7 +561,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                     {isHolder && (
                       <>
                         <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy}>
-                          {busy === "open" ? t("box.opening") : t("box.open")}
+                          {busy === "open" ? t("box.opening") : priced(t("box.open"), collection?.fees.observe)}
                         </button>
                         {(info.aliveCheck === "none" || info.aliveCheck === "pending") && (
                           <button type="button" className="plain-button" onClick={() => void checkAlive()} disabled={!!busy}>
@@ -570,7 +580,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 )}
               </div>
 
-              {account && boxesKnown && info?.status === "sealed" && <PayWith busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} compact />}
+              {account && boxesKnown && info?.status === "sealed" && <PayLine busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} />}
 
               {giving && isHolder && (
                 <form
