@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { PostStore } from "../src/application/ports/herald";
 import type { Store } from "../src/application/ports/store";
 import * as B from "../src/domain/box";
 import * as D from "../src/domain/duel";
@@ -8,9 +9,9 @@ import { ALICE, BOB, CAROL, ev } from "./fixtures";
  * What any Store must do, run against each implementation: the in-memory one the tests use and
  * the Postgres one production uses must not drift apart.
  */
-export function storeContract(name: string, make: () => Promise<Store>) {
+export function storeContract(name: string, make: () => Promise<Store & PostStore>) {
   describe(`${name} store`, () => {
-    let store: Store;
+    let store: Store & PostStore;
     beforeEach(async () => {
       store = await make();
     });
@@ -244,6 +245,39 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       expect((await store.allPendingRequests()).map((r) => r.requestId)).toEqual([2, 5]);
       expect((await store.duels({ statuses: ["posted", "open", "pending"], limit: 10 })).map((d) => d.duelId)).toEqual([3]);
       expect((await store.duels({ limit: 10 })).map((d) => d.duelId)).toEqual([3, 1]);
+    });
+
+    it("queues the herald's posts once per fact, in order, and keeps where it read up to", async () => {
+      expect(await store.heraldCursor()).toBeNull();
+      const drafts = [
+        { key: "opening:1", kind: "opening" as const, text: "one" },
+        { key: "digest:2026-10-03", kind: "digest" as const, text: "", skipped: "nothing happened" },
+        { key: "opening:2", kind: "opening" as const, text: "two" },
+      ];
+      expect(await store.queuePosts(drafts, { block: 5, logIndex: 2 }, 100)).toBe(2);
+      expect(await store.queuePosts(drafts, { block: 6, logIndex: 0 }, 200)).toBe(0);
+      expect(await store.heraldCursor()).toEqual({ block: 6, logIndex: 0 });
+      expect(await store.hasPost("digest:2026-10-03")).toBe(true);
+
+      const first = await store.nextQueuedPost();
+      expect(first).toMatchObject({ key: "opening:1", status: "queued", createdAt: 100, attempts: 0 });
+      await store.updatePost(first!.id, { status: "posted", postedAt: 150, externalId: "9", url: "https://x.com/i/web/status/9" });
+      expect((await store.nextQueuedPost())!.key).toBe("opening:2");
+      expect(await store.postedSince(100)).toBe(1);
+      expect(await store.postedSince(151)).toBe(0);
+      expect(await store.lastPostedAt()).toBe(150);
+      expect((await store.posts(10)).map((p) => [p.key, p.status])).toEqual([
+        ["opening:2", "queued"],
+        ["digest:2026-10-03", "skipped"],
+        ["opening:1", "posted"],
+      ]);
+    });
+
+    it("keeps the herald's posts through a replay", async () => {
+      await store.queuePosts([{ key: "opening:1", kind: "opening", text: "one" }], { block: 1, logIndex: 0 }, 1);
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.hasPost("opening:1")).toBe(true);
+      expect(await store.heraldCursor()).toEqual({ block: 1, logIndex: 0 });
     });
   });
 }

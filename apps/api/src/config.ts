@@ -93,6 +93,32 @@ const schema = z.object({
   /** Questions the model may get per UTC day in all: keeps the free quota for the whole day. */
   CHAT_PER_DAY: z.coerce.number().int().min(0).default(1000),
   CHAT_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
+
+  /** The collection's account on X. "off": nothing; "rehearse": posts are written and kept, never sent; "x": sent. */
+  HERALD: z.enum(["off", "rehearse", "x"]).default("rehearse"),
+  HERALD_EVERY_MS: z.coerce.number().int().positive().default(60_000),
+  /** Posts sent per rolling 24 hours: X's free tier allows few. */
+  HERALD_MAX_PER_DAY: z.coerce.number().int().min(0).default(12),
+  HERALD_MIN_GAP_MINUTES: z.coerce.number().int().min(0).default(30),
+  /** UTC hour of the daily digest; -1 for none. */
+  HERALD_DIGEST_HOUR_UTC: z.coerce.number().int().min(-1).max(23).default(18),
+  /** UTC hour of the daily lesson on how the game works; -1 for none. */
+  HERALD_LESSON_HOUR_UTC: z.coerce.number().int().min(-1).max(23).default(14),
+  /** The manual page, e.g. https://<site>/docs.html: each lesson links to its section. Without it, no link. */
+  HERALD_MANUAL_URL: z.string().url().optional(),
+  /** A post still waiting after this long is dropped as old news. */
+  HERALD_STALE_HOURS: z.coerce.number().positive().default(12),
+  /** The app's page for a box, the id appended: linked from opening posts. Without it, no link. */
+  HERALD_BOX_URL: z.string().url().optional(),
+  /** Required to read GET /v1/herald when set. */
+  HERALD_ADMIN_TOKEN: z.string().optional(),
+  /** OAuth 1.0a keys of the X app, and the access token of the account it posts as. Never sent to browsers. */
+  X_API_KEY: z.string().optional(),
+  X_API_SECRET: z.string().optional(),
+  X_ACCESS_TOKEN: z.string().optional(),
+  X_ACCESS_SECRET: z.string().optional(),
+  /** The account's handle, without @, for links to its posts. */
+  X_HANDLE: z.string().optional(),
 });
 
 export type Config = z.infer<typeof schema>;

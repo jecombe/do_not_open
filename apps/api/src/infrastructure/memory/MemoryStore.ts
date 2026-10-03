@@ -7,6 +7,7 @@ import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { TermsAcceptance } from "../../application/terms";
+import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 
 interface State {
   cursor: number | null;
@@ -32,6 +33,9 @@ interface State {
   publicUses: Map<string, number>;
   /** Signed release forms, by `address:version`. Kept across replays. */
   terms: Map<string, TermsAcceptance>;
+  /** The herald's queue, by id, and where it read up to. Kept across replays. */
+  posts: Map<number, Post>;
+  heraldCursor: EventPosition | null;
 }
 
 const emptyState = (): State => ({
@@ -55,6 +59,8 @@ const emptyState = (): State => ({
   publicDecryptions: new Map(),
   publicUses: new Map(),
   terms: new Map(),
+  posts: new Map(),
+  heraldCursor: null,
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -65,7 +71,7 @@ const ref = (txHash: string, logIndex: number) => `${txHash}:${logIndex}`;
 const clone = <T>(v: T): T => structuredClone(v);
 
 /** The whole index in memory: for tests, and for running the API without Postgres. */
-export class MemoryStore implements Store {
+export class MemoryStore implements Store, PostStore {
   private s = emptyState();
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
@@ -307,5 +313,51 @@ export class MemoryStore implements Store {
     const n = this.s.nonces.get(address) ?? null;
     this.s.nonces.delete(address);
     return n;
+  }
+
+  // --- the herald's queue
+
+  async heraldCursor() {
+    return clone(this.s.heraldCursor);
+  }
+
+  async queuePosts(drafts: QueuedDraft[], cursor: EventPosition, now: number) {
+    const keys = new Set([...this.s.posts.values()].map((p) => p.key));
+    let added = 0;
+    for (const d of drafts) {
+      if (keys.has(d.key)) continue;
+      keys.add(d.key);
+      const id = this.s.posts.size + 1;
+      this.s.posts.set(id, { id, key: d.key, kind: d.kind, text: d.text, status: d.skipped ? "skipped" : "queued", createdAt: now, postedAt: null, externalId: null, url: null, attempts: 0, error: d.skipped ?? null });
+      if (!d.skipped) added++;
+    }
+    this.s.heraldCursor = { ...cursor };
+    return added;
+  }
+
+  async nextQueuedPost() {
+    return clone([...this.s.posts.values()].filter((p) => p.status === "queued").sort((a, b) => a.id - b.id)[0] ?? null);
+  }
+
+  async updatePost(id: number, patch: Partial<Post>) {
+    const p = this.s.posts.get(id);
+    if (p) this.s.posts.set(id, { ...p, ...patch });
+  }
+
+  async hasPost(key: string) {
+    return [...this.s.posts.values()].some((p) => p.key === key);
+  }
+
+  async postedSince(since: number) {
+    return [...this.s.posts.values()].filter((p) => p.status === "posted" && (p.postedAt ?? 0) >= since).length;
+  }
+
+  async lastPostedAt() {
+    const times = [...this.s.posts.values()].filter((p) => p.status === "posted").map((p) => p.postedAt ?? 0);
+    return times.length ? Math.max(...times) : null;
+  }
+
+  async posts(limit: number) {
+    return [...this.s.posts.values()].sort((a, b) => b.id - a.id).slice(0, limit).map(clone);
   }
 }
