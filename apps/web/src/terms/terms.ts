@@ -135,6 +135,24 @@ export function useTermsRecord(): TermsRecord {
   );
 }
 
+// Whether the form is on screen right now: the first-visit tour waits until it is gone.
+let gateUp = false;
+const gateListeners = new Set<() => void>();
+export function setGateUp(up: boolean): void {
+  if (gateUp === up) return;
+  gateUp = up;
+  for (const l of gateListeners) l();
+}
+export function useGateUp(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      gateListeners.add(l);
+      return () => gateListeners.delete(l);
+    },
+    () => gateUp,
+  );
+}
+
 const openers = new Set<() => void>();
 /** The menu's "Terms of play": shows the form again, with the signature if there is one. */
 export function openTerms(): void {

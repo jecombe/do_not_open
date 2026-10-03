@@ -148,7 +148,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
         {t("shelf.boxes")}
         {boxesKnown && myBoxes.length > 0 && <span>{myBoxes.length}</span>}
       </button>
-      <button type="button" role="tab" aria-selected={tab === "order"} onClick={() => setTab("order")}>
+      <button type="button" role="tab" aria-selected={tab === "order"} data-tour="mint" onClick={() => setTab("order")}>
         {t("shelf.order")}
       </button>
     </div>
@@ -185,7 +185,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
         <>
           {/* Two slips on a desktop: the boxes on the left, the order on the right, each short enough
               to read without scrolling. A phone has room for one: the tabs switch between them. */}
-          <section className={`slip shelf-slip${foldClass}${tab === "boxes" ? "" : " is-away"}`} aria-label={t("shelf.boxes")}>
+          <section className={`slip shelf-slip${foldClass}${tab === "boxes" ? "" : " is-away"}`} data-tour="boxes" aria-label={t("shelf.boxes")}>
             {foldButton}
             <div className="slip-head">
               {tabs}
@@ -279,7 +279,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
             </TxPending>
           </section>
 
-          <section className={`slip shelf-slip shelf-order${foldClass}${tab === "order" ? "" : " is-away"}`} aria-label={t("shelf.order")}>
+          <section className={`slip shelf-slip shelf-order${foldClass}${tab === "order" ? "" : " is-away"}`} data-tour="mint" aria-label={t("shelf.order")}>
             {foldButton}
             <div className="slip-head">
               {tabs}

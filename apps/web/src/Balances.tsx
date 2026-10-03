@@ -47,7 +47,7 @@ export function Balances() {
   const croq = plain.croqSymbols;
 
   return (
-    <div className="balances" role="group" aria-label={t("balances.label")}>
+    <div className="balances" data-tour="balances" role="group" aria-label={t("balances.label")}>
       <Chip symbol={currency.symbol} value={plain.coin === null ? null : roundAmount(plain.coin, currency.decimals)} />
       {payment && (
         <>
