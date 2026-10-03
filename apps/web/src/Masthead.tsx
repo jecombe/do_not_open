@@ -6,6 +6,7 @@ import { useAction, useChain } from "./chain/ChainProvider";
 import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
+import { NetworkSwitch } from "./chain/NetworkSwitch";
 import { openExchange } from "./views/exchangeLink";
 import { openTerms } from "./terms/terms";
 import { replayTour } from "./tour/Tour";
@@ -206,6 +207,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
               </li>
             </ul>
             <LangSwitch label={t("nav.language")} />
+            <NetworkSwitch />
           </nav>
         )}
       </div>
