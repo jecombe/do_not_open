@@ -3,6 +3,7 @@ import { shortAddress } from "@dno/chain-adapter";
 import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
 import { Clerk } from "./chat/Clerk";
+import { DISCORD } from "./links";
 import { useT } from "./i18n/app";
 import { Masthead, type View } from "./Masthead";
 import { TermsGate } from "./terms/TermsGate";
@@ -137,6 +138,9 @@ export function App() {
         <span className="notice-actions">
           {/* The manual opens in another tab: the game stays where it was. */}
           <Clerk newTab inline />
+          <a className="link" href={DISCORD} target="_blank" rel="noreferrer">
+            {t("footer.discord")}
+          </a>
           <button type="button" className="link" onClick={() => setMuted((m) => !m)} aria-pressed={muted}>
             {muted ? t("footer.soundOff") : t("footer.soundOn")}
           </button>

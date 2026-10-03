@@ -65,6 +65,7 @@ export const homeEn = {
   "home.end.play": "Open the game",
   "home.end.docs": "Read the manual",
   "home.foot": "DO NOT OPEN runs on a test network. Nothing here is worth money, only curiosity.",
+  "home.foot.discord": "Discord",
   "home.foot.source": "Source code",
   "home.nav.croq": "Croquettes",
   "home.croq.title": "Croquettes",

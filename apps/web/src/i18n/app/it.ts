@@ -40,6 +40,7 @@ export const it: Record<AppKey, string> = {
   "footer.chain.before": "Testnet {chain}. Contratto ",
   "footer.chain.after": ". Il contenuto è cifrato con Zama FHEVM.",
   "footer.reading": "Lettura della chain…",
+  "footer.discord": "Discord",
   "footer.soundOn": "Audio attivo",
   "footer.soundOff": "Audio spento",
 
