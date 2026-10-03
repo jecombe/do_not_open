@@ -18,6 +18,7 @@ import {
   DuelArena,
   EntanglementThread,
   FeedEffect,
+  KibblePile,
   PetEffect,
   SPECTRAL,
   type BoxObject,
@@ -147,6 +148,8 @@ interface BoxSceneProps {
   vet: "alive" | "notAlive" | null;
   /** Paper tags on the box: up for a duel, entangled. */
   tags?: BoxTagSpec[];
+  /** Croquettes wait for the holder in the Pantry: once the box is open, a heap of them sits beside the cat. */
+  croquettes?: boolean;
   quality: QualitySettings;
   sound: ShakeSound;
   onShakeDone: () => void;
@@ -163,7 +166,7 @@ const ANGLES: Record<InspectAngle, [azimuth: number, polar: number]> = {
 };
 
 /** The mail room with one box on the bench: shake it, pet it, feed it, open it, take the cat out. */
-export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
+export function BoxScene({ ref, tokenId, opened, vet, tags, croquettes = false, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
   const controls = useRef<CameraControls>(null);
   const opening = useRef<Opening | null>(null);
   const vetMark = useRef<VetMark | null>(null);
@@ -182,12 +185,16 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
       petter: new PetEffect(box, reducedMotion()),
       waiter: new BoxAnticipation(box, reducedMotion()),
       tags: new BoxTags(box, { reducedMotion: reducedMotion() }),
+      pile: new KibblePile(tokenId, reducedMotion()),
     };
   }, [tokenId]);
   useTags(rig.tags, tags);
 
   useEffect(() => {
     depot.benchAnchor.add(rig.box.group);
+    // On the bench beside the cat, which stands where the box was.
+    rig.pile.group.position.set(0.85, 0, 0.25);
+    depot.benchAnchor.add(rig.pile.group);
     return () => {
       inspecting.current = false;
       if (opening.current) disposeOpening(opening.current);
@@ -199,6 +206,7 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
       rig.petter.dispose();
       rig.waiter.dispose();
       rig.tags.dispose();
+      rig.pile.dispose();
       rig.box.dispose();
     };
   }, [depot, rig]);
@@ -209,6 +217,10 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
     vetMark.current = new VetMark(rig.box, vet === "alive", { reducedMotion: reducedMotion() });
     vetMark.current.showInstant();
   }, [rig, vet]);
+
+  // Only once the cat is out: a sealed box keeps the banner in the slip.
+  const out = !!opened;
+  useEffect(() => rig.pile.set(croquettes && out), [rig, croquettes, out]);
 
   // A box that was opened earlier is simply shown open.
   useEffect(() => {
@@ -342,6 +354,7 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
     rig.waiter.update(step);
     vetMark.current?.update(step);
     rig.tags.update(state.clock.elapsedTime);
+    rig.pile.update(step);
     if (opening.current) updateOpening(opening.current, step, state.clock.elapsedTime);
   });
 

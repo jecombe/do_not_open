@@ -190,6 +190,15 @@ describe("MockAdapter", () => {
     expect(opened.map((b) => [b.tokenId, b.status])).toEqual([[0, "revealed"], [1, "revealed"]]);
   });
 
+  it("lists the entanglements proposed to or by a box until they are accepted", async () => {
+    const chain = await fresh();
+    await chain.proposeEntangle(0, 1);
+    expect(await chain.entangleProposals([1])).toEqual([{ from: 0, to: 1, proposer: MOCK_YOU }]);
+    expect(await chain.entangleProposals([2])).toEqual([]);
+    await chain.acceptEntangle(0, 1);
+    expect(await chain.entangleProposals([0, 1])).toEqual([]);
+  });
+
   it("refuses an entanglement whose proposer did not hold the box", async () => {
     const chain = await fresh();
     await chain.proposeEntangle(3, 0);

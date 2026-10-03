@@ -125,6 +125,8 @@ export interface ReadStore {
   duel(duelId: number): Promise<Duel | null>;
   duels(q: DuelQuery): Promise<Duel[]>;
   proposal(tokenA: number, tokenB: number): Promise<EntangleProposal | null>;
+  /** Proposals naming any of these boxes, on either side, newest first. */
+  proposals(tokenIds: number[], limit: number): Promise<EntangleProposal[]>;
   pendingRequests(requester: Address): Promise<Request[]>;
   transfers(account: Address, afterBlock: number, limit: number): Promise<Transfer[]>;
   user(address: Address): Promise<User | null>;

@@ -10,6 +10,8 @@ import type { EntangleProposal, ReadStore, Stats, Transfer } from "./ports/store
 export const MAX_BOX_WINDOW = 1000;
 /** How far back `pair` looks: an open duel between two boxes is a recent one. */
 const PAIR_DUEL_SCAN = 200;
+/** Most proposals one `proposals` call returns. */
+const PROPOSAL_LIMIT = 200;
 /** Most duels the shelf shows. */
 const SHELF_LIMIT = 500;
 
@@ -34,6 +36,12 @@ export interface PairView {
   /** Newest first: both boxes can be on the shelf at once. */
   duels: Duel[];
   entangleProposal: { from: number; to: number; proposer: Address } | null;
+}
+
+export interface ProposalView {
+  from: number;
+  to: number;
+  proposer: Address;
 }
 
 export interface OpenedCatView {
@@ -156,6 +164,22 @@ export class Queries {
   }
 
   /** The duel shelf: every box up for a duel that can still be taken up, newest first. */
+  /**
+   * Entanglements proposed to or by any of these boxes and still open to acceptance: both boxes
+   * sealed and neither entangled yet. Whether the proposer still holds theirs is checked, encrypted,
+   * at acceptance.
+   */
+  async proposals(tokenIds: number[]): Promise<ProposalView[]> {
+    const listed = await this.store.proposals(tokenIds, PROPOSAL_LIMIT);
+    const ids = [...new Set(listed.flatMap((p) => [p.tokenA, p.tokenB]))];
+    const boxes = new Map((await Promise.all(ids.map((id) => this.store.box(id)))).flatMap((b) => (b ? [[b.tokenId, b] as const] : [])));
+    const free = (id: number) => {
+      const b = boxes.get(id);
+      return !!b && b.status === "sealed" && b.partner === null;
+    };
+    return listed.filter((p) => free(p.tokenA) && free(p.tokenB)).map((p) => ({ from: p.tokenA, to: p.tokenB, proposer: p.proposer }));
+  }
+
   /** Duels someone can still take up: in time, and their boxes still sealed. */
   async duelShelf(): Promise<Duel[]> {
     const listed = await this.store.duels({ statuses: ["open"], inTimeAt: this.now(), limit: SHELF_LIMIT });

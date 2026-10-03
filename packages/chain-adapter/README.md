@@ -89,6 +89,9 @@ so the interface has no owner field anywhere:
   withdraws a box until someone takes it up. `pair(a, b).duels` lists the duels the two
   boxes can settle: both can be up at once. `DuelStatus` is `"posted"`, `"open"`,
   `"pending"`, `"resolved"`, `"cancelled"` or `"void"` (`"none"` for an unknown id).
+- `entangleProposals(tokenIds)` lists the entanglements proposed to or by these boxes that
+  can still be accepted (both sealed, neither entangled), newest first: from the API, or
+  from the `EntangleProposed` logs without it.
 - `claimEarnings(tokenIds)` collects what paid shakes earned the boxes the caller holds;
   `sendBox(tokenId, to)` is a confidential transfer. `sendBox(tokenId, to, { decoys: n })`
   (up to `MAX_DECOYS`, 5) also sends `n` decoys to fresh random addresses through

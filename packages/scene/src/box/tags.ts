@@ -3,8 +3,8 @@ import { mulberry32 } from "@dno/generator";
 import { BOX_SIZE, type BoxObject } from "./buildBox";
 import { distress, type TextureOptions } from "./textures";
 
-/** What a box is tagged with: up for a duel, or entangled. Both are public on-chain facts. */
-export type BoxTagKind = "duel" | "entangled";
+/** What a box is tagged with: a duel, an entanglement (or a proposal of one), duels won. All public on-chain facts. */
+export type BoxTagKind = "duel" | "entangled" | "champion";
 
 export interface BoxTagSpec {
   kind: BoxTagKind;
@@ -14,10 +14,27 @@ export interface BoxTagSpec {
   detail: string;
 }
 
-const INK: Record<BoxTagKind, string> = { duel: "#B3241B", entangled: "#2D4F8C" };
+const INK: Record<BoxTagKind, string> = { duel: "#B3241B", entangled: "#2D4F8C", champion: "#8A6410" };
 const MANILA = "#EADCB8";
-/** Each kind hangs from its own front corner: the duel on the right, the thread on the left. */
-const SIDE: Record<BoxTagKind, 1 | -1> = { duel: 1, entangled: -1 };
+/** Each kind's own front corner: the duel on the right, the thread on the left. The champion
+ *  takes whichever corner is free, and stays off a box that already wears both. */
+const SIDE: Partial<Record<BoxTagKind, 1 | -1>> = { duel: 1, entangled: -1 };
+const SEED: Record<BoxTagKind, number> = { duel: 0xd0e1, entangled: 0xe47a, champion: 0xc4a3 };
+
+/** The corner each tag hangs from: its own, or for the champion the one left free. */
+export function tagSides(tags: readonly BoxTagSpec[]): Map<BoxTagKind, 1 | -1> {
+  const sides = new Map<BoxTagKind, 1 | -1>();
+  for (const t of tags) {
+    const own = SIDE[t.kind];
+    if (own) sides.set(t.kind, own);
+  }
+  if (tags.some((t) => t.kind === "champion")) {
+    const taken = new Set(sides.values());
+    const free = ([1, -1] as const).find((s) => !taken.has(s));
+    if (free) sides.set("champion", free);
+  }
+  return sides;
+}
 const TAG_W = 0.3;
 const TAG_H = 0.36;
 const STRING = 0.07;
@@ -92,7 +109,7 @@ export function tagTexture(tag: BoxTagSpec, seed: number, opts: TextureOptions =
   fitText(ctx, tag.detail, 700, 54, label, TEX_W - 36);
   ctx.fillText(tag.detail, TEX_W / 2, 284);
   ctx.fillRect(40, 330, TEX_W - 80, 5);
-  distress(ctx, TEX_W, TEX_H, mulberry32(seed ^ (tag.kind === "duel" ? 0xd0e1 : 0xe47a)), 0.3);
+  distress(ctx, TEX_W, TEX_H, mulberry32(seed ^ SEED[tag.kind]), 0.3);
   return finish(canvas);
 }
 
@@ -105,6 +122,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, weight: number, si
 
 interface Hung {
   spec: BoxTagSpec;
+  side: 1 | -1;
   pivot: Group;
   face: Mesh;
   texture: CanvasTexture;
@@ -132,12 +150,16 @@ export class BoxTags {
   }
 
   set(tags: readonly BoxTagSpec[]): void {
+    const sides = tagSides(tags);
     for (const [kind, h] of this.hung) {
       const next = tags.find((t) => t.kind === kind);
-      if (next && next.title === h.spec.title && next.detail === h.spec.detail) continue;
+      if (next && next.title === h.spec.title && next.detail === h.spec.detail && sides.get(kind) === h.side) continue;
       this.drop(kind);
     }
-    for (const tag of tags) if (!this.hung.has(tag.kind)) this.hang(tag);
+    for (const tag of tags) {
+      const side = sides.get(tag.kind);
+      if (side && !this.hung.has(tag.kind)) this.hang(tag, side);
+    }
   }
 
   update(time: number): void {
@@ -157,8 +179,7 @@ export class BoxTags {
     this.cord.dispose();
   }
 
-  private hang(spec: BoxTagSpec): void {
-    const side = SIDE[spec.kind];
+  private hang(spec: BoxTagSpec, side: 1 | -1): void {
     const { width: W, height: H, depth: D } = BOX_SIZE;
     const pivot = new Group();
     // Right on the corner, so the tag hangs half off the box, clear of the shipping label, its
@@ -183,7 +204,7 @@ export class BoxTags {
     face.add(back);
 
     this.box.body.add(pivot);
-    this.hung.set(spec.kind, { spec, pivot, face, texture, phase: side + this.box.spec.noiseSeed * 1e-6 });
+    this.hung.set(spec.kind, { spec, side, pivot, face, texture, phase: side + this.box.spec.noiseSeed * 1e-6 });
   }
 
   private drop(kind: BoxTagKind): void {

@@ -103,24 +103,16 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight, onFace
   const [toPost, setToPost] = useState<number | null>(focus);
   useEffect(() => setToPost(focus), [focus]);
   const picked = toPost !== null && postable.includes(toPost) ? toPost : (postable[0] ?? null);
-  // Empty: open to every sealed box. A token id: only that box may take it up.
-  const [only, setOnly] = useState("");
-  const onlyId = only.trim() === "" ? null : Number(only.trim().replace(/^DNO-/i, ""));
-  const minted = collection?.tokenCount ?? 0;
-  const onlyBad = onlyId !== null && (!Number.isSafeInteger(onlyId) || onlyId < 0 || onlyId >= minted || onlyId === picked);
-
+  // The shelf posts open to every sealed box; a duel against one box is posted face to face.
   const post = async () => {
-    if (picked === null || onlyBad) return;
+    if (picked === null) return;
     sound.resume();
     setNote(null);
     setPlan(POST_PLAN);
-    const done = await action.run("post", (o) => adapter.postDuel(picked, { ...o, ...(onlyId !== null ? { reservedFor: onlyId } : {}) }), {
+    const done = await action.run("post", (o) => adapter.postDuel(picked, o), {
       resume: "problem.resumeDuelShelf",
     });
-    if (done) {
-      setNote("duels.posted");
-      setOnly("");
-    }
+    if (done) setNote("duels.posted");
     await load();
   };
 
@@ -161,7 +153,7 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight, onFace
   const timeLeft = (d: DuelInfo) => timeLeftCopy(d.openUntil ?? now, now);
 
   const onBench: ShelfBox[] = useMemo(
-    () => live.slice(0, SHELF_CAPACITY).map((d) => ({ tokenId: d.tokenA, cat: null, tags: boxTags({ tokenId: d.tokenA, status: "sealed", partner: null }, [d], now) })),
+    () => live.slice(0, SHELF_CAPACITY).map((d) => ({ tokenId: d.tokenA, cat: null, tags: boxTags({ tokenId: d.tokenA, status: "sealed", partner: null }, [d], [], now) })),
     // `t` changes with the language the tags are worded in.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [live, t],
@@ -275,26 +267,19 @@ export function DuelShelfView({ quality, sound, focus, onSelect, onFight, onFace
                     ))}
                   </select>
                 </label>
-                <label>
-                  {t("duels.onlyBox")}
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder={t("duels.anyone")}
-                    value={only}
-                    onChange={(e) => setOnly(e.target.value)}
-                    disabled={!!action.busy}
-                    aria-invalid={onlyBad}
-                  />
-                </label>
               </div>
-              {onlyBad && <p className="fine problem">{t("duels.onlyBad")}</p>}
               <div className="actions">
-                <button type="button" className="stamp-button" onClick={() => void post()} disabled={!!action.busy || picked === null || onlyBad}>
+                <button type="button" className="stamp-button" onClick={() => void post()} disabled={!!action.busy || picked === null}>
                   {action.busy === "post" ? t("duels.posting") : t("duels.post", { serial: picked === null ? "" : serial(picked) })}
                 </button>
               </div>
               <p className="fine">{t("duels.postExplain", { days: Number(spec.mechanics.duel?.lifetimeDays ?? 7) })}</p>
+              <p className="fine">
+                {t("duels.aimAtOne")}{" "}
+                <button type="button" className="link" onClick={onFace}>
+                  {t("duels.tab.face")}
+                </button>
+              </p>
             </>
           )}
 

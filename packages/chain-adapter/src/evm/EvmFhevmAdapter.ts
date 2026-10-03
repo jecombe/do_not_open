@@ -33,6 +33,7 @@ import {
   type CollectionInfo,
   type DecryptionAllowance,
   type DuelInfo,
+  type EntangleProposal,
   type DuelResult,
   type Disease,
   type DuelStatus,
@@ -575,6 +576,37 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if (BigInt(proposerAB) !== 0n) entangleProposal = { from: tokenA, to: tokenB, proposer: proposerAB };
     else if (BigInt(proposerBA) !== 0n) entangleProposal = { from: tokenB, to: tokenA, proposer: proposerBA };
     return { duels: settling, entangleProposal };
+  }
+
+  async entangleProposals(tokenIds: number[]): Promise<EntangleProposal[]> {
+    if (!tokenIds.length) return [];
+    return this.indexed((ix) => ix.entangleProposals(tokenIds), () => this.proposalsFromChain(tokenIds));
+  }
+
+  /** The proposals logged for these boxes, on either side, kept while both boxes are sealed and free. */
+  private async proposalsFromChain(tokenIds: number[]): Promise<EntangleProposal[]> {
+    const c = this.contract;
+    const latest = await this.reading(this.opts.readProvider.getBlockNumber());
+    const from = this.opts.deployBlock ?? 0;
+    const logged = [
+      ...(await this.logs(c.filters.EntangleProposed!(tokenIds, null), from, latest)),
+      ...(await this.logs(c.filters.EntangleProposed!(null, tokenIds), from, latest)),
+    ].sort((a, b) => b.blockNumber - a.blockNumber || b.index - a.index);
+    const pairs = new Map<string, [number, number]>();
+    for (const l of logged) {
+      const { tokenIdA, tokenIdB } = (l as unknown as { args: { tokenIdA: bigint; tokenIdB: bigint } }).args;
+      const pair: [number, number] = [Number(tokenIdA), Number(tokenIdB)];
+      pairs.set(pair.join(":"), pairs.get(pair.join(":")) ?? pair);
+    }
+    const ids = [...new Set([...pairs.values()].flat())];
+    const [statuses, partners] = await Promise.all([
+      this.reading(Promise.all(ids.map((id) => c.status!(id)))),
+      this.reading(Promise.all(ids.map((id) => c.partnerOf!(id)))),
+    ]);
+    const free = new Set(ids.filter((_, i) => BOX_STATUS[Number(statuses[i])] === "sealed" && !partners[i]![0]));
+    const open = [...pairs.values()].filter(([a, b]) => free.has(a) && free.has(b));
+    const proposers = await this.reading(Promise.all(open.map(([a, b]) => c.entangleProposer!(a, b))));
+    return open.flatMap(([a, b], i) => (BigInt(proposers[i]!) !== 0n ? [{ from: a, to: b, proposer: proposers[i]! as Address }] : []));
   }
 
   async balance(owner: Address): Promise<bigint> {

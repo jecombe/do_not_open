@@ -13,6 +13,7 @@ import {
   type BoxInfo,
   type BoxPantry,
   type BoxStatus,
+  type EntangleProposal,
   type BoxSummary,
   type ChainAdapter,
   type DecryptionAllowance,
@@ -266,6 +267,18 @@ export class MockAdapter implements ChainAdapter {
       if (proposer) entangleProposal = { from, to, proposer };
     }
     return { duels, entangleProposal };
+  }
+
+  async entangleProposals(tokenIds: number[]): Promise<EntangleProposal[]> {
+    const tokens = new Set(tokenIds);
+    const free = (id: number) => this.get(id).status === "sealed" && this.get(id).partner === null;
+    return [...this.proposals]
+      .map(([key, proposer]) => {
+        const [from, to] = key.split(":").map(Number) as [number, number];
+        return { from, to, proposer };
+      })
+      .filter((p) => (tokens.has(p.from) || tokens.has(p.to)) && free(p.from) && free(p.to))
+      .reverse();
   }
 
   async duels(query: { account?: Address; tokenIds?: number[]; open?: boolean }): Promise<DuelInfo[]> {

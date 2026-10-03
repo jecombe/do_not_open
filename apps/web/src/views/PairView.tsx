@@ -175,8 +175,9 @@ export function PairView({ quality, sound, initial, intent, onInspect, onShelf }
   const bothSealed = boxA?.status === "sealed" && boxB?.status === "sealed";
   const busy = action.busy ?? playing;
   // The pair's own duels say which box is up, or in one: the tags hang on it.
-  const tagsA = useMemo(() => (boxA ? boxTags(boxA, standing?.duels ?? []) : []), [boxA, standing, t]);
-  const tagsB = useMemo(() => (boxB ? boxTags(boxB, standing?.duels ?? []) : []), [boxB, standing, t]);
+  const proposals = standing?.entangleProposal ? [standing.entangleProposal] : [];
+  const tagsA = useMemo(() => (boxA ? boxTags(boxA, standing?.duels ?? [], proposals) : []), [boxA, standing, t]);
+  const tagsB = useMemo(() => (boxB ? boxTags(boxB, standing?.duels ?? [], proposals) : []), [boxB, standing, t]);
 
   // What was just read for the two boxes on screen is fresher than the pool.
   useEffect(() => {
