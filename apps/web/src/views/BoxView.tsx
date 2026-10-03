@@ -432,7 +432,6 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
           opened={cat}
           vet={info?.aliveCheck === "alive" || info?.aliveCheck === "notAlive" ? info.aliveCheck : null}
           tags={tags}
-          croquettes={claimable && isHolder && !!revealed}
           quality={quality}
           sound={sound}
           onShakeDone={noop}
