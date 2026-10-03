@@ -200,7 +200,7 @@ export const fr: Record<AppKey, string> = {
   "box.stuckOpening": "Vous avez commencé à ouvrir cette boîte et la dernière étape n'est jamais passée. Terminez-la.",
   "box.holderHint": "À vous, et personne d'autre ne le sait. Secouer est gratuit et révèle un trait. Caresser coûte {feed}, ouvrir {open} : ouvrir montre à tous que vous la déteniez. Les croquettes alourdissent le chat.",
   "box.strangerHint": "Pas à vous, ou personne ne le sait. Pour {paid} vous pouvez la secouer et lire un trait ; son détenteur n'apprend rien et garde {share} %. Caresser coûte {feed}.",
-  "box.noteFed": "Caressé. L'affection gagnée est chiffrée ; vous le saurez à l'ouverture de la boîte.",
+  "box.noteFed": "Caressé : +{min} à {max} d'affection, tiré au hasard et chiffré. Vous le saurez à l'ouverture.",
   "box.noteAlive": "Il est vivant. La boîte porte désormais une marque « certifié par le vétérinaire » visible par tous.",
   "box.noteNotAlive": "Pas vivant. Endormi, fantôme ou quantique : la vérification ne dit pas lequel. Tout le monde peut voir cette réponse.",
 
