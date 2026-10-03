@@ -742,23 +742,6 @@ button {
   font-size: 15px;
 }
 
-.duel-form input {
-  width: 100%;
-  min-width: 0;
-  padding: 4px 6px;
-  background: transparent;
-  color: var(--ink);
-  border: 2px solid var(--ink);
-  border-radius: 0;
-  font: inherit;
-  font-size: 18px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.duel-form input[aria-invalid="true"] {
-  border-color: var(--ink-red);
-}
 
 .pair-pick select,
 .duel-form select {

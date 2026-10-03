@@ -142,6 +142,12 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
 
   // --- duels ---
 
+  app.get("/v1/proposals", async (req, reply) => {
+    const q = z.object({ tokens: ids }).parse(req.query);
+    // Token ids in a query reveal what the caller holds to this server: not cached by anyone in between.
+    return send(reply, await queries.proposals(q.tokens), "private, no-store");
+  });
+
   app.get("/v1/duels", async (req, reply) => {
     const q = z
       .object({

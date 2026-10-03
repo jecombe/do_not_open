@@ -7,6 +7,7 @@ import type {
   DecryptionAllowance,
   DuelInfo,
   EconomyInfo,
+  EntangleProposal,
   MarketInfo,
   OpenedCat,
   PairInfo,
@@ -207,6 +208,11 @@ export class IndexerClient {
 
   pair(a: number, b: number): Promise<Indexed<PairInfo>> {
     return this.get(`/v1/pairs/${a}/${b}`, (p: Json) => ({ duels: (p.duels as Json[]).map(duelFrom), entangleProposal: p.entangleProposal }));
+  }
+
+  /** The boxes in `tokenIds` are the account's secret: they go in this query and are not kept. */
+  entangleProposals(tokenIds: number[]): Promise<Indexed<EntangleProposal[]>> {
+    return this.get(`/v1/proposals?tokens=${tokenIds.join(",")}`, (list: EntangleProposal[]) => list);
   }
 
   openedCats(): Promise<Indexed<OpenedCat[]>> {

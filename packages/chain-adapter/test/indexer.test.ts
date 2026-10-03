@@ -152,6 +152,13 @@ describe("EvmFhevmAdapter with the API", () => {
     expect(await adapter(node, undefined).duels({})).toEqual([]);
   });
 
+  it("reads the entanglements proposed to some boxes from the API", async () => {
+    const { client, asked } = api({ "/v1/proposals?tokens=2,3": { block: 10, data: [{ from: 2, to: 3, proposer: "0xbbb" }] } });
+    expect(await adapter(new FakeNode(views), client).entangleProposals([2, 3])).toEqual([{ from: 2, to: 3, proposer: "0xbbb" }]);
+    expect(asked).toContain("GET /v1/proposals?tokens=2,3");
+    expect(await adapter(new FakeNode(views), client).entangleProposals([])).toEqual([]);
+  });
+
   it("reads the duel shelf from the API, or scans the chain without it", async () => {
     const { client, asked } = api({ "/v1/duels/shelf": { block: 10, data: [DUEL] } });
     expect((await adapter(new FakeNode(views), client).duelShelf()).map((d) => d.duelId)).toEqual([3]);

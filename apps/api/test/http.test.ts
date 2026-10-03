@@ -110,6 +110,15 @@ describe("reads", () => {
     expect((await get("/v1/duels?account=nope")).status).toBe(400);
   });
 
+  it("lists the entanglements proposed to or by some boxes, without caching the list", async () => {
+    const r = await get("/v1/proposals?tokens=3");
+    expect(r.body.data).toEqual([{ from: 2, to: 3, proposer: BOB }]);
+    expect(r.headers["cache-control"]).toBe("private, no-store");
+    // Box 0 is open: nothing to propose with it.
+    expect((await get("/v1/proposals?tokens=0,1")).body.data).toEqual([]);
+    expect((await get("/v1/proposals")).status).toBe(400);
+  });
+
   it("serves the duel shelf: only what can still be taken up", async () => {
     const { body, headers } = await get("/v1/duels/shelf");
     expect(body.data.map((d: { duelId: number }) => d.duelId)).toEqual([1]);

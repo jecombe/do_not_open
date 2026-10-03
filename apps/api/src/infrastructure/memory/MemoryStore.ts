@@ -193,6 +193,15 @@ export class MemoryStore implements Store, PostStore {
     return clone(this.s.proposals.get(`${tokenA}:${tokenB}`) ?? null);
   }
 
+  async proposals(tokenIds: number[], limit: number) {
+    const tokens = new Set(tokenIds);
+    return [...this.s.proposals.values()]
+      .filter((p) => tokens.has(p.tokenA) || tokens.has(p.tokenB))
+      .sort((a, b) => b.block - a.block)
+      .slice(0, limit)
+      .map(clone);
+  }
+
   async pendingRequests(requester: Address) {
     return [...this.s.requests.values()].filter((r) => r.requester === requester && r.status === "pending").sort((a, b) => a.requestId - b.requestId).map(clone);
   }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { claimWindows, sameAddress, type BoxInfo, type DuelInfo, type PendingRequest } from "@dno/chain-adapter";
+import { claimWindows, sameAddress, type BoxInfo, type DuelInfo, type EntangleProposal, type PendingRequest } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -95,16 +95,29 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
   /** A duel between two known boxes opens in the pair view; one still waiting for a taker, on the duel shelf. */
   const openDuel = (d: DuelInfo) => (d.tokenB === null ? onDuels() : onOpenPair(d.tokenA, d.tokenB));
 
+  // Entanglements proposed to or by the account's boxes: asked with the boxes, not kept by the API.
+  const [proposals, setProposals] = useState<EntangleProposal[]>([]);
+  useEffect(() => {
+    let live = true;
+    void adapter
+      .entangleProposals(listed)
+      .then((list) => live && setProposals(list))
+      .catch(() => live && setProposals([]));
+    return () => {
+      live = false;
+    };
+  }, [adapter, listed]);
+
   const onBench: ShelfBox[] = useMemo(
     () => infos.slice(0, SHELF_CAPACITY).map((b) => ({
         tokenId: b.tokenId,
         cat: b.revealed ? catFromRevealed(b.revealed) : null,
         vet: b.aliveCheck === "alive" || b.aliveCheck === "notAlive" ? b.aliveCheck : null,
-        tags: boxTags(b, duels),
+        tags: boxTags(b, duels, proposals),
       })),
     // `t` changes with the language the tags are worded in.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [infos, duels, t],
+    [infos, duels, proposals, t],
   );
 
   const mint = async () => {

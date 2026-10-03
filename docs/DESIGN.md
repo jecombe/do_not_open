@@ -136,7 +136,7 @@ those objects with `<primitive>`.
 | Kibble drop, lid gap, happy hop | croquettes   | Phase 3  | `FeedEffect`, when serving croquettes; two pieces always miss and rattle off |
 | Spotlight face-off              | duel         | Phase 3  | `DuelArena`; loser left leaning in the dark   |
 | Glowing thread                  | entangle     | Phase 3  | `EntanglementThread`; one mesh, curve in the vertex shader |
-| Paper tags on the box           | duel, entangle | Done   | `BoxTags`; a red "On duel" tag with the time left (or the step it waits for) on the right front corner, a blue "Entangled, with DNO-…" on the left. Public facts only, worded by the app; swaying, rocks with the box. Not in the warehouse racks |
+| Paper tags on the box           | duel, entangle | Done   | `BoxTags`; a red duel tag on the right front corner: "Open duel" with the time left, "Targeted duel" with the box it is aimed at, "Challenged" on a box a duel is reserved for, or "On duel" with the step it waits for; a blue "Entangled" or "Link proposed" tag with the other box on the left; a gold "Champion" tag with the duels won on whichever corner is free. Public facts only, worded by the app; swaying, rocks with the box. Not in the warehouse racks |
 | Take the cat out                | inspection   | Phase 4  | `CatInspector`; the box slides aside, the cat hops onto a mat under its own lamp, the camera orbits it |
 | Room props                      | reveal       | Not done | Rooms are still colour-only. Listed in `assets/BLENDER_TODO.md` |
 

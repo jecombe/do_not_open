@@ -131,6 +131,8 @@ const publicDecryptionFrom = (r: Record<string, unknown>): PublicDecryption => (
 const getUser = (q: Q, address: Address) => one(q, "select * from users where address = $1", [address], userFrom);
 
 /** The index in Postgres. */
+const proposalFrom = (r: Row): EntangleProposal => ({ tokenA: r.token_a, tokenB: r.token_b, proposer: r.proposer, block: Number(r.block) });
+
 export class PgStore implements Store, PostStore {
   constructor(private readonly pool: Pool) {}
 
@@ -344,8 +346,16 @@ export class PgStore implements Store, PostStore {
       this.pool,
       "select * from entangle_proposals where token_a = $1 and token_b = $2",
       [tokenA, tokenB],
-      (r): EntangleProposal => ({ tokenA: r.token_a, tokenB: r.token_b, proposer: r.proposer, block: r.block }),
+      proposalFrom,
     );
+  }
+
+  async proposals(tokenIds: number[], limit: number) {
+    const { rows } = await this.pool.query(
+      "select * from entangle_proposals where token_a = any($1::int[]) or token_b = any($1::int[]) order by block desc, token_a, token_b limit $2",
+      [tokenIds, limit],
+    );
+    return rows.map(proposalFrom);
   }
 
   async pendingRequests(requester: Address) {

@@ -212,7 +212,14 @@ export interface PairInfo {
    *  Both boxes can be on the shelf at once: which one to act on depends on who is asking. */
   duels: DuelInfo[];
   /** Set when the holder of `from` proposed to entangle it with `to`. */
-  entangleProposal: { from: number; to: number; proposer: Address } | null;
+  entangleProposal: EntangleProposal | null;
+}
+
+/** The holder of `from` proposed to entangle it with `to`; the holder of `to` may accept. */
+export interface EntangleProposal {
+  from: number;
+  to: number;
+  proposer: Address;
 }
 
 export type RequestKind = "open" | "aliveCheck" | "entangle";
@@ -465,6 +472,9 @@ export interface ChainAdapter {
   /** Status of token ids `from` to `to` (exclusive), cheaper than `box` for each. */
   boxSummaries(from: number, to: number): Promise<BoxSummary[]>;
   pair(tokenA: number, tokenB: number): Promise<PairInfo>;
+  /** Entanglements proposed to or by any of `tokenIds` that can still be accepted: both boxes
+   *  sealed and free. Newest first. */
+  entangleProposals(tokenIds: number[]): Promise<EntangleProposal[]>;
   /** Every opened box, with who opened it. */
   openedCats(): Promise<OpenedCat[]>;
   /** Duels `account` posted or took up, and those that involve any of `tokenIds` (the

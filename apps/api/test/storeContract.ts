@@ -98,6 +98,7 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
         await tx.saveProposal({ tokenA: 1, tokenB: 2, proposer: ALICE, block: 5 });
         await tx.saveProposal({ tokenA: 3, tokenB: 4, proposer: BOB, block: 6 });
         await tx.deleteProposal(3, 4);
+        await tx.saveProposal({ tokenA: 5, tokenB: 1, proposer: BOB, block: 8 });
         await tx.saveRequest({ requestId: 0, kind: "open", tokenId: 1, other: 2, requester: ALICE, status: "pending", placedBlock: 7, settledBlock: null });
         await tx.saveRequest({ requestId: 1, kind: "aliveCheck", tokenId: 1, other: null, requester: ALICE, status: "done", placedBlock: 7, settledBlock: 8 });
         await tx.saveMilestone({ index: 0, sold: 100, block: 9 });
@@ -108,6 +109,9 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.proposal(1, 2)).toEqual({ tokenA: 1, tokenB: 2, proposer: ALICE, block: 5 });
       expect(await store.proposal(2, 1)).toBeNull();
       expect(await store.proposal(3, 4)).toBeNull();
+      expect((await store.proposals([1], 10)).map((p) => [p.tokenA, p.tokenB])).toEqual([[5, 1], [1, 2]]);
+      expect((await store.proposals([2, 4], 10)).map((p) => [p.tokenA, p.tokenB])).toEqual([[1, 2]]);
+      expect(await store.proposals([1], 1)).toEqual([{ tokenA: 5, tokenB: 1, proposer: BOB, block: 8 }]);
       expect((await store.pendingRequests(ALICE)).map((r) => r.requestId)).toEqual([0]);
       expect(await store.milestonesReached()).toBe(1);
       expect(await store.transfers(BOB, 0, 10)).toEqual([{ tokenId: 1, from: ALICE, to: BOB, moved: "0xaa", block: 9, blockHash: null, timestamp: null, txHash: "0xt", logIndex: 2 }]);
