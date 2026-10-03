@@ -4,6 +4,7 @@ import { useChain, useLedger } from "./chain/ChainProvider";
 import { useLive } from "./chain/useLive";
 import { useT } from "./i18n/app";
 import { useLocale } from "./i18n/locale";
+import { Delta, Figure, Flash, useLiveValue } from "./LiveValue";
 import { openExchange } from "./views/exchangeLink";
 
 /** At or under this many units the meter starts blinking: about two shakes left. */
@@ -37,6 +38,11 @@ export function CreditMeter() {
   // A new account starts blank rather than showing the last one's count.
   useEffect(() => setAllowance(null), [account]);
 
+  // Spent or bought, the units left roll to their new count.
+  const free = useLiveValue(allowance ? BigInt(allowance.freeLeft) : null);
+  const bought = useLiveValue(allowance ? BigInt(allowance.credits) : null);
+  const units = useLiveValue(allowance ? BigInt(allowance.freeLeft + allowance.credits) : null);
+
   if (!account || !allowance) return null;
   const { freeLeft, freePerDay, credits, resetsAt } = allowance;
   const total = freeLeft + credits;
@@ -46,10 +52,18 @@ export function CreditMeter() {
   return (
     <span className="credit-meter-wrap">
       <button type="button" className={`credit-meter is-${state}`} onClick={() => openExchange({ credits: true })} aria-describedby={tipId}>
-        <span className="balance-symbol">{t("meter.label")}</span>
+        <Flash change={units.change} />
+        <span className="balance-symbol">
+          {t("meter.label")}
+          <Delta change={units.change} format={String} />
+        </span>
         <strong className="balance-value" aria-live="polite">
-          {freeLeft}/{freePerDay}
-          {credits > 0 && <small> +{credits}</small>}
+          <Figure change={free.change}>{String(free.shown ?? freeLeft)}</Figure>/{freePerDay}
+          {credits > 0 && (
+            <small>
+              {" "}+<Figure change={bought.change}>{String(bought.shown ?? credits)}</Figure>
+            </small>
+          )}
         </strong>
       </button>
       <span className="credit-tip" id={tipId} role="tooltip">
