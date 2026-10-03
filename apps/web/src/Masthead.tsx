@@ -75,7 +75,11 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
 
   return (
     <header className="masthead">
-      <h1 className="wordmark">Do not open</h1>
+      <h1 className="wordmark">
+        <a href="/" title={t("nav.home")}>
+          Do not open
+        </a>
+      </h1>
       <Balances />
       <div className="controls" ref={root}>
         {mode !== "mock" &&

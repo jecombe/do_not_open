@@ -91,6 +91,12 @@ button {
   mix-blend-mode: screen;
 }
 
+/* The stamp leads back to the home page. */
+.wordmark a {
+  color: inherit;
+  text-decoration: none;
+}
+
 /* --- The slip: a shipping label laid on top of the scene --- */
 .slip {
   position: absolute;
