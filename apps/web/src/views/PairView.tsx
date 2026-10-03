@@ -29,6 +29,8 @@ interface Props {
   onInspect: (tokenId: number) => void;
   /** The other page of the duels tab: the open duel shelf. */
   onShelf: () => void;
+  /** To the account's shelf, where new boxes are ordered. */
+  onOrder: () => void;
 }
 
 /** What the holder came to do. Unset, both actions are offered. */
@@ -56,7 +58,7 @@ const DECIDE: PlannedStep[] = [
 ];
 const OPEN_PLAN: PlannedStep[] = [...SIGN_AND_MINE("track.sign"), { step: "decrypting", label: "track.decryptPublic" }, { step: "proving", label: "track.proof" }];
 
-export function PairView({ quality, sound, initial, intent, onInspect, onShelf }: Props) {
+export function PairView({ quality, sound, initial, intent, onInspect, onShelf, onOrder }: Props) {
   const { adapter, account, collection, myBoxes, boxesKnown, refresh, connect } = useChain();
   const pay = usePayment();
   const t = useT();
@@ -101,6 +103,9 @@ export function PairView({ quality, sound, initial, intent, onInspect, onShelf }
     const usable = (pool ?? []).filter((x) => x.status === "sealed" && (focus !== "entangle" || x.partner === null));
     return [usable.filter((x) => myBoxes.includes(x.tokenId)), usable.filter((x) => !myBoxes.includes(x.tokenId))];
   }, [pool, myBoxes, focus]);
+  // Every box the account holds is open: none can duel or entangle, so no pair is drawn and no
+  // cat of theirs is put on the bench. A pair asked for by both its boxes still shows.
+  const allOpen = !!account && boxesKnown && !!pool && !pool.some((x) => myBoxes.includes(x.tokenId) && x.status === "sealed");
 
   // First pair. Connected: one of the account's usable boxes on the left (the requested one
   // if it is), the newest usable box of another holder on the right. A requested box held
@@ -113,12 +118,14 @@ export function PairView({ quality, sound, initial, intent, onInspect, onShelf }
       setPicked([a, a === 0 ? 1 : 0]);
       return;
     }
-    if (!pool) return;
+    if (!pool || allOpen) return;
     const foreign = asked !== undefined && !myBoxes.includes(asked);
-    const a = asked !== undefined && !foreign ? asked : (yours[0]?.tokenId ?? myBoxes[0] ?? 0);
+    // A box of the account's that is open can no longer play: another one goes on the left.
+    const usable = asked !== undefined && yours.some((x) => x.tokenId === asked);
+    const a = usable ? asked : (yours[0]?.tokenId ?? myBoxes.find((id) => pool.some((x) => x.tokenId === id && x.status === "sealed")) ?? myBoxes[0] ?? 0);
     const b = foreign ? asked : (theirs.at(-1)?.tokenId ?? (pool.find((x) => x.tokenId !== a)?.tokenId ?? (a === 0 ? 1 : 0)));
     setPicked([a, b]);
-  }, [picked, minted, initial, account, pool, yours, theirs, myBoxes]);
+  }, [picked, minted, initial, account, pool, yours, theirs, myBoxes, allOpen]);
 
   const [a, b] = picked ?? [0, 1];
 
@@ -326,6 +333,29 @@ export function PairView({ quality, sound, initial, intent, onInspect, onShelf }
     await load();
     void refresh();
   };
+
+  if (!picked && allOpen) {
+    const [x, y] = [theirs.at(-1)?.tokenId ?? 0, theirs.at(-2)?.tokenId ?? 1];
+    return (
+      <>
+        <Stage quality={quality}>
+          <PairScene ref={scene} tokenA={x} tokenB={y} openedA={null} openedB={null} entangled={false} quality={quality} sound={sound} onDuelDone={onDuelDone} onOpened={onOpened} />
+        </Stage>
+        <section className={`slip${foldClass}`} aria-label={t("pair.aria")}>
+          {foldButton}
+          <div className="slip-head">
+            <span>{t("pair.title")}</span>
+          </div>
+          <DuelTabs on="face" onSwitch={onShelf} />
+          <p className="state-note">{t("pair.allOpen")}</p>
+          <p className="fine after-table">{t("pair.allOpenHint")}</p>
+          <button type="button" className="stamp-button" onClick={onOrder}>
+            {t("pair.allOpenOrder")}
+          </button>
+        </section>
+      </>
+    );
+  }
 
   if (minted < 2) {
     return (

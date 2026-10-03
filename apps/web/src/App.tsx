@@ -95,7 +95,7 @@ export function App() {
       {view === "duels" && <DuelShelfView quality={quality} sound={sound} focus={duelFocus} onSelect={showBox} onFight={(mine, listed) => showPair(mine, listed, "duel")} onFace={showFace} />}
       {view === "box" && <BoxView quality={quality} sound={sound} tokenId={tokenId} onTokenChange={setTokenId} onPair={showPair} onShelf={() => setView("shelf")} onPantry={() => setView("pantry")} backTo={cameFrom ?? "shelf"} onBack={() => setView(cameFrom ?? "shelf")} />}
       {view === "warehouse" && <WarehouseView quality={quality} focus={null} onInspect={showBox} />}
-      {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} onShelf={() => showDuels()} />}
+      {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} onShelf={() => showDuels()} onOrder={() => setView("shelf")} />}
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}

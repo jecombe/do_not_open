@@ -338,7 +338,8 @@ export function createWarehouse(count: number, quality: QualitySettings = QUALIT
     minX: -halfWidth - 2,
     maxX: halfWidth + 2,
     minZ: -(rows - 1) * ROW_GAP - 2,
-    maxZ: back * 2.4,
+    // The door, and a little room behind it: a narrow screen enters from up to 1.9 times as far back.
+    maxZ: back * 2,
   };
   const entrance = { position: new Vector3(0, 2.4, back), target: new Vector3(0, 1.8, 0) };
 
