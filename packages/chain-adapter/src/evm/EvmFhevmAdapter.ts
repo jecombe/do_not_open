@@ -935,9 +935,23 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async decryptionAllowance(): Promise<DecryptionAllowance | null> {
     const account = this.address_;
-    if (!this.opts.metered || !this.opts.indexer || !account) return null;
-    const [{ data }, price] = await Promise.all([this.opts.indexer.allowance(account), this.creditPrice()]);
+    const ix = this.opts.indexer;
+    if (!this.opts.metered || !ix || !account) return null;
+    const [data, price] = await Promise.all([this.allowanceSince(ix, account), this.creditPrice()]);
     return { ...data, price };
+  }
+
+  /**
+   * Only the API counts what was spent, so there is no chain fallback: it waits a little for the
+   * API to index this account's last transaction, or a purchase just made would read as nothing.
+   */
+  private async allowanceSince(ix: IndexerClient, account: Address): Promise<Omit<DecryptionAllowance, "price">> {
+    for (let attempt = 0; ; attempt++) {
+      const r = await ix.allowance(account);
+      if (r.block === null || r.block >= this.minBlock || attempt >= 15) return r.data;
+      ix.nudge();
+      await sleep(2000);
+    }
   }
 
   async buyCredits(credits: number, opts?: ActionOptions): Promise<void> {
