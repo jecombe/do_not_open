@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useChain } from "../chain/ChainProvider";
 import { useT, type AppKey } from "../i18n/app";
-import { useGateUp, useTermsRecord } from "../terms/terms";
+import { useGateUp } from "../terms/terms";
 import "./tour.css";
 
 /**
@@ -65,7 +65,6 @@ const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-r
 export function Tour() {
   const t = useT();
   const { collection } = useChain();
-  const record = useTermsRecord();
   const gateUp = useGateUp();
   const [step, setStep] = useState<number | null>(null);
   const [box, setBox] = useState<Box | null>(null);
@@ -74,12 +73,12 @@ export function Tour() {
   const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
   const width = useWindowWidth();
 
-  // Once, after the form: give the depot a moment to settle so the spotlight lands on real things.
+  // Once, with no form in the way: give the depot a moment to settle so the spotlight lands on real things.
   useEffect(() => {
-    if (gateUp || !record.initialed || !collection || seen() || step !== null) return;
+    if (gateUp || !collection || seen() || step !== null) return;
     const timer = setTimeout(() => setStep(0), 900);
     return () => clearTimeout(timer);
-  }, [gateUp, record.initialed, collection, step]);
+  }, [gateUp, collection, step]);
 
   useEffect(() => {
     const play = () => setStep(0);

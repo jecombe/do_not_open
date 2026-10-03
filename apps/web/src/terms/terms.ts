@@ -117,10 +117,6 @@ function write(next: TermsRecord): void {
   for (const l of listeners) l();
 }
 
-export function markInitialed(): void {
-  write({ ...current, initialed: true });
-}
-
 export function keepSignature(s: SignedTerms): void {
   write({ initialed: true, signed: { ...current.signed, [s.account.toLowerCase()]: { ...s, at: Date.now() } } });
 }

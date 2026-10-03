@@ -163,7 +163,7 @@ A purchase is public: it shows which account bought how many credits.
 
 ## Release forms
 
-Before playing, a player signs the terms of play with their wallet (EIP-191, off-chain, no
+Before playing with a wallet (a visitor without one is asked nothing), a player signs the terms of play with their wallet (EIP-191, off-chain, no
 gas; see [FLOWS.md](FLOWS.md#release-form-before-the-first-box)). Nothing is stored on-chain.
 The API files the signature in Postgres when it is configured:
 
