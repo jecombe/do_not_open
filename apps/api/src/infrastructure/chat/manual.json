@@ -59,6 +59,11 @@
      "part": "manual"
     },
     {
+     "id": "terms",
+     "title": "The release form",
+     "part": "manual"
+    },
+    {
      "id": "testnet",
      "title": "While on the testnet",
      "part": "testnet"
@@ -285,6 +290,18 @@
      "text": "There is no official price. Their value shows up indirectly, in what a heavy sealed cat sells for.\nThe public market is a Uniswap pool where CROQ trades against USDC. The collection put only croquettes in it, no dollars, so they sell from 0.001 USDC each upward, and never for less: selling only gives back the USDC that buyers brought. Until someone has bought, there is nothing to sell into, and the bureau de change says so. The pool's croquettes are locked in it for good: nobody can take them out, the collection included. Each trade pays the pool a 1% fee, which goes to the collection's treasury."
     },
     {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "Before your first box, the game hands you a release form, Form DNO-1: the terms of play, eight short clauses. They say plainly what you are walking into. The contracts are experimental software: nobody has audited them, and a bug, an exploit or a hack could lose what you put in, without the creators being liable as far as the law allows. The website is only a window: your boxes, cats and balances live on-chain, so if the site breaks, nothing of yours is lost. Nobody holds your money for you, nothing is refunded, and none of this is an investment."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "You initial each clause, one click each, then sign with your wallet. The signature is free and sends no transaction: your wallet shows a readable message naming your address, the version of the terms and a fingerprint of the full English text. The translations are there to read; the English text is what you sign. The signature is kept as a record of your acceptance, by the game's server when it is reachable, and always in your browser. No wallet yet? You can look around after initialing; the signature is asked as soon as you connect one.\nEach new wallet signs once, and a new version of the terms is signed again before playing on. To read the form again and see your signature, open the menu and choose Terms of play."
+    },
+    {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
@@ -383,6 +400,11 @@
     {
      "id": "croquettes",
      "title": "Les croquettes",
+     "part": "manual"
+    },
+    {
+     "id": "terms",
+     "title": "La décharge",
      "part": "manual"
     },
     {
@@ -636,6 +658,18 @@
      "text": "Le marché public est un pool Uniswap où le CROQ s'échange contre de l'USDC. La collection n'y a mis que des croquettes, aucun dollar : elles se vendent à partir de 0,001 USDC pièce, en montant, et jamais moins cher, car vendre ne rend que l'USDC que des acheteurs ont apporté. Tant que personne n'a acheté, il n'y a rien contre quoi vendre, et le bureau de change le dit. Les croquettes du pool y sont bloquées pour toujours : personne ne peut les retirer, pas même la collection. Chaque échange paie au pool 1 % de frais, qui vont à la trésorerie de la collection."
     },
     {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "Avant votre première boîte, le jeu vous tend une décharge, le formulaire DNO-1 : les conditions de jeu, huit clauses courtes. Elles disent clairement dans quoi vous vous engagez. Les contrats sont un logiciel expérimental : personne ne les a audités, et un bug, une faille ou un piratage pourrait faire perdre ce que vous y mettez, sans que les créateurs en soient responsables, dans la mesure où la loi le permet. Le site n'est qu'une fenêtre : vos boîtes, vos chats et vos soldes vivent on-chain, donc si le site tombe en panne, vous ne perdez rien. Personne ne garde votre argent pour vous, rien n'est remboursé, et rien de tout cela n'est un investissement."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "Vous paraphez chaque clause, d'un clic, puis vous signez avec votre wallet. La signature est gratuite et n'envoie aucune transaction : votre wallet affiche un message lisible qui nomme votre adresse, la version des conditions et une empreinte du texte anglais complet. Les traductions servent à la lecture ; c'est le texte anglais que vous signez. La signature est gardée comme preuve de votre accord, par le serveur du jeu quand il répond, et toujours dans votre navigateur. Pas encore de wallet ? Vous pouvez visiter après avoir paraphé ; la signature sera demandée dès que vous en connecterez un.\nChaque nouveau wallet signe une fois, et une nouvelle version des conditions se signe à nouveau avant de continuer à jouer. Pour relire le formulaire et voir votre signature, ouvrez le menu et choisissez Conditions de jeu."
+    },
+    {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
@@ -740,6 +774,11 @@
     {
      "id": "croquettes",
      "title": "Las croquetas",
+     "part": "manual"
+    },
+    {
+     "id": "terms",
+     "title": "El descargo",
      "part": "manual"
     },
     {
@@ -987,6 +1026,18 @@
      "text": "El mercado público es un pool de Uniswap donde el CROQ se cambia por USDC. La colección solo puso croquetas, ningún dólar: se venden desde 0,001 USDC cada una hacia arriba, y nunca por menos, porque vender solo devuelve los USDC que trajeron los compradores. Mientras nadie haya comprado, no hay contra qué vender, y la casa de cambio lo dice. Las croquetas del pool están bloqueadas en él para siempre: nadie puede sacarlas, ni siquiera la colección. Cada cambio paga al pool una comisión del 1 %, que va a la tesorería de la colección."
     },
     {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "Antes de tu primera caja, el juego te entrega un descargo, el formulario DNO-1: las condiciones de juego, ocho cláusulas breves. Dicen claramente en qué te metes. Los contratos son software experimental: nadie los ha auditado, y un fallo, una vulnerabilidad o un hackeo podría hacerte perder lo que pongas, sin que los creadores sean responsables, en la medida en que la ley lo permita. La web es solo una ventana: tus cajas, tus gatos y tus saldos viven on-chain, así que si la web se rompe, no pierdes nada. Nadie guarda tu dinero por ti, nada se reembolsa y nada de esto es una inversión."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "Rubricas cada cláusula, con un clic, y luego firmas con tu wallet. La firma es gratuita y no envía ninguna transacción: tu wallet muestra un mensaje legible que nombra tu dirección, la versión de las condiciones y una huella del texto completo en inglés. Las traducciones sirven para leer; lo que firmas es el texto en inglés. La firma se guarda como constancia de tu aceptación, en el servidor del juego cuando responde, y siempre en tu navegador. ¿Aún no tienes wallet? Puedes echar un vistazo después de rubricar; la firma se pedirá en cuanto conectes uno.\nCada wallet nuevo firma una vez, y una nueva versión de las condiciones se vuelve a firmar antes de seguir jugando. Para releer el formulario y ver tu firma, abre el menú y elige Condiciones de juego."
+    },
+    {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
@@ -1091,6 +1142,11 @@
     {
      "id": "croquettes",
      "title": "Le crocchette",
+     "part": "manual"
+    },
+    {
+     "id": "terms",
+     "title": "La liberatoria",
      "part": "manual"
     },
     {
@@ -1342,6 +1398,18 @@
      "section": "croquettes",
      "heading": null,
      "text": "Il mercato pubblico è un pool Uniswap dove il CROQ si scambia contro USDC. La collezione ci ha messo solo crocchette, nessun dollaro: si vendono da 0,001 USDC l'una in su, e mai a meno, perché vendere restituisce solo gli USDC portati dai compratori. Finché nessuno ha comprato, non c'è niente contro cui vendere, e il cambiavalute lo dice. Le crocchette del pool vi sono bloccate per sempre: nessuno può toglierle, nemmeno la collezione. Ogni scambio paga al pool una commissione dell'1%, che va alla tesoreria della collezione."
+    },
+    {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "Prima della tua prima scatola, il gioco ti porge una liberatoria, il modulo DNO-1: le condizioni di gioco, otto clausole brevi. Dicono chiaramente in cosa ti stai cacciando. I contratti sono software sperimentale: nessuno li ha verificati, e un bug, una falla o un attacco potrebbe farti perdere ciò che ci metti, senza che i creatori ne rispondano, nei limiti consentiti dalla legge. Il sito è solo una finestra: le tue scatole, i tuoi gatti e i tuoi saldi vivono on-chain, quindi se il sito si guasta, non perdi nulla. Nessuno custodisce i tuoi soldi per te, nulla viene rimborsato e niente di tutto questo è un investimento."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "Siglerai ogni clausola, con un clic, poi firmerai con il tuo wallet. La firma è gratuita e non invia alcuna transazione: il wallet mostra un messaggio leggibile che nomina il tuo indirizzo, la versione delle condizioni e un'impronta del testo inglese completo. Le traduzioni servono per leggere; quello che firmi è il testo inglese. La firma viene conservata come prova della tua accettazione, dal server del gioco quando risponde, e sempre nel tuo browser. Non hai ancora un wallet? Puoi dare un'occhiata dopo aver siglato; la firma ti verrà chiesta appena ne colleghi uno.\nOgni nuovo wallet firma una volta, e una nuova versione delle condizioni si firma di nuovo prima di continuare a giocare. Per rileggere il modulo e vedere la tua firma, apri il menu e scegli Condizioni di gioco."
     },
     {
      "id": "testnet-0",

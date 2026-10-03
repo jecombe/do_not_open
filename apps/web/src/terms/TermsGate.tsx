@@ -3,7 +3,7 @@ import { shortAddress, type SignedTerms } from "@dno/chain-adapter";
 import { useChain } from "../chain/ChainProvider";
 import { problemOf } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
-import { CLAUSES, keepSignature, markInitialed, onOpenTerms, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
+import { CLAUSES, keepSignature, markInitialed, onOpenTerms, setGateUp, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
 import "./terms.css";
 
 /**
@@ -23,7 +23,10 @@ export function TermsGate() {
   // Without a wallet (none installed, or not connected yet) the clauses can still be read and
   // initialed; the signature is asked as soon as a wallet connects.
   const required = !record.initialed || (!!account && !mine);
-  if (!required && !sealed && !viewing) return null;
+  const shown = required || !!sealed || viewing;
+  useEffect(() => setGateUp(shown), [shown]);
+  useEffect(() => () => setGateUp(false), []);
+  if (!shown) return null;
   return (
     <Form
       required={required && !sealed}

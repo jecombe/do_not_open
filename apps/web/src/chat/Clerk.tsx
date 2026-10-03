@@ -105,6 +105,7 @@ export function Clerk({ newTab = false, inline = false }: { newTab?: boolean; in
       <button
         type="button"
         className={inline ? "link clerk-inline" : `clerk-tab${open ? " is-open" : ""}`}
+        data-tour="clerk"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={t("chat.open")}

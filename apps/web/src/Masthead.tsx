@@ -7,6 +7,7 @@ import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
 import { openExchange } from "./views/exchangeLink";
 import { openTerms } from "./terms/terms";
+import { replayTour } from "./tour/Tour";
 import { TxPending } from "./views/TxPending";
 import { ProblemNote } from "./views/ProblemNote";
 
@@ -114,6 +115,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
           type="button"
           ref={toggle}
           className="menu-toggle"
+          data-tour="menu"
           aria-expanded={open}
           aria-controls={menuId}
           onClick={() => {
@@ -180,6 +182,17 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
                   }}
                 >
                   {t("nav.terms")}
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    replayTour();
+                  }}
+                >
+                  {t("nav.tour")}
                 </button>
               </li>
               <li>
