@@ -1,0 +1,69 @@
+import { useEffect, useId, useState } from "react";
+import type { DecryptionAllowance } from "@dno/chain-adapter";
+import { useChain, useLedger } from "./chain/ChainProvider";
+import { useT } from "./i18n/app";
+import { useLocale } from "./i18n/locale";
+import { openWallet } from "./Masthead";
+
+/** Read again this often, on top of after every action: the free ones come back at midnight UTC. */
+const POLL_MS = 30_000;
+/** At or under this many units the meter starts blinking: about two shakes left. */
+const LOW = 4;
+
+/**
+ * A counter of the decryptions left to the player: today's free units and the credits bought.
+ * It blinks when they run low, turns red once they are gone, and a hover says what they are for.
+ * A click opens the wallet slip, where credits are bought. Nothing shows where decryptions are free.
+ */
+export function CreditMeter() {
+  const { adapter, account } = useChain();
+  const t = useT();
+  const lang = useLocale();
+  const ledger = useLedger();
+  const tipId = useId();
+  const [allowance, setAllowance] = useState<DecryptionAllowance | null>(null);
+
+  useEffect(() => {
+    if (!account) return;
+    let live = true;
+    const read = () =>
+      void adapter.decryptionAllowance().then(
+        (a) => live && setAllowance(a),
+        () => undefined,
+      );
+    read();
+    const timer = setInterval(read, POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [adapter, account, ledger]);
+
+  // A new account starts blank rather than showing the last one's count.
+  useEffect(() => setAllowance(null), [account]);
+
+  if (!account || !allowance) return null;
+  const { freeLeft, freePerDay, credits, resetsAt } = allowance;
+  const total = freeLeft + credits;
+  const state = total === 0 ? "empty" : total <= LOW ? "low" : "ok";
+  const reset = new Date(resetsAt * 1000).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <span className="credit-meter-wrap">
+      <button type="button" className={`credit-meter is-${state}`} onClick={openWallet} aria-describedby={tipId}>
+        <span className="balance-symbol">{t("meter.label")}</span>
+        <strong className="balance-value" aria-live="polite">
+          {freeLeft}/{freePerDay}
+          {credits > 0 && <small> +{credits}</small>}
+        </strong>
+      </button>
+      <span className="credit-tip" id={tipId} role="tooltip">
+        <strong className={`credit-tip-state is-${state}`}>{t(`meter.${state}`, { total })}</strong>
+        <span>{t("meter.count", { free: freeLeft, perDay: freePerDay, credits })}</span>
+        <span>{t("meter.what")}</span>
+        <span>{t("meter.reset", { time: reset })}</span>
+        <span className="credit-tip-go">{t("meter.buy")}</span>
+      </span>
+    </span>
+  );
+}

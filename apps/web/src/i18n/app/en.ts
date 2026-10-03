@@ -122,6 +122,14 @@ export const en = {
   "credits.go": "Buy",
   "credits.buying": "Buying…",
   "credits.price": "{n} credits for {total} {symbol}, in plain {symbol}: a short balance reverts, nothing is half-paid.",
+  "meter.label": "Decryptions",
+  "meter.ok": "{total} decryptions left",
+  "meter.low": "Running low: {total} decryptions left",
+  "meter.empty": "No decryptions left",
+  "meter.count": "{free} of {perDay} free today, plus {credits} credits bought.",
+  "meter.what": "Reading anything sealed for you (a shake, your boxes after a mint, a sealed balance) costs one each; encrypting an input for a transaction costs more. Without enough, those actions are refused before you pay any gas.",
+  "meter.reset": "The free ones come back at {time} (midnight UTC); credits never expire.",
+  "meter.buy": "Click to buy credits.",
   "pay.short": "Not enough {symbol} for {need}.",
 
   // --- the leaderboard

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { formatAmount, shortAddress, type Address, type ChainAdapter, type DecryptionAllowance } from "@dno/chain-adapter";
 import { Balances, roundAmount } from "./Balances";
+import { CreditMeter } from "./CreditMeter";
 import { useAction, useChain } from "./chain/ChainProvider";
 import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
@@ -31,7 +32,7 @@ export type View = (typeof VIEWS)[number]["key"] | "box" | "pair";
 const menuKey = (view: View) => (view === "box" ? "warehouse" : view === "pair" ? "duels" : view);
 
 /**
- * The stamp on the left; in the middle, the balances on frosted glass; on the right, a small wallet tag and one manila tag
+ * The stamp on the left; in the middle, the balances on frosted glass; on the right, the decryptions left, a small wallet tag and one manila tag
  * naming the current view. The tag opens a packing list with the other views,
  * the manual and the languages; the wallet tag opens a list of the browser's
  * wallets when there is more than one, and once connected, a slip with the
@@ -82,6 +83,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
       </h1>
       <Balances />
       <div className="controls" ref={root}>
+        <CreditMeter />
         {mode !== "mock" &&
           (account ? (
             <button
