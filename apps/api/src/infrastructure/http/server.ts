@@ -331,7 +331,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
   if (herald) {
     app.get("/v1/herald", async (req, reply) => {
       const q = z
-        .object({ token: z.string().optional(), limit: z.coerce.number().int().min(1).max(200).default(50), network: z.enum(["x", "discord"]).optional() })
+        .object({ token: z.string().optional(), limit: z.coerce.number().int().min(1).max(200).default(50), network: z.string().regex(/^[a-z]+$/).optional() })
         .parse(req.query);
       reply.header("cache-control", "no-store");
       if (herald.adminToken && q.token !== herald.adminToken) return reply.status(401).send({ error: "unauthorized" });

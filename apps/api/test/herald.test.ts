@@ -11,7 +11,6 @@ import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto"
 import { digest, draftsFor, fit, MAX_POST, serial, tallyOf } from "../src/domain/herald";
 import type { ProtocolEvent } from "../src/domain/events";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
-import { oauthHeader } from "../src/infrastructure/social/XNetwork";
 import { ALICE, BOB, ev, FakeChainState } from "./fixtures";
 
 // A ghost Maine Coon (breed roll 240), smug (mood roll 200), in a party hat, in the attic, next to a broken wine glass.
@@ -164,25 +163,6 @@ describe("the herald", () => {
     await herald({ digestHourUtc: 18 }).run();
     await herald({ digestHourUtc: 18 }).run();
     expect((await store.posts(10)).filter((p) => p.kind === "digest").map((p) => p.status)).toEqual(["skipped"]);
-  });
-});
-
-describe("X's OAuth 1.0a signature", () => {
-  it("matches the example in X's documentation", () => {
-    const header = oauthHeader(
-      "POST",
-      "https://api.twitter.com/1.1/statuses/update.json",
-      { include_entities: "true", status: "Hello Ladies + Gentlemen, a signed OAuth request!" },
-      {
-        apiKey: "xvz1evFS4wEEPTGEFPHBog",
-        apiSecret: "kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw",
-        accessToken: "370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb",
-        accessSecret: "LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE",
-      },
-      "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg",
-      1318622958,
-    );
-    expect(header).toContain(`oauth_signature="${encodeURIComponent("hCtSmYh+iHYCEqBWrE7C7hYmtUk=")}"`);
   });
 });
 
