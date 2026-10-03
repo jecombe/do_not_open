@@ -523,6 +523,8 @@ export const fr: Record<AppKey, string> = {
   "box.openYours": " Elle est à vous.",
   "box.weighPromptHidden": "Posez-le sur la balance. Ce qu'il a mangé était secret jusqu'ici ; la balance le rend public.",
   "box.todayUnread": "Lecture de ce qu'il a mangé aujourd'hui…",
+  "box.listed": "En duel sur l'étagère. Ouverte ou donnée, elle ne peut plus se battre : retirez-la d'abord.",
+  "box.withdrawing": "Retrait…",
   "box.give": "La donner",
   "box.giving": "Envoi…",
   "box.giveTo": "La donner à",

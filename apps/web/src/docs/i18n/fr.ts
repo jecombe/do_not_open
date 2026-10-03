@@ -305,7 +305,7 @@ export const docsFr: Record<DocsKey, string> = {
   "flow.duel.s2": "Ce bit, déchiffré en public",
   "flow.duel.s2.v": "N'importe qui le demande, comme tout déchiffrement public. Un duel est un acte public : l'étagère ne porte que des boîtes dont la détention a été prouvée.",
   "flow.duel.s3": "Sur l'étagère, pour une semaine",
-  "flow.duel.s3.v": "Si vous détenez la boîte, elle va sur l'étagère des duels pour sept jours. Sinon, le duel est annulé et rien d'autre ne se montre. Une annonce par boîte : la remettre en jeu remplace la précédente, tant que personne ne l'a relevée. Une fois relevée, la boîte ne peut pas revenir en jeu avant que ce duel soit réglé : une nouvelle annonce s'efface et finit annulée, pour que personne ne puisse lire le résultat et se dérober à une défaite.",
+  "flow.duel.s3.v": "Si vous détenez la boîte, elle va sur l'étagère des duels pour sept jours. Sinon, le duel est annulé et rien d'autre ne se montre. Une annonce par boîte : la remettre en jeu remplace la précédente, tant que personne ne l'a relevée. Une fois relevée, la boîte ne peut pas revenir en jeu avant que ce duel soit réglé : une nouvelle annonce s'efface et finit annulée, pour que personne ne puisse lire le résultat et se dérober à une défaite. Ouverte, ou si la boîte visée est ouverte, elle quitte l'étagère : plus personne ne peut la relever.",
   "flow.duel.s4": "Quelqu'un la relève",
   "flow.duel.s4.v": "Avec n'importe quelle boîte scellée, ou seulement celle à qui elle était réservée. Le score de sa boîte est calculé de la même façon.",
   "flow.duel.s5": "Détenteurs et scores, comparés à l'aveugle",

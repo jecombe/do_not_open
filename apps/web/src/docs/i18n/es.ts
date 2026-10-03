@@ -305,7 +305,7 @@ export const docsEs: Record<DocsKey, string> = {
   "flow.duel.s2": "Ese bit, descifrado en público",
   "flow.duel.s2.v": "Cualquiera lo pide, como cualquier descifrado público. Un duelo es un acto público: el estante solo lleva cajas cuya tenencia quedó probada.",
   "flow.duel.s3": "En el estante, una semana",
-  "flow.duel.s3.v": "Si tienes la caja, va al estante de duelos por siete días. Si no, el duelo es nulo y no se muestra nada más. Un anuncio por caja: volver a ponerla reemplaza el anterior, mientras nadie lo haya aceptado. Una vez aceptado, la caja no puede volver a ponerse hasta que ese duelo se resuelva: un anuncio nuevo cede y termina cancelado, para que nadie pueda leer el resultado y escaparse de una derrota.",
+  "flow.duel.s3.v": "Si tienes la caja, va al estante de duelos por siete días. Si no, el duelo es nulo y no se muestra nada más. Un anuncio por caja: volver a ponerla reemplaza el anterior, mientras nadie lo haya aceptado. Una vez aceptado, la caja no puede volver a ponerse hasta que ese duelo se resuelva: un anuncio nuevo cede y termina cancelado, para que nadie pueda leer el resultado y escaparse de una derrota. Abierta, o si la caja reservada está abierta, sale del estante: ya nadie puede aceptarla.",
   "flow.duel.s4": "Alguien la acepta",
   "flow.duel.s4.v": "Con cualquier caja sellada, o solo con la que tenía reservada. La puntuación de su caja se calcula igual.",
   "flow.duel.s5": "Titulares y puntuaciones, comparados a ciegas",

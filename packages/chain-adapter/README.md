@@ -82,7 +82,8 @@ so the interface has no owner field anywhere:
   public); it throws `not-yours` when they do not, and `reverted` with reason `DuelPending`
   when the box's listed duel was accepted and still waits for its outcome (the new posting
   gives way to it). `duelShelf()` lists every box up for a
-  duel that can still be taken up. `acceptDuel(duelId, tokenB)` takes one up and returns
+  duel that can still be taken up (in time, its box and any reserved one still sealed;
+  `shelfBoxes(duel)` names those boxes). `acceptDuel(duelId, tokenB)` takes one up and returns
   the outcome, or `null` when the duel was void or went back on the shelf. `finishDuel`
   sends whichever proof a duel waits for (the holding, or the outcome); `cancelDuel`
   withdraws a box until someone takes it up. `pair(a, b).duels` lists the duels the two

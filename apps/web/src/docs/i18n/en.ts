@@ -306,7 +306,7 @@ export const docsEn = {
   "flow.duel.s2": "That bit, decrypted in public",
   "flow.duel.s2.v": "Anyone asks for it, like any public decryption. A duel is a public act: the shelf only carries boxes someone was proven to hold.",
   "flow.duel.s3": "On the shelf, for a week",
-  "flow.duel.s3.v": "If you hold the box, it goes on the duel shelf for seven days. If not, the duel is void and nothing else shows. One listing per box: putting it up again replaces it, as long as nobody has taken it up. Once someone has, the box cannot go up again until that duel is settled: a new posting gives way and ends cancelled, so nobody can read the outcome and back out of a loss.",
+  "flow.duel.s3.v": "If you hold the box, it goes on the duel shelf for seven days. If not, the duel is void and nothing else shows. One listing per box: putting it up again replaces it, as long as nobody has taken it up. Once someone has, the box cannot go up again until that duel is settled: a new posting gives way and ends cancelled, so nobody can read the outcome and back out of a loss. Opened, or with the box it is reserved for opened, it leaves the shelf: nobody can take it up any more.",
   "flow.duel.s4": "Someone takes it up",
   "flow.duel.s4.v": "With any sealed box, or only the one it was reserved for. Their box's score is computed the same way.",
   "flow.duel.s5": "Holders and scores, compared blind",

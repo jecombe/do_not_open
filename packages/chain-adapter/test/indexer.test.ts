@@ -120,8 +120,9 @@ describe("IndexerClient", () => {
 });
 
 describe("EvmFhevmAdapter with the API", () => {
-  const views = (fn: string) => {
+  const views = (fn: string, args: unknown[] = []) => {
     if (fn === "duelCount") return [1];
+    if (fn === "status") return [0];
     if (fn === "entangleProposer") return ["0x0000000000000000000000000000000000000000"];
     // Box 5 on the shelf, reserved for box 6, until far ahead.
     if (fn === "duelInfo") return [5, 6, "0x00000000000000000000000000000000000000aa", 2, "0x0000000000000000000000000000000000000000", true, 4_000_000_000];
@@ -156,6 +157,9 @@ describe("EvmFhevmAdapter with the API", () => {
     expect((await adapter(new FakeNode(views), client).duelShelf()).map((d) => d.duelId)).toEqual([3]);
     expect(asked).toContain("GET /v1/duels/shelf");
     expect((await adapter(new FakeNode(views), undefined).duelShelf()).map((d) => d.duelId)).toEqual([0]);
+    // Box 6, the one it is reserved for, was opened: nobody can take it up any more.
+    const opened = new FakeNode((fn, args) => (fn === "status" ? [Number(args[0]) === 6 ? 1 : 0] : views(fn, args)));
+    expect(await adapter(opened, undefined).duelShelf()).toEqual([]);
   });
 });
 

@@ -1,7 +1,7 @@
 import { spec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
 import { decoyPlan } from "../decoys";
-import { duelSettles, duelUnderway, onShelf } from "../duels";
+import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import {
   ChainError,
   sameAddress,
@@ -280,7 +280,7 @@ export class MockAdapter implements ChainAdapter {
   async duelShelf(): Promise<DuelInfo[]> {
     return this.duelList
       .map((d, duelId): DuelInfo => ({ duelId, ...d }))
-      .filter((d) => onShelf(d, this.seconds()))
+      .filter((d) => onShelf(d, this.seconds()) && shelfBoxes(d).every((id) => this.get(id).status !== "revealed"))
       .reverse();
   }
 
