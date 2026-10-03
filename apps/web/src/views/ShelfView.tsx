@@ -15,6 +15,7 @@ import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
 import { TxPending } from "./TxPending";
 import { boxTags } from "../chain/tags";
+import { allTickets, felt, TICKET_LINES } from "../chain/ticketStore";
 
 interface Props {
   quality: QualitySettings;
@@ -56,6 +57,14 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
   const here = (slip: "boxes" | "order") => ran === slip;
 
   const listed = useMemo(() => [...myBoxes].reverse().slice(0, LIST_LIMIT), [myBoxes]);
+  // What the account's shakes printed so far, box by box: read again with each listing.
+  const contract = collection?.address ?? null;
+  const tickets = useMemo(
+    () => (contract && account ? allTickets(contract, account) : {}),
+    // `infos` changes once the boxes are read again, after a shake on another page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contract, account, infos],
+  );
 
   useEffect(() => {
     let live = true;
@@ -231,6 +240,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
                         <span>
                           {b.status === null ? "…" : b.status === "revealed" ? t("status.open") : b.status === "opening" ? t("status.opening") : t("status.sealed")}
                           {b.partner !== null ? `, ${t("shelf.linked")}` : ""}
+                          {b.status === "sealed" && tickets[b.tokenId] ? `, ${t("shelf.ticket", { felt: felt(tickets[b.tokenId]!), total: TICKET_LINES })}` : ""}
                         </span>
                       </button>
                       {/* Both are opt-in, and only while the box is sealed: the contract refuses them after. */}

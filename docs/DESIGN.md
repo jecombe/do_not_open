@@ -53,13 +53,15 @@ sidebar or a card grid.
 | | DNO-0042             |                                       |
 | | Dock  Weight Contents|                                       |
 | | [ SHAKE THE BOX ]    |                                       |
-| | what you felt        |                                       |
+| | shake ticket  2/5    |                                       |
 | +----------------------+                 sound is on           |
 +----------------------------------------------------------------+
 ```
 
 Sealed boxes get a **consignment slip** (bottom left). Opened cats get a **declaration
-of contents** (bottom right) laid out like a customs form. On phones the slip spans the
+of contents** (bottom right) laid out like a customs form. Each shake prints its trait on the box's **shake ticket**, a till receipt
+with one line per trait, kept in the shaker's browser for good (a trait never changes); once
+the box is opened the ticket is stamped and each line checked against the revealed cat. On phones the slip spans the
 width at the bottom and the camera frames the subject in the upper half.
 
 ## Lighting
