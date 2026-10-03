@@ -303,17 +303,29 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
                 </button>
               </div>
 
-              <label className="fine hide-among">
-                {t("shelf.hideAmong")}{" "}
-                <select value={among} onChange={(e) => setIds(Number(e.target.value))} disabled={!!action.busy}>
-                  {Array.from({ length: maxPerTx - quantity + 1 }, (_, i) => quantity + i).map((n) => (
-                    <option key={n} value={n}>
-                      {t("shelf.ids", { count: n })}
-                    </option>
+              {/* The cart: every carton that leaves looks the same. The buyer's are always loaded; a
+                  tap on a later spot loads empty ones up to it, a tap on the last loaded one unloads it. */}
+              <div className="cart" role="group" aria-label={t("shelf.cart")}>
+                <span className="cart-title">{t("shelf.cart")}</span>
+                <div className="cart-bed" style={{ gridTemplateColumns: `repeat(${maxPerTx}, 1fr)` }}>
+                  {Array.from({ length: maxPerTx }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className={n <= among ? "carton" : "carton is-free"}
+                      onClick={() => setIds(n === among && n > quantity ? n - 1 : Math.max(quantity, n))}
+                      disabled={!!action.busy || n <= quantity}
+                      aria-pressed={n <= among}
+                      aria-label={t("shelf.ids", { count: Math.max(quantity, n) })}
+                    />
                   ))}
-                </select>
-              </label>
-              <p className="fine">{among === quantity ? t("shelf.hideNone", { count: quantity }) : t("shelf.hideHint", { ids: among, count: quantity })}</p>
+                </div>
+              </div>
+              <p className="fine">
+                {among === quantity
+                  ? t("shelf.hideNone", { count: quantity })
+                  : t("shelf.hideHint", { ids: among, count: quantity, empty: among - quantity })}
+              </p>
 
               <PayWith busy={action.busy} need={total} />
               {pay === "usdc" && <p className="fine problem">{t("shelf.usdcShows")}</p>}
