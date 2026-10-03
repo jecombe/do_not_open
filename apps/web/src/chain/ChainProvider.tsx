@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createAdapter, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step, type WalletOption } from "@dno/chain-adapter";
 import { errorCopy, problemOf, type Problem, type ProblemContext } from "./copy";
 import { chainMode } from "./mode";
+import { useLive } from "./useLive";
 import { hasSigned, requireTerms } from "../terms/terms";
 
 interface ChainState {
@@ -92,6 +93,18 @@ export function ChainProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => void refresh(), [refresh]);
 
+  // Everyone's sales, milestones and openings show up within a block or so, without a reload.
+  // Only the public collection: finding one's own boxes takes decryptions, so it is not polled.
+  useLive(
+    (live) =>
+      void adapter?.collection().then(
+        (info) => live() && setCollection(info),
+        () => undefined,
+      ),
+    [adapter],
+    !!adapter,
+  );
+
   const findMyBoxes = useCallback(async () => {
     if (!adapter || !account) return;
     setFindError(null);
@@ -100,6 +113,9 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       setBoxesKnown(true);
     } catch (error) {
       setFindError(errorCopy(error));
+    } finally {
+      // It spent decryptions: the meter reads itself again.
+      bumpLedger();
     }
   }, [adapter, account]);
 

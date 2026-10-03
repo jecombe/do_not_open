@@ -295,6 +295,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private readonly ifaces: Interface[];
   /** Block of this account's last transaction: the API must have indexed it to be believed. */
   private minBlock = 0;
+  /** Credits bought by this account that the API may not have indexed yet, by block. */
+  private boughtCredits: { account: Address; block: number; credits: number }[] = [];
   private readonly decryptCache: DecryptCache;
 
   constructor(private readonly opts: EvmAdapterOptions) {
@@ -963,16 +965,16 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   /**
-   * Only the API counts what was spent, so there is no chain fallback: it waits a little for the
-   * API to index this account's last transaction, or a purchase just made would read as nothing.
+   * Only the API counts what was spent, so there is no chain fallback. Spending is counted by
+   * the API as it happens; a purchase is only seen once the API indexes its block, so credits
+   * bought here and not indexed yet are added on top, and the figure is right at once.
    */
   private async allowanceSince(ix: IndexerClient, account: Address): Promise<Omit<DecryptionAllowance, "price">> {
-    for (let attempt = 0; ; attempt++) {
-      const r = await ix.allowance(account);
-      if (r.block === null || r.block >= this.minBlock || attempt >= 15) return r.data;
-      ix.nudge();
-      await sleep(2000);
-    }
+    const r = await ix.allowance(account);
+    if (r.block !== null) this.boughtCredits = this.boughtCredits.filter((b) => b.block > r.block!);
+    const pending = this.boughtCredits.filter((b) => sameAddress(b.account, account)).reduce((n, b) => n + b.credits, 0);
+    if (pending > 0) ix.nudge();
+    return { ...r.data, credits: r.data.credits + pending };
   }
 
   async buyCredits(credits: number, opts?: ActionOptions): Promise<void> {
@@ -987,7 +989,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if (held < total) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: total });
     await this.ensureAllowance(usdc, deployed.address, account, total, opts);
     // At most today's price: a change meanwhile reverts instead of charging more.
-    await this.send(opts, () => this.writer(deployed).buy!(account, credits, price));
+    const receipt = await this.send(opts, () => this.writer(deployed).buy!(account, credits, price));
+    this.boughtCredits.push({ account: account as Address, block: receipt.blockNumber, credits });
   }
 
   private async creditPrice(): Promise<bigint | null> {
