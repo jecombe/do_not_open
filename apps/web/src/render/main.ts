@@ -3,6 +3,7 @@ import "@fontsource/barlow-condensed/500.css";
 import "@fontsource/barlow-condensed/700.css";
 import type { DiseaseKey } from "@dno/game-spec";
 import { buildCatSpec } from "@dno/generator";
+import { renderAvatar } from "./avatar";
 import { renderStill } from "./still";
 
 /**
@@ -11,6 +12,7 @@ import { renderStill } from "./still";
  *   /render.html?token=12                       a sealed box (token id only)
  *   /render.html?token=12&seed=0x..&affection=3 an opened one
  *   ...&weight=412000&sick=1&disease=diabetic   an opened one, weighed
+ *   ...&seed=0x..&avatar=1                       the profile picture: that cat poking out of its open box
  *
  * The result is left on `window.__dnoRender` as a PNG data URL for the script that drives
  * the page (scripts/render-metadata.cts).
@@ -41,7 +43,7 @@ async function render() {
             : { weight: BigInt(weight), sick: params.get("sick") === "1", disease: (params.get("disease") as DiseaseKey | null) ?? null },
       })
     : null;
-  const still = await renderStill({ tokenId, cat });
+  const still = cat && params.get("avatar") ? await renderAvatar({ tokenId, cat }) : await renderStill({ tokenId, cat });
   document.body.append(still);
   window.__dnoRender = still.toDataURL("image/png");
 }
