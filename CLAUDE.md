@@ -11,7 +11,7 @@ pnpm install
 pnpm --filter @dno/contracts-evm compile   # needed before typecheck: generates the gitignored typechain types
 pnpm typecheck                             # every package
 pnpm test                                  # every package (generator, chain-adapter, api, contracts on the FHEVM mock)
-pnpm dev                                   # web app, http://localhost:5173 (home at /, game at /app.html, manual at /docs.html)
+pnpm dev                                   # web app, http://localhost:5173 (home at /, game at /app, manual at /docs; /fr/, /es/, /it/ for the other languages)
 VITE_CHAIN_MODE=sepolia pnpm dev           # or ?chain=sepolia / ?chain=mock in the URL at run time
 pnpm build                                 # web build (what Vercel runs; output apps/web/dist)
 ```

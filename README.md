@@ -70,7 +70,7 @@ Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
 pnpm install
 pnpm test        # generator, chain adapter, and 95 contract tests on the FHEVM mock
 pnpm typecheck
-pnpm dev         # http://localhost:5173: home page; the game is at /app.html (mock mode, no chain)
+pnpm dev         # http://localhost:5173: home page; the game is at /app (mock mode, no chain)
 ```
 
 The same app on Sepolia, against Zama's relayer. The hidden-owner contracts are not
@@ -78,7 +78,7 @@ deployed there yet: until `pnpm deploy:sepolia` runs, this mode points at the pr
 version (the table below), which the current adapter does not speak.
 
 ```bash
-VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app.html?chain=sepolia
+VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app?chain=sepolia
 ```
 
 You need a browser wallet with a little Sepolia ETH for gas. Prices are in Zama's test USDC
@@ -248,9 +248,18 @@ before a mainnet deployment.
 
 ## Read next
 
-The site opens on a cartoon home page at `/` (source `apps/web/src/home`): the pitch in four steps, a box to shake until a random cat jumps out, and every kind of cat on a three.js turntable. The app carries its own illustrated manual at `/docs.html` (the "Manual" tag in the
+The site opens on a cartoon home page at `/` (source `apps/web/src/home`): the pitch in four steps, a box to shake until a random cat jumps out, and every kind of cat on a three.js turntable. The app carries its own illustrated manual at `/docs` (`/fr/docs`, `/es/docs`, `/it/docs`) (the "Manual" tag in the
 navigation): the seed, the flows and the package layout as interactive three.js diagrams.
 Its source is `apps/web/src/docs`.
+
+The home page and the manual are prerendered at build time, one file per language
+(`apps/web/scripts/prerender.mts`, run by `pnpm build`), with their title, description,
+canonical, `hreflang`, Open Graph, Twitter and JSON-LD tags; `src/site.ts` holds the site's
+address and paths. `public/robots.txt` and `public/sitemap.xml` list them, and `vercel.json`
+serves clean URLs and marks the testnet site, the game and the render pages `noindex`. The
+social card and app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics
+counts page views without cookies, and every URL is stripped of its query string first
+(`src/analytics.ts`), so a `?box=` link never ties a visitor to a token.
 
 For the reference documents, start at [`docs/README.md`](docs/README.md). In short:
 

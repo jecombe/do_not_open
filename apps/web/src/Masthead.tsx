@@ -6,6 +6,8 @@ import { useAction, useChain } from "./chain/ChainProvider";
 import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
+import { useLocale } from "./i18n/locale";
+import { docsPath, homePath } from "./site";
 import { NetworkSwitch } from "./chain/NetworkSwitch";
 import { openExchange } from "./views/exchangeLink";
 import { openTerms } from "./terms/terms";
@@ -42,6 +44,7 @@ const menuKey = (view: View) => (view === "box" ? "warehouse" : view === "pair" 
 export function Masthead({ view, onView }: { view: View; onView: (v: View) => void }) {
   const chain = useChain();
   const t = useT();
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [slip, setSlip] = useState(false);
   const menuId = useId();
@@ -78,7 +81,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
   return (
     <header className="masthead">
       <h1 className="wordmark">
-        <a href="/" title={t("nav.home")}>
+        <a href={homePath(locale)} title={t("nav.home")}>
           Do not open
         </a>
       </h1>
@@ -178,7 +181,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
                 </li>
               ))}
               <li className="menu-rule">
-                <a href="/docs.html">{t("nav.manual")}</a>
+                <a href={docsPath(locale)}>{t("nav.manual")}</a>
               </li>
               <li>
                 <button
@@ -203,7 +206,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
                 </button>
               </li>
               <li>
-                <a href="/">{t("nav.home")}</a>
+                <a href={homePath(locale)}>{t("nav.home")}</a>
               </li>
             </ul>
             <LangSwitch label={t("nav.language")} />

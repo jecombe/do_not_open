@@ -33,7 +33,7 @@ sequenceDiagram
   participant App
   participant W as Wallet
   participant API
-  U->>App: open app.html
+  U->>App: open /app
   App->>App: local record for this version and wallet? then play
   App-->>U: Form DNO-1, 8 clauses
   U->>App: initial each clause

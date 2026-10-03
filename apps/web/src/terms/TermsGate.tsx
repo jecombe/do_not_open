@@ -3,6 +3,8 @@ import { shortAddress, type SignedTerms } from "@dno/chain-adapter";
 import { useChain } from "../chain/ChainProvider";
 import { problemOf } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
+import { getLocale } from "../i18n/locale";
+import { homePath } from "../site";
 import { CLAUSES, keepSignature, markInitialed, onOpenTerms, setGateUp, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
 import "./terms.css";
 
@@ -209,7 +211,7 @@ function Form(props: { required: boolean; viewOnly: boolean; signedOnly: boolean
                 </p>
               )}
               <p className="fine terms-leave">
-                <a className="link" href="/">
+                <a className="link" href={homePath(getLocale())}>
                   {t("terms.leave")}
                 </a>
               </p>

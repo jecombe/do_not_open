@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "build": "tsc --noEmit -p tsconfig.json && vite build && tsx scripts/prerender.mts",
+    "prerender": "tsx scripts/prerender.mts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "render:metadata": "tsx scripts/render-metadata.cts",
+    "render:og": "tsx scripts/render-og.cts",
     "export:manual": "tsx scripts/export-manual.mts",
     "test": "tsx scripts/export-manual.mts --check"
   },
@@ -22,6 +24,7 @@
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@react-three/postprocessing": "^3.1.3",
+    "@vercel/analytics": "^2.0.1",
     "postprocessing": "^6.39.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

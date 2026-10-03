@@ -1,7 +1,8 @@
 /** English is the reference for the manual: every other dictionary must hold exactly these keys. */
 export const docsEn = {
-  "docs.title": "DO NOT OPEN, the manual",
-  "docs.description": "How DO NOT OPEN keeps {supply} cats secret on a public chain, and what it takes to look.",
+  "docs.title": "DO NOT OPEN, the manual: encrypted NFTs with Zama's FHE",
+  "docs.description": "How DO NOT OPEN keeps {supply} cats secret on a public chain with Zama's FHE: encrypted holders, on-chain reveals, fees, and what it takes to look.",
+  "docs.imageAlt": "A sealed cardboard box stamped DO NOT OPEN, with a cat inside that nobody can see",
   "docs.home": "Home",
   "docs.homeAria": "DO NOT OPEN, home",
   "docs.site": "Site",

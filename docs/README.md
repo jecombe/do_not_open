@@ -1,7 +1,7 @@
 # DO NOT OPEN, documentation
 
 These are the documents for developers. Players and anyone curious should read the manual
-in the app (`/docs.html`): how the game works, the encryption, and the fees, with no code.
+in the app (`/docs`): how the game works, the encryption, and the fees, with no code.
 
 | Document | What it answers |
 | --- | --- |

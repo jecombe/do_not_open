@@ -1,8 +1,9 @@
 import type { HomeKey } from "./en";
 
 export const homeFr: Record<HomeKey, string> = {
-  "home.title": "DO NOT OPEN, il y a un chat dans la boîte",
-  "home.description": "{supply} boîtes scellées, un chat dans chacune, et personne ne sait lequel. Un petit jeu sur la curiosité.",
+  "home.title": "DO NOT OPEN, un jeu NFT confidentiel de chats en boîte",
+  "home.description": "{supply} boîtes scellées, un chat dans chacune, et personne ne sait lequel. Un jeu NFT confidentiel sur le fhEVM de Zama : chats et détenteurs chiffrés on-chain.",
+  "home.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, avec dedans un chat que personne ne voit",
   "home.nav": "Site",
   "home.nav.cats": "Les chats",
   "home.nav.how": "Comment jouer",

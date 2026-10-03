@@ -1,4 +1,5 @@
 import type { Locale } from "../i18n/locale";
+import { docsPath } from "../site";
 
 /** What the API's /v1/chat answers: see apps/api/src/application/askManual.ts. */
 export interface ClerkAnswer {
@@ -43,4 +44,4 @@ export async function askClerk(question: string, locale: Locale, history: Turn[]
 }
 
 /** A link to a section of the manual, in the reader's language. */
-export const manualLink = (section: string, locale: Locale) => `docs.html?lang=${locale}#${section}`;
+export const manualLink = (section: string, locale: Locale) => `${docsPath(locale)}#${section}`;

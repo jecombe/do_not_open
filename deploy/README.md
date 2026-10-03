@@ -60,8 +60,8 @@ The collection speaks in a Discord channel (see [`apps/api/README.md`](../apps/a
 in the channel's settings, Integrations, Webhooks, create one and copy its URL, then add
 `HERALD_DISCORD=live` and `DISCORD_WEBHOOK_URL=...` to `/opt/dno/.env` (`HERALD_DISCORD=rehearse`
 first to read the posts at `https://<api-domain>/v1/herald?network=discord&token=...`, with
-`HERALD_ADMIN_TOKEN` set; `HERALD_BOX_URL=https://<site>/app.html?box=` and
-`HERALD_MANUAL_URL=https://<site>/docs.html` for links, the daily lesson worded with `GEMINI_API_KEY`). The manual's chatbot answers `/ask` in the server too: create an
+`HERALD_ADMIN_TOKEN` set; `HERALD_BOX_URL=https://<site>/app?box=` and
+`HERALD_MANUAL_URL=https://<site>/docs` for links, the daily lesson worded with `GEMINI_API_KEY`). The manual's chatbot answers `/ask` in the server too: create an
 application at https://discord.com/developers/applications, add its `DISCORD_APPLICATION_ID` and
 `DISCORD_PUBLIC_KEY` to `/opt/dno/.env`, run `docker compose up -d api`, set the Interactions
 Endpoint URL to `https://<api-domain>/v1/discord/interactions`, then, from a machine with the

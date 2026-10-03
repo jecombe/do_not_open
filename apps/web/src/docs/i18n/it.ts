@@ -1,8 +1,9 @@
 import type { DocsKey } from "./en";
 
 export const docsIt: Record<DocsKey, string> = {
-  "docs.title": "DO NOT OPEN, il manuale",
-  "docs.description": "Come DO NOT OPEN tiene segreti {supply} gatti su una chain pubblica, e cosa costa guardare.",
+  "docs.title": "DO NOT OPEN, il manuale: NFT cifrati con l'FHE di Zama",
+  "docs.description": "Come DO NOT OPEN tiene segreti {supply} gatti su una chain pubblica con l'FHE di Zama: detentori cifrati, rivelazioni, commissioni e cosa costa guardare.",
+  "docs.imageAlt": "Una scatola di cartone sigillata col timbro DO NOT OPEN e, dentro, un gatto che nessuno vede",
   "docs.home": "Home",
   "docs.homeAria": "DO NOT OPEN, home",
   "docs.site": "Sito",

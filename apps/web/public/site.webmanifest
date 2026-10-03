@@ -1,0 +1,30 @@
+{
+  "name": "DO NOT OPEN",
+  "short_name": "DO NOT OPEN",
+  "description": "10,000 sealed boxes. One cat in each. Nobody knows which. Confidential NFTs on Zama fhEVM.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#17130F",
+  "theme_color": "#17130F",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
