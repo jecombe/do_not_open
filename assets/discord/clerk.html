@@ -1,0 +1,64 @@
+<!doctype html><meta charset="utf-8"><style>@font-face{font-family:S;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+stardos-stencil@5.3.0/node_modules/@fontsource/stardos-stencil/files/stardos-stencil-latin-700-normal.woff2)}@font-face{font-family:B;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2)}html,body{margin:0;background:transparent}svg{display:block}</style>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+<defs>
+ <radialGradient id="lamp" cx="50%" cy="38%" r="60%"><stop offset="0" stop-color="#ffb454" stop-opacity=".55"/><stop offset=".55" stop-color="#ffb454" stop-opacity=".12"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.2 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="10"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3"/><feDisplacementMap in="SourceGraphic" scale="6"/></filter>
+ <clipPath id="win"><rect x="232" y="196" width="560" height="520" rx="30"/></clipPath>
+</defs>
+<rect width="1024" height="1024" fill="#17130f"/>
+<!-- window interior -->
+<g clip-path="url(#win)">
+ <rect x="232" y="196" width="560" height="520" fill="#2a221b"/>
+ <rect x="232" y="196" width="560" height="520" fill="url(#lamp)"/>
+ <!-- shelves of boxes behind -->
+ <g opacity=".55">
+  <rect x="250" y="560" width="524" height="10" fill="#0e0b08"/>
+  <rect x="268" y="486" width="92" height="74" fill="#8a6238"/><rect x="268" y="514" width="92" height="16" fill="#a8925e"/>
+  <rect x="664" y="472" width="104" height="88" fill="#8a6238"/><rect x="664" y="506" width="104" height="18" fill="#a8925e"/>
+ </g>
+ <!-- the clerk: a cat -->
+ <g>
+  <path d="M352 716 C352 600 420 548 512 548 C604 548 672 600 672 716 Z" fill="#0e0b08"/>
+  <path d="M398 330 L384 222 L470 290 Z" fill="#0e0b08"/>
+  <path d="M626 330 L640 222 L554 290 Z" fill="#0e0b08"/>
+  <ellipse cx="512" cy="410" rx="150" ry="138" fill="#0e0b08"/>
+  <!-- visor -->
+  <path d="M356 318 Q512 262 668 318 L652 350 Q512 304 372 350 Z" fill="#7de3d0" opacity=".88"/>
+  <path d="M372 350 Q512 304 652 350" stroke="#3a8f80" stroke-width="6" fill="none"/>
+  <!-- eyes -->
+  <g filter="url(#glow)">
+   <ellipse cx="456" cy="418" rx="26" ry="30" fill="#ffd66b"/>
+   <ellipse cx="568" cy="418" rx="26" ry="30" fill="#ffd66b"/>
+  </g>
+  <ellipse cx="456" cy="420" rx="7" ry="24" fill="#17130f"/>
+  <ellipse cx="568" cy="420" rx="7" ry="24" fill="#17130f"/>
+  <path d="M500 470 L524 470 L512 484 Z" fill="#f7a8c4"/>
+  <!-- tie -->
+  <path d="M512 572 L536 600 L524 690 L512 704 L500 690 L488 600 Z" fill="#c2261d"/>
+ </g>
+ <!-- grille -->
+ <g stroke="#e9dfc8" stroke-opacity=".22" stroke-width="5">
+  <line x1="326" y1="196" x2="326" y2="716"/><line x1="419" y1="196" x2="419" y2="716"/><line x1="605" y1="196" x2="605" y2="716"/><line x1="698" y1="196" x2="698" y2="716"/>
+ </g>
+</g>
+<!-- frame -->
+<rect x="232" y="196" width="560" height="520" rx="30" fill="none" stroke="#b8895a" stroke-width="22"/>
+<!-- counter -->
+<rect x="150" y="704" width="724" height="70" rx="8" fill="#b8895a"/>
+<rect x="150" y="704" width="724" height="70" rx="8" fill="#b8895a" filter="url(#grain)"/>
+<rect x="150" y="704" width="724" height="12" fill="#d9c28a"/>
+<rect x="150" y="774" width="724" height="40" fill="#8a6238"/>
+<!-- sign -->
+<g transform="rotate(-4 512 150)">
+ <line x1="420" y1="96" x2="420" y2="126" stroke="#e9dfc8" stroke-width="5"/><line x1="604" y1="96" x2="604" y2="126" stroke="#e9dfc8" stroke-width="5"/>
+ <rect x="362" y="118" width="300" height="86" rx="8" fill="#f6eedb"/>
+ <text x="512" y="182" text-anchor="middle" font-family="S" font-size="62" fill="#1c1814" letter-spacing="6">/ASK</text>
+</g>
+<!-- stamp on counter -->
+<g transform="rotate(-10 512 860)" filter="url(#rough)">
+ <circle cx="512" cy="872" r="58" fill="none" stroke="#c2261d" stroke-width="12"/>
+ <text x="512" y="910" text-anchor="middle" font-family="S" font-size="104" fill="#c2261d">?</text>
+</g>
+</svg>
