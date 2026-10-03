@@ -40,6 +40,8 @@ SESSION_SECRET=$(openssl rand -hex 32)
 API_DOMAIN=$API_DOMAIN
 CORS_ORIGINS=$CORS_ORIGINS
 SIGN_IN_DOMAIN=$API_DOMAIN
+# Optional: more names for the same API, space or comma separated, each with its own certificate.
+# API_ALIASES=api.testnet.example.app
 # Optional: put a keyed endpoint first; the free ones stay as fallbacks.
 # RPC_URLS=https://eth-sepolia.g.alchemy.com/v2/KEY,https://ethereum-sepolia-rpc.publicnode.com,https://sepolia.gateway.tenderly.co
 ENV

@@ -36,10 +36,13 @@ if [ -z "$healthy" ]; then
   exit 1
 fi
 
-# Route the domain to it, then reload the proxy (a reload keeps the other sites up).
+# Route the domain, and any aliases (space or comma separated), to it, then reload the proxy
+# (a reload keeps the other sites up). The proxy checks the file before switching to it.
 API_DOMAIN="$(grep '^API_DOMAIN=' .env | cut -d= -f2-)"
-sed "s|__API_DOMAIN__|$API_DOMAIN|" dno.caddy.template > /opt/edge/sites/dno.caddy
+API_ALIASES="$(grep '^API_ALIASES=' .env | cut -d= -f2- || true)"
+API_HOSTS="$(echo "$API_DOMAIN $API_ALIASES" | tr ',' ' ' | xargs | sed 's/ /, /g')"
+sed "s|__API_HOSTS__|$API_HOSTS|" dno.caddy.template > /opt/edge/sites/dno.caddy
 docker exec edge-caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null
 
 docker image prune -f >/dev/null
-echo "deployed $IMAGE at https://$API_DOMAIN"
+echo "deployed $IMAGE at https://${API_HOSTS//, / https://}"

@@ -18,6 +18,10 @@ own the cat is sick: an ultra-rare trophy.
 
 Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 
+Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet launch) and
+[testnet.do-not-open.app](https://testnet.do-not-open.app); the API answers at
+`api.do-not-open.app`. Domains and DNS in [`deploy/README.md`](deploy/README.md#domains).
+
 ## Status
 
 | Phase | Scope                                                                 | State       |
