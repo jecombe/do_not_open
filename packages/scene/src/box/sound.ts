@@ -230,6 +230,48 @@ export class ShakeSound {
     osc.stop(now + 0.07);
   }
 
+  /** The brass bell on a shop counter, struck `times` times: "ding", or an impatient "ding-ding". */
+  bell(times = 1): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.noise || this.muted) return;
+    // A bell's overtones are not harmonics: that is what makes it ring instead of beep.
+    const partials = [
+      [1, 0.22, 1.8],
+      [2.76, 0.1, 0.9],
+      [5.4, 0.05, 0.45],
+      [8.93, 0.025, 0.25],
+    ] as const;
+    for (let n = 0; n < times; n++) {
+      const start = ctx.currentTime + n * 0.17;
+      // Each strike a touch softer and flatter, as a palm comes down on it twice.
+      const soft = 1 - n * 0.25;
+      const base = 1960 * (1 - n * 0.01);
+      for (const [ratio, vol, decay] of partials) {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = base * ratio;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(vol * soft, start + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + decay);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + decay + 0.05);
+      }
+      // The clapper's click.
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      const high = ctx.createBiquadFilter();
+      high.type = "highpass";
+      high.frequency.value = 3500;
+      const click = ctx.createGain();
+      click.gain.setValueAtTime(0.18 * soft, start);
+      click.gain.exponentialRampToValueAtTime(0.001, start + 0.02);
+      src.connect(high).connect(click).connect(ctx.destination);
+      src.start(start, Math.random() * 0.2, 0.03);
+    }
+  }
+
   /** Contented rumble from inside. */
   purr(): void {
     const ctx = this.ctx;

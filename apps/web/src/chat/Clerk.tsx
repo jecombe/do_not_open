@@ -44,12 +44,28 @@ function history(lines: Line[]): Turn[] {
 /**
  * The depot's clerk: a chat that answers questions about the game from the manual. It needs
  * the API (the model's key stays there); without one, it is not shown at all. `inline` puts its
- * opener in a line of text (the game's footer) instead of a tab on the page's edge.
+ * opener in a line of text (the game's footer) instead of a tab on the page's edge. `open` and
+ * `onOpenChange` let the page open it from elsewhere (the home page's bell).
  */
-export function Clerk({ newTab = false, inline = false }: { newTab?: boolean; inline?: boolean }) {
+export function Clerk({
+  newTab = false,
+  inline = false,
+  open: shown,
+  onOpenChange,
+}: {
+  newTab?: boolean;
+  inline?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const t = useT();
   const locale = useLocale();
-  const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(false);
+  const open = shown ?? own;
+  const setOpen = (next: boolean) => {
+    setOwn(next);
+    onOpenChange?.(next);
+  };
   const [lines, setLines] = useState<Line[]>(load);
   const [draft, setDraft] = useState("");
   const [waiting, setWaiting] = useState(false);
@@ -106,7 +122,7 @@ export function Clerk({ newTab = false, inline = false }: { newTab?: boolean; in
         type="button"
         className={inline ? "link clerk-inline" : `clerk-tab${open ? " is-open" : ""}`}
         data-tour="clerk"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-label={t("chat.open")}
         title={t("chat.open")}

@@ -7,6 +7,7 @@ import { DISCORD, REPO } from "../links";
 import { useLocale } from "../i18n/locale";
 import { appPath, docsPath, homePath } from "../site";
 import { buildName, catNames } from "../i18n/names";
+import { ClerkBell } from "./ClerkBell";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { Shipped } from "./Shipped";
@@ -181,6 +182,8 @@ export function Home() {
         </a>
         <a href={REPO}>{t("home.foot.source")}</a>
       </footer>
+
+      <ClerkBell />
     </div>
   );
 }
