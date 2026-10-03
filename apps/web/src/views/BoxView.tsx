@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sameAddress, type ActionOptions, type BoxInfo, type BoxPantry, type DuelInfo, type PantryDay, type Step, type TraitRoll } from "@dno/chain-adapter";
+import { sameAddress, type ActionOptions, type BoxInfo, type BoxPantry, type DuelInfo, type EntangleProposal, type PantryDay, type Step, type TraitRoll } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -136,6 +136,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const [loaded, setInfo] = useState<BoxInfo | null>(null);
   const [pantry, setPantry] = useState<{ tokenId: number; at: BoxPantry } | null>(null);
   const [duels, setDuels] = useState<{ tokenId: number; list: DuelInfo[] } | null>(null);
+  const [proposals, setProposals] = useState<{ tokenId: number; list: EntangleProposal[] } | null>(null);
   const [serving, setServing] = useState(false);
   const [croq, setCroq] = useState("");
   // What the holder fed this cat today, decrypted for them: the input stops at what is left.
@@ -172,6 +173,11 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
       (list) => setDuels({ tokenId, list }),
       () => setDuels(null),
     );
+    // An entanglement proposed to or by it: a tag too.
+    adapter.entangleProposals([tokenId]).then(
+      (list) => setProposals({ tokenId, list }),
+      () => setProposals(null),
+    );
     // The cat's meals and weigh-in live next door, in the Pantry. Without it the box still works.
     adapter.boxPantry(tokenId).then(
       (at) => setPantry({ tokenId, at }),
@@ -179,7 +185,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     );
   }, [adapter, tokenId]);
   const kitchen = pantry?.tokenId === tokenId ? pantry.at : null;
-  // A welcome bag or a purr waits for this box in the Pantry.
+  // A welcome bag or a purr waits for this box in the Pantry: a blinking banner says so above the actions.
   const claimable = !!kitchen && (!kitchen.welcomed || kitchen.nextClaimAt <= Date.now() / 1000);
   // A paid action says its price on its button, in what the holder pays with.
   const priced = (label: string, amount: bigint | undefined) =>
@@ -193,17 +199,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     );
   const collectLine = (
     <p className="fine">
-      {t(claimable ? "box.claimWaiting" : "box.croquettesFrom")}{" "}
+      {t("box.croquettesFrom")}{" "}
       <button type="button" className="link" onClick={onPantry}>
         {t("box.goCollect")}
       </button>
     </p>
   );
   const tags = useMemo(
-    () => (info ? boxTags(info, duels?.tokenId === tokenId ? duels.list : []) : []),
+    () => (info ? boxTags(info, duels?.tokenId === tokenId ? duels.list : [], proposals?.tokenId === tokenId ? proposals.list : []) : []),
     // `t` changes with the language the tags are worded in.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [info, duels, tokenId, t],
+    [info, duels, proposals, tokenId, t],
   );
   const weighIn = kitchen?.weighIn ?? null;
   const cat = useMemo(() => (info?.revealed ? catFromRevealed(info.revealed, weighIn) : null), [info, weighIn]);
@@ -240,6 +246,16 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   }, [load, reset]);
 
   const isHolder = myBoxes.includes(tokenId);
+  // Shown above the actions whatever the slip says below, sealed or open.
+  const croqBanner = claimable && isHolder && (
+    <button type="button" className="croq-waiting" onClick={onPantry}>
+      <span className="croq-waiting-dot" aria-hidden="true" />
+      <span className="croq-waiting-text">
+        <strong>{t("box.claimWaiting")}</strong>
+        <span>{t("box.goCollect")}</span>
+      </span>
+    </button>
+  );
   // The account's own listing of this box, on the shelf or waiting for its proof. Opened, nobody
   // can take it up; given away, whoever does gets a void duel. Better withdrawn first.
   const listing =
@@ -416,6 +432,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
           opened={cat}
           vet={info?.aliveCheck === "alive" || info?.aliveCheck === "notAlive" ? info.aliveCheck : null}
           tags={tags}
+          croquettes={claimable && isHolder && !!revealed}
           quality={quality}
           sound={sound}
           onShakeDone={noop}
@@ -484,6 +501,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               {kitchen && !weighIn && (
                 <p className="fine">{t("box.weighPromptHidden")}</p>
               )}
+              {croqBanner}
               <div className="actions">
                 <button type="button" className="stamp-button" onClick={() => inspect(true)}>
                   {t("box.takeOut")}
@@ -548,6 +566,8 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   </ul>
                 </div>
               )}
+
+              {croqBanner}
 
               <div className="actions">
                 {!info ? (
@@ -667,7 +687,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                         {t("box.serveHint", { treasury: meal.treasuryBps / 100, burn: meal.burnBps / 100, reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100 })}
                       </Hint>
                     </p>
-                    {collectLine}
+                    {!claimable && collectLine}
                   </>
                 ) : giving ? (
                   <p className="fine">
@@ -681,10 +701,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 ) : info.status === "opening" ? (
                   <p className="fine">{t("box.stuckOpening")}</p>
                 ) : isHolder ? (
-                  <>
-                    <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
-                    {claimable && collectLine}
-                  </>
+                  <p className="fine">{t("box.holderHint", { feed: fee(collection?.fees.feed ?? 0n, collection, pay), open: fee(collection?.fees.observe ?? 0n, collection, pay) })}</p>
                 ) : (
                   <p className="fine">
                     {t("box.strangerHint", { paid: fee(collection?.fees.paidShake ?? 0n, collection, pay), share: HOLDER_SHARE, feed: fee(collection?.fees.feed ?? 0n, collection, pay) })}

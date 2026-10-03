@@ -1298,6 +1298,61 @@ button {
   }
 }
 
+/* Croquettes waiting for the box in the Pantry: a banner that blinks until they are collected. */
+.croq-waiting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: #f2b632;
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: croq-pulse 1.2s ease-in-out infinite;
+}
+
+.croq-waiting:hover,
+.croq-waiting:focus-visible {
+  animation: none;
+  background: #ffc94a;
+}
+
+.croq-waiting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.croq-waiting-text strong {
+  font-size: 17px;
+}
+
+.croq-waiting-text span {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.croq-waiting-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  animation: credit-blink 0.6s steps(1) infinite;
+}
+
+@keyframes croq-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgb(242 182 50 / 0.45);
+    transform: scale(1.015);
+  }
+}
+
 /* The detail on hover or focus: a slip like the menus, hanging under the meter. */
 .credit-tip {
   position: absolute;
@@ -1341,7 +1396,9 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .credit-meter.is-low,
-  .credit-meter.is-empty {
+  .credit-meter.is-empty,
+  .croq-waiting,
+  .croq-waiting-dot {
     animation: none;
   }
 }
