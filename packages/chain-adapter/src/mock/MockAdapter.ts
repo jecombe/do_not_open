@@ -1,5 +1,6 @@
 import { spec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
+import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf } from "../duels";
 import {
   ChainError,
@@ -19,6 +20,7 @@ import {
   type DuelInfo,
   type DuelResult,
   type PostDuelOptions,
+  type SendBoxOptions,
   type EconomyInfo,
   type MintOptions,
   type OpenedCat,
@@ -632,12 +634,19 @@ export class MockAdapter implements ChainAdapter {
     return total;
   }
 
-  async sendBox(tokenId: number, to: Address, opts?: ActionOptions): Promise<void> {
+  async sendBox(tokenId: number, to: Address, opts?: SendBoxOptions): Promise<void> {
     const me = this.signer();
     if (!/^0x[0-9a-fA-F]{40}$/.test(to) || /^0x0{40}$/.test(to)) throw revert("ConfidentialERC721InvalidReceiver");
     const box = this.get(tokenId);
-    await this.send(opts, "confidentialTransfer");
-    if (box.owner === me) box.owner = to;
+    const plan = decoyPlan(to, opts?.decoys ?? 0);
+    if (plan.length > 1) {
+      opts?.onStep?.("encrypting");
+      await this.wait(0.4);
+    }
+    for (const p of plan) {
+      await this.send(opts, plan.length > 1 ? "confidentialTransferIf" : "confidentialTransfer");
+      if (p.really && box.owner === me) box.owner = to;
+    }
   }
 
   // --- croquettes ---

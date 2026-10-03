@@ -159,6 +159,7 @@ fee, masks the result with "paid" instead of "holds", and adds 70% of a paid fee
 box's encrypted earnings, unless nobody holds the box (an empty id): then the whole fee is
 revenue, since nobody could ever claim that share. `claimEarnings(tokenIds)` pays the caller, for each listed box,
 `select(isOwner, earnings, 0)`: the boxes they do not hold pay 0 and keep their earnings.
+The app lists whole windows of ten ids (`claimWindows`), never the held boxes alone.
 
 The event says a shake happened. It does not say which trait, nor whether the caller
 held the box.
@@ -418,6 +419,29 @@ sequenceDiagram
 The transfer never reverts on ownership, so anyone can send decoys. An operator set with
 `setOperator(operator, until)` may call `confidentialTransferFrom` for the holder; there
 are no per-token approvals, they would name the owner. In the adapter: `sendBox`.
+
+### With the holder's own decoys (optional)
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor A as Alice
+  participant R as Relayer
+  participant C as Contract
+  participant Co as Coprocessor
+  A->>R: encrypt really = [false, true, false, false], one input proof
+  loop each transfer, in a random order (decoys to fresh random addresses)
+    A->>C: confidentialTransferIf(to, tokenId, really[i], proof)
+    C->>Co: moved = (owner == Alice) AND really[i]
+    C->>Co: owner = select(moved, to, owner)
+    C-->>A: ConfidentialTransfer(tokenId, Alice, to, moved)
+  end
+  Note over A,C: Four attempts from Alice, at most one moved. Each receiver reads only its own bit
+```
+
+Once an opening, an alive check, an entanglement or a duel has shown that Alice held the
+box, a plain transfer from her certainly moved it. With decoys nobody can tell which of the
+four did, or whether any did. `sendBox(tokenId, to, { decoys: 3 })`; one transaction each.
 
 ## Paying
 
@@ -720,8 +744,9 @@ Welcome bags and purrs are paid into each box's encrypted stash, whoever calls; 
 caller collects only the stashes of the boxes they hold. An id nobody holds (a mint's empty
 ids) gets nothing: a 0-box mint costs only gas, and its empty ids would otherwise drain the
 reserve into stashes nobody can ever claim. A claim never reverts on ownership, and the
-contract treats a stranger's claim like a holder's. The app, though, only claims for the
-caller's own boxes, so in practice a claim's list of ids names them (HIDDEN_OWNERS.md §6).
+contract treats a stranger's claim like a holder's. So the app never lists the caller's
+boxes alone: it claims whole windows of ten ids (0-9, 10-19…), the same windows every time,
+one transaction per window (`claimWindows`, HIDDEN_OWNERS.md §6).
 
 The treasury's 20% of each meal sits in an encrypted bucket nobody can read, the treasury
 included; `collect` sends it at most once a week, so the treasury only learns weekly sums.

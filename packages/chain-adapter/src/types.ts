@@ -181,6 +181,17 @@ export interface DuelInfo {
   openUntil: number | null;
 }
 
+/** At most this many decoys go with a box sent away. */
+export const MAX_DECOYS = 5;
+
+export interface SendBoxOptions extends ActionOptions {
+  /** Decoys to send with it, 0 to `MAX_DECOYS`: transfers of the same box to fresh random
+   *  addresses that move nothing, in a random order with the real one. To anyone else each is
+   *  a "maybe", so a box whose holder became public cannot be followed. One transaction each,
+   *  one encryption for all. None when left out. */
+  decoys?: number;
+}
+
 export interface PostDuelOptions extends ActionOptions {
   /** Only this box may take the duel up. Any sealed box may when left out. */
   reservedFor?: number;
@@ -518,8 +529,10 @@ export interface ChainAdapter {
   /** Pays the caller what paid shakes earned the listed boxes they hold, in cUSDC. Returns
    *  what arrived, read from the caller's own balance. */
   claimEarnings(tokenIds: number[], opts?: ActionOptions): Promise<bigint>;
-  /** Gives a box away. Moves it only if the caller holds it; nobody else learns which. */
-  sendBox(tokenId: number, to: Address, opts?: ActionOptions): Promise<void>;
+  /** Gives a box away. Moves it only if the caller holds it; nobody else learns which. With
+   *  `decoys`, also sends transfers that move nothing, so that even someone who knows the
+   *  caller held the box cannot tell which one moved it. */
+  sendBox(tokenId: number, to: Address, opts?: SendBoxOptions): Promise<void>;
 
   // --- USDC ---
   /** Test networks only: mints `payment.faucet` test USDC to the caller. */

@@ -48,6 +48,8 @@ const WORKING: Record<string, AppKey> = {
 };
 const ANGLES: InspectAngle[] = ["front", "left", "back", "right", "above"];
 const noop = () => {};
+/** Decoys sent with a box given away, when the holder asks for them. */
+const DECOYS = 3;
 /** What each slow action goes through, in order, as the tracker lists it. */
 const PLANS: Record<string, PlannedStep[]> = {
   open: [
@@ -136,6 +138,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const [day, setDay] = useState<{ tokenId: number; value: PantryDay } | null>(null);
   const [giving, setGiving] = useState(false);
   const [giveTo, setGiveTo] = useState("");
+  const [decoys, setDecoys] = useState(false);
   const [missingId, setMissingId] = useState<number | null>(null);
   const [felt, setFelt] = useState<TraitRoll | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -280,7 +283,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     if (!/^0x[0-9a-fA-F]{40}$/.test(to)) return;
     start();
     const done = await action.run("give", async (o) => {
-      await adapter.sendBox(tokenId, to, o);
+      await adapter.sendBox(tokenId, to, { ...o, decoys: decoys ? DECOYS : 0 });
       return true;
     });
     if (!done) return;
@@ -569,6 +572,10 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   <button type="submit" className="plain-button" disabled={!!busy || !/^0x[0-9a-fA-F]{40}$/.test(giveTo.trim())}>
                     {t("box.giveGo")}
                   </button>
+                  <label className="check">
+                    <input type="checkbox" checked={decoys} onChange={(e) => setDecoys(e.target.checked)} disabled={!!busy} />
+                    {t("box.giveDecoys", { n: DECOYS })}
+                  </label>
                 </form>
               )}
 
@@ -611,7 +618,10 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                     </p>
                   </>
                 ) : giving ? (
-                  <p className="fine">{t("box.giveHint")}</p>
+                  <p className="fine">
+                    {t("box.giveHint")}
+                    {decoys ? ` ${t("box.giveDecoysHint", { n: DECOYS })}` : ""}
+                  </p>
                 ) : note ? (
                   <p className="fine">{t(note)}</p>
                 ) : !info ? null : !account ? (

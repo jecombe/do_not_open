@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatAmount, type BoxPantry, type EconomyInfo } from "@dno/chain-adapter";
+import { claimWindows, formatAmount, type BoxPantry, type EconomyInfo } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -93,6 +93,8 @@ export function PantryView({ quality, sound, onSelect }: Props) {
     const b = boxes.get(id);
     return b && (!b.welcomed || b.nextClaimAt <= now);
   }), [myBoxes, boxes, now]);
+  // Whole windows of ten ids, never the held boxes alone: a claim names its ids in the clear.
+  const windows = useMemo(() => claimWindows(due, collection?.tokenCount ?? 0), [due, collection?.tokenCount]);
   const nextAt = useMemo(() => {
     const later = myBoxes.map((id) => boxes.get(id)).filter((b): b is BoxPantry => !!b && b.welcomed && b.nextClaimAt > now);
     return later.length ? Math.min(...later.map((b) => b.nextClaimAt)) : null;
@@ -112,9 +114,9 @@ export function PantryView({ quality, sound, onSelect }: Props) {
 
   const collect = async () => {
     setDone(null);
-    const ids = due.slice(0, economy?.maxBoxesPerClaim ?? 10);
+    if (!windows.length) return;
     const ok = await action.run("collect", async (o) => {
-      await adapter.claimCroquettes(ids, o);
+      for (const ids of windows) await adapter.claimCroquettes(ids, o);
       return true;
     });
     if (ok) await after("pantry.collected");
@@ -173,7 +175,7 @@ export function PantryView({ quality, sound, onSelect }: Props) {
               </dl>
               <div className="actions">
                 <button type="button" className="stamp-button" onClick={() => void collect()} disabled={!!action.busy || due.length === 0}>
-                  {action.busy === "collect" ? t("pantry.collecting") : due.length === 0 ? t("pantry.upToDate") : t("pantry.collect", { count: Math.min(due.length, economy.maxBoxesPerClaim) })}
+                  {action.busy === "collect" ? t("pantry.collecting") : due.length === 0 ? t("pantry.upToDate") : t("pantry.collect", { count: due.length })}
                 </button>
                 <button type="button" className="plain-button" onClick={() => void reveal()} disabled={!!action.busy}>
                   {action.busy === "reveal" ? t("pantry.revealing") : hidden === null ? t("pantry.reveal") : t("pantry.revealAgain")}
@@ -187,7 +189,7 @@ export function PantryView({ quality, sound, onSelect }: Props) {
                     : nextAt
                       ? t("pantry.nextPurr", { time: new Date(nextAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
                       : ""}
-                {due.length > economy.maxBoxesPerClaim ? t("pantry.batched", { n: economy.maxBoxesPerClaim }) : ""}
+                {due.length > 0 ? t("pantry.batched") : ""}
               </Feedback>
             </>
           ) : tab === "market" ? (

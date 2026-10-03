@@ -126,6 +126,7 @@ sequenceDiagram
 | --- | --- | --- |
 | mint | contract on the seed and each owner; buyer on each receipt and on the quantity | The contract computes on them later; the buyer finds which ids are theirs |
 | confidentialTransfer | contract on the new owner; both sides on the `moved` bit | The receipt is how each side tracks its boxes |
+| confidentialTransferIf | same as `confidentialTransfer`; the caller's encrypted `really` is used once, for nobody to read | A decoy (`really` false) leaves the owner as it was |
 | shake, paidShake | contract and viewer on two fresh ciphertexts | The relayer requires the contract on anything a user decrypts |
 | feed | contract on the new affection | |
 | paidShake, claimEarnings | contract on the box's earnings | |

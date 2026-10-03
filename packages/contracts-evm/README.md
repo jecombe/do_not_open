@@ -57,6 +57,7 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `mint`, 1 box among 10 ids | ~2.6M | ~3.3M |
 | `mint`, 1 box among 1 id | ~1.0M | ~1.9M |
 | `confidentialTransfer` | ~184k | ~200k |
+| `confidentialTransferIf` (a decoy, or the real one sent among decoys) | ~278k | ~225k |
 | `shake` / `paidShake` | ~421k / ~896k | ~0.9M / ~2.17M |
 | `feed` | ~502k | ~1.07M |
 | `observe` + `finalize` | ~625k + ~291k | ~1.12M |
@@ -67,15 +68,16 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
 
-Deployed size: `DoNotOpen` 24,566 bytes (limit 24,576), `Pantry` about 14,000. To stay under
-the limit, the optimizer runs at 200 (`hardhat.config.ts`), and `onlySealed` calls
+Deployed size: `DoNotOpen` 24,512 bytes (limit 24,576), `Pantry` about 14,000. To stay under
+the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
+override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
 
 ## Commands
 
 ```bash
 pnpm compile
-pnpm test                 # 143 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the locker
+pnpm test                 # 147 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the locker
 
 # Local walkthrough
 pnpm chain                # terminal 1

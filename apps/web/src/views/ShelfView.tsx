@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { sameAddress, type BoxInfo, type DuelInfo, type PendingRequest } from "@dno/chain-adapter";
+import { claimWindows, sameAddress, type BoxInfo, type DuelInfo, type PendingRequest } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
@@ -133,7 +133,13 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
   /** What strangers paid to shake these boxes, partly left inside for their holder. */
   const collect = async () => {
     setRan("boxes");
-    const got = await action.run("collect", (o) => adapter.claimEarnings(myBoxes.slice(-10), o));
+    // Whole windows of ten ids, never the held boxes alone: a claim names its ids in the clear.
+    const windows = claimWindows(myBoxes, collection?.tokenCount ?? 0);
+    const got = await action.run("collect", async (o) => {
+      let total = 0n;
+      for (const ids of windows) total += await adapter.claimEarnings(ids, o);
+      return total;
+    });
     if (got !== undefined) setEarned(got);
   };
 

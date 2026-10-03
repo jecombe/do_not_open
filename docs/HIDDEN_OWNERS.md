@@ -11,13 +11,13 @@ was made. The contracts are the source of truth:
 ## 1. The standard: Confidential ERC-721
 
 `DoNotOpen` is no longer an ERC-721. It implements `IConfidentialERC721`, written for this
-project as a reusable base (`ConfidentialERC721`), ERC-165 id `0x5f6463b8`.
+project as a reusable base (`ConfidentialERC721`), ERC-165 id `0x87ffe7a2`.
 
 | ERC-721 | Confidential ERC-721 |
 | --- | --- |
 | `ownerOf(id)` public | `confidentialOwnerOf(id)`: an `eaddress` nobody but the contract may decrypt |
 | `balanceOf(account)` | none: nobody can count an account's tokens |
-| `transferFrom` reverts unless the sender owns the token | `confidentialTransfer(to, id)` moves it if the sender holds it and does nothing otherwise; returns an encrypted `moved` bit |
+| `transferFrom` reverts unless the sender owns the token | `confidentialTransfer(to, id)` moves it if the sender holds it and does nothing otherwise; returns an encrypted `moved` bit. `confidentialTransferIf(to, id, really, proof)` also needs the caller's encrypted `really`: false sends a decoy |
 | `Transfer(from, to, id)` | `ConfidentialTransfer(id, from, to, moved)`: `moved` readable by `from` and `to` only |
 | `approve`, `setApprovalForAll` | `setOperator(operator, until)`, as in ERC-7984; no per-token approval, it would name the owner |
 | anyone calls `ownerOf` | `isOwner(id, account)` returns an `ebool`, only to the account, its operators, or contracts the collection trusts (the Pantry) |
@@ -81,7 +81,7 @@ milestones.
 | --- | --- | --- | --- |
 | `shake` | anyone | the trait is masked by `isOwner`: a non-holder reads `NOT_YOURS` (255) | that someone shook |
 | `paidShake` | anyone, 2.5 cUSDC | masked by "paid"; 70% of the fee goes into the box (`_earnings`, encrypted), unless nobody holds it (an empty id), when it is all revenue | that someone paid to shake |
-| `claimEarnings(ids)` | anyone | each box pays `select(isOwner, earnings, 0)` | that someone claimed |
+| `claimEarnings(ids)` | anyone | each box pays `select(isOwner, earnings, 0)` | that someone claimed for these ids; the app names whole windows of ten ids |
 | `feed` (petting) | anyone, 0.5 cUSDC | an unpaid feed adds nothing | that someone fed; the count is no longer kept |
 | `observe` | holder, 1 cUSDC | request: `ok = holds AND paid`, seed and affection masked by `ok` | the cat, and that the opener held the box |
 | `proveAlive` | holder | request: `holds`, and `alive AND holds` | one bit, and that the caller held the box |
@@ -90,6 +90,7 @@ milestones.
 | `postDuel` | holder of A | `posted = caller holds A`, publicly decryptable; only a proven posting goes on the duel shelf, and it gives way to an accepted duel of the same box still waiting for its outcome | that the caller holds A; a void duel otherwise, which shows nothing |
 | `acceptDuel` | holder of B | `aHolds = challenger still holds A`, `valid = aHolds AND accepter holds B`; outcome masked by `valid` | five values: aHolds, valid, who won, which trait, the loser's roll. A void duel shows only that A left its challenger; a reopened one only that the accepter did not hold B |
 | `confidentialTransfer` | anyone | the transfer itself | that a transfer was attempted |
+| `confidentialTransferIf` | anyone | the transfer, and the caller's encrypted `really` | that a transfer was attempted, and that it may be a decoy |
 
 **Requests.** What must become public is a request in two steps, like every decryption in
 this project: the request computes the encrypted answers and makes them publicly decryptable;
@@ -114,6 +115,8 @@ The Pantry asks `DoNotOpen.isOwner` as a trusted reader (`setTrustedReader`, set
   feeder can read back today's meals and croquettes eaten (`todayHandles`): the real figures
   if they hold the cat, zeros otherwise. The public meal count is gone.
 - **Welcome bags and purrs** go into the box (`_stash`, encrypted), whoever calls `claim`.
+  The app claims whole windows of ten ids (0-9, 10-19…), always the same ones, never the
+  held boxes alone (see §6).
   The caller then receives the stashes of the boxes they hold, and 0 for the others. So a
   stranger cannot spend a holder's day, and the contract treats a stranger's claim like a
   holder's. The reserve pays a whole claim or none of it (one `le` instead of a `min` per
@@ -135,7 +138,8 @@ give each mint's quantity, and so who bought which ids.
 | Shielding USDC | the amount (cUSDC wrapping is public) |
 | Unshielding cUSDC | the amount (decrypted in public to be paid out as plain USDC) |
 | A transfer attempt | sender and recipient addresses, not whether it moved |
-| A paid shake, a feed, a claim | that the caller did it. The contract treats a non-holder's the same way, but the app only feeds and claims for the caller's own boxes, so in practice a meal (`MealServed`) and a claim's list of ids name boxes the caller holds |
+| A paid shake, a feed, a meal | that the caller did it. The contract treats a non-holder's the same way, but the app only feeds the caller's own boxes, so in practice a meal (`MealServed`) names a box the caller holds |
+| A claim (`Pantry.claim`, `claimEarnings`) | the ids it lists. The app lists whole windows of ten ids, the same windows every time: "maybe one of these ten", as a mint of ten ids shows. Random padding would not do: claims made over months would intersect down to the boxes held |
 | An opening, an alive check, an accepted entanglement, a proven duel posting, a valid duel | that the caller held the box at that moment |
 | A milestone | which mint crossed it |
 | Operator approvals | that an account made an address its operator |
@@ -148,11 +152,18 @@ transfers naming it), never know them.
 `from` themselves. So once an opening, an alive check, an accepted entanglement, a proven
 duel posting or a valid duel shows that an address held a box, that address's next transfer
 of the box certainly moved it: the recipient holds it now, and their next transfer of it is
-certain too. Decoys add no doubt on that path. To keep a box's later holders apart from the
-proof, receive a box at a fresh address, and prove from an address you never use to send
-or receive boxes. A fix in the protocol would let anyone send a transfer naming any `from`,
-with the operator check made under encryption: a change to the standard (AUDIT_CHECKLIST
-O19).
+certain too. A stranger's decoys add no doubt on that path, since they do not come `from`
+the holder.
+
+The holder's own decoys do. `confidentialTransferIf(to, id, really, proof)` moves the box
+only if `really`, encrypted by the caller, is true; with false it moves nothing, yet its event
+and receipt look like any transfer. When giving a box away the app can send three decoys to
+fresh random addresses, in a random order with the real transfer, all through
+`confidentialTransferIf` and from one encryption. Then even someone who knows the box was
+yours cannot tell which of the four moved it, or whether any did. Each receiver decrypts only
+their own receipt. It is optional: each decoy is one more transaction (~278,000 gas). Without
+decoys, the older advice holds: receive a box at a fresh address, and prove from an address
+you never use to send or receive boxes (AUDIT_CHECKLIST O19).
 
 ## 7. Cost
 
@@ -166,6 +177,7 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | mint, 3 boxes among 5 ids | 1,652,000 | 2,521,000 |
 | mint, 10 boxes among 10 ids | 2,560,000 | 3,316,000 |
 | `confidentialTransfer` | 184,000 | 200,000 |
+| `confidentialTransferIf`, each decoy or the real one | 278,000 | 225,000 |
 | `shake` | 421,000 | 899,000 |
 | `paidShake` | 896,000 | 2,171,000 |
 | `claimEarnings`, 1 box | 419,000 | 1,082,000 |
@@ -185,6 +197,6 @@ at 1 gwei and 3,000 USD per ETH, 1,000,000 gas is 3 USD. On Ethereum mainnet a h
 a few dollars; on the cheaper chains Zama supports it is cents. Zama's protocol fees
 (input proofs, decryptions) come on top on mainnet.
 
-`DoNotOpen` is 24,566 bytes deployed, 10 under the 24,576 limit, with the optimizer at 200
-runs. The next feature should move logic out (a library, or a second contract that is a
-trusted reader).
+`DoNotOpen` is 24,512 bytes deployed, 64 under the 24,576 limit, compiled alone with the
+optimizer at 1 run (size over gas; the other contracts stay at 200). The next feature should
+move logic out (a library, or a second contract that is a trusted reader).

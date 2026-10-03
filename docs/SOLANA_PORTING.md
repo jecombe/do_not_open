@@ -50,6 +50,7 @@ were drawn for:
 | --- | --- | --- | --- |
 | `euint64`, `euint32`, `euint16`, `euint8`, `ebool`, `eaddress` handles in contract storage | `DoNotOpen.sol`, `ConfidentialERC721.sol` state | Ciphertext handles (32 bytes) stored in program accounts | High: handles are chain-agnostic identifiers |
 | `eaddress` owner, `FHE.eq(owner, caller)` and `select` on it | every ownership check, transfers | An encrypted 32-byte public key and equality on it | Low: the whole hidden-owner design rests on it. Ask Zama |
+| `externalEbool` input and `FHE.and` | `confidentialTransferIf` (a holder's decoys) | An encrypted bool input with its proof, and `and` on bools | Medium: needs encrypted inputs, as the hidden mint quantity does |
 | `FHE.fromExternal` with an input proof bound to (contract, sender) | `mint` (the quantity), the Pantry | The same, bound to (program, signer) | Medium |
 | `FHE.randEuint64()` and bounded `randEuintN(2^k)` | mint, shake, feed, duel | An encrypted-randomness instruction through CPI to Zama's program | Medium: must exist for the protocol to be useful; bounds may differ |
 | `FHE.shr`, `select`, `ge`, `gt`, `lt`, `add`, `mul`, casts | shake, proveAlive, score, duel | The same operator set through CPI | Medium: check that encrypted-amount shifts exist; if not, the five trait bytes can be extracted with `and` + scalar shifts |

@@ -204,8 +204,8 @@ who holds the box.
 
 ### Contract size
 
-`DoNotOpen` is 24,566 bytes of deployed bytecode against the 24,576 limit, since the
-duel shelf and the 2026-10-03 security fixes (see the hidden owners' "Contract size" below for how it was brought back
+`DoNotOpen` is 24,512 bytes of deployed bytecode against the 24,576 limit, since the
+duel shelf, the 2026-10-03 security fixes and decoy transfers (see the hidden owners' "Contract size" below for how it was brought back
 under). The next feature must move logic to a library or a second contract that is a
 trusted reader.
 
@@ -506,8 +506,12 @@ this section records why, from the protocol's side.
 ### A Confidential ERC-721, written here
 
 Neither Zama nor OpenZeppelin ships a confidential NFT standard (ERC-7984 is fungible).
-`IConfidentialERC721` (ERC-165 `0x5f6463b8`) stores each owner as an `eaddress` and borrows
-ERC-7984's shape: operators with an expiry, transfers that return an encrypted bool.
+`IConfidentialERC721` (ERC-165 `0x87ffe7a2`) stores each owner as an `eaddress` and borrows
+ERC-7984's shape: operators with an expiry, transfers that return an encrypted bool. As a
+zero amount does in ERC-7984, `confidentialTransferIf` lets a holder send a decoy: an
+encrypted `really` set to false moves nothing. Once a holder is public, decoys sent with the
+real transfer keep the doubt about where the box went. A decoy needs an input proof; one
+encryption holds the bits for every transfer of a send, each used in its own transaction.
 `ownerOf` and `balanceOf` cannot exist: their answer would be the secret.
 
 ### Nothing reverts on ownership, so everything is a request
@@ -560,13 +564,16 @@ never to make what it learns public: its holder checks only mask amounts.
 
 ### Contract size
 
-`DoNotOpen` is 24,566 bytes deployed, 10 under the limit. The duel shelf took it past the
+`DoNotOpen` is 24,512 bytes deployed, 64 under the limit. The duel shelf took it past the
 limit; two changes brought it back: the `onlySealed` modifier calls `_requireSealed`
 instead of carrying the check, so its body is not copied into every function using it,
 and the optimizer runs at 200 instead of 800 (`hardhat.config.ts`), which favours size
 over the gas of each call. The 2026-10-03 security fixes then fit by dropping
 `revenueHandle` (nobody may read the revenue any more) and keeping the withdrawal clock
-private. The next feature has to move logic out.
+private. Decoy transfers (`confidentialTransferIf`, 217 bytes) fit by compiling
+`DoNotOpen` alone with the optimizer at 1 run (a per-file override in `hardhat.config.ts`;
+the other contracts stay at 200): gas per call barely moves, as FHE operations dominate.
+The next feature has to move logic out.
 
 ### Sepolia deployment (2026-10-02): CROQ-only Uniswap V3 market
 

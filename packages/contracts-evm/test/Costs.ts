@@ -51,6 +51,8 @@ describe("Costs", function () {
     const B = (await mintBoxes(dno, bob, 3)).owned;
 
     await measure("confidentialTransfer", dno.connect(alice).confidentialTransfer(bob.address, A[2]!));
+    const decoy = await fhevm.createEncryptedInput(address, bob.address).addBool(false).encrypt();
+    await measure("confidentialTransferIf (decoy)", dno.connect(bob).confidentialTransferIf(carol.address, A[2]!, decoy.handles[0]!, decoy.inputProof));
     await measure("shake (holder, free)", dno.connect(alice).shake(A[0]!));
     await measure("paidShake", dno.connect(carol).paidShake(A[0]!));
     await measure("claimEarnings (1 box)", dno.connect(alice).claimEarnings([A[0]!]));

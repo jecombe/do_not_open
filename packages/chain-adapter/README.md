@@ -89,7 +89,14 @@ so the interface has no owner field anywhere:
   boxes can settle: both can be up at once. `DuelStatus` is `"posted"`, `"open"`,
   `"pending"`, `"resolved"`, `"cancelled"` or `"void"` (`"none"` for an unknown id).
 - `claimEarnings(tokenIds)` collects what paid shakes earned the boxes the caller holds;
-  `sendBox(tokenId, to)` is a confidential transfer.
+  `sendBox(tokenId, to)` is a confidential transfer. `sendBox(tokenId, to, { decoys: n })`
+  (up to `MAX_DECOYS`, 5) also sends `n` decoys to fresh random addresses through
+  `confidentialTransferIf`, in a random order with the real one, from one encryption: one
+  transaction each. `decoyPlan(to, n)` is the plan it follows.
+- A claim lists its ids in the clear, so never list the held boxes alone:
+  `claimWindows(tokenIds, tokenCount)` turns them into whole windows of `CLAIM_WINDOW` (10)
+  ids, 0-9, 10-19…, the same every time. Claim each window with `claimEarnings` or
+  `claimCroquettes`.
 - `openedCats()` lists every opened cat and who opened it: the only holders that are public.
 
 The croquette economy sits on the same interface: `economy()`, `boxPantry(tokenId)`,

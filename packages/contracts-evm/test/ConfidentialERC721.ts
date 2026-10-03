@@ -70,6 +70,7 @@ describe("ConfidentialERC721", function () {
       "function isOperator(address,address) view returns (bool)",
       "function setOperator(address,uint48)",
       "function confidentialTransfer(address,uint256) returns (bytes32)",
+      "function confidentialTransferIf(address,uint256,bytes32,bytes) returns (bytes32)",
       "function confidentialTransferFrom(address,address,uint256) returns (bytes32)",
       "function isOwner(uint256,address) returns (bytes32)",
       "function supportsInterface(bytes4) view returns (bool)",
@@ -146,6 +147,43 @@ describe("ConfidentialERC721", function () {
       expect(await ownerOf(1)).to.eq(alice.address);
     });
 
+    it("sends a decoy when the holder says so, and nobody else can tell it from the real one", async function () {
+      const send = async (to: HardhatEthersSigner, really: boolean) => {
+        const input = await fhevm.createEncryptedInput(address, alice.address).addBool(really).encrypt();
+        return movedOf(nft.connect(alice).confidentialTransferIf(to.address, 0, input.handles[0]!, input.inputProof));
+      };
+      const decoy = await send(bob, false);
+      expect(await ownerOf(0)).to.eq(alice.address);
+      const real = await send(carol, true);
+      expect(await ownerOf(0)).to.eq(carol.address);
+      // Each receiver learns only their own receipt; to anyone else both are a "maybe".
+      expect(await fhevm.userDecryptEbool(decoy, address, bob)).to.eq(false);
+      expect(await fhevm.userDecryptEbool(real, address, carol)).to.eq(true);
+      await expectDenied(fhevm.userDecryptEbool(decoy, address, carol));
+      await expectDenied(fhevm.publicDecrypt([real]));
+      expect(await holdings(alice)).to.deep.eq([]);
+      expect(await holdings(bob)).to.deep.eq([]);
+      expect(await holdings(carol)).to.deep.eq([0]);
+    });
+
+    it("takes every bit of one encryption, one transaction each, as the app sends decoys", async function () {
+      const input = await fhevm.createEncryptedInput(address, alice.address).addBool(false).addBool(true).addBool(false).encrypt();
+      const tos = [bob, carol, bob];
+      for (const [i, to] of tos.entries()) {
+        await nft.connect(alice).confidentialTransferIf(to.address, 0, input.handles[i]!, input.inputProof);
+      }
+      expect(await ownerOf(0)).to.eq(carol.address);
+      expect(await holdings(carol)).to.deep.eq([0]);
+      expect(await holdings(bob)).to.deep.eq([]);
+    });
+
+    it("moves nothing for a stranger, even with really set to true", async function () {
+      const input = await fhevm.createEncryptedInput(address, carol.address).addBool(true).encrypt();
+      const moved = await movedOf(nft.connect(carol).confidentialTransferIf(bob.address, 0, input.handles[0]!, input.inputProof));
+      expect(await ownerOf(0)).to.eq(alice.address);
+      expect(await fhevm.userDecryptEbool(moved, address, bob)).to.eq(false);
+    });
+
     it("refuses the zero address and unknown tokens", async function () {
       await expect(nft.connect(alice).confidentialTransfer(ethers.ZeroAddress, 0)).to.be.revertedWithCustomError(
         nft,
@@ -160,6 +198,12 @@ describe("ConfidentialERC721", function () {
     it("costs one eq and one select on an encrypted address", async function () {
       const used = await hcu(nft.connect(alice).confidentialTransfer(bob.address, 0));
       expect(used.globalHCU).to.be.lessThan(250_000);
+    });
+
+    it("adds one and on booleans for a transfer that may be a decoy", async function () {
+      const input = await fhevm.createEncryptedInput(address, alice.address).addBool(true).encrypt();
+      const used = await hcu(nft.connect(alice).confidentialTransferIf(bob.address, 0, input.handles[0]!, input.inputProof));
+      expect(used.globalHCU).to.be.lessThan(300_000);
     });
   });
 

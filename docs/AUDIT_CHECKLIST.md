@@ -40,9 +40,9 @@ mainnet), **Not done** (a check nobody has run).
 | O15 | The owner can make any contract a trusted reader, and a malicious one could publish who holds a box | Medium (trust) | `setTrustedReader` |
 | O16 | `IConfidentialERC721` is a draft standard written here; no third party has reviewed it | Medium | `ConfidentialERC721` |
 | O17 | Anyone can send decoy transfers naming an address: its holder's discovery must decrypt every one | Low (UX) | `confidentialTransfer`, adapter `boxesOf` |
-| O18 | `DoNotOpen` is 24,566 bytes, 10 under the limit: the next feature does not fit | Low (maintenance) | build |
-| O19 | One public proof of holding lets anyone follow a box to its next holders | Medium (privacy) | `ConfidentialERC721` transfers |
-| O20 | The app claims for, and feeds, only boxes the caller holds: the calldata and `MealServed` name them | Medium (privacy) | app, `Pantry.claim`, `Pantry.feed` |
+| O18 | `DoNotOpen` is 24,512 bytes, 64 under the limit, compiled for size: the next feature does not fit | Low (maintenance) | build |
+| O19 | One public proof of holding lets anyone follow a box to its next holders, unless its holder sends decoys (optional) | Low (privacy, opt-in fix) | `ConfidentialERC721` transfers |
+| O20 | The app feeds only boxes the caller holds: the calldata and `MealServed` name them (claims are fixed: they name whole windows of ten ids) | Medium (privacy) | app, `Pantry.feed` |
 | O21 | Anyone can overwrite an entanglement proposal and keep a pair from being linked | Low (griefing) | `proposeEntangle` |
 | O22 | Free empty mints can replace the milestone bit before its proof lands | Low (griefing) | `_checkMilestone` |
 | O23 | Near sell-out, a free mint past the cap tells the buyer the exact remaining supply | Low (privacy) | `mint` |
@@ -93,15 +93,16 @@ Details and the rest of the checks follow.
 | The revenue is unreadable, the owner included | Pass | `_revenue` is allowed to the contract only, and `withdraw` runs at most once per 7 days: a readable revenue would give each mint's quantity, one difference at a time. Tests: "lets nobody read the revenue, the owner included: it would give away each mint's quantity", "pays the revenue out at most once a week, so the owner only learns weekly sums" |
 | A real token and an empty one look the same | Pass | Same event, same seed draw, same storage; only the buyer reads `moved`. Test: "makes a real token and an empty one look the same from outside" |
 | A transfer by a non-holder does nothing and does not revert | Pass | `moved = owner == from`, `owner = select(moved, to, owner)`. Tests: "does nothing, without reverting, when the sender does not hold it", "follows a token through several hands, decoys included" |
+| A holder can send a decoy, and a decoy looks like any transfer | Pass | `confidentialTransferIf` ands `moved` with an encrypted `really` from the caller; same event, same receipt rules. Tests: "sends a decoy when the holder says so, and nobody else can tell it from the real one", "takes every bit of one encryption, one transaction each, as the app sends decoys", "moves nothing for a stranger, even with really set to true" |
 | A transfer receipt is readable by its two sides only | Pass | `allow(moved, from)`, `allow(moved, to)`, transient for the calling contract. Test: "moves the token when the sender holds it, and tells only the two sides" |
 | `isOwner` answers only the account, its operators and trusted readers | Pass | Reverts `ConfidentialERC721UnauthorizedReader` otherwise. Tests: "answers the account itself, its operators and trusted contracts only", "refuses to read ownership unless the collection trusts the Pantry" |
 | **O15. Trusted readers** | Open | A trusted reader gets `isOwner` about anyone, with a transient grant. A malicious one could make the answer publicly decryptable and so publish who holds a box. Only the owner adds readers. Make the set immutable after deploy, or put it behind a timelock and a multisig |
 | A request by a non-holder reveals nothing about the box | Pass | Every published value is masked by `holds` (or `ok`, `valid`); a refused request decrypts to "no" and zeros. Tests: "refuses someone who does not hold the box…", "refuses a stranger, and is asked once per box", "goes back on the shelf when the accepter brought a box they do not hold, showing nothing" |
 | A void duel says nothing about the accepter | Pass | `valid = aHolds AND accepter holds B`: "B is held" only shows when A was. Test: "is void, and says nothing of the accepter, when the challenger gave the box away" |
-| What a successful request reveals | Accepted | That the caller held the box then: an opening, an alive check, an entanglement, a proven duel posting, a valid duel. `Observed` names the opener. A reopened duel shows that the accepter did not hold B. Documented in HIDDEN_OWNERS.md. What follows from it is O19 |
+| What a successful request reveals | Accepted | That the caller held the box then: an opening, an alive check, an entanglement, a proven duel posting, a valid duel. `Observed` names the opener. A reopened duel shows that the accepter did not hold B. Documented in HIDDEN_OWNERS.md. What follows from it is O19, which decoys answer |
 | A buyer's holdings can be bounded from above | Accepted | Ids minted (`MintPlaced.count`) plus transfers naming the address. Never known exactly |
 | A milestone shows which mint crossed it | Accepted | Its bit decrypts to true. Nothing between two milestones |
-| **O16. Draft standard** | Open | `IConfidentialERC721` and its ERC-165 id `0x5f6463b8` are this project's. Have the standard reviewed, or align it with one Zama or OpenZeppelin publishes |
+| **O16. Draft standard** | Open | `IConfidentialERC721` and its ERC-165 id `0x87ffe7a2` (`0x5f6463b8` before `confidentialTransferIf`) are this project's. Have the standard reviewed, or align it with one Zama or OpenZeppelin publishes |
 | **O17. Decoy receipts** | Open | `confidentialTransfer(victim, id)` costs the sender gas and emits a receipt naming the victim, which their `boxesOf` must decrypt. Spam slows discovery; it cannot add a box. Batch decryption and a cap per visit in the adapter |
 | Transfer moves no ACL on game data and leaves nothing to revoke | Pass | Test: "hands the box over: the new holder can shake, the previous one cannot" |
 | A previous holder keeps what they already decrypted | Accepted | Unavoidable. Documented in `DATA_MODEL.md` |
@@ -172,7 +173,7 @@ clear values and a KMS proof.
 | Unbounded loops | Pass | Mint loops at most `maxPerTx` (10) ids; `claimEarnings` at most `MAX_CLAIM` (10) boxes; score loops are fixed at 3 and 5 |
 | Casts | Pass | Token ids run past 10,000 (empty ids) and are stored as `uint32` in requests and duels: 4 billion ids, 400 million mints. `buildBoxSpec` accepts any 32-bit id |
 | HCU stays under the limit | Pass | Largest in `DoNotOpen`: a 10-id mint ~3.3M and `acceptDuel` ~2.8M of 20M. Tests pin the budgets |
-| **O18. Contract size** | Open | 24,566 bytes deployed, limit 24,576, after moving the `onlySealed` check into `_requireSealed`, lowering the optimizer to 200 runs, and dropping `revenueHandle` and the public withdrawal clock for the 2026-10-03 fixes. Move logic to a library or a trusted-reader contract before the next feature |
+| **O18. Contract size** | Open | 24,512 bytes deployed, limit 24,576, after moving the `onlySealed` check into `_requireSealed`, dropping `revenueHandle` and the public withdrawal clock for the 2026-10-03 fixes, and compiling `DoNotOpen` alone with the optimizer at 1 run (size over gas) to fit `confidentialTransferIf`. The other contracts stay at 200 runs. Move logic to a library or a trusted-reader contract before the next feature |
 
 ## 6. Administration and trust
 
@@ -220,7 +221,7 @@ clear values and a KMS proof.
 
 | Check | Status |
 | --- | --- |
-| Unit tests on the FHEVM mock | Pass: 143 tests (the standard, the boxes, the croquettes, the ramp, the credits, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
+| Unit tests on the FHEVM mock | Pass: 147 tests (the standard, the boxes, the croquettes, the ramp, the credits, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
 | Every mechanic run on Sepolia through the real KMS | Pass for the previous version: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts`. Not done for the hidden-owner contracts |
 | Optional Hardhat suite on Sepolia (`pnpm test:sepolia`) | Not done |
 | Static analysis (Slither, Aderyn) | Not done |
@@ -306,8 +307,8 @@ No path to steal funds was found. Each fix below comes with the test that fails 
 | A refund after a withdrawal wraps the revenue around (`_revenue − fee` below 0), and the next withdrawal pays 0 and loses every sale in between | Medium | Fixed | An opening's fee is held apart until it settles: revenue when the box opens, refunded otherwise. Test: "holds an opening's fee until it settles, and pays a refund without touching the revenue" |
 | A paid shake of an empty id leaves the holder's 70% in a box nobody can claim | Low | Fixed | The whole fee is revenue for an empty id. Test: "keeps no holder's share in an empty id, where nobody could ever claim it" |
 | `DecryptionCredits` accepted a price of 0: free credits, and the relayer bill without limit | Low | Fixed | `ZeroPrice` at deploy and in `setPrice`. Test: "refuses a price of 0, at deploy and later…" |
-| One public proof of holding lets anyone follow the box (O19) | Medium | Open | Only the holder can send a transfer `from` themselves, so after an opening, an alive check, an entanglement or a duel names the holder, their next transfer of that box is certainly real. Documented in HIDDEN_OWNERS.md and the manual (receive at a fresh address). A protocol fix needs transfers anyone can send for any `from`, with an encrypted operator check: a change to the standard (O16) |
-| The app names the caller's boxes (O20) | Medium | Open | The contract treats a stranger's claim or meal like a holder's, but the app only claims for and feeds the caller's own boxes. Decoy ids would be cheap now that empty ids get nothing, but repeated claims intersect: needs a design |
+| One public proof of holding lets anyone follow the box (O19) | Medium | Fixed, opt-in | Only the holder can send a transfer `from` themselves, so after an opening, an alive check, an entanglement or a duel names the holder, their next transfer of that box was certainly real. The standard now has `confidentialTransferIf(to, id, really, proof)`: with `really` false it moves nothing yet looks like any transfer. The app's "send decoys" box sends three to random addresses, in a random order with the real one, from one encryption. Optional, as each decoy costs a transaction (~278k gas, ~225k HCU); without it the old advice stands (receive at a fresh address). Test: "sends a decoy when the holder says so…" |
+| The app names the caller's boxes (O20) | Medium | Claims fixed, meals open | The contract treats a stranger's claim or meal like a holder's, but the app claimed for and fed only the caller's own boxes. Claims (`Pantry.claim`, `claimEarnings`) now name whole windows of ten ids (0-9, 10-19…), always the same, so claims cannot be intersected down to the boxes held (`claimWindows` in the adapter). Meals still name the box: a decoy meal costs ~3.7M HCU, so at most 4 fit in a transaction. Accepted for now and documented |
 | Entanglement proposals can be overwritten (O21) | Low | Open | Key proposals by proposer and pass the proposer to `acceptEntangle` (an ABI change and a few bytes `DoNotOpen` does not have) |
 | The milestone bit can be replaced before its proof lands (O22) | Low | Open | Each free empty mint writes a new bit. Keep a bit once it is true, or accept a proof for any bit of the same milestone |
 | Supply probing near sell-out (O23) | Low | Accepted | A mint past the cap is free and tells the buyer it failed. Inherent to "all or nothing" |
@@ -320,7 +321,7 @@ code reviewed before them, until the next redeployment.
 
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6, O11 to O16, O19 to O25. Fix O3, O4, O7, O17 (small and
+1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25. Fix O3, O4, O7, O17 (small and
    mechanical), and make room for O18.
 2. Set the relayer key and the credit price from Zama's plan (O9).
 3. Run the "Not done" rows of section 8.
