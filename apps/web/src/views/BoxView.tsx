@@ -277,10 +277,12 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const feed = async () => {
     start();
     const done = await action.run("feed", async (o) => {
-      await adapter.feed(tokenId, { ...cue(o, "confirming", () => scene.current?.pet()), pay });
+      await adapter.feed(tokenId, { ...o, pay });
       return true;
     });
     if (!done) return;
+    // Strokes the cat only once every transaction (payment included) has settled.
+    scene.current?.pet();
     setNote("box.noteFed");
     void load();
   };
