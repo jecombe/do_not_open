@@ -123,6 +123,7 @@ const ago = (at: number, locale: string) => {
 type Note = Extract<AppKey, "box.noteFed" | "box.noteAlive" | "box.noteNotAlive" | "box.noteServed" | "box.noteWeighed" | "box.noteSent">;
 
 const { meal } = gameSpec.economy;
+const { perFeedMin, perFeedMax } = gameSpec.affection;
 const DAILY_CAP = BigInt(meal.maxEatenPerDay);
 
 export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShelf, onPantry, backTo, onBack }: Props) {
@@ -544,33 +545,33 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 ) : !boxesKnown ? (
                   <FindMine compact />
                 ) : info.status === "opening" ? (
-                  <button type="button" className="stamp-button" onClick={() => void open()} disabled={!!busy}>
+                  <button type="button" className="stamp-button" onClick={() => void open()} disabled={!!busy} aria-busy={busy === "open"}>
                     {busy === "open" ? t("box.opening") : t("box.finishOpening")}
                   </button>
                 ) : (
                   <>
-                    <button type="button" className="stamp-button" onClick={() => void shake()} disabled={!!busy}>
+                    <button type="button" className="stamp-button" onClick={() => void shake()} disabled={!!busy} aria-busy={busy === "shake"}>
                       {busy === "shake" ? t("box.shaking") : isHolder ? t("box.shake") : priced(t("box.payShake"), collection?.fees.paidShake)}
                     </button>
-                    <button type="button" className="plain-button" onClick={() => void feed()} disabled={!!busy}>
+                    <button type="button" className="plain-button" onClick={() => void feed()} disabled={!!busy} aria-busy={busy === "feed"}>
                       {busy === "feed" ? t("box.feeding") : priced(t("box.feed"), collection?.fees.feed)}
                     </button>
                     {kitchen && isHolder && (
-                      <button type="button" className="plain-button" onClick={() => void toggleServing()} disabled={!!busy || fullToday} aria-expanded={serving}>
+                      <button type="button" className="plain-button" onClick={() => void toggleServing()} disabled={!!busy || fullToday} aria-expanded={serving} aria-busy={busy === "serve"}>
                         {busy === "serve" ? t("box.serving") : fullToday ? t("box.fullToday") : t("box.serve")}
                       </button>
                     )}
                     {isHolder && (
                       <>
-                        <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy}>
+                        <button type="button" className="plain-button" onClick={() => void open()} disabled={!!busy} aria-busy={busy === "open"}>
                           {busy === "open" ? t("box.opening") : priced(t("box.open"), collection?.fees.observe)}
                         </button>
                         {(info.aliveCheck === "none" || info.aliveCheck === "pending") && (
-                          <button type="button" className="plain-button" onClick={() => void checkAlive()} disabled={!!busy}>
+                          <button type="button" className="plain-button" onClick={() => void checkAlive()} disabled={!!busy} aria-busy={busy === "alive"}>
                             {busy === "alive" ? t("box.checking") : info.aliveCheck === "pending" ? t("box.finishCheck") : t("box.isAlive")}
                           </button>
                         )}
-                        <button type="button" className="plain-button" onClick={() => setGiving((g) => !g)} disabled={!!busy} aria-expanded={giving}>
+                        <button type="button" className="plain-button" onClick={() => setGiving((g) => !g)} disabled={!!busy} aria-expanded={giving} aria-busy={busy === "give"}>
                           {busy === "give" ? t("box.giving") : t("box.give")}
                         </button>
                       </>
@@ -649,7 +650,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                     {decoys ? ` ${t("box.giveDecoysHint", { n: DECOYS })}` : ""}
                   </p>
                 ) : note ? (
-                  <p className="fine">{t(note)}</p>
+                  <p className="fine">{t(note, { min: perFeedMin, max: perFeedMax })}</p>
                 ) : !info ? null : !account ? (
                   <p className="fine">{t("box.anyoneLook")}</p>
                 ) : info.status === "opening" ? (

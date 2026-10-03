@@ -206,7 +206,7 @@ export const en = {
   "box.stuckOpening": "You started opening this box and the last step never went through. Finish it.",
   "box.holderHint": "Yours, and nobody else knows. Shaking is free and tells you one trait. Petting costs {feed}, opening {open}: opening shows everyone that you held it. Croquettes make the cat heavier.",
   "box.strangerHint": "Not yours, or nobody knows. For {paid} you can shake it and read one trait; whoever holds it learns nothing and keeps {share}%. Petting costs {feed}.",
-  "box.noteFed": "Petted. How much affection that earned is encrypted; you find out when the box is opened.",
+  "box.noteFed": "Petted: +{min} to {max} affection, drawn at random and encrypted. You find out when the box is opened.",
   "box.noteAlive": "It is alive. The box now carries a Vet Certified mark that anyone can see.",
   "box.noteNotAlive": "Not alive. Asleep, ghost or quantum: the check does not say which. Anyone can see this answer.",
 

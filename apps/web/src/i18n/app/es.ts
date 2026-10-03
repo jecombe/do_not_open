@@ -200,7 +200,7 @@ export const es: Record<AppKey, string> = {
   "box.stuckOpening": "Empezaste a abrir esta caja y el último paso nunca llegó. Termínalo.",
   "box.holderHint": "Tuya, y nadie más lo sabe. Agitar es gratis y te dice un rasgo. Acariciar cuesta {feed}, abrir {open}: abrir muestra a todos que la tenías. Las croquetas hacen al gato más pesado.",
   "box.strangerHint": "No es tuya, o nadie lo sabe. Por {paid} puedes agitarla y leer un rasgo; quien la tenga no se entera de nada y se queda el {share} %. Acariciar cuesta {feed}.",
-  "box.noteFed": "Acariciado. Cuánto afecto ganó está cifrado; lo sabrás cuando se abra la caja.",
+  "box.noteFed": "Acariciado: +{min} a {max} de afecto, sorteado al azar y cifrado. Lo sabrás al abrir la caja.",
   "box.noteAlive": "Está vivo. La caja lleva ahora una marca de certificado veterinario que cualquiera puede ver.",
   "box.noteNotAlive": "No está vivo. Dormido, fantasma o cuántico: la comprobación no dice cuál. Cualquiera puede ver esta respuesta.",
 
