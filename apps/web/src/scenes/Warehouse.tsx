@@ -33,6 +33,23 @@ const MOVES: Record<string, [number, number]> = {
   KeyD: [1, 0],
   ArrowRight: [1, 0],
 };
+/** How low and how high the camera may go in the warehouse, and how far it may back away from what it looks at. */
+const FLOOR = 0.3;
+const CEILING = 5;
+const MAX_DISTANCE = 9;
+
+/** How far from `from`, along the unit vector `dir`, before a wall, the floor or the ceiling. */
+function reach(from: Vector3, dir: Vector3, b: { minX: number; maxX: number; minZ: number; maxZ: number }) {
+  let t = Infinity;
+  const axis = (p: number, d: number, lo: number, hi: number) => {
+    if (d > 1e-6) t = Math.min(t, (hi - p) / d);
+    else if (d < -1e-6) t = Math.min(t, (lo - p) / d);
+  };
+  axis(from.x, dir.x, b.minX, b.maxX);
+  axis(from.y, dir.y, FLOOR, CEILING);
+  axis(from.z, dir.z, b.minZ, b.maxZ);
+  return Math.max(0.6, t);
+}
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const typing = (e: KeyboardEvent) => e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
 
@@ -75,8 +92,9 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
 
   // Between the racks: one finger slides along them, two pinch forward and turn. The button goes back
   // to the picked box, or to the door.
-  const { minX, maxX, minZ, maxZ } = warehouse.bounds;
-  useLeash(controls, { min: [minX, 0.1, minZ], max: [maxX, 3.8, maxZ], touch: "walk" }, () => {
+  const { minX, maxX, minZ } = warehouse.bounds;
+  // What the camera looks at stays near the racks, no further back than the door.
+  useLeash(controls, { min: [minX, 0.1, minZ], max: [maxX, 3.8, warehouse.entrance.position.z], touch: "walk" }, () => {
     if (selected !== null && selected < count) face(selected, !reducedMotion());
     else enter(!reducedMotion());
   });
@@ -108,7 +126,13 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
   useFrame((state, dt) => {
     warehouse.update(state.clock.elapsedTime, dt);
     const c = controls.current;
-    if (!c || !held.current.size) return;
+    if (!c) return;
+    // The camera stays between the walls: backing out stops at the one behind it, however far
+    // the wheel turns. Only the reach changes, so the next turn forward moves it at once.
+    c.getPosition(pos);
+    c.getTarget(target);
+    c.maxDistance = Math.min(MAX_DISTANCE, reach(target, forward.subVectors(pos, target).normalize(), warehouse.bounds));
+    if (!held.current.size) return;
     let ahead = 0;
     let side = 0;
     for (const code of held.current) {
@@ -168,7 +192,7 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
         makeDefault
         smoothTime={0.5}
         minDistance={0.6}
-        maxDistance={9}
+        maxDistance={MAX_DISTANCE}
         minPolarAngle={0.35}
         maxPolarAngle={Math.PI / 2 - 0.04}
         dollyToCursor
