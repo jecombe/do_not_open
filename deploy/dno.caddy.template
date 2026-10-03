@@ -1,6 +1,13 @@
-# DO NOT OPEN API. Rendered by deploy.sh into /opt/edge/sites/dno.caddy.
-__API_DOMAIN__ {
+# DO NOT OPEN API. Rendered by deploy.sh into /opt/edge/sites/dno.caddy: the site address is
+# API_DOMAIN followed by API_ALIASES from the server's .env. Caddy gets a certificate for each
+# name and redirects plain HTTP to HTTPS.
+__API_HOSTS__ {
 	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
 	reverse_proxy dno-api:8080
-	header -Server
 }

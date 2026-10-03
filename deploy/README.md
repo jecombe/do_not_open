@@ -35,7 +35,7 @@ Ports to open on the server: **22** (SSH), **80** and **443** (TCP), and **443/U
 
 ```bash
 scp deploy/bootstrap.sh ubuntu@SERVER:
-ssh ubuntu@SERVER 'sudo bash bootstrap.sh <api-domain> "https://do-not-open.vercel.app,https://do-not-open-*.vercel.app"'
+ssh ubuntu@SERVER 'sudo bash bootstrap.sh api.do-not-open.app "https://do-not-open.app,https://www.do-not-open.app,https://testnet.do-not-open.app,https://do-not-open-*.vercel.app"'
 ```
 
 Without a domain, `<ip-with-dashes>.sslip.io` resolves to the server and gets a real
@@ -68,6 +68,36 @@ Endpoint URL to `https://<api-domain>/v1/discord/interactions`, then, from a mac
 repo and `DISCORD_BOT_TOKEN` in its `.env`, run `pnpm --filter @dno/api discord:commands` and open
 the link it prints to add the command to the server. All in
 [`apps/api/README.md`](../apps/api/README.md#on-discord-ask).
+
+## Domains
+
+| Name | Serves | DNS record |
+| --- | --- | --- |
+| `do-not-open.app` | the site (Vercel), mainnet once it launches, Sepolia until then | `A 76.76.21.21` |
+| `www.do-not-open.app` | redirects to `do-not-open.app` (Vercel) | `CNAME cname.vercel-dns.com` |
+| `testnet.do-not-open.app` | the site on Sepolia (Vercel) | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
+| `api.do-not-open.app` | the API (`API_DOMAIN`) | `A` the server's IP |
+| `api.testnet.do-not-open.app` | the same API for now (`API_ALIASES`) | `A` the server's IP |
+
+Only one network runs today, so both site names are the same Vercel build and both API names
+reach the same container. Remove the registrar's default parking records (`A` and `AAAA` on
+each name) before adding these: Let's Encrypt tries IPv6 first and would fail on a parking
+address. At the mainnet launch, `api.do-not-open.app` moves to a mainnet API, the testnet site
+gets its own Vercel project with `VITE_API_URL=https://api.testnet.do-not-open.app`, and this
+stack takes a per-network container name and Caddy file.
+
+Every API name gets its own certificate from Caddy, and plain HTTP redirects to HTTPS. In
+`/opt/dno/.env`:
+
+```bash
+API_DOMAIN=api.do-not-open.app
+API_ALIASES=api.testnet.do-not-open.app        # space or comma separated
+SIGN_IN_DOMAIN=do-not-open.app                 # the name shown in the sign-in message
+CORS_ORIGINS=https://do-not-open.app,https://www.do-not-open.app,https://testnet.do-not-open.app,https://do-not-open-*.vercel.app
+```
+
+then `bash /opt/dno/deploy.sh <current image>` (or the next deploy) renders the Caddy file
+and reloads the proxy. The GitHub variable `API_DOMAIN` is the name CI smoke-tests.
 
 ## By hand
 
