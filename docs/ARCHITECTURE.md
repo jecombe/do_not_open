@@ -179,7 +179,7 @@ flowchart TB
   board --> s1
 ```
 
-`VITE_CHAIN_MODE` (or `?chain=` in the URL) picks the adapter. In mock mode the EVM
+`VITE_CHAIN_MODE` (or `?chain=` in the URL) picks the adapter. The menu's network tags (`chain/NetworkSwitch.tsx`) set `?chain=` and reload: an adapter belongs to one chain for the life of the page. In mock mode the EVM
 adapter, ethers and the Relayer SDK are never downloaded: they sit behind a dynamic import.
 
 The leaderboard ranks only what is public: opened cats by rarity score, and the players

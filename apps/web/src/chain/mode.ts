@@ -15,3 +15,17 @@ export function chainMode(): { mode: ChainMode; unavailable: string | null } {
   if (wanted !== "mock") console.warn(`[chain] unknown VITE_CHAIN_MODE "${wanted}", running the mock`);
   return { mode: "mock", unavailable: null };
 }
+
+/** The network the visitor asked for, built or not: a planned mainnet still reads as mainnet. Null in the demo. */
+export function chosenNetwork(): "sepolia" | "mainnet" | null {
+  const { mode, unavailable } = chainMode();
+  if (unavailable === "mainnet") return "mainnet";
+  return mode === "sepolia" ? "sepolia" : null;
+}
+
+/** Reloads the page on another network: the adapter, the account and every read belong to one chain. */
+export function switchNetwork(network: "sepolia" | "mainnet"): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("chain", network);
+  window.location.assign(url.toString());
+}

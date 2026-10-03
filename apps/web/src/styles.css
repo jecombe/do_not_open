@@ -1388,8 +1388,27 @@ button {
   color: var(--ink-red);
 }
 
-.lang button:hover {
+.lang button:hover:not(:disabled) {
   border-color: var(--ink);
+}
+
+/* Chain and network: two more rows of tags under the languages. Solana waits, struck through. */
+.net .lang {
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.net .lang:first-child {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed rgb(28 24 20 / 0.4);
+}
+
+.lang button:disabled {
+  opacity: 0.4;
+  text-decoration: line-through;
+  cursor: not-allowed;
 }
 
 /* --- Previous / next box, at the foot of every box slip --- */

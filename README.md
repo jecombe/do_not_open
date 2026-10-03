@@ -82,7 +82,10 @@ on Sepolia; the wallet slip has a button that mints some, and the bureau de chan
 menu) shields it as cUSDC, buys it with ETH or trades it for croquettes.
 Who holds a box is encrypted, so the app finds yours from your own transfer receipts: one
 decryption signature per visit ("Show my boxes"). `?chain=mock` and `?chain=sepolia`
-switch modes without restarting.
+switch modes without restarting. The menu does the same under the languages: ETH / SOL
+(Solana stays disabled until Zama ships SVM support) and Testnet / Mainnet, which reloads
+the page with `?chain=sepolia` or `?chain=mainnet`. Mainnet runs the mock depot, with a
+footer saying so, until a mainnet deployment exists.
 
 Token metadata (JSON, a 3D render and an SVG fallback per token):
 
