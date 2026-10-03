@@ -1102,6 +1102,121 @@ button {
   background: var(--ink-red);
 }
 
+/* --- Decryptions left: a pane of its own, the same glass as the balances, that blinks as they run out --- */
+.credit-meter-wrap {
+  position: relative;
+  display: flex;
+}
+
+.credit-meter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3px 12px 4px;
+  background: linear-gradient(180deg, rgb(233 223 200 / 0.14), rgb(233 223 200 / 0.04)), rgb(23 19 15 / 0.32);
+  color: var(--manifest);
+  border: 1px solid rgb(233 223 200 / 0.2);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 8px 24px rgb(0 0 0 / 0.3);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  text-align: left;
+  line-height: 1.1;
+}
+
+.credit-meter:hover {
+  background-color: rgb(23 19 15 / 0.6);
+}
+
+.credit-meter .balance-value small {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.credit-meter.is-low {
+  color: #f2b632;
+  border-color: #f2b632;
+  animation: credit-blink 1.4s ease-in-out infinite;
+}
+
+.credit-meter.is-empty {
+  background: var(--ink-red);
+  color: var(--manifest);
+  border-color: var(--ink-red);
+  animation: credit-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes credit-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* The detail on hover or focus: a slip like the menus, hanging under the meter. */
+.credit-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 11;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  width: 280px;
+  padding: 12px 14px;
+  background: var(--manifest);
+  color: var(--ink);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.35);
+  font-size: 14px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.credit-meter-wrap:hover .credit-tip,
+.credit-meter-wrap:focus-within .credit-tip {
+  display: flex;
+}
+
+.credit-tip-state {
+  font-size: 15px;
+}
+
+.credit-tip-state.is-low {
+  color: #8a5a00;
+}
+
+.credit-tip-state.is-empty {
+  color: var(--ink-red);
+}
+
+.credit-tip-go {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-meter.is-low,
+  .credit-meter.is-empty {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .credit-meter .balance-symbol {
+    display: none;
+  }
+
+  .credit-meter {
+    padding: 4px 9px;
+  }
+
+  /* The meter sits at the left of the row on a phone: the slip hangs to the right of it. */
+  .credit-tip {
+    left: 0;
+    right: auto;
+    width: min(280px, calc(100vw - var(--gutter) * 2));
+  }
+}
+
 /* The packing list: a slip of paper hanging under the tag. */
 .menu {
   position: absolute;
