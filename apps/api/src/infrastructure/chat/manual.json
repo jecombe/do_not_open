@@ -317,7 +317,7 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "This part goes away at mainnet.\nThe game runs on Sepolia, Ethereum's test network. Nothing here is worth money. The USDC is Zama's test token, free from the wallet slip or the bureau de change; the ETH for gas comes from a faucet; the croquette pool only exists so the market can be tried; and every price in this manual is a test price.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x5eBa…2C6F\nThe Pantry (croquettes, meals, weigh-ins) 0xf506…6CDB\nCROQ, the plain croquette 0xbedb…51F7\ncCROQ, the encrypted croquette 0x5b4a…7952\nCROQ / USDC pool 0x399D…2100\nLiquidity locker 0xCA7E…3BF3\nThe USDC ramp (ETH to USDC) 0x2754…8aAb\nDecryption credits 0xfBF4…d3B1"
+     "text": "This part goes away at mainnet.\nThe game runs on Sepolia, Ethereum's test network. Nothing here is worth money. The USDC is Zama's test token, free from the wallet slip or the bureau de change; the ETH for gas comes from a faucet; the croquette pool only exists so the market can be tried; and every price in this manual is a test price.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e"
     },
     {
      "id": "testnet-1",
@@ -703,7 +703,7 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Cette partie disparaîtra au mainnet.\nLe jeu tourne sur Sepolia, le réseau de test d'Ethereum. Rien ici n'a de valeur. L'USDC est le jeton de test de Zama, gratuit depuis le volet du wallet ou le bureau de change ; l'ETH pour le gas vient d'un faucet ; le pool de croquettes n'existe que pour qu'on puisse essayer le marché ; et chaque prix de ce manuel est un prix de test.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x5eBa…2C6F\nLe Garde-manger (croquettes, repas, pesées) 0xf506…6CDB\nCROQ, la croquette ordinaire 0xbedb…51F7\ncCROQ, la croquette chiffrée 0x5b4a…7952\nPool CROQ / USDC 0x399D…2100\nCoffre de liquidité 0xCA7E…3BF3\nLa rampe USDC (de l'ETH vers l'USDC) 0x2754…8aAb\nCrédits de déchiffrement 0xfBF4…d3B1"
+     "text": "Cette partie disparaîtra au mainnet.\nLe jeu tourne sur Sepolia, le réseau de test d'Ethereum. Rien ici n'a de valeur. L'USDC est le jeton de test de Zama, gratuit depuis le volet du wallet ou le bureau de change ; l'ETH pour le gas vient d'un faucet ; le pool de croquettes n'existe que pour qu'on puisse essayer le marché ; et chaque prix de ce manuel est un prix de test.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e"
     },
     {
      "id": "testnet-1",
@@ -1095,7 +1095,7 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Esta parte desaparece con mainnet.\nEl juego corre en Sepolia, la red de pruebas de Ethereum. Nada de aquí vale dinero. Los USDC son el token de prueba de Zama, gratis desde la ficha del wallet o la casa de cambio; el ETH para el gas sale de un faucet; el pool de croquetas solo existe para poder probar el mercado; y todos los precios de este manual son precios de prueba.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x5eBa…2C6F\nLa Despensa (croquetas, comidas, pesajes) 0xf506…6CDB\nCROQ, la croqueta sin cifrar 0xbedb…51F7\ncCROQ, la croqueta cifrada 0x5b4a…7952\nPool CROQ / USDC 0x399D…2100\nCofre de liquidez 0xCA7E…3BF3\nLa rampa USDC (de ETH a USDC) 0x2754…8aAb\nCréditos de descifrado 0xfBF4…d3B1"
+     "text": "Esta parte desaparece con mainnet.\nEl juego corre en Sepolia, la red de pruebas de Ethereum. Nada de aquí vale dinero. Los USDC son el token de prueba de Zama, gratis desde la ficha del wallet o la casa de cambio; el ETH para el gas sale de un faucet; el pool de croquetas solo existe para poder probar el mercado; y todos los precios de este manual son precios de prueba.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e"
     },
     {
      "id": "testnet-1",
@@ -1487,7 +1487,7 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Questa parte sparisce con la mainnet.\nIl gioco gira su Sepolia, la rete di prova di Ethereum. Niente qui vale denaro. Gli USDC sono il token di prova di Zama, gratis dal pannello del wallet o dal cambiavalute; l'ETH per il gas viene da un faucet; il pool delle crocchette esiste solo per poter provare il mercato; e ogni prezzo in questo manuale è un prezzo di prova.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x5eBa…2C6F\nLa Dispensa (crocchette, pasti, pesate) 0xf506…6CDB\nCROQ, la crocchetta normale 0xbedb…51F7\ncCROQ, la crocchetta cifrata 0x5b4a…7952\nPool CROQ / USDC 0x399D…2100\nCassaforte della liquidità 0xCA7E…3BF3\nLa rampa USDC (da ETH a USDC) 0x2754…8aAb\nCrediti di decifratura 0xfBF4…d3B1"
+     "text": "Questa parte sparisce con la mainnet.\nIl gioco gira su Sepolia, la rete di prova di Ethereum. Niente qui vale denaro. Gli USDC sono il token di prova di Zama, gratis dal pannello del wallet o dal cambiavalute; l'ETH per il gas viene da un faucet; il pool delle crocchette esiste solo per poter provare il mercato; e ogni prezzo in questo manuale è un prezzo di prova.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37\nLa Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d\nCROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e"
     },
     {
      "id": "testnet-1",

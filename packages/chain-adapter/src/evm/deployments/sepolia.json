@@ -1,7 +1,7 @@
 {
   "chainId": 11155111,
-  "address": "0x5eBaA496783146f712B9c075f8a6fd56cb612C6F",
-  "deployBlock": 11830294,
+  "address": "0x816a39b04e0672B4746A5B696E14145F4F852d37",
+  "deployBlock": 11836238,
   "abi": [
     {
       "inputs": [
@@ -216,6 +216,11 @@
     {
       "inputs": [],
       "name": "TooManyBoxes",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "WithdrawTooSoon",
       "type": "error"
     },
     {
@@ -959,6 +964,40 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "externalEbool",
+          "name": "really",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "inputProof",
+          "type": "bytes"
+        }
+      ],
+      "name": "confidentialTransferIf",
+      "outputs": [
+        {
+          "internalType": "ebool",
+          "name": "moved",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "confidentialUsdc",
       "outputs": [
@@ -1689,19 +1728,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "revenueHandle",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint256",
@@ -1974,7 +2000,7 @@
     }
   ],
   "ramp": {
-    "address": "0x2754B8568a3402f828DDAa1715F8290CDa498aAb",
+    "address": "0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1",
     "abi": [
       {
         "inputs": [
@@ -2291,7 +2317,7 @@
     ]
   },
   "credits": {
-    "address": "0xfBF4E4bC2558Be1227d6feBbE80299064291d3B1",
+    "address": "0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e",
     "abi": [
       {
         "inputs": [
@@ -2370,6 +2396,11 @@
       {
         "inputs": [],
         "name": "ZeroAddress",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroPrice",
         "type": "error"
       },
       {
@@ -2608,6 +2639,6 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11829380
+    "deployBlock": 11836240
   }
 }

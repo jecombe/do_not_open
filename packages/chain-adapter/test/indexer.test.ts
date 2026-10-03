@@ -43,7 +43,7 @@ function adapter(node: FakeNode, api: IndexerClient | undefined) {
 }
 
 /** An API answering canned bodies by path. */
-function api(routes: Record<string, unknown>, opts: { now?: () => number } = {}) {
+function api(routes: Record<string, unknown>, opts: { now?: () => number; collection?: string } = {}) {
   const asked: string[] = [];
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     const path = url.replace("https://api.test", "");
@@ -77,6 +77,26 @@ describe("IndexerClient", () => {
     expect(client.available()).toBe(false);
     now = 30_001;
     expect(client.available()).toBe(true);
+  });
+
+  it("is never used once it turns out to index another collection", async () => {
+    const box = { block: 10, data: { tokenId: 4, status: "sealed", aliveCheck: "none", partner: null, wins: 0, publicTraits: [], revealed: null } };
+    const other = api({ "/v1/collection": { block: 10, data: { address: "0x00000000000000000000000000000000000000aa" } }, "/v1/boxes/4": box }, { collection: SEPOLIA_DEPLOYMENT.address });
+    await expect(other.client.box(4)).rejects.toThrow("another collection");
+    expect(other.client.available()).toBe(false);
+    expect(await other.client.matches()).toBe(false);
+    expect(other.asked.filter((a) => a === "GET /v1/collection")).toHaveLength(1);
+
+    const same = api({ "/v1/collection": { block: 10, data: { address: SEPOLIA_DEPLOYMENT.address.toLowerCase() } }, "/v1/boxes/4": box }, { collection: SEPOLIA_DEPLOYMENT.address });
+    expect((await same.client.box(4)).data.tokenId).toBe(4);
+    expect(same.client.available()).toBe(true);
+  });
+
+  it("asks again whether it indexes the collection when it was unreachable", async () => {
+    const { client, asked } = api({}, { collection: SEPOLIA_DEPLOYMENT.address });
+    expect(await client.matches()).toBe(true);
+    expect(await client.matches()).toBe(true);
+    expect(asked.filter((a) => a === "GET /v1/collection")).toHaveLength(2);
   });
 
   it("nudges at most once every few seconds", async () => {

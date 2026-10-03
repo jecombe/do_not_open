@@ -26,7 +26,7 @@ export interface BrowserEvmOptions {
 export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFhevmAdapter {
   const chain = { ...SEPOLIA, rpcUrl: opts.rpcUrl || SEPOLIA.rpcUrl };
   // The API indexes the committed deployment only: another address reads the chain.
-  const indexer = opts.apiUrl && !opts.address ? new IndexerClient(opts.apiUrl) : null;
+  const indexer = opts.apiUrl && !opts.address ? new IndexerClient(opts.apiUrl, { collection: SEPOLIA_DEPLOYMENT.address }) : null;
   const proxy = indexer && opts.relayerProxy ? `${opts.apiUrl!.replace(/\/$/, "")}/relayer/v2` : null;
   const ethereum = (globalThis as { ethereum?: ConstructorParameters<typeof InjectedWallet>[0] }).ethereum;
 
@@ -53,7 +53,7 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
       const { initSDK, createInstance, SepoliaConfig } = await import("@zama-fhe/relayer-sdk/web");
       await initSDK();
       // Not a Zama URL: the SDK speaks its v2 protocol to it as it is.
-      return createInstance({ ...SepoliaConfig, network: chain.rpcUrl, ...(proxy ? { relayerUrl: proxy } : {}) });
+      return createInstance({ ...SepoliaConfig, network: chain.rpcUrl, ...(proxy && (await indexer!.matches()) ? { relayerUrl: proxy } : {}) });
     },
   });
 }

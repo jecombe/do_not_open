@@ -76,10 +76,16 @@ const duelFrom = (d: Json): DuelInfo => ({
 export class IndexerClient {
   private downUntil = 0;
   private lastNudge = -Infinity;
+  private checked: Promise<boolean> | null = null;
+  private mismatched = false;
 
+  /**
+   * `collection`, when given, is the contract the app plays with: an API that indexes another one
+   * (the contracts were redeployed and the API is not yet) is never used.
+   */
   constructor(
     private readonly baseUrl: string,
-    private readonly opts: { timeoutMs?: number; retryAfterMs?: number; fetch?: typeof fetch; now?: () => number } = {},
+    private readonly opts: { timeoutMs?: number; retryAfterMs?: number; fetch?: typeof fetch; now?: () => number; collection?: Address } = {},
   ) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
   }
@@ -88,12 +94,46 @@ export class IndexerClient {
     return (this.opts.now ?? Date.now)();
   }
 
-  /** False for a while after a failure: callers go to the chain meanwhile. */
+  /** False for a while after a failure, and for good once the API turned out to index another collection. */
   available(): boolean {
-    return this.now() >= this.downUntil;
+    return !this.mismatched && this.now() >= this.downUntil;
+  }
+
+  /**
+   * Whether the API indexes the app's collection, asked once. Unreachable counts as yes: the
+   * usual failure handling applies, and the question is asked again next time.
+   */
+  async matches(): Promise<boolean> {
+    const expected = this.opts.collection?.toLowerCase();
+    if (!expected) return true;
+    this.checked ??= this.fetchJson("/v1/collection").then(
+      (body) => {
+        const ok = String(body.data?.address ?? "").toLowerCase() === expected;
+        this.mismatched = !ok;
+        return ok;
+      },
+      () => {
+        this.checked = null;
+        return true;
+      },
+    );
+    return this.checked;
+  }
+
+  private async fetchJson(path: string): Promise<Indexed<any>> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 6000);
+    try {
+      const res = await (this.opts.fetch ?? fetch)(`${this.baseUrl}${path}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`API ${res.status} on ${path}`);
+      return (await res.json()) as Indexed<any>;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private async get<T>(path: string, map: (data: any) => T): Promise<Indexed<T>> {
+    if (!(await this.matches())) throw new Error("The API indexes another collection");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 6000);
     try {

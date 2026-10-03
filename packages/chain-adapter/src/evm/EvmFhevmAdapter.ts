@@ -949,10 +949,15 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return { account, message, signature, recorded };
   }
 
+  /** Through the API's proxy, as long as that API indexes this collection (see `loadRelayer`). */
+  private async metered(): Promise<boolean> {
+    return !!this.opts.metered && (await (this.opts.indexer?.matches() ?? true));
+  }
+
   async decryptionAllowance(): Promise<DecryptionAllowance | null> {
     const account = this.address_;
     const ix = this.opts.indexer;
-    if (!this.opts.metered || !ix || !account) return null;
+    if (!ix || !account || !(await this.metered())) return null;
     const [data, price] = await Promise.all([this.allowanceSince(ix, account), this.creditPrice()]);
     return { ...data, price };
   }
@@ -1346,7 +1351,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       try {
         const relayer = await this.loadRelayer();
         let auth: { auth: { __type: "BearerToken"; token: string } } | undefined;
-        if (this.opts.metered) {
+        if (await this.metered()) {
           const permit = await this.permitFor(relayer, this.signer(), account, opts);
           auth = { auth: { __type: "BearerToken", token: permitToken(permit) } };
         }

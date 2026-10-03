@@ -188,6 +188,5 @@ pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap,
 
 The smoke scripts spend testnet ETH (mints, fees, a small market buy) and need
 `PRIVATE_KEY` in the repo-root `.env`. `smoke:croq` passed against the Uniswap V2 economy
-on 2026-10-01. Against the V3 market deployed on 2026-10-02 (block 11830294), its economy
-part ran up to the opening, which stopped on the script account's cUSDC balance; quote,
-buy and sell back on the V3 pool were checked through the adapter separately.
+on 2026-10-01. Both passed in full against the contracts deployed on 2026-10-03 (block
+11836238), and a box sent there with three decoys left the sender's holdings.

@@ -1,6 +1,6 @@
 {
   "croq": {
-    "address": "0xbedb039CB104bD8e60A5eD7844fCE7961d0451F7",
+    "address": "0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308",
     "abi": [
       {
         "inputs": [
@@ -329,7 +329,7 @@
     ]
   },
   "cCroq": {
-    "address": "0x5b4af5b2Eb99ec3615721a4fBfb7baF5BC8b7952",
+    "address": "0x358E932457A2F19B20BF49264875E94432941D81",
     "abi": [
       {
         "inputs": [
@@ -1343,7 +1343,7 @@
     ]
   },
   "pantry": {
-    "address": "0xf506832ab27DF17ece72924502537ecCf7586CDB",
+    "address": "0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d",
     "abi": [
       {
         "inputs": [
@@ -1446,6 +1446,11 @@
       {
         "inputs": [],
         "name": "AlreadyWeighed",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "CollectTooSoon",
         "type": "error"
       },
       {
@@ -1704,6 +1709,19 @@
       },
       {
         "inputs": [],
+        "name": "COLLECT_INTERVAL",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "NOT_WEIGHED",
         "outputs": [
           {
@@ -1938,6 +1956,19 @@
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "lastCollected",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
           }
         ],
         "stateMutability": "view",
@@ -2310,12 +2341,12 @@
     ]
   },
   "market": {
-    "pool": "0x399Dc7af546154998D302d0b3B312750DA962100",
+    "pool": "0xc1eFDaC0c240F9BbCE8788E18427666310E267ce",
     "fee": 10000,
-    "positionId": "233099",
-    "tickLower": -138200,
-    "tickUpper": -69200,
-    "locker": "0xCA7Eee59de903F9b6bfab466667131Fb58403BF3",
+    "positionId": "233138",
+    "tickLower": 69200,
+    "tickUpper": 138200,
+    "locker": "0x85b827d5F40C15F0842F48C830B956cf8C5Da108",
     "positionManager": "0x1238536071E1c677A632429e3655c799b22cDA52",
     "swapRouter": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
     "quoter": "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",

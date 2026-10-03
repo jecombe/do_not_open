@@ -132,6 +132,13 @@ relayer proxy's counts. The indexer starts at `indexFrom`, the earliest block of
 protocol's live contracts: the decryption credits (block 11829380) were not redeployed, so
 purchases made before the new collection still count.
 
+The redeploy of 2026-10-03 (`DoNotOpen` `0x816a…2d37`, block 11836238, with new credits and
+a new economy) needs the same: the index emptied, keeping sign-ins, release forms and the
+free daily counts; what was spent of the old credits forgotten; and the herald's old post
+keys (`opening:0`, `duel:0`...) moved aside, or the new collection's facts read as already
+posted. Until the API runs that, the app sees that it indexes another collection and reads
+the chain instead, without the relayer proxy.
+
 Migration 6 adds the public decryption cache (`public_decryptions`, `public_decrypt_uses`):
 like the relayer meter, not a read model, and kept by a replay.
 

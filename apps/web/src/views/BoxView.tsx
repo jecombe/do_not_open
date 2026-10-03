@@ -619,7 +619,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                   </>
                 ) : giving ? (
                   <p className="fine">
-                    {t("box.giveHint")}
+                    {t("box.giveHint", { serial: box.serial })}
                     {decoys ? ` ${t("box.giveDecoysHint", { n: DECOYS })}` : ""}
                   </p>
                 ) : note ? (

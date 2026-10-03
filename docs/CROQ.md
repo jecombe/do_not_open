@@ -544,8 +544,27 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 
 ## Deployed on Sepolia
 
-The economy of the current `DoNotOpen` (deployed 2026-10-02, block 11830294), with the
+The economy of the current `DoNotOpen` (deployed 2026-10-03, block 11836238), with the
 CROQ-only V3 market:
+
+| Contract | Address |
+| --- | --- |
+| `Croq` | [`0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308`](https://sepolia.etherscan.io/address/0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308) |
+| `ConfidentialCroq` | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
+| `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
+| `LiquidityLocker` | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
+| CROQ/USDC pool (Uniswap V3, 1%) | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
+| Position | #233138, ticks 69200 to 138200, 4,000,000 CROQ, 0 USDC |
+| Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |
+| `NonfungiblePositionManager` | `0x1238536071E1c677A632429e3655c799b22cDA52` |
+| `SwapRouter02` | `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` |
+| `QuoterV2` | `0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3` |
+
+The treasury, and the locker's beneficiary and owner, is the deployer
+`0x6a18cFC3fAeef453B295B12246d40a82593b3208`. Deployment gas: `Croq` 533k,
+`ConfidentialCroq` 2.46M, `Pantry` 3.25M, `fund` 442k, `LiquidityLocker` 559k.
+
+The one that read the `DoNotOpen` of the CROQ-only V3 market (2026-10-02, block 11830294), replaced:
 
 | Contract | Address |
 | --- | --- |
@@ -554,15 +573,6 @@ CROQ-only V3 market:
 | `Pantry` | [`0xf506832ab27DF17ece72924502537ecCf7586CDB`](https://sepolia.etherscan.io/address/0xf506832ab27DF17ece72924502537ecCf7586CDB) |
 | `LiquidityLocker` | [`0xCA7Eee59de903F9b6bfab466667131Fb58403BF3`](https://sepolia.etherscan.io/address/0xCA7Eee59de903F9b6bfab466667131Fb58403BF3) |
 | CROQ/USDC pool (Uniswap V3, 1%) | [`0x399Dc7af546154998D302d0b3B312750DA962100`](https://sepolia.etherscan.io/address/0x399Dc7af546154998D302d0b3B312750DA962100) |
-| Position | #233099, ticks -138200 to -69200, 4,000,000 CROQ, 0 USDC |
-| Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |
-| `NonfungiblePositionManager` | `0x1238536071E1c677A632429e3655c799b22cDA52` |
-| `SwapRouter02` | `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` |
-| `QuoterV2` | `0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3` |
-
-The treasury, and the locker's beneficiary and owner, is the deployer
-`0x6a18cFC3fAeef453B295B12246d40a82593b3208`. Deployment gas: `Croq` 533k,
-`ConfidentialCroq` 2.46M, `Pantry` 3.16M, `fund` 442k, `LiquidityLocker` 559k.
 
 The one that read the `DoNotOpen` with the duel shelf (2026-10-02, block 11828557), replaced:
 

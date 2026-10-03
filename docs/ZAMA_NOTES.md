@@ -575,9 +575,44 @@ private. Decoy transfers (`confidentialTransferIf`, 217 bytes) fit by compiling
 the other contracts stay at 200): gas per call barely moves, as FHE operations dominate.
 The next feature has to move logic out.
 
+### Sepolia deployment (2026-10-03): decoys and the security review
+
+Current. Deployed at block 11836238 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
+owns every contract and is the treasury. Everything was deployed again: the security
+review changed `DoNotOpen`, `Pantry` and `DecryptionCredits`, decoy transfers changed the
+token, and the spec's rule texts changed its hash, so `DoNotOpenConfig` too. A new `Pantry`
+needs a funded reserve, so the croquette economy (CROQ, cCROQ, the locker and its pool)
+started fresh. `UsdcRamp` was redeployed because its owner argument still named
+`0x5908…029A`; every contract is now owned by the deployer. Credits bought from the old
+`DecryptionCredits` stay there.
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0x816a39b04e0672B4746A5B696E14145F4F852d37`](https://sepolia.etherscan.io/address/0x816a39b04e0672B4746A5B696E14145F4F852d37) |
+| `DoNotOpenConfig` | [`0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D`](https://sepolia.etherscan.io/address/0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x2861240671f6a46522297427FE2BF59F2f9C1074`](https://sepolia.etherscan.io/address/0x2861240671f6a46522297427FE2BF59F2f9C1074) |
+| `Croq` (CROQ) | [`0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308`](https://sepolia.etherscan.io/address/0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308) |
+| `ConfidentialCroq` (cCROQ) | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
+| `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
+| `LiquidityLocker` (holds position #233138) | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
+| CROQ/USDC pool, Uniswap V3, 1% fee | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
+| `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
+
+Gas: `DoNotOpenConfig` 914,027, `DoNotOpen` 5,792,149, `DoNotOpenHooks` 357,103,
+`DecryptionCredits` 478,835, `Croq` 532,843, `ConfidentialCroq` 2,455,772, `Pantry` 3,253,237,
+`Pantry.fund` 441,798, `LiquidityLocker` 558,565, `UsdcRamp` 759,846. The position took
+4,000,000 CROQ and 0 USDC, ticks 69200 to 138200 (CROQ is token0 this time), 0.001012 to
+1.004 USDC per CROQ. `smoke:sepolia` and `smoke:croq` passed in full against it (mints,
+shakes, a refused shake, a feed, an alive check, a duel, an entanglement, an opening that
+matches the generator; welcome bag, meal, weighing, buy, wrap, unwrap, transfer, sell), and
+a box sent with three decoys left the sender's holdings after four transactions.
+
 ### Sepolia deployment (2026-10-02): CROQ-only Uniswap V3 market
 
-Current. Deployed at block 11830294 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
+Replaced by the one above. Deployed at block 11830294 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
 owns the collection, the locker, and is the treasury. The aim was only a new croquette
 economy, whose market is now a single-sided Uniswap V3 position (only CROQ, no USDC from
 the creator) held for good by `LiquidityLocker` (see [CROQ.md](CROQ.md#the-public-market)).

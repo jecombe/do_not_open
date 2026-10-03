@@ -7,8 +7,8 @@ contract, and it must not go to mainnet before one has.**
 Scope: `ConfidentialERC721.sol`, `DoNotOpen.sol` and `DoNotOpenConfig.sol` in this
 repository, the hidden-owner version (10,000 boxes, owners and sold count encrypted; see
 [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)), deployed on Sepolia at
-`0x5eBaA496783146f712B9c075f8a6fd56cb612C6F` (with the duel shelf, redeployed on
-2026-10-02 at block 11830294); the croquette contracts `Croq.sol`, `ConfidentialCroq.sol`
+`0x816a39b04e0672B4746A5B696E14145F4F852d37` (with the security fixes and decoy transfers,
+redeployed on 2026-10-03 at block 11836238); the croquette contracts `Croq.sol`, `ConfidentialCroq.sol`
 and `Pantry.sol` (section 9) and `LiquidityLocker.sol`, which holds the CROQ market's
 Uniswap V3 position (section 10); plus the parts of the
 adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
