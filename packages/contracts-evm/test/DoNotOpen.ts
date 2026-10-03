@@ -11,6 +11,7 @@ import {
   expectDenied,
   FEES,
   finalizeRequest,
+  grantedIn,
   holdings,
   mintBoxes,
   NOT_YOURS,
@@ -24,6 +25,7 @@ import {
   STARTING_CUSDC,
   STATE_IDS,
   TRAIT_KEYS,
+  withdrawAll,
 } from "./helpers";
 import { DoNotOpen, DoNotOpenConfig, TestConfidentialUSDC } from "../types";
 
@@ -135,8 +137,14 @@ describe("DoNotOpen", function () {
     it("charges only the boxes it gives, in cUSDC", async function () {
       await mintBoxes(dno, alice, 4);
       expect(await confidentialUsdcOf(cUsdc, alice)).to.eq(STARTING_CUSDC - 4n * FEES.mint);
-      expect(await fhevm.userDecryptEuint(FhevmType.euint64, await dno.revenueHandle(), address, deployer)).to.eq(4n * FEES.mint);
-      await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, await dno.revenueHandle(), address, alice));
+      expect(await withdrawAll(dno, cUsdc, carol)).to.eq(4n * FEES.mint);
+    });
+
+    it("lets nobody read the revenue, the owner included: it would give away each mint's quantity", async function () {
+      const { receipt } = await mintBoxes(dno, alice, 2);
+      // The buyer may read their receipts and quantity; the owner gets nothing from a mint.
+      expect(grantedIn(receipt)).to.include(alice.address);
+      expect(grantedIn(receipt)).to.not.include(deployer.address);
     });
 
     it("hides the quantity among as many ids as the buyer picks, and never gives more", async function () {
@@ -402,14 +410,39 @@ describe("DoNotOpen", function () {
     });
   });
 
+  describe("revenue", function () {
+    it("pays the revenue out at most once a week, so the owner only learns weekly sums", async function () {
+      await mintBoxes(dno, alice, 2);
+      await expect(dno.withdraw(carol.address)).to.be.revertedWithCustomError(dno, "WithdrawTooSoon");
+      expect(await withdrawAll(dno, cUsdc, carol)).to.eq(2n * FEES.mint);
+      await mintBoxes(dno, bob, 1);
+      await expect(dno.withdraw(carol.address)).to.be.revertedWithCustomError(dno, "WithdrawTooSoon");
+      expect(await withdrawAll(dno, cUsdc, carol)).to.eq(FEES.mint);
+    });
+
+    it("holds an opening's fee until it settles, and pays a refund without touching the revenue", async function () {
+      await mintBoxes(dno, alice, 1);
+      const first = requestIdOf(dno, await (await dno.connect(alice).observe(0)).wait());
+      const second = requestIdOf(dno, await (await dno.connect(alice).observe(0)).wait());
+      // Pending openings are not revenue yet.
+      expect(await withdrawAll(dno, cUsdc, carol)).to.eq(FEES.mint);
+      await (await finalizeRequest(dno, first, bob)).wait();
+      const before = await confidentialUsdcOf(cUsdc, alice);
+      // Already open: the second fee goes back. Before the fix this refund came out of a revenue
+      // just withdrawn, which wrapped around and lost every later sale.
+      await (await finalizeRequest(dno, second, bob)).wait();
+      expect(await confidentialUsdcOf(cUsdc, alice)).to.eq(before + FEES.observe);
+      await mintBoxes(dno, bob, 1);
+      expect(await withdrawAll(dno, cUsdc, carol)).to.eq(FEES.mint + FEES.observe);
+    });
+  });
+
   describe("admin", function () {
     it("lets only the owner withdraw the revenue, trust readers and set the base URI", async function () {
       await mintBoxes(dno, alice, 2);
       await open(dno, 0, alice, carol);
       await expect(dno.connect(alice).withdraw(alice.address)).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
-      await (await dno.connect(deployer).withdraw(carol.address)).wait();
-      expect(await confidentialUsdcOf(cUsdc, carol)).to.eq(STARTING_CUSDC + 2n * FEES.mint + FEES.observe);
-      expect(await fhevm.userDecryptEuint(FhevmType.euint64, await dno.revenueHandle(), address, deployer)).to.eq(0n);
+      expect(await withdrawAll(dno, cUsdc, carol)).to.eq(2n * FEES.mint + FEES.observe);
 
       await expect(dno.connect(alice).setTrustedReader(alice.address, true)).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
       await expect(dno.connect(alice).setBaseURI("ipfs://x/")).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");

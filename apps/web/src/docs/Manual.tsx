@@ -200,6 +200,7 @@ export function Manual() {
               <p>{t("docs.holders.p4", { supply, list: milestones })}</p>
               <p>{t("docs.holders.p5")}</p>
               <p>{t("docs.holders.p6")}</p>
+              <p>{t("docs.holders.p7")}</p>
             </div>
           </section>
 

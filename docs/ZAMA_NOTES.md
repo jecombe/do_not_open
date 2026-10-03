@@ -163,7 +163,9 @@ holds A" publicly decryptable. One `finalizeDuel` with that bit's proof puts it 
 shelf for 7 days (`DUEL_LIFETIME`), or voids it. Without the proof, anyone could fill the
 shelf with boxes they do not hold. A duel is a public act, so this reveals what a resolved
 duel would have revealed anyway, only earlier. A box has one listing at a time: a newer
-proven posting cancels the older one.
+proven posting cancels the older one, unless that one was accepted and waits for its
+outcome. Then the new posting gives way: the outcome is public from the acceptance on, and
+a challenger able to cancel it could read it and escape every loss (fixed on 2026-10-03).
 
 Each box's encrypted score is computed once (about 1.35M HCU) and cached. The challenger
 pays for their box at `postDuel`, the accepter for theirs at `acceptDuel`.
@@ -202,8 +204,8 @@ who holds the box.
 
 ### Contract size
 
-`DoNotOpen` is 24,454 bytes of deployed bytecode against the 24,576 limit, since the
-duel shelf (see the hidden owners' "Contract size" below for how it was brought back
+`DoNotOpen` is 24,566 bytes of deployed bytecode against the 24,576 limit, since the
+duel shelf and the 2026-10-03 security fixes (see the hidden owners' "Contract size" below for how it was brought back
 under). The next feature must move logic to a library or a second contract that is a
 trusted reader.
 
@@ -558,11 +560,13 @@ never to make what it learns public: its holder checks only mask amounts.
 
 ### Contract size
 
-`DoNotOpen` is 24,454 bytes deployed, 122 under the limit. The duel shelf took it past the
+`DoNotOpen` is 24,566 bytes deployed, 10 under the limit. The duel shelf took it past the
 limit; two changes brought it back: the `onlySealed` modifier calls `_requireSealed`
 instead of carrying the check, so its body is not copied into every function using it,
 and the optimizer runs at 200 instead of 800 (`hardhat.config.ts`), which favours size
-over the gas of each call. The next feature has to move logic out.
+over the gas of each call. The 2026-10-03 security fixes then fit by dropping
+`revenueHandle` (nobody may read the revenue any more) and keeping the withdrawal clock
+private. The next feature has to move logic out.
 
 ### Sepolia deployment (2026-10-02): CROQ-only Uniswap V3 market
 

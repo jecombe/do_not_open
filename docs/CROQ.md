@@ -97,7 +97,9 @@ flowchart LR
 **100 cCROQ per box, once.** It is paid into the box on the box's first claim, whoever
 asks, and its holder collects it. It belongs to the box, not to the wallet: a box that
 changes hands does not get a second bag, and minting more wallets gives nothing more.
-Getting bags means holding boxes, and boxes cost USDC.
+Getting bags means holding boxes, and boxes cost USDC. An id nobody holds (one of a mint's
+empty ids) gets no bag and no purr: a mint of 0 boxes costs only gas, and its empty ids
+would otherwise pour the reserve into stashes nobody can ever claim.
 
 ### Purr
 
@@ -279,10 +281,13 @@ of 20M:
 
 ### Treasury share
 
-The treasury's 20% piles up in an encrypted bucket that only the treasury can read
-(`treasuryShareHandle`). `collect()` sends it all to the treasury in one confidential
-transfer. Anyone may call it; it always pays the treasury. The treasury address is set at
-deployment (`COLLECTION_OWNER`, or the deployer) and cannot change.
+The treasury's 20% piles up in an encrypted bucket that nobody can read, the treasury
+included (`treasuryShareHandle`). `collect()` sends it all to the treasury in one
+confidential transfer, at most once every 7 days (`COLLECT_INTERVAL`). Anyone may call it;
+it always pays the treasury. Were the bucket readable after each meal, or collectable after
+each one, the difference would tell the treasury who fed which cat and how much. The
+treasury address is set at deployment (`COLLECTION_OWNER`, or the deployer) and cannot
+change.
 
 ### The burnt pile
 
@@ -527,9 +532,9 @@ HCU for every function, with what they mean in dollars, are in
 
 | Function | FHE work | HCU |
 | --- | --- | --- |
-| `feed` | holder check, meal count, input check, `min`, confidential `transferFrom`, the feeder's masked copies, two `mul` + `div` for the split, `sub`s and `add`s | ~3,680,000 (1.23M gas) |
-| `claim`, 3 boxes | per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; one `le` and `sub` on the reserve; per box with a stash: `isOwner`, two `select`s, `add`; one transfer | ~2.6M to ~4.5M (about 1M gas) |
-| `claim`, 10 boxes | the same | ~13M |
+| `feed` | holder check, meal count, input check, `min`, confidential `transferFrom`, the feeder's masked copies, two `mul` + `div` for the split, `sub`s and `add`s | ~3,680,000 (1.20M gas) |
+| `claim`, 3 boxes | per box owed something: `isOwner(id, address(0))` and a `select`; per purring box: `randEuint8`, `rem`, cast, `mul`, `shr`, `add`; one `le` and `sub` on the reserve; per box with a stash: `isOwner`, two `select`s, `add`; one transfer | ~3.1M to ~5.0M (1.15M to 1.34M gas) |
+| `claim`, 10 boxes | the same | ~14.8M |
 | `weigh`, never fed | none | 0 |
 | `weigh` + `finalizeWeigh` | one public decryption request, then plain arithmetic | ~0 |
 | `collect` | one confidential transfer | ~590,000 |

@@ -28,6 +28,7 @@ import {
   STARTING_CUSDC,
   traitByte,
   usd,
+  withdrawAll,
 } from "./helpers";
 
 describe("DoNotOpen mechanics", function () {
@@ -143,9 +144,16 @@ describe("DoNotOpen mechanics", function () {
 
     it("books the rest as revenue and caps a claim at ten boxes", async function () {
       await (await dno.connect(carol).paidShake(A[0]!)).wait();
-      const revenue = await fhevm.userDecryptEuint(FhevmType.euint64, await dno.revenueHandle(), address, deployer);
-      expect(revenue).to.eq(6n * FEES.mint + FEES.paidShake - share);
+      expect(await withdrawAll(dno, cUsdc, deployer)).to.eq(6n * FEES.mint + FEES.paidShake - share);
       await expect(dno.connect(alice).claimEarnings(Array(11).fill(A[0]!))).to.be.revertedWithCustomError(dno, "TooManyBoxes");
+    });
+
+    it("keeps no holder's share in an empty id, where nobody could ever claim it", async function () {
+      // Alice bought 3 of her mint's 10 ids: the last one is empty.
+      const empty = 9;
+      expect(A).to.not.include(empty);
+      expect((await shakeAndDecrypt(dno, empty, carol, true)).pick).to.not.eq(NOT_YOURS);
+      expect(await withdrawAll(dno, cUsdc, deployer)).to.eq(6n * FEES.mint + FEES.paidShake);
     });
   });
 
@@ -326,6 +334,21 @@ describe("DoNotOpen mechanics", function () {
       const third = await postDuel(dno, A[1]!, alice, carol);
       await dno.connect(bob).acceptDuel(third, B[1]!);
       await expect(dno.connect(alice).cancelDuel(third)).to.be.revertedWithCustomError(dno, "WrongDuelStatus");
+    });
+
+    it("lets an accepted duel run to its end: posting the box again cannot cancel it", async function () {
+      const first = await postDuel(dno, A[0]!, alice, carol);
+      await (await dno.connect(bob).acceptDuel(first, B[0]!)).wait();
+      // The outcome is public as soon as the duel is accepted: alice could read it and, before
+      // the fix, escape a loss by having a second posting of the same box cancel this one.
+      const second = await dno.duelCount();
+      await (await dno.connect(alice).postDuel(A[0]!, 0, false)).wait();
+      await expect(finalizeDuel(dno, second, carol)).to.emit(dno, "DuelCancelled").withArgs(second);
+      expect((await dno.duelInfo(second)).duelStatus).to.eq(DUEL.Cancelled);
+      expect((await dno.duelInfo(first)).duelStatus).to.eq(DUEL.Pending);
+      await expect(finalizeDuel(dno, first, carol)).to.emit(dno, "DuelResolved");
+      // Once it is over, the box can be posted again.
+      await postDuel(dno, A[0]!, alice, carol);
     });
 
     it("rejects a forged outcome and double finalisation", async function () {

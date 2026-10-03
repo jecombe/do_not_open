@@ -76,7 +76,7 @@ export const homeEn = {
   "home.croq.sick": "Sick",
   "home.croq.sickText": "past a secret limit of its own ({min}–{max}): ultra rare",
   "home.croq.p2": "A cat eats at most {meals} meals and {cap} croquettes a day, so a heavy cat takes months. Each meal is split: {treasury}% to the treasury, {reserve}% back to the purr everyone collects, {burn}% burnt.",
-  "home.croq.p3": "Every box brings a welcome bag of {bag} croquettes and purrs a few more each day. Croquettes also trade on a public market, so you can buy more or cash out. Inside the game they're secret: nobody sees your balance.",
+  "home.croq.p3": "Every box bought brings a welcome bag of {bag} croquettes and purrs a few more each day. Croquettes also trade on a public market, so you can buy more or cash out. Inside the game they're secret: nobody sees your balance.",
   "home.croq.link": "How croquettes work",
 } as const satisfies Record<string, string>;
 

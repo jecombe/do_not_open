@@ -156,7 +156,8 @@ sequenceDiagram
 
 `paidShake` is the same flow for anyone, with a 2.5 cUSDC fee: the contract pulls the
 fee, masks the result with "paid" instead of "holds", and adds 70% of a paid fee to the
-box's encrypted earnings. `claimEarnings(tokenIds)` pays the caller, for each listed box,
+box's encrypted earnings, unless nobody holds the box (an empty id): then the whole fee is
+revenue, since nobody could ever claim that share. `claimEarnings(tokenIds)` pays the caller, for each listed box,
 `select(isOwner, earnings, 0)`: the boxes they do not hold pay 0 and keep their earnings.
 
 The event says a shake happened. It does not say which trait, nor whether the caller
@@ -233,7 +234,7 @@ sequenceDiagram
   App->>C: observe(tokenId)
   C->>C: holds = owner == caller
   C->>K: confidentialTransferFrom(caller, DoNotOpen, holds ? 1 cUSDC : 0)
-  C->>C: ok = holds AND paid == fee
+  C->>C: ok = holds AND paid == fee, the fee held apart from the revenue
   C->>C: publish ok, select(ok, seed, 0), and select(ok, affection, 0) if it was ever fed
   opt entangled and partner still sealed
     C->>C: same for the partner, masked by the same ok
@@ -251,7 +252,7 @@ sequenceDiagram
   C->>C: checkSignatures(handles stored at the request, values, proof)
   alt ok
     C->>C: decode each seed into state, traits, score. Golden if affection > 10
-    C->>C: store Revealed, status = Revealed
+    C->>C: store Revealed, status = Revealed, the held fee becomes revenue
     C-->>App: Observed(tokenId, opener, seed, state, score, golden)
     App->>App: buildCatSpec(seed, affection), then the opening sequence
   else
@@ -261,7 +262,9 @@ sequenceDiagram
 
 An unfed box publishes no affection: a public decryption refuses the same handle twice
 in one request, and two unfed entangled boxes would publish two identical zeros. If the
-box was opened meanwhile through its partner, the second opening refunds its fee.
+box was opened meanwhile through its partner, the second opening refunds its fee. The fee
+was held apart until then, so a refund never comes out of the revenue: after a withdrawal,
+taking it from there would wrap the revenue around.
 
 ```mermaid
 stateDiagram-v2
@@ -328,7 +331,11 @@ sequenceDiagram
   R-->>A: posted + KMS proof
   A->>C: finalizeDuel(duelId, posted, proof) (anyone may)
   alt posted
-    C->>C: status = Open, openUntil = now + 7 days, an older listing of A is cancelled
+    alt A's listed duel was accepted and waits for its outcome
+      C->>C: status = Cancelled: the accepted duel runs to its end
+    else
+      C->>C: status = Open, openUntil = now + 7 days, an older listing of A is cancelled
+    end
     C-->>A: DuelOpened(duelId, openUntil)
   else
     C->>C: status = Void, nothing shown
@@ -366,7 +373,7 @@ stateDiagram-v2
   [*] --> Posted: postDuel (holder)
   Posted --> Open: finalizeDuel, the challenger holds A
   Posted --> Void: finalizeDuel, the challenger does not
-  Posted --> Cancelled: cancelDuel (challenger)
+  Posted --> Cancelled: cancelDuel (challenger), or proven while A's listed duel is Pending
   Open --> Cancelled: cancelDuel (challenger), or a newer proven posting of A
   Open --> Pending: acceptDuel (any sealed box, or the reserved one), before openUntil
   Pending --> Resolved: finalizeDuel, both held their boxes
@@ -375,7 +382,9 @@ stateDiagram-v2
 ```
 
 A box has one listing at a time: a newer proven posting of the same box cancels the
-older one. A proven duel can be taken up for 7 days (`DUEL_LIFETIME`); after that,
+older one, unless that one was accepted and waits for its outcome. Then the new posting
+gives way and ends `Cancelled` (the adapter reports `DuelPending`): the outcome is public as
+soon as a duel is accepted, and a challenger who could cancel it would escape every loss. A proven duel can be taken up for 7 days (`DUEL_LIFETIME`); after that,
 `acceptDuel` reverts with `DuelExpired`. A reserved duel only takes the named box
 (`NotThisBox` otherwise); nobody can take up a duel with box A itself.
 
@@ -576,11 +585,11 @@ reverts, where a cUSDC payment that falls short moves 0 without a word.
 
 | Fee | Paid in | Goes to |
 | --- | --- | --- |
-| Mint (5 a box), open (1), pet (0.5) | cUSDC | `DoNotOpen`, withdrawn by the owner |
-| Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen` |
+| Mint (5 a box), open (1, once the box opens), pet (0.5) | cUSDC | `DoNotOpen`, withdrawn by the owner at most once a week; nobody can read the total before |
+| Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen`; all of it to `DoNotOpen` for an empty id |
 | Decryption credits (0.01 each on Sepolia; on mainnet Zama's dollar price for a decryption x 2) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
-| A croquette meal | cCROQ | 20% treasury, 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
+| A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 
 ```mermaid
 flowchart LR
@@ -694,6 +703,8 @@ sequenceDiagram
       Pa->>B: vetCertified(tokenId)
       Pa->>Co: due = randEuint8() mod 5, x days, x 2 if certified, >> halvings
     end
+    Pa->>B: isOwner(tokenId, address(0)) (trusted reader)
+    Pa->>Co: due = empty ? 0 : due
   end
   Pa->>Co: funded = sum of dues <= reserve, reserve -= funded ? sum : 0
   loop each box
@@ -706,8 +717,14 @@ sequenceDiagram
 ```
 
 Welcome bags and purrs are paid into each box's encrypted stash, whoever calls; the
-caller collects only the stashes of the boxes they hold. A claim never reverts on
-ownership, and says nothing about what the caller holds.
+caller collects only the stashes of the boxes they hold. An id nobody holds (a mint's empty
+ids) gets nothing: a 0-box mint costs only gas, and its empty ids would otherwise drain the
+reserve into stashes nobody can ever claim. A claim never reverts on ownership, and the
+contract treats a stranger's claim like a holder's. The app, though, only claims for the
+caller's own boxes, so in practice a claim's list of ids names them (HIDDEN_OWNERS.md §6).
+
+The treasury's 20% of each meal sits in an encrypted bucket nobody can read, the treasury
+included; `collect` sends it at most once a week, so the treasury only learns weekly sums.
 
 ### Feed croquettes
 

@@ -77,10 +77,10 @@ were drawn for:
 | `mapping(tokenId => ...)` | all state | One PDA per box: seeds `["box", collection, tokenId]` | Rent: the minter pays for the box account |
 | `mapping(tokenId => mapping(viewer => Shake))` | `_shakes` | One PDA per (box, viewer): seeds `["shake", box, viewer]`, created on first shake, rent paid by the viewer | |
 | `mapping(duelId => Duel)` | `_duels` | One PDA per duel: seeds `["duel", collection, duelId]`; can be closed after resolution to refund rent | |
-| `_listing[tokenId]`, one duel on the shelf per box | `finalizeDuel` | A field in the box account | The older listing's duel account must be passed too, to cancel it |
+| `_listing[tokenId]`, one duel on the shelf per box | `finalizeDuel` | A field in the box account | The older listing's duel account must be passed too, to cancel it, or to see that it was accepted and let the new posting give way |
 | `_earnings[tokenId]` + `claimEarnings(ids)` | paid shake earnings | An encrypted handle in the box account, paid in the confidential token to whoever holds the box | Must stay per box: a per-holder account would name the holder |
 | cUSDC `confidentialTransferFrom` that moves all or nothing | every paid action (`_pull`) | A CPI to the confidential token program, with the program as a delegate | The action stays masked by "paid == price"; no plain lamport fees, they would be public |
-| `Ownable`, `withdraw`, `setBaseURI`, `setTrustedReader` | admin | An authority public key in the config account, ideally a multisig (Squads); trusted readers as a list of program ids | |
+| `Ownable`, `withdraw`, `setBaseURI`, `setTrustedReader` | admin | An authority public key in the config account, ideally a multisig (Squads); trusted readers as a list of program ids | Nobody may read the revenue; `withdraw` at most once per 7 days, with the last time in the config account |
 | `DoNotOpenConfig` contract, immutable | rules | A config account written once at initialisation, with `specHash` | |
 | Events | `MintPlaced`, `ConfidentialTransfer`, `Shaken`, `RequestPlaced`, ... | Anchor events (program logs) | Same names and fields as `spec.events` |
 | Custom errors | `NotSealed`, ... | Anchor error codes with the same names | The app's error copy is keyed on these names. Nothing reverts on ownership |

@@ -79,7 +79,9 @@ so the interface has no owner field anywhere:
   the ones waiting for their proof, `finishRequest(requestId)` sends it (anyone may).
 - Duels go on a shelf. `postDuel(tokenA, { reservedFor })` puts a box up, open to any
   sealed box or reserved for one, and proves the caller holds it (that much becomes
-  public); it throws `not-yours` when they do not. `duelShelf()` lists every box up for a
+  public); it throws `not-yours` when they do not, and `reverted` with reason `DuelPending`
+  when the box's listed duel was accepted and still waits for its outcome (the new posting
+  gives way to it). `duelShelf()` lists every box up for a
   duel that can still be taken up. `acceptDuel(duelId, tokenB)` takes one up and returns
   the outcome, or `null` when the duel was void or went back on the shelf. `finishDuel`
   sends whichever proof a duel waits for (the holding, or the outcome); `cancelDuel`

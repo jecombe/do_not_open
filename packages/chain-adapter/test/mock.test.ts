@@ -147,6 +147,17 @@ describe("MockAdapter", () => {
     expect(await chain.claimEarnings([3])).toBe(0n);
   });
 
+  it("keeps no holder's share in an empty id, where nobody could claim it", async () => {
+    const chain = await fresh();
+    const [mine] = await chain.mint(1, { ids: 2 });
+    const empty = mine! + 1;
+    await chain.paidShake(empty);
+    await chain.paidShake(mine!);
+    const earnings = (id: number) => (chain as unknown as { get(id: number): { earnings: bigint } }).get(id).earnings;
+    expect(earnings(empty)).toBe(0n);
+    expect(earnings(mine!)).toBe(1_750_000n);
+  });
+
   it("opens a box once, with contents that match the generator, and refuses a stranger", async () => {
     const chain = await fresh();
     await chain.feed(1);
@@ -224,6 +235,16 @@ describe("MockAdapter", () => {
     await chain.cancelDuel(second.duelId);
     expect((await chain.duelShelf()).some((d) => d.tokenA === 0)).toBe(false);
     expect(await refusal(chain.cancelDuel(second.duelId))).toBe("WrongDuelStatus");
+  });
+
+  it("lets an accepted duel run to its end: a new posting of the box gives way to it", async () => {
+    const chain = await fresh();
+    const duel = await chain.postDuel(0, { reservedFor: 5 });
+    expect(duel.status).toBe("pending");
+    expect(await refusal(chain.postDuel(0))).toBe("DuelPending");
+    expect((await chain.pair(0, 5)).duels.map((d) => d.status)).toEqual(["pending"]);
+    await chain.finishDuel(duel.duelId);
+    expect((await chain.postDuel(0)).status).toBe("open");
   });
 
   it("keeps a box nobody proved to hold off the shelf", async () => {
@@ -351,6 +372,20 @@ describe("MockAdapter croquettes", () => {
     const mine = await chain.confidentialBalance();
     await chain.claimCroquettes([3]);
     expect(await chain.confidentialBalance()).toBe(mine);
+  });
+
+  it("pays no bag or purr into an empty id, so free empty ids cannot drain the reserve", async () => {
+    const { chain, tick } = await clocked();
+    const [box] = await chain.mint(1, { ids: 10 });
+    const empties = Array.from({ length: 9 }, (_, i) => box! + 1 + i);
+    const reserve = () => (chain as unknown as { reserve: bigint }).reserve;
+    const before = reserve();
+    await chain.claimCroquettes(empties);
+    tick(3 * DAY);
+    await chain.claimCroquettes(empties);
+    expect(reserve()).toBe(before);
+    await chain.claimCroquettes([box!]);
+    expect(reserve()).toBe(before - BigInt(spec.economy.welcomeBag.amount));
   });
 
   it("lets the holder feed twice a day, up to 1,000, and splits each meal", async () => {

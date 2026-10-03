@@ -80,14 +80,14 @@ milestones.
 | Action | Who | How ownership is checked | What becomes public |
 | --- | --- | --- | --- |
 | `shake` | anyone | the trait is masked by `isOwner`: a non-holder reads `NOT_YOURS` (255) | that someone shook |
-| `paidShake` | anyone, 2.5 cUSDC | masked by "paid"; 70% of the fee goes into the box (`_earnings`, encrypted) | that someone paid to shake |
+| `paidShake` | anyone, 2.5 cUSDC | masked by "paid"; 70% of the fee goes into the box (`_earnings`, encrypted), unless nobody holds it (an empty id), when it is all revenue | that someone paid to shake |
 | `claimEarnings(ids)` | anyone | each box pays `select(isOwner, earnings, 0)` | that someone claimed |
 | `feed` (petting) | anyone, 0.5 cUSDC | an unpaid feed adds nothing | that someone fed; the count is no longer kept |
 | `observe` | holder, 1 cUSDC | request: `ok = holds AND paid`, seed and affection masked by `ok` | the cat, and that the opener held the box |
 | `proveAlive` | holder | request: `holds`, and `alive AND holds` | one bit, and that the caller held the box |
 | `proposeEntangle` | anyone | none yet | the proposal |
 | `acceptEntangle` | holder of B | request: proposer holds A AND caller holds B | the link, and both holders |
-| `postDuel` | holder of A | `posted = caller holds A`, publicly decryptable; only a proven posting goes on the duel shelf | that the caller holds A; a void duel otherwise, which shows nothing |
+| `postDuel` | holder of A | `posted = caller holds A`, publicly decryptable; only a proven posting goes on the duel shelf, and it gives way to an accepted duel of the same box still waiting for its outcome | that the caller holds A; a void duel otherwise, which shows nothing |
 | `acceptDuel` | holder of B | `aHolds = challenger still holds A`, `valid = aHolds AND accepter holds B`; outcome masked by `valid` | five values: aHolds, valid, who won, which trait, the loser's roll. A void duel shows only that A left its challenger; a reopened one only that the accepter did not hold B |
 | `confidentialTransfer` | anyone | the transfer itself | that a transfer was attempted |
 
@@ -115,8 +115,17 @@ The Pantry asks `DoNotOpen.isOwner` as a trusted reader (`setTrustedReader`, set
   if they hold the cat, zeros otherwise. The public meal count is gone.
 - **Welcome bags and purrs** go into the box (`_stash`, encrypted), whoever calls `claim`.
   The caller then receives the stashes of the boxes they hold, and 0 for the others. So a
-  stranger cannot spend a holder's day, and a claim says nothing about what the caller holds.
-  The reserve pays a whole claim or none of it (one `le` instead of a `min` per box).
+  stranger cannot spend a holder's day, and the contract treats a stranger's claim like a
+  holder's. The reserve pays a whole claim or none of it (one `le` instead of a `min` per
+  box). An id nobody holds (`isOwner(id, address(0))`, a mint's empty ids) gets no bag and
+  no purr: free empty ids would otherwise drain the reserve into stashes nobody can claim.
+- **The treasury's share** of each meal is readable by nobody, the treasury included, and
+  `collect` sends it at most once a week. Readable after each meal, it would tell the
+  treasury who fed which cat and how much.
+
+The same rule holds in `DoNotOpen`: nobody may read the cUSDC revenue, the owner included,
+and `withdraw` runs at most once a week. A revenue readable after each transaction would
+give each mint's quantity, and so who bought which ids.
 
 ## 6. What still leaks
 
@@ -126,7 +135,7 @@ The Pantry asks `DoNotOpen.isOwner` as a trusted reader (`setTrustedReader`, set
 | Shielding USDC | the amount (cUSDC wrapping is public) |
 | Unshielding cUSDC | the amount (decrypted in public to be paid out as plain USDC) |
 | A transfer attempt | sender and recipient addresses, not whether it moved |
-| A paid shake, a feed, a claim | that the caller did it, not whether they hold the box |
+| A paid shake, a feed, a claim | that the caller did it. The contract treats a non-holder's the same way, but the app only feeds and claims for the caller's own boxes, so in practice a meal (`MealServed`) and a claim's list of ids name boxes the caller holds |
 | An opening, an alive check, an accepted entanglement, a proven duel posting, a valid duel | that the caller held the box at that moment |
 | A milestone | which mint crossed it |
 | Operator approvals | that an account made an address its operator |
@@ -135,6 +144,16 @@ The Pantry asks `DoNotOpen.isOwner` as a trusted reader (`setTrustedReader`, set
 An observer who follows an address can bound its holdings from above (ids it minted plus
 transfers naming it), never know them.
 
+**A public proof follows the box.** Only a holder (or their operator) can send a transfer
+`from` themselves. So once an opening, an alive check, an accepted entanglement, a proven
+duel posting or a valid duel shows that an address held a box, that address's next transfer
+of the box certainly moved it: the recipient holds it now, and their next transfer of it is
+certain too. Decoys add no doubt on that path. To keep a box's later holders apart from the
+proof, receive a box at a fresh address, and prove from an address you never use to send
+or receive boxes. A fix in the protocol would let anyone send a transfer naming any `from`,
+with the operator check made under encryption: a change to the standard (AUDIT_CHECKLIST
+O19).
+
 ## 7. Cost
 
 Measured on the local FHEVM, which runs the same host contracts as Sepolia and mainnet
@@ -142,30 +161,30 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 
 | Action | Gas | HCU |
 | --- | --- | --- |
-| mint, 1 box among 1 id | 1,028,000 | 1,885,000 |
-| mint, 1 box among 3 ids | 1,317,000 | 2,203,000 |
-| mint, 3 boxes among 5 ids | 1,680,000 | 2,521,000 |
-| mint, 10 boxes among 10 ids | 2,587,000 | 3,316,000 |
+| mint, 1 box among 1 id | 1,001,000 | 1,885,000 |
+| mint, 1 box among 3 ids | 1,290,000 | 2,203,000 |
+| mint, 3 boxes among 5 ids | 1,652,000 | 2,521,000 |
+| mint, 10 boxes among 10 ids | 2,560,000 | 3,316,000 |
 | `confidentialTransfer` | 184,000 | 200,000 |
 | `shake` | 421,000 | 899,000 |
-| `paidShake` | 889,000 | 2,029,000 |
+| `paidShake` | 896,000 | 2,171,000 |
 | `claimEarnings`, 1 box | 419,000 | 1,082,000 |
-| `feed` | 530,000 | 1,071,000 |
+| `feed` | 502,000 | 1,071,000 |
 | `proveAlive` + `finalize` | 314,000 + 126,000 | 200,000 |
 | `postDuel` (first score) + `finalizeDuel` | 585,000 + 139,000 | 1,468,000 |
 | `acceptDuel` (first score) + `finalizeDuel` | 1,118,000 + 177,000 | 2,766,000 |
 | `acceptEntangle` + `finalize` | 220,000 + 148,000 | 259,000 |
-| `observe` + `finalize`, one box | 698,000 + 223,000 | 1,120,000 |
-| `observe` + `finalize`, entangled pair | 901,000 + 343,000 | 1,230,000 |
-| `Pantry.feed` | 1,230,000 | 3,683,000 |
-| `Pantry.claim`, 3 boxes | 1,007,000 to 1,071,000 | 2,608,000 to 4,483,000 |
+| `observe` + `finalize`, one box | 625,000 + 291,000 | 1,120,000 |
+| `observe` + `finalize`, entangled pair | 828,000 + 411,000 | 1,230,000 |
+| `Pantry.feed` | 1,205,000 | 3,683,000 |
+| `Pantry.claim`, 3 boxes | 1,151,000 to 1,335,000 | 3,125,000 to 5,000,000 |
 
 Every transaction stays well under the protocol limits (20M HCU, 5M depth); a full 10-box
-`Pantry.claim` measures about 13M HCU. The price in dollars is gas × gas price × ETH price:
+`Pantry.claim` measures about 14.8M HCU. The price in dollars is gas × gas price × ETH price:
 at 1 gwei and 3,000 USD per ETH, 1,000,000 gas is 3 USD. On Ethereum mainnet a hidden mint is
 a few dollars; on the cheaper chains Zama supports it is cents. Zama's protocol fees
 (input proofs, decryptions) come on top on mainnet.
 
-`DoNotOpen` is 24,454 bytes deployed, close to the 24,576 limit, with the optimizer at 200
+`DoNotOpen` is 24,566 bytes deployed, 10 under the 24,576 limit, with the optimizer at 200
 runs. The next feature should move logic out (a library, or a second contract that is a
 trusted reader).

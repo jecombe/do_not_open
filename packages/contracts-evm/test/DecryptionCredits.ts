@@ -70,6 +70,12 @@ describe("DecryptionCredits", function () {
     await expect(credits.setTreasury(bob.address)).to.emit(credits, "TreasurySet").withArgs(bob.address);
   });
 
+  it("refuses a price of 0, at deploy and later: free credits would spend the relayer budget without limit", async function () {
+    await expect(credits.setPrice(0)).to.be.revertedWithCustomError(credits, "ZeroPrice");
+    const factory = await ethers.getContractFactory("DecryptionCredits");
+    await expect(factory.deploy(await usdc.getAddress(), 0, bob.address, bob.address)).to.be.revertedWithCustomError(credits, "ZeroPrice");
+  });
+
   it("prices a credit from Zama's dollar price for a decryption, rounded up, never from $ZAMA", function () {
     expect(creditPrice("0.001", "2")).to.eq(usd("0.002"));
     expect(creditPrice("0.1", "1.5")).to.eq(usd("0.15"));

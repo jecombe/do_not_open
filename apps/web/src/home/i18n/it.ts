@@ -77,6 +77,6 @@ export const homeIt: Record<HomeKey, string> = {
   "home.croq.sick": "Malato",
   "home.croq.sickText": "oltre un limite segreto tutto suo ({min}–{max}): ultra raro",
   "home.croq.p2": "Un gatto mangia al massimo {meals} pasti e {cap} crocchette al giorno: un gatto grasso richiede mesi. Ogni pasto si divide: il {treasury}% alla tesoreria, il {reserve}% torna alle fusa che tutti ritirano, il {burn}% viene bruciato.",
-  "home.croq.p3": "Ogni scatola porta un sacchetto di benvenuto da {bag} crocchette e ne fa le fusa qualcuna in più ogni giorno. Le crocchette si scambiano anche su un mercato pubblico: puoi comprarne altre o incassare. Dentro il gioco restano segrete: nessuno vede il tuo saldo.",
+  "home.croq.p3": "Ogni scatola comprata porta un sacchetto di benvenuto da {bag} crocchette e ne fa le fusa qualcuna in più ogni giorno. Le crocchette si scambiano anche su un mercato pubblico: puoi comprarne altre o incassare. Dentro il gioco restano segrete: nessuno vede il tuo saldo.",
   "home.croq.link": "Come funzionano le crocchette",
 };

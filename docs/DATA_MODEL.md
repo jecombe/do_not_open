@@ -40,7 +40,8 @@ flowchart TB
 
 Per collection: the number sold (`euint16`, nobody on the ACL, capped at 10,000 under
 encryption), the bit "the next milestone is reached" (publicly decryptable after each
-mint), the cUSDC revenue (`euint64`, the owner may read it). Public: `tokenCount` (ids
+mint), the cUSDC revenue (`euint64`, nobody on the ACL, the owner included: it learns the
+revenue only as what `withdraw` pays, at most once a week). Public: `tokenCount` (ids
 created, empty ones included) and `milestonesReached`. See [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md).
 
 The seed layout (from `game-spec`):
@@ -183,14 +184,15 @@ The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CRO
 | Storage | Type | Who is on the ACL | What it holds |
 | --- | --- | --- | --- |
 | `_reserve` | `euint64` | the Pantry only | Croquettes left for welcome bags and purrs; 60% of every meal comes back here |
-| `_treasuryShare` | `euint64` | the Pantry, the treasury | 20% of every meal, until `collect` sends it to the treasury |
+| `_treasuryShare` | `euint64` | the Pantry only | 20% of every meal, until `collect` sends it to the treasury, at most once a week |
 | `_burnt` | `euint64` | the Pantry only | Running total burnt: 20% of every meal. Never moved |
 | `_weight[tokenId]` | `euint64` | the Pantry only, until `weigh` makes it public | Every croquette the cat ate, all holders together |
 | `_eatenToday[tokenId]`, `_mealsToday[tokenId]` | `euint64`, `euint8` | the Pantry only | What the cat ate and how many meals it had on its last feeding day, for the daily limits |
 | `_day[tokenId]` | `uint32` | plain | The UTC day those two counters are about |
 | `_seen[tokenId][feeder]` | `{uint32 day, euint8 meals, euint64 eaten}` | the Pantry, the feeder | The day's totals after the feeder's last meal, masked to 0 if they did not hold the cat (`todayHandles`) |
 | `_stash[tokenId]` | `euint64` | the Pantry only | Welcome bag and purrs paid into the box, waiting for its holder's claim |
-| `lastPurr[tokenId]` | `uint64` | public | Last claim time; 0 until the welcome bag is paid |
+| `lastPurr[tokenId]` | `uint64` | public | Last claim time; 0 until the welcome bag is paid (an empty id's bag is 0, but its clock moves too) |
+| `lastCollected` | `uint64` | public | When the treasury last collected; `collect` waits `COLLECT_INTERVAL` (7 days) |
 | `_weighIns[tokenId]` | `WeighIn` | public (`weighIn`) | Status, then the weight, build, sick, disease and tolerance in the clear |
 | parameters | immutables | public | `treasury`, `welcomeBag`, `purrMaxPerDay`, `vetMultiplier`, `purrMaxDays`, `halvingPeriod`, `mealsPerDay`, `maxEatenPerDay`, `mealTreasuryBps`, `mealBurnBps`, `buildFloors()`, `sickMinWeight`, `sickWeightSpread`, disease bounds, `maxBoxesPerClaim`, `startedAt` |
 
@@ -211,13 +213,13 @@ readable by its account. Each transfer amount is readable by its sender and reci
 | A sealed cat's weight | No | No | Nobody is on the ACL until the reveal |
 | An opened cat's weight, build, sickness | Yes, once weighed | Yes, once weighed | `weigh` makes it publicly decryptable; `finalizeWeigh` stores it in the clear |
 | A cat's tolerance | Only after the reveal | Only after the reveal | `keccak256(seed)`; the seed is encrypted until then |
-| That someone fed a box | Yes | Yes | `MealServed(tokenId, feeder)`; not whether the feeder held it |
+| That someone fed a box | Yes | Yes | `MealServed(tokenId, feeder)`; the contract does not say whether the feeder held it, but the app only feeds the caller's own boxes |
 | How many meals a cat had today | Yes (`todayHandles`) | No | Encrypted counter; a non-holder's copy reads 0 |
 | What a cat ate today | Yes (`todayHandles`) | No | Same |
 | How much one meal moved | The feeder | No | The feeder is on the transferred amount |
 | What waits in a box's stash | No, until they claim it | No | Pantry only |
 | What a claim paid | The claimer | No | cCROQ allows the recipient on the transfer |
-| The treasury's uncollected share | The treasury | No | The treasury is on `_treasuryShare` |
+| The treasury's uncollected share | No | No | Pantry only; the treasury learns it as what `collect` pays, at most once a week |
 | The reserve left, the total burnt | No | No | Pantry only |
 | A cCROQ balance | Its account | No | `confidentialBalanceOf` + user decryption |
 | Wrap, unwrap and market amounts | Yes | Yes | They move as a plain ERC-20 |

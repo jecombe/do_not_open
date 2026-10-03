@@ -866,6 +866,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.afterSent("resumable", () => this.finishDuel(duelId, opts));
     const duel = await this.duelInfo(duelId);
     if (duel.status === "void") throw new ChainError("not-yours", "This box is not yours: it did not go on the duel shelf.");
+    // An accepted duel of the same box runs to its end: the new posting gave way to it.
+    if (duel.status === "cancelled") throw new ChainError("reverted", "This box already has an accepted duel: it runs to its end first. Post it again once that duel is over.", "DuelPending");
     return duel;
   }
 

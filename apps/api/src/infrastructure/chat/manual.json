@@ -131,7 +131,13 @@
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Some things stay visible, by design. A mint shows the buyer's address and how many ids it created, which is an upper bound on what they bought. A transfer attempt shows who sent it and to whom, as a maybe. And an action that has to become public (an opening, an alive check, a box put up for a duel, or a duel or an entanglement that goes through) shows that its caller held that box at that moment. An attempt by someone who did not hold it settles as refused and shows nothing about the box.\nThis is also why the leaderboard ranks only opened cats, and the players who opened them: an opening publishes its opener, while who holds a sealed box stays hidden."
+     "text": "Some things stay visible, by design. A mint shows the buyer's address and how many ids it created, which is an upper bound on what they bought. A transfer attempt shows who sent it and to whom, as a maybe. And an action that has to become public (an opening, an alive check, a box put up for a duel, or a duel or an entanglement that goes through) shows that its caller held that box at that moment. An attempt by someone who did not hold it settles as refused and shows nothing about the box. Croquettes add one more: the app only claims for, and only feeds, boxes you hold, so the boxes listed in a claim, and a meal, whose event names the feeder, show which boxes you hold, even though the contract treats a stranger's claim or meal the same way."
+    },
+    {
+     "id": "holders-3",
+     "section": "holders",
+     "heading": null,
+     "text": "This is also why the leaderboard ranks only opened cats, and the players who opened them: an opening publishes its opener, while who holds a sealed box stays hidden.\nOne of those public facts reaches further. Once an action has shown that an address held a box, the next transfer of that box from that address is certainly real, not a maybe, so the box can be followed to its next holder, and from there onwards. To keep a box out of sight, receive it, or move it, to a fresh address you never use to prove anything."
     },
     {
      "id": "privacy-0",
@@ -155,7 +161,13 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Shake Open Duel Transfer A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing. You ask to open the box Only a holder is charged the 1 cUSDC fee. From here there is no way back. Holder and fee, checked blind Anyone may now ask for it The values, signed The proof goes on-chain Checked against its own records The box opens Play Next step Transaction Ciphertext Value with proof Clear value\nYou ask to open the box Only a holder is charged the 1 cUSDC fee. From here there is no way back.\nHolder and fee, checked blind\nAnyone may now ask for it\nThe values, signed\nThe proof goes on-chain\nChecked against its own records\nThe box opens\nTransaction\nCiphertext\nValue with proof\nClear value"
+     "text": "Mint Shake Open Duel Transfer A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing. You ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here. Holder and fee, checked blind Anyone may now ask for it The values, signed The proof goes on-chain Checked against its own records The box opens Play Next step Transaction Ciphertext Value with proof Clear value\nYou ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here.\nHolder and fee, checked blind\nAnyone may now ask for it\nThe values, signed"
+    },
+    {
+     "id": "flows-2",
+     "section": "flows",
+     "heading": null,
+     "text": "The proof goes on-chain\nChecked against its own records\nThe box opens\nTransaction\nCiphertext\nValue with proof\nClear value"
     },
     {
      "id": "mechanics-0",
@@ -167,7 +179,7 @@
      "id": "mechanics-1",
      "section": "mechanics",
      "heading": null,
-     "text": "Open | The holder | 1 cUSDC | Everything, permanently, and who opened it\nFeed croquettes | The holder | Up to 1,000 croquettes a day, all eaten | That someone served a meal, not whether it counted or what it held\nClaim croquettes | Anyone | Gas only | Which boxes, not how much or who holds them\nWeigh an opened cat | Anyone | Gas only | Its weight, its build, whether it is sick\nPetting adds a hidden amount between 0 and 3 to a hidden counter, and nothing at all if the pet was not paid. So the pets anyone can see on-chain say nothing about the counter, not even how many counted. Past 10, the accessory turns golden when the box is opened, and a cat with no accessory gets a golden bell collar."
+     "text": "Open | The holder | 1 cUSDC | Everything, permanently, and who opened it\nFeed croquettes | The holder | Up to 1,000 croquettes a day, all eaten | Who fed which cat (the app only feeds your own), not whether it counted or what it held\nClaim croquettes | Anyone | Gas only | Which boxes (the app only claims for your own), not how much\nWeigh an opened cat | Anyone | Gas only | Its weight, its build, whether it is sick\nPetting adds a hidden amount between 0 and 3 to a hidden counter, and nothing at all if the pet was not paid. So the pets anyone can see on-chain say nothing about the counter, not even how many counted. Past 10, the accessory turns golden when the box is opened, and a cat with no accessory gets a golden bell collar."
     },
     {
      "id": "mechanics-2",
@@ -185,7 +197,7 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Shaking someone else's box | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
+     "text": "Shaking someone else's box | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury. An empty id has no holder: it still shows a trait, and the 70% goes to the treasury too\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
     },
     {
      "id": "fees-2",
@@ -197,13 +209,13 @@
      "id": "fees-3",
      "section": "fees",
      "heading": null,
-     "text": "So every wallet gets 25 free units a day, paid by the collection, and they come back at midnight UTC; a wallet that has not played yet gets 16, enough for a first mint. Reading a value is one unit: a shake uses 2, and finding the boxes from a mint uses one per box number it hid among. Encrypting a value, like a mint's quantity or a meal, is 5. What your browser has read once, it remembers, and it is never counted again. Past the free ones, you spend credits, one per unit, bought in the wallet slip. Their price follows what Zama charges the collection in dollars, not the price of Zama's token, so it does not swing with the market. They are paid in plain USDC on purpose: a balance that falls short cancels the purchase, where a cUSDC payment would quietly move nothing. Opening a box, settling a duel or announcing a milestone is never counted against anyone: the collection pays for those."
+     "text": "So every wallet gets 25 free units a day, paid by the collection, and they come back at midnight UTC; a wallet that has not played yet gets 16, enough for a first mint. Reading a value is one unit: a shake uses 2, and finding the boxes from a mint uses one per box number it hid among. Encrypting a value, like a mint's quantity or a meal, is 5. What your browser has read once, it remembers, and it is never counted again. Past the free ones, you spend credits, one per unit, bought at the bureau de change. Their price follows what Zama charges the collection in dollars, not the price of Zama's token, so it does not swing with the market. They are paid in plain USDC on purpose: a balance that falls short cancels the purchase, where a cUSDC payment would quietly move nothing. Opening a box, settling a duel or announcing a milestone is never counted against anyone: the collection pays for those. In the game, the Decryptions meter at the top right counts what is left (free today, plus credits): it blinks when you are running low, turns red at zero, and a click opens the bureau de change to buy more."
     },
     {
      "id": "fees-4",
      "section": "fees",
      "heading": null,
-     "text": "The treasury pays what keeps the game running: Zama's fees for every free decryption and every public one, and the servers that follow the chain so the site stays fast. The rest goes to the project. The owner withdraws it."
+     "text": "The treasury pays what keeps the game running: Zama's fees for every free decryption and every public one, and the servers that follow the chain so the site stays fast. The rest goes to the project. Nobody can read the cUSDC it receives, the owner included: read after every payment, it would give away each mint's hidden quantity, and so who bought which boxes. The owner withdraws it at most once every 7 days, so it only ever learns weekly sums. An opening's 1 USDC fee waits until the opening settles: it joins the treasury when the box opens, and goes back to the opener if the box's entangled partner opened it first."
     },
     {
      "id": "exchange-0",
@@ -227,7 +239,7 @@
      "id": "exchange-3",
      "section": "exchange",
      "heading": null,
-     "text": "Decryption credits are bought in plain USDC only. So when what you want is cUSDC, from ETH or from USDC, the bureau can keep a share of it plain: none, 5%, 10% or 20%, the choice is remembered. From ETH that takes two buys on the ramp, one plain and one sealed, at the same fee; from USDC, only the rest is shielded. The bureau shows the USDC kept and how many credits it buys at least."
+     "text": "Decryption credits are bought in plain USDC only. So when what you want is cUSDC, from ETH or from USDC, the bureau can keep a share of it plain: none, 5%, 10% or 20%, the choice is remembered. From ETH that takes two buys on the ramp, one plain and one sealed, at the same fee; from USDC, only the rest is shielded. The bureau shows the USDC kept and how many credits it buys at least. The credits themselves are sold only at the bureau, in a window of their own to the left of the counter (under your holdings on a narrow screen), since they are spent rather than held: pick a quantity, see the price, buy. When the plain USDC is short, it sends you back to the counter to get some."
     },
     {
      "id": "transfer-0",
@@ -257,19 +269,19 @@
      "id": "croquettes-2",
      "section": "croquettes",
      "heading": null,
-     "text": "Croquettes reach players from the Pantry, the contract that runs the economy. Every box brings a welcome bag of 100 the first time it is claimed for: once per box, whoever holds it, so a second wallet earns nothing. Then each box purrs: every day, an encrypted amount between 0 and 4, multiplied by 2 for a Vet Certified box, collected up to 7 days at a time. Bags and purrs are paid into the box, an encrypted stash, and whoever claims receives the stashes of the boxes they hold, and nothing for the others. So nobody can spend another holder's days, and a claim says nothing about what the claimer holds. The purr halves every year, and the reserve pays a whole claim or none of it. Nobody but the claimer sees how much arrived.\nCroquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire"
+     "text": "Croquettes reach players from the Pantry, the contract that runs the economy. Every box someone bought brings a welcome bag of 100 the first time it is claimed for: once per box, whoever holds it, so a second wallet earns nothing. Then each box purrs: every day, an encrypted amount between 0 and 4, multiplied by 2 for a Vet Certified box, collected up to 7 days at a time. An empty id, one a mint creates beyond the quantity bought and that nobody holds, gets no bag and no purr. Bags and purrs are paid into the box, an encrypted stash, and whoever claims receives the stashes of the boxes they hold, and nothing for the others. So nobody can spend another holder's days. The contract treats a claim for someone else's boxes the same way, but the app only claims for boxes you hold, so the boxes listed in your claim show which ones you hold. The purr halves every year, and the reserve pays a whole claim or none of it. Nobody but the claimer sees how much arrived."
     },
     {
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Every croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
+     "text": "Croquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire\nEvery croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
     },
     {
      "id": "croquettes-4",
      "section": "croquettes",
      "heading": null,
-     "text": "Only the holder feeds their cat: at most 2 meals and 1,000 croquettes a day, however they are spread. Who holds the cat, how many meals it had today and the amount are all checked under encryption: a meal past the limits, or from someone who does not hold the cat, moves 0, silently. An offer past what is left of the day is cut down to it. Your browser encrypts the amount and the cat eats it all: its weight goes up by that much, encrypted, and nobody can read it while the box is sealed, the holder included. The croquettes are split: 20% to the collection's treasury, 60% back to the reserve that pays the purr, 20% burnt. If you hold less than you offered, the meal moves nothing, with no error and no hint."
+     "text": "Only the holder feeds their cat: at most 2 meals and 1,000 croquettes a day, however they are spread. Who holds the cat, how many meals it had today and the amount are all checked under encryption: a meal past the limits, or from someone who does not hold the cat, moves 0, silently. An offer past what is left of the day is cut down to it. Your browser encrypts the amount and the cat eats it all: its weight goes up by that much, encrypted, and nobody can read it while the box is sealed, the holder included. The croquettes are split: 20% to the collection's treasury, 60% back to the reserve that pays the purr, 20% burnt. Nobody can read the treasury's share between collections, the treasury included: read after each meal, it would tell who fed which cat and how much. It is sent to the treasury at most once every 7 days. If you hold less than you offered, the meal moves nothing, with no error and no hint. The meal itself is public and names the feeder, and the app only feeds cats you hold, so a meal shows that you hold that cat."
     },
     {
      "id": "croquettes-5",
@@ -281,13 +293,13 @@
      "id": "croquettes-6",
      "section": "croquettes",
      "heading": null,
-     "text": "Nobody can read a weight before the box is opened, the holder included, for the same reason nobody is ever allowed on a seed: an access grant cannot be taken back, so a past holder would keep reading it after a sale. What stays secret, and what does not:\nFact | Who can read it\nYour cCROQ balance | You\nThe amount of a transfer, a meal or a claim | The two sides of it\nA cat's weight | Nobody while the box is sealed. Everyone once the cat is weighed\nHow much has been burnt | Nobody\nWho tried to feed which cat | Everyone. Whether it counted: only the feeder\nWho claimed, and for which boxes | Everyone. How much, and from which boxes: only them\nHow heavy an opened cat came out, and whether it is sick | Everyone\nWrapping, unwrapping, market trades | Everyone, amounts included\nThe total supply | Everyone. How much still circulates: nobody"
+     "text": "Nobody can read a weight before the box is opened, the holder included, for the same reason nobody is ever allowed on a seed: an access grant cannot be taken back, so a past holder would keep reading it after a sale. What stays secret, and what does not:\nFact | Who can read it\nYour cCROQ balance | You\nThe amount of a transfer, a meal or a claim | The two sides of it\nA cat's weight | Nobody while the box is sealed. Everyone once the cat is weighed\nHow much has been burnt | Nobody\nWho tried to feed which cat | Everyone, and since the app only feeds your own cats, that you hold it. Whether it counted: only the feeder\nWho claimed, and for which boxes | Everyone, and since the app only claims for your own boxes, that you hold them. How much: only them\nHow heavy an opened cat came out, and whether it is sick | Everyone\nWrapping, unwrapping, market trades | Everyone, amounts included"
     },
     {
      "id": "croquettes-7",
      "section": "croquettes",
      "heading": null,
-     "text": "There is no official price. Their value shows up indirectly, in what a heavy sealed cat sells for.\nThe public market is a Uniswap pool where CROQ trades against USDC. The collection put only croquettes in it, no dollars, so they sell from 0.001 USDC each upward, and never for less: selling only gives back the USDC that buyers brought. Until someone has bought, there is nothing to sell into, and the bureau de change says so. The pool's croquettes are locked in it for good: nobody can take them out, the collection included. Each trade pays the pool a 1% fee, which goes to the collection's treasury."
+     "text": "The total supply | Everyone. How much still circulates: nobody\nThe treasury's share of the meals | Nobody, the treasury included. It is collected at most once every 7 days\nThere is no official price. Their value shows up indirectly, in what a heavy sealed cat sells for.\nThe public market is a Uniswap pool where CROQ trades against USDC. The collection put only croquettes in it, no dollars, so they sell from 0.001 USDC each upward, and never for less: selling only gives back the USDC that buyers brought. Until someone has bought, there is nothing to sell into, and the bureau de change says so. The pool's croquettes are locked in it for good: nobody can take them out, the collection included. Each trade pays the pool a 1% fee, which goes to the collection's treasury."
     },
     {
      "id": "terms-0",
@@ -481,7 +493,13 @@
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Certaines choses restent visibles, c'est voulu. Un mint montre l'adresse de l'acheteur et combien d'ids il a créés, ce qui borne par le haut ce qu'il a acheté. Une tentative de transfert montre qui l'a envoyée et à qui, comme un peut-être. Et une action qui doit devenir publique (une ouverture, une vérification de vie, une boîte mise en duel, ou un duel ou une intrication qui aboutit) montre que celui qui l'a lancée détenait cette boîte à ce moment-là. Une tentative de quelqu'un qui ne la détenait pas se solde par un refus et ne montre rien de la boîte.\nC'est aussi pour ça que le classement ne range que les chats ouverts, et les joueurs qui les ont ouverts : une ouverture publie qui l'a faite, alors que qui détient une boîte scellée reste caché."
+     "text": "Certaines choses restent visibles, c'est voulu. Un mint montre l'adresse de l'acheteur et combien d'ids il a créés, ce qui borne par le haut ce qu'il a acheté. Une tentative de transfert montre qui l'a envoyée et à qui, comme un peut-être. Et une action qui doit devenir publique (une ouverture, une vérification de vie, une boîte mise en duel, ou un duel ou une intrication qui aboutit) montre que celui qui l'a lancée détenait cette boîte à ce moment-là. Une tentative de quelqu'un qui ne la détenait pas se solde par un refus et ne montre rien de la boîte. Les croquettes en ajoutent une : l'app ne réclame que pour les boîtes que vous détenez, et ne nourrit qu'elles, donc les boîtes listées dans une réclamation, et un repas, dont l'événement nomme celui qui nourrit, montrent quelles boîtes vous détenez, même si le contrat traite de la même façon la réclamation ou le repas d'un inconnu."
+    },
+    {
+     "id": "holders-3",
+     "section": "holders",
+     "heading": null,
+     "text": "C'est aussi pour ça que le classement ne range que les chats ouverts, et les joueurs qui les ont ouverts : une ouverture publie qui l'a faite, alors que qui détient une boîte scellée reste caché.\nL'un de ces faits publics va plus loin. Une fois qu'une action a montré qu'une adresse détenait une boîte, le transfert suivant de cette boîte depuis cette adresse est forcément réel, pas un peut-être : on peut donc suivre la boîte jusqu'à son détenteur suivant, et de là plus loin encore. Pour garder une boîte hors de vue, recevez-la, ou déplacez-la, sur une adresse neuve dont vous ne vous servez jamais pour prouver quoi que ce soit."
     },
     {
      "id": "privacy-0",
@@ -505,13 +523,13 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Secouer Ouvrir Duel Transfert Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien. Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. À partir d'ici, pas de retour en arrière. Détenteur et frais, vérifiés à l'aveugle N'importe qui peut maintenant la demander Les valeurs, signées La preuve part sur la chaîne Vérifiée contre ses propres registres La boîte s'ouvre Lecture Étape suivante Transaction Chiffré Valeur avec preuve Valeur en clair\nVous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. À partir d'ici, pas de retour en arrière.\nDétenteur et frais, vérifiés à l'aveugle\nN'importe qui peut maintenant la demander\nLes valeurs, signées\nLa preuve part sur la chaîne\nVérifiée contre ses propres registres\nLa boîte s'ouvre\nTransaction\nChiffré"
+     "text": "Mint Secouer Ouvrir Duel Transfert Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien. Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. Ils sont gardés jusqu'au règlement de l'ouverture, et vous reviennent si la boîte intriquée avec celle-ci l'a ouverte d'abord. Sinon, à partir d'ici, pas de retour en arrière. Détenteur et frais, vérifiés à l'aveugle N'importe qui peut maintenant la demander Les valeurs, signées La preuve part sur la chaîne Vérifiée contre ses propres registres La boîte s'ouvre Lecture Étape suivante Transaction Chiffré Valeur avec preuve Valeur en clair"
     },
     {
      "id": "flows-2",
      "section": "flows",
      "heading": null,
-     "text": "Valeur avec preuve\nValeur en clair"
+     "text": "Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. Ils sont gardés jusqu'au règlement de l'ouverture, et vous reviennent si la boîte intriquée avec celle-ci l'a ouverte d'abord. Sinon, à partir d'ici, pas de retour en arrière.\nDétenteur et frais, vérifiés à l'aveugle\nN'importe qui peut maintenant la demander\nLes valeurs, signées\nLa preuve part sur la chaîne\nVérifiée contre ses propres registres\nLa boîte s'ouvre\nTransaction\nChiffré\nValeur avec preuve\nValeur en clair"
     },
     {
      "id": "mechanics-0",
@@ -523,7 +541,7 @@
      "id": "mechanics-1",
      "section": "mechanics",
      "heading": null,
-     "text": "Duel | Le détenteur la met en jeu, n'importe quel détenteur la relève | Gas seulement | Que le challenger détient la boîte, puis qui a gagné et un trait du perdant, ou un duel annulé\nOuvrir | Le détenteur | 1 cUSDC | Tout, définitivement, et qui l'a ouverte\nDonner des croquettes | Le détenteur | Jusqu'à 1 000 croquettes par jour, toutes mangées | Que quelqu'un a servi un repas, pas si ça a compté ni ce qu'il contenait\nRéclamer des croquettes | N'importe qui | Gas seulement | Quelles boîtes, pas combien ni qui les détient\nPeser un chat ouvert | N'importe qui | Gas seulement | Son poids, sa corpulence, s'il est malade"
+     "text": "Duel | Le détenteur la met en jeu, n'importe quel détenteur la relève | Gas seulement | Que le challenger détient la boîte, puis qui a gagné et un trait du perdant, ou un duel annulé\nOuvrir | Le détenteur | 1 cUSDC | Tout, définitivement, et qui l'a ouverte\nDonner des croquettes | Le détenteur | Jusqu'à 1 000 croquettes par jour, toutes mangées | Qui a nourri quel chat (l'app ne nourrit que les vôtres), pas si ça a compté ni ce qu'il contenait\nRéclamer des croquettes | N'importe qui | Gas seulement | Quelles boîtes (l'app ne réclame que pour les vôtres), pas combien\nPeser un chat ouvert | N'importe qui | Gas seulement | Son poids, sa corpulence, s'il est malade"
     },
     {
      "id": "mechanics-2",
@@ -547,7 +565,7 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Caresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien\nSecouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction"
+     "text": "Caresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie. Un id vide n'a pas de détenteur : il montre quand même un trait, et les 70 % vont aussi à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien\nSecouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction"
     },
     {
      "id": "fees-2",
@@ -559,13 +577,13 @@
      "id": "fees-3",
      "section": "fees",
      "heading": null,
-     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés dans le volet du wallet. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie."
+     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés au bureau de change. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie. Dans le jeu, le compteur Déchiffrements en haut à droite montre ce qu'il reste (gratuits du jour, plus crédits) : il clignote quand vous arrivez au bout, passe au rouge à zéro, et un clic ouvre le bureau de change pour en racheter."
     },
     {
      "id": "fees-4",
      "section": "fees",
      "heading": null,
-     "text": "La trésorerie paie ce qui fait tourner le jeu : les frais de Zama pour chaque déchiffrement gratuit et chaque déchiffrement public, et les serveurs qui suivent la chaîne pour que le site reste rapide. Le reste va au projet. Le propriétaire le retire."
+     "text": "La trésorerie paie ce qui fait tourner le jeu : les frais de Zama pour chaque déchiffrement gratuit et chaque déchiffrement public, et les serveurs qui suivent la chaîne pour que le site reste rapide. Le reste va au projet. Personne ne peut lire les cUSDC qu'elle reçoit, propriétaire compris : lus après chaque paiement, ils trahiraient la quantité cachée de chaque mint, et donc qui a acheté quelles boîtes. Le propriétaire les retire au plus une fois tous les 7 jours, et n'apprend donc jamais que des sommes hebdomadaires. Les frais de 1 USDC d'une ouverture attendent qu'elle se règle : ils rejoignent la trésorerie quand la boîte s'ouvre, et reviennent à celui qui l'ouvrait si la boîte intriquée avec elle l'a ouverte d'abord."
     },
     {
      "id": "exchange-0",
@@ -589,7 +607,13 @@
      "id": "exchange-3",
      "section": "exchange",
      "heading": null,
-     "text": "Ce qui devient public : les jetons en clair circulent à découvert, donc chaque échange montre ses montants, comme chaque passage entre en clair et scellé. Le montant que tu convertis en cUSDC ou scelles est public, et celui que tu ramènes en clair aussi : il est déchiffré en public pour être versé, c'est pourquoi ces étapes prennent une minute de plus. Une fois ton argent scellé, ce que tu en fais reste privé.\nLes crédits de déchiffrement s'achètent seulement en USDC en clair. Alors quand tu veux du cUSDC, depuis de l'ETH ou de l'USDC, le bureau peut en garder une part en clair : rien, 5 %, 10 % ou 20 %, et il retient ton choix. Depuis l'ETH, cela fait deux achats sur la rampe, un en clair et un scellé, aux mêmes frais ; depuis l'USDC, seul le reste est converti en cUSDC. Le bureau affiche l'USDC gardé et le nombre minimum de crédits qu'il achète."
+     "text": "Ce qui devient public : les jetons en clair circulent à découvert, donc chaque échange montre ses montants, comme chaque passage entre en clair et scellé. Le montant que tu convertis en cUSDC ou scelles est public, et celui que tu ramènes en clair aussi : il est déchiffré en public pour être versé, c'est pourquoi ces étapes prennent une minute de plus. Une fois ton argent scellé, ce que tu en fais reste privé."
+    },
+    {
+     "id": "exchange-4",
+     "section": "exchange",
+     "heading": null,
+     "text": "Les crédits de déchiffrement s'achètent seulement en USDC en clair. Alors quand tu veux du cUSDC, depuis de l'ETH ou de l'USDC, le bureau peut en garder une part en clair : rien, 5 %, 10 % ou 20 %, et il retient ton choix. Depuis l'ETH, cela fait deux achats sur la rampe, un en clair et un scellé, aux mêmes frais ; depuis l'USDC, seul le reste est converti en cUSDC. Le bureau affiche l'USDC gardé et le nombre minimum de crédits qu'il achète. Les crédits eux-mêmes s'achètent seulement au bureau, dans un guichet à part à gauche du comptoir (sous tes avoirs sur un écran étroit), puisqu'ils se dépensent au lieu de se garder : tu choisis une quantité, tu vois le prix, tu achètes. S'il manque de l'USDC en clair, il te renvoie au comptoir pour en obtenir."
     },
     {
      "id": "transfer-0",
@@ -619,7 +643,7 @@
      "id": "croquettes-2",
      "section": "croquettes",
      "heading": null,
-     "text": "Les croquettes arrivent aux joueurs par le Garde-manger, le contrat qui gère l'économie. Chaque boîte apporte un sac de bienvenue de 100 à sa première réclamation : une fois par boîte, quel que soit son détenteur, donc un second wallet ne rapporte rien. Ensuite chaque boîte ronronne : chaque jour, un montant chiffré entre 0 et 4, multiplié par 2 pour une boîte Vet Certified, à récupérer jusqu'à 7 jours d'un coup. Sacs et ronrons sont versés dans la boîte, une réserve chiffrée, et celui qui réclame reçoit les réserves des boîtes qu'il détient, et rien pour les autres. Personne ne peut donc dépenser les jours d'un autre détenteur, et une réclamation ne dit rien de ce que détient celui qui la fait. Le ronron est divisé par deux chaque année, et la réserve paie une réclamation entière ou rien du tout. Personne d'autre que celui qui réclame ne voit combien il a reçu."
+     "text": "Les croquettes arrivent aux joueurs par le Garde-manger, le contrat qui gère l'économie. Chaque boîte achetée apporte un sac de bienvenue de 100 à sa première réclamation : une fois par boîte, quel que soit son détenteur, donc un second wallet ne rapporte rien. Ensuite chaque boîte ronronne : chaque jour, un montant chiffré entre 0 et 4, multiplié par 2 pour une boîte Vet Certified, à récupérer jusqu'à 7 jours d'un coup. Un id vide, de ceux qu'un mint crée au-delà de la quantité achetée et que personne ne détient, n'a ni sac ni ronron. Sacs et ronrons sont versés dans la boîte, une réserve chiffrée, et celui qui réclame reçoit les réserves des boîtes qu'il détient, et rien pour les autres. Personne ne peut donc dépenser les jours d'un autre détenteur. Le contrat traite de la même façon une réclamation pour les boîtes d'un autre, mais l'app ne réclame que pour les boîtes que tu détiens : les boîtes listées dans ta réclamation montrent donc lesquelles tu détiens. Le ronron est divisé par deux chaque année, et la réserve paie une réclamation entière ou rien du tout. Personne d'autre que celui qui réclame ne voit combien il a reçu."
     },
     {
      "id": "croquettes-3",
@@ -631,7 +655,7 @@
      "id": "croquettes-4",
      "section": "croquettes",
      "heading": null,
-     "text": "Seul le détenteur nourrit son chat : au plus 2 repas et 1 000 croquettes par jour, quelle que soit la répartition. Qui détient le chat, combien de repas il a eus aujourd'hui et le montant sont tous vérifiés sous chiffrement : un repas qui dépasse les limites, ou servi par quelqu'un qui ne détient pas le chat, déplace 0, sans bruit. Une offre qui dépasse ce qui reste du jour est ramenée à ce reste. Ton navigateur chiffre le montant et le chat mange tout : son poids augmente d'autant, chiffré, et personne ne peut le lire tant que la boîte est scellée, détenteur compris. Les croquettes sont partagées : 20 % pour la trésorerie de la collection, 60 % retournent à la réserve qui paie le ronron, 20 % sont brûlés. Si tu en as moins que ce que tu offres, le repas ne déplace rien, sans erreur ni indice."
+     "text": "Seul le détenteur nourrit son chat : au plus 2 repas et 1 000 croquettes par jour, quelle que soit la répartition. Qui détient le chat, combien de repas il a eus aujourd'hui et le montant sont tous vérifiés sous chiffrement : un repas qui dépasse les limites, ou servi par quelqu'un qui ne détient pas le chat, déplace 0, sans bruit. Une offre qui dépasse ce qui reste du jour est ramenée à ce reste. Ton navigateur chiffre le montant et le chat mange tout : son poids augmente d'autant, chiffré, et personne ne peut le lire tant que la boîte est scellée, détenteur compris. Les croquettes sont partagées : 20 % pour la trésorerie de la collection, 60 % retournent à la réserve qui paie le ronron, 20 % sont brûlés. Personne ne peut lire la part de la trésorerie entre deux collectes, trésorerie comprise : lue après chaque repas, elle dirait qui a nourri quel chat, et de combien. Elle lui est envoyée au plus une fois tous les 7 jours. Si tu en as moins que ce que tu offres, le repas ne déplace rien, sans erreur ni indice. Le repas lui-même est public et nomme celui qui le sert, et l'app ne nourrit que les chats que tu détiens : un repas montre donc que tu détiens ce chat."
     },
     {
      "id": "croquettes-5",
@@ -643,13 +667,13 @@
      "id": "croquettes-6",
      "section": "croquettes",
      "heading": null,
-     "text": "Le poids suit la boîte, et sa réserve aussi. Un acheteur ne sait rien de ses repas : ni combien, ni la quantité, ni la distance qui sépare le chat de sa tolérance. Le vendeur sait au moins ce qu'il a servi lui-même. Le marché fait le prix du reste.\nPersonne ne peut lire un poids avant l'ouverture, détenteur compris, pour la même raison que personne n'a jamais accès à une graine : un droit d'accès ne se reprend pas, donc un ancien détenteur continuerait à le lire après une vente. Ce qui reste secret, et ce qui ne l'est pas :\nInformation | Qui peut le lire\nTon solde de cCROQ | Toi\nLe montant d'un transfert, d'un repas ou d'une réclamation | Les deux parties\nLe poids d'un chat | Personne tant que la boîte est scellée. Tout le monde une fois le chat pesé\nCombien a été brûlé | Personne\nQui a essayé de nourrir quel chat | Tout le monde. Si ça a compté : celui qui a nourri seulement"
+     "text": "Le poids suit la boîte, et sa réserve aussi. Un acheteur ne sait rien de ses repas : ni combien, ni la quantité, ni la distance qui sépare le chat de sa tolérance. Le vendeur sait au moins ce qu'il a servi lui-même. Le marché fait le prix du reste.\nPersonne ne peut lire un poids avant l'ouverture, détenteur compris, pour la même raison que personne n'a jamais accès à une graine : un droit d'accès ne se reprend pas, donc un ancien détenteur continuerait à le lire après une vente. Ce qui reste secret, et ce qui ne l'est pas :\nInformation | Qui peut le lire\nTon solde de cCROQ | Toi\nLe montant d'un transfert, d'un repas ou d'une réclamation | Les deux parties\nLe poids d'un chat | Personne tant que la boîte est scellée. Tout le monde une fois le chat pesé\nCombien a été brûlé | Personne"
     },
     {
      "id": "croquettes-7",
      "section": "croquettes",
      "heading": null,
-     "text": "Qui a réclamé, et pour quelles boîtes | Tout le monde. Combien, et de quelles boîtes : lui seul\nCe que pèse un chat ouvert, et s'il est malade | Tout le monde\nEmballer, déballer, échanges sur le marché | Tout le monde, montants compris\nL'offre totale | Tout le monde. Combien circule encore : personne\nIl n'y a pas de prix officiel. Leur valeur apparaît indirectement, dans le prix d'un chat scellé bien lourd."
+     "text": "Qui a essayé de nourrir quel chat | Tout le monde, et comme l'app ne nourrit que tes chats, que tu le détiens. Si ça a compté : celui qui a nourri seulement\nQui a réclamé, et pour quelles boîtes | Tout le monde, et comme l'app ne réclame que pour tes boîtes, que tu les détiens. Combien : lui seul\nCe que pèse un chat ouvert, et s'il est malade | Tout le monde\nEmballer, déballer, échanges sur le marché | Tout le monde, montants compris\nL'offre totale | Tout le monde. Combien circule encore : personne\nLa part de la trésorerie sur les repas | Personne, trésorerie comprise. Elle est collectée au plus une fois tous les 7 jours\nIl n'y a pas de prix officiel. Leur valeur apparaît indirectement, dans le prix d'un chat scellé bien lourd."
     },
     {
      "id": "croquettes-8",
@@ -855,7 +879,13 @@
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Algunas cosas siguen a la vista, a propósito. Un minteo muestra la dirección del comprador y cuántos ids creó, lo que pone un límite superior a lo que compró. Un intento de transferencia muestra quién la envió y a quién, como un quizás. Y una acción que tiene que hacerse pública (una apertura, una comprobación de vida, una caja puesta en duelo, o un duelo o un entrelazado que sale adelante) muestra que quien la lanzó tenía esa caja en ese momento. Un intento de alguien que no la tenía se resuelve como rechazado y no muestra nada de la caja.\nPor eso también la clasificación solo ordena gatos abiertos, y a los jugadores que los abrieron: una apertura publica quién la hizo, mientras que quién tiene una caja sellada sigue oculto."
+     "text": "Algunas cosas siguen a la vista, a propósito. Un minteo muestra la dirección del comprador y cuántos ids creó, lo que pone un límite superior a lo que compró. Un intento de transferencia muestra quién la envió y a quién, como un quizás. Y una acción que tiene que hacerse pública (una apertura, una comprobación de vida, una caja puesta en duelo, o un duelo o un entrelazado que sale adelante) muestra que quien la lanzó tenía esa caja en ese momento. Un intento de alguien que no la tenía se resuelve como rechazado y no muestra nada de la caja. Las croquetas añaden una más: la app solo reclama por las cajas que tienes, y solo alimenta a esas, así que las cajas que lista una reclamación, y una comida, cuyo evento nombra a quien la sirve, muestran qué cajas tienes, aunque el contrato trate igual la reclamación o la comida de un desconocido."
+    },
+    {
+     "id": "holders-3",
+     "section": "holders",
+     "heading": null,
+     "text": "Por eso también la clasificación solo ordena gatos abiertos, y a los jugadores que los abrieron: una apertura publica quién la hizo, mientras que quién tiene una caja sellada sigue oculto.\nUno de esos hechos públicos llega más lejos. Una vez que una acción ha mostrado que una dirección tenía una caja, la siguiente transferencia de esa caja desde esa dirección es real con seguridad, no un quizás, así que se puede seguir la caja hasta su siguiente titular, y desde ahí más allá. Para mantener una caja fuera de la vista, recíbela, o muévela, en una dirección nueva que nunca uses para probar nada."
     },
     {
      "id": "privacy-0",
@@ -879,7 +909,13 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mintear Agitar Abrir Duelo Transferir Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. A partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. A partir de aquí no hay vuelta atrás.\nTitular y tarifa, comprobados a ciegas\nCualquiera puede pedirla ahora\nLos valores, firmados\nLa prueba va a la cadena\nComprobada contra sus propios registros\nLa caja se abre\nTransacción\nTexto cifrado\nValor con prueba\nValor en claro"
+     "text": "Mintear Agitar Abrir Duelo Transferir Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás."
+    },
+    {
+     "id": "flows-2",
+     "section": "flows",
+     "heading": null,
+     "text": "Titular y tarifa, comprobados a ciegas\nCualquiera puede pedirla ahora\nLos valores, firmados\nLa prueba va a la cadena\nComprobada contra sus propios registros\nLa caja se abre\nTransacción\nTexto cifrado\nValor con prueba\nValor en claro"
     },
     {
      "id": "mechanics-0",
@@ -891,7 +927,7 @@
      "id": "mechanics-1",
      "section": "mechanics",
      "heading": null,
-     "text": "Duelo | El titular la pone en juego, cualquier titular la acepta | Solo gas | Que el retador tiene la caja, luego quién ganó y un rasgo del perdedor, o un duelo nulo\nAbrir | El titular | 1 cUSDC | Todo, de forma permanente, y quién la abrió\nDar croquetas | El titular | Hasta 1000 croquetas al día, todas comidas | Que alguien sirvió una comida, no si contó ni lo que contenía\nReclamar croquetas | Cualquiera | Solo gas | Qué cajas, no cuánto ni quién las tiene\nPesar un gato abierto | Cualquiera | Solo gas | Su peso, su complexión, si está enfermo"
+     "text": "Duelo | El titular la pone en juego, cualquier titular la acepta | Solo gas | Que el retador tiene la caja, luego quién ganó y un rasgo del perdedor, o un duelo nulo\nAbrir | El titular | 1 cUSDC | Todo, de forma permanente, y quién la abrió\nDar croquetas | El titular | Hasta 1000 croquetas al día, todas comidas | Quién alimentó a qué gato (la app solo alimenta a los tuyos), no si contó ni lo que contenía\nReclamar croquetas | Cualquiera | Solo gas | Qué cajas (la app solo reclama por las tuyas), no cuánto\nPesar un gato abierto | Cualquiera | Solo gas | Su peso, su complexión, si está enfermo"
     },
     {
      "id": "mechanics-2",
@@ -915,7 +951,7 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Agitar la caja de otro | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario\nAgitar tu propia caja, la comprobación de vida, entrelazar, los duelos, enviar una caja | Gratis | Solo el gas de la red, como cualquier transacción"
+     "text": "Agitar la caja de otro | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería. Un id vacío no tiene titular: muestra igualmente un rasgo, y el 70 % también va a la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario\nAgitar tu propia caja, la comprobación de vida, entrelazar, los duelos, enviar una caja | Gratis | Solo el gas de la red, como cualquier transacción"
     },
     {
      "id": "fees-2",
@@ -927,13 +963,13 @@
      "id": "fees-3",
      "section": "fees",
      "heading": null,
-     "text": "Por eso cada cartera tiene 25 unidades gratis al día, pagadas por la colección, y vuelven a medianoche UTC; una cartera que aún no ha jugado tiene 16, lo justo para un primer minteo. Leer un valor es una unidad: una agitada usa 2, y encontrar las cajas de un minteo usa una por cada número de caja entre los que se escondió. Cifrar un valor, como la cantidad de un minteo o una comida, cuesta 5. Lo que tu navegador ya ha leído una vez, lo recuerda, y nunca se vuelve a contar. Pasadas las gratuitas, gastas créditos, uno por unidad, que se compran en la ficha del wallet. Su precio sigue lo que Zama le cobra a la colección en dólares, no el precio del token de Zama, así que no se mueve con el mercado. Se pagan en USDC sin cifrar a propósito: un saldo que no alcanza cancela la compra, mientras que un pago en cUSDC no movería nada sin avisar. Abrir una caja, resolver un duelo o anunciar un hito nunca se le cuenta a nadie: eso lo paga la colección."
+     "text": "Por eso cada cartera tiene 25 unidades gratis al día, pagadas por la colección, y vuelven a medianoche UTC; una cartera que aún no ha jugado tiene 16, lo justo para un primer minteo. Leer un valor es una unidad: una agitada usa 2, y encontrar las cajas de un minteo usa una por cada número de caja entre los que se escondió. Cifrar un valor, como la cantidad de un minteo o una comida, cuesta 5. Lo que tu navegador ya ha leído una vez, lo recuerda, y nunca se vuelve a contar. Pasadas las gratuitas, gastas créditos, uno por unidad, que se compran en la casa de cambio. Su precio sigue lo que Zama le cobra a la colección en dólares, no el precio del token de Zama, así que no se mueve con el mercado. Se pagan en USDC sin cifrar a propósito: un saldo que no alcanza cancela la compra, mientras que un pago en cUSDC no movería nada sin avisar. Abrir una caja, resolver un duelo o anunciar un hito nunca se le cuenta a nadie: eso lo paga la colección. En el juego, el contador Descifrados de arriba a la derecha muestra lo que queda (gratuitos del día, más créditos): parpadea cuando te quedan pocos, se pone rojo a cero, y un clic abre la casa de cambio para comprar más."
     },
     {
      "id": "fees-4",
      "section": "fees",
      "heading": null,
-     "text": "La tesorería paga lo que mantiene el juego en marcha: las tarifas de Zama por cada descifrado gratuito y cada descifrado público, y los servidores que siguen la cadena para que el sitio vaya rápido. El resto es para el proyecto. Lo retira el propietario."
+     "text": "La tesorería paga lo que mantiene el juego en marcha: las tarifas de Zama por cada descifrado gratuito y cada descifrado público, y los servidores que siguen la cadena para que el sitio vaya rápido. El resto es para el proyecto. Nadie puede leer los cUSDC que recibe, ni siquiera el propietario: leídos después de cada pago, delatarían la cantidad oculta de cada minteo, y por tanto quién compró qué cajas. El propietario los retira como mucho una vez cada 7 días, así que solo conoce sumas semanales. La tarifa de 1 USDC de una apertura espera a que la apertura se resuelva: pasa a la tesorería cuando la caja se abre, y vuelve a quien la abría si la caja entrelazada con ella la abrió antes."
     },
     {
      "id": "exchange-0",
@@ -957,7 +993,13 @@
      "id": "exchange-3",
      "section": "exchange",
      "heading": null,
-     "text": "Qué se hace público: los tokens a la vista se mueven a la vista, así que cada cambio muestra sus importes, igual que cada paso entre a la vista y sellado. El importe que blindas o sellas es público, y el que desblindas o desellas también: se descifra en público para pagarlo, por eso esos pasos tardan un minuto más. Una vez sellado tu dinero, lo que hagas con él queda privado.\nLos créditos de descifrado solo se compran en USDC en claro. Así que cuando quieres cUSDC, desde ETH o desde USDC, el bureau puede guardar una parte en claro: nada, 5 %, 10 % o 20 %, y recuerda tu elección. Desde ETH son dos compras en la rampa, una en claro y otra sellada, con la misma comisión; desde USDC, solo se protege el resto. El bureau muestra el USDC guardado y cuántos créditos compra como mínimo."
+     "text": "Qué se hace público: los tokens a la vista se mueven a la vista, así que cada cambio muestra sus importes, igual que cada paso entre a la vista y sellado. El importe que blindas o sellas es público, y el que desblindas o desellas también: se descifra en público para pagarlo, por eso esos pasos tardan un minuto más. Una vez sellado tu dinero, lo que hagas con él queda privado."
+    },
+    {
+     "id": "exchange-4",
+     "section": "exchange",
+     "heading": null,
+     "text": "Los créditos de descifrado solo se compran en USDC en claro. Así que cuando quieres cUSDC, desde ETH o desde USDC, el bureau puede guardar una parte en claro: nada, 5 %, 10 % o 20 %, y recuerda tu elección. Desde ETH son dos compras en la rampa, una en claro y otra sellada, con la misma comisión; desde USDC, solo se protege el resto. El bureau muestra el USDC guardado y cuántos créditos compra como mínimo. Los créditos solo se compran en la oficina, en una ventanilla aparte a la izquierda del mostrador (bajo tus haberes en una pantalla estrecha), ya que se gastan en lugar de guardarse: eliges una cantidad, ves el precio y compras. Si falta USDC sin cifrar, te devuelve al mostrador para conseguirlo."
     },
     {
      "id": "transfer-0",
@@ -987,7 +1029,7 @@
      "id": "croquettes-2",
      "section": "croquettes",
      "heading": null,
-     "text": "Las croquetas llegan a los jugadores desde la Despensa, el contrato que lleva la economía. Cada caja trae una bolsa de bienvenida de 100 la primera vez que se reclama por ella: una vez por caja, la tenga quien la tenga, así que una segunda cartera no gana nada. Después cada caja ronronea: cada día, una cantidad cifrada entre 0 y 4, multiplicada por 2 para una caja Vet Certified, que se recoge hasta 7 días de golpe. Bolsas y ronroneos se pagan dentro de la caja, una reserva cifrada, y quien reclama recibe las reservas de las cajas que tiene, y nada por las demás. Así nadie puede gastar los días de otro titular, y una reclamación no dice nada de lo que tiene quien reclama. El ronroneo se reduce a la mitad cada año, y la reserva paga una reclamación entera o nada. Nadie más que quien reclama ve cuánto le llegó."
+     "text": "Las croquetas llegan a los jugadores desde la Despensa, el contrato que lleva la economía. Cada caja comprada trae una bolsa de bienvenida de 100 la primera vez que se reclama por ella: una vez por caja, la tenga quien la tenga, así que una segunda cartera no gana nada. Después cada caja ronronea: cada día, una cantidad cifrada entre 0 y 4, multiplicada por 2 para una caja Vet Certified, que se recoge hasta 7 días de golpe. Un id vacío, de los que un minteo crea más allá de la cantidad comprada y que nadie tiene, no recibe bolsa ni ronroneo. Bolsas y ronroneos se pagan dentro de la caja, una reserva cifrada, y quien reclama recibe las reservas de las cajas que tiene, y nada por las demás. Así nadie puede gastar los días de otro titular. El contrato trata igual una reclamación por las cajas de otro, pero la app solo reclama por las cajas que tienes, así que las cajas que lista tu reclamación muestran cuáles tienes. El ronroneo se reduce a la mitad cada año, y la reserva paga una reclamación entera o nada. Nadie más que quien reclama ve cuánto le llegó."
     },
     {
      "id": "croquettes-3",
@@ -999,7 +1041,7 @@
      "id": "croquettes-4",
      "section": "croquettes",
      "heading": null,
-     "text": "Solo el titular alimenta a su gato: como mucho 2 comidas y 1000 croquetas al día, repartidas como quiera. Quién tiene el gato, cuántas comidas lleva hoy y la cantidad se comprueban todos bajo cifrado: una comida que supere los límites, o servida por alguien que no tiene el gato, mueve 0, sin avisar. Una oferta que supere lo que queda del día se recorta a ese resto. Tu navegador cifra la cantidad y el gato se lo come todo: su peso sube otro tanto, cifrado, y nadie puede leerlo mientras la caja esté sellada, ni siquiera el titular. Las croquetas se reparten: el 20 % a la tesorería de la colección, el 60 % vuelve a la reserva que paga el ronroneo, el 20 % se quema. Si tienes menos de lo que ofreces, la comida no mueve nada, sin error ni pista."
+     "text": "Solo el titular alimenta a su gato: como mucho 2 comidas y 1000 croquetas al día, repartidas como quiera. Quién tiene el gato, cuántas comidas lleva hoy y la cantidad se comprueban todos bajo cifrado: una comida que supere los límites, o servida por alguien que no tiene el gato, mueve 0, sin avisar. Una oferta que supere lo que queda del día se recorta a ese resto. Tu navegador cifra la cantidad y el gato se lo come todo: su peso sube otro tanto, cifrado, y nadie puede leerlo mientras la caja esté sellada, ni siquiera el titular. Las croquetas se reparten: el 20 % a la tesorería de la colección, el 60 % vuelve a la reserva que paga el ronroneo, el 20 % se quema. Nadie puede leer la parte de la tesorería entre dos cobros, ni siquiera la tesorería: leída después de cada comida, diría quién alimentó a qué gato y cuánto. Se le envía como mucho una vez cada 7 días. Si tienes menos de lo que ofreces, la comida no mueve nada, sin error ni pista. La comida en sí es pública y nombra a quien la sirve, y la app solo alimenta a los gatos que tienes, así que una comida muestra que tienes ese gato."
     },
     {
      "id": "croquettes-5",
@@ -1011,13 +1053,13 @@
      "id": "croquettes-6",
      "section": "croquettes",
      "heading": null,
-     "text": "El peso sigue a la caja, y su reserva también. Un comprador no sabe nada de sus comidas: ni cuántas, ni cuánto, ni lo cerca que está de su tolerancia. El vendedor al menos sabe lo que sirvió él mismo. El mercado pone precio al resto.\nNadie puede leer un peso antes de abrir la caja, ni siquiera el titular, por la misma razón por la que nadie tiene nunca acceso a una semilla: un permiso de acceso no se puede retirar, así que un antiguo titular seguiría leyéndolo después de una venta. Lo que sigue en secreto, y lo que no:\nDato | Quién puede leerlo\nTu saldo de cCROQ | Tú\nEl importe de una transferencia, una comida o una reclamación | Las dos partes\nEl peso de un gato | Nadie mientras la caja está sellada. Todos una vez pesado el gato\nCuánto se ha quemado | Nadie\nQuién intentó alimentar a qué gato | Todo el mundo. Si contó: solo quien alimentó"
+     "text": "El peso sigue a la caja, y su reserva también. Un comprador no sabe nada de sus comidas: ni cuántas, ni cuánto, ni lo cerca que está de su tolerancia. El vendedor al menos sabe lo que sirvió él mismo. El mercado pone precio al resto.\nNadie puede leer un peso antes de abrir la caja, ni siquiera el titular, por la misma razón por la que nadie tiene nunca acceso a una semilla: un permiso de acceso no se puede retirar, así que un antiguo titular seguiría leyéndolo después de una venta. Lo que sigue en secreto, y lo que no:\nDato | Quién puede leerlo\nTu saldo de cCROQ | Tú\nEl importe de una transferencia, una comida o una reclamación | Las dos partes\nEl peso de un gato | Nadie mientras la caja está sellada. Todos una vez pesado el gato\nCuánto se ha quemado | Nadie"
     },
     {
      "id": "croquettes-7",
      "section": "croquettes",
      "heading": null,
-     "text": "Quién reclamó, y para qué cajas | Todo el mundo. Cuánto, y de qué cajas: solo esa persona\nCuánto pesa un gato abierto, y si está enfermo | Todos\nEnvolver, desenvolver, operaciones en el mercado | Todo el mundo, importes incluidos\nLa oferta total | Todo el mundo. Cuánto sigue circulando: nadie\nNo hay precio oficial. Su valor aparece de forma indirecta, en lo que se paga por un gato sellado bien pesado."
+     "text": "Quién intentó alimentar a qué gato | Todo el mundo, y como la app solo alimenta a tus gatos, que lo tienes. Si contó: solo quien alimentó\nQuién reclamó, y para qué cajas | Todo el mundo, y como la app solo reclama por tus cajas, que las tienes. Cuánto: solo esa persona\nCuánto pesa un gato abierto, y si está enfermo | Todos\nEnvolver, desenvolver, operaciones en el mercado | Todo el mundo, importes incluidos\nLa oferta total | Todo el mundo. Cuánto sigue circulando: nadie\nLa parte de la tesorería en las comidas | Nadie, ni siquiera la tesorería. Se cobra como mucho una vez cada 7 días\nNo hay precio oficial. Su valor aparece de forma indirecta, en lo que se paga por un gato sellado bien pesado."
     },
     {
      "id": "croquettes-8",
@@ -1223,7 +1265,13 @@
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Alcune cose restano visibili, per scelta. Un mint mostra l'indirizzo di chi compra e quanti id ha creato, che è un limite superiore a quanto ha comprato. Un tentativo di trasferimento mostra chi l'ha inviato e a chi, come un forse. E un'azione che deve diventare pubblica (un'apertura, un controllo di vita, una scatola messa in duello, o un duello o un intreccio che va a buon fine) mostra che chi l'ha lanciata deteneva quella scatola in quel momento. Un tentativo di chi non la deteneva si chiude con un rifiuto e non mostra niente della scatola.\nPer questo anche la classifica ordina solo i gatti aperti, e i giocatori che li hanno aperti: un'apertura pubblica chi l'ha fatta, mentre chi detiene una scatola sigillata resta nascosto."
+     "text": "Alcune cose restano visibili, per scelta. Un mint mostra l'indirizzo di chi compra e quanti id ha creato, che è un limite superiore a quanto ha comprato. Un tentativo di trasferimento mostra chi l'ha inviato e a chi, come un forse. E un'azione che deve diventare pubblica (un'apertura, un controllo di vita, una scatola messa in duello, o un duello o un intreccio che va a buon fine) mostra che chi l'ha lanciata deteneva quella scatola in quel momento. Un tentativo di chi non la deteneva si chiude con un rifiuto e non mostra niente della scatola. Le crocchette ne aggiungono una: l'app reclama solo per le scatole che detieni, e nutre solo quelle, quindi le scatole elencate in un reclamo, e un pasto, il cui evento nomina chi lo serve, mostrano quali scatole detieni, anche se il contratto tratta allo stesso modo il reclamo o il pasto di uno sconosciuto."
+    },
+    {
+     "id": "holders-3",
+     "section": "holders",
+     "heading": null,
+     "text": "Per questo anche la classifica ordina solo i gatti aperti, e i giocatori che li hanno aperti: un'apertura pubblica chi l'ha fatta, mentre chi detiene una scatola sigillata resta nascosto.\nUno di questi fatti pubblici arriva più lontano. Una volta che un'azione ha mostrato che un indirizzo deteneva una scatola, il trasferimento successivo di quella scatola da quell'indirizzo è di sicuro reale, non un forse, quindi si può seguire la scatola fino al suo detentore successivo, e da lì oltre. Per tenere una scatola fuori vista, ricevila, o spostala, su un indirizzo nuovo che non usi mai per provare niente."
     },
     {
      "id": "privacy-0",
@@ -1247,13 +1295,13 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Scuotere Aprire Duello Trasferire Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro\nChiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Da qui non si torna indietro.\nDetentore e tariffa, controllati alla cieca\nChiunque può ora chiederlo\nI valori, firmati\nLa prova va on-chain\nControllata contro i suoi stessi registri\nLa scatola si apre\nTransazione\nTesto cifrato\nValore con prova"
+     "text": "Mint Scuotere Aprire Duello Trasferire Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro"
     },
     {
      "id": "flows-2",
      "section": "flows",
      "heading": null,
-     "text": "Valore in chiaro"
+     "text": "Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro.\nDetentore e tariffa, controllati alla cieca\nChiunque può ora chiederlo\nI valori, firmati\nLa prova va on-chain\nControllata contro i suoi stessi registri\nLa scatola si apre\nTransazione\nTesto cifrato\nValore con prova\nValore in chiaro"
     },
     {
      "id": "mechanics-0",
@@ -1265,7 +1313,7 @@
      "id": "mechanics-1",
      "section": "mechanics",
      "heading": null,
-     "text": "Duello | Il detentore la mette in gioco, qualsiasi detentore la accetta | Solo gas | Che lo sfidante detiene la scatola, poi chi ha vinto e un tratto del perdente, o un duello nullo\nAprire | Il detentore | 1 cUSDC | Tutto, per sempre, e chi l'ha aperta\nDare crocchette | Il detentore | Fino a 1000 crocchette al giorno, tutte mangiate | Che qualcuno ha servito un pasto, non se è contato né cosa conteneva\nReclamare crocchette | Chiunque | Solo gas | Quali scatole, non quanto né chi le detiene\nPesare un gatto aperto | Chiunque | Solo gas | Il suo peso, la sua corporatura, se è malato"
+     "text": "Duello | Il detentore la mette in gioco, qualsiasi detentore la accetta | Solo gas | Che lo sfidante detiene la scatola, poi chi ha vinto e un tratto del perdente, o un duello nullo\nAprire | Il detentore | 1 cUSDC | Tutto, per sempre, e chi l'ha aperta\nDare crocchette | Il detentore | Fino a 1000 crocchette al giorno, tutte mangiate | Chi ha nutrito quale gatto (l'app nutre solo i tuoi), non se è contato né cosa conteneva\nReclamare crocchette | Chiunque | Solo gas | Quali scatole (l'app reclama solo per le tue), non quanto\nPesare un gatto aperto | Chiunque | Solo gas | Il suo peso, la sua corporatura, se è malato"
     },
     {
      "id": "mechanics-2",
@@ -1289,7 +1337,7 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Scuotere la scatola di qualcun altro | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane\nScuotere la propria scatola, il controllo di vita, intrecciare, i duelli, inviare una scatola | Gratis | Solo il gas della rete, come ogni transazione"
+     "text": "Scuotere la scatola di qualcun altro | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria. Un id vuoto non ha detentore: mostra comunque un tratto, e anche il 70% va alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane\nScuotere la propria scatola, il controllo di vita, intrecciare, i duelli, inviare una scatola | Gratis | Solo il gas della rete, come ogni transazione"
     },
     {
      "id": "fees-2",
@@ -1301,13 +1349,13 @@
      "id": "fees-3",
      "section": "fees",
      "heading": null,
-     "text": "Per questo ogni wallet ha 25 unità gratuite al giorno, pagate dalla collezione, che tornano a mezzanotte UTC; un wallet che non ha ancora giocato ne ha 16, quanto basta per un primo mint. Leggere un valore costa un'unità: uno scuotimento ne usa 2, e trovare le scatole di un mint ne usa una per ogni numero di scatola tra cui si è nascosto. Cifrare un valore, come la quantità di un mint o un pasto, ne costa 5. Ciò che il tuo browser ha letto una volta, lo ricorda, e non viene mai contato di nuovo. Oltre quelle gratuite, spendi crediti, uno per unità, che si comprano nel pannello del wallet. Il loro prezzo segue quanto Zama fa pagare alla collezione in dollari, non il prezzo del token di Zama, quindi non oscilla con il mercato. Si pagano in USDC normali di proposito: un saldo insufficiente annulla l'acquisto, mentre un pagamento in cUSDC non sposterebbe nulla in silenzio. Aprire una scatola, chiudere un duello o annunciare una soglia non viene mai contato a nessuno: li paga la collezione."
+     "text": "Per questo ogni wallet ha 25 unità gratuite al giorno, pagate dalla collezione, che tornano a mezzanotte UTC; un wallet che non ha ancora giocato ne ha 16, quanto basta per un primo mint. Leggere un valore costa un'unità: uno scuotimento ne usa 2, e trovare le scatole di un mint ne usa una per ogni numero di scatola tra cui si è nascosto. Cifrare un valore, come la quantità di un mint o un pasto, ne costa 5. Ciò che il tuo browser ha letto una volta, lo ricorda, e non viene mai contato di nuovo. Oltre quelle gratuite, spendi crediti, uno per unità, che si comprano al cambiavalute. Il loro prezzo segue quanto Zama fa pagare alla collezione in dollari, non il prezzo del token di Zama, quindi non oscilla con il mercato. Si pagano in USDC normali di proposito: un saldo insufficiente annulla l'acquisto, mentre un pagamento in cUSDC non sposterebbe nulla in silenzio. Aprire una scatola, chiudere un duello o annunciare una soglia non viene mai contato a nessuno: li paga la collezione. Nel gioco, il contatore Decifrature in alto a destra mostra quanto resta (gratuite del giorno, più crediti): lampeggia quando stanno per finire, diventa rosso a zero, e un clic apre il cambiavalute per comprarne altre."
     },
     {
      "id": "fees-4",
      "section": "fees",
      "heading": null,
-     "text": "La tesoreria paga ciò che fa girare il gioco: le commissioni di Zama per ogni decifratura gratuita e ogni decifratura pubblica, e i server che seguono la chain perché il sito resti veloce. Il resto va al progetto. Lo ritira il proprietario."
+     "text": "La tesoreria paga ciò che fa girare il gioco: le commissioni di Zama per ogni decifratura gratuita e ogni decifratura pubblica, e i server che seguono la chain perché il sito resti veloce. Il resto va al progetto. Nessuno può leggere i cUSDC che riceve, nemmeno il proprietario: letti dopo ogni pagamento, svelerebbero la quantità nascosta di ogni mint, e quindi chi ha comprato quali scatole. Il proprietario li ritira al massimo una volta ogni 7 giorni, quindi conosce solo somme settimanali. La tariffa di 1 USDC di un'apertura aspetta che l'apertura si chiuda: passa alla tesoreria quando la scatola si apre, e torna a chi la apriva se la scatola intrecciata con lei l'ha aperta prima."
     },
     {
      "id": "exchange-0",
@@ -1331,7 +1379,13 @@
      "id": "exchange-3",
      "section": "exchange",
      "heading": null,
-     "text": "Cosa diventa pubblico: i token in chiaro si muovono allo scoperto, quindi ogni scambio mostra i suoi importi, come ogni passaggio tra in chiaro e sigillato. L'importo che schermi o sigilli è pubblico, e anche quello che sblocchi o dissigilli: viene decifrato in pubblico per essere pagato, per questo quei passi richiedono un minuto in più. Una volta sigillato il tuo denaro, quello che ne fai resta privato.\nI crediti di decifratura si comprano solo in USDC in chiaro. Quindi quando vuoi cUSDC, da ETH o da USDC, il bureau può tenerne una parte in chiaro: niente, 5%, 10% o 20%, e ricorda la scelta. Da ETH sono due acquisti sulla rampa, uno in chiaro e uno sigillato, con la stessa commissione; da USDC, si protegge solo il resto. Il bureau mostra gli USDC tenuti e quanti crediti comprano come minimo."
+     "text": "Cosa diventa pubblico: i token in chiaro si muovono allo scoperto, quindi ogni scambio mostra i suoi importi, come ogni passaggio tra in chiaro e sigillato. L'importo che schermi o sigilli è pubblico, e anche quello che sblocchi o dissigilli: viene decifrato in pubblico per essere pagato, per questo quei passi richiedono un minuto in più. Una volta sigillato il tuo denaro, quello che ne fai resta privato."
+    },
+    {
+     "id": "exchange-4",
+     "section": "exchange",
+     "heading": null,
+     "text": "I crediti di decifratura si comprano solo in USDC in chiaro. Quindi quando vuoi cUSDC, da ETH o da USDC, il bureau può tenerne una parte in chiaro: niente, 5%, 10% o 20%, e ricorda la scelta. Da ETH sono due acquisti sulla rampa, uno in chiaro e uno sigillato, con la stessa commissione; da USDC, si protegge solo il resto. Il bureau mostra gli USDC tenuti e quanti crediti comprano come minimo. I crediti si comprano solo all'ufficio, in uno sportello a parte a sinistra del bancone (sotto i tuoi averi su uno schermo stretto), perché si spendono invece di tenersi: scegli una quantità, vedi il prezzo, compri. Se manca USDC in chiaro, ti rimanda al bancone per procurartelo."
     },
     {
      "id": "transfer-0",
@@ -1361,7 +1415,7 @@
      "id": "croquettes-2",
      "section": "croquettes",
      "heading": null,
-     "text": "Le crocchette arrivano ai giocatori dalla Dispensa, il contratto che gestisce l'economia. Ogni scatola porta un sacchetto di benvenuto da 100 la prima volta che si reclama per lei: una volta per scatola, chiunque la detenga, quindi un secondo wallet non guadagna nulla. Poi ogni scatola fa le fusa: ogni giorno, un importo cifrato tra 0 e 4, moltiplicato per 2 per una scatola Vet Certified, da ritirare fino a 7 giorni alla volta. Sacchetti e fusa vengono versati nella scatola, una scorta cifrata, e chi reclama riceve le scorte delle scatole che detiene, e niente per le altre. Così nessuno può spendere i giorni di un altro detentore, e un reclamo non dice niente di ciò che detiene chi lo fa. Le fusa si dimezzano ogni anno, e la riserva paga un reclamo intero o niente. Nessuno tranne chi reclama vede quanto è arrivato."
+     "text": "Le crocchette arrivano ai giocatori dalla Dispensa, il contratto che gestisce l'economia. Ogni scatola comprata porta un sacchetto di benvenuto da 100 la prima volta che si reclama per lei: una volta per scatola, chiunque la detenga, quindi un secondo wallet non guadagna nulla. Poi ogni scatola fa le fusa: ogni giorno, un importo cifrato tra 0 e 4, moltiplicato per 2 per una scatola Vet Certified, da ritirare fino a 7 giorni alla volta. Un id vuoto, di quelli che un mint crea oltre la quantità comprata e che nessuno detiene, non riceve né sacchetto né fusa. Sacchetti e fusa vengono versati nella scatola, una scorta cifrata, e chi reclama riceve le scorte delle scatole che detiene, e niente per le altre. Così nessuno può spendere i giorni di un altro detentore. Il contratto tratta allo stesso modo un reclamo per le scatole di un altro, ma l'app reclama solo per le scatole che detieni, quindi le scatole elencate nel tuo reclamo mostrano quali detieni. Le fusa si dimezzano ogni anno, e la riserva paga un reclamo intero o niente. Nessuno tranne chi reclama vede quanto è arrivato."
     },
     {
      "id": "croquettes-3",
@@ -1373,7 +1427,7 @@
      "id": "croquettes-4",
      "section": "croquettes",
      "heading": null,
-     "text": "Solo chi lo detiene nutre il proprio gatto: al massimo 2 pasti e 1000 crocchette al giorno, comunque siano distribuiti. Chi detiene il gatto, quanti pasti ha fatto oggi e l'importo vengono tutti controllati sotto cifratura: un pasto oltre i limiti, o servito da chi non detiene il gatto, sposta 0, in silenzio. Un'offerta oltre quanto resta della giornata viene ridotta a quel resto. Il tuo browser cifra l'importo e il gatto mangia tutto: il suo peso sale di altrettanto, cifrato, e nessuno può leggerlo finché la scatola è sigillata, nemmeno chi la detiene. Le crocchette si dividono: il 20% alla tesoreria della collezione, il 60% torna alla riserva che paga le fusa, il 20% viene bruciato. Se ne hai meno di quanto offri, il pasto non sposta nulla, senza errori né indizi."
+     "text": "Solo chi lo detiene nutre il proprio gatto: al massimo 2 pasti e 1000 crocchette al giorno, comunque siano distribuiti. Chi detiene il gatto, quanti pasti ha fatto oggi e l'importo vengono tutti controllati sotto cifratura: un pasto oltre i limiti, o servito da chi non detiene il gatto, sposta 0, in silenzio. Un'offerta oltre quanto resta della giornata viene ridotta a quel resto. Il tuo browser cifra l'importo e il gatto mangia tutto: il suo peso sale di altrettanto, cifrato, e nessuno può leggerlo finché la scatola è sigillata, nemmeno chi la detiene. Le crocchette si dividono: il 20% alla tesoreria della collezione, il 60% torna alla riserva che paga le fusa, il 20% viene bruciato. Nessuno può leggere la parte della tesoreria tra un ritiro e l'altro, nemmeno la tesoreria: letta dopo ogni pasto, direbbe chi ha nutrito quale gatto e quanto. Le viene inviata al massimo una volta ogni 7 giorni. Se ne hai meno di quanto offri, il pasto non sposta nulla, senza errori né indizi. Il pasto in sé è pubblico e nomina chi lo serve, e l'app nutre solo i gatti che detieni, quindi un pasto mostra che detieni quel gatto."
     },
     {
      "id": "croquettes-5",
@@ -1385,13 +1439,13 @@
      "id": "croquettes-6",
      "section": "croquettes",
      "heading": null,
-     "text": "Il peso segue la scatola, e anche la sua scorta. Chi compra non sa niente dei suoi pasti: né quanti, né quanto, né quanto sia vicino alla sua tolleranza. Chi vende sa almeno cosa ha servito di persona. Il resto lo prezza il mercato.\nNessuno può leggere un peso prima dell'apertura, nemmeno chi detiene la scatola, per lo stesso motivo per cui nessuno ha mai accesso a un seed: un permesso di accesso non si può revocare, quindi un ex detentore continuerebbe a leggerlo dopo una vendita. Cosa resta segreto, e cosa no:\nInformazione | Chi può leggerlo\nIl tuo saldo di cCROQ | Tu\nL'importo di un trasferimento, un pasto o un reclamo | Le due parti\nIl peso di un gatto | Nessuno finché la scatola è sigillata. Tutti una volta pesato il gatto\nQuanto è stato bruciato | Nessuno\nChi ha provato a nutrire quale gatto | Tutti. Se è contato: solo chi ha nutrito"
+     "text": "Il peso segue la scatola, e anche la sua scorta. Chi compra non sa niente dei suoi pasti: né quanti, né quanto, né quanto sia vicino alla sua tolleranza. Chi vende sa almeno cosa ha servito di persona. Il resto lo prezza il mercato.\nNessuno può leggere un peso prima dell'apertura, nemmeno chi detiene la scatola, per lo stesso motivo per cui nessuno ha mai accesso a un seed: un permesso di accesso non si può revocare, quindi un ex detentore continuerebbe a leggerlo dopo una vendita. Cosa resta segreto, e cosa no:\nInformazione | Chi può leggerlo\nIl tuo saldo di cCROQ | Tu\nL'importo di un trasferimento, un pasto o un reclamo | Le due parti\nIl peso di un gatto | Nessuno finché la scatola è sigillata. Tutti una volta pesato il gatto\nQuanto è stato bruciato | Nessuno"
     },
     {
      "id": "croquettes-7",
      "section": "croquettes",
      "heading": null,
-     "text": "Chi ha reclamato, e per quali scatole | Tutti. Quanto, e da quali scatole: solo chi ha reclamato\nQuanto pesa un gatto aperto, e se è malato | Tutti\nAvvolgere, svolgere, scambi sul mercato | Tutti, importi compresi\nL'offerta totale | Tutti. Quanto circola ancora: nessuno\nNon c'è un prezzo ufficiale. Il loro valore si vede indirettamente, in quanto si paga un gatto sigillato ben pesante."
+     "text": "Chi ha provato a nutrire quale gatto | Tutti, e siccome l'app nutre solo i tuoi gatti, che lo detieni. Se è contato: solo chi ha nutrito\nChi ha reclamato, e per quali scatole | Tutti, e siccome l'app reclama solo per le tue scatole, che le detieni. Quanto: solo chi ha reclamato\nQuanto pesa un gatto aperto, e se è malato | Tutti\nAvvolgere, svolgere, scambi sul mercato | Tutti, importi compresi\nL'offerta totale | Tutti. Quanto circola ancora: nessuno\nLa parte della tesoreria sui pasti | Nessuno, nemmeno la tesoreria. Viene ritirata al massimo una volta ogni 7 giorni\nNon c'è un prezzo ufficiale. Il loro valore si vede indirettamente, in quanto si paga un gatto sigillato ben pesante."
     },
     {
      "id": "croquettes-8",

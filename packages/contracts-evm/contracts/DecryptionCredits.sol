@@ -29,6 +29,7 @@ contract DecryptionCredits is Ownable {
 
     error NoCredits();
     error PriceTooHigh();
+    error ZeroPrice();
     error PriceChanged();
     error ZeroAddress();
 
@@ -65,6 +66,8 @@ contract DecryptionCredits is Ownable {
 
     function _setPrice(uint256 price_) private {
         if (price_ > MAX_PRICE) revert PriceTooHigh();
+        // Free credits would let anyone spend the collection's relayer budget without limit.
+        if (price_ == 0) revert ZeroPrice();
         price = price_;
         emit PriceSet(price_);
     }
