@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { claimWindows, sameAddress, type BoxInfo, type DuelInfo, type EntangleProposal, type PendingRequest } from "@dno/chain-adapter";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -332,6 +332,7 @@ export function ShelfView({ quality, sound, onSelect, onPair, onOpenPair, onDuel
                       key={n}
                       type="button"
                       className={n <= among ? "carton" : "carton is-free"}
+                      style={{ "--i": n - 1 } as CSSProperties}
                       onClick={() => setIds(n === among && n > quantity ? n - 1 : Math.max(quantity, n))}
                       disabled={!!action.busy || n <= quantity}
                       aria-pressed={n <= among}

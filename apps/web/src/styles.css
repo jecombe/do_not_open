@@ -829,6 +829,25 @@ button {
   border-color: var(--ink);
 }
 
+/* When the order shows, the cartons drop onto the cart one after the other, so the eye finds it. */
+.carton {
+  animation: carton-in 260ms cubic-bezier(0.3, 1.6, 0.5, 1) backwards;
+  animation-delay: calc(250ms + var(--i, 0) * 55ms);
+}
+
+@keyframes carton-in {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carton {
+    animation: none;
+  }
+}
+
 .results + .actions,
 .results + .felt {
   margin-top: 12px;
