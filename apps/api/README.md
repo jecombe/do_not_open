@@ -233,6 +233,15 @@ milestone, a settled duel, an entanglement, the vet's verdict, a weigh-in. Once 
 openings, duels); a quiet day posts nothing. Only public facts are used, and no post ever names
 a wallet, not even an opener's.
 
+Each post opens with a mark. 🔓 is a reveal: the chain has just decrypted something for
+everyone (the six above). 🔒 is something that happened under encryption, posted only when
+`HERALD_DISCORD_SEALED` is on (the default; one post per event, so only where posts are free):
+a mint ("10 box numbers just left the depot: DNO-0050 to DNO-0059. Some hold a cat, some may be
+empty. Only the buyer knows which."), a shake, a pet, a meal. A 🔒 post says only what anyone
+can read on-chain, that it happened and to which box, and leaves the rest in doubt: never how
+many boxes a mint holds, whether the shaker held the box, whether a pet or a meal counted, nor
+whether a shake was paid.
+
 Once a day too, after `HERALD_LESSON_HOUR_UTC` (14 by default, -1 for none), it explains one
 part of how the game works (`application/lesson.ts`, `domain/lesson.ts`). The topic is one
 passage of the players' part of the English manual (the same `manual.json` as the chat, minus

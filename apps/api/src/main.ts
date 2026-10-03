@@ -176,7 +176,7 @@ function heraldsOf(config: ReturnType<typeof loadConfig>, store: Store & PostSto
       if (config.DISCORD_WEBHOOK_URL) network = new DiscordNetwork(config.DISCORD_WEBHOOK_URL);
       else log.warn("HERALD_DISCORD=live but DISCORD_WEBHOOK_URL is not set: rehearsing instead");
     }
-    heralds.push(new Herald(store, network, { ...common, channel: "discord", maxPerDay: config.HERALD_DISCORD_MAX_PER_DAY, minGapSeconds: config.HERALD_DISCORD_MIN_GAP_MINUTES * 60, lesson: lesson() }, log));
+    heralds.push(new Herald(store, network, { ...common, channel: "discord", sealed: config.HERALD_DISCORD_SEALED, maxPerDay: config.HERALD_DISCORD_MAX_PER_DAY, minGapSeconds: config.HERALD_DISCORD_MIN_GAP_MINUTES * 60, lesson: lesson() }, log));
     log.info({ channel: "discord", network: network.name }, "herald on");
   }
   return heralds;

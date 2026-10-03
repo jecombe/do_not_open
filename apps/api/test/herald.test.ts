@@ -8,7 +8,7 @@ import { Metadata } from "../src/application/metadata";
 import { Queries } from "../src/application/queries";
 import { SignIn } from "../src/application/auth";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
-import { digest, draftsFor, fit, MAX_POST, serial, tallyOf } from "../src/domain/herald";
+import { digest, draftsFor, fit, MAX_POST, REVEALED, SEALED, serial, tallyOf } from "../src/domain/herald";
 import type { ProtocolEvent } from "../src/domain/events";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { ALICE, BOB, ev, FakeChainState } from "./fixtures";
@@ -42,6 +42,33 @@ describe("what the herald says", () => {
     expect(drafts.map((d) => d.kind)).toEqual(["milestone", "duel", "entangled", "vet", "weighIn"]);
     expect(drafts[1]!.text).toContain("DNO-0003 beat DNO-0017 on mood");
     for (const d of drafts) expect(d.text).not.toMatch(/0x[0-9a-f]{40}/);
+  });
+
+  it("marks what the chain decrypted 🔓, and words what stays encrypted 🔒 only where asked, leaving the doubt", () => {
+    const events: ProtocolEvent[] = [
+      opened(421, 1),
+      ev("MintPlaced", 2, { firstTokenId: 50, buyer: BOB, count: 10 }),
+      ev("MintPlaced", 3, { firstTokenId: 60, buyer: ALICE, count: 1 }),
+      ev("Shaken", 4, { tokenId: 42, viewer: BOB, paid: true }),
+      ev("Shaken", 5, { tokenId: 42, viewer: ALICE, paid: false }),
+      ev("Fed", 6, { tokenId: 42, feeder: BOB }),
+      ev("MealServed", 7, { tokenId: 42, feeder: ALICE }),
+    ];
+    const drafts = draftsFor(events.map((event) => ({ event, enrichment: null })), { sealed: true });
+    expect(drafts.map((d) => d.kind)).toEqual(["opening", "mint", "mint", "shake", "shake", "pet", "meal"]);
+    expect(drafts[0]!.text.startsWith(`${REVEALED} 📦`)).toBe(true);
+    for (const d of drafts.slice(1)) expect(d.text.startsWith(SEALED)).toBe(true);
+    expect(drafts[1]!.text).toContain("10 box numbers just left the depot: DNO-0050 to DNO-0059");
+    expect(drafts[1]!.text).toContain("some may be empty");
+    expect(drafts[2]!.text).toContain("One box number just left the depot: DNO-0060.");
+    expect(drafts[2]!.text).toContain("Only the buyer knows");
+    // Two shakes of one box are two facts; whether either was paid is never said.
+    expect(new Set(drafts.map((d) => d.key)).size).toBe(drafts.length);
+    expect(drafts[3]!.text).toBe(drafts[4]!.text);
+    for (const d of drafts) {
+      expect(d.text).not.toMatch(/0x[0-9a-f]{40}/);
+      expect(d.text.length).toBeLessThanOrEqual(MAX_POST);
+    }
   });
 
   it("sums the day, and keeps quiet on a day nothing happened", () => {

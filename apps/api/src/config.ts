@@ -115,6 +115,8 @@ const schema = z.object({
   /** Discord has no small quota: every post goes out, a few minutes apart at most. */
   HERALD_DISCORD_MAX_PER_DAY: z.coerce.number().int().min(0).default(200),
   HERALD_DISCORD_MIN_GAP_MINUTES: z.coerce.number().int().min(0).default(0),
+  /** Also post what happens under encryption (🔒 mints, shakes, pets, meals), beside the reveals (🔓). */
+  HERALD_DISCORD_SEALED: z.stringbool().default(true),
   /** The Discord application behind `/ask` (Developer Portal → General Information): its id and public key. Both set: the command is served. */
   DISCORD_APPLICATION_ID: z.string().optional(),
   DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "64 hex characters").optional(),

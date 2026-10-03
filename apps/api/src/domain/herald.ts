@@ -7,8 +7,19 @@ import type { RevealedContents } from "./types";
  * What the collection's own account says about the protocol, worded from public facts only.
  * Plain templates, no model: the official account must never get a fact wrong. Nothing here
  * names a wallet, not even an opener's, though that one is public.
+ *
+ * Two marks tell the posts apart: 🔓 when the chain has just decrypted something for everyone
+ * (an opening, a duel, the vet...), 🔒 when something happened under encryption (a mint, a
+ * shake, a pet, a meal). A 🔒 post says only what anyone can see, that it happened, and leaves
+ * the rest in doubt: never what the buyer got, whether the shaker held the box, or whether a
+ * meal went in.
  */
-export type PostKind = "opening" | "milestone" | "duel" | "entangled" | "vet" | "weighIn" | "digest" | "lesson";
+export type PostKind = "opening" | "milestone" | "duel" | "entangled" | "vet" | "weighIn" | "mint" | "shake" | "pet" | "meal" | "digest" | "lesson";
+
+/** The chain has just made this public. */
+export const REVEALED = "🔓";
+/** This happened under encryption: only that it happened is public. */
+export const SEALED = "🔒";
 
 export interface Draft {
   /** Identity of what the post is about: the same fact is never queued twice. */
@@ -48,6 +59,8 @@ export function fit(text: string, max = MAX_POST): string {
 export interface HeraldContext {
   /** Where a box can be looked at, e.g. "https://donotopen.xyz/app.html?box=". Without it, no link. */
   boxUrl?: string | null;
+  /** Also post what happens under encryption (mints, shakes, pets, meals): many posts, so only where they are free. */
+  sealed?: boolean;
 }
 
 function opening(e: Extract<ProtocolEvent, { name: "Observed" }>, contents: RevealedContents | undefined, ctx: HeraldContext): Draft {
@@ -102,16 +115,59 @@ function weighIn(e: Extract<ProtocolEvent, { name: "Weighed" }>, enrichment: Enr
   return { key: `weighIn:${e.tokenId}`, kind: "weighIn", text: fit(`⚖️ ${serial(e.tokenId)} stepped on the scale: ${build}.${tail}`) };
 }
 
+function mint(e: Extract<ProtocolEvent, { name: "MintPlaced" }>): Draft {
+  const first = serial(e.firstTokenId);
+  const text =
+    e.count === 1
+      ? `🚚 One box number just left the depot: ${first}.\nIs anything in it? Only the buyer knows.`
+      : `🚚 ${n(e.count)} box numbers just left the depot: ${first} to ${serial(e.firstTokenId + e.count - 1)}.\nSome hold a cat, some may be empty. Only the buyer knows which.`;
+  return { key: `mint:${e.firstTokenId}`, kind: "mint", text: fit(text) };
+}
+
+/** Shakes, pets and meals come again and again: each is its own fact, keyed by its log. */
+const logKey = (kind: string, e: ProtocolEvent) => `${kind}:${e.txHash}:${e.logIndex}`;
+
+function shake(e: Extract<ProtocolEvent, { name: "Shaken" }>): Draft {
+  return {
+    key: logKey("shake", e),
+    kind: "shake",
+    text: fit(`🫨 Someone shook ${serial(e.tokenId)}.\nIf they hold it, they felt something move. If not, they felt nothing. Only they know which.`),
+  };
+}
+
+function pet(e: Extract<ProtocolEvent, { name: "Fed" }>): Draft {
+  return {
+    key: logKey("pet", e),
+    kind: "pet",
+    text: fit(`🐾 Someone petted ${serial(e.tokenId)} through the cardboard.\nWhether it counted stays sealed. Whatever is inside may remember.`),
+  };
+}
+
+function meal(e: Extract<ProtocolEvent, { name: "MealServed" }>): Draft {
+  return {
+    key: logKey("meal", e),
+    kind: "meal",
+    text: fit(`🍪 Croquettes were offered to ${serial(e.tokenId)}.\nHow many, and whether any got in, stays sealed until the scale.`),
+  };
+}
+
+const mark = (sign: string, d: Draft): Draft => ({ ...d, text: fit(`${sign} ${d.text}`) });
+
 /** The posts a batch of events calls for, in chain order. Everything else is left to the daily digest. */
 export function draftsFor(events: { event: ProtocolEvent; enrichment: Enrichment | null }[], ctx: HeraldContext = {}): Draft[] {
   const out: Draft[] = [];
   for (const { event: e, enrichment } of events) {
-    if (e.name === "Observed") out.push(opening(e, enrichment?.contents, ctx));
-    else if (e.name === "MilestoneReached") out.push(milestone(e));
-    else if (e.name === "DuelResolved") out.push(duel(e));
-    else if (e.name === "Entangled") out.push(entangled(e));
-    else if (e.name === "AliveProven") out.push(vet(e));
-    else if (e.name === "Weighed") out.push(weighIn(e, enrichment));
+    if (e.name === "Observed") out.push(mark(REVEALED, opening(e, enrichment?.contents, ctx)));
+    else if (e.name === "MilestoneReached") out.push(mark(REVEALED, milestone(e)));
+    else if (e.name === "DuelResolved") out.push(mark(REVEALED, duel(e)));
+    else if (e.name === "Entangled") out.push(mark(REVEALED, entangled(e)));
+    else if (e.name === "AliveProven") out.push(mark(REVEALED, vet(e)));
+    else if (e.name === "Weighed") out.push(mark(REVEALED, weighIn(e, enrichment)));
+    else if (!ctx.sealed) continue;
+    else if (e.name === "MintPlaced") out.push(mark(SEALED, mint(e)));
+    else if (e.name === "Shaken") out.push(mark(SEALED, shake(e)));
+    else if (e.name === "Fed") out.push(mark(SEALED, pet(e)));
+    else if (e.name === "MealServed") out.push(mark(SEALED, meal(e)));
   }
   return out;
 }
