@@ -5,7 +5,6 @@ import { z } from "zod";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
 import type { AcceptTerms } from "../../application/terms";
-import type { PostStore } from "../../application/ports/herald";
 import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
 import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
@@ -27,8 +26,6 @@ export interface HttpDeps {
   chat?: AskManual;
   /** Chat questions per minute per IP. */
   chatRatePerMinute?: number;
-  /** The collection's account: its posts, sent or rehearsed. With a token, only for whoever has it. */
-  herald?: { posts: Pick<PostStore, "posts">; adminToken: string | null };
   /** Absent when this process does not index (ROLE=api). */
   indexer?: { status(): IndexerStatus; nudge(): void };
   rpcStatus?: () => EndpointStatus[];
@@ -296,16 +293,6 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const input = askInput.parse(req.body);
       reply.header("cache-control", "no-store");
       return { data: await chat.ask(input, req.ip) };
-    });
-  }
-
-  const herald = deps.herald;
-  if (herald) {
-    app.get("/v1/herald", async (req, reply) => {
-      const q = z.object({ token: z.string().optional(), limit: z.coerce.number().int().min(1).max(200).default(50) }).parse(req.query);
-      reply.header("cache-control", "no-store");
-      if (herald.adminToken && q.token !== herald.adminToken) return reply.status(401).send({ error: "unauthorized" });
-      return { data: await herald.posts.posts(q.limit) };
     });
   }
 
