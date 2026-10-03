@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { PostStore } from "../src/application/ports/herald";
 import type { Store } from "../src/application/ports/store";
 import * as B from "../src/domain/box";
 import * as D from "../src/domain/duel";
@@ -8,9 +9,9 @@ import { ALICE, BOB, CAROL, ev } from "./fixtures";
  * What any Store must do, run against each implementation: the in-memory one the tests use and
  * the Postgres one production uses must not drift apart.
  */
-export function storeContract(name: string, make: () => Promise<Store>) {
+export function storeContract(name: string, make: () => Promise<Store & PostStore>) {
   describe(`${name} store`, () => {
-    let store: Store;
+    let store: Store & PostStore;
     beforeEach(async () => {
       store = await make();
     });
@@ -244,6 +245,59 @@ export function storeContract(name: string, make: () => Promise<Store>) {
       expect((await store.allPendingRequests()).map((r) => r.requestId)).toEqual([2, 5]);
       expect((await store.duels({ statuses: ["posted", "open", "pending"], limit: 10 })).map((d) => d.duelId)).toEqual([3]);
       expect((await store.duels({ limit: 10 })).map((d) => d.duelId)).toEqual([3, 1]);
+    });
+
+    it("queues the herald's posts once per fact, in order, and keeps where it read up to", async () => {
+      expect(await store.heraldCursor("x")).toBeNull();
+      const drafts = [
+        { key: "opening:1", kind: "opening" as const, text: "one" },
+        { key: "digest:2026-10-03", kind: "digest" as const, text: "", skipped: "nothing happened" },
+        { key: "opening:2", kind: "opening" as const, text: "two" },
+      ];
+      expect(await store.queuePosts("x", drafts, { block: 5, logIndex: 2 }, 100)).toBe(2);
+      expect(await store.queuePosts("x", drafts, { block: 6, logIndex: 0 }, 200)).toBe(0);
+      expect(await store.heraldCursor("x")).toEqual({ block: 6, logIndex: 0 });
+      expect(await store.hasPost("x", "digest:2026-10-03")).toBe(true);
+
+      const first = await store.nextQueuedPost("x");
+      expect(first).toMatchObject({ key: "opening:1", status: "queued", createdAt: 100, attempts: 0 });
+      await store.updatePost(first!.id, { status: "posted", postedAt: 150, externalId: "9", url: "https://x.com/i/web/status/9" });
+      expect((await store.nextQueuedPost("x"))!.key).toBe("opening:2");
+      expect(await store.postedSince("x", 100)).toBe(1);
+      expect(await store.postedSince("x", 151)).toBe(0);
+      expect(await store.lastPostedAt("x")).toBe(150);
+      expect((await store.posts(10)).map((p) => [p.key, p.status])).toEqual([
+        ["opening:2", "queued"],
+        ["digest:2026-10-03", "skipped"],
+        ["opening:1", "posted"],
+      ]);
+    });
+
+    it("keeps one queue, quota and cursor per network", async () => {
+      await store.queuePosts("x", [{ key: "opening:1", kind: "opening", text: "one" }], { block: 5, logIndex: 0 }, 100);
+      expect(await store.heraldCursor("discord")).toBeNull();
+      expect(await store.queuePosts("discord", [{ key: "opening:1", kind: "opening", text: "one" }], { block: 7, logIndex: 1 }, 100)).toBe(1);
+      expect(await store.heraldCursor("x")).toEqual({ block: 5, logIndex: 0 });
+      expect(await store.heraldCursor("discord")).toEqual({ block: 7, logIndex: 1 });
+      const discord = await store.nextQueuedPost("discord");
+      expect(discord).toMatchObject({ network: "discord", key: "opening:1" });
+      await store.updatePost(discord!.id, { status: "posted", postedAt: 150 });
+      expect(await store.postedSince("discord", 100)).toBe(1);
+      expect(await store.postedSince("x", 100)).toBe(0);
+      expect(await store.lastPostedAt("x")).toBeNull();
+      expect((await store.nextQueuedPost("x"))!.network).toBe("x");
+      expect(await store.hasPost("discord", "opening:2")).toBe(false);
+      expect((await store.posts(10, "discord")).map((p) => p.network)).toEqual(["discord"]);
+      expect(await store.posts(10)).toHaveLength(2);
+    });
+
+    
+
+    it("keeps the herald's posts through a replay", async () => {
+      await store.queuePosts("x", [{ key: "opening:1", kind: "opening", text: "one" }], { block: 1, logIndex: 0 }, 1);
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.hasPost("x", "opening:1")).toBe(true);
+      expect(await store.heraldCursor("x")).toEqual({ block: 1, logIndex: 0 });
     });
   });
 }

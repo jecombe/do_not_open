@@ -5,10 +5,12 @@ import { z } from "zod";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
 import type { AcceptTerms } from "../../application/terms";
+import type { PostStore } from "../../application/ports/herald";
 import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
 import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
 import { normalizeAddress } from "../../domain/types";
+import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
 import type { IndexerStatus } from "../Indexer";
 import type { EndpointStatus } from "../chain/RpcPool";
 
@@ -26,6 +28,10 @@ export interface HttpDeps {
   chat?: AskManual;
   /** Chat questions per minute per IP. */
   chatRatePerMinute?: number;
+  /** The manual's chatbot as Discord's `/ask`, with the application's public key that signs each call. */
+  discord?: { clerk: DiscordClerk; publicKey: string };
+  /** The collection's accounts: their posts, sent or rehearsed. With a token, only for whoever has it. */
+  herald?: { posts: Pick<PostStore, "posts">; adminToken: string | null };
   /** Absent when this process does not index (ROLE=api). */
   indexer?: { status(): IndexerStatus; nudge(): void };
   rpcStatus?: () => EndpointStatus[];
@@ -293,6 +299,43 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const input = askInput.parse(req.body);
       reply.header("cache-control", "no-store");
       return { data: await chat.ask(input, req.ip) };
+    });
+  }
+
+  const discord = deps.discord;
+  if (discord) {
+    // The signature covers the raw body, so this route reads it as text. Discord's own servers
+    // call it: the signature is the gate, and the chat's daily limits count per Discord user.
+    await app.register(async (scope) => {
+      scope.removeContentTypeParser("application/json");
+      scope.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => done(null, body));
+      scope.post("/v1/discord/interactions", { config: { rateLimit: false } }, async (req, reply) => {
+        const signature = req.headers["x-signature-ed25519"];
+        const timestamp = req.headers["x-signature-timestamp"];
+        const raw = typeof req.body === "string" ? req.body : "";
+        if (typeof signature !== "string" || typeof timestamp !== "string" || !signedByDiscord(discord.publicKey, signature, timestamp, raw)) {
+          return reply.status(401).send({ error: "unauthorized" });
+        }
+        let body: unknown;
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          return reply.status(400).send({ error: "bad-request", message: "not JSON" });
+        }
+        return discord.clerk.respond(body);
+      });
+    });
+  }
+
+  const herald = deps.herald;
+  if (herald) {
+    app.get("/v1/herald", async (req, reply) => {
+      const q = z
+        .object({ token: z.string().optional(), limit: z.coerce.number().int().min(1).max(200).default(50), network: z.enum(["x", "discord"]).optional() })
+        .parse(req.query);
+      reply.header("cache-control", "no-store");
+      if (herald.adminToken && q.token !== herald.adminToken) return reply.status(401).send({ error: "unauthorized" });
+      return { data: await herald.posts.posts(q.limit, q.network) };
     });
   }
 

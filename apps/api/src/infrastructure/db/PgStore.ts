@@ -8,6 +8,7 @@ import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { TermsAcceptance } from "../../application/terms";
+import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 
 // Block numbers and unix times are int8 columns; they all fit a JS number.
 pg.types.setTypeParser(20, (v) => Number(v));
@@ -130,7 +131,7 @@ const publicDecryptionFrom = (r: Record<string, unknown>): PublicDecryption => (
 const getUser = (q: Q, address: Address) => one(q, "select * from users where address = $1", [address], userFrom);
 
 /** The index in Postgres. */
-export class PgStore implements Store {
+export class PgStore implements Store, PostStore {
   constructor(private readonly pool: Pool) {}
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
@@ -499,7 +500,87 @@ export class PgStore implements Store {
   takeNonce(address: Address) {
     return one(this.pool, "delete from auth_nonces where address = $1 returning nonce, expires_at", [address], (r) => ({ nonce: r.nonce as string, expiresAt: r.expires_at as number }));
   }
+
+  // --- the herald's queue
+
+  heraldCursor(network: string) {
+    return one(this.pool, "select block, log_index from herald_state where network = $1", [network], (r): EventPosition => ({ block: Number(r.block), logIndex: Number(r.log_index) }));
+  }
+
+  async queuePosts(network: string, drafts: QueuedDraft[], cursor: EventPosition, now: number) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      let added = 0;
+      for (const d of drafts) {
+        const { rowCount } = await client.query(
+          "insert into posts (network, key, kind, text, status, created_at, error) values ($1, $2, $3, $4, $5, $6, $7) on conflict (network, key) do nothing",
+          [network, d.key, d.kind, d.text, d.skipped ? "skipped" : "queued", now, d.skipped ?? null],
+        );
+        if (rowCount && !d.skipped) added++;
+      }
+      await client.query(
+        "insert into herald_state (network, block, log_index) values ($1, $2, $3) on conflict (network) do update set block = $2, log_index = $3",
+        [network, cursor.block, cursor.logIndex],
+      );
+      await client.query("commit");
+      return added;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  nextQueuedPost(network: string) {
+    return one(this.pool, "select * from posts where network = $1 and status = 'queued' order by id limit 1", [network], postFrom);
+  }
+
+  async updatePost(id: number, patch: Partial<Post>) {
+    const columns: Record<string, string> = { status: "status", postedAt: "posted_at", externalId: "external_id", url: "url", attempts: "attempts", error: "error" };
+    const sets = Object.entries(patch).filter(([k]) => k in columns);
+    if (!sets.length) return;
+    await this.pool.query(`update posts set ${sets.map(([k], i) => `${columns[k]} = $${i + 2}`).join(", ")} where id = $1`, [id, ...sets.map(([, v]) => v)]);
+  }
+
+  async hasPost(network: string, key: string) {
+    const { rowCount } = await this.pool.query("select 1 from posts where network = $1 and key = $2", [network, key]);
+    return !!rowCount;
+  }
+
+  async postedSince(network: string, since: number) {
+    const { rows } = await this.pool.query("select count(*)::int as n from posts where network = $1 and status = 'posted' and posted_at >= $2", [network, since]);
+    return rows[0].n as number;
+  }
+
+  async lastPostedAt(network: string) {
+    const { rows } = await this.pool.query("select max(posted_at) as at from posts where network = $1 and status = 'posted'", [network]);
+    return rows[0].at === null ? null : Number(rows[0].at);
+  }
+
+  async posts(limit: number, network?: string) {
+    const { rows } = network
+      ? await this.pool.query("select * from posts where network = $2 order by id desc limit $1", [limit, network])
+      : await this.pool.query("select * from posts order by id desc limit $1", [limit]);
+    return rows.map(postFrom);
+  }
 }
+
+const postFrom = (r: Record<string, unknown>): Post => ({
+  id: Number(r.id),
+  network: r.network as string,
+  key: r.key as string,
+  kind: r.kind as Post["kind"],
+  text: r.text as string,
+  status: r.status as Post["status"],
+  createdAt: Number(r.created_at),
+  postedAt: r.posted_at === null ? null : Number(r.posted_at),
+  externalId: (r.external_id as string | null) ?? null,
+  url: (r.url as string | null) ?? null,
+  attempts: Number(r.attempts),
+  error: (r.error as string | null) ?? null,
+});
 
 const termsFrom = (r: Record<string, unknown>): TermsAcceptance => ({
   address: r.address as Address,

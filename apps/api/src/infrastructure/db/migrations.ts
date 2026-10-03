@@ -267,4 +267,50 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 8,
+    name: "herald posts",
+    sql: /* sql */ `
+      -- What the collection's account says about the protocol: queued, then sent (or rehearsed).
+      -- Not on the chain: a replay keeps it, and a post is never queued twice for the same fact.
+      create table posts (
+        id serial primary key,
+        key text not null unique,
+        kind text not null,
+        text text not null,
+        status text not null,
+        created_at bigint not null,
+        posted_at bigint,
+        external_id text,
+        url text,
+        attempts integer not null default 0,
+        error text
+      );
+      create index posts_queued on posts (id) where status = 'queued';
+      -- Where the herald has read the events up to.
+      create table herald_state (
+        id integer primary key,
+        block bigint not null,
+        log_index bigint not null
+      );
+    `,
+  },
+  {
+    version: 9,
+    name: "a herald queue per network",
+    sql: /* sql */ `
+      -- Each account (X, Discord) keeps its own queue, quota and cursor: what was queued so far was X's.
+      alter table posts add column network text not null default 'x';
+      alter table posts alter column network drop default;
+      alter table posts drop constraint posts_key_key;
+      alter table posts add constraint posts_network_key unique (network, key);
+      drop index posts_queued;
+      create index posts_queued on posts (network, id) where status = 'queued';
+      alter table herald_state add column network text not null default 'x';
+      alter table herald_state alter column network drop default;
+      alter table herald_state drop constraint herald_state_pkey;
+      alter table herald_state drop column id;
+      alter table herald_state add primary key (network);
+    `,
+  },
 ];

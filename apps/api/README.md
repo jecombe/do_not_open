@@ -113,6 +113,8 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
+| `POST /v1/discord/interactions` | Discord's `/ask` (below): called by Discord only, signed with the application's Ed25519 key (`401` otherwise) |
+| `GET /v1/herald?token=&limit=&network=` | The collection's accounts on X and Discord (below): their posts, newest first, queued, sent or rehearsed; `network=x` or `discord` for one. With `HERALD_ADMIN_TOKEN` set, only with that token |
 
 A duel carries `reserved`, `openUntil` (null until the holding is proven) and `tokenB`, null
 while a duel open to any box waits for a taker.
@@ -137,6 +139,11 @@ Migration 7 adds `terms_acceptances`, the release forms players sign before play
 version, hash, the exact message and signature, time received; one row per address and
 version). It is not a fold of the chain, so a replay keeps it. The backend learns only that an
 address accepted the terms: no holdings, no IP.
+
+Migration 8 adds `posts` and `herald_state`, the queue of the collection's X account and where
+it read the events up to. Not on the chain either: a replay keeps them. Migration 9 gives each
+network its own queue and cursor: `posts.network` (`x`, `discord`; a key is unique per network)
+and `herald_state` keyed by network. What was queued before is X's.
 
 ## Relayer proxy
 
@@ -192,6 +199,71 @@ reader sees it and cuts it into passages. `pnpm test` fails when the manual chan
 file was not written again. On Gemini's free tier Google may use the questions to improve
 its products; the chat says so, and only questions about a public game go there.
 
+### On Discord: `/ask`
+
+The same clerk answers `/ask question:<...>` in the collection's Discord server
+(`src/infrastructure/discord/DiscordClerk.ts`). Discord calls `POST /v1/discord/interactions`
+for each use of the command, signed with the application's Ed25519 key; the route checks the
+signature on the raw body and refuses anything else. Discord wants an answer within 3 seconds,
+so the clerk first answers "thinking" (deferred), then edits that message with the answer: the
+question quoted, the answer (or, in passages mode, the manual's paragraphs), and links to the
+sections (`DISCORD_MANUAL_URL`, by default `HERALD_MANUAL_URL`), within Discord's 2,000
+characters and mentioning no one. The language is the player's Discord language (English when
+it is not one of the four). `private:true` shows the answer to the asker only. The chat's daily
+limits count per Discord user instead of per IP.
+
+Set `DISCORD_APPLICATION_ID` and `DISCORD_PUBLIC_KEY` (Developer Portal, General Information) and
+the route is served; put `https://<api>/v1/discord/interactions` as the application's
+Interactions Endpoint URL (Discord pings it when saved). The command is registered once, and
+again after `ASK_COMMAND` changes, with `pnpm --filter @dno/api discord:commands`, which reads
+`DISCORD_APPLICATION_ID` and `DISCORD_BOT_TOKEN` from the repo-root `.env`: the bot token is
+needed by that script only, never by the API. It prints the link that adds the command to a
+server (scope `applications.commands`, no bot user needed).
+
+## The collection's accounts on X and Discord (the herald)
+
+A periodic task of the indexer (`application/herald.ts`) speaks for the collection on X and in
+a Discord channel, one herald per network, each with its own queue, quota and cursor. Each
+pass it reads the events indexed since the last one and words the notable ones from plain
+templates (`domain/herald.ts`, no model, so the official account never gets a fact wrong):
+an opening and what was inside (with a link to the box when `HERALD_BOX_URL` is set), a sale
+milestone, a settled duel, an entanglement, the vet's verdict, a weigh-in. Once a day, after
+`HERALD_DIGEST_HOUR_UTC`, it sums the last 24 hours (box numbers shipped, shakes, pets, meals,
+openings, duels); a quiet day posts nothing. Only public facts are used, and no post ever names
+a wallet, not even an opener's.
+
+Once a day too, after `HERALD_LESSON_HOUR_UTC` (14 by default, -1 for none), it explains one
+part of how the game works (`application/lesson.ts`, `domain/lesson.ts`). The topic is one
+passage of the players' part of the English manual (the same `manual.json` as the chat, minus
+the release form), in a fixed loop of about 34 days that spreads each section over the cycle.
+Gemini words it from that passage's section alone, and its post goes out only if it passes
+checks made in code: within the length (the link to the section, from `HERALD_MANUAL_URL`,
+counted as X counts it), every number found in the section, no address, link, hashtag, mention
+or markdown, none of a list of wordings the account never uses (anonymous, guarantee, invest,
+profit...). A refused post is asked for again once; then, or without `GEMINI_API_KEY`, the post
+quotes the passage itself. The checks catch made-up numbers, not a misread sentence: read the
+rehearsed lessons before setting `HERALD=x`. Each network gets its own lesson, worded apart.
+
+Posts are queued in `posts`, one per fact and network (`opening:421`, `digest:2026-10-03`, `lesson:2026-10-03`...), and sent one
+at a time: on X at most `HERALD_MAX_PER_DAY` in 24 hours, `HERALD_MIN_GAP_MINUTES` apart; on
+Discord `HERALD_DISCORD_MAX_PER_DAY` (200) and `HERALD_DISCORD_MIN_GAP_MINUTES` (0), so every
+post goes out, one a pass. One still waiting after `HERALD_STALE_HOURS` is dropped as old news.
+A network's first run starts from the present, so the history is not posted.
+
+`HERALD` picks where they go: `rehearse` (the default) writes and keeps them, marked
+`rehearsed`, without sending anything, to be read at `GET /v1/herald` first; `x` sends them
+through X's v2 API, signed with OAuth 1.0a (`X_API_KEY`, `X_API_SECRET`, and the account's
+`X_ACCESS_TOKEN`, `X_ACCESS_SECRET`; `X_HANDLE` for links), and falls back to rehearsing when
+a key is missing; `off` stops it. Nothing is read from X, but X has no free tier any more: since
+February 2026 its API is paid per request from prepaid credits (a 402 "credits depleted" means
+none are left), about $0.015 a post and $0.20 a post with a link. Leaving `HERALD_BOX_URL` and
+`HERALD_MANUAL_URL` unset keeps every post link-free: a few dollars a month.
+
+`HERALD_DISCORD` does the same for Discord: `off` (the default), `rehearse`, or `live`, which
+posts through the channel's webhook (`DISCORD_WEBHOOK_URL`, from the channel's settings,
+Integrations, Webhooks; a secret, since whoever has it can post there) and falls back to
+rehearsing without it. Discord is free and its limits are far above what the herald sends.
+
 ## Run it
 
 ```bash
@@ -203,5 +275,6 @@ DATABASE_URL=postgres://... pnpm --filter @dno/api dev
 Configuration is environment variables, all optional in development: see `src/config.ts`
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
-`GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`...). Deployment is in
+`GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`, `X_API_KEY`, `HERALD_DISCORD`,
+`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).
