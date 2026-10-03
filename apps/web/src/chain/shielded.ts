@@ -14,7 +14,7 @@ export interface Shielded {
 }
 
 // Decrypting costs a signature, so the answer is kept in this browser and shown again on the
-// next visit. One entry per contract and account, like the shakes in feltCache. It stays right
+// next visit. One entry per contract and account, like the shake tickets in ticketStore. It stays right
 // as long as the balance's handle on chain is the one it came from: any transfer makes a new one.
 const key = (token: SealedToken, contract: string, account: string) => `dno:${token}:${contract.toLowerCase()}:${account.toLowerCase()}`;
 const handleOf = (adapter: ChainAdapter, token: SealedToken, account: Address) =>

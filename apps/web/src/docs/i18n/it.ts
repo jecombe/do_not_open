@@ -279,7 +279,7 @@ export const docsIt: Record<DocsKey, string> = {
   "flow.shake.s6": "La risposta torna impacchettata",
   "flow.shake.s6.v": "Ricifrata per la tua chiave di sessione. Il relayer che l'ha trasportata non può leggerla.",
   "flow.shake.s7": "Il tuo browser la scarta",
-  "flow.shake.s7.v": "Umore: Giudicante. Chi non detiene la scatola qui leggerebbe «non è tua». L'evento on-chain dice solo che qualcuno ha scosso.",
+  "flow.shake.s7.v": "Umore: Giudicante. Chi non detiene la scatola qui leggerebbe «non è tua». L'evento on-chain dice solo che qualcuno ha scosso. La pagina stampa il tratto sullo scontrino degli scuotimenti della scatola, tenuto in questo browser per sempre: un tratto non cambia mai.",
 
   "flow.open.name": "Aprire",
   "flow.open.summary": "Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente.",
