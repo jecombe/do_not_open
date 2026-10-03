@@ -79,6 +79,12 @@ export const homeEn = {
   "home.croq.p2": "A cat eats at most {meals} meals and {cap} croquettes a day, so a heavy cat takes months. Each meal is split: {treasury}% to the treasury, {reserve}% back to the purr everyone collects, {burn}% burnt.",
   "home.croq.p3": "Every box bought brings a welcome bag of {bag} croquettes and purrs a few more each day. Croquettes also trade on a public market, so you can buy more or cash out. Inside the game they're secret: nobody sees your balance.",
   "home.croq.link": "How croquettes work",
+  "home.clerk.ding": "Ding ding!",
+  "home.clerk.say1": "Psst. Yes, you. The counter is open, and nobody ever comes.",
+  "home.clerk.say2": "I can't tell you what's in the boxes. Anything else, though: just ask.",
+  "home.clerk.say3": "Still here. Still ringing. This bell is the only friend I have.",
+  "home.clerk.ring": "Ring the clerk's bell",
+  "home.clerk.hush": "Let the clerk be",
 } as const satisfies Record<string, string>;
 
 export type HomeKey = keyof typeof homeEn;

@@ -210,8 +210,9 @@ its free tier, answers from the whole manual of the player's language, with the 
 the server; without a model, or past the day's limits, the clerk quotes the manual's best
 matching paragraphs instead. The manual reaches the API as a JSON export of the rendered
 page (`apps/web/scripts/export-manual.mts`). In the web app the clerk is `src/chat/Clerk.tsx`:
-a tab on the manual's edge and a link in the game's footer, shown only when `VITE_API_URL`
-is set. Details: [`apps/api/README.md`](../apps/api/README.md#the-manuals-chatbot).
+a tab on the manual's edge, a link in the game's footer, and on the home page a tab with a
+brass counter bell (`src/home/ClerkBell.tsx`) that the clerk rings a few times with a line in a
+bubble, shown only when `VITE_API_URL` is set. Details: [`apps/api/README.md`](../apps/api/README.md#the-manuals-chatbot).
 
 The backend also files the release form every player signs before playing (`POST /v1/terms`): the
 wallet's EIP-191 signature on the terms, checked and kept as a record. That tells it an

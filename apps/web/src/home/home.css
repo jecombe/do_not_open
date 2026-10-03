@@ -11,6 +11,10 @@
   --pink: #f7a8c4;
   --sky: #9cc7f0;
   --dock: #17130f;
+  /* The clerk's slip (chat/clerk.css) is drawn with the manual's names for these. */
+  --tape: #d9c28a;
+  --manifest: #e9dfc8;
+  --ink-red: var(--red);
 
   --stencil: "Stardos Stencil", "Arial Black", sans-serif;
   --label: "Barlow Condensed", "Arial Narrow", sans-serif;
@@ -1271,6 +1275,252 @@ h2 {
 
   .fogbar-fog i {
     animation: none;
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ the clerk's bell */
+
+/* A brass counter bell sitting on the clerk's tab (chat/clerk.css), and the bubble it talks in. */
+.clerk-bell {
+  position: fixed;
+  right: calc(clamp(12px, 2.4vw, 28px) + 10px);
+  /* Just on the tab's top edge: the tab stands 64px up and is about 48px tall. */
+  bottom: 110px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.clerk-bell > * {
+  pointer-events: auto;
+}
+
+.clerk-bell-bubble {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: min(270px, calc(100vw - 32px));
+  margin-right: -10px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--ink);
+  transform-origin: 85% 100%;
+  animation: clerk-bubble-in 0.35s cubic-bezier(0.3, 1.6, 0.6, 1);
+}
+
+/* The tail points down at the bell. */
+.clerk-bell-bubble::after {
+  content: "";
+  position: absolute;
+  right: 34px;
+  bottom: -12px;
+  width: 18px;
+  height: 18px;
+  border: solid var(--ink);
+  border-width: 0 3px 3px 0;
+  background: #fff;
+  transform: rotate(45deg) skew(12deg, 12deg);
+}
+
+.clerk-bell-say {
+  position: relative;
+  flex: 1;
+  padding: 10px 4px 10px 14px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--label);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clerk-bell-full {
+  visibility: hidden;
+}
+
+.clerk-bell-typed {
+  position: absolute;
+  inset: 10px 4px 10px 14px;
+}
+
+.clerk-bell-hush {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 6px 6px 0 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clerk-bell-button {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.clerk-bell-svg {
+  display: block;
+  width: 58px;
+  height: 51px;
+  overflow: visible;
+}
+
+.clerk-bell-button:focus-visible,
+.clerk-bell-say:focus-visible,
+.clerk-bell-hush:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
+.clerk-bell-waves,
+.clerk-bell-ding {
+  opacity: 0;
+}
+
+.clerk-bell-dome,
+.clerk-bell-knob {
+  transform-box: fill-box;
+}
+
+.clerk-bell-dome {
+  transform-origin: 50% 100%;
+}
+
+.clerk-bell-ding {
+  position: absolute;
+  right: 48px;
+  bottom: 40px;
+  padding: 2px 8px 0;
+  border: 2px solid var(--ink);
+  background: var(--sun);
+  color: var(--red);
+  font-family: var(--stencil);
+  font-size: 18px;
+  white-space: nowrap;
+  box-shadow: 2px 2px 0 var(--ink);
+  transform: rotate(-8deg);
+}
+
+.clerk-bell-button:hover .clerk-bell-dome {
+  animation: clerk-bell-wobble 0.6s ease-in-out;
+}
+
+.clerk-bell-button.is-ringing .clerk-bell-dome {
+  animation: clerk-bell-wobble 0.45s ease-in-out 2;
+}
+
+.clerk-bell-button.is-ringing .clerk-bell-knob {
+  animation: clerk-bell-press 0.17s ease-in 2;
+}
+
+.clerk-bell-button.is-ringing .clerk-bell-waves {
+  animation: clerk-bell-waves 0.45s ease-out 2;
+}
+
+.clerk-bell-button.is-ringing .clerk-bell-ding {
+  animation: clerk-bell-ding 0.9s cubic-bezier(0.3, 1.6, 0.6, 1);
+}
+
+@keyframes clerk-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(6deg);
+  }
+}
+
+@keyframes clerk-bell-wobble {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-12deg) translateY(-3px);
+  }
+  45% {
+    transform: rotate(10deg);
+  }
+  70% {
+    transform: rotate(-5deg);
+  }
+}
+
+@keyframes clerk-bell-press {
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes clerk-bell-waves {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes clerk-bell-ding {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) rotate(-8deg) scale(0.5);
+  }
+  25%,
+  75% {
+    opacity: 1;
+    transform: translateY(-6px) rotate(-8deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) rotate(-8deg) scale(1);
+  }
+}
+
+/* On a phone the clerk's tab is a small round mark: the bell sits on it, a little smaller. */
+@media (max-width: 560px) {
+  .clerk-bell {
+    right: clamp(12px, 2.4vw, 28px);
+    bottom: 96px;
+  }
+
+  .clerk-bell-svg {
+    width: 46px;
+    height: 40px;
+  }
+
+  .clerk-bell-bubble {
+    margin-right: 0;
+  }
+
+  .clerk-bell-say {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clerk-bell-bubble,
+  .clerk-bell-button .clerk-bell-dome,
+  .clerk-bell-button .clerk-bell-knob,
+  .clerk-bell-button .clerk-bell-waves {
+    animation: none !important;
+  }
+
+  .clerk-bell-button.is-ringing .clerk-bell-waves {
     opacity: 1;
   }
 }

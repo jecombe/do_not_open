@@ -80,4 +80,10 @@ export const homeFr: Record<HomeKey, string> = {
   "home.croq.p2": "Un chat mange au plus {meals} repas et {cap} croquettes par jour : un gros chat, ça prend des mois. Chaque repas est partagé : {treasury} % pour la trésorerie, {reserve} % retourne au ronron que tout le monde récolte, {burn} % est brûlé.",
   "home.croq.p3": "Chaque boîte achetée apporte un sac de bienvenue de {bag} croquettes et en ronronne quelques-unes de plus chaque jour. Les croquettes s'échangent aussi sur un marché public : tu peux en acheter ou les revendre. Dans le jeu, elles restent secrètes : personne ne voit ton solde.",
   "home.croq.link": "Comment marchent les croquettes",
+  "home.clerk.ding": "Ding ding !",
+  "home.clerk.say1": "Psst. Oui, toi. Le guichet est ouvert, et personne ne vient jamais.",
+  "home.clerk.say2": "Ce qu'il y a dans les boîtes, je ne peux pas le dire. Tout le reste, demande-moi.",
+  "home.clerk.say3": "Toujours là. Toujours en train de sonner. Cette sonnette est ma seule amie.",
+  "home.clerk.ring": "Sonner le guichetier",
+  "home.clerk.hush": "Laisser le guichetier tranquille",
 };

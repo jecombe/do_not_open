@@ -80,4 +80,10 @@ export const homeIt: Record<HomeKey, string> = {
   "home.croq.p2": "Un gatto mangia al massimo {meals} pasti e {cap} crocchette al giorno: un gatto grasso richiede mesi. Ogni pasto si divide: il {treasury}% alla tesoreria, il {reserve}% torna alle fusa che tutti ritirano, il {burn}% viene bruciato.",
   "home.croq.p3": "Ogni scatola comprata porta un sacchetto di benvenuto da {bag} crocchette e ne fa le fusa qualcuna in più ogni giorno. Le crocchette si scambiano anche su un mercato pubblico: puoi comprarne altre o incassare. Dentro il gioco restano segrete: nessuno vede il tuo saldo.",
   "home.croq.link": "Come funzionano le crocchette",
+  "home.clerk.ding": "Din din!",
+  "home.clerk.say1": "Psst. Sì, tu. Lo sportello è aperto e non viene mai nessuno.",
+  "home.clerk.say2": "Cosa c'è nelle scatole non posso dirtelo. Tutto il resto, chiedi pure.",
+  "home.clerk.say3": "Sono ancora qui. Suono ancora. Questo campanello è il mio unico amico.",
+  "home.clerk.ring": "Suonare il campanello dello sportello",
+  "home.clerk.hush": "Lasciare in pace l'impiegato",
 };
