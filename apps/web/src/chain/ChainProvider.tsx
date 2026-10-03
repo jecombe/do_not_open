@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createAdapter, type ActionOptions, type Address, type ChainAdapter, type ChainMode, type CollectionInfo, type Step, type WalletOption } from "@dno/chain-adapter";
 import { errorCopy, problemOf, type Problem, type ProblemContext } from "./copy";
 import { chainMode } from "./mode";
+import { hasSigned, requireTerms } from "../terms/terms";
 
 interface ChainState {
   adapter: ChainAdapter;
@@ -25,6 +26,8 @@ interface ChainState {
   /** Without `walletId`, opens the wallet picker when the browser offers more than one. */
   connect(walletId?: string): Promise<void>;
   disconnect(): Promise<void>;
+  /** Lets go of this wallet and connects again, with the wallet's account picker shown. */
+  switchWallet(): Promise<void>;
   connectError: string | null;
   /** Set while the wallet picker is open: the wallets to choose from. */
   picking: WalletOption[] | null;
@@ -101,7 +104,12 @@ export function ChainProvider({ children }: { children: ReactNode }) {
   }, [adapter, account]);
 
   const [picking, setPicking] = useState<WalletOption[] | null>(null);
-  const closePicker = useCallback(() => setPicking(null), []);
+  // Set by `switchWallet` until the next connection: the wallet is asked to show its accounts.
+  const choosing = useRef(false);
+  const closePicker = useCallback(() => {
+    choosing.current = false;
+    setPicking(null);
+  }, []);
 
   const connect = useCallback(
     async (walletId?: string) => {
@@ -113,8 +121,10 @@ export function ChainProvider({ children }: { children: ReactNode }) {
         return;
       }
       setPicking(null);
+      const chooseAccount = choosing.current;
+      choosing.current = false;
       try {
-        await adapter.connect(walletId);
+        await adapter.connect(walletId, { chooseAccount });
       } catch (error) {
         setConnectError(errorCopy(error));
       }
@@ -122,11 +132,17 @@ export function ChainProvider({ children }: { children: ReactNode }) {
     [adapter],
   );
   const disconnect = useCallback(async () => adapter?.disconnect(), [adapter]);
+  const switchWallet = useCallback(async () => {
+    if (!adapter) return;
+    await adapter.disconnect();
+    choosing.current = true;
+    await connect();
+  }, [adapter, connect]);
 
   if (!adapter) return <p className="boot">Unlocking the depot…</p>;
   return (
     <ChainContext.Provider
-      value={{ adapter, mode, account, collection, myBoxes, boxesKnown, findMyBoxes, findError, offline, unavailable, refresh, connect, disconnect, connectError, picking, closePicker }}
+      value={{ adapter, mode, account, collection, myBoxes, boxesKnown, findMyBoxes, findError, offline, unavailable, refresh, connect, disconnect, switchWallet, connectError, picking, closePicker }}
     >
       {children}
     </ChainContext.Provider>
@@ -177,9 +193,14 @@ export function useLedger(): number {
  */
 export function useAction() {
   const [state, setState] = useState<ActionState>(IDLE);
-  const { collection } = useChain();
+  const { collection, account } = useChain();
 
   const run = useCallback(async <T,>(name: string, action: (opts: ActionOptions) => Promise<T>, context?: Omit<ProblemContext, "collection">): Promise<T | undefined> => {
+    // A wallet plays once it has signed the release form: until then, asking brings the form back.
+    if (account && !hasSigned(account)) {
+      requireTerms();
+      return undefined;
+    }
     setState({ busy: name, step: null, error: null });
     try {
       const result = await action({ onStep: (step) => setState((s) => ({ ...s, step })) });
@@ -192,7 +213,7 @@ export function useAction() {
     } finally {
       bumpLedger();
     }
-  }, [collection]);
+  }, [collection, account]);
 
   const reset = useCallback(() => setState(IDLE), []);
   return { ...state, run, reset };

@@ -149,6 +149,21 @@ export function useGateUp(): boolean {
   );
 }
 
+/** Whether `account` signed this version of the terms in this browser. */
+export function hasSigned(account: string): boolean {
+  return !!current.signed[account.toLowerCase()];
+}
+
+const requirers = new Set<() => void>();
+/** An action was asked for by a wallet that has not signed: the form comes back, even if it was closed. */
+export function requireTerms(): void {
+  for (const r of requirers) r();
+}
+export function onRequireTerms(listener: () => void): () => void {
+  requirers.add(listener);
+  return () => void requirers.delete(listener);
+}
+
 const openers = new Set<() => void>();
 /** The menu's "Terms of play": shows the form again, with the signature if there is one. */
 export function openTerms(): void {
