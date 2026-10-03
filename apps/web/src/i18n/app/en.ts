@@ -40,6 +40,7 @@ export const en = {
   "footer.chain.before": "{chain} testnet. Contract ",
   "footer.chain.after": ". Contents are encrypted with Zama FHEVM.",
   "footer.reading": "Reading the chain…",
+  "footer.discord": "Discord",
   "footer.soundOn": "Sound is on",
   "footer.soundOff": "Sound is off",
 

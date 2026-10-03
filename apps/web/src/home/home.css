@@ -712,6 +712,11 @@ h2 {
   font-size: 17px;
 }
 
+/* The links sit together on the right; the notice keeps the left. */
+.home-foot > span {
+  margin-right: auto;
+}
+
 /* --- Narrow screens --- */
 @media (max-width: 1000px) {
   .panels {

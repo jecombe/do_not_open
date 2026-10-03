@@ -3,6 +3,7 @@ import { spec } from "@dno/game-spec";
 import type { CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
+import { DISCORD } from "../links";
 import { useLocale } from "../i18n/locale";
 import { buildName, catNames } from "../i18n/names";
 import { useT } from "./i18n";
@@ -173,6 +174,9 @@ export function Home() {
 
       <footer className="home-foot">
         <span>{t("home.foot")}</span>
+        <a href={DISCORD} target="_blank" rel="noreferrer">
+          {t("home.foot.discord")}
+        </a>
         <a href={REPO}>{t("home.foot.source")}</a>
       </footer>
     </div>

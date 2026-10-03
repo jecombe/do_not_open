@@ -66,6 +66,7 @@ export const homeIt: Record<HomeKey, string> = {
   "home.end.play": "Apri il gioco",
   "home.end.docs": "Leggi il manuale",
   "home.foot": "DO NOT OPEN gira su una rete di prova. Niente qui vale soldi, solo curiosità.",
+  "home.foot.discord": "Discord",
   "home.foot.source": "Codice sorgente",
   "home.nav.croq": "Crocchette",
   "home.croq.title": "Crocchette",
