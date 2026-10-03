@@ -32,6 +32,7 @@ import { HttpRelayerUpstream } from "./infrastructure/relayer/HttpRelayerUpstrea
 import { DiscordClerk } from "./infrastructure/discord/DiscordClerk";
 import { DiscordNetwork } from "./infrastructure/social/DiscordNetwork";
 import { RehearsalNetwork } from "./infrastructure/social/RehearsalNetwork";
+import { XNetwork } from "./infrastructure/social/XNetwork";
 import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
 
 /** The composition root: the one place that knows every concrete class. */
@@ -129,7 +130,7 @@ async function main() {
           chat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
           discord,
-          herald: config.HERALD_DISCORD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
+          herald: config.HERALD === "off" && config.HERALD_DISCORD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
           indexer,
           rpcStatus: () => rpc.status(),
           corsOrigins: config.CORS_ORIGINS,
@@ -151,8 +152,8 @@ async function main() {
 }
 
 /**
- * The collection's accounts, one herald each: the Discord channel, sent through its webhook and
- * rehearsed without it. Each keeps its own queue and quota.
+ * The collection's accounts, one herald each: X, sent with its keys and rehearsed without them,
+ * and the Discord channel, sent through its webhook. Each keeps its own queue and quota.
  */
 function heraldsOf(config: ReturnType<typeof loadConfig>, store: Store & PostStore, model: AnswerModel | null, log: pino.Logger): Herald[] {
   // The lessons teach the players' manual in English, the accounts' language; each account gets its own wording.
@@ -169,6 +170,17 @@ function heraldsOf(config: ReturnType<typeof loadConfig>, store: Store & PostSto
     maxAttempts: 3,
   };
   const heralds: Herald[] = [];
+
+  if (config.HERALD !== "off") {
+    let network: SocialNetwork = new RehearsalNetwork(log);
+    if (config.HERALD === "x") {
+      const { X_API_KEY: apiKey, X_API_SECRET: apiSecret, X_ACCESS_TOKEN: accessToken, X_ACCESS_SECRET: accessSecret } = config;
+      if (apiKey && apiSecret && accessToken && accessSecret) network = new XNetwork({ apiKey, apiSecret, accessToken, accessSecret }, config.X_HANDLE ?? null);
+      else log.warn("HERALD=x but the X keys are not all set: rehearsing instead");
+    }
+    heralds.push(new Herald(store, network, { ...common, channel: "x", maxPerDay: config.HERALD_MAX_PER_DAY, minGapSeconds: config.HERALD_MIN_GAP_MINUTES * 60, lesson: lesson() }, log));
+    log.info({ channel: "x", network: network.name }, "herald on");
+  }
 
   if (config.HERALD_DISCORD !== "off") {
     let network: SocialNetwork = new RehearsalNetwork(log);

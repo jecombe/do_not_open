@@ -94,8 +94,12 @@ const schema = z.object({
   CHAT_PER_DAY: z.coerce.number().int().min(0).default(1000),
   CHAT_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
 
-  /** The collection's Discord channel (the herald): how often it reads the new events. */
+  /** The collection's account on X. "off": nothing; "rehearse": posts are written and kept, never sent; "x": sent. */
+  HERALD: z.enum(["off", "rehearse", "x"]).default("rehearse"),
   HERALD_EVERY_MS: z.coerce.number().int().positive().default(60_000),
+  /** Posts sent per rolling 24 hours: X's free tier allows few. */
+  HERALD_MAX_PER_DAY: z.coerce.number().int().min(0).default(12),
+  HERALD_MIN_GAP_MINUTES: z.coerce.number().int().min(0).default(30),
   /** UTC hour of the daily digest; -1 for none. */
   HERALD_DIGEST_HOUR_UTC: z.coerce.number().int().min(-1).max(23).default(18),
   /** UTC hour of the daily lesson on how the game works; -1 for none. */
@@ -108,7 +112,15 @@ const schema = z.object({
   HERALD_BOX_URL: z.string().url().optional(),
   /** Required to read GET /v1/herald when set. */
   HERALD_ADMIN_TOKEN: z.string().optional(),
-  /** "off": nothing; "rehearse": posts are written and kept, never sent; "live": sent. */
+  /** OAuth 1.0a keys of the X app, and the access token of the account it posts as. Never sent to browsers. */
+  X_API_KEY: z.string().optional(),
+  X_API_SECRET: z.string().optional(),
+  X_ACCESS_TOKEN: z.string().optional(),
+  X_ACCESS_SECRET: z.string().optional(),
+  /** The account's handle, without @, for links to its posts. */
+  X_HANDLE: z.string().optional(),
+
+  /** The collection's Discord channel, the herald's second account. "off": nothing; "rehearse": posts are written and kept, never sent; "live": sent. */
   HERALD_DISCORD: z.enum(["off", "rehearse", "live"]).default("off"),
   /** The channel's webhook (channel settings → Integrations → Webhooks). A secret: whoever has it can post there. */
   DISCORD_WEBHOOK_URL: z.string().url().optional(),

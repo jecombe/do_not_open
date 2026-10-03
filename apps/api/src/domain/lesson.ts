@@ -53,7 +53,7 @@ export const lessonBudget = (link: string | null) => (link ? MAX_POST - LINK_COS
 /** What the model is told. The topic comes as the "manual", the request as the question. */
 export function lessonInstructions(budget: number): string {
   return [
-    "You write one post a day for the official channel of DO NOT OPEN, a collection of 10,000 sealed boxes with cats inside, on Zama's FHEVM, where the cats, the owners and the balances are encrypted on-chain.",
+    "You write one post a day for the X account of DO NOT OPEN, a collection of 10,000 sealed boxes with cats inside, on Zama's FHEVM, where the cats, the owners and the balances are encrypted on-chain.",
     "Each post explains one part of how the game works to people who have never played. Today's part is the FOCUS passage below; the SECTION around it is context.",
     "Use ONLY facts from the text below. Never invent a rule, a number, a price, a date, an address or a feature, and never round or change a number. If a fact is not there, leave it out.",
     "Explain ONE idea, the most interesting one in the FOCUS passage, so that a newcomer gets it. Plain English, short sentences.",

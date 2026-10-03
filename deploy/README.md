@@ -56,12 +56,21 @@ The manual's chatbot answers with Google's Gemini when `/opt/dno/.env` holds
 no billing, so it can never cost anything), then `docker compose up -d api`. Without it, the
 chat quotes the manual.
 
-The collection speaks in a Discord channel (see [`apps/api/README.md`](../apps/api/README.md#the-collections-discord-channel-the-herald)):
-in the channel's settings, Integrations, Webhooks, create one and copy its URL, then add
-`HERALD_DISCORD=live` and `DISCORD_WEBHOOK_URL=...` to `/opt/dno/.env` (`HERALD_DISCORD=rehearse`
-first to read the posts at `https://<api-domain>/v1/herald?network=discord&token=...`, with
-`HERALD_ADMIN_TOKEN` set; `HERALD_BOX_URL=https://<site>/app.html?box=` and
-`HERALD_MANUAL_URL=https://<site>/docs.html` for links, the daily lesson worded with `GEMINI_API_KEY`). The manual's chatbot answers `/ask` in the server too: create an
+The collection's X account (see [`apps/api/README.md`](../apps/api/README.md#the-collections-x-account-the-herald))
+starts in rehearsal: posts are written from the chain and kept, never sent. Read them at
+`https://<api-domain>/v1/herald?token=...` (set `HERALD_ADMIN_TOKEN` in `/opt/dno/.env`). To go
+live, create an app on developer.x.com with "Read and write" permissions, generate the
+account's access token, then add `HERALD=x`, `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`,
+`X_ACCESS_SECRET`, `X_HANDLE` (and `HERALD_BOX_URL=https://<site>/app.html?box=`,
+`HERALD_MANUAL_URL=https://<site>/docs.html` for the daily lesson, worded with `GEMINI_API_KEY`) and run
+`docker compose up -d api`.
+X bills each post from prepaid credits (Developer Console, Billing, Credits), and a post with a
+link costs about 13 times more: leave the two URL variables unset to keep it cheap.
+
+The same posts go to a Discord channel for free: in the channel's settings, Integrations,
+Webhooks, create one and copy its URL, then add `HERALD_DISCORD=live` and
+`DISCORD_WEBHOOK_URL=...` (`HERALD_DISCORD=rehearse` first to read them at
+`/v1/herald?network=discord`). The manual's chatbot answers `/ask` in the server too: create an
 application at https://discord.com/developers/applications, add its `DISCORD_APPLICATION_ID` and
 `DISCORD_PUBLIC_KEY` to `/opt/dno/.env`, run `docker compose up -d api`, set the Interactions
 Endpoint URL to `https://<api-domain>/v1/discord/interactions`, then, from a machine with the
