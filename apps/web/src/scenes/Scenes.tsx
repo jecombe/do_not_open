@@ -148,8 +148,6 @@ interface BoxSceneProps {
   vet: "alive" | "notAlive" | null;
   /** Paper tags on the box: up for a duel, entangled. */
   tags?: BoxTagSpec[];
-  /** Croquettes wait for the holder in the Pantry: once the box is open, a heap of them sits beside the cat. */
-  croquettes?: boolean;
   quality: QualitySettings;
   sound: ShakeSound;
   onShakeDone: () => void;
@@ -166,7 +164,7 @@ const ANGLES: Record<InspectAngle, [azimuth: number, polar: number]> = {
 };
 
 /** The mail room with one box on the bench: shake it, pet it, feed it, open it, take the cat out. */
-export function BoxScene({ ref, tokenId, opened, vet, tags, croquettes = false, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
+export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
   const controls = useRef<CameraControls>(null);
   const opening = useRef<Opening | null>(null);
   const vetMark = useRef<VetMark | null>(null);
@@ -185,16 +183,12 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, croquettes = false, 
       petter: new PetEffect(box, reducedMotion()),
       waiter: new BoxAnticipation(box, reducedMotion()),
       tags: new BoxTags(box, { reducedMotion: reducedMotion() }),
-      pile: new KibblePile(tokenId, reducedMotion()),
     };
   }, [tokenId]);
   useTags(rig.tags, tags);
 
   useEffect(() => {
     depot.benchAnchor.add(rig.box.group);
-    // On the bench beside the cat, which stands where the box was.
-    rig.pile.group.position.set(0.85, 0, 0.25);
-    depot.benchAnchor.add(rig.pile.group);
     return () => {
       inspecting.current = false;
       if (opening.current) disposeOpening(opening.current);
@@ -206,7 +200,6 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, croquettes = false, 
       rig.petter.dispose();
       rig.waiter.dispose();
       rig.tags.dispose();
-      rig.pile.dispose();
       rig.box.dispose();
     };
   }, [depot, rig]);
@@ -217,10 +210,6 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, croquettes = false, 
     vetMark.current = new VetMark(rig.box, vet === "alive", { reducedMotion: reducedMotion() });
     vetMark.current.showInstant();
   }, [rig, vet]);
-
-  // Only once the cat is out: a sealed box keeps the banner in the slip.
-  const out = !!opened;
-  useEffect(() => rig.pile.set(croquettes && out), [rig, croquettes, out]);
 
   // A box that was opened earlier is simply shown open.
   useEffect(() => {
@@ -354,7 +343,6 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, croquettes = false, 
     rig.waiter.update(step);
     vetMark.current?.update(step);
     rig.tags.update(state.clock.elapsedTime);
-    rig.pile.update(step);
     if (opening.current) updateOpening(opening.current, step, state.clock.elapsedTime);
   });
 
@@ -519,6 +507,8 @@ export interface ShelfBox {
   vet?: "alive" | "notAlive" | null;
   /** Paper tags on the box: up for a duel, entangled. */
   tags?: BoxTagSpec[];
+  /** Croquettes wait for the holder in the Pantry: once the box is open, a heap of them sits beside the cat. */
+  croquettes?: boolean;
 }
 
 interface ShelfSceneProps {
@@ -537,6 +527,8 @@ export const SHELF_CAPACITY = 8;
 const LIFT_HEIGHT = 0.14;
 const PICK_TIME = 0.42;
 const SHELF_SCALE = 0.44;
+/** Where a cat's heap of croquettes sits, in the box's own units: in front of it, a little aside, clear of its neighbours. */
+const PILE_SPOT: [number, number, number] = [0.65, 0, 0.85];
 /** A new box falls from this high above the bench, one after the other. */
 const DROP_HEIGHT = 1.4;
 const DROP_GRAVITY = 9;
@@ -559,7 +551,10 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
         if (opening) showOpened(opening);
         const vet = b.vet ? new VetMark(box, b.vet === "alive") : null;
         vet?.showInstant();
-        return { tokenId: b.tokenId, box, opening, vet, tags: new BoxTags(box, { reducedMotion: reducedMotion(), scale: 1.5 }) };
+        // Only beside a cat: a sealed box keeps the banner in the slip.
+        const pile = opening ? new KibblePile(b.tokenId, reducedMotion()) : null;
+        pile?.group.position.set(...PILE_SPOT);
+        return { tokenId: b.tokenId, box, opening, vet, pile, tags: new BoxTags(box, { reducedMotion: reducedMotion(), scale: 1.5 }) };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key, sound],
@@ -569,6 +564,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
       for (const item of items) {
         if (item.opening) disposeOpening(item.opening);
         item.vet?.dispose();
+        item.pile?.dispose();
         item.tags.dispose();
         item.box.dispose();
       }
@@ -580,6 +576,11 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
     for (const item of items) item.tags.set(boxes.find((b) => b.tokenId === item.tokenId)?.tags ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, tagKey]);
+  const pileKey = boxes.map((b) => (b.croquettes ? 1 : 0)).join("");
+  useEffect(() => {
+    for (const item of items) item.pile?.set(!!boxes.find((b) => b.tokenId === item.tokenId)?.croquettes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, pileKey]);
 
   const frame = (animate: boolean) => {
     const n = isNarrow();
@@ -616,6 +617,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
     depot.update(t);
     for (const item of items) {
       if (item.opening) updateOpening(item.opening, Math.min(dt, 0.1), t);
+      item.pile?.update(dt);
       item.tags.update(t);
     }
 
@@ -728,6 +730,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
                 }}
               >
                 <primitive object={item.box.group} />
+                {item.pile && <primitive object={item.pile.group} />}
               </group>
             </group>
           );

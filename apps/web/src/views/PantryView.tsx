@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { claimWindows, formatAmount, type BoxPantry, type EconomyInfo } from "@dno/chain-adapter";
+import { claimWindows, formatAmount, type BoxInfo, type BoxPantry, type EconomyInfo } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain } from "../chain/ChainProvider";
-import { stepCopy, type Problem } from "../chain/copy";
+import { catFromRevealed, stepCopy, type Problem } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
 import { buildName } from "../i18n/names";
-import { ShelfScene, SHELF_CAPACITY } from "../scenes/Scenes";
+import { ShelfScene, SHELF_CAPACITY, type ShelfBox } from "../scenes/Scenes";
 import { Stage } from "./Stage";
 import { useFold } from "./useFold";
 import { ProblemNote } from "./ProblemNote";
@@ -146,7 +146,32 @@ export function PantryView({ quality, sound, onSelect }: Props) {
     if (ok) await after("pantry.collected");
   };
 
-  const shelf = useMemo(() => myBoxes.slice(0, SHELF_CAPACITY).map((tokenId) => ({ tokenId, cat: null })), [myBoxes]);
+  // The boxes on the bench as they are: an opened one is its cat, with a heap beside it when croquettes wait for it.
+  const onBench = useMemo(() => myBoxes.slice(0, SHELF_CAPACITY), [myBoxes]);
+  const [infos, setInfos] = useState<Map<number, BoxInfo>>(new Map());
+  useEffect(() => {
+    let live = true;
+    void Promise.all(onBench.map((id) => adapter.box(id)))
+      .then((list) => live && setInfos(new Map(list.map((b) => [b.tokenId, b]))))
+      .catch(() => live && setInfos(new Map()));
+    return () => {
+      live = false;
+    };
+  }, [adapter, onBench]);
+  const shelf: ShelfBox[] = useMemo(
+    () =>
+      onBench.map((tokenId) => {
+        const info = infos.get(tokenId);
+        const cat = info?.revealed ? catFromRevealed(info.revealed, boxes.get(tokenId)?.weighIn) : null;
+        return {
+          tokenId,
+          cat,
+          vet: info?.aliveCheck === "alive" || info?.aliveCheck === "notAlive" ? info.aliveCheck : null,
+          croquettes: !!cat && due.includes(tokenId),
+        };
+      }),
+    [onBench, infos, boxes, due],
+  );
 
   return (
     <>
