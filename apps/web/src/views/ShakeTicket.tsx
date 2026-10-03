@@ -11,6 +11,8 @@ interface Props {
   printed: number | null;
   /** The rolls the chain made public once the box was opened: each line is checked against them. */
   opened: number[] | null;
+  /** Where it is laid: inside the slip on a phone, beside it on a desktop. */
+  className?: string;
 }
 
 /** "3 hours ago", "2 days ago", in the reader's language. */
@@ -23,12 +25,12 @@ const ago = (at: number, locale: string) => {
 };
 
 /** What one account learned by shaking one box, printed like a till receipt and kept for good. */
-export function ShakeTicket({ serial, ticket, printed, opened }: Props) {
+export function ShakeTicket({ serial, ticket, printed, opened, className }: Props) {
   const t = useT();
   const locale = useLocale();
   const count = felt(ticket);
   return (
-    <figure className={`ticket${opened ? " is-void" : ""}`} data-stamp={opened ? t("ticket.stamp") : undefined} aria-label={t("ticket.aria", { serial })}>
+    <figure className={`ticket${opened ? " is-void" : ""}${className ? ` ${className}` : ""}`} data-stamp={opened ? t("ticket.stamp") : undefined} aria-label={t("ticket.aria", { serial })}>
       <figcaption className="ticket-head">
         <span>{t("ticket.title")}</span>
         <span>{serial}</span>
