@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 import pino from "pino";
-import { AskManual, type AnswerModel } from "./application/askManual";
+import { AskManual } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import type { Store } from "./application/ports/store";
@@ -9,9 +9,6 @@ import { Metadata } from "./application/metadata";
 import { Queries } from "./application/queries";
 import { RelayerGate } from "./application/relayerGate";
 import { FinalitySweep } from "./application/finalitySweep";
-import { Herald } from "./application/herald";
-import { LessonWriter } from "./application/lesson";
-import type { PostStore, SocialNetwork } from "./application/ports/herald";
 import { Reconciler } from "./application/reconcile";
 import { SyncChain } from "./application/syncChain";
 import { loadConfig } from "./config";
@@ -26,11 +23,9 @@ import { RpcPool } from "./infrastructure/chain/RpcPool";
 import { migrate } from "./infrastructure/db/migrate";
 import { PgStore } from "./infrastructure/db/PgStore";
 import { buildServer } from "./infrastructure/http/server";
-import { Indexer, type PeriodicTask } from "./infrastructure/Indexer";
+import { Indexer } from "./infrastructure/Indexer";
 import { MemoryStore } from "./infrastructure/memory/MemoryStore";
 import { HttpRelayerUpstream } from "./infrastructure/relayer/HttpRelayerUpstream";
-import { RehearsalNetwork } from "./infrastructure/social/RehearsalNetwork";
-import { XNetwork } from "./infrastructure/social/XNetwork";
 import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
 
 /** The composition root: the one place that knows every concrete class. */
@@ -39,7 +34,7 @@ async function main() {
   const log = pino({ level: config.LOG_LEVEL });
 
   let pool: pg.Pool | null = null;
-  let store: Store & PostStore;
+  let store: Store;
   if (config.DATABASE_URL) {
     pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE });
     await migrate(pool, log);
@@ -54,9 +49,6 @@ async function main() {
   const chainState = new EvmChainState(rpc, deployment, { economyTtlMs: config.ECONOMY_TTL_MS, claimTtlMs: config.CLAIM_TTL_MS });
   const queries = new Queries(store, chainState);
 
-  // Gemini, on its free tier: answers the manual's chat and words the herald's daily lesson.
-  const model = config.GEMINI_API_KEY ? new GeminiModel({ apiKey: config.GEMINI_API_KEY, models: config.GEMINI_MODELS, timeoutMs: config.GEMINI_TIMEOUT_MS, log }) : null;
-
   let indexer: Indexer | undefined;
   if (config.ROLE !== "api") {
     const source = new EvmChainSource(rpc, deployment, log);
@@ -69,13 +61,10 @@ async function main() {
     }, log);
     const sweep = new FinalitySweep(source, store, { startBlock, maxBlocks: config.SWEEP_MAX_BLOCKS }, log);
     const reconciler = new Reconciler(source, chainState, store, { startBlock, boxesPerRun: config.RECONCILE_BOXES }, log);
-    const tasks: PeriodicTask[] = [
+    indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, [
       { name: "finalitySweep", everyMs: config.SWEEP_EVERY_MS, run: () => sweep.run() },
       { name: "reconcile", everyMs: config.RECONCILE_EVERY_MS, run: () => reconciler.run() },
-    ];
-    const herald = heraldOf(config, store, model, log);
-    if (herald) tasks.push({ name: "herald", everyMs: config.HERALD_EVERY_MS, run: () => herald.run() });
-    indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, tasks);
+    ]);
     indexer.start();
     log.info({ network: config.NETWORK, from: deployment.indexFrom, endpoints: rpc.status().map((e) => e.name) }, "indexer started");
   }
@@ -102,7 +91,7 @@ async function main() {
   // day's quota, the chat quotes the manual's best paragraphs.
   const chat = new AskManual(
     manual.locales,
-    model,
+    config.GEMINI_API_KEY ? new GeminiModel({ apiKey: config.GEMINI_API_KEY, models: config.GEMINI_MODELS, timeoutMs: config.GEMINI_TIMEOUT_MS, log }) : null,
     { perIpPerDay: config.CHAT_PER_IP_PER_DAY, perDay: config.CHAT_PER_DAY, cacheSize: 500 },
   );
   if (!config.GEMINI_API_KEY) log.info("GEMINI_API_KEY is not set: the chat quotes the manual instead of answering");
@@ -119,7 +108,6 @@ async function main() {
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           chat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
-          herald: config.HERALD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
           indexer,
           rpcStatus: () => rpc.status(),
           corsOrigins: config.CORS_ORIGINS,
@@ -138,32 +126,6 @@ async function main() {
   };
   process.once("SIGTERM", () => void shutdown("SIGTERM"));
   process.once("SIGINT", () => void shutdown("SIGINT"));
-}
-
-/** The collection's account: sent to X with its keys, rehearsed without them. */
-function heraldOf(config: ReturnType<typeof loadConfig>, store: Store & PostStore, model: AnswerModel | null, log: pino.Logger): Herald | null {
-  if (config.HERALD === "off") return null;
-  let network: SocialNetwork = new RehearsalNetwork(log);
-  if (config.HERALD === "x") {
-    const { X_API_KEY: apiKey, X_API_SECRET: apiSecret, X_ACCESS_TOKEN: accessToken, X_ACCESS_SECRET: accessSecret } = config;
-    if (apiKey && apiSecret && accessToken && accessSecret) network = new XNetwork({ apiKey, apiSecret, accessToken, accessSecret }, config.X_HANDLE ?? null);
-    else log.warn("HERALD=x but the X keys are not all set: rehearsing instead");
-  }
-  log.info({ network: network.name }, "herald on");
-  return new Herald(store, network, {
-    maxPerDay: config.HERALD_MAX_PER_DAY,
-    minGapSeconds: config.HERALD_MIN_GAP_MINUTES * 60,
-    digestHourUtc: config.HERALD_DIGEST_HOUR_UTC < 0 ? null : config.HERALD_DIGEST_HOUR_UTC,
-    // The lessons teach the players' manual in English, the account's language.
-    lesson: config.HERALD_LESSON_HOUR_UTC < 0 ? null : {
-      hourUtc: config.HERALD_LESSON_HOUR_UTC,
-      writer: new LessonWriter(manual.locales.en, model, { manualUrl: config.HERALD_MANUAL_URL ?? null, tries: 2 }, log),
-    },
-    staleAfterSeconds: config.HERALD_STALE_HOURS * 3600,
-    boxUrl: config.HERALD_BOX_URL ?? null,
-    batch: 500,
-    maxAttempts: 3,
-  }, log);
 }
 
 main().catch((error) => {

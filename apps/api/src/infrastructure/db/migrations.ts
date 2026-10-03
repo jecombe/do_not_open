@@ -267,32 +267,4 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
-  {
-    version: 8,
-    name: "herald posts",
-    sql: /* sql */ `
-      -- What the collection's account says about the protocol: queued, then sent (or rehearsed).
-      -- Not on the chain: a replay keeps it, and a post is never queued twice for the same fact.
-      create table posts (
-        id serial primary key,
-        key text not null unique,
-        kind text not null,
-        text text not null,
-        status text not null,
-        created_at bigint not null,
-        posted_at bigint,
-        external_id text,
-        url text,
-        attempts integer not null default 0,
-        error text
-      );
-      create index posts_queued on posts (id) where status = 'queued';
-      -- Where the herald has read the events up to.
-      create table herald_state (
-        id integer primary key,
-        block bigint not null,
-        log_index bigint not null
-      );
-    `,
-  },
 ];
