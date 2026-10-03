@@ -8,7 +8,7 @@ import type { RevealedContents } from "./types";
  * Plain templates, no model: the official account must never get a fact wrong. Nothing here
  * names a wallet, not even an opener's, though that one is public.
  */
-export type PostKind = "opening" | "milestone" | "duel" | "entangled" | "vet" | "weighIn" | "digest";
+export type PostKind = "opening" | "milestone" | "duel" | "entangled" | "vet" | "weighIn" | "digest" | "lesson";
 
 export interface Draft {
   /** Identity of what the post is about: the same fact is never queued twice. */

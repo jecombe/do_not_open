@@ -61,7 +61,8 @@ starts in rehearsal: posts are written from the chain and kept, never sent. Read
 `https://<api-domain>/v1/herald?token=...` (set `HERALD_ADMIN_TOKEN` in `/opt/dno/.env`). To go
 live, create an app on developer.x.com with "Read and write" permissions, generate the
 account's access token, then add `HERALD=x`, `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`,
-`X_ACCESS_SECRET`, `X_HANDLE` (and `HERALD_BOX_URL=https://<site>/app.html?box=`) and run
+`X_ACCESS_SECRET`, `X_HANDLE` (and `HERALD_BOX_URL=https://<site>/app.html?box=`,
+`HERALD_MANUAL_URL=https://<site>/docs.html` for the daily lesson, worded with `GEMINI_API_KEY`) and run
 `docker compose up -d api`.
 
 ## By hand

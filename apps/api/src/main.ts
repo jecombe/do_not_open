@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 import pino from "pino";
-import { AskManual } from "./application/askManual";
+import { AskManual, type AnswerModel } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import type { Store } from "./application/ports/store";
@@ -10,6 +10,7 @@ import { Queries } from "./application/queries";
 import { RelayerGate } from "./application/relayerGate";
 import { FinalitySweep } from "./application/finalitySweep";
 import { Herald } from "./application/herald";
+import { LessonWriter } from "./application/lesson";
 import type { PostStore, SocialNetwork } from "./application/ports/herald";
 import { Reconciler } from "./application/reconcile";
 import { SyncChain } from "./application/syncChain";
@@ -53,6 +54,9 @@ async function main() {
   const chainState = new EvmChainState(rpc, deployment, { economyTtlMs: config.ECONOMY_TTL_MS, claimTtlMs: config.CLAIM_TTL_MS });
   const queries = new Queries(store, chainState);
 
+  // Gemini, on its free tier: answers the manual's chat and words the herald's daily lesson.
+  const model = config.GEMINI_API_KEY ? new GeminiModel({ apiKey: config.GEMINI_API_KEY, models: config.GEMINI_MODELS, timeoutMs: config.GEMINI_TIMEOUT_MS, log }) : null;
+
   let indexer: Indexer | undefined;
   if (config.ROLE !== "api") {
     const source = new EvmChainSource(rpc, deployment, log);
@@ -69,7 +73,7 @@ async function main() {
       { name: "finalitySweep", everyMs: config.SWEEP_EVERY_MS, run: () => sweep.run() },
       { name: "reconcile", everyMs: config.RECONCILE_EVERY_MS, run: () => reconciler.run() },
     ];
-    const herald = heraldOf(config, store, log);
+    const herald = heraldOf(config, store, model, log);
     if (herald) tasks.push({ name: "herald", everyMs: config.HERALD_EVERY_MS, run: () => herald.run() });
     indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, tasks);
     indexer.start();
@@ -98,7 +102,7 @@ async function main() {
   // day's quota, the chat quotes the manual's best paragraphs.
   const chat = new AskManual(
     manual.locales,
-    config.GEMINI_API_KEY ? new GeminiModel({ apiKey: config.GEMINI_API_KEY, models: config.GEMINI_MODELS, timeoutMs: config.GEMINI_TIMEOUT_MS, log }) : null,
+    model,
     { perIpPerDay: config.CHAT_PER_IP_PER_DAY, perDay: config.CHAT_PER_DAY, cacheSize: 500 },
   );
   if (!config.GEMINI_API_KEY) log.info("GEMINI_API_KEY is not set: the chat quotes the manual instead of answering");
@@ -137,7 +141,7 @@ async function main() {
 }
 
 /** The collection's account: sent to X with its keys, rehearsed without them. */
-function heraldOf(config: ReturnType<typeof loadConfig>, store: Store & PostStore, log: pino.Logger): Herald | null {
+function heraldOf(config: ReturnType<typeof loadConfig>, store: Store & PostStore, model: AnswerModel | null, log: pino.Logger): Herald | null {
   if (config.HERALD === "off") return null;
   let network: SocialNetwork = new RehearsalNetwork(log);
   if (config.HERALD === "x") {
@@ -150,6 +154,11 @@ function heraldOf(config: ReturnType<typeof loadConfig>, store: Store & PostStor
     maxPerDay: config.HERALD_MAX_PER_DAY,
     minGapSeconds: config.HERALD_MIN_GAP_MINUTES * 60,
     digestHourUtc: config.HERALD_DIGEST_HOUR_UTC < 0 ? null : config.HERALD_DIGEST_HOUR_UTC,
+    // The lessons teach the players' manual in English, the account's language.
+    lesson: config.HERALD_LESSON_HOUR_UTC < 0 ? null : {
+      hourUtc: config.HERALD_LESSON_HOUR_UTC,
+      writer: new LessonWriter(manual.locales.en, model, { manualUrl: config.HERALD_MANUAL_URL ?? null, tries: 2 }, log),
+    },
     staleAfterSeconds: config.HERALD_STALE_HOURS * 3600,
     boxUrl: config.HERALD_BOX_URL ?? null,
     batch: 500,

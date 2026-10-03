@@ -102,6 +102,10 @@ const schema = z.object({
   HERALD_MIN_GAP_MINUTES: z.coerce.number().int().min(0).default(30),
   /** UTC hour of the daily digest; -1 for none. */
   HERALD_DIGEST_HOUR_UTC: z.coerce.number().int().min(-1).max(23).default(18),
+  /** UTC hour of the daily lesson on how the game works; -1 for none. */
+  HERALD_LESSON_HOUR_UTC: z.coerce.number().int().min(-1).max(23).default(14),
+  /** The manual page, e.g. https://<site>/docs.html: each lesson links to its section. Without it, no link. */
+  HERALD_MANUAL_URL: z.string().url().optional(),
   /** A post still waiting after this long is dropped as old news. */
   HERALD_STALE_HOURS: z.coerce.number().positive().default(12),
   /** The app's page for a box, the id appended: linked from opening posts. Without it, no link. */

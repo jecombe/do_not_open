@@ -207,7 +207,19 @@ milestone, a settled duel, an entanglement, the vet's verdict, a weigh-in. Once 
 openings, duels); a quiet day posts nothing. Only public facts are used, and no post ever names
 a wallet, not even an opener's.
 
-Posts are queued in `posts`, one per fact (`opening:421`, `digest:2026-10-03`...), and sent one
+Once a day too, after `HERALD_LESSON_HOUR_UTC` (14 by default, -1 for none), it explains one
+part of how the game works (`application/lesson.ts`, `domain/lesson.ts`). The topic is one
+passage of the players' part of the English manual (the same `manual.json` as the chat, minus
+the release form), in a fixed loop of about 34 days that spreads each section over the cycle.
+Gemini words it from that passage's section alone, and its post goes out only if it passes
+checks made in code: within the length (the link to the section, from `HERALD_MANUAL_URL`,
+counted as X counts it), every number found in the section, no address, link, hashtag, mention
+or markdown, none of a list of wordings the account never uses (anonymous, guarantee, invest,
+profit...). A refused post is asked for again once; then, or without `GEMINI_API_KEY`, the post
+quotes the passage itself. The checks catch made-up numbers, not a misread sentence: read the
+rehearsed lessons before setting `HERALD=x`.
+
+Posts are queued in `posts`, one per fact (`opening:421`, `digest:2026-10-03`, `lesson:2026-10-03`...), and sent one
 at a time: at most `HERALD_MAX_PER_DAY` in 24 hours, `HERALD_MIN_GAP_MINUTES` apart; one still
 waiting after `HERALD_STALE_HOURS` is dropped as old news. A first run starts from the present,
 so the history is not posted.
@@ -229,5 +241,5 @@ DATABASE_URL=postgres://... pnpm --filter @dno/api dev
 Configuration is environment variables, all optional in development: see `src/config.ts`
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
-`GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD`, `X_API_KEY`...). Deployment is in
+`GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`, `X_API_KEY`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).
