@@ -56,6 +56,14 @@ The manual's chatbot answers with Google's Gemini when `/opt/dno/.env` holds
 no billing, so it can never cost anything), then `docker compose up -d api`. Without it, the
 chat quotes the manual.
 
+The collection's X account (see [`apps/api/README.md`](../apps/api/README.md#the-collections-x-account-the-herald))
+starts in rehearsal: posts are written from the chain and kept, never sent. Read them at
+`https://<api-domain>/v1/herald?token=...` (set `HERALD_ADMIN_TOKEN` in `/opt/dno/.env`). To go
+live, create an app on developer.x.com with "Read and write" permissions, generate the
+account's access token, then add `HERALD=x`, `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`,
+`X_ACCESS_SECRET`, `X_HANDLE` (and `HERALD_BOX_URL=https://<site>/app.html?box=`) and run
+`docker compose up -d api`.
+
 ## By hand
 
 ```bash
