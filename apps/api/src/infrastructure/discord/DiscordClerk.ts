@@ -8,7 +8,8 @@ import { MANUAL_LOCALES, type ManualLocale } from "../../domain/manual";
  * The manual's chatbot on Discord: the `/ask` slash command, served over HTTP (Discord posts
  * each use of the command to the API, signed with the application's Ed25519 key). Discord wants
  * an answer within 3 seconds and the model takes longer, so the clerk first says it is looking
- * ("deferred"), then edits that message with the answer.
+ * ("deferred"), then edits that message with the answer. Both are ephemeral: only the asker sees
+ * the question and the answer, so a public channel never fills with other players' questions.
  */
 
 const API = "https://discord.com/api/v10";
@@ -48,14 +49,6 @@ export const ASK_COMMAND = {
         "es-419": "Tu pregunta, en español, inglés, francés o italiano.",
         it: "La tua domanda, in italiano, inglese, francese o spagnolo.",
       },
-    },
-    {
-      name: "private",
-      type: 5,
-      required: false,
-      description: "Only you see the answer.",
-      name_localizations: { fr: "privé", "es-ES": "privado", "es-419": "privado", it: "privato" },
-      description_localizations: { fr: "Toi seul vois la réponse.", "es-ES": "Solo tú ves la respuesta.", "es-419": "Solo tú ves la respuesta.", it: "Solo tu vedi la risposta." },
     },
   ],
   // In servers and in the bot's direct messages.
@@ -158,12 +151,11 @@ export class DiscordClerk {
     if (i.type !== COMMAND || i.data?.name !== ASK_COMMAND.name || !i.token) {
       return { type: MESSAGE, data: { content: WORDS[locale].unknown, flags: EPHEMERAL } };
     }
-    const option = (name: string) => i.data?.options?.find((o) => o.name === name)?.value;
-    const question = String(option("question") ?? "").trim();
+    const question = String(i.data.options?.find((o) => o.name === "question")?.value ?? "").trim();
     const user = i.member?.user.id ?? i.user?.id ?? "unknown";
     const task = this.answer(i.token, question, locale, user).finally(() => this.pending.delete(task));
     this.pending.add(task);
-    return { type: DEFERRED, data: option("private") === true ? { flags: EPHEMERAL } : {} };
+    return { type: DEFERRED, data: { flags: EPHEMERAL } };
   }
 
   /** Resolves when every answer under way has been sent: for tests and shutdown. */

@@ -114,11 +114,10 @@ describe("the clerk on Discord", () => {
     expect([localeOf("fr"), localeOf("es-419"), localeOf("it"), localeOf("en-GB"), localeOf("de"), localeOf(undefined)]).toEqual(["fr", "es", "it", "en", "en", "en"]);
   });
 
-  it("answers later by editing the deferred message, privately when asked", async () => {
+  it("answers later by editing the deferred message, only to the asker", async () => {
     const { calls, fetcher } = fakeFetch(() => json({}));
     const clerk = new DiscordClerk(new AskManual(MANUALS, model, { perIpPerDay: 5, perDay: 5, cacheSize: 5 }), { applicationId: "app", manualUrl: "https://dno.test/docs.html" }, silentLogger, fetcher);
-    expect(clerk.respond(command([{ name: "question", value: "Ça coûte quoi de secouer ?" }]))).toEqual({ type: 5, data: {} });
-    expect(clerk.respond(command([{ name: "question", value: "Et ouvrir ?" }, { name: "private", value: true }]))).toEqual({ type: 5, data: { flags: 64 } });
+    expect(clerk.respond(command([{ name: "question", value: "Ça coûte quoi de secouer ?" }]))).toEqual({ type: 5, data: { flags: 64 } });
     await clerk.idle();
     expect(calls[0]!.url).toBe("https://discord.com/api/v10/webhooks/app/tok/messages/@original");
     expect(calls[0]!.init.method).toBe("PATCH");

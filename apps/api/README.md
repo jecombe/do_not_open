@@ -217,7 +217,7 @@ so the clerk first answers "thinking" (deferred), then edits that message with t
 question quoted, the answer (or, in passages mode, the manual's paragraphs), and links to the
 sections (`DISCORD_MANUAL_URL`, by default `HERALD_MANUAL_URL`), within Discord's 2,000
 characters and mentioning no one. The language is the player's Discord language (English when
-it is not one of the four). `private:true` shows the answer to the asker only. The chat's daily
+it is not one of the four). Only the asker sees the question and the answer (ephemeral messages), so a shared channel never fills with other players' questions. The chat's daily
 limits count per Discord user instead of per IP.
 
 Set `DISCORD_APPLICATION_ID` and `DISCORD_PUBLIC_KEY` (Developer Portal, General Information) and
