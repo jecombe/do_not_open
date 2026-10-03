@@ -64,6 +64,8 @@ account's access token, then add `HERALD=x`, `X_API_KEY`, `X_API_SECRET`, `X_ACC
 `X_ACCESS_SECRET`, `X_HANDLE` (and `HERALD_BOX_URL=https://<site>/app.html?box=`,
 `HERALD_MANUAL_URL=https://<site>/docs.html` for the daily lesson, worded with `GEMINI_API_KEY`) and run
 `docker compose up -d api`.
+X bills each post from prepaid credits (Developer Console, Billing, Credits), and a post with a
+link costs about 13 times more: leave the two URL variables unset to keep it cheap.
 
 ## By hand
 

@@ -228,7 +228,10 @@ so the history is not posted.
 `rehearsed`, without sending anything, to be read at `GET /v1/herald` first; `x` sends them
 through X's v2 API, signed with OAuth 1.0a (`X_API_KEY`, `X_API_SECRET`, and the account's
 `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`; `X_HANDLE` for links), and falls back to rehearsing when
-a key is missing; `off` stops it. Posting only needs X's free tier: nothing is read from X.
+a key is missing; `off` stops it. Nothing is read from X, but X has no free tier any more: since
+February 2026 its API is paid per request from prepaid credits (a 402 "credits depleted" means
+none are left), about $0.015 a post and $0.20 a post with a link. Leaving `HERALD_BOX_URL` and
+`HERALD_MANUAL_URL` unset keeps every post link-free: a few dollars a month.
 
 ## Run it
 
