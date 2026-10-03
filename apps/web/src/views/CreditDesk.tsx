@@ -12,8 +12,8 @@ const PRESETS = [50, 100, 500];
  * values, so they sit beside the ledger rather than in it. Bought in plain USDC only; when the
  * wallet is short, it points back to the counter to get some.
  */
-export function CreditDesk(props: { usdc: bigint | null; onGetUsdc: (() => void) | null; onDone: () => void; disabled: boolean }) {
-  const { usdc, onGetUsdc, onDone, disabled } = props;
+export function CreditDesk(props: { usdc: bigint | null; onGetUsdc: (() => void) | null; onDone: () => void; disabled: boolean; wanted: number }) {
+  const { usdc, onGetUsdc, onDone, disabled, wanted } = props;
   const { adapter, account, collection } = useChain();
   const t = useT();
   const id = useId();
@@ -34,6 +34,15 @@ export function CreditDesk(props: { usdc: bigint | null; onGetUsdc: (() => void)
     };
   }, [adapter, account, own.busy, ledger]);
 
+  // Sent here for credits (the meter, a refused action): bring the window into view, its count ready.
+  const ready = allowance !== null;
+  useEffect(() => {
+    if (!wanted || !ready) return;
+    const input = document.getElementById(`${id}-n`);
+    input?.closest(".credit-desk")?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    input?.focus({ preventScroll: true });
+  }, [wanted, ready, id]);
+
   const payment = collection?.payment;
   if (!account || !payment || !allowance || allowance.price === null) return null;
   const { symbol, decimals } = payment;
@@ -52,8 +61,9 @@ export function CreditDesk(props: { usdc: bigint | null; onGetUsdc: (() => void)
         {t("ex.credits.title")}
       </h3>
       <p className="credit-desk-left">
-        <strong>{allowance.freeLeft + allowance.credits}</strong> {t("ex.credits.left", { free: allowance.freeLeft, perDay: allowance.freePerDay, credits: allowance.credits })}
+        <strong>{allowance.freeLeft + allowance.credits}</strong> {t("ex.credits.left")}
       </p>
+      <p className="fine credit-desk-split">{t("ex.credits.split", { free: allowance.freeLeft, perDay: allowance.freePerDay, credits: allowance.credits })}</p>
       <TxPending busy={own.busy} step={own.step} title={t("credits.buying")}>
         <form
           onSubmit={(e) => {

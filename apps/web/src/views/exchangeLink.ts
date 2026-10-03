@@ -6,6 +6,8 @@ export interface ExchangePreset {
   to?: TokenKey;
   /** In the `from` token's smallest unit. */
   amount?: bigint;
+  /** Straight to the decryption credits window rather than the counter. */
+  credits?: true;
 }
 
 const listeners = new Set<(preset: ExchangePreset) => void>();

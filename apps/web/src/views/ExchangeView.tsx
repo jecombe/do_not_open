@@ -192,8 +192,10 @@ export function ExchangeView() {
   const desk: Desk | null = useMemo(() => (collection && economy !== null ? deskOf(collection, economy === "none" ? null : economy) : null), [collection, economy]);
 
   const [presetAmount, setPresetAmount] = useState<bigint | null>(null);
+  const [creditsWanted, setCreditsWanted] = useState(0);
   const applyPreset = useCallback((p: ExchangePreset | null) => {
     if (!p) return;
+    if (p.credits) setCreditsWanted((n) => n + 1);
     if (p.from) setFrom(p.from);
     if (p.to) setTo(p.to);
     setText("");
@@ -592,19 +594,21 @@ export function ExchangeView() {
           </div>
         </section>
 
-        <div className="bureau-side">
-          <Ledger desk={desk} held={held} sealedKnown={(k) => sealedValue(k) !== null} revealing={revealing} onReveal={(k) => void reveal(k)} onPick={(k) => pick("from", k)} current={from} onDone={() => setTick((n) => n + 1)} disabled={running} />
-          <CreditDesk
-            usdc={balances.usdc ?? null}
-            onGetUsdc={desk && findRoute(desk, "eth", "usdc") ? () => {
-                    applyPreset({ from: "eth", to: "usdc" });
-                    document.getElementById(`${formId}-in`)?.focus();
-                  }
-                : null}
-            onDone={() => setTick((n) => n + 1)}
-            disabled={running}
-          />
-        </div>
+        <Ledger desk={desk} held={held} sealedKnown={(k) => sealedValue(k) !== null} revealing={revealing} onReveal={(k) => void reveal(k)} onPick={(k) => pick("from", k)} current={from} onDone={() => setTick((n) => n + 1)} disabled={running} />
+        <CreditDesk
+          usdc={balances.usdc ?? null}
+          onGetUsdc={
+            desk && findRoute(desk, "eth", "usdc")
+              ? () => {
+                  applyPreset({ from: "eth", to: "usdc" });
+                  document.getElementById(`${formId}-in`)?.focus();
+                }
+              : null
+          }
+          onDone={() => setTick((n) => n + 1)}
+          disabled={running}
+          wanted={creditsWanted}
+        />
       </div>
     </main>
   );

@@ -27,8 +27,8 @@ export function ProblemNote({ problem }: { problem: Problem }) {
             </button>
           )}
           {problem.fix === "exchange" && (
-            <button type="button" className="link" onClick={() => openExchange(problem.wanted === "usdc" ? { from: "eth", to: "usdc" } : { from: "usdc", to: "cusdc" })}>
-              {t("problem.openExchange")}
+            <button type="button" className="link" onClick={() => openExchange(problem.wanted === "credits" ? { credits: true } : problem.wanted === "usdc" ? { from: "eth", to: "usdc" } : { from: "usdc", to: "cusdc" })}>
+              {t(problem.wanted === "credits" ? "problem.buyCredits" : "problem.openExchange")}
             </button>
           )}
           {faucet && (

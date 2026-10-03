@@ -15,7 +15,7 @@ export interface Problem {
    *  (USDC, cUSDC), or a faucet for the gas coin. */
   fix: "wallet" | "exchange" | "gas" | null;
   /** With `fix: "exchange"`, the token the bureau should offer. */
-  wanted?: "usdc" | "cusdc";
+  wanted?: "usdc" | "cusdc" | "credits";
 }
 
 /** What an action says, instead of the generic line, when it stopped half-way. */
@@ -115,7 +115,8 @@ export function problemOf(error: unknown, ctx: ProblemContext = {}): Problem {
       p.text = t("problem.noCredits");
       if (held !== undefined && needed !== undefined) p.hints.push(t("problem.noCreditsHave", { held: held.toString(), needed: needed.toString() }));
       p.hints.push(t("problem.noCreditsHint"));
-      p.fix = "wallet";
+      p.fix = "exchange";
+      p.wanted = "credits";
       break;
     case "nonce":
       p.text = t("problem.nonce");
