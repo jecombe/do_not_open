@@ -60,7 +60,8 @@ sidebar or a card grid.
 
 Sealed boxes get a **consignment slip** (bottom left). Opened cats get a **declaration
 of contents** (bottom right) laid out like a customs form. Each shake prints its trait on the box's **shake ticket**, a till receipt
-with one line per trait, kept in the shaker's browser for good (a trait never changes); once
+with one line per trait, kept in the shaker's browser for good (a trait never changes), laid at the bottom right on a
+desktop and inside the slip on a phone; once
 the box is opened the ticket is stamped and each line checked against the revealed cat. On phones the slip spans the
 width at the bottom and the camera frames the subject in the upper half.
 

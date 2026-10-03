@@ -402,6 +402,17 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   };
 
   const revealed = cat && !opening;
+  // The shake ticket: inside the slip on a phone, laid beside it on a desktop so the slip stays short.
+  const ticketAt = (where: "in-slip" | "aside") =>
+    ticket && (
+      <ShakeTicket
+        serial={box.serial}
+        ticket={ticket}
+        printed={revealed ? null : (felt?.traitIndex ?? null)}
+        opened={revealed ? info!.revealed!.traits : null}
+        className={where === "in-slip" ? "ticket-in-slip" : "ticket-aside"}
+      />
+    );
   const names = cat ? catNames(cat) : null;
   const share = info && (
     <ShareBox
@@ -489,7 +500,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 {info!.aliveCheck === "alive" ? t("box.vetBefore") : ""}
                 {info!.partner !== null ? t("box.entangledWith", { serial: buildBoxSpec(info!.partner).serial }) : ""}
               </p>
-              {ticket && <ShakeTicket serial={box.serial} ticket={ticket} printed={null} opened={info!.revealed!.traits} />}
+              {ticketAt("in-slip")}
               {kitchen && !weighIn && (
                 <p className="fine">{t("box.weighPromptHidden")}</p>
               )}
@@ -542,7 +553,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
                 </ul>
               )}
 
-              {ticket && <ShakeTicket serial={box.serial} ticket={ticket} printed={felt?.traitIndex ?? null} opened={null} />}
+              {ticketAt("in-slip")}
 
               {croqBanner}
 
@@ -691,6 +702,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
           )}
         </TxPending>
       </section>
+      {!missing && !(revealed && out) && ticketAt("aside")}
     </>
   );
 }

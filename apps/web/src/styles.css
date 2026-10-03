@@ -1717,6 +1717,7 @@ button {
 
 /* --- The shake ticket: a till receipt, one line per trait, kept for good --- */
 .ticket {
+  position: relative;
   margin: 8px 0 10px;
   padding: 10px 12px 8px;
   background: #f6f1e4;
@@ -1788,10 +1789,6 @@ button {
 }
 
 /* Once the box is open, the ticket is stamped and kept as a souvenir. */
-.ticket.is-void {
-  position: relative;
-}
-
 .ticket.is-void::after {
   content: attr(data-stamp);
   position: absolute;
@@ -1805,6 +1802,32 @@ button {
   transform: rotate(-12deg);
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* On a desktop the ticket is laid at the right of the bench, away from the slip, so the slip does not have to
+   scroll; on a phone there is room for one slip only, and the ticket goes inside it. */
+.ticket.ticket-aside {
+  position: absolute;
+  right: var(--gutter);
+  bottom: calc(var(--gutter) + 34px);
+  width: min(300px, calc(100vw - 2 * var(--gutter)));
+  margin: 0;
+  transform: rotate(1.2deg);
+  filter: drop-shadow(0 14px 24px rgb(0 0 0 / 0.5));
+}
+
+.ticket-in-slip {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .ticket-aside {
+    display: none;
+  }
+
+  .ticket-in-slip {
+    display: block;
+  }
 }
 
 @keyframes ticket-print {
