@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://do-not-open.app/sitemap.xml

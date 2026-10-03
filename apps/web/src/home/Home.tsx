@@ -3,17 +3,14 @@ import { spec } from "@dno/game-spec";
 import type { CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
-import { DISCORD } from "../links";
+import { DISCORD, REPO } from "../links";
 import { useLocale } from "../i18n/locale";
+import { appPath, docsPath, homePath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { Shipped } from "./Shipped";
 import { boxComplaint, pageSound, setMuted } from "./sound";
-
-const REPO = "https://github.com/jecombe/do_not_open";
-const APP = "/app.html";
-const DOCS = "/docs.html";
 
 /**
  * The stamp, the site's links and languages, and the way into the game. On a phone the links
@@ -21,6 +18,9 @@ const DOCS = "/docs.html";
  */
 function HomeTop() {
   const t = useT();
+  const locale = useLocale();
+  const APP = appPath(locale);
+  const DOCS = docsPath(locale);
   const [open, setOpen] = useState(false);
   const navId = useId();
   const root = useRef<HTMLElement>(null);
@@ -48,7 +48,7 @@ function HomeTop() {
   const close = () => setOpen(false);
   return (
     <header className="home-top" ref={root}>
-      <a className="home-stamp" href="/">
+      <a className="home-stamp" href={homePath(locale)}>
         Do not open
       </a>
       <nav id={navId} className={open ? "is-open" : undefined} aria-label={t("home.nav")}>
@@ -81,6 +81,8 @@ export function Home() {
   const t = useT();
   const locale = useLocale();
   const supply = spec.collection.maxSupply.toLocaleString(locale);
+  const APP = appPath(locale);
+  const DOCS = docsPath(locale);
 
   useEffect(() => {
     document.title = t("home.title");
@@ -193,6 +195,7 @@ function Croquettes() {
   const t = useT();
   const locale = useLocale();
   const { token, welcomeBag } = spec.economy;
+  const DOCS = docsPath(locale);
 
   return (
     <section id="croquettes" className="home-section croq">

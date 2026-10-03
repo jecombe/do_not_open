@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { spec } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
+import { REPO } from "../links";
+import { appPath, homePath } from "../site";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
 import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY, RAMP_PCT } from "./fees";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 
-const REPO = "https://github.com/jecombe/do_not_open";
 const DOCS = `${REPO}/blob/dev/docs`;
 const EXPLORER = "https://sepolia.etherscan.io/address/";
 
@@ -115,12 +116,12 @@ export function Manual() {
   return (
     <div className="manual">
       <header className="top">
-        <a className="wordmark" href="/" aria-label={t("docs.homeAria")}>
+        <a className="wordmark" href={homePath(locale)} aria-label={t("docs.homeAria")}>
           Do not open
         </a>
         <nav className="views" aria-label={t("docs.site")}>
-          <a href="/">{t("docs.home")}</a>
-          <a href="/app.html">{t("docs.back")}</a>
+          <a href={homePath(locale)}>{t("docs.home")}</a>
+          <a href={appPath(locale)}>{t("docs.back")}</a>
           <a href={REPO}>{t("docs.source")}</a>
           <LangSwitch label={t("nav.language")} />
         </nav>
@@ -134,7 +135,7 @@ export function Manual() {
             <a className="stamp-link" href="#seed">
               {t("docs.hero.seed")}
             </a>
-            <a href="/app.html">{t("docs.hero.shake")}</a>
+            <a href={appPath(locale)}>{t("docs.hero.shake")}</a>
           </p>
         </div>
         <HeroFigure />
@@ -483,7 +484,7 @@ export function Manual() {
 
       <footer className="foot">
         <span>{t("docs.foot")}</span>
-        <a href="/app.html">{t("docs.back")}</a>
+        <a href={appPath(locale)}>{t("docs.back")}</a>
       </footer>
     </div>
   );

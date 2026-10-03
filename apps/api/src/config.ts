@@ -100,7 +100,7 @@ const schema = z.object({
   HERALD_DIGEST_HOUR_UTC: z.coerce.number().int().min(-1).max(23).default(18),
   /** UTC hour of the daily lesson on how the game works; -1 for none. */
   HERALD_LESSON_HOUR_UTC: z.coerce.number().int().min(-1).max(23).default(14),
-  /** The manual page, e.g. https://<site>/docs.html: each lesson links to its section. Without it, no link. */
+  /** The manual page, e.g. https://<site>/docs: each lesson links to its section. Without it, no link. */
   HERALD_MANUAL_URL: z.string().url().optional(),
   /** A post still waiting after this long is dropped as old news. */
   HERALD_STALE_HOURS: z.coerce.number().positive().default(12),
@@ -120,7 +120,7 @@ const schema = z.object({
   /** The Discord application behind `/ask` (Developer Portal → General Information): its id and public key. Both set: the command is served. */
   DISCORD_APPLICATION_ID: z.string().optional(),
   DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "64 hex characters").optional(),
-  /** The manual page `/ask` links its sections to, e.g. https://<site>/docs.html. Defaults to HERALD_MANUAL_URL. */
+  /** The manual page `/ask` links its sections to, e.g. https://<site>/docs. Defaults to HERALD_MANUAL_URL. */
   DISCORD_MANUAL_URL: z.string().url().optional(),
 });
 

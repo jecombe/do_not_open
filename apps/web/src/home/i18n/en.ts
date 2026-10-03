@@ -1,7 +1,8 @@
 /** English is the reference for the home page: every other dictionary must hold exactly these keys. */
 export const homeEn = {
-  "home.title": "DO NOT OPEN, there's a cat in the box",
-  "home.description": "{supply} sealed boxes, one cat in each, and nobody knows which. A little game about curiosity.",
+  "home.title": "DO NOT OPEN, a confidential NFT game about cats in boxes",
+  "home.description": "{supply} sealed boxes, one cat in each, and nobody knows which. A confidential NFT game on Zama's fhEVM: cats and holders stay encrypted on-chain.",
+  "home.imageAlt": "A sealed cardboard box stamped DO NOT OPEN, with a cat inside that nobody can see",
   "home.nav": "Site",
   "home.nav.cats": "The cats",
   "home.nav.how": "How to play",
