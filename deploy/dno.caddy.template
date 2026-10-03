@@ -1,4 +1,4 @@
-# DO NOT OPEN API. Rendered by deploy.sh into /opt/edge/sites/dno.caddy: __API_HOSTS__ becomes
+# DO NOT OPEN API. Rendered by deploy.sh into /opt/edge/sites/dno.caddy: the site address is
 # API_DOMAIN followed by API_ALIASES from the server's .env. Caddy gets a certificate for each
 # name and redirects plain HTTP to HTTPS.
 __API_HOSTS__ {
