@@ -95,7 +95,7 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /v1/boxes/:id/pantry` | Welcome bag, next claim, weigh-in |
 | `GET /v1/boxes/:id/activity` | The box's events, newest first (`before`, `limit`) |
 | `GET /v1/pairs/:a/:b` | The duels the two boxes can settle (`duels`, a list: both can be up at once) and the entanglement proposal between them |
-| `GET /v1/duels/shelf` | The duel shelf: every box up for a duel that can still be taken up, newest first |
+| `GET /v1/duels/shelf` | The duel shelf: every box up for a duel that can still be taken up (in time, its box and any reserved one still sealed), newest first |
 | `GET /v1/duels?account=&tokens=&open=` | Duels an account posted or took up, or about these boxes. `open` keeps posted, open and pending ones. The token list is not stored or cached. |
 | `GET /v1/duels/:id` | One duel |
 | `GET /v1/leaderboard` | Opened cats and their openers |

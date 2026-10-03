@@ -215,6 +215,13 @@ describe("MockAdapter", () => {
     expect(await refusal(chain.acceptDuel(listed.duelId, 1))).toBe("WrongDuelStatus");
   });
 
+  it("takes a listing off the shelf once its box is opened", async () => {
+    const chain = await fresh();
+    await chain.postDuel(0);
+    await chain.observe(0);
+    expect((await chain.duelShelf()).map((d) => d.tokenA)).toEqual([4, 3]);
+  });
+
   it("puts a duel back on the shelf when the taker brought a box they do not hold", async () => {
     const chain = await fresh();
     const listed = (await chain.duelShelf()).find((d) => d.tokenA === 3)!;

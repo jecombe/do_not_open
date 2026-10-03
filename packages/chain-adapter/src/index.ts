@@ -3,7 +3,7 @@ import type { ChainAdapter } from "./types";
 
 export * from "./types";
 export { traitIndexAtOffset } from "./layout";
-export { duelSettles, duelUnderway, onShelf } from "./duels";
+export { duelSettles, duelUnderway, onShelf, shelfBoxes } from "./duels";
 export { CLAIM_WINDOW, claimWindows } from "./claims";
 export { decoyPlan, type Send } from "./decoys";
 export { MockAdapter, mockSeedForToken, mockWeighIn, MOCK_YOU, MOCK_NIGHT_SHIFT, type MockOptions } from "./mock/MockAdapter";

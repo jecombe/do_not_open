@@ -1,5 +1,5 @@
 import { minted, type Box } from "../domain/box";
-import { OPEN_DUEL, settles, type Duel } from "../domain/duel";
+import { OPEN_DUEL, settles, shelfBoxes, type Duel } from "../domain/duel";
 import type { ProtocolEvent } from "../domain/events";
 import type { Address, DuelStatus } from "../domain/types";
 import type { User } from "../domain/user";
@@ -156,8 +156,13 @@ export class Queries {
   }
 
   /** The duel shelf: every box up for a duel that can still be taken up, newest first. */
-  duelShelf(): Promise<Duel[]> {
-    return this.store.duels({ statuses: ["open"], inTimeAt: this.now(), limit: SHELF_LIMIT });
+  /** Duels someone can still take up: in time, and their boxes still sealed. */
+  async duelShelf(): Promise<Duel[]> {
+    const listed = await this.store.duels({ statuses: ["open"], inTimeAt: this.now(), limit: SHELF_LIMIT });
+    const ids = [...new Set(listed.flatMap(shelfBoxes))];
+    const boxes = await Promise.all(ids.map((id) => this.store.box(id)));
+    const opened = new Set(boxes.flatMap((b) => (b?.status === "revealed" ? [b.tokenId] : [])));
+    return listed.filter((d) => !shelfBoxes(d).some((id) => opened.has(id)));
   }
 
   async leaderboard(): Promise<OpenedCatView[]> {

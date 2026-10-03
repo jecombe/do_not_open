@@ -7,6 +7,14 @@ export function onShelf(d: DuelShape, nowSeconds = Date.now() / 1000): boolean {
   return d.status === "open" && (d.openUntil === null || nowSeconds <= d.openUntil);
 }
 
+/**
+ * The boxes a duel on the shelf needs still sealed to be taken up: its own, and the one it is
+ * reserved for. Once either is opened `acceptDuel` reverts, but nothing takes the listing down.
+ */
+export function shelfBoxes(d: Pick<DuelInfo, "tokenA" | "tokenB" | "reserved">): number[] {
+  return d.reserved && d.tokenB !== null ? [d.tokenA, d.tokenB] : [d.tokenA];
+}
+
 /** Whether a duel is still waiting for someone: its proof, a taker, or its outcome. */
 export function duelUnderway(d: DuelShape, nowSeconds = Date.now() / 1000): boolean {
   return d.status === "posted" || d.status === "pending" || onShelf(d, nowSeconds);

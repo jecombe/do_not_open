@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActionOptions, BoxInfo, BoxPantry, DuelInfo, PantryDay, Step, TraitRoll } from "@dno/chain-adapter";
+import { sameAddress, type ActionOptions, type BoxInfo, type BoxPantry, type DuelInfo, type PantryDay, type Step, type TraitRoll } from "@dno/chain-adapter";
 import { spec as gameSpec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -240,6 +240,12 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   }, [load, reset]);
 
   const isHolder = myBoxes.includes(tokenId);
+  // The account's own listing of this box, on the shelf or waiting for its proof. Opened, nobody
+  // can take it up; given away, whoever does gets a void duel. Better withdrawn first.
+  const listing =
+    isHolder && duels?.tokenId === tokenId
+      ? (duels.list.find((d) => d.tokenA === tokenId && (d.status === "open" || d.status === "posted") && sameAddress(d.challenger, account)) ?? null)
+      : null;
   const busy = action.busy ?? (opening ? "open" : null);
   const onOpened = useCallback(() => setOpening(false), []);
   // Previous and next go round the player's own boxes only, in order.
@@ -286,6 +292,16 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
     scene.current?.pet();
     setNote("box.noteFed");
     void load();
+  };
+
+  const withdraw = async () => {
+    if (!listing) return;
+    start();
+    const done = await action.run("withdraw", async (o) => {
+      await adapter.cancelDuel(listing.duelId, o);
+      return true;
+    });
+    if (done) void load();
   };
 
   const croqAmount = parseAmount(croq, 0);
@@ -584,6 +600,15 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
               </div>
 
               {account && boxesKnown && info?.status === "sealed" && <PayLine busy={busy} need={(isHolder ? collection?.fees.observe : collection?.fees.paidShake) ?? 0n} />}
+
+              {listing && info?.status === "sealed" && (
+                <p className="fine">
+                  {t("box.listed")}{" "}
+                  <button type="button" className="link" onClick={() => void withdraw()} disabled={!!busy}>
+                    {busy === "withdraw" ? t("box.withdrawing") : t("duels.withdraw")}
+                  </button>
+                </p>
+              )}
 
               {giving && isHolder && (
                 <form

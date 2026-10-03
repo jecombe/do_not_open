@@ -391,7 +391,11 @@ older one, unless that one was accepted and waits for its outcome. Then the new 
 gives way and ends `Cancelled` (the adapter reports `DuelPending`): the outcome is public as
 soon as a duel is accepted, and a challenger who could cancel it would escape every loss. A proven duel can be taken up for 7 days (`DUEL_LIFETIME`); after that,
 `acceptDuel` reverts with `DuelExpired`. A reserved duel only takes the named box
-(`NotThisBox` otherwise); nobody can take up a duel with box A itself.
+(`NotThisBox` otherwise); nobody can take up a duel with box A itself. Opening box A, or the
+box a duel is reserved for, does not take the listing down on-chain, but `acceptDuel` then
+reverts with `NotSealed`: the API and the adapter leave such listings off the shelf, and the
+box page asks the challenger to withdraw a listed box before opening or giving it away (given
+away, a taker would only get a void duel).
 
 The loser's roll is chosen with an encrypted `select`, so the winner's roll for that
 trait is never in a decryptable ciphertext. Ties go to B. The score compared is the base

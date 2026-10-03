@@ -532,6 +532,8 @@ export const en = {
   "box.openYours": " It is yours.",
   "box.weighPromptHidden": "Put it on the scales. How much it ate was secret until now; the scales make it public.",
   "box.todayUnread": "Reading what it ate today…",
+  "box.listed": "Up for a duel on the shelf. Opened or given away, it can no longer be fought: withdraw it first.",
+  "box.withdrawing": "Withdrawing…",
   "box.give": "Give it",
   "box.giving": "Giving…",
   "box.giveTo": "Give it to",

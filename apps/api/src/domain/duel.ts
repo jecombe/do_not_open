@@ -38,6 +38,12 @@ export const isOpen = (d: Pick<Duel, "status">): boolean => OPEN_DUEL.includes(d
 /** On the shelf and still in time at `now` (unix seconds). */
 export const onShelf = (d: Pick<Duel, "status" | "openUntil">, now: number): boolean => d.status === "open" && (d.openUntil === null || now <= d.openUntil);
 
+/**
+ * The boxes a duel on the shelf needs still sealed to be taken up: its own, and the one it is
+ * reserved for. Once either is opened `acceptDuel` reverts, but nothing takes the listing down.
+ */
+export const shelfBoxes = (d: Pick<Duel, "tokenA" | "tokenB" | "reserved">): number[] => (d.reserved && d.tokenB !== null ? [d.tokenA, d.tokenB] : [d.tokenA]);
+
 export const involves = (d: Pick<Duel, "tokenA" | "tokenB">, tokenId: number): boolean => d.tokenA === tokenId || d.tokenB === tokenId;
 
 /**

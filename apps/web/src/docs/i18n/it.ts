@@ -305,7 +305,7 @@ export const docsIt: Record<DocsKey, string> = {
   "flow.duel.s2": "Quel bit, decifrato in pubblico",
   "flow.duel.s2.v": "Chiunque lo chiede, come ogni decifrazione pubblica. Un duello è un atto pubblico: lo scaffale porta solo scatole di cui è stata provata la detenzione.",
   "flow.duel.s3": "Sullo scaffale, per una settimana",
-  "flow.duel.s3.v": "Se detieni la scatola, va sullo scaffale dei duelli per sette giorni. Altrimenti il duello è nullo e non si mostra altro. Un annuncio per scatola: rimetterla in gioco sostituisce il precedente, finché nessuno l'ha accettato. Una volta accettato, la scatola non può tornare in gioco finché quel duello non si chiude: un nuovo annuncio cede il passo e finisce annullato, perché nessuno possa leggere il risultato e sottrarsi a una sconfitta.",
+  "flow.duel.s3.v": "Se detieni la scatola, va sullo scaffale dei duelli per sette giorni. Altrimenti il duello è nullo e non si mostra altro. Un annuncio per scatola: rimetterla in gioco sostituisce il precedente, finché nessuno l'ha accettato. Una volta accettato, la scatola non può tornare in gioco finché quel duello non si chiude: un nuovo annuncio cede il passo e finisce annullato, perché nessuno possa leggere il risultato e sottrarsi a una sconfitta. Aperta, o se la scatola riservata è aperta, lascia lo scaffale: nessuno può più accettarla.",
   "flow.duel.s4": "Qualcuno la accetta",
   "flow.duel.s4.v": "Con qualsiasi scatola sigillata, o solo con quella a cui era riservata. Il punteggio della sua scatola viene calcolato allo stesso modo.",
   "flow.duel.s5": "Detentori e punteggi, confrontati alla cieca",

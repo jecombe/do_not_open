@@ -523,6 +523,8 @@ export const es: Record<AppKey, string> = {
   "box.openYours": " Es tuya.",
   "box.weighPromptHidden": "Ponlo en la báscula. Lo que comió era secreto hasta ahora; la báscula lo hace público.",
   "box.todayUnread": "Leyendo lo que comió hoy…",
+  "box.listed": "En duelo en el estante. Abierta o regalada, ya no puede pelear: retírala primero.",
+  "box.withdrawing": "Retirando…",
   "box.give": "Regalarla",
   "box.giving": "Enviando…",
   "box.giveTo": "Regalarla a",

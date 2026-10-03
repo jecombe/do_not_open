@@ -13,7 +13,7 @@ import {
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
 import { decoyPlan } from "../decoys";
-import { duelSettles, duelUnderway, onShelf } from "../duels";
+import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import { traitIndexAtOffset } from "../layout";
 import {
   ChainError,
@@ -634,7 +634,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
   async duelShelf(): Promise<DuelInfo[]> {
     return this.indexed(
       (ix) => ix.duelShelf(),
-      async () => (await this.recentDuels()).filter((d) => onShelf(d)),
+      async () => {
+        const listed = (await this.recentDuels()).filter((d) => onShelf(d));
+        // A listing whose box was opened stays open on-chain, but nobody can take it up.
+        const ids = [...new Set(listed.flatMap(shelfBoxes))];
+        const statuses = await this.reading(Promise.all(ids.map((id) => this.contract.status!(id))));
+        const opened = new Set(ids.filter((_, i) => BOX_STATUS[Number(statuses[i])] === "revealed"));
+        return listed.filter((d) => !shelfBoxes(d).some((id) => opened.has(id)));
+      },
     );
   }
 
