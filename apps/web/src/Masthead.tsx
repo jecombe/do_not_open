@@ -270,7 +270,7 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
             </strong>
           </p>
           <div className="slip-section">
-            <TxPending busy={own.busy} step={own.step} title={t(own.busy === "credits" ? "credits.buying" : own.busy === "reveal" ? "pantry.revealing" : "tx.working")} secret={own.busy === "reveal"}>
+            <TxPending busy={own.busy} step={own.step} title={t(own.busy === "reveal" ? "pantry.revealing" : "tx.working")} secret={own.busy === "reveal"}>
               <p className="fine">
                 <button type="button" className="link" onClick={() => void own.run("reveal", shielded.reveal)} disabled={working}>
                   {known ? t("nav.decryptAgain") : t("nav.decrypt")}
@@ -299,7 +299,7 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
                 </p>
               )}
 
-              <DecryptionCredits id={id} adapter={adapter} own={own} symbol={payment.symbol} decimals={payment.decimals} />
+              <DecryptionCredits adapter={adapter} busy={!!own.busy} />
 
               <div aria-live="polite">{own.error && <ProblemNote problem={own.error} />}</div>
             </TxPending>
@@ -319,17 +319,16 @@ function WalletSlip({ id, account, onDisconnect }: { id: string; account: Addres
 
 /**
  * Where the collection pays Zama for each decryption (mainnet): what the wallet may still
- * decrypt today, and a way to buy more. Nothing shows where nobody counts.
+ * decrypt today, and the way to the bureau de change, where more are bought. Nothing shows
+ * where nobody counts.
  */
-function DecryptionCredits(props: { id: string; adapter: ChainAdapter; own: ReturnType<typeof useAction>; symbol: string; decimals: number }) {
-  const { id, adapter, own, symbol, decimals } = props;
+function DecryptionCredits({ adapter, busy }: { adapter: ChainAdapter; busy: boolean }) {
   const t = useT();
   const [allowance, setAllowance] = useState<DecryptionAllowance | null>(null);
-  const [count, setCount] = useState("100");
 
-  // Again after every action: a decryption or a purchase changes it.
+  // Again after every action: a decryption changes it.
   useEffect(() => {
-    if (own.busy) return;
+    if (busy) return;
     let live = true;
     adapter.decryptionAllowance().then(
       (a) => live && setAllowance(a),
@@ -338,39 +337,22 @@ function DecryptionCredits(props: { id: string; adapter: ChainAdapter; own: Retu
     return () => {
       live = false;
     };
-  }, [adapter, own.busy]);
+  }, [adapter, busy]);
 
   if (!allowance) return null;
-  const n = /^\d{1,7}$/.test(count.trim()) ? Number(count.trim()) : 0;
-  const price = allowance.price;
-  const buy = () => {
-    if (n > 0) void own.run("credits", (o) => adapter.buyCredits(n, o));
-  };
   return (
     <>
       <p className="slip-heading">{t("credits.heading")}</p>
       <p className="fine" aria-live="polite">
         {t("credits.left", { free: allowance.freeLeft, perDay: allowance.freePerDay, credits: allowance.credits })}
       </p>
-      {price !== null && (
-        <>
-          <form
-            className="find"
-            onSubmit={(e) => {
-              e.preventDefault();
-              buy();
-            }}
-          >
-            <label htmlFor={`${id}-credits`}>{t("credits.label")}</label>
-            <input id={`${id}-credits`} inputMode="numeric" autoComplete="off" value={count} onChange={(e) => setCount(e.target.value)} disabled={!!own.busy} />
-            <button type="submit" className="plain-button" disabled={!!own.busy || n <= 0}>
-              {own.busy === "credits" ? t("credits.buying") : t("credits.go")}
-            </button>
-          </form>
-          {n > 0 && <p className="fine">{t("credits.price", { n, total: formatAmount(price * BigInt(n), decimals), symbol })}</p>}
-        </>
+      {allowance.price !== null && (
+        <p className="fine">
+          <button type="button" className="link" onClick={() => openExchange({ credits: true })} disabled={busy}>
+            {t("credits.atBureau")}
+          </button>
+        </p>
       )}
-      <p className="fine">{t("credits.why", { input: allowance.inputUnits })}</p>
     </>
   );
 }

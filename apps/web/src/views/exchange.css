@@ -65,15 +65,59 @@
   color: rgb(233 223 200 / 0.78);
 }
 
+/* Three windows on a wide wall: credits on the left, the counter in the middle, the holdings on the right. */
 .bureau-grid {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 540px) minmax(0, 300px);
+  grid-template-areas: "counter ledger";
   justify-content: center;
   align-items: start;
   gap: 28px;
   max-width: 940px;
   margin: 0 auto;
+}
+
+.bureau-grid:has(.credit-desk) {
+  grid-template-columns: minmax(0, 270px) minmax(0, 540px) minmax(0, 300px);
+  grid-template-areas: "credits counter ledger";
+  max-width: 1200px;
+}
+
+.bureau-grid > .counter {
+  grid-area: counter;
+}
+
+.bureau-grid > .ledger {
+  grid-area: ledger;
+}
+
+.bureau-grid > .credit-desk {
+  grid-area: credits;
+}
+
+.bureau-grid > .ledger,
+.bureau-grid > .credit-desk {
+  position: sticky;
+  top: 96px;
+}
+
+/* Too narrow for three: the credits go under the holdings, the counter keeps the left. */
+@media (max-width: 1200px) {
+  .bureau-grid:has(.credit-desk) {
+    grid-template-columns: minmax(0, 540px) minmax(0, 300px);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "counter ledger"
+      "counter credits";
+    max-width: 940px;
+  }
+
+  .bureau-grid > .ledger,
+  .bureau-grid > .credit-desk {
+    position: relative;
+    top: 0;
+  }
 }
 
 /* --- The counter slip --- */
@@ -881,14 +925,6 @@ input.crate-amount[aria-invalid="true"] {
 }
 
 /* --- Ledger: what the account holds --- */
-.bureau-side {
-  position: sticky;
-  top: 96px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
 .ledger {
   padding: 16px 16px 14px;
   background: rgb(233 223 200 / 0.06);
@@ -980,8 +1016,12 @@ input.crate-amount[aria-invalid="true"] {
 }
 
 .credit-desk-left {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 15px;
+}
+
+.credit-desk .credit-desk-split {
+  margin: 2px 0 12px;
 }
 
 .credit-desk-left strong {
@@ -1028,6 +1068,7 @@ input.crate-amount[aria-invalid="true"] {
 
 .credit-desk .fine {
   color: rgb(233 223 200 / 0.75);
+  font-size: 14px;
 }
 
 .credit-desk .fine.problem {
@@ -1077,19 +1118,21 @@ input.crate-amount[aria-invalid="true"] {
 }
 
 @media (max-width: 900px) {
-  .bureau-grid {
+  .bureau-grid,
+  .bureau-grid:has(.credit-desk) {
     grid-template-columns: minmax(0, 560px);
-  }
-
-  .bureau-side {
-    position: relative;
-    top: 0;
+    grid-template-rows: none;
+    grid-template-areas:
+      "counter"
+      "ledger"
+      "credits";
   }
 }
 
 @media (max-width: 700px) {
+  /* On a phone the masthead is three rows (stamp, tags, balances): the counter starts under all of them. */
   .bureau {
-    padding-top: calc(var(--gutter) + 84px);
+    padding-top: calc(var(--gutter) + 164px);
   }
 
   .bureau-sign {
