@@ -28,6 +28,7 @@ import { takePreset, onOpenExchange, type ExchangePreset } from "./exchangeLink"
 import { parseAmount } from "./PantryView";
 import { ProblemNote } from "./ProblemNote";
 import { BoxSpinner } from "./TxPending";
+import { CreditDesk } from "./CreditDesk";
 import "./exchange.css";
 
 /** Kept for gas when "Max" is pressed on the chain's own coin, in thousandths of a coin. */
@@ -591,7 +592,19 @@ export function ExchangeView() {
           </div>
         </section>
 
-        <Ledger desk={desk} held={held} sealedKnown={(k) => sealedValue(k) !== null} revealing={revealing} onReveal={(k) => void reveal(k)} onPick={(k) => pick("from", k)} current={from} onDone={() => setTick((n) => n + 1)} disabled={running} />
+        <div className="bureau-side">
+          <Ledger desk={desk} held={held} sealedKnown={(k) => sealedValue(k) !== null} revealing={revealing} onReveal={(k) => void reveal(k)} onPick={(k) => pick("from", k)} current={from} onDone={() => setTick((n) => n + 1)} disabled={running} />
+          <CreditDesk
+            usdc={balances.usdc ?? null}
+            onGetUsdc={desk && findRoute(desk, "eth", "usdc") ? () => {
+                    applyPreset({ from: "eth", to: "usdc" });
+                    document.getElementById(`${formId}-in`)?.focus();
+                  }
+                : null}
+            onDone={() => setTick((n) => n + 1)}
+            disabled={running}
+          />
+        </div>
       </div>
     </main>
   );

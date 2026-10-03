@@ -881,9 +881,15 @@ input.crate-amount[aria-invalid="true"] {
 }
 
 /* --- Ledger: what the account holds --- */
-.ledger {
+.bureau-side {
   position: sticky;
   top: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ledger {
   padding: 16px 16px 14px;
   background: rgb(233 223 200 / 0.06);
   border: 2px solid rgb(233 223 200 / 0.35);
@@ -955,6 +961,101 @@ input.crate-amount[aria-invalid="true"] {
   color: var(--sodium);
 }
 
+/* --- Decryption credits: beside the ledger, not in it. A ticket window, dashed: what is spent, not held. --- */
+.credit-desk {
+  padding: 14px 16px;
+  background: rgb(125 227 208 / 0.05);
+  border: 2px dashed rgb(125 227 208 / 0.45);
+  color: var(--manifest);
+}
+
+.credit-desk-title {
+  margin: 0 0 6px;
+  font-family: var(--stencil);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--spectral);
+}
+
+.credit-desk-left {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.credit-desk-left strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.credit-desk-presets {
+  display: flex;
+  gap: 6px;
+}
+
+.credit-desk-presets button,
+.credit-desk-presets input {
+  min-width: 0;
+  padding: 5px 8px;
+  background: none;
+  color: var(--manifest);
+  border: 1px solid rgb(233 223 200 / 0.4);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.credit-desk-presets button {
+  flex: 0 0 auto;
+}
+
+.credit-desk-presets button[aria-pressed="true"] {
+  background: var(--spectral);
+  color: var(--ink);
+  border-color: var(--spectral);
+}
+
+.credit-desk-presets input {
+  flex: 1 1 60px;
+  text-align: right;
+}
+
+.credit-desk-price {
+  margin: 10px 0 2px;
+  font-weight: 700;
+}
+
+.credit-desk .fine {
+  color: rgb(233 223 200 / 0.75);
+}
+
+.credit-desk .fine.problem {
+  color: var(--sodium);
+}
+
+.credit-desk .link:hover {
+  color: var(--sodium);
+}
+
+.credit-desk .credit-desk-go {
+  width: 100%;
+  margin: 8px 0 10px;
+  background: var(--spectral);
+  color: var(--ink);
+  border-color: var(--spectral);
+}
+
+.credit-desk .credit-desk-go:hover:not(:disabled) {
+  background: var(--manifest);
+  border-color: var(--manifest);
+  color: var(--ink);
+}
+
+.credit-desk .credit-desk-go:disabled {
+  opacity: 0.45;
+}
+
 /* The footer notice sits over the scrolling counter: give it a floor to stand on. */
 .app:has(.bureau) .notice {
   inset: auto 0 0;
@@ -980,7 +1081,7 @@ input.crate-amount[aria-invalid="true"] {
     grid-template-columns: minmax(0, 560px);
   }
 
-  .ledger {
+  .bureau-side {
     position: relative;
     top: 0;
   }
