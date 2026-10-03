@@ -446,8 +446,12 @@ export interface ChainAdapter {
   account(): Address | null;
   /** Wallets the user can pick from. Empty when there is only one way in (the mock). */
   wallets(): WalletOption[];
-  /** Asks the wallet for an account and moves it to the right network. `walletId` picks one of `wallets()`. */
-  connect(walletId?: string): Promise<Address>;
+  /**
+   * Asks the wallet for an account and moves it to the right network. `walletId` picks one of
+   * `wallets()`. With `chooseAccount`, the wallet shows its account picker again (EIP-2255
+   * `wallet_requestPermissions`) instead of handing back the account it shared last time.
+   */
+  connect(walletId?: string, opts?: { chooseAccount?: boolean }): Promise<Address>;
   disconnect(): Promise<void>;
   /** Fires when the account changes or disconnects. Returns the unsubscribe function. */
   onAccountChange(listener: (account: Address | null) => void): () => void;

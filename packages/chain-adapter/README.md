@@ -144,6 +144,10 @@ fails with `no-credits` before any gas. `buyCredits(n)` buys more. Only the API 
 `decryptionAllowance()` has no chain fallback: after a transaction it waits (about 30 s at most)
 for the API to index it, so credits just bought are never read as missing.
 
+`connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its
+account picker again (EIP-2255 `wallet_requestPermissions`) rather than handing back the
+account it shared last time; the app's "Use another one" on the release form uses it.
+
 `signTerms(message)` has the connected wallet sign the release form the app shows before
 play (a readable EIP-191 message naming the address, the terms version and the SHA-256 of
 the English text; free, no transaction), then files it with the API (`POST /v1/terms`) when

@@ -55,7 +55,10 @@ sequenceDiagram
 ```
 
 Without a wallet nothing is asked: a visitor browses the depot, the shelf and the manual
-freely, and the form comes up when a wallet that has not signed it connects. The menu's "Terms of play" shows the form again with the
+freely, and the form comes up when a wallet that has not signed it connects. The form
+can be closed ("Not now") or used to switch wallets ("Use another one" asks the wallet for
+its account picker); while the connected wallet has not signed, every action (`useAction`)
+opens the form again instead of running. The menu's "Terms of play" shows the form again with the
 signature. In mock mode the signature is a stand-in, kept locally.
 
 ## Mint

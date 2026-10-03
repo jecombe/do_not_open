@@ -3,15 +3,14 @@ import { shortAddress, type SignedTerms } from "@dno/chain-adapter";
 import { useChain } from "../chain/ChainProvider";
 import { problemOf } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
-import { getLocale } from "../i18n/locale";
-import { homePath } from "../site";
-import { CLAUSES, keepSignature, onOpenTerms, setGateUp, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
+import { CLAUSES, keepSignature, onOpenTerms, onRequireTerms, setGateUp, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
 import "./terms.css";
 
 /**
  * The release form, when a wallet connects: every clause initialed by hand, then signed with the
  * wallet (free, off-chain), and the signature filed with the API as a record. It comes back for
- * each new wallet and each new version of the terms. From the menu, it shows what was signed.
+ * each new wallet and each new version of the terms. It can be closed to look around; any action
+ * then brings it back until it is signed. From the menu, it shows what was signed.
  */
 export function TermsGate() {
   const { account, mode } = useChain();
@@ -19,13 +18,16 @@ export function TermsGate() {
   const [viewing, setViewing] = useState(false);
   // A form just signed stays up until the player walks in: they see their seal.
   const [sealed, setSealed] = useState<SignedTerms | null>(null);
+  // The wallet that closed the form unsigned: it stays closed until that wallet asks to act.
+  const [dismissed, setDismissed] = useState<string | null>(null);
   useEffect(() => onOpenTerms(() => setViewing(true)), []);
+  useEffect(() => onRequireTerms(() => setDismissed(null)), []);
 
   const mine = account ? record.signed[account.toLowerCase()] : undefined;
   // Nothing is asked of a visitor without a wallet: the form comes up when a wallet connects
   // that has not signed it.
   const required = !!account && !mine;
-  const shown = required || !!sealed || viewing;
+  const shown = (required && dismissed !== account) || !!sealed || viewing;
   useEffect(() => setGateUp(shown), [shown]);
   useEffect(() => () => setGateUp(false), []);
   if (!shown) return null;
@@ -38,6 +40,7 @@ export function TermsGate() {
       mock={mode === "mock"}
       onSealed={setSealed}
       onClose={() => {
+        if (required && !sealed) setDismissed(account);
         setSealed(null);
         setViewing(false);
       }}
@@ -62,13 +65,13 @@ function Form(props: { required: boolean; viewOnly: boolean; signedOnly: boolean
   useEffect(() => {
     root.current?.querySelector<HTMLElement>(".initial:not(.is-done), .terms-sign button, .terms-close")?.focus();
   }, []);
-  // A form being signed cannot be pushed away; one being read can.
+  // Escape puts the form away, unless the wallet is signing it.
   useEffect(() => {
-    if (required) return;
+    if (signing) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [required, onClose]);
+  }, [signing, onClose]);
 
   const allInitialed = initials.size === CLAUSES.length;
   const stampText = account ? account.slice(2, 5).toUpperCase() : "OK";
@@ -182,6 +185,14 @@ function Form(props: { required: boolean; viewOnly: boolean; signedOnly: boolean
                     {signing ? t("terms.signing") : t("terms.sign")}
                   </button>
                   <p className="fine">{mock ? t("terms.mockSign") : t("terms.free")}</p>
+                  {!mock && (
+                    <p className="fine terms-other">
+                      {t("terms.notThisWallet")}{" "}
+                      <button type="button" className="link" onClick={() => void chain.switchWallet()} disabled={signing}>
+                        {t("terms.switchWallet")}
+                      </button>
+                    </p>
+                  )}
                 </>
               )}
               {(error || chain.connectError) && (
@@ -190,9 +201,9 @@ function Form(props: { required: boolean; viewOnly: boolean; signedOnly: boolean
                 </p>
               )}
               <p className="fine terms-leave">
-                <a className="link" href={homePath(getLocale())}>
-                  {t("terms.leave")}
-                </a>
+                <button type="button" className="link" onClick={onClose} disabled={signing}>
+                  {t("terms.later")}
+                </button>
               </p>
             </div>
           )}

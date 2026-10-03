@@ -321,8 +321,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return this.opts.wallet.options();
   }
 
-  async connect(walletId?: string): Promise<Address> {
-    const signer = await this.opts.wallet.connect(walletId);
+  async connect(walletId?: string, opts?: { chooseAccount?: boolean }): Promise<Address> {
+    const signer = await this.opts.wallet.connect(walletId, opts?.chooseAccount);
     await this.adopt(signer);
     return this.address_!;
   }

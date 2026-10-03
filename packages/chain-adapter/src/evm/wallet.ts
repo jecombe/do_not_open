@@ -8,8 +8,9 @@ export interface WalletSource {
   current(): Signer | null;
   /** The wallets the user can pick from. Empty when there is nothing to pick. */
   options(): WalletOption[];
-  /** May prompt the user. `id` picks one of `options()`; without it, the last one used or the only one. */
-  connect(id?: string): Promise<Signer>;
+  /** May prompt the user. `id` picks one of `options()`; without it, the last one used or the only one.
+   *  `chooseAccount` asks the wallet to show its account picker again. */
+  connect(id?: string, chooseAccount?: boolean): Promise<Signer>;
   disconnect(): Promise<void>;
   onChange(listener: (signer: Signer | null) => void): () => void;
 }
@@ -95,11 +96,18 @@ export class InjectedWallet implements WalletSource {
     return this.walletConnectProjectId ? [...injected, { id: WALLETCONNECT_ID, name: "WalletConnect", icon: null }] : injected;
   }
 
-  async connect(id?: string): Promise<Signer> {
+  async connect(id?: string, chooseAccount = false): Promise<Signer> {
     try {
       const wanted = id ?? this.options()[0]?.id;
       const walletConnect = wanted === WALLETCONNECT_ID ? await this.loadWalletConnect() : null;
       const ethereum = this.use(wanted);
+      // An extension hands back the account it shared last time; asking for the permission again
+      // opens its account picker. Wallets without EIP-2255 just connect as usual.
+      if (chooseAccount && !walletConnect) {
+        await ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] }).catch((error: { code?: number }) => {
+          if (error?.code === 4001 || error?.code === -32002) throw error;
+        });
+      }
       // WalletConnect answers eth_requestAccounts from its session: `enable` is what opens the modal.
       const accounts = walletConnect ? await walletConnect.enable() : ((await ethereum.request({ method: "eth_requestAccounts" })) as string[]);
       await this.ensureChain(ethereum);
