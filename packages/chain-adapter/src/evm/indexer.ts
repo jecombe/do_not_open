@@ -150,6 +150,33 @@ export class IndexerClient {
     }
   }
 
+  private async post<T>(path: string, body: unknown): Promise<T> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 6000);
+    try {
+      const res = await (this.opts.fetch ?? fetch)(`${this.baseUrl}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`API ${res.status} on ${path}`);
+      return (await res.json()) as T;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** The message a wallet signs to sign in: bound to the API's domain, the address and a nonce. */
+  signInMessage(address: Address): Promise<{ message: string; expiresAt: number }> {
+    return this.post("/v1/auth/nonce", { address });
+  }
+
+  /** Trades the signed message for a bearer session. */
+  signIn(address: Address, signature: string): Promise<{ token: string; expiresAt: number }> {
+    return this.post("/v1/auth/verify", { address, signature });
+  }
+
   /** Files a signed release form with the API, which checks the signature and keeps it. */
   async recordTerms(address: Address, message: string, signature: string): Promise<void> {
     const controller = new AbortController();

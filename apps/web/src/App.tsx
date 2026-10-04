@@ -5,7 +5,7 @@ import { useChain } from "./chain/ChainProvider";
 import { Clerk } from "./chat/Clerk";
 import { DISCORD } from "./links";
 import { useT } from "./i18n/app";
-import { Masthead, type View } from "./Masthead";
+import { isMenuView, Masthead, type View } from "./Masthead";
 import { TermsGate } from "./terms/TermsGate";
 import { Tour } from "./tour/Tour";
 import { BoxView } from "./views/BoxView";
@@ -26,12 +26,18 @@ const linkedBox = (() => {
   return Number.isSafeInteger(id) && id >= 0 ? id : null;
 })();
 
+/** `app.html?view=pantry` opens on that view: where the studio's menu sends the player. */
+const linkedView = (() => {
+  const raw = new URLSearchParams(window.location.search).get("view");
+  return isMenuView(raw) ? raw : null;
+})();
+
 export function App() {
   const chain = useChain();
   const t = useT();
   const quality = useMemo(detectQuality, []);
   const sound = useMemo(() => new ShakeSound(), []);
-  const [view, setView] = useState<View>(linkedBox === null ? "shelf" : "box");
+  const [view, setView] = useState<View>(linkedBox !== null ? "box" : (linkedView ?? "shelf"));
   const [tokenId, setTokenId] = useState(linkedBox ?? 0);
   // The box the warehouse opens in front of: the one last looked at, when coming from it.
   const [pair, setPair] = useState<[number, number] | null>(null);
@@ -60,6 +66,8 @@ export function App() {
     const url = new URL(window.location.href);
     if (view === "box") url.searchParams.set("box", String(tokenId));
     else url.searchParams.delete("box");
+    // Read once at load: past that, the menu decides.
+    url.searchParams.delete("view");
     if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
   }, [view, tokenId]);
 

@@ -86,6 +86,8 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
       return tx.savePublished(e.handles, e.caller, e.block);
     case "CreditsBought":
       return tx.addCredits(e.account, e.credits);
+    case "PackBought":
+      return tx.addStudioUnits(e.account, e.sketches, e.models, e.paid);
     case "WeighInRequested":
       return updateBox(tx, e.tokenId, e.block, B.weighRequested);
     case "Weighed":

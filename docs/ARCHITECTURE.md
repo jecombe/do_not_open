@@ -205,6 +205,12 @@ a free daily allowance, then against the credits bought from `DecryptionCredits`
 adapter keeps every value it decrypted, by handle, in the browser, so nothing is paid for
 twice. Details: [`apps/api/README.md`](../apps/api/README.md#relayer-proxy).
 
+It also runs the studio's generations (`/v1/studio`): it reads the packs bought from
+`StudioPacks` out of the index, spends one unit before each call to the AI services (a
+cartoon sketch from a prompt in the house style, then a 3D model from a sketch), gives it
+back if the service fails, and caps what the services cost in a day. The keys stay on the
+server. Details: [`apps/api/README.md`](../apps/api/README.md).
+
 It also runs the manual's chatbot, the depot clerk (`POST /v1/chat`): Google's Gemini, on
 its free tier, answers from the whole manual of the player's language, with the key kept on
 the server; without a model, or past the day's limits, the clerk quotes the manual's best

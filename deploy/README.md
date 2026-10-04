@@ -63,6 +63,17 @@ are free on ArDrive's Turbo, so it never needs any. Then `docker compose up -d a
 images a minute go up, opened cats first, then every minted box. See
 [`apps/api/README.md`](../apps/api/README.md#token-images-on-arweave).
 
+The studio draws cats with fal.ai when `/opt/dno/.env` holds `FAL_KEY=...` and the network's
+deployment has a `StudioPacks` address (`dno:export` writes it), then `docker compose up -d api`.
+The key bills real dollars: `STUDIO_DAILY_BUDGET_USD` (20 by default) caps the estimated spend a
+day, `STUDIO_PAUSED=true` closes the studio at once, and on Sepolia, where packs are paid in test
+USDC, `STUDIO_ALLOWLIST=0x...,0x...` keeps generation to testers. Deploy `StudioPacks` and this
+API before the first pack is sold. Grafana's "The studio" row shows it open or off, packs sold,
+USDC brought in, the estimated AI cost and the margin, today's budget used, and jobs by status;
+Discord is told when the budget passes 80% or runs out, when over 30% of an hour's generations
+fail, when jobs pile up in fal's queue, when the studio is off with packs sold, and when the AI
+has cost more than the packs brought in. See [`apps/api/README.md`](../apps/api/README.md#the-studio).
+
 The collection speaks in a Discord channel (see [`apps/api/README.md`](../apps/api/README.md#the-collections-discord-channel-the-herald)):
 in the channel's settings, Integrations, Webhooks, create one and copy its URL, then add
 `HERALD_DISCORD=live` and `DISCORD_WEBHOOK_URL=...` to `/opt/dno/.env` (`HERALD_DISCORD=rehearse`
@@ -84,7 +95,7 @@ over the `edge` network (one file per network in `prometheus/targets/`: `sepolia
 (cAdvisor) and the public URLs (blackbox, one file per network in `prometheus/probes/`).
 Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they share).
 Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
-indexer, RPC pool, API traffic, Zama relayer calls, Arweave, Gemini, herald) and "Server and
+indexer, RPC pool, API traffic, Zama relayer calls, Arweave, Gemini, herald, the studio) and "Server and
 URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
 each titled with its network. Only Grafana is public, behind its own login; the edge proxy
 answers `404` to `/metrics` from outside. About 1.2 GB of memory at most (limits in the compose

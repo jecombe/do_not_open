@@ -9,6 +9,8 @@ import type { User } from "../../domain/user";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 import type { ArchiveStore } from "../../application/ports/archive";
+import type { StudioStore } from "../../application/ports/studio";
+import { NO_UNITS, unitsHeld, type StudioJob, type StudioLedger, type StudioUnits } from "../../domain/studio";
 
 interface State {
   cursor: number | null;
@@ -39,6 +41,10 @@ interface State {
   heraldCursors: Map<string, EventPosition>;
   /** Images stored on Arweave: permanent id by SHA-256. Kept across replays. */
   archived: Map<string, string>;
+  /** Studio units bought, a read model. */
+  studioBought: Map<Address, StudioUnits>;
+  /** Packs and USDC (smallest unit) per account. */
+  studioPaid: Map<Address, { packs: number; paid: bigint }>;
 }
 
 const emptyState = (): State => ({
@@ -65,6 +71,8 @@ const emptyState = (): State => ({
   posts: new Map(),
   heraldCursors: new Map(),
   archived: new Map(),
+  studioBought: new Map(),
+  studioPaid: new Map(),
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -75,8 +83,13 @@ const ref = (txHash: string, logIndex: number) => `${txHash}:${logIndex}`;
 const clone = <T>(v: T): T => structuredClone(v);
 
 /** The whole index in memory: for tests, and for running the API without Postgres. */
-export class MemoryStore implements Store, PostStore, ArchiveStore {
+export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore {
   private s = emptyState();
+  /**
+   * Studio jobs, by id. Kept across replays, and outside the state a sync transaction copies and
+   * swaps back: a job started while a batch runs would be lost with the copy.
+   */
+  private readonly jobs = new Map<string, StudioJob>();
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
     const draft = fork(this.s);
@@ -103,7 +116,7 @@ export class MemoryStore implements Store, PostStore, ArchiveStore {
           .slice(0, limit)
           .map(clone),
       resetReadModels: async () => {
-        for (const m of [s.boxes, s.duels, s.requests, s.proposals, s.mints, s.milestones, s.transfers, s.published, s.credits] as Map<unknown, unknown>[]) m.clear();
+        for (const m of [s.boxes, s.duels, s.requests, s.proposals, s.mints, s.milestones, s.transfers, s.published, s.credits, s.studioBought, s.studioPaid] as Map<unknown, unknown>[]) m.clear();
         // Sign-ins stay; on-chain activity is counted again by the replay.
         for (const [a, u] of s.users) {
           if (u.registeredAt === null) s.users.delete(a);
@@ -131,6 +144,12 @@ export class MemoryStore implements Store, PostStore, ArchiveStore {
         for (const h of handles) if (!s.published.has(h)) s.published.set(h, { caller, block });
       },
       addCredits: async (account, credits) => void s.credits.set(account, (s.credits.get(account) ?? 0) + credits),
+      addStudioUnits: async (account, sketches, models, paid = "0") => {
+        const b = s.studioBought.get(account) ?? NO_UNITS;
+        s.studioBought.set(account, { sketches: b.sketches + sketches, models: b.models + models });
+        const p = s.studioPaid.get(account) ?? { packs: 0, paid: 0n };
+        s.studioPaid.set(account, { packs: p.packs + 1, paid: p.paid + BigInt(paid) });
+      },
     };
   }
 
@@ -403,5 +422,89 @@ export class MemoryStore implements Store, PostStore, ArchiveStore {
 
   async archivedCount() {
     return this.s.archived.size;
+  }
+
+  async studioUnitsBought(account: Address) {
+    return { ...(this.s.studioBought.get(account) ?? NO_UNITS) };
+  }
+
+  async startStudioJob(account: Address, since: number, decide: (ledger: StudioLedger) => StudioJob | null) {
+    // No await between the read and the write: no other start can come in between.
+    const job = decide({ bought: { ...(this.s.studioBought.get(account) ?? NO_UNITS) }, used: this.usedNow(account), spentTodayUsd: this.spentNow(since) });
+    if (job) this.jobs.set(job.id, clone(job));
+    return job ? clone(job) : null;
+  }
+
+  async finishStudioJob(id: string, result: { status: "done" | "failed" | "rejected"; resultUrl: string | null; error: string | null }, at: number) {
+    const job = this.jobs.get(id);
+    if (job?.status === "running") this.jobs.set(id, { ...job, ...result, finishedAt: at });
+  }
+
+  async failStaleStudioJobs(before: number, error: string, at: number) {
+    let n = 0;
+    for (const job of this.jobs.values()) {
+      if (job.status === "running" && job.createdAt < before) {
+        this.jobs.set(job.id, { ...job, status: "failed", error, finishedAt: at });
+        n++;
+      }
+    }
+    return n;
+  }
+
+  async studioJob(id: string) {
+    return clone(this.jobs.get(id) ?? null);
+  }
+
+  async studioJobs(account: Address, limit: number) {
+    return this.jobsOf(account)
+      .sort((a, b) => b.createdAt - a.createdAt || (a.id < b.id ? 1 : -1))
+      .slice(0, limit)
+      .map(clone);
+  }
+
+  async studioUnitsUsed(account: Address) {
+    return this.usedNow(account);
+  }
+
+  async studioSpentSince(since: number) {
+    return this.spentNow(since);
+  }
+
+  async studioRefundsSince(account: Address, since: number) {
+    return this.jobsOf(account).filter((j) => j.status === "failed" && j.createdAt >= since).length;
+  }
+
+  async studioSales() {
+    let packs = 0;
+    let paid = 0n;
+    for (const p of this.s.studioPaid.values()) {
+      packs += p.packs;
+      paid += p.paid;
+    }
+    return { packs, paidUsdc: Number(paid) / 1e6 };
+  }
+
+  async studioJobCounts() {
+    const counts = new Map<string, { kind: string; status: string; count: number }>();
+    for (const j of this.jobs.values()) {
+      const key = `${j.kind}:${j.status}`;
+      const c = counts.get(key) ?? { kind: j.kind, status: j.status, count: 0 };
+      counts.set(key, { ...c, count: c.count + 1 });
+    }
+    return [...counts.values()];
+  }
+
+  private jobsOf(account: Address): StudioJob[] {
+    return [...this.jobs.values()].filter((j) => j.account === account);
+  }
+
+  private usedNow(account: Address): StudioUnits {
+    return unitsHeld(this.jobsOf(account));
+  }
+
+  private spentNow(since: number): number {
+    let usd = 0;
+    for (const j of this.jobs.values()) if (j.createdAt >= since) usd += j.costUsd;
+    return usd;
   }
 }

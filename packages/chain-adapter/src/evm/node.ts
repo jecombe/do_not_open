@@ -44,6 +44,7 @@ export function createSepoliaNodeAdapter(opts: NodeEvmOptions = {}): EvmFhevmAda
     indexer: indexer ?? undefined,
     metered: !!proxy,
     credits: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.credits ?? undefined),
+    studio: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.studio ?? undefined),
     readProvider: provider,
     wallet: signer
       ? new StaticWallet(signer)

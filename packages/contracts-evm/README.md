@@ -1,6 +1,6 @@
 # @dno/contracts-evm
 
-Hardhat project built on the official Zama template. Seven contracts, and a reusable base:
+Hardhat project built on the official Zama template. Eight contracts, and a reusable base:
 
 - **`DoNotOpenConfig`** — the game's numbers, read from `packages/game-spec/spec.json`
   at deploy (`lib/specParams.ts`), plus the plaintext rule that turns a revealed seed
@@ -27,6 +27,12 @@ Hardhat project built on the official Zama template. Seven contracts, and a reus
   change the beneficiary. It takes NFTs from the position manager only. Tests in
   `test/LiquidityLocker.ts` run against Uniswap's own V3 bytecode
   (`@uniswap/v3-core`, `@uniswap/v3-periphery`, dev dependencies) deployed in Hardhat.
+- **`StudioPacks`** — the studio's packs, sold in plain USDC before any AI generation: so many
+  sketches (cartoon pictures) and 3D models for a fixed price, paid straight to the treasury.
+  No FHE, and unrelated to the collection: it never reads or writes `DoNotOpen`. The backend
+  reads `PackBought` and spends the units off-chain. Packs from
+  `packages/game-spec/studio.json` (`lib/studioPacks.ts`, which refuses a pack priced under
+  `minMargin` times its estimated cost); the owner can change one with `setPack`, up to 100 USDC.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -67,6 +73,8 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `Pantry.claim`, 10 boxes | | ~14.8M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
+`StudioPacks` has no FHE either: `buy` takes ~115k gas the first time (~63k after), and the
+contract ~641k to deploy (Hardhat).
 
 Deployed size: `DoNotOpen` 24,512 bytes (limit 24,576), `Pantry` about 14,000. To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
@@ -77,7 +85,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 147 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the locker
+pnpm test                 # 154 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the locker
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -116,6 +124,9 @@ times `CREDIT_MARGIN` (2), rounded up (`lib/creditPrice.ts`): a credit follows Z
 price, never $ZAMA's market price. Change it later without redeploying:
 `npx hardhat --network <net> dno:credit-price --zama 0.001 --margin 2` (or `--usdc 0.002`;
 no argument prints the current price).
+`deploy/studio.ts` deploys `StudioPacks` with the packs of `studio.json`, paying the treasury
+(`STUDIO_TREASURY`, or the collection's owner). `dno:export` writes it under `studio` in the
+network's deployment file.
 `CROQ_CONTRACT_URI` sets cCROQ's contract URI (default empty).
 
 `Pantry.fund` calls FHE, so the economy script fails on the bare in-process `hardhat`

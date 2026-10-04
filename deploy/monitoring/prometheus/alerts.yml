@@ -98,6 +98,53 @@ groups:
         annotations:
           summary: "The certificate of {{ $labels.instance }} expires in {{ $value | humanizeDuration }} (Caddy renews at 30 days: it is stuck)."
 
+  - name: studio
+    rules:
+      - alert: StudioBudgetNearlySpent
+        expr: dno_studio_spent_today_usd / dno_studio_daily_budget_usd > 0.8 and dno_studio_daily_budget_usd > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "The studio spent {{ $value | humanizePercentage }} of today's AI budget (STUDIO_DAILY_BUDGET_USD): unusual traffic, or a budget too small."
+
+      - alert: StudioBudgetSpent
+        expr: dno_studio_spent_today_usd / dno_studio_daily_budget_usd >= 0.98 and dno_studio_daily_budget_usd > 0
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "The studio spent today's AI budget: players with packs cannot generate until midnight UTC."
+
+      - alert: StudioFailing
+        expr: |
+          sum by (network) (delta(dno_studio_jobs{status=~"failed|rejected"}[1h])) > 5
+          and sum by (network) (delta(dno_studio_jobs{status=~"failed|rejected"}[1h]))
+            / clamp_min(sum by (network) (delta(dno_studio_jobs[1h])), 1) > 0.3
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "More than 30% of the studio's generations failed or were refused in the last hour: fal down, a wrong model id, or someone farming refunds."
+
+      - alert: StudioJobsPilingUp
+        expr: sum by (network) (dno_studio_jobs{status="running"}) > 20
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value }} studio generations have been running for 15 minutes: fal's queue is stuck."
+
+      - alert: StudioClosedWithPacksSold
+        expr: dno_studio_open == 0 and dno_studio_packs_sold > 0
+        for: 30m
+        labels: { severity: warning }
+        annotations:
+          summary: "The studio is off (no FAL_KEY, no contract, or STUDIO_PAUSED) although packs were sold: buyers cannot spend them."
+
+      - alert: StudioLosingMoney
+        expr: dno_studio_spent_total_usd > dno_studio_revenue_usdc and dno_studio_spent_total_usd > 5
+        for: 1h
+        labels: { severity: warning }
+        annotations:
+          summary: "The studio's AI services cost more than its packs brought in: check fal's prices against studio.json, or STUDIO_ALLOWLIST on a test network."
+
   - name: server
     rules:
       - alert: DiskAlmostFull

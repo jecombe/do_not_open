@@ -63,7 +63,16 @@ protocol=mk("DO NOT OPEN · Protocol","dno-protocol",[
  [{"title":"Token images on Arweave","exprs":[[f"dno_images_archived{{{N}}}","stored"]],"w":8},
   {"title":"Gemini questions today","exprs":[[f"dno_chat_model_questions_today{{{N}}}","asked"],[f"dno_chat_model_questions_limit{{{N}}}","limit"]],"w":8},
   {"title":"Herald posts by account and status","exprs":[[f"dno_herald_posts{{{N}}}","{{network_account}} {{status}}"]],"w":8}],
-],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services. Public facts only.")
+ "The studio",
+ [{"title":"Open","type":"stat","exprs":[[f"dno_studio_open{{{N}}}"]],"w":4,"h":4,"mappings":[{"type":"value","options":{"0":{"text":"OFF"},"1":{"text":"OPEN"}}}],"thresholds":[{"color":"red","value":None},{"color":"green","value":1}],"desc":"Open: the fal key and the StudioPacks contract are there, and STUDIO_PAUSED is not set."},
+  {"title":"Packs sold","type":"stat","exprs":[[f"dno_studio_packs_sold{{{N}}}"]],"w":4,"h":4},
+  {"title":"USDC brought in","type":"stat","exprs":[[f"dno_studio_revenue_usdc{{{N}}}"]],"unit":"currencyUSD","w":4,"h":4,"desc":"Paid for packs, straight to the treasury. Test USDC on Sepolia."},
+  {"title":"AI cost, all time","type":"stat","exprs":[[f"dno_studio_spent_total_usd{{{N}}}"]],"unit":"currencyUSD","w":4,"h":4,"desc":"Estimated from studio.json's estimatedCostUsd, failed jobs included: check it against fal's bill."},
+  {"title":"Margin","type":"stat","exprs":[[f"dno_studio_revenue_usdc{{{N}}} - dno_studio_spent_total_usd{{{N}}}"]],"unit":"currencyUSD","w":4,"h":4,"thresholds":[{"color":"red","value":None},{"color":"green","value":0}],"desc":"USDC brought in minus the estimated AI cost. The StudioLosingMoney alert fires when it stays negative."},
+  {"title":"Today's AI budget used","type":"stat","exprs":[[f"dno_studio_spent_today_usd{{{N}}} / dno_studio_daily_budget_usd{{{N}}}"]],"unit":"percentunit","w":4,"h":4,"thresholds":G+[{"color":"orange","value":0.8},{"color":"red","value":0.98}],"desc":"Past it, generation waits for midnight UTC (STUDIO_DAILY_BUDGET_USD)."}],
+ [{"title":"Generations by kind and status","exprs":[[f"dno_studio_jobs{{{N}}}","{{kind}} {{status}}"]],"desc":"failed: unit given back; rejected: refused by the safety checker or past the day's refunds, unit kept."},
+  {"title":"AI spend today against the budget","exprs":[[f"dno_studio_spent_today_usd{{{N}}}","spent today"],[f"dno_studio_daily_budget_usd{{{N}}}","daily budget"]],"unit":"currencyUSD"}],
+],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services, the studio. Public facts only.")
 
 srv=mk("DO NOT OPEN · Server and URLs","dno-server",[
  "Public URLs",

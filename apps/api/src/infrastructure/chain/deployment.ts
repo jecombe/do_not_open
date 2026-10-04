@@ -1,4 +1,4 @@
-import { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY } from "@dno/chain-adapter/deployments";
+import { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY, type Deployment } from "@dno/chain-adapter/deployments";
 import type { V3Market } from "@dno/chain-adapter/node";
 import type { InterfaceAbi } from "ethers";
 
@@ -24,6 +24,8 @@ export interface ProtocolDeployment {
   ramp: Deployed | null;
   /** Decryption credits, bought in USDC. Null where none was deployed. */
   credits: Deployed | null;
+  /** The studio's packs, bought in USDC before any AI generation. Null where none was deployed. */
+  studio: Deployed | null;
   /** Zama's contracts on this network, as the Relayer SDK's preset names them. */
   fhevm: FhevmConfig;
   /** The Uniswap V3 CROQ/USDC pool and the locked position CROQ is sold from. */
@@ -48,6 +50,9 @@ const SEPOLIA_FHEVM: FhevmConfig = {
   relayerUrl: "https://relayer.testnet.zama.org/v2",
 };
 
+/** `dno:export` writes the studio next to the credits once StudioPacks is deployed. */
+const SEPOLIA_STUDIO = (SEPOLIA_DEPLOYMENT as Deployment & { studio?: (Deployed & { deployBlock?: number | null }) | null }).studio ?? null;
+
 export function deploymentFor(network: string, overrides: { address?: string; startBlock?: number } = {}): ProtocolDeployment {
   if (network !== "sepolia") throw new Error(`no deployment for network "${network}"`);
   // A collection address override points at another deployment: its economy is not this one.
@@ -64,12 +69,14 @@ export function deploymentFor(network: string, overrides: { address?: string; st
     indexFrom: Math.min(
       overrides.startBlock ?? SEPOLIA_DEPLOYMENT.deployBlock,
       (own && SEPOLIA_DEPLOYMENT.credits?.deployBlock) || Number.MAX_SAFE_INTEGER,
+      (own && SEPOLIA_STUDIO?.deployBlock) || Number.MAX_SAFE_INTEGER,
     ),
     pantry: own ? SEPOLIA_ECONOMY.pantry : null,
     croq: own ? SEPOLIA_ECONOMY.croq : null,
     cCroq: own ? SEPOLIA_ECONOMY.cCroq : null,
     ramp: own ? (SEPOLIA_DEPLOYMENT.ramp ?? null) : null,
     credits: own ? (SEPOLIA_DEPLOYMENT.credits ?? null) : null,
+    studio: own ? SEPOLIA_STUDIO : null,
     fhevm: SEPOLIA_FHEVM,
     market: own ? SEPOLIA_ECONOMY.market : null,
     // Zama's USDCMock lets anyone mint: 100 test dollars a go.

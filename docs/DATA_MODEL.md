@@ -161,6 +161,26 @@ the API, which keeps three things in Postgres:
 
 A purchase is public: it shows which account bought how many credits.
 
+## Studio packs
+
+`StudioPacks` holds no funds and nothing encrypted: `packs[id]` (a USDC price, so many
+sketches and 3D models; a zero price is not for sale), `sketchesBought[account]` and
+`modelsBought[account]`, and `treasury`, where payments go at once. The packs come from
+[`packages/game-spec/studio.json`](../packages/game-spec/studio.json). What is spent is counted
+off-chain by the API:
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `studio_accounts` | sketches, models, packs and USDC paid per account, folded from `PackBought` | yes |
+| `studio_jobs` | every generation: account, kind (`sketch`, `model`), status (`running`, `done`, `failed`, `rejected`), prompt, the sketch a model was made from, the service's file URL, the estimated cost in dollars, times | no: not on the chain |
+
+Units left = bought − jobs `running`, `done` or `rejected` of that kind; a `failed` job gave
+its unit back (at most `STUDIO_REFUNDS_PER_DAY` a day per account, after which a failure is
+`rejected`), and a job still `running` after ten minutes is failed. The day's spend, checked
+against `STUDIO_DAILY_BUDGET_USD`, is the sum of the estimated costs of every job of the day,
+failed ones included: the service may have billed them. A purchase is public: it shows which account bought which pack. The prompts and
+pictures stay in the API's database and at the AI service.
+
 ## Release forms
 
 Before playing with a wallet (a visitor without one is asked nothing), a player signs the terms of play with their wallet (EIP-191, off-chain, no

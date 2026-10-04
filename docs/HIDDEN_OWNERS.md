@@ -144,6 +144,7 @@ give each mint's quantity, and so who bought which ids.
 | A milestone | which mint crossed it |
 | Operator approvals | that an account made an address its operator |
 | Signing the terms of play (off-chain, filed by the API) | that an address signed the terms: address, version, signature, time. Nothing about holdings |
+| A studio pack (`StudioPacks.buy`, plain USDC) | the payer, the account and the pack. The studio never touches the boxes, so it says nothing about holdings; the API also sees the prompts and pictures of the account that signed in, and sends the prompts to the AI services |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
 transfers naming it), never know them.

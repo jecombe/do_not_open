@@ -613,6 +613,55 @@ player's (25).
 Credits are paid in plain USDC on purpose: `transferFrom` moves the whole price or
 reverts, where a cUSDC payment that falls short moves 0 without a word.
 
+## The studio
+
+The studio (`/studio`) draws cats. A random one is free and never leaves the browser: the
+same procedural generator as the boxes (`buildCatSpec` and the scene builders), no AI, no
+wallet. A cat from a prompt goes through paid AI services, so it is paid for first, in packs
+bought on-chain in plain USDC from `StudioPacks` (numbers in
+[`packages/game-spec/studio.json`](../packages/game-spec/studio.json)): Starter, 2 USDC for 10
+sketches and 1 3D model; Litter, 8 USDC for 50 and 5. A sketch is one cartoon picture of the
+cat; a model turns one of the account's sketches into a 3D mesh, drawn in the browser with
+the game's toon materials. Each pack sells for at least twice what its units are expected to
+cost: the services are paid back and the rest goes to the treasury.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant App
+  participant SP as StudioPacks
+  participant API
+  participant AI as AI services
+  U->>App: a random cat (free, in the browser)
+  U->>SP: buy(account, packId, maxPrice): plain USDC to the treasury
+  SP-->>API: PackBought, through the index: the account's sketches and models
+  App->>API: sign in (wallet signature, no gas)
+  App->>API: POST /v1/studio/sketches {prompt}
+  API->>API: prompt checked, daily budget left, one sketch spent
+  API->>AI: the prompt inside the house style
+  AI-->>API: a cartoon picture
+  App->>API: poll the job until done
+  App->>API: POST /v1/studio/models {sketchId}
+  API->>API: the sketch is the account's own, one model spent
+  API->>AI: picture to 3D
+  AI-->>API: a GLB mesh
+  App->>App: the mesh, with the toon materials and outline
+```
+
+A unit is spent before the service is called, so nobody gets work they did not pay for, and
+given back when the service fails or a job is still running after ten minutes, up to three
+failures per account and day. Past that, and whenever the picture model's safety checker
+refuses its own picture, the job is `rejected` and keeps its unit: the service was paid, and
+otherwise one unit could make the collection pay for failures without end. Failed jobs count
+against the day's budget for the same reason. The API
+stops calling the services for the day once `STUDIO_DAILY_BUDGET_USD` would be passed, and,
+when `STUDIO_ALLOWLIST` is set, only lets the listed wallets generate: on Sepolia packs are
+paid in test USDC while the services cost real money. In mock mode the whole flow runs on a
+local stand-in (the generator's own picture and 3D cat), with no API and no AI.
+
+Coming next, not built: adopting a cat (minting it as an Errant), sending it to sniff boxes,
+and the croquettes it brings back.
+
 ## Where the money goes
 
 | Fee | Paid in | Goes to |
@@ -620,6 +669,7 @@ reverts, where a cUSDC payment that falls short moves 0 without a word.
 | Mint (5 a box), open (1, once the box opens), pet (0.5) | cUSDC | `DoNotOpen`, withdrawn by the owner at most once a week; nobody can read the total before |
 | Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen`; all of it to `DoNotOpen` for an empty id |
 | Decryption credits (0.01 each on Sepolia; on mainnet Zama's dollar price for a decryption x 2) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
+| Studio packs (Starter 2, Litter 8) | plain USDC | the treasury address set in `StudioPacks`, at once; the AI services are paid from it |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 
@@ -630,9 +680,11 @@ flowchart LR
   S -- 70% --> H[Box holder]
   S -- 30% --> T
   P -- "credits, plain USDC" --> T
+  P -- "studio packs, plain USDC" --> T
   P -- "ramp, 0.3% of ETH" --> T
   T -- "free and public decryptions" --> Z[Zama]
   T --> I[Indexer and API servers]
+  T -- "sketches and 3D models" --> AI[AI services]
 ```
 
 The treasury pays Zama for what players do not pay themselves: each wallet's free daily

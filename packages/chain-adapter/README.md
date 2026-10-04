@@ -150,6 +150,19 @@ the API has not indexed yet (a purchase shows once its block is indexed, two con
 later) are added on top of the API's count, so the figure is right as soon as `buyCredits`
 resolves.
 
+The studio's packs (AI sketches and 3D models, `packages/game-spec/studio.json`) are sold by
+the `StudioPacks` contract in plain USDC. `studioPacks()` reads them from the contract (`id`,
+`key`, `name`, `price` in USDC's smallest unit, `sketches`, `models`), dropping a withdrawn
+one, and returns null where no StudioPacks is deployed. `buyStudioPack(id)` approves the USDC
+if needed and buys at the price just read (a change meanwhile reverts); it throws
+`insufficient-usdc` before any transaction when the wallet holds too little. The API counts
+what is spent, so `studioPending(block)` gives the units this browser bought that an API
+answer as of `block` may not count yet: the page adds them to it. `apiSession()` signs in to
+the API with the connected wallet (`POST /v1/auth/nonce`, one free EIP-191 signature, then
+`/v1/auth/verify`) and returns `{ account, token, expiresAt }`, the bearer token the studio's
+routes take; null without an API. The mock sells the same packs for its pretend USDC, reports
+every unit bought through `studioPending` (there is no API to count them) and has no session.
+
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its
 account picker again (EIP-2255 `wallet_requestPermissions`) rather than handing back the
 account it shared last time; the app's "Use another one" on the release form uses it.

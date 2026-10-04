@@ -7,7 +7,7 @@ import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
 import { useLocale } from "./i18n/locale";
-import { docsPath, homePath } from "./site";
+import { docsPath, homePath, studioPath } from "./site";
 import { NetworkSwitch } from "./chain/NetworkSwitch";
 import { openExchange } from "./views/exchangeLink";
 import { openTerms } from "./terms/terms";
@@ -34,6 +34,9 @@ export const VIEWS = [
 export type View = (typeof VIEWS)[number]["key"] | "box" | "pair";
 const menuKey = (view: View) => (view === "box" ? "warehouse" : view === "pair" ? "duels" : view);
 
+/** The views a link opens with `app?view=`: the menu's, by key. */
+export const isMenuView = (v: string | null): v is (typeof VIEWS)[number]["key"] => VIEWS.some((x) => x.key === v);
+
 /**
  * The stamp on the left; in the middle, the balances on frosted glass; on the right, the decryptions left, a small wallet tag and one manila tag
  * naming the current view. The tag opens a packing list with the other views,
@@ -41,7 +44,7 @@ const menuKey = (view: View) => (view === "box" ? "warehouse" : view === "pair" 
  * wallets when there is more than one, and once connected, a slip with the
  * balance and a way out.
  */
-export function Masthead({ view, onView }: { view: View; onView: (v: View) => void }) {
+export function Masthead({ view, onView }: { view: View | "studio"; onView: (v: View) => void }) {
   const chain = useChain();
   const t = useT();
   const locale = useLocale();
@@ -71,7 +74,8 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
     return () => void openers.delete(open);
   }, [closePicker]);
 
-  const current = VIEWS.find((v) => v.key === menuKey(view))!;
+  // The studio is a page of its own: its tag names it, and the menu's views lead back to the game.
+  const current = view === "studio" ? { key: "studio", label: "nav.studio" as const } : VIEWS.find((v) => v.key === menuKey(view))!;
   const { account, mode } = chain;
   // A slip left open must not outlive the account it shows.
   useEffect(() => {
@@ -170,7 +174,7 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
                 <li key={v.key}>
                   <button
                     type="button"
-                    aria-current={menuKey(view) === v.key ? "page" : undefined}
+                    aria-current={view !== "studio" && menuKey(view) === v.key ? "page" : undefined}
                     onClick={() => {
                       onView(v.key);
                       setOpen(false);
@@ -181,6 +185,11 @@ export function Masthead({ view, onView }: { view: View; onView: (v: View) => vo
                 </li>
               ))}
               <li className="menu-rule">
+                <a href={studioPath(locale)} aria-current={view === "studio" ? "page" : undefined}>
+                  {t("nav.studio")}
+                </a>
+              </li>
+              <li>
                 <a href={docsPath(locale)}>{t("nav.manual")}</a>
               </li>
               <li>

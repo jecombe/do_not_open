@@ -84,7 +84,8 @@ it covers the account's own last transaction, and reads the chain otherwise.
 
 ## API
 
-Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
+Every `GET` returns `{ "block": <last indexed block>, "data": ... }`, except the studio's
+routes, whose shapes are given in [The studio](#the-studio).
 
 | Route | What |
 | --- | --- |
@@ -111,9 +112,10 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
-| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald. Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
+| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`). Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
+| `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): cats drawn by paid AI services out of packs bought on-chain |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
 | `POST /v1/discord/interactions` | Discord's `/ask` (below): called by Discord only, signed with the application's Ed25519 key (`401` otherwise) |
 | `GET /v1/herald?token=&limit=&network=` | The collection's Discord channel (below): its posts, newest first, queued, sent or rehearsed; `network=discord` for that network only. With `HERALD_ADMIN_TOKEN` set, only with that token |
@@ -158,6 +160,13 @@ Rows queued before it are filed under `x`, the account the herald was first writ
 Migration 11 adds `archived_images`: the token pictures stored on Arweave, by SHA-256 of their
 SVG, with their Arweave id. Not a fold of the chain: a replay keeps it, and a picture is never
 uploaded twice.
+
+Migration 12 adds the studio: `studio_accounts`, the units bought with `StudioPacks` (a read
+model, folded from `PackBought` and rebuilt by a replay), and `studio_jobs`, every generation
+the studio paid a service for (not on the chain: a replay keeps it). The contract is newer than
+every block indexed so far, so nothing is read again. Deploy the contract and ship the API that
+knows its address (`dno:export`) before the first pack is sold: an index already past the
+contract's deploy block never goes back for its events.
 
 ## Token images on Arweave
 
@@ -230,6 +239,58 @@ reverts; cUSDC would move 0 silently), and indexed from its `CreditsBought` even
 used is kept in `relayer_free_used` and `relayer_credits_spent`, which a replay of the
 chain does not touch. Migration 4 empties the index once so it is rebuilt with the ACL and
 credit events.
+
+## The studio
+
+Players draw a cartoon cat from a prompt; the API pays fal.ai (`FAL_KEY`) for the picture and
+the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is generated on credit.
+
+- **Packs.** `StudioPacks` sells the packs of `packages/game-spec/studio.json` (Starter: 2 USDC
+  for 10 sketches and 1 model; Litter: 8 USDC for 50 and 5), straight to the treasury. Each pack
+  sells for at least `minMargin` (2) times what its units are estimated to cost
+  (`estimatedCostUsd`: 0.01 a sketch, 0.30 a model), checked at deploy: the services are paid
+  back and the rest is the collection's. The index folds `PackBought` into `studio_accounts`.
+- **Spending.** A job takes its unit when it starts, in one locked transaction with the check
+  (`pg_advisory_xact_lock`), so the last unit is never spent twice. Units left are bought minus
+  the account's running, finished and rejected jobs; a failed job gives its unit back, up to
+  `STUDIO_REFUNDS_PER_DAY` (3) failures per account and UTC day. Past that a failure is
+  `rejected` and keeps its unit: fal may have billed it, and endless failures on one unit
+  would bill the collection without end. A job still running after twice `STUDIO_TIMEOUT_MS`
+  (a crash, a lost call) is failed and its unit comes back.
+- **The day's budget.** Every job, failed ones included, counts its estimated cost against `STUDIO_DAILY_BUDGET_USD`
+  (20 by default), every account together; past it the studio answers `studio-paused` /
+  `budget` until midnight UTC, whatever was bought. `STUDIO_PAUSED=true` closes it at once.
+- **Test networks.** On Sepolia packs are paid in test USDC while fal bills real dollars: set
+  `STUDIO_ALLOWLIST` (comma-separated addresses) so only testers may generate, and keep the
+  budget small.
+- **Prompts.** Trimmed, 3 to 240 characters, put inside the fixed house style of `studio.json`
+  (a cartoon cat, thick outlines, plain background). A short list of licensed characters,
+  brands and adult or violent words is refused before anything is spent; the picture model's
+  own safety checker runs too, and a flagged picture is `rejected`: fal billed it, so the unit
+  is spent.
+- **Files.** `/v1/studio/jobs/:id/image` and `/model.glb` fetch only https files on fal's hosts
+  (`fal.media`, `fal.run`, `fal.ai` and their subdomains), at most 10 MB a picture and 40 MB a
+  mesh, 60 requests a minute per address, and serve them as an image or a GLB whatever fal says,
+  with `nosniff` and a sandboxing CSP, so nothing they return can run on the API's origin.
+- **Services.** `STUDIO_IMAGE_MODEL` (`fal-ai/flux/schnell`) draws the sketch;
+  `STUDIO_3D_MODEL` (`fal-ai/trellis`) turns a finished sketch into a GLB. Both go through fal's
+  queue API (`src/infrastructure/studio/FalStudio.ts`). The studio is enabled only with
+  `FAL_KEY` and a `StudioPacks` address in the deployment.
+
+| Route | Auth | Answer |
+| --- | --- | --- |
+| `GET /v1/studio` | optional | `{ enabled, paused: null \| "off" \| "budget", packs: [{ id, key, name, priceUsdc, sketches, models }], allowlisted: boolean \| null, block }` (`allowlisted` is null without a list or a session) |
+| `GET /v1/studio/credits` | session | `{ sketches: { bought, used, left }, models: { bought, used, left }, block }` |
+| `POST /v1/studio/sketches` | session | `{ prompt }` → `202 { job }`. 20 a minute per IP |
+| `POST /v1/studio/models` | session | `{ sketchId }` (a finished sketch of the account) → `202 { job }`. 20 a minute per IP |
+| `GET /v1/studio/jobs` · `GET /v1/studio/jobs/:id` | session | `{ jobs }` (newest first, 50 at most) · `{ job }` (the account's own only) |
+| `GET /v1/studio/jobs/:id/image` · `/model.glb` | none | The finished picture (a model's is its sketch's) or mesh, fetched from fal and cached for a year. Job ids are random UUIDs |
+
+A job is `{ id, kind: "sketch" | "model", status: "running" | "done" | "failed" | "rejected", prompt, sketchId,
+imageUrl, modelUrl, error, createdAt }`, its URLs pointing at the routes above (`PUBLIC_URL`).
+The app polls `GET /v1/studio/jobs/:id` until the status changes. Refusals cost nothing:
+`400 bad-prompt`, `403 refused-prompt` · `not-allowlisted`, `402 no-credits`,
+`503 studio-paused` (with `reason`: `disabled`, `off` or `budget`), `404`, `401`.
 
 ## The manual's chatbot
 
@@ -335,5 +396,6 @@ Configuration is environment variables, all optional in development: see `src/co
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
-`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`...). Deployment is in
+`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

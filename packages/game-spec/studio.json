@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "name": "The studio",
+  "rule": "Anyone can draw a random cat in the browser for free: the procedural generator, no AI, nothing to pay. Drawing a cat from a prompt goes through paid AI services, so it is sold in packs bought on-chain in plain USDC before anything is generated. A sketch is one cartoon picture of the cat from the prompt; a model turns one of the account's sketches into a 3D mesh. The backend spends one unit before it calls the service and gives it back if the service fails.",
+  "units": {
+    "sketch": { "name": "Sketch", "estimatedCostUsd": "0.01", "rule": "One cartoon picture from a prompt, in the house style. Cheap: try again until the cat looks right." },
+    "model": { "name": "3D model", "estimatedCostUsd": "0.30", "rule": "One of the account's sketches turned into a 3D mesh (GLB), drawn in the browser with the game's toon materials." }
+  },
+  "packs": [
+    { "id": 0, "key": "starter", "name": "Starter", "priceUsdc": "2", "sketches": 10, "models": 1 },
+    { "id": 1, "key": "litter", "name": "Litter", "priceUsdc": "8", "sketches": 50, "models": 5 }
+  ],
+  "minMargin": 2,
+  "marginRule": "Every pack sells for at least minMargin times what its units are estimated to cost the collection: the services are paid back, and the rest goes to the treasury.",
+  "prompt": {
+    "minLength": 3,
+    "maxLength": 240,
+    "style": "A single cute cartoon cat character, {prompt}. Full body, three-quarter front view, centered, standing on nothing, plain light grey background. Thick dark outlines, flat bold colours, soft rounded chunky shapes, toy-like proportions with a big head. No text, no logo, no other characters.",
+    "rule": "The player's words go inside a fixed style prompt, so whatever is asked the result stays a cartoon cat in the game's style. Prompts naming a licensed character or asking for adult content are refused before any service is called."
+  },
+  "events": {
+    "PackBought": { "fields": ["payer", "account", "packId", "sketches", "models", "paid"], "note": "StudioPacks. Credits the account with the pack's units; the backend counts what is spent." }
+  }
+}

@@ -9,11 +9,14 @@ export const homePath = (locale: Locale): string => (locale === "en" ? "/" : `/$
 /** The manual in a language. */
 export const docsPath = (locale: Locale): string => (locale === "en" ? "/docs" : `/${locale}/docs`);
 
+/** The studio, where anyone draws a cat. */
+export const studioPath = (locale: Locale): string => (locale === "en" ? "/studio" : `/${locale}/studio`);
+
 /** The game: one page for every language, which it reads from `?lang=`. */
 export const appPath = (locale: Locale): string => (locale === "en" ? "/app" : `/app?lang=${locale}`);
 
 /** The pages served once per language, as their path names them (prefix removed). */
-export type LocalizedPage = "home" | "docs";
+export type LocalizedPage = "home" | "docs" | "studio";
 
 const PREFIX = /^\/(fr|es|it)(?=\/|$)/;
 
@@ -27,7 +30,8 @@ export function localizedPage(pathname: string): LocalizedPage | null {
   const rest = pathname.replace(PREFIX, "").replace(/\/+$/, "") || "/";
   if (rest === "/" || rest === "/index.html" || rest === "/index") return "home";
   if (rest === "/docs" || rest === "/docs.html") return "docs";
+  if (rest === "/studio" || rest === "/studio.html") return "studio";
   return null;
 }
 
-export const pagePath = (page: LocalizedPage, locale: Locale): string => (page === "home" ? homePath(locale) : docsPath(locale));
+export const pagePath = (page: LocalizedPage, locale: Locale): string => (page === "home" ? homePath(locale) : page === "docs" ? docsPath(locale) : studioPath(locale));

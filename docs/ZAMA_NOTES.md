@@ -575,6 +575,19 @@ private. Decoy transfers (`confidentialTransferIf`, 217 bytes) fit by compiling
 the other contracts stay at 200): gas per call barely moves, as FHE operations dominate.
 The next feature has to move logic out.
 
+### The studio's packs stay off FHE (2026-10-04)
+
+The studio sells AI generations in packs (`StudioPacks`), paid in plain USDC like the
+decryption credits and for the same reason: `transferFrom` moves the whole price or
+reverts, where a cUSDC payment that falls short moves 0 without a revert, and the backend
+must know for certain what was paid before it pays a service. A pack says nothing about the
+boxes, so nothing in it needs encrypting. It is its own contract: `DoNotOpen` has no room
+left, and the studio is sold beside the collection, not by it. For the same reason its
+numbers live in `packages/game-spec/studio.json`, not `spec.json`, whose hash the deployed
+`DoNotOpenConfig` stores. Deployed on Sepolia on 2026-10-04 at block 11842636, at
+`0x672cf76a68d4f181387B59caA1813eC425c1354C`, by `0x590891F269720001435004A1089cAB5b2c20029A`; owner and
+treasury `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, the collection's. 641k gas.
+
 ### Sepolia deployment (2026-10-03): decoys and the security review
 
 Current. Deployed at block 11836238 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
@@ -600,6 +613,7 @@ started fresh. `UsdcRamp` was redeployed because its owner argument still named
 | cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
 | `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
 | `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
+| `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
 
 Gas: `DoNotOpenConfig` 914,027, `DoNotOpen` 5,792,149, `DoNotOpenHooks` 357,103,
 `DecryptionCredits` 478,835, `Croq` 532,843, `ConfidentialCroq` 2,455,772, `Pantry` 3,253,237,
