@@ -278,13 +278,13 @@ the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is gene
   own safety checker runs too, and a flagged picture is `rejected`: fal billed it, so the unit
   is spent.
 - **Files.** `/v1/studio/jobs/:id/image` and `/model.glb` fetch only https files on fal's hosts
-  (`fal.media`, `fal.run`, `fal.ai` and their subdomains), at most 10 MB a picture and 40 MB a
-  mesh, 60 requests a minute per address, and serve them as an image or a GLB whatever fal says,
+  (`fal.media`, `fal.run`, `fal.ai` and their subdomains), at most 10 MB a picture and 100 MB a
+  mesh (adopting one still takes 40 MB at most, since the API keeps it), 60 requests a minute per address, and serve them as an image or a GLB whatever fal says,
   with `nosniff` and a sandboxing CSP, so nothing they return can run on the API's origin.
 - **Services.** `STUDIO_IMAGE_MODEL` (`fal-ai/flux/schnell`) draws the sketch, a few seconds.
   A model is two calls: `STUDIO_CUTOUT_MODEL` (`fal-ai/birefnet`, `none` to skip) cuts the rat
   out of its background, then `STUDIO_3D_MODEL` (`tripo3d/h3.1/image-to-3d`, Tripo H3.1, plain
-  standard textures without PBR, 0.30 USD a mesh) turns it into a GLB in a few minutes
+  standard textures without PBR, at most 30,000 faces so the GLB stays well under 40 MB, 0.30 USD a mesh) turns it into a GLB in a few minutes
   (`STUDIO_TIMEOUT_MS`, 10 minutes by default). Tripo's meshes are cleaner than Hunyuan3D v2's
   (`fal-ai/hunyuan3d/v2`, textured, still supported), which the toon outline traced bump by
   bump. Without the cut-out a picture-to-mesh model builds a card with the drawing on it;

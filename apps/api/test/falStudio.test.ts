@@ -54,7 +54,7 @@ describe("FalStudio", () => {
     expect(await fal.model("https://fal.media/sketch.jpg")).toEqual({ url: "https://v3.fal.media/rat.glb" });
     expect(calls[0]).toMatchObject({
       url: "https://queue.test/tripo3d/h3.1/image-to-3d",
-      body: { image_url: "https://fal.media/sketch.jpg", texture: true, pbr: false, texture_quality: "standard", geometry_quality: "standard" },
+      body: { image_url: "https://fal.media/sketch.jpg", texture: true, pbr: false, texture_quality: "standard", geometry_quality: "standard", face_limit: 30_000 },
     });
   });
 
