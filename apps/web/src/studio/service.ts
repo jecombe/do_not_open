@@ -37,7 +37,9 @@ export interface StudioInfo {
   /** "off": switched off on this server; "budget": the day's spending cap is reached. */
   paused: null | "off" | "budget";
   packs: StudioPackInfo[];
-  /** Null when every account may generate; false when this one is not on the list. */
+  /** Only the listed testers may generate; absent from an older API. */
+  testersOnly?: boolean;
+  /** Null when every account may generate, or before a sign-in; false when this one is not on the list. */
   allowlisted: boolean | null;
   block: number | null;
 }
@@ -248,7 +250,7 @@ export class LocalStudio implements StudioService {
   }
 
   async info(): Promise<StudioInfo> {
-    return { enabled: true, paused: null, packs: studio.packs.map((p) => ({ ...p })), allowlisted: null, block: null };
+    return { enabled: true, paused: null, packs: studio.packs.map((p) => ({ ...p })), testersOnly: false, allowlisted: null, block: null };
   }
 
   async credits(): Promise<StudioCredits> {

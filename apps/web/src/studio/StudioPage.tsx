@@ -130,10 +130,10 @@ function storedMode(): Mode {
 }
 
 /** The two ways to make a rat, as one switch: the free generator, or the AI from your words. */
-function ModeSwitch({ mode, onMode, busy }: { mode: Mode; onMode: (m: Mode) => void; busy: boolean }) {
+function ModeSwitch({ mode, onMode, busy, aiLocked }: { mode: Mode; onMode: (m: Mode) => void; busy: boolean; aiLocked: boolean }) {
   const t = useT();
-  const option = (m: Mode, title: AppKey, hint: AppKey) => (
-    <button type="button" className="studio-mode-option" aria-pressed={mode === m} onClick={() => onMode(m)}>
+  const option = (m: Mode, title: AppKey, hint: AppKey, locked = false) => (
+    <button type="button" className="studio-mode-option" aria-pressed={mode === m} disabled={locked} onClick={() => onMode(m)}>
       <span className="studio-mode-title">{t(title)}</span>
       <span className="studio-mode-hint">{m === "ai" && busy ? <span className="studio-mode-busy">{t("studio.mode.busy")}</span> : t(hint)}</span>
     </button>
@@ -142,7 +142,7 @@ function ModeSwitch({ mode, onMode, busy }: { mode: Mode; onMode: (m: Mode) => v
     <div className="studio-mode" role="group" aria-label={t("studio.mode.label")} data-mode={mode}>
       <span className="studio-mode-thumb" aria-hidden="true" />
       {option("random", "studio.mode.random", "studio.mode.randomHint")}
-      {option("ai", "studio.mode.ai", "studio.mode.aiHint")}
+      {aiLocked ? option("ai", "studio.mode.ai", "studio.mode.testers", true) : option("ai", "studio.mode.ai", "studio.mode.aiHint")}
     </div>
   );
 }
@@ -174,7 +174,7 @@ function StudioLive() {
     [demo, adapter, apiUrl],
   );
 
-  const [mode, setModeState] = useState<Mode>(storedMode);
+  const [chosenMode, setModeState] = useState<Mode>(storedMode);
   const setMode = useCallback((m: Mode) => {
     setModeState(m);
     try {
@@ -211,12 +211,20 @@ function StudioLive() {
   // A "get USDC" link from a failed purchase goes to the bureau de change, in the game.
   useEffect(() => onOpenExchange(() => window.location.assign(gameAt(locale, "exchange"))), [locale]);
 
+  // Read again once signed in: the session says whether this wallet is one of the testers.
   useEffect(() => {
     let live = true;
     service.info().then(
       (i) => live && (setInfo(i), setInfoFailed(false)),
       () => live && setInfoFailed(true),
     );
+    return () => {
+      live = false;
+    };
+  }, [service, session]);
+
+  useEffect(() => {
+    let live = true;
     adapter.studioPacks().then(
       (p) => live && setPacks(p),
       () => live && setPacks(null),
@@ -243,6 +251,9 @@ function StudioLive() {
   }, [adapter, account, adopted]);
 
   const signedIn = demo ? !!account : !!session;
+  /** Off this server's list of testers, or before the server answers, the AI tab stays shut. */
+  const aiLocked = !demo && (info === null || (info.testersOnly === true && info.allowlisted !== true));
+  const mode: Mode = aiLocked ? "random" : chosenMode;
 
   const randomSeedShown = mode === "random" ? seed : null;
   // Something else on show: the last adoption's message makes way for its own button.
@@ -507,7 +518,14 @@ function StudioLive() {
     <>
       <Masthead view="studio" onView={(v) => window.location.assign(gameAt(locale, v))} />
 
-      <ModeSwitch mode={mode} onMode={setMode} busy={running} />
+      <ModeSwitch mode={mode} onMode={setMode} busy={running} aiLocked={aiLocked} />
+      {aiLocked && info?.testersOnly && info.allowlisted !== false && (
+        <p className="fine studio-tester">
+          <button type="button" className="link" disabled={signing} aria-busy={signing} onClick={() => void (account ? signIn() : connect())}>
+            {t("studio.mode.tester")}
+          </button>
+        </p>
+      )}
 
       {mode === "random" ? (
         <section className="studio-workshop studio-workshop-random" aria-labelledby={`${id}-stage`}>
