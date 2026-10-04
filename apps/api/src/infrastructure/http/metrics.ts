@@ -3,6 +3,7 @@ import type { AskManual } from "../../application/askManual";
 import type { ArchiveStore } from "../../application/ports/archive";
 import type { PostStore } from "../../application/ports/herald";
 import type { ReadStore } from "../../application/ports/store";
+import type { StudioStore } from "../../application/ports/studio";
 import type { EndpointStatus } from "../chain/RpcPool";
 import type { IndexerStatus } from "../Indexer";
 
@@ -13,6 +14,8 @@ export interface MetricsSources {
   indexer?: { status(): IndexerStatus };
   rpcStatus?: () => EndpointStatus[];
   chat?: Pick<AskManual, "usage">;
+  /** The studio's jobs, and what the services cost today against the budget. */
+  studio?: { store: Pick<StudioStore, "studioJobCounts" | "studioSales">; spentToday(): Promise<number>; spentTotal(): Promise<number>; dailyBudgetUsd: number; open: boolean };
   /** Shown on `dno_info`; Prometheus adds the `network` label to every series from its target. */
   info: { chain: string; collection: string; version: string };
 }
@@ -142,6 +145,24 @@ export class Metrics {
       const chat = s.chat;
       gauge("dno_chat_model_questions_today", "Questions sent to Gemini today (UTC)", (g) => g.set(chat.usage().asked));
       gauge("dno_chat_model_questions_limit", "Questions Gemini may get per UTC day", (g) => g.set(chat.usage().perDay));
+    }
+    if (s.studio) {
+      const studio = s.studio;
+      gauge(
+        "dno_studio_jobs",
+        "Studio generations by kind and status",
+        async (g) => {
+          g.reset();
+          for (const c of await studio.store.studioJobCounts()) g.set({ kind: c.kind, status: c.status }, c.count);
+        },
+        ["kind", "status"],
+      );
+      gauge("dno_studio_spent_today_usd", "Estimated dollars the studio's AI services cost today (UTC)", async (g) => g.set(await studio.spentToday()));
+      gauge("dno_studio_spent_total_usd", "Estimated dollars the studio's AI services cost since it opened", async (g) => g.set(await studio.spentTotal()));
+      gauge("dno_studio_daily_budget_usd", "Dollars the studio may spend on its AI services per UTC day", (g) => g.set(studio.dailyBudgetUsd));
+      gauge("dno_studio_open", "1 when the studio can generate (key, contract, not paused), 0 when it is off", (g) => g.set(studio.open ? 1 : 0));
+      gauge("dno_studio_packs_sold", "Studio packs sold since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).packs));
+      gauge("dno_studio_revenue_usdc", "USDC the studio's packs brought in since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).paidUsdc));
     }
   }
 

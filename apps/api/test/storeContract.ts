@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { ArchiveStore } from "../src/application/ports/archive";
 import type { PostStore } from "../src/application/ports/herald";
 import type { Store } from "../src/application/ports/store";
+import type { StudioStore } from "../src/application/ports/studio";
+import type { StudioJob } from "../src/domain/studio";
 import * as B from "../src/domain/box";
 import * as D from "../src/domain/duel";
 import { ALICE, BOB, CAROL, ev } from "./fixtures";
@@ -10,9 +12,9 @@ import { ALICE, BOB, CAROL, ev } from "./fixtures";
  * What any Store must do, run against each implementation: the in-memory one the tests use and
  * the Postgres one production uses must not drift apart.
  */
-export function storeContract(name: string, make: () => Promise<Store & PostStore & ArchiveStore>) {
+export function storeContract(name: string, make: () => Promise<Store & PostStore & ArchiveStore & StudioStore>) {
   describe(`${name} store`, () => {
-    let store: Store & PostStore & ArchiveStore;
+    let store: Store & PostStore & ArchiveStore & StudioStore;
     beforeEach(async () => {
       store = await make();
     });
@@ -234,6 +236,68 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       await store.transaction((tx) => tx.resetReadModels());
       expect(await store.publishedAmong([h])).toEqual([]);
       expect(await store.meterOf(BOB, day)).toEqual({ freeUsed: 8, spent: 5, bought: 0 });
+    });
+
+    it("folds studio packs as a read model, and keeps its jobs across replays", async () => {
+      await store.transaction(async (tx) => {
+        await tx.addStudioUnits(BOB, 10, 1, "2000000");
+        await tx.addStudioUnits(BOB, 50, 5, "8000000");
+      });
+      expect(await store.studioUnitsBought(BOB)).toEqual({ sketches: 60, models: 6 });
+      expect(await store.studioSales()).toEqual({ packs: 2, paidUsdc: 10 });
+      expect(await store.studioUnitsBought(ALICE)).toEqual({ sketches: 0, models: 0 });
+
+      const job = (id: string, over: Partial<StudioJob> = {}): StudioJob => ({
+        id, account: BOB, kind: "sketch", status: "running", prompt: "a round cat", sketchId: null, resultUrl: null, error: null, costUsd: 0.01, createdAt: 1_000, finishedAt: null, ...over,
+      });
+      const seen: unknown[] = [];
+      const a = await store.startStudioJob(BOB, 900, (ledger) => (seen.push(ledger), job("00000000-0000-4000-8000-00000000000a")));
+      expect(seen[0]).toEqual({ bought: { sketches: 60, models: 6 }, used: { sketches: 0, models: 0 }, spentTodayUsd: 0 });
+      expect(a?.id).toBe("00000000-0000-4000-8000-00000000000a");
+      expect(await store.startStudioJob(BOB, 900, () => null)).toBeNull();
+      await store.startStudioJob(BOB, 900, () => job("00000000-0000-4000-8000-00000000000b", { createdAt: 1_100 }));
+      await store.startStudioJob(BOB, 900, () =>
+        job("00000000-0000-4000-8000-00000000000c", { kind: "model", sketchId: "00000000-0000-4000-8000-00000000000a", costUsd: 0.3, createdAt: 1_200 }),
+      );
+      expect(await store.studioUnitsUsed(BOB)).toEqual({ sketches: 2, models: 1 });
+      expect(await store.studioSpentSince(900)).toBeCloseTo(0.32);
+      expect(await store.studioSpentSince(1_150)).toBeCloseTo(0.3);
+
+      // Settled once: a second settlement leaves the first.
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000a", { status: "done", resultUrl: "https://files/a.png", error: null }, 1_300);
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000a", { status: "failed", resultUrl: null, error: "late" }, 1_400);
+      expect(await store.studioJob("00000000-0000-4000-8000-00000000000a")).toMatchObject({ status: "done", resultUrl: "https://files/a.png", finishedAt: 1_300 });
+      // A failed job gives its unit back, not its dollars: the service may have billed it.
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000b", { status: "failed", resultUrl: null, error: "boom" }, 1_300);
+      expect(await store.studioUnitsUsed(BOB)).toEqual({ sketches: 1, models: 1 });
+      expect(await store.studioSpentSince(900)).toBeCloseTo(0.32);
+      expect(await store.studioRefundsSince(BOB, 900)).toBe(1);
+      expect(await store.studioRefundsSince(BOB, 1_150)).toBe(0);
+      expect(await store.studioRefundsSince(ALICE, 900)).toBe(0);
+      // Lost jobs: only running ones older than the cut fail.
+      expect(await store.failStaleStudioJobs(1_250, "lost", 2_000)).toBe(1);
+      expect(await store.studioJob("00000000-0000-4000-8000-00000000000c")).toMatchObject({ status: "failed", error: "lost", finishedAt: 2_000 });
+
+      // A rejected job keeps its unit.
+      await store.startStudioJob(BOB, 900, () => job("00000000-0000-4000-8000-00000000000d", { createdAt: 1_260 }));
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000d", { status: "rejected", resultUrl: null, error: "flagged" }, 1_270);
+      expect(await store.studioUnitsUsed(BOB)).toEqual({ sketches: 2, models: 0 });
+      expect(await store.studioRefundsSince(BOB, 900)).toBe(2);
+
+      expect((await store.studioJobs(BOB, 10)).map((j) => j.id.slice(-1))).toEqual(["d", "c", "b", "a"]);
+      expect((await store.studioJobs(BOB, 1)).length).toBe(1);
+      expect(await store.studioJobs(ALICE, 10)).toEqual([]);
+      expect((await store.studioJobCounts()).sort((x, y) => (x.kind + x.status < y.kind + y.status ? -1 : 1))).toEqual([
+        { kind: "model", status: "failed", count: 1 },
+        { kind: "sketch", status: "done", count: 1 },
+        { kind: "sketch", status: "failed", count: 1 },
+        { kind: "sketch", status: "rejected", count: 1 },
+      ]);
+
+      // A replay folds the purchases again; the jobs stay.
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.studioUnitsBought(BOB)).toEqual({ sketches: 0, models: 0 });
+      expect((await store.studioJobs(BOB, 10)).length).toBe(4);
     });
 
     it("lists known ids, every pending request, and every open duel", async () => {

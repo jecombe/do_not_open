@@ -23,6 +23,7 @@ const INDEXED: Record<Source, string[]> = {
   pantry: ["MealServed", "WelcomeBag", "Purred", "Claimed", "WeighInRequested", "Weighed"],
   ramp: ["Bought"],
   credits: ["CreditsBought"],
+  studio: ["PackBought"],
   acl: ["AllowedForDecryption"],
 };
 
@@ -78,6 +79,7 @@ export class EvmChainSource implements ChainSource {
       ...(d.pantry ? [{ source: "pantry" as const, address: d.pantry.address, iface: this.pantry! }] : []),
       ...(d.ramp ? [{ source: "ramp" as const, address: d.ramp.address, iface: new Interface(d.ramp.abi) }] : []),
       ...(d.credits ? [{ source: "credits" as const, address: d.credits.address, iface: new Interface(d.credits.abi) }] : []),
+      ...(d.studio ? [{ source: "studio" as const, address: d.studio.address, iface: new Interface(d.studio.abi) }] : []),
     ].map((c) => ({ ...c, address: c.address.toLowerCase() }));
     this.topics = this.contracts.flatMap((c) => INDEXED[c.source].map((name) => c.iface.getEvent(name)!.topicHash));
     this.aclFilter = aclFilterFor(d);
@@ -322,6 +324,8 @@ function toBody(name: string, a: Result): Record<string, unknown> | null {
       return { name, buyer: addr(a.buyer), ethIn: String(a.ethIn), fee: String(a.fee), usdcOut: String(a.usdcOut), shielded: Boolean(a.shielded) };
     case "CreditsBought":
       return { name, payer: addr(a.payer), account: addr(a.account), credits: num(a.credits), paid: String(a.paid) };
+    case "PackBought":
+      return { name, payer: addr(a.payer), account: addr(a.account), packId: num(a.packId), sketches: num(a.sketches), models: num(a.models), paid: String(a.paid) };
     case "AllowedForDecryption":
       return { name: "PubliclyDecryptable", caller: addr(a.caller), handles: [...a.handlesList].map((h: string) => String(h).toLowerCase()) };
     default:

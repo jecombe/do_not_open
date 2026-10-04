@@ -10,7 +10,8 @@ repository, the hidden-owner version (10,000 boxes, owners and sold count encryp
 `0x816a39b04e0672B4746A5B696E14145F4F852d37` (with the security fixes and decoy transfers,
 redeployed on 2026-10-03 at block 11836238); the croquette contracts `Croq.sol`, `ConfidentialCroq.sol`
 and `Pantry.sol` (section 9) and `LiquidityLocker.sol`, which holds the CROQ market's
-Uniswap V3 position (section 10); plus the parts of the
+Uniswap V3 position (section 10); `StudioPacks.sol`, the studio's USDC packs (deployed
+at `0x672cf76a68d4f181387B59caA1813eC425c1354C` on 2026-10-04, block 11842636); plus the parts of the
 adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
 `0xe8f699eEBc22767413A9edBb48826B10D3117f61` is the previous version, an ERC-721 with
 public owners, and is not what this list reviews.
@@ -48,6 +49,7 @@ mainnet), **Not done** (a check nobody has run).
 | O23 | Near sell-out, a free mint past the cap tells the buyer the exact remaining supply | Low (privacy) | `mint` |
 | O24 | Between `observe` and `finalize` the seed is public but the box is still `Sealed`: a holder can aim for the Pantry tolerance, or sell a box whose contents are known | Low | `observe`, `Pantry.feed` |
 | O25 | Anyone can send dust Uniswap positions to `LiquidityLocker` and grow `positions()` | Low (tooling) | `LiquidityLocker` |
+| O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
 reserve, the owner reading every mint's quantity through the revenue, the treasury reading
@@ -78,6 +80,12 @@ Details and the rest of the checks follow.
 | User-set slippage stays bounded | Pass | The bureau de change lets the player pick 0.01% to 50% (kept in `localStorage` `dno.slippage`); the adapter rejects a `SwapOptions.slippageBps` outside 1–5000 (an integer) before any transaction, for `buyUsdc` and `trade`. The bureau flags a price impact above 2% and warns in words above 5%. A wide setting is the player's choice, and the app says a bot may take it. A share kept as plain USDC (`dno.keepUsdc`, 0 to 20%) is a second `buyUsdc` with the same slippage bound, sent before the sealed one |
 | Unshielding cUSDC reveals the amount and fails silently | Accepted | `unshieldUsdc` is the wrapper's own `unwrap` + `finalizeUnwrap`, like a cCROQ unwrap: the amount is decrypted in public. A short balance burns 0 and pays out 0; the adapter returns 0 and the bureau stops a multi-leg route there, saying where the funds are. No contract of ours is involved |
 | `UsdcRamp` holds no buyer funds between calls | Pass | Unshielded USDC goes straight to the buyer; shielded USDC is wrapped to the buyer in the same call. With a wrapper `rate()` above 1, the remainder of the division would stay in the ramp: cUSDC's rate is 1 |
+| `StudioPacks` holds no funds | Pass | `buy` sends the whole price to the treasury with `safeTransferFrom` in the same call, or reverts. Test: "sells a pack for plain USDC, paid straight to the treasury" |
+| A studio pack's price cannot be raised under a buyer | Pass | `buy` takes `maxPrice` and reverts with `PriceChanged`; a price is at most 100 USDC (`MAX_PRICE`) and a pack on sale cannot be empty. Tests: "refuses an unknown pack, a zero account, and a price raised after the buyer looked", "lets only the owner set, change and withdraw packs, within bounds" |
+| The studio spends no more than was bought | Pass | The API spends a unit before calling a service, atomically, and gives it back when the service fails or a job is still running after ten minutes; a daily dollar budget pauses the studio. Tests in `apps/api/test` |
+| One studio unit cannot bill the services without end | Pass (fixed in review, 2026-10-04) | A failure gave the unit back and left the day's budget untouched, though fal had billed it: a picture the safety checker flags, repeated, cost the collection on one unit. Now failed jobs count in the budget, a flagged picture keeps its unit (`rejected`), and refunds stop after `STUDIO_REFUNDS_PER_DAY` (3) per account and day. Tests: "gives units back for a few failures a day, then keeps them", "keeps the unit of a picture the safety checker refused", "counts failed jobs in the day's budget" |
+| The studio's file proxy cannot be turned against the API | Pass (fixed in review, 2026-10-04) | It fetched any URL stored for a job, whole, into memory, and served the upstream content type from the API's origin. Now: https on fal's hosts only, 10 MB a picture and 40 MB a mesh, 60 requests a minute per address, the type forced to an image or a GLB, `nosniff` and a sandboxing CSP. Test: "serves only the service's own files, capped in size, never as a page" |
+| A studio buyer gets the pack they saw | Accepted | `buy` bounds the price (`maxPrice`) but not the contents: the owner could shrink a pack between a buyer's look and their transaction. The owner is the collection; a front-run would show in `PackSet` |
 
 ## 2. ACL and confidentiality
 
@@ -221,7 +229,7 @@ clear values and a KMS proof.
 
 | Check | Status |
 | --- | --- |
-| Unit tests on the FHEVM mock | Pass: 147 tests (the standard, the boxes, the croquettes, the ramp, the credits, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
+| Unit tests on the FHEVM mock | Pass: 154 tests (the standard, the boxes, the croquettes, the ramp, the credits, the studio packs, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
 | Every mechanic run on Sepolia through the real KMS | Pass for the previous version: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts`. Not done for the hidden-owner contracts |
 | Optional Hardhat suite on Sepolia (`pnpm test:sepolia`) | Not done |
 | Static analysis (Slither, Aderyn) | Not done |

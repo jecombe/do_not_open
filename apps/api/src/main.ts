@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import pg from "pg";
 import pino from "pino";
 import { AskManual, type AnswerModel } from "./application/askManual";
@@ -8,6 +8,8 @@ import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
 import type { ArchiveStore } from "./application/ports/archive";
 import { Metadata } from "./application/metadata";
+import type { StudioStore } from "./application/ports/studio";
+import { Studio } from "./application/studio";
 import { Queries } from "./application/queries";
 import { RelayerGate } from "./application/relayerGate";
 import { FinalitySweep } from "./application/finalitySweep";
@@ -37,6 +39,7 @@ import { RehearsalNetwork } from "./infrastructure/social/RehearsalNetwork";
 import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
 import { TurboStorage } from "./infrastructure/archive/TurboStorage";
 import { Metrics } from "./infrastructure/http/metrics";
+import { FalStudio } from "./infrastructure/studio/FalStudio";
 
 /** The composition root: the one place that knows every concrete class. */
 async function main() {
@@ -44,7 +47,7 @@ async function main() {
   const log = pino({ level: config.LOG_LEVEL });
 
   let pool: pg.Pool | null = null;
-  let store: Store & PostStore & ArchiveStore;
+  let store: Store & PostStore & ArchiveStore & StudioStore;
   if (config.DATABASE_URL) {
     pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE });
     await migrate(pool, log);
@@ -126,6 +129,29 @@ async function main() {
         }
       : undefined;
 
+  // The studio: cats drawn by fal.ai out of packs bought on-chain. It needs the key and the
+  // StudioPacks contract; without either it reports itself disabled.
+  const fal = new FalStudio({ apiKey: config.FAL_KEY ?? "", imageModel: config.STUDIO_IMAGE_MODEL, modelModel: config.STUDIO_3D_MODEL, timeoutMs: config.STUDIO_TIMEOUT_MS });
+  const studio = new Studio(
+    store,
+    fal,
+    fal,
+    clock,
+    {
+      enabled: !!config.FAL_KEY && !!deployment.studio,
+      paused: config.STUDIO_PAUSED,
+      dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
+      allowlist: config.STUDIO_ALLOWLIST?.length ? new Set(config.STUDIO_ALLOWLIST.map((a) => a.toLowerCase())) : null,
+      staleAfter: Math.ceil(config.STUDIO_TIMEOUT_MS / 1000) * 2,
+      refundsPerDay: config.STUDIO_REFUNDS_PER_DAY,
+      newId: randomUUID,
+    },
+    log,
+  );
+  await studio.recover();
+  if (!deployment.studio) log.info("no StudioPacks contract on this network: the studio is off");
+  else if (!config.FAL_KEY) log.info("FAL_KEY is not set: the studio is off");
+
   const metrics = new Metrics({
     store,
     archive: store,
@@ -133,6 +159,13 @@ async function main() {
     indexer,
     rpcStatus: () => rpc.status(),
     chat,
+    studio: {
+      store,
+      spentToday: () => studio.spentToday(),
+      spentTotal: () => studio.spentTotal(),
+      dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
+      open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
+    },
     info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
   });
 
@@ -146,6 +179,7 @@ async function main() {
           terms: new AcceptTerms(store, ethersVerifier, clock),
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
+          studio: { studio, publicUrl: config.PUBLIC_URL },
           chat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
           discord,

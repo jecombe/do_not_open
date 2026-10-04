@@ -137,6 +137,23 @@ const schema = z.object({
   /** Uploads a pass may make: new cats first, then the sealed boxes in token order. */
   ARCHIVE_PER_PASS: z.coerce.number().int().positive().default(30),
 
+  /** fal.ai's key: pays the studio's picture and 3D services. Without it the studio draws nothing. Never sent to browsers. */
+  FAL_KEY: z.string().optional(),
+  /** fal model that draws a sketch from the styled prompt. */
+  STUDIO_IMAGE_MODEL: z.string().default("fal-ai/flux/schnell"),
+  /** fal model that turns a sketch into a GLB mesh. */
+  STUDIO_3D_MODEL: z.string().default("fal-ai/trellis"),
+  /** Estimated dollars the studio may spend on the services per UTC day, every account together; past it, generation waits for the next day. */
+  STUDIO_DAILY_BUDGET_USD: z.coerce.number().min(0).default(20),
+  /** Comma-separated addresses: when set, only they may generate (a test network, where packs are paid in test USDC). */
+  STUDIO_ALLOWLIST: list.optional(),
+  /** "true" closes the studio without redeploying: packs bought wait. */
+  STUDIO_PAUSED: z.stringbool().default(false),
+  /** Failed generations an account gets its unit back for per UTC day; past it a failure keeps its unit. */
+  STUDIO_REFUNDS_PER_DAY: z.coerce.number().int().min(0).default(3),
+  /** One generation may take this long, queue included. */
+  STUDIO_TIMEOUT_MS: z.coerce.number().int().positive().default(5 * 60_000),
+
   /** The Discord application behind `/ask` (Developer Portal → General Information): its id and public key. Both set: the command is served. */
   DISCORD_APPLICATION_ID: z.string().optional(),
   DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "64 hex characters").optional(),

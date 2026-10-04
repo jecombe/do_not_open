@@ -9,7 +9,9 @@ import type { PostStore } from "../../application/ports/herald";
 import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
 import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
-import { normalizeAddress } from "../../domain/types";
+import { StudioRefused, type Studio } from "../../application/studio";
+import type { StudioJob } from "../../domain/studio";
+import { normalizeAddress, type Address } from "../../domain/types";
 import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
 import type { IndexerStatus } from "../Indexer";
 import type { EndpointStatus } from "../chain/RpcPool";
@@ -25,6 +27,16 @@ export interface HttpDeps {
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
   relayerRatePerMinute?: number;
+  /** The studio: cats drawn by paid AI services out of packs bought on-chain. */
+  studio?: {
+    studio: Studio;
+    /** Where this API is reached from outside: job files are linked through it. */
+    publicUrl: string;
+    /** Fetches the services' files for the proxy routes. */
+    fetch?: typeof fetch;
+    /** Hosts the service's files may come from (and their subdomains). fal.ai's by default. */
+    fileHosts?: string[];
+  };
   /** The manual's chatbot. */
   chat?: AskManual;
   /** Chat questions per minute per IP. */
@@ -309,6 +321,132 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const p = z.object({ address }).parse(req.params);
       return send(reply, await relayer.allowance(p.address), "private, no-store");
     });
+  }
+
+  // --- the studio ---
+
+  const studio = deps.studio;
+  if (studio) {
+    const base = studio.publicUrl.replace(/\/$/, "");
+    const fileUrl = (id: string, file: "image" | "model.glb") => `${base}/v1/studio/jobs/${id}/${file}`;
+    const jobJson = (j: StudioJob) => ({
+      id: j.id,
+      kind: j.kind,
+      status: j.status,
+      prompt: j.prompt,
+      sketchId: j.sketchId,
+      // A model's picture is its sketch's, finished before the model could start.
+      imageUrl: j.kind === "model" && j.sketchId ? fileUrl(j.sketchId, "image") : j.status === "done" ? fileUrl(j.id, "image") : null,
+      modelUrl: j.kind === "model" && j.status === "done" ? fileUrl(j.id, "model.glb") : null,
+      error: j.error,
+      createdAt: j.createdAt,
+    });
+    const STATUS: Record<StudioRefused["code"], number> = {
+      "bad-prompt": 400,
+      "refused-prompt": 403,
+      "not-allowlisted": 403,
+      "no-credits": 402,
+      "studio-paused": 503,
+      "not-found": 404,
+    };
+    const guarded = async <T>(reply: FastifyReply, run: () => Promise<T>) => {
+      reply.header("cache-control", "private, no-store");
+      try {
+        return await run();
+      } catch (error) {
+        if (!(error instanceof StudioRefused)) throw error;
+        return reply.status(STATUS[error.code]).send({ error: error.code, message: error.message, ...(error.reason ? { reason: error.reason } : {}) });
+      }
+    };
+    const jobId = z.object({ id: z.string().uuid() });
+    const fetchFile = studio.fetch ?? fetch;
+
+    app.get("/v1/studio", async (req, reply) => {
+      // Signed in or not: a session only adds whether the wallet is on the testers' list.
+      const h = req.headers.authorization;
+      let who: Address | null = null;
+      if (h?.startsWith("Bearer ")) {
+        try {
+          who = deps.signIn.whoIs(h.slice(7));
+        } catch {
+          who = null;
+        }
+      }
+      reply.header("cache-control", who ? "private, no-store" : "public, max-age=30");
+      return { ...(await studio.studio.info(who)), block: await queries.indexedBlock() };
+    });
+
+    app.get("/v1/studio/credits", async (req, reply) => {
+      const who = bearer(req);
+      return guarded(reply, async () => ({ ...(await studio.studio.credits(who)), block: await queries.indexedBlock() }));
+    });
+
+    app.post("/v1/studio/sketches", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const who = bearer(req);
+      const body = z.object({ prompt: z.unknown() }).parse(req.body ?? {});
+      return guarded(reply, async () => reply.status(202).send({ job: jobJson(await studio.studio.sketch(who, body.prompt)) }));
+    });
+
+    app.post("/v1/studio/models", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const who = bearer(req);
+      const body = z.object({ sketchId: z.string().uuid() }).parse(req.body);
+      return guarded(reply, async () => reply.status(202).send({ job: jobJson(await studio.studio.model(who, body.sketchId)) }));
+    });
+
+    app.get("/v1/studio/jobs", async (req, reply) => {
+      const who = bearer(req);
+      return guarded(reply, async () => ({ jobs: (await studio.studio.jobs(who)).map(jobJson) }));
+    });
+
+    app.get("/v1/studio/jobs/:id", async (req, reply) => {
+      const who = bearer(req);
+      const { id: jobIdValue } = jobId.parse(req.params);
+      return guarded(reply, async () => ({ job: jobJson(await studio.studio.job(who, jobIdValue)) }));
+    });
+
+    // A finished job's files, from the service through this API: the browser never learns where
+    // they are, and a page can draw them without the service's CORS. Ids are random: no sign-in.
+    // Only https files on the service's own hosts are fetched, up to a size, and served as an
+    // image or a mesh whatever the upstream says, never as something a browser would run.
+    const fileHosts = studio.fileHosts ?? ["fal.media", "fal.run", "fal.ai"];
+    const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+    const MAX_FILE_BYTES = { image: 10 * 1024 * 1024, model: 40 * 1024 * 1024 };
+    const allowedFile = (raw: string) => {
+      try {
+        const u = new URL(raw);
+        return u.protocol === "https:" && fileHosts.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
+      } catch {
+        return false;
+      }
+    };
+    const proxy = async (reply: FastifyReply, id: string, file: "image" | "model", fallbackType: string) => {
+      const url = await studio.studio.fileOf(id, file);
+      if (!url) return reply.status(404).send({ error: "not-found", message: "no such file" });
+      if (!allowedFile(url)) return reply.status(502).send({ error: "upstream", message: "the file is not where the service keeps them" });
+      const res = await fetchFile(url, { signal: AbortSignal.timeout(30_000) });
+      if (!res.ok || !res.body) return reply.status(502).send({ error: "upstream", message: "the file could not be fetched" });
+      const max = MAX_FILE_BYTES[file];
+      if (Number(res.headers.get("content-length") ?? 0) > max) return reply.status(502).send({ error: "upstream", message: "the file is too large" });
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+        size += chunk.byteLength;
+        if (size > max) return reply.status(502).send({ error: "upstream", message: "the file is too large" });
+        chunks.push(chunk);
+      }
+      const upstreamType = (res.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
+      const type = file === "model" ? "model/gltf-binary" : IMAGE_TYPES.has(upstreamType) ? upstreamType : fallbackType;
+      return reply
+        .header("cache-control", "public, max-age=31536000, immutable")
+        .header("x-content-type-options", "nosniff")
+        .header("content-security-policy", "default-src 'none'; sandbox")
+        .type(type)
+        .send(Buffer.concat(chunks));
+    };
+    const fileRoute = { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } };
+
+    app.get("/v1/studio/jobs/:id/image", fileRoute, async (req, reply) => proxy(reply, jobId.parse(req.params).id, "image", "image/jpeg"));
+    app.get("/v1/studio/jobs/:id/model.glb", fileRoute, async (req, reply) => proxy(reply, jobId.parse(req.params).id, "model", "model/gltf-binary"));
   }
 
   // --- the manual's chatbot ---

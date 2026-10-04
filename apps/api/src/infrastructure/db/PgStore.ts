@@ -10,6 +10,8 @@ import type { User } from "../../domain/user";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 import type { ArchiveStore } from "../../application/ports/archive";
+import type { StudioStore } from "../../application/ports/studio";
+import { NO_UNITS, type StudioJob, type StudioLedger, type StudioUnits } from "../../domain/studio";
 
 // Block numbers and unix times are int8 columns; they all fit a JS number.
 pg.types.setTypeParser(20, (v) => Number(v));
@@ -19,6 +21,8 @@ type Row = Record<string, any>;
 
 /** Any number: one sync batch at a time, whichever instance runs it. */
 const SYNC_LOCK = 724_002;
+/** Any number: one studio job started at a time, so the last unit and the day's budget are spent once. */
+const STUDIO_LOCK = 724_003;
 const CURSOR_ID = "chain";
 const FINALIZED_ID = "finalized";
 
@@ -121,6 +125,33 @@ async function meterOf(q: Q, account: Address, day: string, lock: boolean): Prom
   return { freeUsed: freeUsed ?? 0, spent: spent ?? 0, bought: await creditsOf(q, account) };
 }
 
+const studioJobFrom = (r: Row): StudioJob => ({
+  id: r.id,
+  account: r.account,
+  kind: r.kind,
+  status: r.status,
+  prompt: r.prompt,
+  sketchId: r.sketch_id,
+  resultUrl: r.result_url,
+  error: r.error,
+  costUsd: Number(r.cost_usd),
+  createdAt: r.created_at,
+  finishedAt: r.finished_at,
+});
+
+const studioBoughtOf = async (q: Q, account: Address): Promise<StudioUnits> =>
+  (await one(q, "select sketches, models from studio_accounts where account = $1", [account], (r) => ({ sketches: r.sketches as number, models: r.models as number }))) ?? { ...NO_UNITS };
+
+async function studioUsedOf(q: Q, account: Address): Promise<StudioUnits> {
+  const { rows } = await q.query("select kind, count(*)::int as n from studio_jobs where account = $1 and status <> 'failed' group by kind", [account]);
+  const used = { ...NO_UNITS };
+  for (const r of rows) used[r.kind === "sketch" ? "sketches" : "models"] = r.n;
+  return used;
+}
+
+const studioSpentOf = async (q: Q, since: number): Promise<number> =>
+  (await one(q, "select coalesce(sum(cost_usd), 0) as usd from studio_jobs where created_at >= $1", [since], (r) => Number(r.usd))) ?? 0;
+
 const publicDecryptionFrom = (r: Record<string, unknown>): PublicDecryption => ({
   key: r.key as string,
   jobId: r.job_id as string,
@@ -134,7 +165,7 @@ const getUser = (q: Q, address: Address) => one(q, "select * from users where ad
 /** The index in Postgres. */
 const proposalFrom = (r: Row): EntangleProposal => ({ tokenA: r.token_a, tokenB: r.token_b, proposer: r.proposer, block: Number(r.block) });
 
-export class PgStore implements Store, PostStore, ArchiveStore {
+export class PgStore implements Store, PostStore, ArchiveStore, StudioStore {
   constructor(private readonly pool: Pool) {}
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
@@ -186,7 +217,7 @@ export class PgStore implements Store, PostStore, ArchiveStore {
         return rows.map((r) => ({ event: eventFrom(r), enrichment: r.enrichment }));
       },
       resetReadModels: async () => {
-        await c.query("truncate boxes, duels, requests, entangle_proposals, mints, milestones, transfers, published_handles, credit_accounts");
+        await c.query("truncate boxes, duels, requests, entangle_proposals, mints, milestones, transfers, published_handles, credit_accounts, studio_accounts");
         // Sign-ins stay; on-chain activity is counted again by the replay.
         await c.query("delete from users where registered_at is null");
         await c.query("update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0");
@@ -263,6 +294,14 @@ export class PgStore implements Store, PostStore, ArchiveStore {
         await c.query(
           "insert into published_handles (handle, caller, block) select h, $2, $3 from unnest($1::text[]) as h on conflict do nothing",
           [handles.map((h) => h.toLowerCase()), caller, block],
+        );
+      },
+      addStudioUnits: async (account, sketches, models, paid = "0") => {
+        await c.query(
+          `insert into studio_accounts (account, sketches, models, packs, paid) values ($1, $2, $3, 1, $4)
+           on conflict (account) do update set sketches = studio_accounts.sketches + $2, models = studio_accounts.models + $3,
+             packs = studio_accounts.packs + 1, paid = studio_accounts.paid + $4`,
+          [account, sketches, models, paid],
         );
       },
       addCredits: async (account, credits) => {
@@ -423,6 +462,84 @@ export class PgStore implements Store, PostStore, ArchiveStore {
 
   async creditsBought(account: Address) {
     return creditsOf(this.pool, account);
+  }
+
+  studioUnitsBought(account: Address) {
+    return studioBoughtOf(this.pool, account);
+  }
+
+  async startStudioJob(account: Address, since: number, decide: (ledger: StudioLedger) => StudioJob | null): Promise<StudioJob | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      // One start at a time, whatever the account: the budget is shared by every account.
+      await client.query("select pg_advisory_xact_lock($1)", [STUDIO_LOCK]);
+      const job = decide({ bought: await studioBoughtOf(client, account), used: await studioUsedOf(client, account), spentTodayUsd: await studioSpentOf(client, since) });
+      if (job) {
+        await client.query(
+          `insert into studio_jobs (id, account, kind, status, prompt, sketch_id, result_url, error, cost_usd, created_at, finished_at)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [job.id, job.account, job.kind, job.status, job.prompt, job.sketchId, job.resultUrl, job.error, job.costUsd, job.createdAt, job.finishedAt],
+        );
+      }
+      await client.query("commit");
+      return job;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async finishStudioJob(id: string, result: { status: "done" | "failed" | "rejected"; resultUrl: string | null; error: string | null }, at: number) {
+    await this.pool.query("update studio_jobs set status = $2, result_url = $3, error = $4, finished_at = $5 where id = $1 and status = 'running'", [
+      id,
+      result.status,
+      result.resultUrl,
+      result.error,
+      at,
+    ]);
+  }
+
+  async failStaleStudioJobs(before: number, error: string, at: number) {
+    const { rowCount } = await this.pool.query("update studio_jobs set status = 'failed', error = $2, finished_at = $3 where status = 'running' and created_at < $1", [before, error, at]);
+    return rowCount ?? 0;
+  }
+
+  studioJob(id: string) {
+    return one(this.pool, "select * from studio_jobs where id = $1", [id], studioJobFrom);
+  }
+
+  async studioJobs(account: Address, limit: number) {
+    const { rows } = await this.pool.query("select * from studio_jobs where account = $1 order by created_at desc, id desc limit $2", [account, limit]);
+    return rows.map(studioJobFrom);
+  }
+
+  studioUnitsUsed(account: Address) {
+    return studioUsedOf(this.pool, account);
+  }
+
+  studioSpentSince(since: number) {
+    return studioSpentOf(this.pool, since);
+  }
+
+  async studioRefundsSince(account: Address, since: number) {
+    return (await one(this.pool, "select count(*)::int as n from studio_jobs where account = $1 and status = 'failed' and created_at >= $2", [account, since], (r) => r.n as number)) ?? 0;
+  }
+
+  async studioSales() {
+    return (
+      (await one(this.pool, "select coalesce(sum(packs), 0)::bigint as packs, coalesce(sum(paid), 0) as paid from studio_accounts", [], (r) => ({
+        packs: Number(r.packs),
+        paidUsdc: Number(r.paid) / 1e6,
+      }))) ?? { packs: 0, paidUsdc: 0 }
+    );
+  }
+
+  async studioJobCounts() {
+    const { rows } = await this.pool.query("select kind, status, count(*)::int as count from studio_jobs group by kind, status");
+    return rows.map((r) => ({ kind: r.kind as string, status: r.status as string, count: r.count as number }));
   }
 
   async meterOf(account: Address, day: string): Promise<Meter> {

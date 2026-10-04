@@ -426,6 +426,34 @@ export interface DecryptionAllowance {
   inputUnits: number;
 }
 
+/** A studio pack as the StudioPacks contract sells it. */
+export interface StudioPack {
+  id: number;
+  key: string;
+  name: string;
+  /** Plain USDC, smallest unit. */
+  price: bigint;
+  /** Cartoon pictures from a prompt. */
+  sketches: number;
+  /** Sketches turned into 3D models. */
+  models: number;
+}
+
+/** Studio units: what a pack holds, what was bought, what is left. */
+export interface StudioUnits {
+  sketches: number;
+  models: number;
+}
+
+/** A session with the DO NOT OPEN API, opened by a wallet signature (no transaction). */
+export interface ApiSession {
+  account: Address;
+  /** Sent as `Authorization: Bearer <token>`. */
+  token: string;
+  /** Unix seconds. */
+  expiresAt: number;
+}
+
 /** A release form signed by the connected wallet. */
 export interface SignedTerms {
   account: Address;
@@ -607,6 +635,19 @@ export interface ChainAdapter {
   decryptionAllowance(): Promise<DecryptionAllowance | null>;
   /** Buys decryption credits for the connected account, in plain USDC: the whole price or a revert. */
   buyCredits(credits: number, opts?: ActionOptions): Promise<void>;
+
+  // --- studio ---
+  /** The studio's packs on sale, read from the StudioPacks contract. Null where none is deployed. */
+  studioPacks(): Promise<StudioPack[] | null>;
+  /** Buys pack `packId` for the connected account, in plain USDC: the whole price or a revert.
+   *  Throws `insufficient-usdc` before any transaction when the wallet holds too little. */
+  buyStudioPack(packId: number, opts?: ActionOptions): Promise<void>;
+  /** Units the connected account bought from this browser that an API answer as of `block`
+   *  may not count yet: add them to what it says, so a purchase shows at once. */
+  studioPending(block: number | null): StudioUnits;
+  /** Signs in to the API with the connected wallet: one free signature, no transaction. Null
+   *  where there is no API (the mock). Throws `rejected` if the wallet refuses. */
+  apiSession(): Promise<ApiSession | null>;
 }
 
 /** "0.002" for 2000000000000000n at 18 decimals. No trailing zeros. */

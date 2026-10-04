@@ -66,6 +66,16 @@ beforeAll(async () => {
       posts: store,
       indexer: { status: () => ({ running: true, lastPass: { from: 100, to: 108, applied: 0, target: 110 }, lastPassAt: 1_790_000_000_000, lastError: null, failures: 0, tasks: { reconcile: { lastRunAt: 1_790_000_000_000, lastResult: null, lastError: "boom" } } }) },
       rpcStatus: () => [{ name: "publicnode", healthy: true, cooldownSeconds: 0, logRange: 1000, latencyMs: 250, served: 7, failed: 1 }],
+      studio: {
+        store: {
+          studioJobCounts: async () => [{ kind: "sketch", status: "done", count: 3 }],
+          studioSales: async () => ({ packs: 2, paidUsdc: 10 }),
+        },
+        spentToday: async () => 0.33,
+        spentTotal: async () => 1.5,
+        dailyBudgetUsd: 20,
+        open: true,
+      },
       info: { chain: "sepolia", collection: "0xABC", version: "test" },
     }),
     corsOrigins: ["https://donotopen.vercel.app", "https://donotopen-*.vercel.app"],
@@ -198,6 +208,13 @@ describe("metrics", () => {
       'dno_rpc_healthy{endpoint="publicnode"} 1',
       'dno_rpc_requests_total{endpoint="publicnode",result="failed"} 1',
       "dno_images_archived 0",
+      'dno_studio_jobs{kind="sketch",status="done"} 3',
+      "dno_studio_spent_today_usd 0.33",
+      "dno_studio_daily_budget_usd 20",
+      "dno_studio_spent_total_usd 1.5",
+      "dno_studio_open 1",
+      "dno_studio_packs_sold 2",
+      "dno_studio_revenue_usdc 10",
     ])
       expect(text).toContain(line);
     expect(text).toMatch(/dno_http_request_duration_seconds_count\{method="GET",route="\/v1\/stats",status="200"\} \d+/);

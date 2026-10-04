@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { spec } from "@dno/game-spec";
+import { spec, studio } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { REPO } from "../links";
@@ -18,7 +18,7 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
  * part about the testnet, which goes away at mainnet; and the part for developers.
  */
 export const PARTS = [
-  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "exchange", "transfer", "croquettes", "terms"] },
+  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "exchange", "transfer", "croquettes", "studio", "terms"] },
   { key: "testnet", sections: ["testnet"] },
   { key: "dev", sections: ["code", "solana", "more"] },
 ] as const;
@@ -365,6 +365,17 @@ export function Manual() {
             <div className="prose">
               <p>{t("docs.croq.p8")}</p>
               <p>{t("docs.croq.p9", { symbol: economy.token.symbol })}</p>
+            </div>
+          </section>
+
+          <section id="studio">
+            <h2>{t("docs.section.studio")}</h2>
+            <div className="prose">
+              <p>{t("docs.studio.p1")}</p>
+              <p>{t("docs.studio.p2", { starter: studio.packs[0]!.priceUsdc, litter: studio.packs[1]!.priceUsdc })}</p>
+              <p>{t("docs.studio.p3")}</p>
+              <p>{t("docs.studio.p4", { min: studio.prompt.minLength, max: studio.prompt.maxLength })}</p>
+              <p>{t("docs.studio.p5")}</p>
             </div>
           </section>
 

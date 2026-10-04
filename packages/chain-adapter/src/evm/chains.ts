@@ -14,6 +14,8 @@ export interface Deployment {
   ramp?: { address: string; abi: InterfaceAbi } | null;
   /** Decryption credits, bought in USDC past the free daily allowance. Null where none was deployed. */
   credits?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  /** The studio's packs, bought in USDC before any AI generation. Null where none was deployed. */
+  studio?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
 }
 
 export const SEPOLIA: ChainParams = {

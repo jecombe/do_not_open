@@ -1,11 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { spec } from "@dno/game-spec";
-import type { CatSpec } from "@dno/generator";
+import { spec, studio } from "@dno/game-spec";
+import { buildCatSpec, FIXTURE_SEEDS, renderCatSvg, type CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD, REPO } from "../links";
 import { useLocale } from "../i18n/locale";
-import { appPath, docsPath, homePath } from "../site";
+import { appPath, docsPath, homePath, studioPath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
@@ -63,6 +63,7 @@ function HomeTop() {
         <a href="#croquettes" onClick={close}>
           {t("home.nav.croq")}
         </a>
+        <a href={studioPath(locale)}>{t("home.nav.studio")}</a>
         <a href={DOCS}>{t("home.nav.docs")}</a>
         <LangSwitch label={t("home.nav")} />
       </nav>
@@ -78,6 +79,11 @@ function HomeTop() {
     </header>
   );
 }
+
+/** Three of the generator's own cats, drawn as the studio's free sketches are. */
+const STUDIO_SKETCHES = [FIXTURE_SEEDS[0]!, FIXTURE_SEEDS[1]!, FIXTURE_SEEDS[4]!].map(
+  ({ seed }) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderCatSvg(buildCatSpec({ seed })))}`,
+);
 
 export function Home() {
   const t = useT();
@@ -155,6 +161,33 @@ export function Home() {
       </section>
 
       <Croquettes />
+
+      <section id="studio" className="home-section studio-teaser">
+        <div className="studio-card">
+          <p className="kicker">{t("home.studio.kicker")}</p>
+          <h2>{t("home.studio.title")}</h2>
+          <p className="section-lede">{t("home.studio.lede")}</p>
+          <ul className="studio-points">
+            <li>
+              <strong>{t("home.studio.free.title")}</strong> {t("home.studio.free.body")}
+            </li>
+            <li>
+              <strong>{t("home.studio.ai.title")}</strong> {t("home.studio.ai.body", { price: studio.packs[0]!.priceUsdc })}
+            </li>
+            <li>
+              <strong>{t("home.studio.next.title")}</strong> {t("home.studio.next.body")}
+            </li>
+          </ul>
+          <a className="btn" href={studioPath(locale)}>
+            {t("home.studio.cta")}&nbsp;→
+          </a>
+        </div>
+        <div className="studio-sketchbook" aria-hidden="true">
+          {STUDIO_SKETCHES.map((src) => (
+            <img key={src.length} src={src} alt="" width={160} height={160} loading="lazy" />
+          ))}
+        </div>
+      </section>
 
       <section id="cats" className="home-section">
         <h2>{t("home.cats.title")}</h2>

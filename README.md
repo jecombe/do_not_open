@@ -36,6 +36,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
+| Studio | `/studio`: a random cat for free in the browser, cats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
 
 ## Layout
 
@@ -163,6 +164,21 @@ until someone buys there is no USDC to sell into. The position is held for good 
 
 The rules, what leaks and the costs are in [`docs/CROQ.md`](docs/CROQ.md).
 
+## The studio
+
+The studio (`/studio`) is the way in for people who do not care about blockchains. Anyone
+draws a random cat there for free: the same procedural generator as the boxes, in the
+browser, no wallet. To draw a cat from a prompt ("a chubby samurai cat"), a player buys a
+pack in plain USDC from `StudioPacks`: **Starter**, 2 USDC for 10 sketches and 1 3D model;
+**Litter**, 8 USDC for 50 and 5. A sketch is a cartoon picture in the house style (try again
+until it looks right); a model turns a sketch into a 3D mesh, drawn with the game's toon
+materials. The API spends a unit before it calls the AI services and gives it back if they
+fail, and stops for the day past a dollar budget. Each pack sells for at least twice what it
+is expected to cost, so the services are paid back with a margin for the treasury. The
+numbers are in [`packages/game-spec/studio.json`](packages/game-spec/studio.json), the flow in
+[`docs/FLOWS.md`](docs/FLOWS.md#the-studio). Next, not built yet: adopting a cat (minting it as an
+Errant) and sending it to sniff boxes.
+
 ## On Sepolia
 
 The current contracts, deployed on 2026-10-03 (block 11836238) with the security review's
@@ -183,6 +199,7 @@ fixes, decoy transfers and a fresh croquette economy. The deployer
 | cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
 | `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
 | `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
+| `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
 
 CROQ trades through Uniswap's own V3 contracts on Sepolia: `SwapRouter02`
 `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`, `QuoterV2`

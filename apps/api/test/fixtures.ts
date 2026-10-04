@@ -15,7 +15,7 @@ export const hashOf = (block: number, fork = "") => `0x${fork}${block.toString(1
 /** An event at `block`, with a unique transaction hash unless one is given. */
 export function ev<N extends EventName>(name: N, block: number, body: Body<N>, at: { txHash?: string; logIndex?: number; timestamp?: number | null; blockHash?: string } = {}): EventOf<N> {
   counter++;
-  const source = ["MealServed", "WelcomeBag", "Purred", "Claimed", "WeighInRequested", "Weighed"].includes(name) ? "pantry" : name === "Bought" ? "ramp" : "collection";
+  const source = ["MealServed", "WelcomeBag", "Purred", "Claimed", "WeighInRequested", "Weighed"].includes(name) ? "pantry" : name === "Bought" ? "ramp" : name === "PackBought" ? "studio" : "collection";
   return {
     name,
     source,

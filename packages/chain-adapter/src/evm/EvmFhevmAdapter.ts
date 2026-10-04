@@ -12,6 +12,7 @@ import {
   type TransactionResponse,
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
+import { studio as studioSpec } from "@dno/game-spec";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import { traitIndexAtOffset } from "../layout";
@@ -55,6 +56,9 @@ import {
   type WalletOption,
   type WeighIn,
   type MarketInfo,
+  type ApiSession,
+  type StudioPack,
+  type StudioUnits,
 } from "../types";
 import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
 import { gateRefusal, toChainError } from "./errors";
@@ -126,6 +130,8 @@ export interface EvmAdapterOptions {
   metered?: boolean;
   /** The DecryptionCredits contract. Without it, credits cannot be bought. */
   credits?: Deployed;
+  /** The StudioPacks contract. Without it, the studio's packs cannot be bought. */
+  studio?: Deployed;
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -298,6 +304,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private minBlock = 0;
   /** Credits bought by this account that the API may not have indexed yet, by block. */
   private boughtCredits: { account: Address; block: number; credits: number }[] = [];
+  /** Studio packs bought by this account that the API may not have indexed yet, by block. */
+  private boughtPacks: { account: Address; block: number; sketches: number; models: number }[] = [];
   private readonly decryptCache: DecryptCache;
 
   constructor(private readonly opts: EvmAdapterOptions) {
@@ -307,7 +315,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -1030,6 +1038,60 @@ export class EvmFhevmAdapter implements ChainAdapter {
     // At most today's price: a change meanwhile reverts instead of charging more.
     const receipt = await this.send(opts, () => this.writer(deployed).buy!(account, credits, price));
     this.boughtCredits.push({ account: account as Address, block: receipt.blockNumber, credits });
+  }
+
+  // --- studio ---
+
+  async studioPacks(): Promise<StudioPack[] | null> {
+    const deployed = this.opts.studio;
+    if (!deployed) return null;
+    const contract = this.at(deployed);
+    const packs = await Promise.all(
+      studioSpec.packs.map(async (p) => {
+        const [price, sketches, models] = await this.reading(contract.packs!(p.id));
+        return { id: p.id, key: p.key, name: p.name, price: BigInt(price), sketches: Number(sketches), models: Number(models) };
+      }),
+    );
+    // A pack the owner withdrew has a zero price.
+    return packs.filter((p) => p.price > 0n);
+  }
+
+  async buyStudioPack(packId: number, opts?: ActionOptions): Promise<void> {
+    const deployed = this.opts.studio;
+    if (!deployed) throw new ChainError("unknown", "The studio's packs cannot be bought on this network.");
+    const pack = (await this.studioPacks())?.find((p) => p.id === packId);
+    if (!pack) throw new ChainError("unknown", "This pack is not for sale.");
+    const { usdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
+    if (held < pack.price) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: pack.price });
+    await this.ensureAllowance(usdc, deployed.address, account, pack.price, opts);
+    // At most the price just read: a change meanwhile reverts instead of charging more.
+    const receipt = await this.send(opts, () => this.writer(deployed).buy!(account, packId, pack.price));
+    this.boughtPacks.push({ account: account as Address, block: receipt.blockNumber, sketches: pack.sketches, models: pack.models });
+    this.opts.indexer?.nudge();
+  }
+
+  studioPending(block: number | null): StudioUnits {
+    if (block !== null) this.boughtPacks = this.boughtPacks.filter((b) => b.block > block);
+    const mine = this.boughtPacks.filter((b) => sameAddress(b.account, this.address_));
+    return { sketches: mine.reduce((n, b) => n + b.sketches, 0), models: mine.reduce((n, b) => n + b.models, 0) };
+  }
+
+  async apiSession(): Promise<ApiSession | null> {
+    const ix = this.opts.indexer;
+    if (!ix) return null;
+    const signer = this.signer();
+    const account = (await signer.getAddress()) as Address;
+    const { message } = await ix.signInMessage(account);
+    let signature: string;
+    try {
+      signature = await signer.signMessage(message);
+    } catch (error) {
+      throw this.toChainError(error);
+    }
+    const { token, expiresAt } = await ix.signIn(account, signature);
+    return { account, token, expiresAt };
   }
 
   private async creditPrice(): Promise<bigint | null> {

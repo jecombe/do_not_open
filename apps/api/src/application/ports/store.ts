@@ -72,6 +72,8 @@ export interface ProjectionTx {
   savePublished(handles: string[], caller: Address, block: number): Promise<void>;
   /** Credits bought on-chain for `account`. */
   addCredits(account: Address, credits: number): Promise<void>;
+  /** Studio units bought on-chain for `account`. */
+  addStudioUnits(account: Address, sketches: number, models: number, paid?: string): Promise<void>;
 }
 
 /** Without `account` or `tokenIds`, every duel (with `statuses`, every open one). */

@@ -106,6 +106,17 @@ describe("EvmChainSource", () => {
     expect(multicalls()).toBe(1);
   });
 
+  it("decodes a studio pack bought, once StudioPacks is in the deployment", async () => {
+    const studioAbi = ["event PackBought(address indexed payer, address indexed account, uint256 indexed packId, uint256 sketches, uint256 models, uint256 paid)"];
+    const studioAddress = "0x00000000000000000000000000000000005707d0";
+    const withStudio = { ...d, studio: { address: studioAddress, abi: studioAbi } };
+    const logs = [log(studioAddress, new Interface(studioAbi), "PackBought", [ALICE, BOB, 1, 50, 5, 8_000_000], 210, 0)];
+    const { rpc } = node(logs, () => null);
+    const batch = await new EvmChainSource(rpc, withStudio, silentLogger).read(210, 210);
+    expect(batch.events).toHaveLength(1);
+    expect(batch.events[0]).toMatchObject({ name: "PackBought", source: "studio", payer: ALICE.toLowerCase(), account: BOB.toLowerCase(), packId: 1, sketches: 50, models: 5, paid: "8000000" });
+  });
+
   it("asks for the protocol's contracts and event topics only", async () => {
     const filters: { address: string[]; topics: (string | string[])[] }[] = [];
     const fetch = (async (_u: string, init: RequestInit) => {
@@ -116,7 +127,7 @@ describe("EvmChainSource", () => {
     const source = new EvmChainSource(new RpcPool({ urls: ["https://n"], rps: 100, maxLogRange: 100, fetch }), d, silentLogger);
     expect(await source.read(1, 50)).toMatchObject({ to: 50, events: [] });
     const [filter, acl] = filters;
-    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : [])].map((a) => a.toLowerCase()));
+    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : []), ...(d.studio ? [d.studio.address] : [])].map((a) => a.toLowerCase()));
     const decryptionProof = collection.getEvent("PublicDecryptionVerified")!.topicHash;
     expect(filter!.topics[0]).not.toContain(decryptionProof);
     for (const name of ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened"]) expect(filter!.topics[0]).toContain(collection.getEvent(name)!.topicHash);

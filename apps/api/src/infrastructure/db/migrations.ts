@@ -344,4 +344,38 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 12,
+    name: "studio packs and jobs",
+    sql: /* sql */ `
+      -- Studio units bought with StudioPacks: a read model, rebuilt by a replay. The contract is
+      -- newer than every block indexed so far, so nothing needs reading again.
+      create table studio_accounts (
+        account text primary key,
+        sketches bigint not null,
+        models bigint not null,
+        packs bigint not null default 0,
+        -- USDC paid, in its smallest unit (6 decimals).
+        paid numeric not null default 0
+      );
+      -- Every generation the studio paid a service for. Not on the chain: a replay keeps it. A
+      -- running, finished or rejected job holds one unit of its kind; a failed one gave it back.
+      create table studio_jobs (
+        id text primary key,
+        account text not null,
+        kind text not null check (kind in ('sketch', 'model')),
+        status text not null check (status in ('running', 'done', 'failed', 'rejected')),
+        prompt text not null,
+        sketch_id text references studio_jobs (id),
+        result_url text,
+        error text,
+        cost_usd double precision not null,
+        created_at bigint not null,
+        finished_at bigint
+      );
+      create index studio_jobs_account on studio_jobs (account, created_at desc);
+      create index studio_jobs_day on studio_jobs (created_at);
+      create index studio_jobs_running on studio_jobs (created_at) where status = 'running';
+    `,
+  },
 ];

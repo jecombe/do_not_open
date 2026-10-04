@@ -44,6 +44,7 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     indexer: indexer ?? undefined,
     metered: !!proxy,
     credits: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.credits ?? undefined),
+    studio: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.studio ?? undefined),
     // Decrypted receipts, balances and shakes, kept per collection so a new deployment starts clean.
     decryptCache: new LocalStorageDecryptCache(`dno:decrypted:${(opts.address || SEPOLIA_DEPLOYMENT.address).toLowerCase()}`),
     readProvider: new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true }),

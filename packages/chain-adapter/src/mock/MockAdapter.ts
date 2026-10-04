@@ -1,4 +1,4 @@
-import { spec, TRAIT_KEYS } from "@dno/game-spec";
+import { spec, studio as studioSpec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
@@ -35,6 +35,9 @@ import {
   type TxRecord,
   type WalletOption,
   type WeighIn,
+  type ApiSession,
+  type StudioPack,
+  type StudioUnits,
 } from "../types";
 import { MockPool } from "./pool";
 
@@ -156,6 +159,8 @@ export class MockAdapter implements ChainAdapter {
   private milestonesReached = 0;
   /** Plain USDC, public. */
   private readonly usdc = new Map<Address, bigint>();
+  /** Studio units bought per account, in the demo. */
+  private readonly studioBought = new Map<Address, StudioUnits>();
   /** cUSDC: encrypted on a real chain, readable by its holder only. */
   private readonly cUsdc = new Map<Address, bigint>();
   /** Bumped on every cUSDC move, standing in for the fresh ciphertext a real transfer makes. */
@@ -882,6 +887,36 @@ export class MockAdapter implements ChainAdapter {
 
   async buyCredits(_credits: number, _opts?: ActionOptions): Promise<void> {
     throw new ChainError("unknown", "The demo has no decryption credits: its decryptions are free.");
+  }
+
+  // --- studio ---
+
+  /** The packs of studio.json, as the contract would sell them. */
+  async studioPacks(): Promise<StudioPack[] | null> {
+    return studioSpec.packs.map((p) => ({ id: p.id, key: p.key, name: p.name, price: BigInt(Math.round(Number(p.priceUsdc) * 1e6)), sketches: p.sketches, models: p.models }));
+  }
+
+  async buyStudioPack(packId: number, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    const pack = (await this.studioPacks())!.find((p) => p.id === packId);
+    if (!pack) throw new ChainError("unknown", "This pack is not for sale.");
+    const held = this.usdc.get(me) ?? 0n;
+    if (held < pack.price) throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held, needed: pack.price });
+    await this.send(opts, "buy");
+    this.credit(this.usdc, me, -pack.price);
+    const had = this.studioBought.get(me) ?? { sketches: 0, models: 0 };
+    this.studioBought.set(me, { sketches: had.sketches + pack.sketches, models: had.models + pack.models });
+  }
+
+  /** No API counts anything in the demo: every unit bought is "pending", for the page to count. */
+  studioPending(_block: number | null): StudioUnits {
+    const me = this.account();
+    return (me && this.studioBought.get(me)) || { sketches: 0, models: 0 };
+  }
+
+  /** The demo has no API to sign in to. */
+  async apiSession(): Promise<ApiSession | null> {
+    return null;
   }
 
   // --- internals ---

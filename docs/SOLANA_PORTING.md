@@ -89,6 +89,7 @@ were drawn for:
 | Sequential token ids from `tokenCount`, empty ids included | mint | A counter in the collection account | Writes to one account serialise mints: fine at this scale |
 | Encrypted sold count, milestone bit | mint, `announceMilestone` | Handles in the collection account | |
 | Replay of the account's own `ConfidentialTransfer` receipts | `boxesOf` | The same replay over program events naming the account, decrypting each "moved" bit | DAS (`getAssetsByOwner`) cannot help: the owner is encrypted |
+| `StudioPacks`: packs bought in plain USDC, `PackBought` | the studio | An SPL USDC transfer to the treasury in the same instruction that bumps the buyer's account (a PDA per buyer: `["studio", buyer]`) and emits the same event | No FHE: a straight port. The API's indexer reads the event the same way |
 
 ### Things that are structurally different
 

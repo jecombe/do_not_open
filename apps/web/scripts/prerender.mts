@@ -1,10 +1,11 @@
 /**
- * Writes the home page and the manual once per language after `vite build`, with their text
+ * Writes the home page, the manual and the studio once per language after `vite build`, with their text
  * already in the page and a full <head> (canonical, hreflang, Open Graph, Twitter, JSON-LD), so
  * a crawler or a link preview reads them without running any script:
  *
  *   dist/index.html  dist/fr/index.html  dist/es/index.html  dist/it/index.html   →  /  /fr/  /es/  /it/
  *   dist/docs.html   dist/fr/docs.html   dist/es/docs.html   dist/it/docs.html    →  /docs  /fr/docs ...
+ *   dist/studio.html dist/fr/studio.html ...                                       →  /studio  /fr/studio ...
  *
  * The browser then renders the page again from scratch once the fonts are in (createRoot, no
  * hydration): what is drawn on a canvas (the box, the cats) only exists from then on.
@@ -21,7 +22,7 @@ const LOCALES = ["en", "fr", "es", "it"] as const;
 type Locale = (typeof LOCALES)[number];
 const OG_LOCALE: Record<Locale, string> = { en: "en_US", fr: "fr_FR", es: "es_ES", it: "it_IT" };
 /** Below this much visible text, the page did not really render: the build fails. */
-const MIN_TEXT = { home: 2_000, docs: 20_000 } as const;
+const MIN_TEXT = { home: 2_000, docs: 20_000, studio: 600 } as const;
 
 // The pages read a few browser globals while rendering: enough of them to render once. Effects
 // (three.js, observers, timers) never run on the server.
@@ -64,12 +65,15 @@ try {
   const { Manual } = await vite.ssrLoadModule("/src/docs/Manual.tsx");
   const home = await vite.ssrLoadModule("/src/home/i18n.ts");
   const docs = await vite.ssrLoadModule("/src/docs/i18n.ts");
+  const { StudioPage } = await vite.ssrLoadModule("/src/studio/StudioPage.tsx");
+  const app = await vite.ssrLoadModule("/src/i18n/app.ts");
 
   const SITE: string = site.SITE_URL;
   const IMAGE = `${SITE}/og.png`;
   const PAGES = {
     home: { file: "index.html", component: Home, t: home.t, prefix: "home", path: site.homePath as (l: Locale) => string },
     docs: { file: "docs.html", component: Manual, t: docs.t, prefix: "docs", path: site.docsPath as (l: Locale) => string },
+    studio: { file: "studio.html", component: StudioPage, t: app.t, prefix: "studio", path: site.studioPath as (l: Locale) => string },
   } as const;
 
   // The English files are the templates. A second run starts from them again: the tags and the
@@ -120,7 +124,12 @@ try {
                 sameAs: [REPO, DISCORD],
               },
             ]
-          : [
+          : page === "studio"
+            ? [
+                website,
+                { "@type": "WebPage", "@id": `${url}#page`, name: title, description, url, inLanguage: locale, image: IMAGE, isPartOf: { "@id": `${SITE}/#website` } },
+              ]
+            : [
               website,
               {
                 "@type": "TechArticle",

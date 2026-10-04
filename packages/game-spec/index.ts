@@ -97,3 +97,4 @@ export interface EconomySpec {
 export const spec = raw as unknown as GameSpec;
 
 export const TRAIT_KEYS: readonly TraitKey[] = ["breed", "mood", "accessory", "brokenThing", "room"];
+export { studio, packCostUsd, styledPrompt, type StudioSpec, type StudioPackDef, type StudioUnit } from "./studioSpec";
