@@ -960,7 +960,7 @@ export const en = {
   "studio.sketches.title": "Your sketches",
   "studio.model.button": "Turn into 3D",
   "studio.model.pick": "Pick a sketch to turn into 3D.",
-  "studio.model.cost": "Costs 1 3D model. It takes about four minutes: the AI also paints the sides the sketch does not show.",
+  "studio.model.cost": "Costs 1 3D model. It takes a few minutes: the AI also paints the sides the sketch does not show.",
   "studio.models.title": "Your 3D rats",
   "studio.model.show": "Show",
   "studio.model.onStage": "On the turntable",

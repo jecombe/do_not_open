@@ -4,7 +4,7 @@ export interface FalOptions {
   apiKey: string;
   /** The picture model, e.g. fal-ai/flux/schnell. */
   imageModel: string;
-  /** The picture-to-mesh model, e.g. fal-ai/hunyuan3d/v2 or fal-ai/trellis. */
+  /** The picture-to-mesh model, e.g. tripo3d/h3.1/image-to-3d, fal-ai/hunyuan3d/v2 or fal-ai/trellis. */
   modelModel: string;
   /**
    * A background remover run on the sketch first, e.g. fal-ai/birefnet, or null to skip it. A
@@ -18,6 +18,17 @@ export interface FalOptions {
   pollMs?: number;
   queueUrl?: string;
   fetch?: typeof fetch;
+}
+
+/**
+ * Each picture-to-mesh model names its input its own way. Tripo and Hunyuan3D paint the sides the
+ * picture does not show; Trellis leaves them black. Tripo's colours stay plain (no PBR) since the
+ * app dresses the mesh in toon materials anyway, and without quads it answers a GLB, not an FBX.
+ */
+function meshInput(model: string, imageUrl: string): object {
+  if (/tripo/i.test(model)) return { image_url: imageUrl, texture: true, pbr: false, texture_quality: "standard", geometry_quality: "standard" };
+  if (/hunyuan/i.test(model)) return { input_image_url: imageUrl, textured_mesh: true };
+  return { image_url: imageUrl };
 }
 
 interface Queued {
@@ -55,9 +66,7 @@ export class FalStudio implements ImageGenerator, ModelGenerator {
       if (typeof cut.image?.url !== "string") throw new Error("fal returned no cut-out picture");
       source = cut.image.url;
     }
-    // Hunyuan3D paints the sides the picture does not show; Trellis leaves them black.
-    const input = /hunyuan/i.test(this.opts.modelModel) ? { input_image_url: source, textured_mesh: true } : { image_url: source };
-    const out = (await this.generate(this.opts.modelModel, input)) as { model_mesh?: { url?: unknown }; model_glb?: { url?: unknown } };
+    const out = (await this.generate(this.opts.modelModel, meshInput(this.opts.modelModel, source))) as { model_mesh?: { url?: unknown }; model_glb?: { url?: unknown } };
     const url = out.model_mesh?.url ?? out.model_glb?.url;
     if (typeof url !== "string") throw new Error("fal returned no mesh");
     return { url };

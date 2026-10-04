@@ -142,7 +142,7 @@ const schema = z.object({
   /** fal model that draws a sketch from the styled prompt. */
   STUDIO_IMAGE_MODEL: z.string().default("fal-ai/flux/schnell"),
   /** fal model that turns a sketch into a GLB mesh. */
-  STUDIO_3D_MODEL: z.string().default("fal-ai/hunyuan3d/v2"),
+  STUDIO_3D_MODEL: z.string().default("tripo3d/h3.1/image-to-3d"),
   /** Background remover run on a sketch before it is turned into 3D; "none" skips it. */
   STUDIO_CUTOUT_MODEL: z.string().default("fal-ai/birefnet"),
   /** Estimated dollars the studio may spend on the services per UTC day, every account together; past it, generation waits for the next day. */
