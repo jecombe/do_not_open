@@ -375,7 +375,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
           who = null;
         }
       }
-      reply.header("cache-control", who ? "private, no-store" : "public, max-age=30");
+      // The answer depends on the token: no cache may hand the anonymous one to a signed-in call.
+      reply.header("cache-control", who ? "private, no-store" : "public, max-age=30").header("vary", "authorization");
       return { ...(await studio.studio.info(who)), block: await queries.indexedBlock() };
     });
 

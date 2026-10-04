@@ -80,6 +80,10 @@ describe("studio routes", () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ enabled: true, paused: null, testersOnly: false, allowlisted: null, block: null });
     expect(r.body.packs[0]).toEqual({ id: 0, key: "starter", name: "Starter", priceUsdc: "2", sketches: 10, models: 1 });
+    // Cached for anyone, but never served to a signed-in call in its place.
+    expect(r.headers["cache-control"]).toBe("public, max-age=30");
+    expect(r.headers.vary).toMatch(/authorization/i);
+    expect((await call("GET", "/v1/studio", await tokenOf(other))).headers["cache-control"]).toBe("private, no-store");
   });
 
   it("asks for a sign-in before credits and generations", async () => {

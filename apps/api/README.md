@@ -294,7 +294,7 @@ the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is gene
 
 | Route | Auth | Answer |
 | --- | --- | --- |
-| `GET /v1/studio` | optional | `{ enabled, paused: null \| "off" \| "budget", packs: [{ id, key, name, priceUsdc, sketches, models }], testersOnly, allowlisted: boolean \| null, block }` (`testersOnly`: `STUDIO_ALLOWLIST` is set, and the site locks its AI tab for anyone not on it; `allowlisted` is null without a list or a session, so the list is never revealed to a visitor) |
+| `GET /v1/studio` | optional | `{ enabled, paused: null \| "off" \| "budget", packs: [{ id, key, name, priceUsdc, sketches, models }], testersOnly, allowlisted: boolean \| null, block }` (`testersOnly`: `STUDIO_ALLOWLIST` is set, and the site locks its AI tab for anyone not on it; `allowlisted` is null without a list or a session, so the list is never revealed to a visitor; cached 30 s without a session, never with one, and sent with `Vary: Authorization` so a cached anonymous answer is never served to a signed-in call) |
 | `GET /v1/studio/credits` | session | `{ sketches: { bought, used, left }, models: { bought, used, left }, block }` |
 | `POST /v1/studio/sketches` | session | `{ prompt }` → `202 { job }`. 20 a minute per IP |
 | `POST /v1/studio/models` | session | `{ sketchId }` (a finished sketch of the account) → `202 { job }`. 20 a minute per IP |

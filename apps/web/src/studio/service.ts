@@ -124,7 +124,9 @@ export class HttpStudio implements StudioService {
     const headers: Record<string, string> = { ...(init.body ? { "content-type": "application/json" } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) };
     let res: Response;
     try {
-      res = await fetch(`${this.base}${path}`, { ...init, headers });
+      // Signed in, never from the browser's cache: it keys on the URL alone and would hand back
+      // the answer it kept from before the sign-in (`/v1/studio` is public for 30 s).
+      res = await fetch(`${this.base}${path}`, { ...init, headers, ...(token ? { cache: "no-store" as const } : {}) });
     } catch {
       throw new StudioError("unreachable", "The studio cannot be reached.");
     }
