@@ -8,6 +8,7 @@ import { useLocale } from "../i18n/locale";
 import { appPath, docsPath, homePath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
+import { Departures } from "./Departures";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { Shipped } from "./Shipped";
@@ -108,6 +109,7 @@ export function Home() {
             </a>
           </p>
         </div>
+        <Departures />
         <Toy />
       </section>
 
