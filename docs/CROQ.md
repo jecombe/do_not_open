@@ -55,7 +55,9 @@ function, no owner and no pause. Nothing can create more.
 | Market liquidity | 4,000,000 (20%) | A CROQ-only position in a CROQ/USDC Uniswap V3 pool, locked for good in the `LiquidityLocker` |
 | Treasury | 5,000,000 (25%) | Kept by the collection owner as plain CROQ, for events and future liquidity |
 
-Out of the treasury, 500,000 CROQ go to the `RatPantry` by a plain transfer (see
+Out of the treasury, 500,000 CROQ go to the `RatPantry` by a plain transfer, made by the deploy
+itself in a full deployment (the economy script keeps them aside before handing the treasury to
+the owner) (see
 "The rats' croquettes" below): the studio's adopted rats are paid from it, not from the game
 reserve.
 
