@@ -183,12 +183,6 @@ body.studio-page {
   color: #fff7e8;
 }
 
-.studio-model-actions {
-  display: flex;
-  flex: none;
-  gap: 12px;
-}
-
 .studio-another {
   color: var(--sodium);
   border-color: var(--sodium);
@@ -286,6 +280,8 @@ body.studio-page {
 }
 
 .studio-sketch {
+  position: relative;
+  overflow: hidden;
   display: grid;
   place-items: center;
   width: 100%;
@@ -418,4 +414,292 @@ body.studio-page {
 .studio-models .link {
   flex: none;
   white-space: nowrap;
+}
+
+/* --- The switch between the free generator and the AI --- */
+.studio-mode {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 620px;
+  margin: 26px auto 0;
+  padding: 5px;
+  border: 2px solid var(--kraft);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.35);
+  box-shadow: 0 0 0 4px var(--dock-shadow);
+}
+
+.studio-mode-thumb {
+  position: absolute;
+  inset: 5px auto 5px 5px;
+  width: calc(50% - 5px);
+  border-radius: 999px;
+  background: var(--sodium);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.35);
+  transition: transform 0.28s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.studio-mode[data-mode="ai"] .studio-mode-thumb {
+  transform: translateX(100%);
+}
+
+.studio-mode-option {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 9px 12px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--manifest);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.studio-mode-option[aria-pressed="true"] {
+  color: var(--ink);
+}
+
+.studio-mode-option:focus-visible {
+  outline: 3px solid var(--manifest);
+  outline-offset: 2px;
+}
+
+.studio-mode-title {
+  font-family: var(--stencil);
+  font-size: clamp(17px, 2.4vw, 22px);
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio-mode-hint {
+  font-size: 14px;
+  line-height: 1.15;
+  opacity: 0.85;
+}
+
+.studio-mode-busy::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  animation: studio-blink 1s ease-in-out infinite;
+}
+
+@keyframes studio-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* The free generator on its own: one turntable, centred. */
+.studio-workshop.studio-workshop-random {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 860px;
+  margin-inline: auto;
+}
+
+.studio-workshop-random .studio-stage {
+  position: static;
+}
+
+/* --- The drawing board --- */
+.studio-board-empty {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 27px, rgb(233 223 200 / 0.06) 27px 28px),
+    repeating-linear-gradient(90deg, transparent 0 27px, rgb(233 223 200 / 0.06) 27px 28px),
+    #241d17;
+}
+
+.studio-board-empty p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--tape);
+  font-size: 19px;
+  text-align: center;
+}
+
+.studio-bigsketch {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  aspect-ratio: 1;
+  width: 100%;
+  max-height: min(78vh, 760px);
+  padding: 10px;
+  background: #fffaf0;
+  border: 2px solid var(--kraft);
+  box-shadow: 0 0 0 5px var(--dock-shadow), 0 18px 40px rgb(0 0 0 / 0.5);
+  transform: rotate(-0.6deg);
+  animation: studio-pop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.studio-bigsketch img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes studio-pop {
+  from {
+    transform: rotate(-4deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+.studio-board-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.studio-board-actions .fine,
+.studio-board-prompt {
+  color: var(--tape);
+  max-width: none;
+}
+
+.studio-board-prompt {
+  margin: 12px 0 0;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.studio-board-cta {
+  background: var(--sodium);
+  border-color: var(--sodium);
+  color: var(--ink);
+}
+
+/* --- The loader: the rat in its wheel, the bar over it --- */
+.studio-loading {
+  overflow: hidden;
+}
+
+.studio-load {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 26px 16px 12px;
+  background: linear-gradient(to top, rgb(23 19 15 / 0.92) 55%, transparent);
+  pointer-events: none;
+}
+
+.studio-load-phase {
+  margin: 0 0 8px;
+  font-family: var(--stencil);
+  font-size: clamp(18px, 2.6vw, 24px);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--manifest);
+}
+
+.studio-load-bar {
+  position: relative;
+  height: 16px;
+  border: 2px solid var(--manifest);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.studio-load-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: repeating-linear-gradient(-45deg, var(--sodium) 0 10px, #ffd27a 10px 20px);
+  background-size: 28px 28px;
+  animation: studio-stripes 0.8s linear infinite;
+  transition: width 0.3s linear;
+}
+
+@keyframes studio-stripes {
+  to {
+    background-position: 28px 0;
+  }
+}
+
+.studio-load-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--tape);
+}
+
+.studio-load-meta span:first-child {
+  font-weight: 700;
+  color: var(--manifest);
+}
+
+.studio-minibar {
+  position: absolute;
+  inset: auto 4px 4px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(28 24 20 / 0.2);
+  overflow: hidden;
+}
+
+.studio-minibar > span {
+  display: block;
+  height: 100%;
+  background: var(--ink-red);
+  transition: width 0.5s linear;
+}
+
+.studio-model-running {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-mode-thumb,
+  .studio-bigsketch,
+  .studio-load-bar > span,
+  .studio-mode-busy::before {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .studio-mode {
+    margin-top: 18px;
+  }
+
+  .studio-mode-option {
+    padding: 8px 6px 7px;
+  }
+
+  .studio-mode-title {
+    font-size: 16px;
+    white-space: normal;
+  }
+
+  /* Taller on a phone: the bar sits over the floor, not over the rat. */
+  .studio-loading {
+    aspect-ratio: 1;
+  }
+
+  .studio-mode-hint {
+    font-size: 12px;
+  }
+
+  .studio-load-meta {
+    font-size: 13px;
+  }
 }
