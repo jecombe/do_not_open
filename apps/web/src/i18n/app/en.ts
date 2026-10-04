@@ -33,7 +33,7 @@ export const en = {
   "nav.testnet": "Testnet",
   "nav.mainnet": "Mainnet",
   "nav.testnetTitle": "Ethereum Sepolia: free test tokens",
-  "nav.mainnetTitle": "Ethereum mainnet: real money",
+  "nav.mainnetTitle": "Mainnet: coming later",
   "footer.offline": "Cannot reach the chain. {reason}",
   "footer.mock": "Mock depot. No chain connected; seeds are local stand-ins.",
   "footer.unavailable": "{mode} is not available yet: this build runs the mock depot. Seeds are local stand-ins.",
