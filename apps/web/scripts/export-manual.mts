@@ -69,7 +69,7 @@ try {
   const { createElement } = await import("react");
   const { setLocale } = await vite.ssrLoadModule("/src/i18n/locale.ts");
   const { Manual, PARTS } = await vite.ssrLoadModule("/src/docs/Manual.tsx");
-  const partOf = new Map<string, string>(PARTS.flatMap((p: { key: string; sections: readonly string[] }) => p.sections.map((s) => [s, p.key])));
+  const partOf = new Map<string, string>(PARTS.flatMap((p: { audience: string; sections: readonly string[] }) => p.sections.map((s) => [s, p.audience])));
 
   const locales: Record<string, unknown> = {};
   for (const locale of LOCALES) {

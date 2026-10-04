@@ -40,15 +40,17 @@ function useCalm(): boolean {
  */
 const TRIPS: { d: string; color: string; begin: number }[] = [
   // A mint, an opening or a pet: to the treasury, which pays Zama.
-  { d: "M222 230 L326 230 L554 235 L676 235 L805 240 L700 490", color: C.sodium, begin: 0 },
+  { d: "M222 295 C270 295 270 185 326 185 L554 190 C610 190 615 230 676 230 L805 245 L605 560", color: C.sodium, begin: 0 },
   // A paid shake: 70% to the box's holder...
-  { d: "M222 205 C270 205 270 85 326 85 L554 75 L800 75", color: C.spectral, begin: 1.2 },
+  { d: "M222 280 C270 280 270 65 326 65 L554 55 L800 55", color: C.spectral, begin: 1 },
   // ...and 30% to the treasury, which pays the servers.
-  { d: "M222 205 C270 205 270 85 326 85 L554 100 C615 100 615 205 676 205 L805 250 L870 490", color: C.sodium, begin: 2.4 },
+  { d: "M222 280 C270 280 270 65 326 65 L554 80 C615 80 615 195 676 195 L805 250 L745 560", color: C.spectral, begin: 2 },
   // Credits: to the treasury, which pays Zama.
-  { d: "M222 255 C270 255 270 375 326 375 L554 375 C615 375 615 265 676 265 L805 260 L700 490", color: C.tape, begin: 3.6 },
+  { d: "M222 305 L326 305 L554 305 C615 305 615 265 676 265 L805 255 L605 560", color: C.tape, begin: 3 },
+  // The studio: packs and adoptions, to the treasury, which pays the AI.
+  { d: "M222 325 C270 325 270 425 326 425 L554 425 C640 425 640 300 676 300 L805 260 L885 560", color: C.pink, begin: 4 },
 ];
-const TRIP_SECONDS = 4.8;
+const TRIP_SECONDS = 5;
 
 function Coin({ d, color, begin }: { d: string; color: string; begin: number }) {
   return (
@@ -69,28 +71,33 @@ export function FeesFigure() {
   return (
     <figure className="diagram">
       <div className="diagram-scroll">
-        <svg viewBox="0 0 960 560" role="img" aria-label={t("fig.fees.aria")}>
+        <svg viewBox="0 0 960 620" role="img" aria-label={t("fig.fees.aria")}>
           <Heads />
-          <Pipe d="M222 205 C270 205 270 85 322 85" label="" lx={0} ly={0} color={C.spectral} />
-          <Pipe d="M222 230 L322 230" label="" lx={0} ly={0} color={C.sodium} />
-          <Pipe d="M222 255 C270 255 270 375 322 375" label="" lx={0} ly={0} color={C.tape} />
-          <Pipe d="M554 72 L672 72" label={t("fig.fees.share70")} lx={613} ly={60} color={C.spectral} />
-          <Pipe d="M554 100 C615 100 615 205 672 205" label={t("fig.fees.share30")} lx={622} ly={150} color={C.spectral} anchor="start" />
-          <Pipe d="M554 235 L672 235" label="" lx={0} ly={0} color={C.sodium} />
-          <Pipe d="M554 375 C615 375 615 265 672 265" label="" lx={0} ly={0} color={C.tape} />
-          <Pipe d="M760 300 C740 360 700 400 695 426" label={t("fig.fees.pays")} lx={716} ly={372} color={C.kraft} anchor="end" />
-          <Pipe d="M850 300 L862 426" label={t("fig.fees.pays")} lx={872} ly={372} color={C.kraft} anchor="start" />
+          <Pipe d="M222 280 C270 280 270 65 322 65" label="" lx={0} ly={0} color={C.spectral} />
+          <Pipe d="M222 295 C270 295 270 185 322 185" label="" lx={0} ly={0} color={C.sodium} />
+          <Pipe d="M222 305 L322 305" label="" lx={0} ly={0} color={C.tape} />
+          <Pipe d="M222 325 C270 325 270 425 322 425" label="" lx={0} ly={0} color={C.pink} />
+          <Pipe d="M554 55 L672 55" label={t("fig.fees.share70")} lx={613} ly={43} color={C.spectral} />
+          <Pipe d="M554 80 C615 80 615 195 672 195" label={t("fig.fees.share30")} lx={622} ly={130} color={C.spectral} anchor="start" />
+          <Pipe d="M554 190 C610 190 615 230 672 230" label="" lx={0} ly={0} color={C.sodium} />
+          <Pipe d="M554 305 C615 305 615 265 672 265" label="" lx={0} ly={0} color={C.tape} />
+          <Pipe d="M554 425 C640 425 640 300 672 300" label="" lx={0} ly={0} color={C.pink} />
+          <Pipe d="M730 324 C700 400 615 440 605 506" label={t("fig.fees.pays")} lx={650} ly={420} color={C.kraft} anchor="end" />
+          <Pipe d="M795 324 L748 506" label="" lx={0} ly={0} color={C.kraft} />
+          <Pipe d="M860 324 L885 506" label="" lx={0} ly={0} color={C.kraft} />
 
           {!calm && TRIPS.map((trip) => <Coin key={trip.d} {...trip} />)}
 
-          <Crate x={20} y={175} w={200} h={110} fill={C.spectral} title={t("fig.fees.you")} sub={t("fig.fees.youSub")} />
-          <Crate x={326} y={35} w={228} h={100} fill={C.spectral} title={t("fig.fees.shake")} sub={t("fig.fees.shakeSub")} />
-          <Crate x={326} y={180} w={228} h={100} fill={C.sodium} title={t("fig.fees.paid")} sub={t("fig.fees.paidSub")} />
-          <Crate x={326} y={325} w={228} h={100} fill={C.tape} title={t("fig.fees.credits")} sub={t("fig.fees.creditsSub", free)} />
-          <Crate x={676} y={35} w={250} h={100} fill={C.paper} dashed title={t("fig.fees.holder")} sub={t("fig.fees.holderSub")} />
-          <Crate x={676} y={180} w={250} h={120} fill={C.kraft} title={t("fig.fees.treasury")} sub={t("fig.fees.treasurySub")} />
-          <Crate x={600} y={430} w={180} h={100} fill={C.paper} title={t("fig.fees.zama")} sub={t("fig.fees.zamaSub")} />
-          <Crate x={790} y={430} w={150} h={100} fill={C.paper} title={t("fig.fees.servers")} sub={t("fig.fees.serversSub")} />
+          <Crate x={20} y={250} w={200} h={110} fill={C.spectral} title={t("fig.fees.you")} sub={t("fig.fees.youSub")} />
+          <Crate x={326} y={20} w={228} h={90} fill={C.spectral} title={t("fig.fees.shake")} sub={t("fig.fees.shakeSub")} />
+          <Crate x={326} y={140} w={228} h={90} fill={C.sodium} title={t("fig.fees.paid")} sub={t("fig.fees.paidSub")} />
+          <Crate x={326} y={260} w={228} h={90} fill={C.tape} title={t("fig.fees.credits")} sub={t("fig.fees.creditsSub", free)} />
+          <Crate x={326} y={380} w={228} h={90} fill={C.pink} title={t("fig.fees.studio")} sub={t("fig.fees.studioSub")} />
+          <Crate x={676} y={10} w={250} h={90} fill={C.paper} dashed title={t("fig.fees.holder")} sub={t("fig.fees.holderSub")} />
+          <Crate x={676} y={170} w={250} h={150} fill={C.kraft} title={t("fig.fees.treasury")} sub={t("fig.fees.treasurySub")} />
+          <Crate x={540} y={510} w={130} h={96} fill={C.paper} title={t("fig.fees.zama")} sub={t("fig.fees.zamaSub")} />
+          <Crate x={680} y={510} w={130} h={96} fill={C.paper} title={t("fig.fees.servers")} sub={t("fig.fees.serversSub")} />
+          <Crate x={820} y={510} w={130} h={96} fill={C.paper} title={t("fig.fees.ai")} sub={t("fig.fees.aiSub")} />
         </svg>
       </div>
       <div className={calm ? "diagram-phone fees-phone" : "diagram-phone fees-phone is-moving"} role="img" aria-label={t("fig.fees.aria")}>
@@ -103,6 +110,8 @@ export function FeesFigure() {
           <Dest color={C.spectral} delay={0.6} lines={[`${t("fig.fees.share70")} ${t("fig.fees.holder")}`, `${t("fig.fees.share30")} ${t("fig.fees.treasury")}`]} />
           <Box fill={C.tape} title={t("fig.fees.credits")} sub={t("fig.fees.creditsSub", free)} />
           <Dest color={C.tape} delay={1.2} lines={[t("fig.fees.treasury")]} />
+          <Box fill={C.pink} title={t("fig.fees.studio")} sub={t("fig.fees.studioSub")} />
+          <Dest color={C.pink} delay={1.8} lines={[t("fig.fees.treasury")]} />
         </div>
         <FlowLane color={C.kraft} delay={0.3} />
         <Box fill={C.kraft} title={t("fig.fees.treasury")} sub={t("fig.fees.treasurySub")} />
@@ -110,6 +119,7 @@ export function FeesFigure() {
         <div className="fees-split">
           <Box fill={C.paper} title={t("fig.fees.zama")} sub={t("fig.fees.zamaSub")} />
           <Box fill={C.paper} title={t("fig.fees.servers")} sub={t("fig.fees.serversSub")} />
+          <Box fill={C.paper} title={t("fig.fees.ai")} sub={t("fig.fees.aiSub")} />
         </div>
       </div>
       <figcaption>{t("fig.fees.caption")}</figcaption>
