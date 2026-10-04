@@ -413,7 +413,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     // image or a mesh whatever the upstream says, never as something a browser would run.
     const fileHosts = studio.fileHosts ?? ["fal.media", "fal.run", "fal.ai"];
     const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-    const MAX_FILE_BYTES = { image: 10 * 1024 * 1024, model: 40 * 1024 * 1024 };
+    // A model is shown up to 100 MB: Tripo's first meshes, before its face limit, weighed more than 40.
+    const MAX_FILE_BYTES = { image: 10 * 1024 * 1024, model: 100 * 1024 * 1024 };
     const allowedFile = (raw: string) => {
       try {
         const u = new URL(raw);
