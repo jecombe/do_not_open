@@ -279,12 +279,12 @@ the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is gene
   is spent.
 - **Files.** `/v1/studio/jobs/:id/image` and `/model.glb` fetch only https files on fal's hosts
   (`fal.media`, `fal.run`, `fal.ai` and their subdomains), at most 10 MB a picture and 100 MB a
-  mesh (adopting one still takes 40 MB at most, since the API keeps it), 60 requests a minute per address, and serve them as an image or a GLB whatever fal says,
+  mesh (adopting one takes 50 MB at most, since the API keeps it), 60 requests a minute per address, and serve them as an image or a GLB whatever fal says,
   with `nosniff` and a sandboxing CSP, so nothing they return can run on the API's origin.
 - **Services.** `STUDIO_IMAGE_MODEL` (`fal-ai/flux/schnell`) draws the sketch, a few seconds.
   A model is two calls: `STUDIO_CUTOUT_MODEL` (`fal-ai/birefnet`, `none` to skip) cuts the rat
   out of its background, then `STUDIO_3D_MODEL` (`tripo3d/h3.1/image-to-3d`, Tripo H3.1, plain
-  standard textures without PBR, at most 30,000 faces so the GLB stays well under 40 MB, 0.30 USD a mesh) turns it into a GLB in a few minutes
+  standard textures without PBR, at most 30,000 faces so the GLB stays well under the 50 MB an adoption takes, 0.30 USD a mesh) turns it into a GLB in a few minutes
   (`STUDIO_TIMEOUT_MS`, 10 minutes by default). Tripo's meshes are cleaner than Hunyuan3D v2's
   (`fal-ai/hunyuan3d/v2`, textured, still supported), which the toon outline traced bump by
   bump. Without the cut-out a picture-to-mesh model builds a card with the drawing on it;
@@ -320,7 +320,7 @@ account only:
    GLB stays with the API (`rat_models`, served at `/rats/models/<job>.glb`), never paid for on
    Arweave; a small JSON record on Arweave points at both (`{ name, prompt, image: "ar://…",
    model: "https://…/rats/models/<job>.glb", job }`). Both are fetched back from fal, only from
-   its hosts, capped at 10 and 40 MB. No Turbo credits are needed. If Arweave refuses the
+   its hosts, capped at 10 and 50 MB. No Turbo credits are needed. If Arweave refuses the
    upload, adoptions answer `503 storage-failed` (nothing is minted, nothing is lost). Uploads
    are kept by job (`rat_adoptions`): asking again signs again without uploading again.
 2. The attester's EIP-712 signature (`RATS_ATTESTER_KEY`): `Adopt(minter, job, uri, deadline)`

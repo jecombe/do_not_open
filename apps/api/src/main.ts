@@ -176,7 +176,8 @@ async function main() {
       studioUrl: config.SITE_URL ? `${config.SITE_URL.replace(/\/$/, "")}/studio` : null,
       ticketTtl: 30 * 60,
       maxImageBytes: 10 * 1024 * 1024,
-      maxModelBytes: 40 * 1024 * 1024,
+      // Tripo's first meshes, before its face limit, weighed just over 40 MB: they stay adoptable.
+      maxModelBytes: 50 * 1024 * 1024,
     },
     log,
   );
