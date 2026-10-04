@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { BoxSummary } from "@dno/chain-adapter";
+import type { CatSpec } from "@dno/generator";
+import { catFromRevealed } from "../chain/copy";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings } from "@dno/scene";
 import { useChain } from "../chain/ChainProvider";
@@ -52,6 +54,19 @@ export function WarehouseView({ quality, focus, onInspect }: Props) {
     };
   }, [adapter, count]);
 
+  // Opened boxes show their cats: the chain made their seeds public, so anyone may draw them.
+  const [cats, setCats] = useState<Map<number, CatSpec>>(new Map());
+  useEffect(() => {
+    let live = true;
+    adapter.openedCats().then(
+      (list) => live && setCats(new Map(list.map((c) => [c.tokenId, catFromRevealed(c.revealed)]))),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [adapter, count]);
+
   const boxes = useMemo(() => {
     const m = new Map<number, WarehouseBox>();
     const yours = new Set(myBoxes);
@@ -84,7 +99,7 @@ export function WarehouseView({ quality, focus, onInspect }: Props) {
   return (
     <>
       <Stage quality={quality}>
-        <WarehouseScene count={count} boxes={boxes} quality={quality} selected={selected} flight={flight} onHover={setHovered} onPick={pick} />
+        <WarehouseScene count={count} boxes={boxes} cats={cats} quality={quality} selected={selected} flight={flight} onHover={setHovered} onPick={pick} />
       </Stage>
 
       <section className={`slip${foldClass}`} aria-label={t("wh.title")}>
