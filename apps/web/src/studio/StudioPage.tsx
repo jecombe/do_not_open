@@ -272,7 +272,7 @@ function StudioLive() {
   const failed = useCallback((error: unknown, at: "sketch" | "model" | "desk" = "desk") => {
     const code = error instanceof StudioError ? error.code : "unreachable";
     if (code === "unauthorized") {
-      storeSession(null);
+      storeSession(null, sessionRef.current?.account);
       setSession(null);
     }
     setProblem({ code, at: code === "unauthorized" ? "desk" : at });
