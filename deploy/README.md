@@ -63,7 +63,7 @@ are free on ArDrive's Turbo, so it never needs any. Then `docker compose up -d a
 images a minute go up, opened cats first, then every minted box. See
 [`apps/api/README.md`](../apps/api/README.md#token-images-on-arweave).
 
-The studio draws cats with fal.ai when `/opt/dno/.env` holds `FAL_KEY=...` and the network's
+The studio draws rats with fal.ai when `/opt/dno/.env` holds `FAL_KEY=...` and the network's
 deployment has a `StudioPacks` address (`dno:export` writes it), then `docker compose up -d api`.
 The key bills real dollars: `STUDIO_DAILY_BUDGET_USD` (20 by default) caps the estimated spend a
 day, `STUDIO_PAUSED=true` closes the studio at once, and on Sepolia, where packs are paid in test

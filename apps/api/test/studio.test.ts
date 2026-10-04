@@ -76,7 +76,7 @@ describe("studio", () => {
     expect((await studio.credits(ALICE)).sketches).toEqual({ bought: 10, used: 1, left: 9 });
     await studio.idle();
     // The player's words go inside the house style.
-    expect(service.calls[0]).toContain("A single cute cartoon cat character, a round orange cat.");
+    expect(service.calls[0]).toContain("A single funny cartoon rat character, a round orange cat.");
     expect(await studio.job(ALICE, job.id)).toMatchObject({ status: "done", resultUrl: "https://files/sketch.png" });
     expect((await studio.credits(ALICE)).sketches.left).toBe(9);
   });
@@ -164,6 +164,8 @@ describe("studio", () => {
     expect(refusedWord("Un chat façon Hello Kitty")).toBe("hello kitty");
     expect(refusedWord("a cat named Mário")).toBe("mario");
     expect(refusedWord("a cat in Marioland")).toBeNull();
+    expect(refusedWord("Remy from Ratatouille, cooking")).toBe("remy");
+    expect(refusedWord("a ninja rat like Splinter")).toBe("splinter");
     expect(refusedWord("a sexton cat in a bell tower")).toBeNull();
     expect(refusedWord("a fluffy grey cat")).toBeNull();
   });

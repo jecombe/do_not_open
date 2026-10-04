@@ -9,14 +9,14 @@ export interface StageObject {
   dispose(): void;
 }
 
-/** The height a generated model is scaled to, the size of a sitting game cat. */
+/** The height a generated model is scaled to, the size of a studio rat. */
 const HEIGHT = 1.15;
 const OUTLINE = "#17130F";
 
 /**
  * A model from the AI, dressed like the game's cats: each mesh gets a toon material over its
  * own colours (and texture, if it has one) and an inverted-hull outline, it is scaled to a
- * cat's height and stood on the floor. Generated meshes have no rig, so it lives as one block:
+ * rat's height and stood on the floor. Generated meshes have no rig, so it lives as one block:
  * a slow breath and a little sway.
  */
 export async function loadToonModel(url: string): Promise<StageObject> {

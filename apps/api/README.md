@@ -115,7 +115,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`). Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
-| `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): cats drawn by paid AI services out of packs bought on-chain |
+| `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
 | `POST /v1/discord/interactions` | Discord's `/ask` (below): called by Discord only, signed with the application's Ed25519 key (`401` otherwise) |
 | `GET /v1/herald?token=&limit=&network=` | The collection's Discord channel (below): its posts, newest first, queued, sent or rehearsed; `network=discord` for that network only. With `HERALD_ADMIN_TOKEN` set, only with that token |
@@ -242,7 +242,8 @@ credit events.
 
 ## The studio
 
-Players draw a cartoon cat from a prompt; the API pays fal.ai (`FAL_KEY`) for the picture and
+Players draw a cartoon rat from a prompt (rats, not cats, so nothing drawn here can be taken
+for a cat out of a box); the API pays fal.ai (`FAL_KEY`) for the picture and
 the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is generated on credit.
 
 - **Packs.** `StudioPacks` sells the packs of `packages/game-spec/studio.json` (Starter: 2 USDC
@@ -264,8 +265,9 @@ the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is gene
   `STUDIO_ALLOWLIST` (comma-separated addresses) so only testers may generate, and keep the
   budget small.
 - **Prompts.** Trimmed, 3 to 240 characters, put inside the fixed house style of `studio.json`
-  (a cartoon cat, thick outlines, plain background). A short list of licensed characters,
-  brands and adult or violent words is refused before anything is spent; the picture model's
+  (a cartoon rat, thick outlines, plain background). A short list of licensed characters
+  (cats and rats alike: Remy, Ratatouille, Splinter, Jerry, Rattata, Templeton, Scabbers,
+  Mickey...), brands and adult or violent words is refused before anything is spent; the picture model's
   own safety checker runs too, and a flagged picture is `rejected`: fal billed it, so the unit
   is spent.
 - **Files.** `/v1/studio/jobs/:id/image` and `/model.glb` fetch only https files on fal's hosts

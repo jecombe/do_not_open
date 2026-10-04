@@ -72,7 +72,7 @@ export const dayStart = (now: number): number => Math.floor(now / 86_400) * 86_4
 const REFUSED_WORDS = [
   // licensed characters and brands
   "pikachu", "pokemon", "garfield", "hello kitty", "hellokitty", "doraemon", "sylvester", "tom and jerry", "felix the cat",
-  "puss in boots", "cheshire", "nyan", "grumpy cat", "mickey", "disney", "pixar", "marvel", "dc comics", "batman", "spiderman",
+  "puss in boots", "cheshire", "nyan", "grumpy cat", "mickey", "remy", "ratatouille", "splinter", "jerry", "rattata", "templeton", "scabbers", "pinky and the brain", "disney", "pixar", "marvel", "dc comics", "batman", "spiderman",
   "spider-man", "superman", "sonic", "mario", "nintendo", "totoro", "ghibli", "simba", "lion king", "aristocats", "catwoman",
   "star wars", "harry potter", "minecraft", "fortnite", "barbie", "nike", "adidas", "gucci", "coca-cola", "mcdonald",
   // adult, violent, hateful

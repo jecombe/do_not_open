@@ -207,7 +207,8 @@ twice. Details: [`apps/api/README.md`](../apps/api/README.md#relayer-proxy).
 
 It also runs the studio's generations (`/v1/studio`): it reads the packs bought from
 `StudioPacks` out of the index, spends one unit before each call to the AI services (a
-cartoon sketch from a prompt in the house style, then a 3D model from a sketch), gives it
+cartoon sketch of a rat from a prompt in the house style, then a 3D model from a sketch;
+rats, not cats, so nothing drawn there passes for a cat out of a box), gives it
 back if the service fails, and caps what the services cost in a day. The keys stay on the
 server. Details: [`apps/api/README.md`](../apps/api/README.md).
 

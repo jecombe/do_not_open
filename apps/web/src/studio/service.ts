@@ -1,5 +1,5 @@
 import { studio } from "@dno/game-spec";
-import { buildCatSpec, renderCatSvg } from "@dno/generator";
+import { buildRatSpec, renderRatSvg } from "@dno/generator";
 
 export type JobKind = "sketch" | "model";
 /** `failed` gave its unit back; `rejected` kept it (refused by the safety checker, or past the day's refunds). */
@@ -18,7 +18,7 @@ export interface StudioJob {
   modelUrl: string | null;
   error: string | null;
   createdAt: number;
-  /** Demo only: the procedural cat standing in for the AI's work. */
+  /** Demo only: the procedural rat standing in for the AI's work. */
   seed?: string;
 }
 
@@ -135,15 +135,15 @@ export class HttpStudio implements StudioService {
 /** A few names the demo refuses, to show what a refused prompt looks like. The API has the real list. */
 const DEMO_REFUSED = /\b(pikachu|garfield|hello\s*kitty|doraemon|nsfw|nude)\b/i;
 
-/** A fresh 64-bit seed: a cat nobody drew before. */
+/** A fresh 64-bit seed: a rat nobody drew before. */
 export function randomSeed(): bigint {
   const words = crypto.getRandomValues(new Uint32Array(2));
   return (BigInt(words[0]!) << 32n) | BigInt(words[1]!);
 }
 
 /**
- * The demo's studio: no AI, no API. A "sketch" is the generator's drawing of a random cat and a
- * "model" the same cat in 3D, after a short wait, so the whole flow can be tried without keys.
+ * The demo's studio: no AI, no API. A "sketch" is the generator's drawing of a random rat and a
+ * "model" the same rat in 3D, after a short wait, so the whole flow can be tried without keys.
  * Units come from packs bought with the mock's USDC (`bought`).
  */
 export class LocalStudio implements StudioService {
@@ -176,7 +176,7 @@ export class LocalStudio implements StudioService {
     this.used.sketches++;
     const seed = randomSeed();
     return this.start({ kind: "sketch", prompt: words, sketchId: null, seed: seed.toString() }, () => ({
-      imageUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderCatSvg(buildCatSpec({ seed })))}`,
+      imageUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderRatSvg(buildRatSpec(seed)))}`,
     }));
   }
 
