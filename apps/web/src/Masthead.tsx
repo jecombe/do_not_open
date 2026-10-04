@@ -28,7 +28,6 @@ export const VIEWS = [
   { key: "pantry", label: "nav.pantry" },
   { key: "exchange", label: "nav.exchange" },
   { key: "leaderboard", label: "nav.leaderboard" },
-  { key: "specimens", label: "nav.specimens" },
   { key: "rats", label: "nav.rats" },
 ] as const satisfies readonly { key: string; label: AppKey }[];
 /** "box" is one box looked at closely: it sits under "See boxes" in the menu; "pair" is two boxes face to face, under "Duels". */

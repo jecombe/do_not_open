@@ -5,7 +5,6 @@ export const en = {
   "nav.shelf": "Your shelf",
   "nav.boxes": "See boxes",
   "nav.leaderboard": "Leaderboard",
-  "nav.specimens": "Specimens",
   "nav.manual": "Manual",
   "nav.home": "Home",
   "nav.studio": "Studio",
@@ -78,17 +77,6 @@ export const en = {
   "decl.condition": "Condition",
   "decl.score": "Rarity score",
   "decl.golden": "Golden {name}",
-
-  // --- specimens
-  "specimens.aria": "Specimen declaration",
-  "specimens.wellFed": "Affection above {n} before opening",
-  "specimens.picker": "Specimens",
-  "specimens.label": "{state} {breed}",
-  "specimens.prev": "Previous specimen",
-  "specimens.next": "Next specimen",
-  "specimens.count": "{n} of {total}",
-  "specimens.hint": "Arrow keys or a sideways swipe go from one cat to the next. Right-drag or two fingers slide along the row. Drag to turn around a cat, scroll to get closer.",
-  "specimens.hintTouch": "Swipe with two fingers to slide along the row, or use ‹ ›. One finger turns around the cat, pinch to get closer.",
 
   // --- the shelf
   "shelf.title": "Your shelf",
