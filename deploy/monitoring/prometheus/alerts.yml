@@ -1,0 +1,123 @@
+# Every alert keeps the `network` label (sepolia, mainnet, server), so Discord says which one.
+# Blocks are about 12 s on Sepolia and on Ethereum mainnet: 150 blocks is half an hour.
+groups:
+  - name: api
+    rules:
+      - alert: ApiDown
+        expr: up{job="dno-api"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "The {{ $labels.network }} API does not answer Prometheus ({{ $labels.instance }})."
+
+      - alert: ApiServerErrors
+        expr: sum by (network) (rate(dno_http_request_duration_seconds_count{status=~"5.."}[5m])) > 0.1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value | printf \"%.2f\" }} server errors a second for 10 minutes."
+
+      - alert: ApiSlow
+        expr: histogram_quantile(0.95, sum by (network, le) (rate(dno_http_request_duration_seconds_bucket{route!~"/relayer/.*|/v1/chat|/metrics"}[10m]))) > 2
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "95% of reads take up to {{ $value | printf \"%.1f\" }} s (relayer and chat left out)."
+
+  - name: indexer
+    rules:
+      - alert: IndexerStalled
+        expr: time() - dno_indexer_last_pass_timestamp_seconds > 300 and dno_indexer_last_pass_timestamp_seconds > 0
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "No sync pass has finished for {{ $value | humanizeDuration }}."
+
+      - alert: IndexerLagging
+        expr: dno_indexer_lag_blocks > 50
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "The index is {{ $value }} blocks behind the chain: the app falls back on the RPC."
+
+      - alert: IndexerFailing
+        expr: dno_indexer_consecutive_failures >= 5
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value }} sync passes failed in a row."
+
+      - alert: TaskFailing
+        expr: dno_task_failing == 1
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "The periodic task {{ $labels.task }} keeps failing (finality sweep, reconciliation, Arweave, herald)."
+
+      - alert: RpcPoolDegraded
+        expr: count by (network) (dno_rpc_healthy == 1) < 2
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Fewer than two free RPC endpoints are healthy."
+
+  - name: protocol
+    rules:
+      - alert: ProofStuck
+        expr: dno_request_oldest_pending_blocks > 150
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "A request has waited {{ $value }} blocks for its KMS proof: nobody finalized it (relayer or KMS down?)."
+
+      - alert: HeraldPostsFailing
+        expr: increase(dno_herald_posts{status="failed"}[1h]) > 0
+        labels: { severity: warning }
+        annotations:
+          summary: "The herald could not post on {{ $labels.network_account }} in the last hour."
+
+      - alert: ChatQuotaNearlyUsed
+        expr: dno_chat_model_questions_today / dno_chat_model_questions_limit > 0.9 and dno_chat_model_questions_limit > 0
+        labels: { severity: info }
+        annotations:
+          summary: "The manual's chatbot used {{ $value | humanizePercentage }} of today's Gemini questions; past it, it quotes the manual."
+
+  - name: public-urls
+    rules:
+      - alert: UrlDown
+        expr: probe_success == 0
+        for: 3m
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.instance }} does not answer from the server."
+
+      - alert: CertificateExpiring
+        expr: probe_ssl_earliest_cert_expiry - time() < 14 * 86400
+        for: 1h
+        labels: { severity: warning }
+        annotations:
+          summary: "The certificate of {{ $labels.instance }} expires in {{ $value | humanizeDuration }} (Caddy renews at 30 days: it is stuck)."
+
+  - name: server
+    rules:
+      - alert: DiskAlmostFull
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) > 0.8
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "The server's disk is {{ $value | humanizePercentage }} full."
+
+      - alert: MemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Only {{ $value | humanizePercentage }} of the server's memory is available."
+
+      - alert: ContainerNearMemoryLimit
+        expr: container_memory_working_set_bytes{name=~"dno.*"} / container_spec_memory_limit_bytes{name=~"dno.*"} > 0.9 and container_spec_memory_limit_bytes{name=~"dno.*"} > 0
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.name }} uses {{ $value | humanizePercentage }} of its memory limit: it will be killed and restarted."
+

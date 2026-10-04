@@ -42,6 +42,16 @@ API_DOMAIN="$(grep '^API_DOMAIN=' .env | cut -d= -f2-)"
 API_ALIASES="$(grep '^API_ALIASES=' .env | cut -d= -f2- || true)"
 API_HOSTS="$(echo "$API_DOMAIN $API_ALIASES" | tr ',' ' ' | xargs | sed 's/ /, /g')"
 sed "s|__API_HOSTS__|$API_HOSTS|" dno.caddy.template > /opt/edge/sites/dno.caddy
+
+# The monitoring (Prometheus, Grafana, Alertmanager), once monitoring/.env exists: see
+# monitoring/.env.example. One stack for every network; each API is a file in prometheus/targets.
+if [ -f monitoring/.env ]; then
+  (cd monitoring && docker compose up -d --remove-orphans)
+  # Prometheus and Alertmanager read their files again without a restart.
+  (cd monitoring && docker compose kill -s HUP prometheus alertmanager >/dev/null 2>&1 || true)
+  MONITORING_DOMAIN="$(grep '^MONITORING_DOMAIN=' monitoring/.env | cut -d= -f2-)"
+  sed "s|__MONITORING_HOST__|$MONITORING_DOMAIN|" monitoring/monitoring.caddy.template > /opt/edge/sites/dno-monitoring.caddy
+fi
 docker exec edge-caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null
 
 docker image prune -f >/dev/null

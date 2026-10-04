@@ -374,6 +374,16 @@ export class MemoryStore implements Store, PostStore, ArchiveStore {
     return (network ? this.queue(network) : [...this.s.posts.values()]).sort((a, b) => b.id - a.id).slice(0, limit).map(clone);
   }
 
+  async postCounts() {
+    const counts = new Map<string, { network: string; status: Post["status"]; count: number }>();
+    for (const p of this.s.posts.values()) {
+      const key = `${p.network}:${p.status}`;
+      const c = counts.get(key) ?? { network: p.network, status: p.status, count: 0 };
+      counts.set(key, { ...c, count: c.count + 1 });
+    }
+    return [...counts.values()];
+  }
+
   private queue(network: string): Post[] {
     return [...this.s.posts.values()].filter((p) => p.network === network);
   }
@@ -389,5 +399,9 @@ export class MemoryStore implements Store, PostStore, ArchiveStore {
 
   async saveArchivedImage(hash: string, id: string, _archivedAt: number) {
     if (!this.s.archived.has(hash)) this.s.archived.set(hash, id);
+  }
+
+  async archivedCount() {
+    return this.s.archived.size;
   }
 }

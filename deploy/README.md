@@ -76,6 +76,34 @@ repo and `DISCORD_BOT_TOKEN` in its `.env`, run `pnpm --filter @dno/api discord:
 the link it prints to add the command to the server. All in
 [`apps/api/README.md`](../apps/api/README.md#on-discord-ask).
 
+## Monitoring
+
+`deploy/monitoring` is one stack for every network: Prometheus scrapes each API's `/metrics`
+over the `edge` network (one file per network in `prometheus/targets/`: `sepolia.yml` now,
+`mainnet.yml.example` to rename at launch), the server (node-exporter), its containers
+(cAdvisor) and the public URLs (blackbox, one file per network in `prometheus/probes/`).
+Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they share).
+Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
+indexer, RPC pool, API traffic, Zama relayer calls, Arweave, Gemini, herald) and "Server and
+URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
+each titled with its network. Only Grafana is public, behind its own login; the edge proxy
+answers `404` to `/metrics` from outside. About 1.2 GB of memory at most (limits in the compose
+file), 5 GB of disk for 90 days of series.
+
+To turn it on, once:
+
+1. An A record `monitoring` → the server's IP (IONOS).
+2. A webhook on a private Discord channel (channel settings, Integrations, Webhooks).
+3. On the server, `/opt/dno/monitoring/.env` from `deploy/monitoring/.env.example`
+   (`MONITORING_DOMAIN`, `GRAFANA_ADMIN_PASSWORD`, `ALERT_DISCORD_WEBHOOK_URL`), `chmod 600`.
+4. The next deploy (or `bash /opt/dno/deploy.sh <current image>`) starts the stack and routes
+   the domain; Grafana is at `https://<MONITORING_DOMAIN>`, folder "DO NOT OPEN".
+
+CI copies `deploy/monitoring` on every deploy and reloads Prometheus and Alertmanager; the
+`.env` stays on the server. Dashboards are written by `grafana/dashboards.py`. At mainnet
+launch: rename `prometheus/targets/mainnet.yml.example` and `probes/mainnet.yml.example` (the
+mainnet API on the edge network as `dno-api-mainnet`), and move the apex probe out of Sepolia.
+
 ## Domains
 
 | Name | Serves | DNS record |

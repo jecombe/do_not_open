@@ -1,0 +1,21 @@
+# Alerts go to one private Discord channel, grouped by alert and network, and say when they clear.
+route:
+  receiver: discord
+  group_by: [alertname, network]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 6h
+
+receivers:
+  - name: discord
+    discord_configs:
+      - webhook_url_file: /tmp/discord_webhook
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}🔴{{ else }}🟢{{ end }} [{{ .CommonLabels.network }}] {{ .CommonLabels.alertname }}'
+        message: '{{ range .Alerts }}{{ .Annotations.summary }}{{ "\n" }}{{ end }}'
+
+inhibit_rules:
+  # The API down explains everything else about that network.
+  - source_matchers: [alertname = ApiDown]
+    target_matchers: [severity = warning]
+    equal: [network]

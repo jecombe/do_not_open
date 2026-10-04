@@ -55,6 +55,8 @@ const schema = z.object({
   /** Browser origins allowed, comma-separated: the Vercel domains. `*` allows any. */
   CORS_ORIGINS: list.default(["*"]),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(300),
+  /** The image this container runs (set by deploy/deploy.sh): its tag names the commit on `dno_info`. */
+  API_IMAGE: z.string().optional(),
   /** Where this API is reached from outside, for metadata image links. */
   PUBLIC_URL: z.string().url().default("http://localhost:8080"),
   /** Signs sign-in sessions. Required in production. */

@@ -1,0 +1,6 @@
+# Public URLs checked from the server every 30 s: answers, latency, certificate expiry.
+- targets:
+    - https://api.testnet.do-not-open.app/health
+    - https://testnet.do-not-open.app/
+  labels:
+    network: sepolia
