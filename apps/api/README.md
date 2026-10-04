@@ -183,6 +183,24 @@ JSON's `image` links `https://turbo-gateway.com/<id>` as soon as one is there:
   which can take hours: a marketplace that fetched it then would cache a broken image. The id
   is the permanent part; the gateway can be changed at any time.
 
+Redeploying the contracts changes nothing here: a picture is known by its hash, not by its
+contract. A sealed box looks the same in every deployment, so it is not uploaded again; a new
+deployment's cats are new pictures and go up as they open; the old ones stay on Arweave,
+linked from nowhere. A migration that empties the index for a redeploy must never truncate
+`archived_images`.
+
+For mainnet:
+
+- Give the mainnet API its own `ARWEAVE_KEY` (fresh, never funded), so its address lists the
+  official pictures apart from the testnet's, and say which address it is.
+- Its `archived_images` starts empty: the boxes go up as they are minted (10,000 in about six
+  hours). Copying the testnet's rows is optional, since a box's picture is the same.
+- Check before launch that Turbo still stores data items under 100 KiB for free. If not, nothing
+  breaks (the pictures stay on the API) and permanence costs little: 20,000 SVGs are about 60 MB,
+  paid in Turbo credits.
+- Point the contract's base URI at `https://<mainnet api>/metadata/` (`setBaseURI`). The JSON
+  itself stays repointable (O6) and marketplaces still get no `MetadataUpdate` on an opening (O7).
+
 ## Relayer proxy
 
 On mainnet Zama bills the collection for every value its relayer decrypts and every encrypted
