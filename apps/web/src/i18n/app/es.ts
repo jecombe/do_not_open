@@ -952,7 +952,7 @@ export const es: Record<AppKey, string> = {
   "studio.sketches.title": "Tus bocetos",
   "studio.model.button": "Pasar a 3D",
   "studio.model.pick": "Elige un boceto para pasarlo a 3D.",
-  "studio.model.cost": "Cuesta 1 modelo 3D. Tarda uno o dos minutos.",
+  "studio.model.cost": "Cuesta 1 modelo 3D. Tarda unos cuatro minutos: la IA también pinta los lados que el boceto no muestra.",
   "studio.models.title": "Tus ratas en 3D",
   "studio.model.show": "Mostrar",
   "studio.model.onStage": "En la plataforma",

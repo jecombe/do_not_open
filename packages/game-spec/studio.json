@@ -10,7 +10,7 @@
     },
     "model": {
       "name": "3D model",
-      "estimatedCostUsd": "0.30",
+      "estimatedCostUsd": "0.50",
       "rule": "One of the account's sketches turned into a 3D mesh (GLB), drawn in the browser with the game's toon materials."
     }
   },
@@ -37,7 +37,7 @@
   "prompt": {
     "minLength": 3,
     "maxLength": 240,
-    "style": "A single funny cartoon rat character, {prompt}. Full body, three-quarter front view, centered, standing on nothing, plain light grey background. Big round ears, long pointed snout, two buck teeth, long pink tail. Thick dark outlines, flat bold colours, soft rounded chunky shapes, toy-like proportions with a big head. No text, no logo, no other characters.",
+    "style": "A single funny cartoon rat character, {prompt}. Full body, three-quarter front view, centered, floating alone on a plain pure white background, no shadow under the feet, no floor, nothing else in the picture. Big round ears, long pointed snout, two buck teeth, long pink tail. Thick dark outlines, flat bold colours, soft rounded chunky shapes, toy-like proportions with a big head. No text, no logo, no other characters.",
     "rule": "The player's words go inside a fixed style prompt, so whatever is asked the result stays a cartoon rat in the game's style. Prompts naming a licensed character or asking for adult content are refused before any service is called."
   },
   "events": {

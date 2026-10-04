@@ -1,4 +1,4 @@
-import { Box3, Group, Mesh, MeshStandardMaterial, Vector3, type Material, type Texture } from "three";
+import { BufferAttribute, Box3, Group, Mesh, MeshStandardMaterial, Vector3, type BufferGeometry, type Material, type Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { outlineMaterial, toon } from "@dno/scene";
 
@@ -12,6 +12,36 @@ export interface StageObject {
 /** The height a generated model is scaled to, the size of a studio rat. */
 const HEIGHT = 1.15;
 const OUTLINE = "#17130F";
+
+/**
+ * Smooth normals for a mesh that came without any (the AI's meshes have positions and UVs only):
+ * three.js's per-vertex normals, then averaged over every copy of a point, so the shading and the
+ * outline do not split along the texture's seams. Without normals a toon material is all black and
+ * the outline, pushed along them, falls apart.
+ */
+function smoothNormals(geometry: BufferGeometry): void {
+  if (geometry.getAttribute("normal")) return;
+  geometry.computeVertexNormals();
+  const pos = geometry.getAttribute("position");
+  const nor = geometry.getAttribute("normal") as BufferAttribute;
+  const sums = new Map<string, [number, number, number]>();
+  const keyOf = (i: number) => `${pos.getX(i).toFixed(5)},${pos.getY(i).toFixed(5)},${pos.getZ(i).toFixed(5)}`;
+  for (let i = 0; i < pos.count; i++) {
+    const k = keyOf(i);
+    const s = sums.get(k) ?? [0, 0, 0];
+    s[0] += nor.getX(i);
+    s[1] += nor.getY(i);
+    s[2] += nor.getZ(i);
+    sums.set(k, s);
+  }
+  const v = new Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    const [x, y, z] = sums.get(keyOf(i))!;
+    v.set(x, y, z).normalize();
+    nor.setXYZ(i, v.x, v.y, v.z);
+  }
+  nor.needsUpdate = true;
+}
 
 /**
  * A model from the AI, dressed like the game's cats: each mesh gets a toon material over its
@@ -29,6 +59,7 @@ export async function loadToonModel(url: string): Promise<StageObject> {
     if ((o as Mesh).isMesh) meshes.push(o as Mesh);
   });
   for (const mesh of meshes) {
+    smoothNormals(mesh.geometry);
     const before = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as Material & { color?: { getHexString(): string }; map?: Texture | null };
     const standard = before as MeshStandardMaterial;
     const color = standard.map ? "#ffffff" : `#${before.color?.getHexString() ?? "e9dfc8"}`;

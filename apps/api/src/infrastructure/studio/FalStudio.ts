@@ -4,8 +4,14 @@ export interface FalOptions {
   apiKey: string;
   /** The picture model, e.g. fal-ai/flux/schnell. */
   imageModel: string;
-  /** The picture-to-mesh model, e.g. fal-ai/trellis. */
+  /** The picture-to-mesh model, e.g. fal-ai/hunyuan3d/v2 or fal-ai/trellis. */
   modelModel: string;
+  /**
+   * A background remover run on the sketch first, e.g. fal-ai/birefnet, or null to skip it. A
+   * picture-to-mesh model takes the whole square for the object otherwise, and builds a card
+   * with the drawing on it instead of a rat.
+   */
+  cutoutModel?: string | null;
   /** How long one generation may take, queue included. */
   timeoutMs: number;
   /** Between two looks at a queued request. */
@@ -43,7 +49,15 @@ export class FalStudio implements ImageGenerator, ModelGenerator {
   }
 
   async model(imageUrl: string): Promise<{ url: string }> {
-    const out = (await this.generate(this.opts.modelModel, { image_url: imageUrl })) as { model_mesh?: { url?: unknown }; model_glb?: { url?: unknown } };
+    let source = imageUrl;
+    if (this.opts.cutoutModel) {
+      const cut = (await this.generate(this.opts.cutoutModel, { image_url: imageUrl })) as { image?: { url?: unknown } };
+      if (typeof cut.image?.url !== "string") throw new Error("fal returned no cut-out picture");
+      source = cut.image.url;
+    }
+    // Hunyuan3D paints the sides the picture does not show; Trellis leaves them black.
+    const input = /hunyuan/i.test(this.opts.modelModel) ? { input_image_url: source, textured_mesh: true } : { image_url: source };
+    const out = (await this.generate(this.opts.modelModel, input)) as { model_mesh?: { url?: unknown }; model_glb?: { url?: unknown } };
     const url = out.model_mesh?.url ?? out.model_glb?.url;
     if (typeof url !== "string") throw new Error("fal returned no mesh");
     return { url };

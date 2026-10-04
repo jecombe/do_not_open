@@ -645,7 +645,7 @@ sequenceDiagram
   App->>API: poll the job until done
   App->>API: POST /v1/studio/models {sketchId}
   API->>API: the sketch is the account's own, one model spent
-  API->>AI: picture to 3D
+  API->>AI: cut the rat out of its background, then picture to textured 3D (3 to 4 minutes)
   AI-->>API: a GLB mesh
   App->>App: the mesh, with the toon materials and outline
 ```
