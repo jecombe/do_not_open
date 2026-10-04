@@ -60,6 +60,10 @@ export interface WarehouseObject {
   bodies: InstancedMesh;
   /** Centre of a box, in the warehouse's space. */
   positionOf(tokenId: number): Vector3;
+  /** Where an opened box's cat stands: on its flattened carton, in the warehouse's space. */
+  catSpot(tokenId: number): Vector3;
+  /** How much smaller than in the box view everything on the racks is drawn, cats included. */
+  scale: number;
   /** Where a visitor may walk: x and z limits of the floor between the racks. */
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
   /** Where a visitor starts, and what they look at. */
@@ -347,6 +351,8 @@ export function createWarehouse(count: number, quality: QualitySettings = QUALIT
     group,
     bodies,
     positionOf: slotCentre,
+    catSpot: (tokenId) => slotCentre(tokenId).add(new Vector3(0, -BH / 2 + FLAT, 0)),
+    scale: SCALE,
     bounds,
     entrance,
     setState(tokenId, state, mine) {

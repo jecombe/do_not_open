@@ -1,8 +1,9 @@
 import { CameraControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { Vector3 } from "three";
-import { createWarehouse, DEPOT_COLORS, type QualitySettings, type WarehouseBoxState } from "@dno/scene";
+import { Group, Vector3, type Object3D } from "three";
+import type { CatSpec } from "@dno/generator";
+import { createCat, createWarehouse, DEPOT_COLORS, type CatObject, type QualitySettings, type WarehouseBoxState } from "@dno/scene";
 import { useLeash } from "./leash";
 
 export interface WarehouseBox {
@@ -14,6 +15,8 @@ interface WarehouseSceneProps {
   count: number;
   /** By token id; boxes not read yet are drawn sealed. */
   boxes: Map<number, WarehouseBox>;
+  /** The cats of opened boxes, by token id: the nearest stand on their flattened cartons. */
+  cats: Map<number, CatSpec>;
   quality: QualitySettings;
   selected: number | null;
   /** Bumped to fly the camera to `selected` again. */
@@ -50,11 +53,21 @@ function reach(from: Vector3, dir: Vector3, b: { minX: number; maxX: number; min
   axis(from.z, dir.z, b.minZ, b.maxZ);
   return Math.max(0.6, t);
 }
+/** How many cats are built at once, the nearest to the camera: thousands of them would not run. */
+const CAT_POOL = { high: 16, low: 8 } as const;
+/** How often the nearest cats are worked out again, in seconds. */
+const CAT_RESORT = 0.5;
+/** The token id a picked mesh belongs to: each cat's group carries it. */
+const tokenOf = (o: Object3D | null): number | undefined => {
+  for (let x = o; x; x = x.parent) if (typeof x.userData.tokenId === "number") return x.userData.tokenId as number;
+  return undefined;
+};
+
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const typing = (e: KeyboardEvent) => e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
 
 /** Every minted box on racks. Walk the aisles with the keys or by dragging; click a box to pick it. */
-export function WarehouseScene({ count, boxes, quality, selected, flight, onHover, onPick }: WarehouseSceneProps) {
+export function WarehouseScene({ count, boxes, cats, quality, selected, flight, onHover, onPick }: WarehouseSceneProps) {
   const controls = useRef<CameraControls>(null);
   const warehouse = useMemo(() => createWarehouse(count, quality), [count, quality]);
   useEffect(() => () => warehouse.dispose(), [warehouse]);
@@ -64,6 +77,31 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
   }, [warehouse, boxes]);
 
   useEffect(() => warehouse.select(selected), [warehouse, selected]);
+
+  // The cats out of their boxes: only the nearest are built, and swapped as the visitor walks.
+  const catGroup = useMemo(() => new Group(), []);
+  const live = useRef(new Map<number, { spec: CatSpec; cat: CatObject }>());
+  const resortAt = useRef(0);
+  const dropCat = (tokenId: number) => {
+    const l = live.current.get(tokenId);
+    if (!l) return;
+    catGroup.remove(l.cat.group);
+    l.cat.dispose();
+    live.current.delete(tokenId);
+  };
+  useEffect(() => {
+    // Another warehouse, or a cat no longer known: built again at the next sort.
+    for (const [id, l] of [...live.current]) if (cats.get(id) !== l.spec) dropCat(id);
+    resortAt.current = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [warehouse, cats]);
+  useEffect(
+    () => () => {
+      for (const id of [...live.current.keys()]) dropCat(id);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [warehouse],
+  );
 
   // At the door. A narrow screen stands further back to take in the row.
   const enter = (animate: boolean) => {
@@ -125,6 +163,29 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
   const right = useMemo(() => new Vector3(), []);
   useFrame((state, dt) => {
     warehouse.update(state.clock.elapsedTime, dt);
+    const time = state.clock.elapsedTime;
+    if (time >= resortAt.current && cats.size) {
+      resortAt.current = time + CAT_RESORT;
+      const eye = state.camera.position;
+      const near = [...cats.keys()]
+        .filter((id) => id < count)
+        .map((id) => ({ id, d: warehouse.positionOf(id).distanceToSquared(eye) }))
+        .sort((x, y) => x.d - y.d)
+        .slice(0, CAT_POOL[quality.tier])
+        .map((x) => x.id);
+      for (const id of [...live.current.keys()]) if (!near.includes(id)) dropCat(id);
+      for (const id of near) {
+        if (live.current.has(id)) continue;
+        const spec = cats.get(id)!;
+        const cat = createCat(spec);
+        cat.group.position.copy(warehouse.catSpot(id));
+        cat.group.scale.setScalar(warehouse.scale);
+        cat.group.userData.tokenId = id;
+        catGroup.add(cat.group);
+        live.current.set(id, { spec, cat });
+      }
+    }
+    for (const { cat } of live.current.values()) cat.update(time);
     const c = controls.current;
     if (!c) return;
     // The camera stays between the walls: backing out stops at the one behind it, however far
@@ -185,6 +246,28 @@ export function WarehouseScene({ count, boxes, quality, selected, flight, onHove
           // A drag to look around ends with a click too: only a still click picks.
           if (e.delta > 6 || e.instanceId === undefined) return;
           onPick(e.instanceId);
+        }}
+      />
+      {/* A cat is picked like its box: a still click on it opens the box's page. */}
+      <primitive
+        object={catGroup}
+        onPointerMove={(e: { object: Object3D; stopPropagation: () => void }) => {
+          e.stopPropagation();
+          const id = tokenOf(e.object) ?? null;
+          cursor(id !== null);
+          onHover(id);
+          warehouse.hover(id);
+        }}
+        onPointerOut={() => {
+          cursor(false);
+          onHover(null);
+          warehouse.hover(null);
+        }}
+        onClick={(e: { object: Object3D; delta: number; stopPropagation: () => void }) => {
+          e.stopPropagation();
+          const id = tokenOf(e.object);
+          if (e.delta > 6 || id === undefined) return;
+          onPick(id);
         }}
       />
       <CameraControls

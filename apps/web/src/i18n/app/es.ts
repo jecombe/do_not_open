@@ -330,7 +330,7 @@ export const es: Record<AppKey, string> = {
   "wh.find": "Ir a la caja",
   "wh.go": "Ir",
   "wh.legendSealed": "Con cinta: sellada",
-  "wh.legendOpen": "Cartón aplastado: abierta",
+  "wh.legendOpen": "Gato sobre su cartón aplastado: abierta",
   "wh.legendMine_one": "Etiqueta roja: la tuya ({count})",
   "wh.legendMine_other": "Etiqueta roja: las tuyas ({count})",
   "wh.hint": "Arrastra para mirar, WASD o las flechas para andar, rueda para acercarte.",

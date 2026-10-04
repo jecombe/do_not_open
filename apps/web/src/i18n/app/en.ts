@@ -338,7 +338,7 @@ export const en = {
   "wh.find": "Go to box",
   "wh.go": "Go",
   "wh.legendSealed": "Taped shut: sealed",
-  "wh.legendOpen": "Flattened: opened",
+  "wh.legendOpen": "Cat on a flattened carton: opened",
   "wh.legendMine_one": "Red tag: yours ({count})",
   "wh.legendMine_other": "Red tag: yours ({count})",
   "wh.hint": "Drag to look around, WASD or the arrow keys to walk, scroll to step closer.",
