@@ -952,7 +952,7 @@ export const fr: Record<AppKey, string> = {
   "studio.sketches.title": "Vos croquis",
   "studio.model.button": "Passer en 3D",
   "studio.model.pick": "Choisissez un croquis à passer en 3D.",
-  "studio.model.cost": "Coûte 1 modèle 3D. Comptez une à deux minutes.",
+  "studio.model.cost": "Coûte 1 modèle 3D. Ça prend environ quatre minutes : l'IA peint aussi les côtés que le croquis ne montre pas.",
   "studio.models.title": "Vos rats en 3D",
   "studio.model.show": "Afficher",
   "studio.model.onStage": "Sur le plateau",

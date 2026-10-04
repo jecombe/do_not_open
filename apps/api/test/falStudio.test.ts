@@ -29,6 +29,25 @@ describe("FalStudio", () => {
     expect(calls.map((c) => c.url)).toEqual(["https://queue.test/fal-ai/flux/schnell", "https://q/r1/status", "https://q/r1/status", "https://q/r1"]);
   });
 
+  it("cuts the sketch out first, then asks Hunyuan3D for a textured mesh", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const results = [{ image: { url: "https://fal.media/cut.png" } }, { model_mesh: { url: "https://fal.media/rat.glb" } }];
+    const fetch = (async (url: string, init: RequestInit) => {
+      if (init.method === "POST") {
+        calls.push({ url, body: JSON.parse(String(init.body)) });
+        return Response.json({ request_id: "r", status_url: `https://q/${calls.length}/status`, response_url: `https://q/${calls.length}` });
+      }
+      if (url.endsWith("/status")) return Response.json({ status: "COMPLETED" });
+      return Response.json(results[Number(url.split("/").pop()) - 1]);
+    }) as unknown as typeof globalThis.fetch;
+    const fal = new FalStudio({ apiKey: "k", imageModel: "fal-ai/flux/schnell", modelModel: "fal-ai/hunyuan3d/v2", cutoutModel: "fal-ai/birefnet", timeoutMs: 5_000, pollMs: 1, queueUrl: "https://queue.test", fetch });
+    expect(await fal.model("https://fal.media/sketch.jpg")).toEqual({ url: "https://fal.media/rat.glb" });
+    expect(calls).toEqual([
+      { url: "https://queue.test/fal-ai/birefnet", body: { image_url: "https://fal.media/sketch.jpg" } },
+      { url: "https://queue.test/fal-ai/hunyuan3d/v2", body: { input_image_url: "https://fal.media/cut.png", textured_mesh: true } },
+    ]);
+  });
+
   it("turns a picture into a mesh, under either output name", async () => {
     expect(await make(queue({ model_mesh: { url: "https://fal.media/a.glb" } }).fetch).model("https://fal.media/a.png")).toEqual({ url: "https://fal.media/a.glb" });
     expect(await make(queue({ model_glb: { url: "https://fal.media/b.glb" } }).fetch).model("https://fal.media/a.png")).toEqual({ url: "https://fal.media/b.glb" });

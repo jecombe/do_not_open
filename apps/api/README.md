@@ -256,7 +256,7 @@ the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is gene
 - **Packs.** `StudioPacks` sells the packs of `packages/game-spec/studio.json` (Starter: 2 USDC
   for 10 sketches and 1 model; Litter: 8 USDC for 50 and 5), straight to the treasury. Each pack
   sells for at least `minMargin` (2) times what its units are estimated to cost
-  (`estimatedCostUsd`: 0.01 a sketch, 0.30 a model), checked at deploy: the services are paid
+  (`estimatedCostUsd`: 0.01 a sketch, 0.50 a model), checked at deploy: the services are paid
   back and the rest is the collection's. The index folds `PackBought` into `studio_accounts`.
 - **Spending.** A job takes its unit when it starts, in one locked transaction with the check
   (`pg_advisory_xact_lock`), so the last unit is never spent twice. Units left are bought minus
@@ -281,9 +281,13 @@ the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is gene
   (`fal.media`, `fal.run`, `fal.ai` and their subdomains), at most 10 MB a picture and 40 MB a
   mesh, 60 requests a minute per address, and serve them as an image or a GLB whatever fal says,
   with `nosniff` and a sandboxing CSP, so nothing they return can run on the API's origin.
-- **Services.** `STUDIO_IMAGE_MODEL` (`fal-ai/flux/schnell`) draws the sketch;
-  `STUDIO_3D_MODEL` (`fal-ai/trellis`) turns a finished sketch into a GLB. Both go through fal's
-  queue API (`src/infrastructure/studio/FalStudio.ts`). The studio is enabled only with
+- **Services.** `STUDIO_IMAGE_MODEL` (`fal-ai/flux/schnell`) draws the sketch, a few seconds.
+  A model is two calls: `STUDIO_CUTOUT_MODEL` (`fal-ai/birefnet`, `none` to skip) cuts the rat
+  out of its background, then `STUDIO_3D_MODEL` (`fal-ai/hunyuan3d/v2`, textured) turns it into a
+  GLB in three to four minutes (`STUDIO_TIMEOUT_MS`, 10 minutes by default). Without the cut-out
+  a picture-to-mesh model builds a card with the drawing on it; Trellis (`fal-ai/trellis`,
+  faster and cheaper) leaves the sides it cannot see black, and its meshes come without normals,
+  which the app computes. All go through fal's queue API (`src/infrastructure/studio/FalStudio.ts`). The studio is enabled only with
   `FAL_KEY` and a `StudioPacks` address in the deployment.
 
 | Route | Auth | Answer |

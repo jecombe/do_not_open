@@ -136,7 +136,7 @@ async function main() {
 
   // The studio: cats drawn by fal.ai out of packs bought on-chain. It needs the key and the
   // StudioPacks contract; without either it reports itself disabled.
-  const fal = new FalStudio({ apiKey: config.FAL_KEY ?? "", imageModel: config.STUDIO_IMAGE_MODEL, modelModel: config.STUDIO_3D_MODEL, timeoutMs: config.STUDIO_TIMEOUT_MS });
+  const fal = new FalStudio({ apiKey: config.FAL_KEY ?? "", imageModel: config.STUDIO_IMAGE_MODEL, modelModel: config.STUDIO_3D_MODEL, cutoutModel: config.STUDIO_CUTOUT_MODEL === "none" ? null : config.STUDIO_CUTOUT_MODEL, timeoutMs: config.STUDIO_TIMEOUT_MS });
   const studio = new Studio(
     store,
     fal,
