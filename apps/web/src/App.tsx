@@ -17,7 +17,6 @@ import { PairView, type PairIntent } from "./views/PairView";
 import { PantryView } from "./views/PantryView";
 import { RatsView } from "./views/RatsView";
 import { ShelfView } from "./views/ShelfView";
-import { SpecimensView } from "./views/SpecimensView";
 import { WarehouseView } from "./views/WarehouseView";
 
 /** `app.html?box=42` opens straight on box 42: the link the share buttons hand out. */
@@ -107,7 +106,6 @@ export function App() {
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} onShelf={() => showDuels()} onOrder={() => setView("shelf")} />}
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
-      {view === "specimens" && <SpecimensView quality={quality} />}
       {view === "exchange" && <ExchangeView />}
       {view === "rats" && <RatsView quality={quality} onSniff={() => setView("warehouse")} />}
 

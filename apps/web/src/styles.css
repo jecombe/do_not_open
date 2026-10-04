@@ -2034,14 +2034,6 @@ button {
   }
 }
 
-/* --- Specimens: arrows and a counter above the picker --- */
-.specimen-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0 6px;
-}
-
 /* --- A tall slip scrolls instead of climbing under the masthead --- */
 .slip {
   max-height: calc(100dvh - var(--gutter) * 2 - 34px - 118px);
