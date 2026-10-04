@@ -44,6 +44,8 @@ export interface StudioInfo {
   enabled: boolean;
   paused: StudioPause | null;
   packs: { id: number; key: string; name: string; priceUsdc: string; sketches: number; models: number }[];
+  /** Only the listed testers may generate: the site locks the AI for everyone else. */
+  testersOnly: boolean;
   allowlisted: boolean | null;
 }
 
@@ -76,6 +78,7 @@ export class Studio {
       enabled: this.cfg.enabled,
       paused: this.cfg.enabled ? await this.pause() : null,
       packs: this.spec.packs.map((p) => ({ id: p.id, key: p.key, name: p.name, priceUsdc: p.priceUsdc, sketches: p.sketches, models: p.models })),
+      testersOnly: this.cfg.allowlist !== null,
       allowlisted: this.cfg.allowlist && account ? this.cfg.allowlist.has(account) : null,
     };
   }

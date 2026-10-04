@@ -218,6 +218,7 @@ describe("studio", () => {
     expect((await studio.info(BOB)).allowlisted).toBe(false);
     expect((await studio.info(ALICE)).allowlisted).toBe(true);
     expect((await studio.info(null)).allowlisted).toBeNull();
+    expect((await studio.info(null)).testersOnly).toBe(true);
   });
 
   it("sells nothing while disabled or switched off", async () => {

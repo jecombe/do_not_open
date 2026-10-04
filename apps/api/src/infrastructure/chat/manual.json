@@ -328,7 +328,7 @@
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "To spend your units, sign in once with your wallet: a free signature, no transaction, that tells the studio which units are yours. The site spends a unit before it calls the AI and gives it back if the service fails, up to three times a day: past that, or when the AI's safety checker refuses the picture, the unit is spent, since the service was paid. A prompt is 3 to 240 characters; licensed characters and adult content are refused before anything is spent. Each day the studio stops at a spending cap: past it, come back tomorrow.\nOn the testnet the USDC is pretend money while the AI costs real money, so the AI studio may be closed or kept to a list of testers there; the random rats stay free everywhere."
+     "text": "To spend your units, sign in once with your wallet: a free signature, no transaction, that tells the studio which units are yours. The site spends a unit before it calls the AI and gives it back if the service fails, up to three times a day: past that, or when the AI's safety checker refuses the picture, the unit is spent, since the service was paid. A prompt is 3 to 240 characters; licensed characters and adult content are refused before anything is spent. Each day the studio stops at a spending cap: past it, come back tomorrow.\nOn the testnet the USDC is pretend money while the AI costs real money, so the AI studio may be closed or kept to a list of testers there (the \"Draw with AI\" tab is then greyed out, and a tester opens it by signing in with their wallet); the random rats stay free everywhere."
     },
     {
      "id": "studio-4",
@@ -767,7 +767,7 @@
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Pour dépenser vos unités, connectez-vous une fois avec votre wallet : une signature gratuite, sans transaction, qui dit au studio quelles unités sont les vôtres. Le site dépense une unité avant d'appeler l'IA et la rend si le service échoue, jusqu'à trois fois par jour : au-delà, ou si le filtre de sécurité de l'IA refuse l'image, l'unité est dépensée, car le service a été payé. Un prompt fait de 3 à 240 caractères ; les personnages sous licence et le contenu adulte sont refusés avant toute dépense. Chaque jour, le studio s'arrête à un plafond de dépense : au-delà, revenez le lendemain.\nSur le testnet, l'USDC est de la monnaie de test alors que l'IA coûte de l'argent réel : le studio IA peut donc y être fermé ou réservé à une liste de testeurs ; les rats au hasard restent gratuits partout."
+     "text": "Pour dépenser vos unités, connectez-vous une fois avec votre wallet : une signature gratuite, sans transaction, qui dit au studio quelles unités sont les vôtres. Le site dépense une unité avant d'appeler l'IA et la rend si le service échoue, jusqu'à trois fois par jour : au-delà, ou si le filtre de sécurité de l'IA refuse l'image, l'unité est dépensée, car le service a été payé. Un prompt fait de 3 à 240 caractères ; les personnages sous licence et le contenu adulte sont refusés avant toute dépense. Chaque jour, le studio s'arrête à un plafond de dépense : au-delà, revenez le lendemain.\nSur le testnet, l'USDC est de la monnaie de test alors que l'IA coûte de l'argent réel : le studio IA peut donc y être fermé ou réservé à une liste de testeurs (l'onglet « Dessiner avec l'IA » est alors grisé, et un testeur l'ouvre en signant avec son wallet) ; les rats au hasard restent gratuits partout."
     },
     {
      "id": "studio-4",
@@ -1200,7 +1200,7 @@
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Para gastar tus unidades, entra una vez con tu wallet: una firma gratuita, sin transacción, que le dice al estudio qué unidades son tuyas. El sitio gasta una unidad antes de llamar a la IA y la devuelve si el servicio falla, hasta tres veces al día: después, o si el filtro de seguridad de la IA rechaza la imagen, la unidad se gasta, porque el servicio se pagó. Un prompt tiene de 3 a 240 caracteres; los personajes con licencia y el contenido adulto se rechazan antes de gastar nada. Cada día el estudio se detiene en un tope de gasto: pasado, vuelve mañana.\nEn la testnet el USDC es dinero de mentira mientras que la IA cuesta dinero real, así que allí el estudio de IA puede estar cerrado o reservado a una lista de testers; las ratas al azar siguen siendo gratis en todas partes."
+     "text": "Para gastar tus unidades, entra una vez con tu wallet: una firma gratuita, sin transacción, que le dice al estudio qué unidades son tuyas. El sitio gasta una unidad antes de llamar a la IA y la devuelve si el servicio falla, hasta tres veces al día: después, o si el filtro de seguridad de la IA rechaza la imagen, la unidad se gasta, porque el servicio se pagó. Un prompt tiene de 3 a 240 caracteres; los personajes con licencia y el contenido adulto se rechazan antes de gastar nada. Cada día el estudio se detiene en un tope de gasto: pasado, vuelve mañana.\nEn la testnet el USDC es dinero de mentira mientras que la IA cuesta dinero real, así que allí el estudio de IA puede estar cerrado o reservado a una lista de testers (la pestaña «Dibujar con IA» aparece entonces en gris, y un tester la abre firmando con su wallet); las ratas al azar siguen siendo gratis en todas partes."
     },
     {
      "id": "studio-4",
@@ -1633,7 +1633,7 @@
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester; i ratti a caso restano gratis ovunque."
+     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester (la scheda «Disegna con l'IA» è allora grigia, e un tester la apre firmando con il suo wallet); i ratti a caso restano gratis ovunque."
     },
     {
      "id": "studio-4",
