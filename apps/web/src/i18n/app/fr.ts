@@ -1025,6 +1025,8 @@ export const fr: Record<AppKey, string> = {
   "studio.mode.ai": "Dessiner avec l'IA",
   "studio.mode.aiHint": "À partir de vos mots",
   "studio.mode.busy": "L'IA travaille…",
+  "studio.mode.testers": "Réservé aux testeurs, pour l'instant",
+  "studio.mode.tester": "Testeur ? Ouvrez l'IA avec votre wallet",
   "studio.board.title": "La planche à dessin",
   "studio.board.drawing": "Votre rat se dessine",
   "studio.board.modelling": "Votre rat passe en 3D",

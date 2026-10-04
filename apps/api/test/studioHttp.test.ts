@@ -78,7 +78,7 @@ describe("studio routes", () => {
   it("describes the studio and its packs to anyone", async () => {
     const r = await call("GET", "/v1/studio");
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ enabled: true, paused: null, allowlisted: null, block: null });
+    expect(r.body).toMatchObject({ enabled: true, paused: null, testersOnly: false, allowlisted: null, block: null });
     expect(r.body.packs[0]).toEqual({ id: 0, key: "starter", name: "Starter", priceUsdc: "2", sketches: 10, models: 1 });
   });
 

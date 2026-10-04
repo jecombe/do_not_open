@@ -1033,6 +1033,8 @@ export const en = {
   "studio.mode.ai": "Draw with AI",
   "studio.mode.aiHint": "From your own words",
   "studio.mode.busy": "The AI is working…",
+  "studio.mode.testers": "Testers only, for now",
+  "studio.mode.tester": "A tester? Open the AI with your wallet",
   "studio.board.title": "The drawing board",
   "studio.board.drawing": "Drawing your rat",
   "studio.board.modelling": "Building your 3D rat",
