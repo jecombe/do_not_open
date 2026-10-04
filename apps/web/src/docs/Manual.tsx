@@ -43,8 +43,8 @@ const CONTRACTS = [
   { key: "ramp", address: "0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1" },
   { key: "credits", address: "0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e" },
   { key: "studio", address: "0x672cf76a68d4f181387B59caA1813eC425c1354C" },
-  { key: "rats", address: "0xd4f8Df0F14Ced442077762cb81e843656BAc3856" },
-  { key: "ratPantry", address: "0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A" },
+  { key: "rats", address: "0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264" },
+  { key: "ratPantry", address: "0x1334d72fC60cBedcF409d6583F0Ec009c285E75B" },
 ] as const;
 
 /** Highlights the section being read in the routing slip. */

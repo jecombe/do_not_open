@@ -3071,7 +3071,7 @@
     "deployBlock": 11842636
   },
   "rats": {
-    "address": "0xd4f8Df0F14Ced442077762cb81e843656BAc3856",
+    "address": "0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264",
     "abi": [
       {
         "inputs": [
@@ -3109,6 +3109,21 @@
             "internalType": "string",
             "name": "baseURI_",
             "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxSeedRats_",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxModelRats_",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxPerWallet_",
+            "type": "uint256"
           }
         ],
         "stateMutability": "nonpayable",
@@ -3308,6 +3323,11 @@
         "type": "error"
       },
       {
+        "inputs": [],
+        "name": "SoldOut",
+        "type": "error"
+      },
+      {
         "inputs": [
           {
             "internalType": "string",
@@ -3320,7 +3340,17 @@
       },
       {
         "inputs": [],
+        "name": "WalletLimit",
+        "type": "error"
+      },
+      {
+        "inputs": [],
         "name": "ZeroAddress",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroCap",
         "type": "error"
       },
       {
@@ -3679,6 +3709,45 @@
         "type": "function"
       },
       {
+        "inputs": [],
+        "name": "maxModelRats",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "maxPerWallet",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "maxSeedRats",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
         "inputs": [
           {
             "internalType": "bytes32",
@@ -3755,6 +3824,38 @@
             "internalType": "uint64",
             "name": "",
             "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "mintedBy",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "modelMinted",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
           }
         ],
         "stateMutability": "view",
@@ -3910,6 +4011,19 @@
         "name": "safeTransferFrom",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "seedMinted",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       },
       {
@@ -4165,10 +4279,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11843103
+    "deployBlock": 11845258
   },
   "ratPantry": {
-    "address": "0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A",
+    "address": "0x1334d72fC60cBedcF409d6583F0Ec009c285E75B",
     "abi": [
       {
         "inputs": [
@@ -4376,6 +4490,6 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11843104
+    "deployBlock": 11845259
   }
 }
