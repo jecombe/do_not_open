@@ -215,7 +215,7 @@ export function Home() {
               <strong>{t("home.studio.ai.title")}</strong> {t("home.studio.ai.body", { price: studio.packs[0]!.priceUsdc })}
             </li>
             <li>
-              <strong>{t("home.studio.next.title")}</strong> {t("home.studio.next.body")}
+              <strong>{t("home.studio.next.title")}</strong> {t("home.studio.next.body", { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay })}
             </li>
           </ul>
           <a className="btn" href={studioPath(locale)}>

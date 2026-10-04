@@ -378,4 +378,47 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       create index studio_jobs_running on studio_jobs (created_at) where status = 'running';
     `,
   },
+  {
+    version: 13,
+    name: "rats",
+    sql: /* sql */ `
+      -- The depot's rats (ERC-721, public owners): a read model, rebuilt by a replay. The Rats
+      -- contract is newer than every block indexed so far, so nothing needs reading again.
+      create table rats (
+        token_id integer primary key,
+        kind text not null check (kind in ('seed', 'model')),
+        -- The seed in decimal, or the studio job's bytes32.
+        ref text not null,
+        uri text,
+        owner text not null,
+        minter text not null,
+        minted_block bigint not null,
+        minted_at bigint
+      );
+      create index rats_owner on rats (owner);
+      create index rats_ref on rats (ref);
+      -- Paid shakes by account: a rat's sniffs are its owner's. A fold of the Shaken events, so it
+      -- starts from those already recorded.
+      create table rat_sniffers (
+        account text primary key,
+        sniffs bigint not null
+      );
+      insert into rat_sniffers (account, sniffs)
+        select data->>'viewer', count(*) from events
+        where name = 'Shaken' and (data->>'paid')::boolean
+        group by data->>'viewer';
+      -- AI rats' files once on Arweave, by studio job. Not on the chain: a replay keeps it, and a
+      -- second adoption signs again without uploading again.
+      create table rat_adoptions (
+        job_id text primary key,
+        job_ref text not null unique,
+        account text not null,
+        prompt text not null,
+        image_id text not null,
+        model_id text not null,
+        record_id text not null,
+        created_at bigint not null
+      );
+    `,
+  },
 ];

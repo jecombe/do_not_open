@@ -5,6 +5,7 @@ import {
   VoidSigner,
   type ContractTransactionReceipt,
   type ContractTransactionResponse,
+  type EventLog,
   type InterfaceAbi,
   type Provider,
   type Signer,
@@ -16,6 +17,7 @@ import { studio as studioSpec } from "@dno/game-spec";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import { traitIndexAtOffset } from "../layout";
+import { ratJob } from "../rats";
 import {
   ChainError,
   sameAddress,
@@ -59,6 +61,10 @@ import {
   type ApiSession,
   type StudioPack,
   type StudioUnits,
+  type RatAdoption,
+  type RatInfo,
+  type RatPantryInfo,
+  type RatPrices,
 } from "../types";
 import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
 import { gateRefusal, toChainError } from "./errors";
@@ -132,6 +138,9 @@ export interface EvmAdapterOptions {
   credits?: Deployed;
   /** The StudioPacks contract. Without it, the studio's packs cannot be bought. */
   studio?: Deployed;
+  /** The Rats ERC-721 and the RatPantry. Without them, no rat can be adopted. */
+  rats?: Deployed & { deployBlock?: number | null };
+  ratPantry?: Deployed;
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -315,7 +324,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -1092,6 +1101,136 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }
     const { token, expiresAt } = await ix.signIn(account, signature);
     return { account, token, expiresAt };
+  }
+
+  // --- rats ---
+
+  async ratPrices(): Promise<RatPrices | null> {
+    const deployed = this.opts.rats;
+    if (!deployed) return null;
+    const rats = this.at(deployed);
+    const [seed, model] = await Promise.all([this.reading(rats.seedPrice!()), this.reading(rats.modelPrice!())]);
+    return { seed: BigInt(seed), model: BigInt(model) };
+  }
+
+  async seedRatTaken(seed: bigint): Promise<boolean> {
+    const deployed = this.opts.rats;
+    if (!deployed) return false;
+    return BigInt(await this.reading(this.at(deployed).tokenOfSeed!(seed))) !== 0n;
+  }
+
+  async mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number> {
+    const deployed = this.rats();
+    if (seed < 0n || seed >= 2n ** 64n) throw new ChainError("unknown", "Not a rat seed.");
+    const price = (await this.ratPrices())!.seed;
+    const account = await this.payRats(price, opts);
+    // At most the price just read: a change meanwhile reverts instead of charging more.
+    const receipt = await this.send(opts, () => this.writer(deployed).mintSeed!(seed, price));
+    return this.mintedRat(receipt, account);
+  }
+
+  async mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number> {
+    const deployed = this.rats();
+    const price = (await this.ratPrices())!.model;
+    const account = await this.payRats(price, opts);
+    const receipt = await this.send(opts, () => this.writer(deployed).mintModel!(ratJob(adoption.job), adoption.uri, adoption.deadline, adoption.signature, price));
+    return this.mintedRat(receipt, account);
+  }
+
+  async ratsOf(account: Address): Promise<RatInfo[]> {
+    if (!this.opts.rats) return [];
+    return this.indexed((ix) => ix.rats(account), () => this.ratsFromChain(account));
+  }
+
+  async ratClaimable(ids: number[]): Promise<bigint[]> {
+    const deployed = this.opts.ratPantry;
+    if (!deployed || ids.length === 0) return ids.map(() => 0n);
+    const pantry = this.at(deployed);
+    return Promise.all(ids.map(async (id) => BigInt(await this.reading(pantry.claimable!(id)))));
+  }
+
+  async ratPantry(): Promise<RatPantryInfo | null> {
+    const deployed = this.opts.ratPantry;
+    if (!deployed) return null;
+    const pantry = this.at(deployed);
+    const [perDay, maxDays, reserve] = await Promise.all([this.reading(pantry.perDay!()), this.reading(pantry.maxDays!()), this.reading(pantry.reserve!())]);
+    return { perDay: Number(perDay), maxDays: Number(maxDays), reserve: BigInt(reserve) };
+  }
+
+  async claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint> {
+    const deployed = this.opts.ratPantry;
+    if (!deployed) throw new ChainError("unknown", "The rats' pantry is not deployed on this network.");
+    if (ids.length === 0) throw new ChainError("unknown", "Pick at least one rat.");
+    const receipt = await this.send(opts, () => this.writer(deployed).claim!(ids));
+    const iface = new Interface(deployed.abi);
+    for (const log of receipt.logs) {
+      if (!sameAddress(log.address, deployed.address)) continue;
+      const parsed = iface.parseLog(log);
+      if (parsed?.name === "RatsFed") return BigInt(parsed.args.amount);
+    }
+    return 0n;
+  }
+
+  private rats(): Deployed & { deployBlock?: number | null } {
+    const deployed = this.opts.rats;
+    if (!deployed) throw new ChainError("unknown", "Rats cannot be adopted on this network yet.");
+    return deployed;
+  }
+
+  /** Checks the wallet holds `price` USDC and lets the Rats contract take it. */
+  private async payRats(price: bigint, opts?: ActionOptions): Promise<Address> {
+    const { usdc } = await this.payment();
+    const account = (await this.signer().getAddress()) as Address;
+    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
+    if (held < price) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: price });
+    await this.ensureAllowance(usdc, this.rats().address, account, price, opts);
+    return account;
+  }
+
+  private mintedRat(receipt: ContractTransactionReceipt, account: Address): number {
+    const deployed = this.rats();
+    const iface = new Interface(deployed.abi);
+    for (const log of receipt.logs) {
+      if (!sameAddress(log.address, deployed.address)) continue;
+      const parsed = iface.parseLog(log);
+      if (parsed?.name === "RatMinted" && sameAddress(parsed.args.minter, account)) return Number(parsed.args.tokenId);
+    }
+    throw new ChainError("unknown", "The rat was minted, but its id could not be read from the receipt.");
+  }
+
+  /** The account's rats from the chain: every rat ever sent to it that it still owns. */
+  private async ratsFromChain(account: Address): Promise<RatInfo[]> {
+    const deployed = this.rats();
+    const rats = this.at(deployed);
+    const latest = await this.opts.readProvider.getBlockNumber();
+    const ids = new Set<number>();
+    for (let lo = deployed.deployBlock ?? 0; lo <= latest; lo += LOG_SPAN) {
+      const hi = Math.min(latest, lo + LOG_SPAN - 1);
+      for (const log of await this.reading(rats.queryFilter(rats.filters.Transfer!(null, account), lo, hi))) {
+        ids.add(Number((log as EventLog).args.tokenId));
+      }
+    }
+    const out: RatInfo[] = [];
+    for (const id of [...ids].sort((a, b) => b - a)) {
+      const owner: string = await this.reading(rats.ownerOf!(id));
+      if (!sameAddress(owner, account)) continue;
+      const r = await this.reading(rats.ratOf!(id));
+      const kind = Number(r.kind) === 0 ? "seed" : "model";
+      out.push({
+        id,
+        kind,
+        seed: kind === "seed" ? BigInt(r.ref).toString() : null,
+        job: kind === "model" ? String(r.ref) : null,
+        uri: null,
+        owner: account,
+        minter: account,
+        mintedBlock: null,
+        imageUrl: null,
+        modelUrl: null,
+        sniffs: 0,
+      });
+    }
+    return out;
   }
 
   private async creditPrice(): Promise<bigint | null> {

@@ -1,3 +1,4 @@
+import type { RatAdoption } from "@dno/chain-adapter";
 import { studio } from "@dno/game-spec";
 import { buildRatSpec, renderRatSvg } from "@dno/generator";
 
@@ -53,7 +54,17 @@ export interface StudioCredits {
   block: number | null;
 }
 
-export type StudioErrorCode = "bad-prompt" | "refused-prompt" | "not-allowlisted" | "no-credits" | "studio-paused" | "unauthorized" | "unreachable";
+export type StudioErrorCode =
+  | "bad-prompt"
+  | "refused-prompt"
+  | "not-allowlisted"
+  | "no-credits"
+  | "studio-paused"
+  | "already-adopted"
+  | "storage-unfunded"
+  | "adopt-unavailable"
+  | "unauthorized"
+  | "unreachable";
 
 export class StudioError extends Error {
   constructor(
@@ -74,9 +85,21 @@ export interface StudioService {
   model(sketchId: string): Promise<StudioJob>;
   jobs(): Promise<StudioJob[]>;
   job(id: string): Promise<StudioJob>;
+  /** The go-ahead to mint a finished AI rat: its files go to Arweave and the API signs. */
+  adopt(jobId: string): Promise<RatAdoption>;
 }
 
-const CODES = new Set<StudioErrorCode>(["bad-prompt", "refused-prompt", "not-allowlisted", "no-credits", "studio-paused", "unauthorized"]);
+const CODES = new Set<StudioErrorCode>([
+  "bad-prompt",
+  "refused-prompt",
+  "not-allowlisted",
+  "no-credits",
+  "studio-paused",
+  "already-adopted",
+  "storage-unfunded",
+  "adopt-unavailable",
+  "unauthorized",
+]);
 
 /** The API's studio routes. Every route but `info` needs a session token from a wallet sign-in. */
 export class HttpStudio implements StudioService {
@@ -130,7 +153,14 @@ export class HttpStudio implements StudioService {
   async job(id: string): Promise<StudioJob> {
     return (await this.call<{ job: StudioJob }>(`/v1/studio/jobs/${encodeURIComponent(id)}`)).job;
   }
+
+  adopt(jobId: string): Promise<RatAdoption> {
+    return this.call(`/v1/studio/jobs/${encodeURIComponent(jobId)}/adopt`, { method: "POST", body: "{}" });
+  }
 }
+
+/** The demo's AI rats are procedural rats in disguise: the record names the seed to draw. */
+export const DEMO_RAT_URI = "demo-seed:";
 
 /** A few names the demo refuses, to show what a refused prompt looks like. The API has the real list. */
 const DEMO_REFUSED = /\b(pikachu|garfield|hello\s*kitty|doraemon|nsfw|nude)\b/i;
@@ -197,6 +227,12 @@ export class LocalStudio implements StudioService {
     const job = this.list.find((j) => j.id === id);
     if (!job) throw new StudioError("unreachable", "Unknown job.");
     return { ...job };
+  }
+
+  async adopt(jobId: string): Promise<RatAdoption> {
+    const job = this.list.find((j) => j.id === jobId && j.kind === "model" && j.status === "done");
+    if (!job) throw new StudioError("adopt-unavailable", "Unknown model.");
+    return { job: job.id, uri: `${DEMO_RAT_URI}${job.seed}`, deadline: Math.floor(Date.now() / 1000) + 600, signature: "0x", priceUsdc: studio.rats.mint.modelPriceUsdc };
   }
 
   private start(fields: Pick<StudioJob, "kind" | "prompt" | "sketchId" | "seed">, finish: () => Partial<StudioJob>): StudioJob {

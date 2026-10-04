@@ -212,6 +212,11 @@ rats, not cats, so nothing drawn there passes for a cat out of a box), gives it
 back if the service fails, and caps what the services cost in a day. The keys stay on the
 server. Details: [`apps/api/README.md`](../apps/api/README.md).
 
+The studio's rats can be adopted on-chain (`Rats`, a plain ERC-721, and `RatPantry`, their
+daily CROQ). The API indexes them for "My rats", serves their metadata (`/rats/:id`, a seed
+rat's picture rendered from its seed), and, for an AI rat, copies its files to Arweave and
+signs the adoption with the attester key.
+
 It also runs the manual's chatbot, the depot clerk (`POST /v1/chat`): Google's Gemini, on
 its free tier, answers from the whole manual of the player's language, with the key kept on
 the server; without a model, or past the day's limits, the clerk quotes the manual's best

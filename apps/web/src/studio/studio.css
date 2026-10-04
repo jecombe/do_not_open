@@ -155,6 +155,40 @@ body.studio-page {
   max-width: none;
 }
 
+.studio-adopt {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.studio-adopt .fine,
+.studio-adopted {
+  color: var(--tape);
+  max-width: none;
+}
+
+.studio-adopted {
+  margin: 0;
+  font-weight: 700;
+}
+
+.studio-adopt .link {
+  color: var(--tape);
+}
+
+/* The one buy on the dark side of the page: filled, so it reads on the dark. */
+.studio-adopt-button {
+  background: var(--ink-red);
+  border-color: var(--ink-red);
+  color: #fff7e8;
+}
+
+.studio-model-actions {
+  display: flex;
+  flex: none;
+  gap: 12px;
+}
+
 .studio-another {
   color: var(--sodium);
   border-color: var(--sodium);

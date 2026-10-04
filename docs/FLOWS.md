@@ -660,7 +660,44 @@ when `STUDIO_ALLOWLIST` is set, only lets the listed wallets generate: on Sepoli
 paid in test USDC while the services cost real money. In mock mode the whole flow runs on a
 local stand-in (a random procedural rat), with no API and no AI.
 
-Coming next, not built: rats that move into the depot, sniff the boxes and gather croquettes.
+### Adopt a rat
+
+A rat drawn in the studio is adopted by minting it in `Rats`, a plain ERC-721: rats are not
+secret, their owners are public. A free rat is minted by its seed for 1 USDC, each seed once
+(its look is recomputed from the seed, so nothing is stored). An AI rat costs 3 USDC and
+needs the API first: it copies the rat's picture and GLB to Arweave, writes a small record
+pointing at both, and signs the adoption for the caller's address.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant App
+  participant API
+  participant AR as Arweave
+  participant R as Rats
+  alt a free rat
+    U->>R: mintSeed(seed, maxPrice): 1 USDC to the treasury
+  else an AI rat
+    App->>API: POST /v1/studio/jobs/:id/adopt (signed in)
+    API->>API: the job is the caller's, a finished 3D model, not adopted yet
+    API->>AR: the picture, the GLB, then a record of both
+    API-->>App: uri, deadline, EIP-712 signature (minter = the caller)
+    U->>R: mintModel(job, uri, deadline, signature, maxPrice): 3 USDC to the treasury
+  end
+  R-->>API: RatMinted, Transfer, through the index
+  App->>API: GET /v1/rats?owner=…: "My rats"
+```
+
+### The rats' croquettes, and sniffing
+
+Each rat earns 10 plain CROQ a day from its mint, paid by the `RatPantry` to whoever owns it,
+at most 7 days kept between two claims ("Collect croquettes" claims every rat at once). The
+pantry was funded with 500,000 CROQ from the treasury when it was deployed and has no owner;
+when it runs dry a claim pays what is left. A rat sniffs a box through the paid shake that
+already exists: its owner pays 2.5 cUSDC, sees one trait of a sealed box privately, and the
+box's hidden holder gets 70%. The API counts the paid shakes of each rat's owner as the rat's
+"boxes sniffed".
+
 
 ## Where the money goes
 
@@ -670,6 +707,7 @@ Coming next, not built: rats that move into the depot, sniff the boxes and gathe
 | Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen`; all of it to `DoNotOpen` for an empty id |
 | Decryption credits (0.01 each on Sepolia; on mainnet Zama's dollar price for a decryption x 2) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
 | Studio packs (Starter 2, Litter 8) | plain USDC | the treasury address set in `StudioPacks`, at once; the AI services are paid from it |
+| Adopting a rat (1 a free rat, 3 an AI rat) | plain USDC | the treasury address set in `Rats`, at once; Arweave storage of AI rats is paid from it |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 

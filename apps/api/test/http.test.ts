@@ -76,6 +76,7 @@ beforeAll(async () => {
         dailyBudgetUsd: 20,
         open: true,
       },
+      rats: { ratCounts: async () => [{ kind: "seed" as const, count: 2 }, { kind: "model" as const, count: 1 }] },
       info: { chain: "sepolia", collection: "0xABC", version: "test" },
     }),
     corsOrigins: ["https://donotopen.vercel.app", "https://donotopen-*.vercel.app"],
@@ -215,6 +216,8 @@ describe("metrics", () => {
       "dno_studio_open 1",
       "dno_studio_packs_sold 2",
       "dno_studio_revenue_usdc 10",
+      'dno_rats_minted{kind="seed"} 2',
+      'dno_rats_minted{kind="model"} 1',
     ])
       expect(text).toContain(line);
     expect(text).toMatch(/dno_http_request_duration_seconds_count\{method="GET",route="\/v1\/stats",status="200"\} \d+/);

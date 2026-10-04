@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { formatAmount, type ApiSession, type StudioPack } from "@dno/chain-adapter";
+import { formatAmount, type ApiSession, type RatPrices, type StudioPack } from "@dno/chain-adapter";
 import { studio } from "@dno/game-spec";
 import { ChainProvider, useAction, useChain, useLedger } from "../chain/ChainProvider";
 import { useT, type AppKey } from "../i18n/app";
@@ -63,7 +63,7 @@ function StudioIntro() {
         </li>
       </ol>
       <p className="fine studio-next">
-        {t("studio.next")}{" "}
+        {t("studio.next", { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay })}{" "}
         <a className="link" href={`${docsPath(locale)}#studio`}>
           {t("studio.manualLink")}
         </a>
@@ -78,6 +78,9 @@ const ERRORS: Record<StudioErrorCode, AppKey> = {
   "not-allowlisted": "studio.err.notAllowlisted",
   "no-credits": "studio.err.noCredits",
   "studio-paused": "studio.err.paused",
+  "already-adopted": "studio.err.alreadyAdopted",
+  "storage-unfunded": "studio.err.storageUnfunded",
+  "adopt-unavailable": "studio.err.adoptUnavailable",
   unauthorized: "studio.err.unauthorized",
   unreachable: "studio.err.unreachable",
 };
@@ -98,6 +101,7 @@ function StudioLive() {
   const id = useId();
   const ledger = useLedger();
   const buying = useAction();
+  const adopting = useAction();
   const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
   const demo = mode === "mock" || !apiUrl;
 
@@ -124,6 +128,11 @@ function StudioLive() {
   const [problem, setProblem] = useState<{ code: StudioErrorCode; at: "sketch" | "model" | "desk" } | null>(null);
   const [signing, setSigning] = useState(false);
   const [sending, setSending] = useState(false);
+  const [ratPrices, setRatPrices] = useState<RatPrices | null | undefined>(undefined);
+  /** Whether the random rat on the turntable was adopted already, by anyone. */
+  const [taken, setTaken] = useState(false);
+  /** The rat this visit adopted, to say so and point to it. */
+  const [adopted, setAdopted] = useState<number | null>(null);
 
   // A "get USDC" link from a failed purchase goes to the bureau de change, in the game.
   useEffect(() => onOpenExchange(() => window.location.assign(gameAt(locale, "exchange"))), [locale]);
@@ -138,12 +147,29 @@ function StudioLive() {
       (p) => live && setPacks(p),
       () => live && setPacks(null),
     );
+    adapter.ratPrices().then(
+      (p) => live && setRatPrices(p),
+      () => live && setRatPrices(null),
+    );
     return () => {
       live = false;
     };
   }, [service, adapter]);
 
   const signedIn = demo ? !!account : !!session;
+
+  const randomSeedShown = subject.kind === "rat" && !showing ? subject.seed : null;
+  // A new rat on the turntable: the last adoption's message makes way for its own button.
+  useEffect(() => setAdopted(null), [subject]);
+  useEffect(() => {
+    setTaken(false);
+    if (randomSeedShown === null || !ratPrices) return;
+    let live = true;
+    adapter.seedRatTaken(randomSeedShown).then((t) => live && setTaken(t), () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [adapter, randomSeedShown, ratPrices, ledger]);
 
   /** A session the API no longer takes: forget it, the visitor signs in again. */
   const failed = useCallback((error: unknown, at: "sketch" | "model" | "desk" = "desk") => {
@@ -252,6 +278,28 @@ function StudioLive() {
     }
   };
 
+  const adoptSeed = async (seed: bigint) => {
+    if (!account) return void connect();
+    setAdopted(null);
+    const id = await adopting.run("rat-adopt", (o) => adapter.mintSeedRat(seed, o));
+    if (id !== undefined) setAdopted(id);
+  };
+
+  const adoptModel = async (job: StudioJob) => {
+    setProblem(null);
+    setAdopted(null);
+    let adoption;
+    try {
+      adoption = await service.adopt(job.id);
+    } catch (error) {
+      return failed(error, "model");
+    }
+    const id = await adopting.run("rat-adopt", (o) => adapter.mintModelRat(adoption, o));
+    if (id !== undefined) setAdopted(id);
+  };
+
+  const perDay = studio.rats.croquettes.perDay;
+
   const buy = async (pack: StudioPack) => {
     setProblem(null);
     await buying.run("studio-pack", (o) => adapter.buyStudioPack(pack.id, o));
@@ -290,6 +338,30 @@ function StudioLive() {
             </button>
             <p className="fine">{showingJob ? `“${showingJob.prompt}”` : t("studio.free.body")}</p>
           </div>
+          <TxPending busy={adopting.busy} step={adopting.step} title={t("studio.adopt.adopting")}>
+            <div className="studio-adopt">
+              {adopted !== null ? (
+                <p className="studio-adopted" role="status">
+                  {t("studio.adopt.done", { id: adopted, perDay })}{" "}
+                  <a className="link" href={gameAt(locale, "rats")}>
+                    {t("studio.adopt.see")}
+                  </a>
+                </p>
+              ) : randomSeedShown !== null ? (
+                ratPrices === null ? (
+                  <p className="fine">{t("studio.adopt.closed")}</p>
+                ) : taken ? (
+                  <p className="fine">{t("studio.adopt.taken")}</p>
+                ) : (
+                  <button type="button" className="stamp-button studio-adopt-button" disabled={!ratPrices || !!adopting.busy} onClick={() => void adoptSeed(randomSeedShown)}>
+                    {t("studio.adopt.seed", { price: ratPrices ? formatAmount(ratPrices.seed, 6) : studio.rats.mint.seedPriceUsdc })}
+                  </button>
+                )
+              ) : null}
+              {adopted === null && randomSeedShown !== null && ratPrices !== null && !taken && <p className="fine">{t("studio.adopt.hint", { perDay })}</p>}
+              {adopting.error && <ProblemNote problem={adopting.error} />}
+            </div>
+          </TxPending>
         </div>
 
         <div className="studio-desk slip" aria-labelledby={`${id}-desk`}>
@@ -397,9 +469,16 @@ function StudioLive() {
                       <li key={j.id}>
                         <span className="studio-model-name">{j.prompt}</span>
                         {j.status === "done" ? (
-                          <button type="button" className="link" onClick={() => show(j)} aria-pressed={showing === j.id}>
-                            {showing === j.id ? t("studio.model.onStage") : t("studio.model.show")}
-                          </button>
+                          <span className="studio-model-actions">
+                            <button type="button" className="link" onClick={() => show(j)} aria-pressed={showing === j.id}>
+                              {showing === j.id ? t("studio.model.onStage") : t("studio.model.show")}
+                            </button>
+                            {ratPrices && (
+                              <button type="button" className="link" onClick={() => void adoptModel(j)} disabled={!!adopting.busy}>
+                                {t("studio.adopt.model", { price: formatAmount(ratPrices.model, 6) })}
+                              </button>
+                            )}
+                          </span>
                         ) : (
                           <span className="fine">{j.status === "running" ? t("studio.job.modelling") : j.status === "rejected" ? t("studio.job.rejected") : t("studio.job.failed")}</span>
                         )}

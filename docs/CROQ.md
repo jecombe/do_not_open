@@ -55,6 +55,10 @@ function, no owner and no pause. Nothing can create more.
 | Market liquidity | 4,000,000 (20%) | A CROQ-only position in a CROQ/USDC Uniswap V3 pool, locked for good in the `LiquidityLocker` |
 | Treasury | 5,000,000 (25%) | Kept by the collection owner as plain CROQ, for events and future liquidity |
 
+Out of the treasury, 500,000 CROQ go to the `RatPantry` when the rats are deployed (see
+"The rats' croquettes" below): the studio's adopted rats are paid from it, not from the game
+reserve.
+
 `economyFromSpec()` in `packages/contracts-evm/lib/specParams.ts` refuses a spec whose
 shares do not add up to the total, or whose welcome bags do not equal
 `maxSupply × welcomeBag`.
@@ -155,6 +159,17 @@ in 256 and the other values 51 times. The bias is accepted.
 
 Nobody can know what a claim paid, including the claimer before the transaction. There
 is nothing to simulate and nothing to retry on a bad day.
+
+### The rats' croquettes
+
+**10 plain CROQ per adopted rat per day**, from its mint, claimed by its current owner from
+the `RatPantry`, at most 7 days kept between two claims. Plain CROQ, not cCROQ: a rat's owner
+is public, so its earnings may be too; the bureau de change wraps them for the boxes. The
+pantry holds 500,000 CROQ from the treasury, paid at deployment, and has no owner: nothing
+refills it but a plain transfer, and when it runs dry a claim pays what is left. A rat costs
+at least 1 USDC, so farming croquettes with rats costs more than it brings at the market's
+floor (0.001 USDC a CROQ: 100 days to earn a seed rat's price back). Numbers in
+`packages/game-spec/studio.json` (`rats.croquettes`).
 
 ## Where croquettes go
 

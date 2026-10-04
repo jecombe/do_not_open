@@ -37,6 +37,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
+| Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC), 10 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Built** |
 
 ## Layout
 
@@ -179,8 +180,13 @@ materials. The API spends a unit before it calls the AI services and gives it ba
 fail, and stops for the day past a dollar budget. Each pack sells for at least twice what it
 is expected to cost, so the services are paid back with a margin for the treasury. The
 numbers are in [`packages/game-spec/studio.json`](packages/game-spec/studio.json), the flow in
-[`docs/FLOWS.md`](docs/FLOWS.md#the-studio). Next, not built yet: rats that move into the depot,
-sniff the boxes and gather croquettes.
+[`docs/FLOWS.md`](docs/FLOWS.md#the-studio).
+
+A rat can then be adopted: minted in `Rats`, a plain ERC-721, for 1 USDC (a free rat, by its
+seed) or 3 USDC (an AI rat, whose picture and 3D model the API copies to Arweave first). An
+adopted rat earns 10 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ from the
+treasury at deployment, at most 7 days kept between two claims) and sniffs boxes for its
+owner through the paid shake. "My rats" in the game lists them.
 
 ## On Sepolia
 

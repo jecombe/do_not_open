@@ -10,6 +10,7 @@ import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
 import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
 import { StudioRefused, type Studio } from "../../application/studio";
+import { RatRefused, type Rats } from "../../application/rats";
 import type { StudioJob } from "../../domain/studio";
 import { normalizeAddress, type Address } from "../../domain/types";
 import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
@@ -37,6 +38,8 @@ export interface HttpDeps {
     /** Hosts the service's files may come from (and their subdomains). fal.ai's by default. */
     fileHosts?: string[];
   };
+  /** The depot's rats: read back, described for marketplaces, and adopted. */
+  rats?: Rats;
   /** The manual's chatbot. */
   chat?: AskManual;
   /** Chat questions per minute per IP. */
@@ -447,6 +450,58 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
 
     app.get("/v1/studio/jobs/:id/image", fileRoute, async (req, reply) => proxy(reply, jobId.parse(req.params).id, "image", "image/jpeg"));
     app.get("/v1/studio/jobs/:id/model.glb", fileRoute, async (req, reply) => proxy(reply, jobId.parse(req.params).id, "model", "model/gltf-binary"));
+  }
+
+  // --- the rats ---
+
+  const rats = deps.rats;
+  if (rats) {
+    const RAT_STATUS: Record<RatRefused["code"], number> = {
+      "not-found": 404,
+      "not-adoptable": 400,
+      "already-adopted": 409,
+      "storage-unfunded": 503,
+      "adopt-unavailable": 503,
+    };
+    const ratId = z.object({ id: z.coerce.number().int().min(1).max(2 ** 31 - 1) });
+
+    app.get("/v1/rats", async (req, reply) => {
+      const { owner } = z.object({ owner: address }).parse(req.query);
+      reply.header("cache-control", PUBLIC_CACHE);
+      return { rats: await rats.list(owner), block: await queries.indexedBlock() };
+    });
+
+    app.get("/v1/rats/:id", async (req, reply) => {
+      const { id: ratIdValue } = ratId.parse(req.params);
+      reply.header("cache-control", PUBLIC_CACHE);
+      return { rat: await rats.get(ratIdValue), block: await queries.indexedBlock() };
+    });
+
+    // ERC-721 metadata, at the Rats contract's base URI.
+    app.get("/rats/:id", async (req, reply) => {
+      const { id: raw } = z.object({ id: z.string().regex(/^\d+(\.json)?$/) }).parse(req.params);
+      reply.header("cache-control", "public, max-age=60");
+      return rats.metadata(Number(raw.replace(".json", "")));
+    });
+
+    app.get("/rats/:id/image.svg", async (req, reply) => {
+      const { id: ratIdValue } = ratId.parse(req.params);
+      // A seed rat's picture never changes.
+      reply.header("cache-control", "public, max-age=31536000, immutable").type("image/svg+xml");
+      return rats.svg(ratIdValue);
+    });
+
+    app.post("/v1/studio/jobs/:id/adopt", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const who = bearer(req);
+      const { id: job } = z.object({ id: z.string().uuid() }).parse(req.params);
+      reply.header("cache-control", "private, no-store");
+      try {
+        return await rats.adopt(who, job);
+      } catch (error) {
+        if (!(error instanceof RatRefused)) throw error;
+        return reply.status(RAT_STATUS[error.code]).send({ error: error.code, message: error.message });
+      }
+    });
   }
 
   // --- the manual's chatbot ---

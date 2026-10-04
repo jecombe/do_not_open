@@ -117,6 +117,33 @@ describe("EvmChainSource", () => {
     expect(batch.events[0]).toMatchObject({ name: "PackBought", source: "studio", payer: ALICE.toLowerCase(), account: BOB.toLowerCase(), packId: 1, sketches: 50, models: 5, paid: "8000000" });
   });
 
+  it("decodes the rats' mints, transfers and croquettes, once Rats and RatPantry are in the deployment", async () => {
+    const ratsAbi = [
+      "event RatMinted(uint256 indexed tokenId, address indexed minter, uint8 kind, bytes32 ref, string uri, uint256 paid)",
+      "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+    ];
+    const pantryAbi = ["event RatsFed(address indexed owner, uint256[] ids, uint256 amount)"];
+    const ratsAddress = "0x00000000000000000000000000000000000000a7";
+    const pantryAddress = "0x00000000000000000000000000000000000000a8";
+    const withRats = { ...d, rats: { address: ratsAddress, abi: ratsAbi }, ratPantry: { address: pantryAddress, abi: pantryAbi } };
+    const job = "0x" + "ab".repeat(32);
+    const logs = [
+      log(ratsAddress, new Interface(ratsAbi), "Transfer", ["0x0000000000000000000000000000000000000000", ALICE, 1], 220, 0),
+      log(ratsAddress, new Interface(ratsAbi), "RatMinted", [1, ALICE, 0, "0x" + (2n ** 64n - 1n).toString(16).padStart(64, "0"), "", 1_000_000], 220, 1),
+      log(ratsAddress, new Interface(ratsAbi), "RatMinted", [2, BOB, 1, job, "ar://rec", 3_000_000], 221, 0),
+      log(pantryAddress, new Interface(pantryAbi), "RatsFed", [ALICE, [1, 3], 70], 222, 0),
+    ];
+    const { rpc } = node(logs, () => null);
+    const batch = await new EvmChainSource(rpc, withRats, silentLogger).read(220, 222);
+    expect(batch.events).toHaveLength(4);
+    expect(batch.events[0]).toMatchObject({ name: "RatTransfer", source: "rats", ratId: 1, to: ALICE.toLowerCase() });
+    expect(batch.events[1]).toMatchObject({ name: "RatMinted", ratId: 1, kind: "seed", ref: "18446744073709551615", uri: "", paid: "1000000" });
+    expect(batch.events[2]).toMatchObject({ name: "RatMinted", ratId: 2, kind: "model", ref: job, uri: "ar://rec", minter: BOB.toLowerCase() });
+    expect(batch.events[3]).toMatchObject({ name: "RatsFed", source: "ratPantry", owner: ALICE.toLowerCase(), ratIds: [1, 3], amount: "70" });
+    // A rat id is not a box id.
+    expect(batch.events[0]).not.toHaveProperty("tokenId");
+  });
+
   it("asks for the protocol's contracts and event topics only", async () => {
     const filters: { address: string[]; topics: (string | string[])[] }[] = [];
     const fetch = (async (_u: string, init: RequestInit) => {
@@ -127,7 +154,7 @@ describe("EvmChainSource", () => {
     const source = new EvmChainSource(new RpcPool({ urls: ["https://n"], rps: 100, maxLogRange: 100, fetch }), d, silentLogger);
     expect(await source.read(1, 50)).toMatchObject({ to: 50, events: [] });
     const [filter, acl] = filters;
-    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : []), ...(d.studio ? [d.studio.address] : [])].map((a) => a.toLowerCase()));
+    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : []), ...(d.studio ? [d.studio.address] : []), ...(d.rats ? [d.rats.address] : []), ...(d.ratPantry ? [d.ratPantry.address] : [])].map((a) => a.toLowerCase()));
     const decryptionProof = collection.getEvent("PublicDecryptionVerified")!.topicHash;
     expect(filter!.topics[0]).not.toContain(decryptionProof);
     for (const name of ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened"]) expect(filter!.topics[0]).toContain(collection.getEvent(name)!.topicHash);

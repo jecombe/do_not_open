@@ -2,6 +2,7 @@ import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
 import type { Enrichment, ProtocolEvent } from "../../domain/events";
 import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
+import type { Rat } from "../../domain/rats";
 import type { Request } from "../../domain/request";
 import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
@@ -74,6 +75,10 @@ export interface ProjectionTx {
   addCredits(account: Address, credits: number): Promise<void>;
   /** Studio units bought on-chain for `account`. */
   addStudioUnits(account: Address, sketches: number, models: number, paid?: string): Promise<void>;
+  rat(ratId: number): Promise<Rat | null>;
+  saveRat(rat: Rat): Promise<void>;
+  /** One more paid shake by `account`: a rat's sniffs are its owner's. */
+  addSniff(account: Address): Promise<void>;
 }
 
 /** Without `account` or `tokenIds`, every duel (with `statuses`, every open one). */

@@ -112,10 +112,11 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
-| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`). Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
+| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`). Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 | `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
+| `GET /v1/rats?owner=` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
 | `POST /v1/discord/interactions` | Discord's `/ask` (below): called by Discord only, signed with the application's Ed25519 key (`401` otherwise) |
 | `GET /v1/herald?token=&limit=&network=` | The collection's Discord channel (below): its posts, newest first, queued, sent or rehearsed; `network=discord` for that network only. With `HERALD_ADMIN_TOKEN` set, only with that token |
@@ -167,6 +168,12 @@ the studio paid a service for (not on the chain: a replay keeps it). The contrac
 every block indexed so far, so nothing is read again. Deploy the contract and ship the API that
 knows its address (`dno:export`) before the first pack is sold: an index already past the
 contract's deploy block never goes back for its events.
+
+Migration 13 adds the rats: `rats`, the Rats contract's tokens with their public owner (a read
+model, folded from `RatMinted` and `Transfer`), `rat_sniffers`, paid shakes by account (a fold
+of `Shaken`, filled from the events already recorded), and `rat_adoptions`, the AI rats' files
+on Arweave by studio job (not on the chain: a replay keeps it). Same rule as the studio: ship
+the API that knows the Rats address before the first rat is minted.
 
 ## Token images on Arweave
 
@@ -294,6 +301,40 @@ The app polls `GET /v1/studio/jobs/:id` until the status changes. Refusals cost 
 `400 bad-prompt`, `403 refused-prompt` · `not-allowlisted`, `402 no-credits`,
 `503 studio-paused` (with `reason`: `disabled`, `off` or `budget`), `404`, `401`.
 
+## The depot's rats
+
+A rat drawn in the studio is adopted as an ERC-721 of the `Rats` contract, whose owners are
+public (`src/application/rats.ts`). A seed rat is minted straight from the app with its seed:
+nothing here is needed, and its picture is recomputed from the seed (`renderRatSvg`). An AI rat
+needs two things first, which `POST /v1/studio/jobs/:id/adopt` hands out to the job's own
+account only:
+
+1. Its files on Arweave for good: the sketch's picture, the GLB (both fetched back from fal,
+   only from its hosts, capped at 10 and 40 MB) and a small JSON record pointing at both
+   (`{ name, prompt, image: "ar://…", model: "ar://…", job }`). The picture and the mesh are past
+   Turbo's free 100 KB, so the `ARWEAVE_KEY` account pays for them in **Turbo credits**: buy some
+   for it (turbo.ardrive.io), or adoptions answer `503 storage-unfunded` (nothing is minted,
+   nothing is lost). Uploads are kept by job (`rat_adoptions`): asking again signs again
+   without uploading again.
+2. The attester's EIP-712 signature (`RATS_ATTESTER_KEY`): `Adopt(minter, job, uri, deadline)`
+   in the domain `{ "DO NOT OPEN Rats", "1", chainId, Rats }`, where `job` is
+   `keccak256(jobId)`, `uri` is `ar://<record>` and the deadline 30 minutes away. The contract
+   takes it from that minter only, once per job.
+
+| Route | Auth | Answer |
+| --- | --- | --- |
+| `GET /v1/rats?owner=0x…` | none | `{ rats: Rat[], block }` |
+| `GET /v1/rats/:id` | none | `{ rat: Rat, block }`, `404` if unknown |
+| `GET /rats/:id` | none | ERC-721 metadata (the contract's base URI): name, description, image, `animation_url` (the GLB of an AI rat, which marketplaces show in 3D), `external_url` (`SITE_URL`'s studio), attributes (a seed rat's coat, pose, face, eyes, hat, prop, scarf) |
+| `GET /rats/:id/image.svg` | none | A seed rat's picture, cached for a year |
+| `POST /v1/studio/jobs/:id/adopt` | session | `{ job, uri, deadline, signature, priceUsdc }` for `Rats.mintModel`. 10 a minute per IP. `404 not-found` (not the caller's job), `400 not-adoptable` (not a finished 3D model, or its files are gone), `409 already-adopted`, `503 storage-unfunded`, `503 adopt-unavailable` (no Rats contract or no attester key) |
+
+A `Rat` is `{ id, kind: "seed" | "model", seed, job, uri, owner, minter, mintedBlock, imageUrl,
+modelUrl, sniffs }`: `seed` in decimal for a seed rat, `job` (bytes32) and `uri` for an AI rat,
+`imageUrl` the API's SVG or the picture on Arweave (`ARWEAVE_GATEWAY`), `modelUrl` the GLB on
+Arweave, and `sniffs` the paid shakes of its owner. The croquettes a rat earns are read from the
+`RatPantry` contract itself (`claimable(id)`); the index only records `RatsFed` in the feed.
+
 ## The manual's chatbot
 
 `POST /v1/chat` answers players' questions from the in-app manual, in its four languages.
@@ -399,5 +440,5 @@ Configuration is environment variables, all optional in development: see `src/co
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
-`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`...). Deployment is in
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `ARWEAVE_PAID_MAX_BYTES`, `SITE_URL`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

@@ -589,6 +589,16 @@ numbers live in `packages/game-spec/studio.json`, not `spec.json`, whose hash th
 `0x672cf76a68d4f181387B59caA1813eC425c1354C`, by `0x590891F269720001435004A1089cAB5b2c20029A`; owner and
 treasury `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, the collection's. 641k gas.
 
+### The rats are a plain ERC-721 (2026-10-04)
+
+Adopted rats (`Rats`) and their croquettes (`RatPantry`) use no FHE. A rat is a cosmetic
+companion with nothing to hide, and a public owner is what lets marketplaces and wallets show
+it; the hidden-owner machinery (encrypted owners, receipts, decoys) stays where it matters,
+on the boxes. The pantry pays plain CROQ for the same reason, and because an encrypted
+amount would need cCROQ, the coprocessor and an ACL grant per claim for nothing to hide.
+Like the studio's packs, both live outside `DoNotOpen` (no room left) and read nothing from
+it; their numbers are in `studio.json`, not `spec.json`.
+
 ### Sepolia deployment (2026-10-03): decoys and the security review
 
 Current. Deployed at block 11836238 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which

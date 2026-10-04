@@ -38,6 +38,10 @@ import {
   type ApiSession,
   type StudioPack,
   type StudioUnits,
+  type RatAdoption,
+  type RatInfo,
+  type RatPantryInfo,
+  type RatPrices,
 } from "../types";
 import { MockPool } from "./pool";
 
@@ -111,7 +115,27 @@ export interface MockOptions {
   dayMs?: number;
   /** Stands in for the clock. Tests move it by hand. */
   now?: () => number;
+  /** Keeps the demo's rats between pages (the studio and the game are two pages). In memory without it. */
+  ratStore?: { load(): string | null; save(value: string): void };
 }
+
+interface MockRat {
+  id: number;
+  kind: "seed" | "model";
+  seed: string | null;
+  job: string | null;
+  uri: string | null;
+  owner: Address;
+  minter: Address;
+  /** Mock milliseconds. */
+  mintedAt: number;
+  paidUntil: number | null;
+  mintedBlock: number;
+  modelUrl: string | null;
+}
+
+/** "1.5" USDC in its smallest unit. */
+const usdcUnits = (amount: string): bigint => BigInt(Math.round(Number(amount) * 1e6));
 
 /** Stand-in seed. On a real chain this value is encrypted and nobody can compute it. */
 export function mockSeedForToken(tokenId: number): bigint {
@@ -161,6 +185,12 @@ export class MockAdapter implements ChainAdapter {
   private readonly usdc = new Map<Address, bigint>();
   /** Studio units bought per account, in the demo. */
   private readonly studioBought = new Map<Address, StudioUnits>();
+  /** The depot's rats, by token id - 1. Owners are public, as on chain. */
+  private readonly ratList: MockRat[] = [];
+  /** Plain CROQ left in the rats' pantry. */
+  private ratReserve = BigInt(studioSpec.rats.croquettes.fund);
+  /** Paid shakes by account: the API's "boxes sniffed". */
+  private readonly sniffs = new Map<Address, number>();
   /** cUSDC: encrypted on a real chain, readable by its holder only. */
   private readonly cUsdc = new Map<Address, bigint>();
   /** Bumped on every cUSDC move, standing in for the fresh ciphertext a real transfer makes. */
@@ -183,7 +213,11 @@ export class MockAdapter implements ChainAdapter {
   private readonly pool = new MockPool(allocation("liquidity"), POOL_START, POOL_RANGE, POOL_FEE_BPS);
   private purrs = 0;
 
+  private readonly ratStore: MockOptions["ratStore"];
+
   constructor(opts: MockOptions = {}) {
+    this.ratStore = opts.ratStore;
+    this.loadRats();
     this.latency = opts.latency ?? 450;
     this.dayMs = opts.dayMs ?? 60_000;
     this.now = opts.now ?? Date.now;
@@ -445,6 +479,8 @@ export class MockAdapter implements ChainAdapter {
     }
     // An empty id has no holder to claim the share: the contract books the whole fee as revenue.
     if (box.owner !== null) box.earnings += (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
+    this.sniffs.set(me, (this.sniffs.get(me) ?? 0) + 1);
+    this.saveRats();
     return this.decryptShake(tokenId, opts);
   }
 
@@ -917,6 +953,122 @@ export class MockAdapter implements ChainAdapter {
   /** The demo has no API to sign in to. */
   async apiSession(): Promise<ApiSession | null> {
     return null;
+  }
+
+  // --- rats ---
+
+  async ratPrices(): Promise<RatPrices | null> {
+    return { seed: usdcUnits(studioSpec.rats.mint.seedPriceUsdc), model: usdcUnits(studioSpec.rats.mint.modelPriceUsdc) };
+  }
+
+  async seedRatTaken(seed: bigint): Promise<boolean> {
+    return this.ratList.some((r) => r.kind === "seed" && r.seed === seed.toString());
+  }
+
+  async mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number> {
+    if (seed < 0n || seed >= 2n ** 64n) throw new ChainError("unknown", "Not a rat seed.");
+    if (await this.seedRatTaken(seed)) throw revert("AlreadyAdopted");
+    return this.adoptRat({ kind: "seed", seed: seed.toString(), job: null, uri: null }, (await this.ratPrices())!.seed, opts);
+  }
+
+  async mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number> {
+    if (adoption.deadline * 1000 < this.now()) throw revert("Expired");
+    if (this.ratList.some((r) => r.job === adoption.job)) throw revert("AlreadyAdopted");
+    return this.adoptRat({ kind: "model", seed: null, job: adoption.job, uri: adoption.uri }, (await this.ratPrices())!.model, opts);
+  }
+
+  async ratsOf(account: Address): Promise<RatInfo[]> {
+    return this.ratList
+      .filter((r) => r.owner === account)
+      .map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        seed: r.seed,
+        job: r.job,
+        uri: r.uri,
+        owner: r.owner,
+        minter: r.minter,
+        mintedBlock: r.mintedBlock,
+        imageUrl: null,
+        modelUrl: r.modelUrl,
+        sniffs: this.sniffs.get(r.owner) ?? 0,
+      }))
+      .reverse();
+  }
+
+  async ratClaimable(ids: number[]): Promise<bigint[]> {
+    return ids.map((id) => this.ratDue(this.rat(id)).days * BigInt(studioSpec.rats.croquettes.perDay));
+  }
+
+  async ratPantry(): Promise<RatPantryInfo | null> {
+    const c = studioSpec.rats.croquettes;
+    return { perDay: c.perDay, maxDays: c.maxDays, reserve: this.ratReserve };
+  }
+
+  async claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint> {
+    const me = this.signer();
+    if (ids.length === 0) throw revert("NoRats");
+    const dues = ids.map((id) => {
+      const r = this.rat(id);
+      if (r.owner !== me) throw revert("NotYourRat");
+      return { r, due: this.ratDue(r) };
+    });
+    await this.send(opts, "claim");
+    let owed = 0n;
+    for (const { r, due } of dues) {
+      if (due.days === 0n) continue;
+      r.paidUntil = due.until;
+      owed += due.days * BigInt(studioSpec.rats.croquettes.perDay);
+    }
+    const paid = owed < this.ratReserve ? owed : this.ratReserve;
+    this.ratReserve -= paid;
+    this.credit(this.plain, me, paid);
+    this.saveRats();
+    return paid;
+  }
+
+  private loadRats(): void {
+    try {
+      const saved = JSON.parse(this.ratStore?.load() ?? "null") as { rats: MockRat[]; reserve: string; sniffs: [Address, number][] } | null;
+      if (!saved) return;
+      this.ratList.push(...saved.rats);
+      this.ratReserve = BigInt(saved.reserve);
+      for (const [who, n] of saved.sniffs) this.sniffs.set(who, n);
+    } catch {
+      // A record from another version: start again.
+    }
+  }
+
+  private saveRats(): void {
+    this.ratStore?.save(JSON.stringify({ rats: this.ratList, reserve: this.ratReserve.toString(), sniffs: [...this.sniffs] }));
+  }
+
+  /** Stands in for an AI rat's model in the demo: the studio's own demo shows the procedural rat. */
+  private async adoptRat(fields: Pick<MockRat, "kind" | "seed" | "job" | "uri">, price: bigint, opts?: ActionOptions): Promise<number> {
+    const me = this.signer();
+    const held = this.usdc.get(me) ?? 0n;
+    if (held < price) throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held, needed: price });
+    await this.send(opts, fields.kind === "seed" ? "mintSeed" : "mintModel");
+    this.credit(this.usdc, me, -price);
+    const id = this.ratList.length + 1;
+    this.ratList.push({ id, ...fields, owner: me, minter: me, mintedAt: this.now(), paidUntil: null, mintedBlock: this.block, modelUrl: null });
+    this.saveRats();
+    return id;
+  }
+
+  private rat(id: number): MockRat {
+    const r = this.ratList[id - 1];
+    if (!r) throw revert("ERC721NonexistentToken");
+    return r;
+  }
+
+  /** Whole mock days owed, at most maxDays, and the time they pay up to: the RatPantry's rule. */
+  private ratDue(r: MockRat): { days: bigint; until: number } {
+    const from = r.paidUntil ?? r.mintedAt;
+    let days = Math.floor(Math.max(0, this.now() - from) / this.dayMs);
+    const max = studioSpec.rats.croquettes.maxDays;
+    if (days > max) return { days: BigInt(max), until: this.now() };
+    return { days: BigInt(days), until: from + days * this.dayMs };
   }
 
   // --- internals ---
