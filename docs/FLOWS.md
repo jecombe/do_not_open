@@ -696,8 +696,8 @@ sequenceDiagram
 
 Each rat earns 10 plain CROQ a day from its mint, paid by the `RatPantry` to whoever owns it,
 at most 7 days kept between two claims ("Collect croquettes" claims every rat at once). The
-pantry was funded with 500,000 CROQ from the treasury when it was deployed and has no owner;
-when it runs dry a claim pays what is left. A rat sniffs a box through the paid shake that
+pantry gets 500,000 CROQ from the treasury by a plain transfer and has no owner; while it is
+empty a claim reverts, so no day is lost, and when it runs low a claim pays what is left. A rat sniffs a box through the paid shake that
 already exists: its owner pays 2.5 cUSDC, sees one trait of a sealed box privately, and the
 box's hidden holder gets 70%. The API counts the paid shakes of each rat's owner as the rat's
 "boxes sniffed".

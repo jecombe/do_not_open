@@ -65,7 +65,7 @@
       "perDay": 10,
       "maxDays": 7,
       "fund": 500000,
-      "rule": "Each rat earns perDay plain CROQ a day, from its mint, claimed by its owner from the RatPantry. At most maxDays are kept between two claims: a rat left alone longer earns nothing more. The RatPantry is funded with `fund` CROQ when it is deployed, from the treasury; when it runs dry, claims pay what is left."
+      "rule": "Each rat earns perDay plain CROQ a day, from its mint, claimed by its owner from the RatPantry. At most maxDays are kept between two claims: a rat left alone longer earns nothing more. The RatPantry is funded with `fund` CROQ by a plain transfer from the treasury (the deploy script sends them when its key holds them). While it is empty a claim reverts, so the days earned wait; when it runs low, claims pay what is left."
     },
     "events": {
       "RatMinted": {

@@ -1000,6 +1000,7 @@ export const en = {
   "rats.paid": "{n} CROQ collected. Wrap them into cCROQ at the bureau de change to feed a box.",
   "rats.collecting": "Collecting the croquettes",
   "rats.collect": "Collect the croquettes",
+  "rats.pantryEmpty": "The rats' pantry is waiting for its croquettes. Your rats' days are kept: collect them once it is filled.",
   "rats.reserve": "Left in the rats' pantry",
   "rats.sniffed": "Boxes sniffed",
   "rats.croq": "{n} CROQ",

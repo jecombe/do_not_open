@@ -991,6 +991,7 @@ export const fr: Record<AppKey, string> = {
   "rats.paid": "{n} CROQ récoltées. Emballez-les en cCROQ au bureau de change pour nourrir une boîte.",
   "rats.collecting": "Récolte des croquettes",
   "rats.collect": "Récolter les croquettes",
+  "rats.pantryEmpty": "Le garde-manger des rats attend ses croquettes. Les jours de tes rats sont gardés : récolte-les dès qu'il sera rempli.",
   "rats.reserve": "Reste dans le garde-manger des rats",
   "rats.sniffed": "Boîtes reniflées",
   "rats.croq": "{n} CROQ",

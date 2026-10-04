@@ -55,7 +55,7 @@ function, no owner and no pause. Nothing can create more.
 | Market liquidity | 4,000,000 (20%) | A CROQ-only position in a CROQ/USDC Uniswap V3 pool, locked for good in the `LiquidityLocker` |
 | Treasury | 5,000,000 (25%) | Kept by the collection owner as plain CROQ, for events and future liquidity |
 
-Out of the treasury, 500,000 CROQ go to the `RatPantry` when the rats are deployed (see
+Out of the treasury, 500,000 CROQ go to the `RatPantry` by a plain transfer (see
 "The rats' croquettes" below): the studio's adopted rats are paid from it, not from the game
 reserve.
 
@@ -165,8 +165,9 @@ is nothing to simulate and nothing to retry on a bad day.
 **10 plain CROQ per adopted rat per day**, from its mint, claimed by its current owner from
 the `RatPantry`, at most 7 days kept between two claims. Plain CROQ, not cCROQ: a rat's owner
 is public, so its earnings may be too; the bureau de change wraps them for the boxes. The
-pantry holds 500,000 CROQ from the treasury, paid at deployment, and has no owner: nothing
-refills it but a plain transfer, and when it runs dry a claim pays what is left. A rat costs
+pantry gets 500,000 CROQ from the treasury by a plain transfer and has no owner: nothing
+refills it but a transfer. While it is empty a claim reverts (`PantryEmpty`), so the days a
+rat earned wait for the CROQ; when it runs low a claim pays what is left. A rat costs
 at least 1 USDC, so farming croquettes with rats costs more than it brings at the market's
 floor (0.001 USDC a CROQ: 100 days to earn a seed rat's price back). Numbers in
 `packages/game-spec/studio.json` (`rats.croquettes`).
@@ -568,6 +569,7 @@ CROQ-only V3 market:
 | `ConfidentialCroq` | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
 | `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
 | `LiquidityLocker` | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
+| `RatPantry` (the rats' croquettes, plain CROQ) | [`0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A`](https://sepolia.etherscan.io/address/0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A) |
 | CROQ/USDC pool (Uniswap V3, 1%) | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
 | Position | #233138, ticks 69200 to 138200, 4,000,000 CROQ, 0 USDC |
 | Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |

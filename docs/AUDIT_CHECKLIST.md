@@ -10,7 +10,8 @@ repository, the hidden-owner version (10,000 boxes, owners and sold count encryp
 `0x816a39b04e0672B4746A5B696E14145F4F852d37` (with the security fixes and decoy transfers,
 redeployed on 2026-10-03 at block 11836238); the croquette contracts `Croq.sol`, `ConfidentialCroq.sol`
 and `Pantry.sol` (section 9) and `LiquidityLocker.sol`, which holds the CROQ market's
-Uniswap V3 position (section 10); `Rats.sol` and `RatPantry.sol`, the studio's adopted rats and their croquettes; `StudioPacks.sol`, the studio's USDC packs (deployed
+Uniswap V3 position (section 10); `Rats.sol` and `RatPantry.sol`, the studio's adopted rats and their croquettes (deployed at
+`0xd4f8Df0F14Ced442077762cb81e843656BAc3856` and `0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A` on 2026-10-04); `StudioPacks.sol`, the studio's USDC packs (deployed
 at `0x672cf76a68d4f181387B59caA1813eC425c1354C` on 2026-10-04, block 11842636); plus the parts of the
 adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
 `0xe8f699eEBc22767413A9edBb48826B10D3117f61` is the previous version, an ERC-721 with
@@ -50,7 +51,7 @@ mainnet), **Not done** (a check nobody has run).
 | O24 | Between `observe` and `finalize` the seed is public but the box is still `Sealed`: a holder can aim for the Pantry tolerance, or sell a box whose contents are known | Low | `observe`, `Pantry.feed` |
 | O25 | Anyone can send dust Uniswap positions to `LiquidityLocker` and grow `positions()` | Low (tooling) | `LiquidityLocker` |
 | O27 | AI rats are minted on the API's signature (the attester): a stolen attester key could mint AI rats for any job, paid at the normal price; the owner can rotate it with `setAttester` | Low (trust) | `Rats.mintModel` |
-| O28 | The `RatPantry` has no owner and no refill but a transfer: once its 500,000 CROQ are paid out, rats earn nothing, silently (`claim` pays what is left) | Low (UX) | `RatPantry.claim` |
+| O28 | The `RatPantry` has no owner and no refill but a transfer: once its 500,000 CROQ are paid out, rats earn nothing (`claim` reverts `PantryEmpty` while it is empty, so earned days wait; it pays what is left when low) | Low (UX) | `RatPantry.claim` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -86,7 +87,7 @@ Details and the rest of the checks follow.
 | A rat is minted once per seed and per AI job | Pass | `tokenOfSeed` / `tokenOfJob` checked before minting. Tests: "adopts a free rat…", "adopts an AI rat only on the attester's signature, for the caller, once" |
 | An AI rat's adoption cannot be replayed, redirected or altered | Pass | EIP-712 `Adopt(minter, job, uri, deadline)` bound to the chain and the contract; the minter is `msg.sender`, the files' `uri` is signed, `deadline` expires. Test: "adopts an AI rat only on the attester's signature…" |
 | Rats cannot be minted free to farm croquettes | Pass | Prices are never 0 (`ZeroPrice`) and at most 100 USDC; `maxPrice` guards a raise. Tests: "refuses a price raised…", "lets only the owner set prices…" |
-| The `RatPantry` pays only a rat's current owner, once per day earned | Pass | `ownerOf` checked per id, `paidUntil` keeps the remainder of a day, at most `maxDays` per claim, pays at most the reserve. Tests: "pays each rat its CROQ a day…", "pays what is left when the pantry runs dry…" |
+| The `RatPantry` pays only a rat's current owner, once per day earned | Pass | `ownerOf` checked per id, `paidUntil` keeps the remainder of a day, at most `maxDays` per claim, pays at most the reserve. An empty pantry reverts rather than marking days paid. Tests: "pays each rat its CROQ a day…", "pays what is left when the pantry runs dry…", "refuses a claim while it is empty…" |
 | `StudioPacks` holds no funds | Pass | `buy` sends the whole price to the treasury with `safeTransferFrom` in the same call, or reverts. Test: "sells a pack for plain USDC, paid straight to the treasury" |
 | A studio pack's price cannot be raised under a buyer | Pass | `buy` takes `maxPrice` and reverts with `PriceChanged`; a price is at most 100 USDC (`MAX_PRICE`) and a pack on sale cannot be empty. Tests: "refuses an unknown pack, a zero account, and a price raised after the buyer looked", "lets only the owner set, change and withdraw packs, within bounds" |
 | The studio spends no more than was bought | Pass | The API spends a unit before calling a service, atomically, and gives it back when the service fails or a job is still running after ten minutes; a daily dollar budget pauses the studio. Tests in `apps/api/test` |
@@ -237,7 +238,7 @@ clear values and a KMS proof.
 
 | Check | Status |
 | --- | --- |
-| Unit tests on the FHEVM mock | Pass: 161 tests (the standard, the boxes, the croquettes, the ramp, the credits, the studio packs, the rats, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
+| Unit tests on the FHEVM mock | Pass: 162 tests (the standard, the boxes, the croquettes, the ramp, the credits, the studio packs, the rats, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
 | Every mechanic run on Sepolia through the real KMS | Pass for the previous version: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts`. Not done for the hidden-owner contracts |
 | Optional Hardhat suite on Sepolia (`pnpm test:sepolia`) | Not done |
 | Static analysis (Slither, Aderyn) | Not done |

@@ -121,6 +121,10 @@ export function RatsView({ quality, onSniff }: { quality: QualitySettings; onSni
   }, [adapter, account, ledger]);
 
   const total = useMemo(() => due.reduce((a, b) => a + b, 0n), [due]);
+
+  // An empty pantry refuses claims (the days wait): no transaction to fail.
+
+  const pantryEmpty = pantry !== null && pantry !== undefined && pantry.reserve === 0n;
   const rat = rats?.[Math.min(selected, (rats?.length ?? 1) - 1)] ?? null;
   const perDay = pantry?.perDay ?? studio.rats.croquettes.perDay;
 
@@ -199,13 +203,14 @@ export function RatsView({ quality, onSniff }: { quality: QualitySettings; onSni
                 )}
               </dl>
               <div className="actions">
-                <button type="button" className="stamp-button" onClick={() => void collect()} disabled={!!action.busy || total === 0n}>
+                <button type="button" className="stamp-button" onClick={() => void collect()} disabled={!!action.busy || total === 0n || pantryEmpty}>
                   {t("rats.collect")}
                 </button>
                 <button type="button" className="plain-button" onClick={onSniff} disabled={!!action.busy}>
                   {t("rats.sniff")}
                 </button>
               </div>
+              {pantryEmpty && total > 0n && <p className="fine" role="status">{t("rats.pantryEmpty")}</p>}
               {paid !== null && (
                 <p className="fine" role="status">
                   {t("rats.paid", { n: paid.toString() })}

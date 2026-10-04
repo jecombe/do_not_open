@@ -594,7 +594,9 @@ treasury `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, the collection's. 641k ga
 Adopted rats (`Rats`) and their croquettes (`RatPantry`) use no FHE. A rat is a cosmetic
 companion with nothing to hide, and a public owner is what lets marketplaces and wallets show
 it; the hidden-owner machinery (encrypted owners, receipts, decoys) stays where it matters,
-on the boxes. The pantry pays plain CROQ for the same reason, and because an encrypted
+on the boxes. Deployed on Sepolia on 2026-10-04: `Rats` at `0xd4f8Df0F14Ced442077762cb81e843656BAc3856`
+and `RatPantry` at `0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A`, by `0x5908…029A`; owner and treasury
+`0x6a18…3208`, attester the API's `0x829CEf2139fEc8664ab0886e2AEd1A07fE497911`. The pantry pays plain CROQ for the same reason, and because an encrypted
 amount would need cCROQ, the coprocessor and an ACL grant per claim for nothing to hide.
 Like the studio's packs, both live outside `DoNotOpen` (no room left) and read nothing from
 it; their numbers are in `studio.json`, not `spec.json`.
@@ -625,6 +627,8 @@ started fresh. `UsdcRamp` was redeployed because its owner argument still named
 | `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
 | `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
 | `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
+| `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0xd4f8Df0F14Ced442077762cb81e843656BAc3856`](https://sepolia.etherscan.io/address/0xd4f8Df0F14Ced442077762cb81e843656BAc3856) |
+| `RatPantry` (10 CROQ a rat a day) | [`0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A`](https://sepolia.etherscan.io/address/0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A) |
 
 Gas: `DoNotOpenConfig` 914,027, `DoNotOpen` 5,792,149, `DoNotOpenHooks` 357,103,
 `DecryptionCredits` 478,835, `Croq` 532,843, `ConfidentialCroq` 2,455,772, `Pantry` 3,253,237,

@@ -8,7 +8,8 @@ import { PAYMENT_TOKENS } from "./deploy";
  * The depot's rats: the `Rats` ERC-721, sold in plain USDC to the treasury (STUDIO_TREASURY, or
  * the collection's owner), and the `RatPantry`, which pays each rat its daily CROQ. The pantry is
  * funded here with the spec's `fund`, from whichever key holds the CROQ: the deployer, or the
- * treasury's own key in TREASURY_PRIVATE_KEY. AI rats are signed by RATS_ATTESTER (the API's key,
+ * treasury's own key in TREASURY_PRIVATE_KEY. With neither, it is deployed empty and says how
+ * much to send it: a plain CROQ transfer from the treasury's wallet does it (claims revert until then). AI rats are signed by RATS_ATTESTER (the API's key,
  * RATS_ATTESTER_KEY on the server); RATS_BASE_URI is where the metadata is served.
  *
  * Runs after economy.ts (alphabetical order) and lists no dependency, so `--tags Rats` deploys
@@ -46,9 +47,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       }
     }
     if (!funded) {
-      throw new Error(
-        `nobody here holds ${missing} CROQ to fund the RatPantry at ${pantry.address}: set TREASURY_PRIVATE_KEY to the treasury's key, or send the CROQ to ${deployer}, then deploy again`,
-      );
+      // Not fatal: claims revert while the pantry is empty, so nobody loses a day meanwhile.
+      console.warn(`RatPantry ${pantry.address} is EMPTY: send it ${missing} CROQ with a plain transfer from the treasury's wallet`);
     }
   }
   console.log(`Rats: ${rats.address} (seed rat ${hre.ethers.formatUnits(p.seedPrice, 6)} USDC, AI rat ${hre.ethers.formatUnits(p.modelPrice, 6)} USDC, attester ${attester})`);

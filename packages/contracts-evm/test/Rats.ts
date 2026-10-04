@@ -128,6 +128,17 @@ describe("Rats and RatPantry", function () {
     await expect(pantry.connect(alice).claim([])).to.be.revertedWithCustomError(pantry, "NoRats");
   });
 
+  it("refuses a claim while it is empty, so the days earned wait for the CROQ", async function () {
+    const empty = (await (await ethers.getContractFactory("RatPantry")).deploy(await croq.getAddress(), await rats.getAddress(), 10, 7)) as unknown as RatPantry;
+    await rats.connect(alice).mintSeed(9, usd("1"));
+    await time.increase(DAY * 3);
+    await expect(empty.connect(alice).claim([1])).to.be.revertedWithCustomError(empty, "PantryEmpty");
+    // The treasury sends CROQ with a plain transfer: the three days are still there.
+    await croq.transfer(await empty.getAddress(), 500);
+    await empty.connect(alice).claim([1]);
+    expect(await croq.balanceOf(alice.address)).to.eq(30);
+  });
+
   it("takes its numbers from studio.json", function () {
     const p = ratParamsFromSpec();
     expect(p.seedPrice).to.eq(usd(studio.rats.mint.seedPriceUsdc));

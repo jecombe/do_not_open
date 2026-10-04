@@ -37,7 +37,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
-| Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC), 10 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Built** |
+| Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC), 10 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
 
 ## Layout
 
@@ -185,8 +185,9 @@ numbers are in [`packages/game-spec/studio.json`](packages/game-spec/studio.json
 
 A rat can then be adopted: minted in `Rats`, a plain ERC-721, for 1 USDC (a free rat, by its
 seed) or 3 USDC (an AI rat: the API stores its picture on Arweave like a cat's and keeps its 3D model). An
-adopted rat earns 10 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ from the
-treasury at deployment, at most 7 days kept between two claims) and sniffs boxes for its
+adopted rat earns 10 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ sent from the
+treasury with a plain transfer, at most 7 days kept between two claims; while it is empty a
+claim waits rather than losing the days) and sniffs boxes for its
 owner through the paid shake. "My rats" in the game lists them.
 
 ## On Sepolia
@@ -210,6 +211,8 @@ fixes, decoy transfers and a fresh croquette economy. The deployer
 | `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
 | `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
 | `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
+| `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0xd4f8Df0F14Ced442077762cb81e843656BAc3856`](https://sepolia.etherscan.io/address/0xd4f8Df0F14Ced442077762cb81e843656BAc3856) |
+| `RatPantry` (10 CROQ a rat a day) | [`0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A`](https://sepolia.etherscan.io/address/0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A) |
 
 CROQ trades through Uniswap's own V3 contracts on Sepolia: `SwapRouter02`
 `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`, `QuoterV2`

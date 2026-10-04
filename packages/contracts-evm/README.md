@@ -41,8 +41,10 @@ Hardhat project built on the official Zama template. Ten contracts, and a reusab
   Plain USDC straight to the treasury; `_mint`, never `_safeMint`. Prices from `studio.json`
   (`lib/ratParams.ts`), changeable by the owner up to 100 USDC, never 0.
 - **`RatPantry`** — pays each rat `perDay` (10) plain CROQ a day from its mint, to its current
-  owner, at most `maxDays` (7) kept between two claims; when it runs dry a claim pays what is
-  left. No owner, immutable numbers. Funded at deployment with `fund` (500,000) CROQ.
+  owner, at most `maxDays` (7) kept between two claims; while it is empty a claim reverts
+  (`PantryEmpty`), so no earned day is lost; when it runs low a claim pays what is left. No
+  owner, immutable numbers. Funded with `fund` (500,000) CROQ by a plain transfer from the
+  treasury.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -97,7 +99,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 161 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker
+pnpm test                 # 162 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker
 
 # Local walkthrough
 pnpm chain                # terminal 1
