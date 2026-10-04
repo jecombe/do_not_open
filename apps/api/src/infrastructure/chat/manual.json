@@ -310,19 +310,19 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "The studio is a page of its own, open to anyone, wallet or not: there you draw a cat yourself instead of finding one in a box. The button Another cat asks the game's own generator, the one that draws the depot's cats, for a random one, in your browser: free, endless, and in 3D, turned with a drag. No AI and nothing on-chain.\nDrawing a cat from your own words goes through paid AI services, so it is sold first, in packs bought on-chain in plain USDC from the StudioPacks contract: the Starter pack, 2 USDC for 10 sketches and one 3D model, and the Litter, 8 USDC for 50 sketches and five 3D models. The payment goes straight to the collection's treasury and the units never expire. A purchase is public, like any plain USDC payment; what you draw with it is not on-chain."
+     "text": "The studio is a page of its own, open to anyone, wallet or not: there you draw one of the depot's rats yourself. Rats, not cats, on purpose: the cats only come out of boxes, so nothing drawn in the studio can be taken for one. The button Another rat asks the game's own rat generator for a random one, in your browser: procedural, free, endless, and in 3D, turned with a drag. Buck teeth, big ears, a hat or a wedge of cheese, as the seed falls. No AI and nothing on-chain."
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "A sketch is one cartoon picture of your cat, drawn from what you wrote inside a fixed style, so it always comes out in the depot's look. It is cheap: try again until the cat looks right. A 3D model turns one of your sketches into a mesh that the page draws with the game's toon shading and outline, breathing slowly on the turntable. It takes a minute or two.\nTo spend your units, sign in once with your wallet: a free signature, no transaction, that tells the studio which units are yours. The site spends a unit before it calls the AI and gives it back if the service fails, up to three times a day: past that, or when the AI's safety checker refuses the picture, the unit is spent, since the service was paid. A prompt is 3 to 240 characters; licensed characters and adult content are refused before anything is spent. Each day the studio stops at a spending cap: past it, come back tomorrow."
+     "text": "Drawing a rat from your own words goes through paid AI services, so it is sold first, in packs bought on-chain in plain USDC from the StudioPacks contract: the Starter pack, 2 USDC for 10 sketches and one 3D model, and the Litter, 8 USDC for 50 sketches and five 3D models. The payment goes straight to the collection's treasury and the units never expire. A purchase is public, like any plain USDC payment; what you draw with it is not on-chain.\nA sketch is one cartoon picture of your rat, drawn by the AI from what you wrote inside a fixed style, so it always comes out in the depot's look. It is cheap: try again until the rat looks right. A 3D model turns one of your sketches into a mesh that the page draws with the game's toon shading and outline, breathing slowly on the turntable. It takes a minute or two."
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "On the testnet the USDC is pretend money while the AI costs real money, so the AI studio may be closed or kept to a list of testers there; the random cats stay free everywhere. Next comes adopting a cat, so that it lives in the game. It is not open yet."
+     "text": "To spend your units, sign in once with your wallet: a free signature, no transaction, that tells the studio which units are yours. The site spends a unit before it calls the AI and gives it back if the service fails, up to three times a day: past that, or when the AI's safety checker refuses the picture, the unit is spent, since the service was paid. A prompt is 3 to 240 characters; licensed characters and adult content are refused before anything is spent. Each day the studio stops at a spending cap: past it, come back tomorrow.\nOn the testnet the USDC is pretend money while the AI costs real money, so the AI studio may be closed or kept to a list of testers there; the random rats stay free everywhere. Next, your rat moves into the depot, to sniff the boxes and gather croquettes. It is not open yet."
     },
     {
      "id": "terms-0",
@@ -725,19 +725,31 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "Le studio est une page à part, ouverte à tous, avec ou sans wallet : on y dessine un chat soi-même au lieu de le trouver dans une boîte. Le bouton Un autre chat demande un chat au hasard au générateur du jeu, celui qui dessine les chats du dépôt, dans votre navigateur : gratuit, sans fin, et en 3D, qu'on fait tourner en le faisant glisser. Ni IA, ni rien sur la chaîne.\nDessiner un chat à partir de vos mots passe par des services d'IA payants : c'est donc vendu d'abord, en packs achetés sur la chaîne en USDC classique au contrat StudioPacks. Le pack Starter coûte 2 USDC pour 10 croquis et un modèle 3D, le pack Litter, 8 USDC pour 50 croquis et cinq modèles 3D. Le paiement va directement au trésor de la collection et les unités n'expirent jamais. Un achat est public, comme tout paiement en USDC classique ; ce que vous dessinez avec ne va pas sur la chaîne."
+     "text": "Le studio est une page à part, ouverte à tous, avec ou sans wallet : on y dessine soi-même l'un des rats du dépôt. Des rats, pas des chats, exprès : les chats ne sortent que des boîtes, donc rien de ce qu'on dessine au studio ne peut passer pour l'un d'eux. Le bouton Un autre rat demande un rat au hasard au générateur de rats du jeu, dans votre navigateur : procédural, gratuit, sans fin, et en 3D, qu'on fait tourner en le faisant glisser. Dents de lapin, grandes oreilles, un chapeau ou un morceau de fromage, selon le seed. Ni IA, ni rien sur la chaîne."
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Un croquis est une image cartoon de votre chat, dessinée à partir de ce que vous avez écrit dans un style imposé : elle sort toujours avec l'allure du dépôt. Il coûte peu : recommencez jusqu'à ce que le chat vous plaise. Un modèle 3D transforme l'un de vos croquis en maillage que la page dessine avec l'ombrage cartoon et le contour du jeu, respirant doucement sur le plateau. Comptez une à deux minutes."
+     "text": "Dessiner un rat à partir de vos mots passe par des services d'IA payants : c'est donc vendu d'abord, en packs achetés sur la chaîne en USDC classique au contrat StudioPacks. Le pack Starter coûte 2 USDC pour 10 croquis et un modèle 3D, le pack Litter, 8 USDC pour 50 croquis et cinq modèles 3D. Le paiement va directement au trésor de la collection et les unités n'expirent jamais. Un achat est public, comme tout paiement en USDC classique ; ce que vous dessinez avec ne va pas sur la chaîne."
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Pour dépenser vos unités, connectez-vous une fois avec votre wallet : une signature gratuite, sans transaction, qui dit au studio quelles unités sont les vôtres. Le site dépense une unité avant d'appeler l'IA et la rend si le service échoue, jusqu'à trois fois par jour : au-delà, ou si le filtre de sécurité de l'IA refuse l'image, l'unité est dépensée, car le service a été payé. Un prompt fait de 3 à 240 caractères ; les personnages sous licence et le contenu adulte sont refusés avant toute dépense. Chaque jour, le studio s'arrête à un plafond de dépense : au-delà, revenez le lendemain.\nSur le testnet, l'USDC est de la monnaie de test alors que l'IA coûte de l'argent réel : le studio IA peut donc y être fermé ou réservé à une liste de testeurs ; les chats au hasard restent gratuits partout. Prochaine étape : adopter un chat, pour qu'il vive dans le jeu. Ce n'est pas encore ouvert."
+     "text": "Un croquis est une image cartoon de votre rat, dessinée par l'IA à partir de ce que vous avez écrit dans un style imposé : elle sort toujours avec l'allure du dépôt. Il coûte peu : recommencez jusqu'à ce que le rat vous plaise. Un modèle 3D transforme l'un de vos croquis en maillage que la page dessine avec l'ombrage cartoon et le contour du jeu, respirant doucement sur le plateau. Comptez une à deux minutes."
+    },
+    {
+     "id": "studio-3",
+     "section": "studio",
+     "heading": null,
+     "text": "Pour dépenser vos unités, connectez-vous une fois avec votre wallet : une signature gratuite, sans transaction, qui dit au studio quelles unités sont les vôtres. Le site dépense une unité avant d'appeler l'IA et la rend si le service échoue, jusqu'à trois fois par jour : au-delà, ou si le filtre de sécurité de l'IA refuse l'image, l'unité est dépensée, car le service a été payé. Un prompt fait de 3 à 240 caractères ; les personnages sous licence et le contenu adulte sont refusés avant toute dépense. Chaque jour, le studio s'arrête à un plafond de dépense : au-delà, revenez le lendemain."
+    },
+    {
+     "id": "studio-4",
+     "section": "studio",
+     "heading": null,
+     "text": "Sur le testnet, l'USDC est de la monnaie de test alors que l'IA coûte de l'argent réel : le studio IA peut donc y être fermé ou réservé à une liste de testeurs ; les rats au hasard restent gratuits partout. Prochaine étape : votre rat s'installe au dépôt, pour renifler les boîtes et ramasser les croquettes. Ce n'est pas encore ouvert."
     },
     {
      "id": "terms-0",
@@ -1146,19 +1158,19 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "El estudio es una página aparte, abierta a todos, con wallet o sin él: allí dibujas un gato tú mismo en lugar de encontrarlo en una caja. El botón Otro gato le pide un gato al azar al propio generador del juego, el que dibuja los gatos del depósito, en tu navegador: gratis, sin fin y en 3D, y se gira arrastrando. Sin IA y nada en la cadena.\nDibujar un gato a partir de tus palabras pasa por servicios de IA de pago, así que se vende antes, en packs comprados en la cadena en USDC normal al contrato StudioPacks: el pack Starter, 2 USDC por 10 bocetos y un modelo 3D, y el pack Litter, 8 USDC por 50 bocetos y cinco modelos 3D. El pago va directo al tesoro de la colección y las unidades no caducan. Una compra es pública, como cualquier pago en USDC normal; lo que dibujas con ella no va a la cadena."
+     "text": "El estudio es una página aparte, abierta a todos, con wallet o sin él: allí dibujas tú mismo una de las ratas del depósito. Ratas, no gatos, a propósito: los gatos solo salen de las cajas, así que nada de lo que se dibuja en el estudio puede pasar por uno de ellos. El botón Otra rata le pide una rata al azar al generador de ratas del juego, en tu navegador: procedural, gratis, sin fin y en 3D, y se gira arrastrando. Dientes de conejo, orejas grandes, un sombrero o un trozo de queso, según caiga el seed. Sin IA y nada en la cadena."
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Un boceto es una imagen de dibujos animados de tu gato, dibujada a partir de lo que escribiste dentro de un estilo fijo, así que siempre sale con el aspecto del depósito. Es barato: repite hasta que el gato te guste. Un modelo 3D convierte uno de tus bocetos en una malla que la página dibuja con el sombreado de dibujos animados y el contorno del juego, respirando despacio en la plataforma. Tarda uno o dos minutos."
+     "text": "Dibujar una rata a partir de tus palabras pasa por servicios de IA de pago, así que se vende antes, en packs comprados en la cadena en USDC normal al contrato StudioPacks: el pack Starter, 2 USDC por 10 bocetos y un modelo 3D, y el pack Litter, 8 USDC por 50 bocetos y cinco modelos 3D. El pago va directo al tesoro de la colección y las unidades no caducan. Una compra es pública, como cualquier pago en USDC normal; lo que dibujas con ella no va a la cadena.\nUn boceto es una imagen de dibujos animados de tu rata, dibujada por la IA a partir de lo que escribiste dentro de un estilo fijo, así que siempre sale con el aspecto del depósito. Es barato: repite hasta que la rata te guste. Un modelo 3D convierte uno de tus bocetos en una malla que la página dibuja con el sombreado de dibujos animados y el contorno del juego, respirando despacio en la plataforma. Tarda uno o dos minutos."
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Para gastar tus unidades, entra una vez con tu wallet: una firma gratuita, sin transacción, que le dice al estudio qué unidades son tuyas. El sitio gasta una unidad antes de llamar a la IA y la devuelve si el servicio falla, hasta tres veces al día: después, o si el filtro de seguridad de la IA rechaza la imagen, la unidad se gasta, porque el servicio se pagó. Un prompt tiene de 3 a 240 caracteres; los personajes con licencia y el contenido adulto se rechazan antes de gastar nada. Cada día el estudio se detiene en un tope de gasto: pasado, vuelve mañana.\nEn la testnet el USDC es dinero de mentira mientras que la IA cuesta dinero real, así que allí el estudio de IA puede estar cerrado o reservado a una lista de testers; los gatos al azar siguen siendo gratis en todas partes. Lo siguiente: adoptar un gato para que viva en el juego. Aún no está abierto."
+     "text": "Para gastar tus unidades, entra una vez con tu wallet: una firma gratuita, sin transacción, que le dice al estudio qué unidades son tuyas. El sitio gasta una unidad antes de llamar a la IA y la devuelve si el servicio falla, hasta tres veces al día: después, o si el filtro de seguridad de la IA rechaza la imagen, la unidad se gasta, porque el servicio se pagó. Un prompt tiene de 3 a 240 caracteres; los personajes con licencia y el contenido adulto se rechazan antes de gastar nada. Cada día el estudio se detiene en un tope de gasto: pasado, vuelve mañana.\nEn la testnet el USDC es dinero de mentira mientras que la IA cuesta dinero real, así que allí el estudio de IA puede estar cerrado o reservado a una lista de testers; las ratas al azar siguen siendo gratis en todas partes. Lo siguiente: tu rata se muda al depósito, para olfatear las cajas y recoger croquetas. Aún no está abierto."
     },
     {
      "id": "terms-0",
@@ -1567,19 +1579,19 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "Lo studio è una pagina a sé, aperta a tutti, con o senza wallet: lì disegni un gatto tu stesso invece di trovarlo in una scatola. Il pulsante Un altro gatto chiede un gatto a caso al generatore del gioco, quello che disegna i gatti del deposito, nel tuo browser: gratis, senza fine e in 3D, da girare trascinando. Niente IA e niente sulla catena.\nDisegnare un gatto dalle tue parole passa per servizi di IA a pagamento, quindi si vende prima, a pacchetti comprati sulla catena in USDC normale dal contratto StudioPacks: il pacchetto Starter, 2 USDC per 10 schizzi e un modello 3D, e il pacchetto Litter, 8 USDC per 50 schizzi e cinque modelli 3D. Il pagamento va dritto alla tesoreria della collezione e le unità non scadono mai. Un acquisto è pubblico, come ogni pagamento in USDC normale; quello che ci disegni non va sulla catena."
+     "text": "Lo studio è una pagina a sé, aperta a tutti, con o senza wallet: lì disegni tu stesso uno dei ratti del deposito. Ratti, non gatti, apposta: i gatti escono solo dalle scatole, così niente di ciò che si disegna nello studio può passare per uno di loro. Il pulsante Un altro ratto chiede un ratto a caso al generatore di ratti del gioco, nel tuo browser: procedurale, gratis, senza fine e in 3D, da girare trascinando. Denti da coniglio, orecchie grandi, un cappello o una fetta di formaggio, come cade il seed. Niente IA e niente sulla catena."
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Uno schizzo è un'immagine cartoon del tuo gatto, disegnata da quello che hai scritto dentro uno stile fisso, così esce sempre con l'aspetto del deposito. Costa poco: riprova finché il gatto ti piace. Un modello 3D trasforma uno dei tuoi schizzi in una mesh che la pagina disegna con l'ombreggiatura cartoon e il contorno del gioco, mentre respira piano sulla piattaforma. Ci vogliono uno o due minuti."
+     "text": "Disegnare un ratto dalle tue parole passa per servizi di IA a pagamento, quindi si vende prima, a pacchetti comprati sulla catena in USDC normale dal contratto StudioPacks: il pacchetto Starter, 2 USDC per 10 schizzi e un modello 3D, e il pacchetto Litter, 8 USDC per 50 schizzi e cinque modelli 3D. Il pagamento va dritto alla tesoreria della collezione e le unità non scadono mai. Un acquisto è pubblico, come ogni pagamento in USDC normale; quello che ci disegni non va sulla catena.\nUno schizzo è un'immagine cartoon del tuo ratto, disegnata dall'IA da quello che hai scritto dentro uno stile fisso, così esce sempre con l'aspetto del deposito. Costa poco: riprova finché il ratto ti piace. Un modello 3D trasforma uno dei tuoi schizzi in una mesh che la pagina disegna con l'ombreggiatura cartoon e il contorno del gioco, mentre respira piano sulla piattaforma. Ci vogliono uno o due minuti."
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester; i gatti a caso restano gratis ovunque. Il prossimo passo: adottare un gatto perché viva nel gioco. Non è ancora aperto."
+     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester; i ratti a caso restano gratis ovunque. Il prossimo passo: il tuo ratto si trasferisce nel deposito, per annusare le scatole e raccogliere crocchette. Non è ancora aperto."
     },
     {
      "id": "terms-0",

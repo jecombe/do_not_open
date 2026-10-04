@@ -90,7 +90,7 @@ export class Studio {
     };
   }
 
-  /** Draws a cartoon cat from the player's words. Returns at once; the job runs in the background. */
+  /** Draws a cartoon rat from the player's words. Returns at once; the job runs in the background. */
   async sketch(account: Address, rawPrompt: unknown): Promise<StudioJob> {
     const prompt = typeof rawPrompt === "string" ? rawPrompt.trim().replace(/\s+/g, " ") : "";
     const { minLength, maxLength } = this.spec.prompt;

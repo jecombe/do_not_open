@@ -28,7 +28,7 @@ Hardhat project built on the official Zama template. Eight contracts, and a reus
   `test/LiquidityLocker.ts` run against Uniswap's own V3 bytecode
   (`@uniswap/v3-core`, `@uniswap/v3-periphery`, dev dependencies) deployed in Hardhat.
 - **`StudioPacks`** — the studio's packs, sold in plain USDC before any AI generation: so many
-  sketches (cartoon pictures) and 3D models for a fixed price, paid straight to the treasury.
+  sketches (cartoon pictures of rats) and 3D models for a fixed price, paid straight to the treasury.
   No FHE, and unrelated to the collection: it never reads or writes `DoNotOpen`. The backend
   reads `PackBought` and spends the units off-chain. Packs from
   `packages/game-spec/studio.json` (`lib/studioPacks.ts`, which refuses a pack priced under

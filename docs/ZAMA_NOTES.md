@@ -578,7 +578,8 @@ The next feature has to move logic out.
 ### The studio's packs stay off FHE (2026-10-04)
 
 The studio sells AI generations in packs (`StudioPacks`), paid in plain USDC like the
-decryption credits and for the same reason: `transferFrom` moves the whole price or
+decryption credits and for the same reason (it draws rats, not cats, and says nothing about
+the boxes): `transferFrom` moves the whole price or
 reverts, where a cUSDC payment that falls short moves 0 without a revert, and the backend
 must know for certain what was paid before it pays a service. A pack says nothing about the
 boxes, so nothing in it needs encrypting. It is its own contract: `DoNotOpen` has no room

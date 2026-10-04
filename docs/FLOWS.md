@@ -615,13 +615,14 @@ reverts, where a cUSDC payment that falls short moves 0 without a word.
 
 ## The studio
 
-The studio (`/studio`) draws cats. A random one is free and never leaves the browser: the
-same procedural generator as the boxes (`buildCatSpec` and the scene builders), no AI, no
-wallet. A cat from a prompt goes through paid AI services, so it is paid for first, in packs
+The studio (`/studio`) draws the depot's rats. Rats, not cats, on purpose: the cats only come
+out of boxes, so nothing drawn in the studio can be taken for one. A random rat is free and
+never leaves the browser: a procedural rat generator (`buildRatSpec` and `createRat`, drawn
+with the game's toon materials), no AI, no wallet. A rat from a prompt goes through paid AI services, so it is paid for first, in packs
 bought on-chain in plain USDC from `StudioPacks` (numbers in
 [`packages/game-spec/studio.json`](../packages/game-spec/studio.json)): Starter, 2 USDC for 10
 sketches and 1 3D model; Litter, 8 USDC for 50 and 5. A sketch is one cartoon picture of the
-cat; a model turns one of the account's sketches into a 3D mesh, drawn in the browser with
+rat; a model turns one of the account's sketches into a 3D mesh, drawn in the browser with
 the game's toon materials. Each pack sells for at least twice what its units are expected to
 cost: the services are paid back and the rest goes to the treasury.
 
@@ -632,13 +633,13 @@ sequenceDiagram
   participant SP as StudioPacks
   participant API
   participant AI as AI services
-  U->>App: a random cat (free, in the browser)
+  U->>App: a random rat (free, procedural, in the browser)
   U->>SP: buy(account, packId, maxPrice): plain USDC to the treasury
   SP-->>API: PackBought, through the index: the account's sketches and models
   App->>API: sign in (wallet signature, no gas)
   App->>API: POST /v1/studio/sketches {prompt}
   API->>API: prompt checked, daily budget left, one sketch spent
-  API->>AI: the prompt inside the house style
+  API->>AI: the prompt inside the rat house style
   AI-->>API: a cartoon picture
   App->>API: poll the job until done
   App->>API: POST /v1/studio/models {sketchId}
@@ -657,10 +658,9 @@ against the day's budget for the same reason. The API
 stops calling the services for the day once `STUDIO_DAILY_BUDGET_USD` would be passed, and,
 when `STUDIO_ALLOWLIST` is set, only lets the listed wallets generate: on Sepolia packs are
 paid in test USDC while the services cost real money. In mock mode the whole flow runs on a
-local stand-in (the generator's own picture and 3D cat), with no API and no AI.
+local stand-in (a random procedural rat), with no API and no AI.
 
-Coming next, not built: adopting a cat (minting it as an Errant), sending it to sniff boxes,
-and the croquettes it brings back.
+Coming next, not built: rats that move into the depot, sniff the boxes and gather croquettes.
 
 ## Where the money goes
 

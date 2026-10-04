@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { spec, studio } from "@dno/game-spec";
-import { buildCatSpec, FIXTURE_SEEDS, renderCatSvg, type CatSpec } from "@dno/generator";
+import type { CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD, REPO } from "../links";
@@ -11,6 +11,7 @@ import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
+import { RatToy } from "./ratToy";
 import { Shipped } from "./Shipped";
 import { boxComplaint, pageSound, setMuted } from "./sound";
 
@@ -80,10 +81,49 @@ function HomeTop() {
   );
 }
 
-/** Three of the generator's own cats, drawn as the studio's free sketches are. */
-const STUDIO_SKETCHES = [FIXTURE_SEEDS[0]!, FIXTURE_SEEDS[1]!, FIXTURE_SEEDS[4]!].map(
-  ({ seed }) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderCatSvg(buildCatSpec({ seed })))}`,
-);
+/** One of the studio's free rats, sniffing about beside the studio's pitch. Click it for another. */
+function StudioRat() {
+  const t = useT();
+  const host = useRef<HTMLDivElement>(null);
+  const toy = useRef<RatToy | null>(null);
+  const [webgl, setWebgl] = useState(true);
+
+  useEffect(() => {
+    if (!host.current) return;
+    let made: RatToy;
+    try {
+      made = new RatToy(host.current);
+    } catch {
+      setWebgl(false);
+      return;
+    }
+    toy.current = made;
+    return () => {
+      made.dispose();
+      toy.current = null;
+    };
+  }, []);
+
+  if (!webgl) return null;
+  return (
+    <figure className="studio-rat">
+      <div
+        ref={host}
+        className="stage studio-rat-stage"
+        role="button"
+        tabIndex={0}
+        aria-label={t("home.studio.ratAria")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toy.current?.poke();
+          }
+        }}
+      />
+      <figcaption>{t("home.studio.ratHint")}</figcaption>
+    </figure>
+  );
+}
 
 export function Home() {
   const t = useT();
@@ -182,11 +222,7 @@ export function Home() {
             {t("home.studio.cta")}&nbsp;→
           </a>
         </div>
-        <div className="studio-sketchbook" aria-hidden="true">
-          {STUDIO_SKETCHES.map((src) => (
-            <img key={src.length} src={src} alt="" width={160} height={160} loading="lazy" />
-          ))}
-        </div>
+        <StudioRat />
       </section>
 
       <section id="cats" className="home-section">

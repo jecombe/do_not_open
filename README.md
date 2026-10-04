@@ -36,7 +36,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
-| Studio | `/studio`: a random cat for free in the browser, cats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
+| Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
 
 ## Layout
 
@@ -166,9 +166,12 @@ The rules, what leaks and the costs are in [`docs/CROQ.md`](docs/CROQ.md).
 
 ## The studio
 
-The studio (`/studio`) is the way in for people who do not care about blockchains. Anyone
-draws a random cat there for free: the same procedural generator as the boxes, in the
-browser, no wallet. To draw a cat from a prompt ("a chubby samurai cat"), a player buys a
+The studio (`/studio`) is the way in for people who do not care about blockchains. It draws
+the depot's rats, not cats, on purpose: the cats only come out of boxes, so nothing drawn in
+the studio can be taken for one. Anyone draws a random rat there for free: a procedural rat
+generator (`buildRatSpec` in `packages/generator`, `createRat` in `packages/scene`: buck teeth,
+big ears, hats, a wedge of cheese), in the browser, no wallet. To draw a rat from a prompt
+("a chubby rat chef stealing a wheel of cheese"), a player buys a
 pack in plain USDC from `StudioPacks`: **Starter**, 2 USDC for 10 sketches and 1 3D model;
 **Litter**, 8 USDC for 50 and 5. A sketch is a cartoon picture in the house style (try again
 until it looks right); a model turns a sketch into a 3D mesh, drawn with the game's toon
@@ -176,8 +179,8 @@ materials. The API spends a unit before it calls the AI services and gives it ba
 fail, and stops for the day past a dollar budget. Each pack sells for at least twice what it
 is expected to cost, so the services are paid back with a margin for the treasury. The
 numbers are in [`packages/game-spec/studio.json`](packages/game-spec/studio.json), the flow in
-[`docs/FLOWS.md`](docs/FLOWS.md#the-studio). Next, not built yet: adopting a cat (minting it as an
-Errant) and sending it to sniff boxes.
+[`docs/FLOWS.md`](docs/FLOWS.md#the-studio). Next, not built yet: rats that move into the depot,
+sniff the boxes and gather croquettes.
 
 ## On Sepolia
 

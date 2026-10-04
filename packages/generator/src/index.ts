@@ -7,3 +7,5 @@ export * from "./boxSpec";
 export * from "./fixtures";
 export * from "./svg";
 export * from "./metadata";
+export * from "./ratSpec";
+export * from "./ratSvg";

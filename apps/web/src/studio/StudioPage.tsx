@@ -10,12 +10,12 @@ import { TermsGate } from "../terms/TermsGate";
 import { onOpenExchange } from "../views/exchangeLink";
 import { ProblemNote } from "../views/ProblemNote";
 import { TxPending } from "../views/TxPending";
-import type { Subject } from "./CatViewer";
+import type { Subject } from "./StageViewer";
 import { HttpStudio, LocalStudio, randomSeed, StudioError, type StudioCredits, type StudioErrorCode, type StudioInfo, type StudioJob, type StudioService } from "./service";
 import { storedSession, storeSession } from "./session";
 
 // three.js and its helpers load with the turntable, never with the page's text.
-const CatViewer = lazy(() => import("./CatViewer").then((m) => ({ default: m.CatViewer })));
+const StageViewer = lazy(() => import("./StageViewer").then((m) => ({ default: m.StageViewer })));
 
 /** How often a running job is asked about. */
 const POLL_MS = 2000;
@@ -111,7 +111,7 @@ function StudioLive() {
     [demo, adapter, apiUrl],
   );
 
-  const [subject, setSubject] = useState<Subject>(() => ({ kind: "cat", seed: randomSeed() }));
+  const [subject, setSubject] = useState<Subject>(() => ({ kind: "rat", seed: randomSeed() }));
   const [showing, setShowing] = useState<string | null>(null);
   const [info, setInfo] = useState<StudioInfo | null>(null);
   const [infoFailed, setInfoFailed] = useState(false);
@@ -199,7 +199,7 @@ function StudioLive() {
 
   function show(job: StudioJob) {
     if (job.modelUrl) setSubject({ kind: "model", url: job.modelUrl });
-    else if (job.seed) setSubject({ kind: "cat", seed: BigInt(job.seed) });
+    else if (job.seed) setSubject({ kind: "rat", seed: BigInt(job.seed) });
     else return;
     setShowing(job.id);
     // On a phone the turntable is above the desk, out of sight: bring it back.
@@ -275,14 +275,14 @@ function StudioLive() {
             {showingJob ? t("studio.stage.yours") : t("studio.stage.free")}
           </h2>
           <Suspense fallback={<div className="studio-viewer" aria-hidden="true" />}>
-            <CatViewer subject={subject} label={showingJob ? t("studio.viewer.yours", { prompt: showingJob.prompt }) : t("studio.viewer.label")} />
+            <StageViewer subject={subject} label={showingJob ? t("studio.viewer.yours", { prompt: showingJob.prompt }) : t("studio.viewer.label")} />
           </Suspense>
           <div className="studio-stage-actions">
             <button
               type="button"
               className="stamp-button studio-another"
               onClick={() => {
-                setSubject({ kind: "cat", seed: randomSeed() });
+                setSubject({ kind: "rat", seed: randomSeed() });
                 setShowing(null);
               }}
             >
