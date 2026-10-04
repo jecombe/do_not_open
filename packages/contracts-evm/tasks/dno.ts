@@ -383,6 +383,13 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
       studio: await hre.deployments
         .getOrNull("StudioPacks")
         .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
+      // The depot's rats (ERC-721) and the pantry that pays them CROQ.
+      rats: await hre.deployments
+        .getOrNull("Rats")
+        .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
+      ratPantry: await hre.deployments
+        .getOrNull("RatPantry")
+        .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
     };
     writeFileSync(out, JSON.stringify(slim, null, 2) + "\n");
     console.log(`wrote ${out}`);

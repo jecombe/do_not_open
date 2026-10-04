@@ -12,6 +12,8 @@ import type { EventPosition, Post, PostStore, QueuedDraft } from "../../applicat
 import type { ArchiveStore } from "../../application/ports/archive";
 import type { StudioStore } from "../../application/ports/studio";
 import { NO_UNITS, type StudioJob, type StudioLedger, type StudioUnits } from "../../domain/studio";
+import type { RatStore } from "../../application/ports/rats";
+import type { Adoption, Rat, RatKind } from "../../domain/rats";
 
 // Block numbers and unix times are int8 columns; they all fit a JS number.
 pg.types.setTypeParser(20, (v) => Number(v));
@@ -125,6 +127,27 @@ async function meterOf(q: Q, account: Address, day: string, lock: boolean): Prom
   return { freeUsed: freeUsed ?? 0, spent: spent ?? 0, bought: await creditsOf(q, account) };
 }
 
+const ratFrom = (r: Row): Rat => ({
+  id: r.token_id,
+  kind: r.kind,
+  ref: r.ref,
+  uri: r.uri,
+  owner: r.owner,
+  minter: r.minter,
+  mintedBlock: r.minted_block,
+  mintedAt: r.minted_at,
+});
+
+const adoptionFrom = (r: Row): Adoption => ({
+  jobId: r.job_id,
+  jobRef: r.job_ref,
+  account: r.account,
+  prompt: r.prompt,
+  imageId: r.image_id,
+  recordId: r.record_id,
+  createdAt: r.created_at,
+});
+
 const studioJobFrom = (r: Row): StudioJob => ({
   id: r.id,
   account: r.account,
@@ -165,7 +188,7 @@ const getUser = (q: Q, address: Address) => one(q, "select * from users where ad
 /** The index in Postgres. */
 const proposalFrom = (r: Row): EntangleProposal => ({ tokenA: r.token_a, tokenB: r.token_b, proposer: r.proposer, block: Number(r.block) });
 
-export class PgStore implements Store, PostStore, ArchiveStore, StudioStore {
+export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, RatStore {
   constructor(private readonly pool: Pool) {}
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
@@ -217,7 +240,7 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore {
         return rows.map((r) => ({ event: eventFrom(r), enrichment: r.enrichment }));
       },
       resetReadModels: async () => {
-        await c.query("truncate boxes, duels, requests, entangle_proposals, mints, milestones, transfers, published_handles, credit_accounts, studio_accounts");
+        await c.query("truncate boxes, duels, requests, entangle_proposals, mints, milestones, transfers, published_handles, credit_accounts, studio_accounts, rats, rat_sniffers");
         // Sign-ins stay; on-chain activity is counted again by the replay.
         await c.query("delete from users where registered_at is null");
         await c.query("update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0");
@@ -303,6 +326,17 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore {
              packs = studio_accounts.packs + 1, paid = studio_accounts.paid + $4`,
           [account, sketches, models, paid],
         );
+      },
+      rat: (id) => one(c, "select * from rats where token_id = $1", [id], ratFrom),
+      saveRat: async (r) => {
+        await c.query(
+          `insert into rats (token_id, kind, ref, uri, owner, minter, minted_block, minted_at) values ($1, $2, $3, $4, $5, $6, $7, $8)
+           on conflict (token_id) do update set kind = $2, ref = $3, uri = $4, owner = $5, minter = $6, minted_block = $7, minted_at = $8`,
+          [r.id, r.kind, r.ref, r.uri, r.owner, r.minter, r.mintedBlock, r.mintedAt],
+        );
+      },
+      addSniff: async (account) => {
+        await c.query("insert into rat_sniffers (account, sniffs) values ($1, 1) on conflict (account) do update set sniffs = rat_sniffers.sniffs + 1", [account]);
       },
       addCredits: async (account, credits) => {
         await c.query("insert into credit_accounts (account, bought) values ($1, $2) on conflict (account) do update set bought = credit_accounts.bought + $2", [account, credits]);
@@ -535,6 +569,54 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore {
         paidUsdc: Number(r.paid) / 1e6,
       }))) ?? { packs: 0, paidUsdc: 0 }
     );
+  }
+
+  rat(ratId: number) {
+    return one(this.pool, "select * from rats where token_id = $1", [ratId], ratFrom);
+  }
+
+  async ratsOf(owner: Address) {
+    const { rows } = await this.pool.query("select * from rats where owner = $1 order by token_id", [owner]);
+    return rows.map(ratFrom);
+  }
+
+  ratOfRef(ref: string) {
+    return one(this.pool, "select * from rats where ref = $1 order by token_id limit 1", [ref], ratFrom);
+  }
+
+  async sniffsOf(accounts: Address[]) {
+    const { rows } = await this.pool.query("select account, sniffs from rat_sniffers where account = any($1::text[])", [accounts]);
+    const found = new Map<string, number>(rows.map((r) => [r.account as string, Number(r.sniffs)]));
+    return new Map(accounts.map((a) => [a, found.get(a) ?? 0] as const));
+  }
+
+  async ratCounts() {
+    const { rows } = await this.pool.query("select kind, count(*)::int as count from rats group by kind");
+    return rows.map((r) => ({ kind: r.kind as RatKind, count: r.count as number }));
+  }
+
+  adoption(jobId: string) {
+    return one(this.pool, "select * from rat_adoptions where job_id = $1", [jobId], adoptionFrom);
+  }
+
+  adoptionOfRef(jobRef: string) {
+    return one(this.pool, "select * from rat_adoptions where job_ref = $1", [jobRef], adoptionFrom);
+  }
+
+  async saveAdoption(a: Adoption) {
+    await this.pool.query(
+      `insert into rat_adoptions (job_id, job_ref, account, prompt, image_id, record_id, created_at)
+       values ($1, $2, $3, $4, $5, $6, $7) on conflict (job_id) do nothing`,
+      [a.jobId, a.jobRef, a.account, a.prompt, a.imageId, a.recordId, a.createdAt],
+    );
+  }
+
+  async saveRatModel(jobRef: string, glb: Uint8Array, at: number) {
+    await this.pool.query("insert into rat_models (job_ref, glb, created_at) values ($1, $2, $3) on conflict (job_ref) do nothing", [jobRef, Buffer.from(glb), at]);
+  }
+
+  async ratModel(jobRef: string) {
+    return one(this.pool, "select glb from rat_models where job_ref = $1", [jobRef], (r) => new Uint8Array(r.glb as Buffer));
   }
 
   async studioJobCounts() {

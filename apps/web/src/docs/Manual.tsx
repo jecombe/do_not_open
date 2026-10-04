@@ -376,6 +376,7 @@ export function Manual() {
               <p>{t("docs.studio.p3")}</p>
               <p>{t("docs.studio.p4", { min: studio.prompt.minLength, max: studio.prompt.maxLength })}</p>
               <p>{t("docs.studio.p5")}</p>
+              <p>{t("docs.studio.p6", { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay, maxDays: studio.rats.croquettes.maxDays })}</p>
             </div>
           </section>
 

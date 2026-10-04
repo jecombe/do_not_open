@@ -15,6 +15,7 @@ import { onOpenExchange } from "./views/exchangeLink";
 import { LeaderboardView } from "./views/LeaderboardView";
 import { PairView, type PairIntent } from "./views/PairView";
 import { PantryView } from "./views/PantryView";
+import { RatsView } from "./views/RatsView";
 import { ShelfView } from "./views/ShelfView";
 import { SpecimensView } from "./views/SpecimensView";
 import { WarehouseView } from "./views/WarehouseView";
@@ -108,6 +109,7 @@ export function App() {
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "specimens" && <SpecimensView quality={quality} />}
       {view === "exchange" && <ExchangeView />}
+      {view === "rats" && <RatsView quality={quality} onSniff={() => setView("warehouse")} />}
 
       <Masthead
         view={view}

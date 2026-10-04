@@ -2398,6 +2398,58 @@ button {
   margin-block: 10px;
 }
 
+/* My rats: a card per rat, the one on the floor pressed. */
+.rats-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(40vh, 340px);
+  margin: 10px 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.rats-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 2px solid var(--ink);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rats-card[aria-pressed="true"] {
+  border-color: var(--ink-red);
+  box-shadow: 3px 3px 0 var(--ink-red);
+}
+
+.rats-card img,
+.rats-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--ink);
+  background: #ede8e0;
+}
+
+.rats-card-text {
+  display: grid;
+  min-width: 0;
+}
+
+.rats-card-text .fine {
+  margin: 0;
+}
+
+.rats-fields dd {
+  font-variant-numeric: tabular-nums;
+}
+
 .pantry-form input:last-child {
   grid-column: 1 / -1;
 }

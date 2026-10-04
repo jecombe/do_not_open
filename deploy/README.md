@@ -74,6 +74,13 @@ Discord is told when the budget passes 80% or runs out, when over 30% of an hour
 fail, when jobs pile up in fal's queue, when the studio is off with packs sold, and when the AI
 has cost more than the packs brought in. See [`apps/api/README.md`](../apps/api/README.md#the-studio).
 
+The rats need `RATS_ATTESTER_KEY=0x...` in `/opt/dno/.env` (a fresh key; its address is
+`RATS_ATTESTER` when `Rats` is deployed) and `ARWEAVE_KEY`: an AI rat's picture is shrunk to a
+free Arweave upload like a cat's, and its 3D model stays in Postgres (`rat_models`, in the
+nightly dump), so no Turbo credits are needed. `SITE_URL=https://do-not-open.app` links the studio
+from each rat's metadata. Ship the API that knows the `Rats` address before the first rat is
+minted. See [`apps/api/README.md`](../apps/api/README.md#the-depots-rats).
+
 The collection speaks in a Discord channel (see [`apps/api/README.md`](../apps/api/README.md#the-collections-discord-channel-the-herald)):
 in the channel's settings, Integrations, Webhooks, create one and copy its URL, then add
 `HERALD_DISCORD=live` and `DISCORD_WEBHOOK_URL=...` to `/opt/dno/.env` (`HERALD_DISCORD=rehearse`

@@ -23,6 +23,13 @@ export interface StudioSpec {
   marginRule: string;
   prompt: { minLength: number; maxLength: number; style: string; rule: string };
   events: Record<string, { fields: string[]; note: string }>;
+  rats: {
+    name: string;
+    rule: string;
+    mint: { seedPriceUsdc: string; modelPriceUsdc: string; maxPriceUsdc: string };
+    croquettes: { perDay: number; maxDays: number; fund: number; rule: string };
+    events: Record<string, { fields: string[]; note: string }>;
+  };
 }
 
 /**

@@ -3,6 +3,7 @@ import type { ArchiveStore } from "../src/application/ports/archive";
 import type { PostStore } from "../src/application/ports/herald";
 import type { Store } from "../src/application/ports/store";
 import type { StudioStore } from "../src/application/ports/studio";
+import type { RatStore } from "../src/application/ports/rats";
 import type { StudioJob } from "../src/domain/studio";
 import * as B from "../src/domain/box";
 import * as D from "../src/domain/duel";
@@ -12,9 +13,9 @@ import { ALICE, BOB, CAROL, ev } from "./fixtures";
  * What any Store must do, run against each implementation: the in-memory one the tests use and
  * the Postgres one production uses must not drift apart.
  */
-export function storeContract(name: string, make: () => Promise<Store & PostStore & ArchiveStore & StudioStore>) {
+export function storeContract(name: string, make: () => Promise<Store & PostStore & ArchiveStore & StudioStore & RatStore>) {
   describe(`${name} store`, () => {
-    let store: Store & PostStore & ArchiveStore & StudioStore;
+    let store: Store & PostStore & ArchiveStore & StudioStore & RatStore;
     beforeEach(async () => {
       store = await make();
     });
@@ -236,6 +237,43 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       await store.transaction((tx) => tx.resetReadModels());
       expect(await store.publishedAmong([h])).toEqual([]);
       expect(await store.meterOf(BOB, day)).toEqual({ freeUsed: 8, spent: 5, bought: 0 });
+    });
+
+    it("folds the rats and the sniffs as read models, and keeps the adoptions across replays", async () => {
+      const rat = { id: 1, kind: "seed" as const, ref: "42", uri: null, owner: ALICE, minter: ALICE, mintedBlock: 10, mintedAt: 1_000 };
+      await store.transaction(async (tx) => {
+        await tx.saveRat(rat);
+        await tx.saveRat({ ...rat, id: 2, kind: "model", ref: "0xabc", uri: "ar://rec" });
+        await tx.saveRat({ ...rat, id: 3, ref: "7", owner: BOB });
+        await tx.addSniff(ALICE);
+        await tx.addSniff(ALICE);
+        expect(await tx.rat(1)).toEqual(rat);
+      });
+      await store.transaction(async (tx) => tx.saveRat({ ...(await tx.rat(1))!, owner: CAROL }));
+      expect((await store.ratsOf(ALICE)).map((r) => r.id)).toEqual([2]);
+      expect((await store.ratsOf(CAROL)).map((r) => r.id)).toEqual([1]);
+      expect(await store.rat(2)).toMatchObject({ kind: "model", ref: "0xabc", uri: "ar://rec" });
+      expect((await store.ratOfRef("0xabc"))?.id).toBe(2);
+      expect(await store.ratOfRef("nope")).toBeNull();
+      expect(await store.sniffsOf([ALICE, BOB])).toEqual(new Map([[ALICE, 2], [BOB, 0]]));
+      expect((await store.ratCounts()).sort((a, b) => (a.kind < b.kind ? -1 : 1))).toEqual([{ kind: "model", count: 1 }, { kind: "seed", count: 2 }]);
+
+      const adoption = { jobId: "00000000-0000-4000-8000-000000000001", jobRef: "0xabc", account: ALICE, prompt: "a rat", imageId: "img", recordId: "rec", createdAt: 5 };
+      await store.saveAdoption(adoption);
+      await store.saveAdoption({ ...adoption, imageId: "other" });
+      expect(await store.adoption(adoption.jobId)).toEqual(adoption);
+      expect(await store.adoptionOfRef("0xabc")).toEqual(adoption);
+      // The model stays here, saved once.
+      await store.saveRatModel("0xabc", new Uint8Array([1, 2, 3]), 5);
+      await store.saveRatModel("0xabc", new Uint8Array([7]), 6);
+      expect(await store.ratModel("0xabc")).toEqual(new Uint8Array([1, 2, 3]));
+      expect(await store.ratModel("0xdef")).toBeNull();
+
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.rat(1)).toBeNull();
+      expect(await store.sniffsOf([ALICE])).toEqual(new Map([[ALICE, 0]]));
+      expect(await store.adoption(adoption.jobId)).toEqual(adoption);
+      expect(await store.ratModel("0xabc")).toEqual(new Uint8Array([1, 2, 3]));
     });
 
     it("folds studio packs as a read model, and keeps its jobs across replays", async () => {

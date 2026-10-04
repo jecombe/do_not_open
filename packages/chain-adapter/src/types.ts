@@ -445,6 +445,55 @@ export interface StudioUnits {
   models: number;
 }
 
+/** One of the depot's rats: a plain ERC-721, owners public. */
+export interface RatInfo {
+  id: number;
+  /** A free rat, minted by its seed, or an AI rat, minted with its studio job. */
+  kind: "seed" | "model";
+  /** Decimal 64-bit seed of a seed rat. */
+  seed: string | null;
+  /** The studio job of an AI rat. */
+  job: string | null;
+  /** Where an AI rat's files are kept (ar://). */
+  uri: string | null;
+  owner: Address;
+  minter: Address;
+  mintedBlock: number | null;
+  /** A picture of the rat, when the API serves one. */
+  imageUrl: string | null;
+  /** An AI rat's 3D model (GLB). */
+  modelUrl: string | null;
+  /** Boxes its owner sniffed (paid shakes), as the API counts them. 0 when unknown. */
+  sniffs: number;
+}
+
+/** What adopting a rat costs, in plain USDC, smallest unit. */
+export interface RatPrices {
+  seed: bigint;
+  model: bigint;
+}
+
+/** The API's go-ahead to mint an AI rat: its files are on Arweave and the attester signed. */
+export interface RatAdoption {
+  /** The job id as the contract takes it (bytes32 hex), or the studio's UUID. */
+  job: string;
+  uri: string;
+  /** Unix seconds. */
+  deadline: number;
+  signature: string;
+  priceUsdc: string;
+}
+
+/** The rats' pantry: what it pays, and what it has left. */
+export interface RatPantryInfo {
+  /** Plain CROQ a rat earns a day. */
+  perDay: number;
+  /** Days kept between two claims. */
+  maxDays: number;
+  /** Plain CROQ left to pay out. */
+  reserve: bigint;
+}
+
 /** A session with the DO NOT OPEN API, opened by a wallet signature (no transaction). */
 export interface ApiSession {
   account: Address;
@@ -648,6 +697,25 @@ export interface ChainAdapter {
   /** Signs in to the API with the connected wallet: one free signature, no transaction. Null
    *  where there is no API (the mock). Throws `rejected` if the wallet refuses. */
   apiSession(): Promise<ApiSession | null>;
+
+  // --- rats ---
+  /** What adopting a rat costs. Null where no Rats contract is deployed. */
+  ratPrices(): Promise<RatPrices | null>;
+  /** Whether the free rat of `seed` was already adopted. */
+  seedRatTaken(seed: bigint): Promise<boolean>;
+  /** Adopts the free rat of `seed` for the connected account, in plain USDC. Returns its token id.
+   *  Throws `insufficient-usdc` before any transaction when the wallet holds too little. */
+  mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number>;
+  /** Adopts an AI rat with the API's go-ahead. Returns its token id. */
+  mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number>;
+  /** The rats `account` owns, newest first. */
+  ratsOf(account: Address): Promise<RatInfo[]>;
+  /** Plain CROQ each rat would get if claimed now, in the order of `ids`. */
+  ratClaimable(ids: number[]): Promise<bigint[]>;
+  /** The rats' pantry. Null where none is deployed. */
+  ratPantry(): Promise<RatPantryInfo | null>;
+  /** Collects what the connected account's rats `ids` earned. Returns the CROQ paid. */
+  claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint>;
 }
 
 /** "0.002" for 2000000000000000n at 18 decimals. No trailing zeros. */

@@ -4,6 +4,7 @@ import type { ArchiveStore } from "../../application/ports/archive";
 import type { PostStore } from "../../application/ports/herald";
 import type { ReadStore } from "../../application/ports/store";
 import type { StudioStore } from "../../application/ports/studio";
+import type { RatStore } from "../../application/ports/rats";
 import type { EndpointStatus } from "../chain/RpcPool";
 import type { IndexerStatus } from "../Indexer";
 
@@ -16,6 +17,8 @@ export interface MetricsSources {
   chat?: Pick<AskManual, "usage">;
   /** The studio's jobs, and what the services cost today against the budget. */
   studio?: { store: Pick<StudioStore, "studioJobCounts" | "studioSales">; spentToday(): Promise<number>; spentTotal(): Promise<number>; dailyBudgetUsd: number; open: boolean };
+  /** The rats adopted, by kind. */
+  rats?: Pick<RatStore, "ratCounts">;
   /** Shown on `dno_info`; Prometheus adds the `network` label to every series from its target. */
   info: { chain: string; collection: string; version: string };
 }
@@ -163,6 +166,18 @@ export class Metrics {
       gauge("dno_studio_open", "1 when the studio can generate (key, contract, not paused), 0 when it is off", (g) => g.set(studio.open ? 1 : 0));
       gauge("dno_studio_packs_sold", "Studio packs sold since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).packs));
       gauge("dno_studio_revenue_usdc", "USDC the studio's packs brought in since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).paidUsdc));
+    }
+    if (s.rats) {
+      const rats = s.rats;
+      gauge(
+        "dno_rats_minted",
+        "Rats adopted from the studio, by kind (seed or AI)",
+        async (g) => {
+          g.reset();
+          for (const c of await rats.ratCounts()) g.set({ kind: c.kind }, c.count);
+        },
+        ["kind"],
+      );
     }
   }
 

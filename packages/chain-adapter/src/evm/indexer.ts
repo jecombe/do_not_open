@@ -12,6 +12,7 @@ import type {
   OpenedCat,
   PairInfo,
   PendingRequest,
+  RatInfo,
   RequestKind,
   RevealedContents,
   TraitRoll,
@@ -162,6 +163,24 @@ export class IndexerClient {
       });
       if (!res.ok) throw new Error(`API ${res.status} on ${path}`);
       return (await res.json()) as T;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** The rats `owner` owns, as the API indexes them. */
+  async rats(owner: Address): Promise<Indexed<RatInfo[]>> {
+    if (!(await this.matches())) throw new Error("The API indexes another collection");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 6000);
+    try {
+      const res = await (this.opts.fetch ?? fetch)(`${this.baseUrl}/v1/rats?owner=${owner}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`API ${res.status} on /v1/rats`);
+      const body = (await res.json()) as { block?: number | null; rats?: RatInfo[]; data?: { rats?: RatInfo[] } };
+      return { block: body.block ?? null, data: body.rats ?? body.data?.rats ?? [] };
+    } catch (error) {
+      this.downUntil = this.now() + (this.opts.retryAfterMs ?? 30_000);
+      throw error;
     } finally {
       clearTimeout(timer);
     }

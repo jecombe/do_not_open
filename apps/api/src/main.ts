@@ -40,6 +40,11 @@ import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
 import { TurboStorage } from "./infrastructure/archive/TurboStorage";
 import { Metrics } from "./infrastructure/http/metrics";
 import { FalStudio } from "./infrastructure/studio/FalStudio";
+import { Rats } from "./application/rats";
+import type { RatStore } from "./application/ports/rats";
+import { JpegShrinker } from "./infrastructure/rats/JpegShrinker";
+import { EthersAdoptionSigner } from "./infrastructure/rats/EthersAdoptionSigner";
+import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 
 /** The composition root: the one place that knows every concrete class. */
 async function main() {
@@ -47,7 +52,7 @@ async function main() {
   const log = pino({ level: config.LOG_LEVEL });
 
   let pool: pg.Pool | null = null;
-  let store: Store & PostStore & ArchiveStore & StudioStore;
+  let store: Store & PostStore & ArchiveStore & StudioStore & RatStore;
   if (config.DATABASE_URL) {
     pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE });
     await migrate(pool, log);
@@ -152,6 +157,32 @@ async function main() {
   if (!deployment.studio) log.info("no StudioPacks contract on this network: the studio is off");
   else if (!config.FAL_KEY) log.info("FAL_KEY is not set: the studio is off");
 
+  // The depot's rats: read back from the index; an AI rat adopted once its picture is on Arweave
+  // (a free upload, like the cats') and its model kept here, with the attester's signature.
+  const publicUrl = config.PUBLIC_URL.replace(/\/$/, "");
+  const rats = new Rats(
+    store,
+    store,
+    config.ARWEAVE_KEY
+      ? new TurboStorage({ privateKey: config.ARWEAVE_KEY, uploadUrl: config.ARWEAVE_UPLOAD_URL, maxBytes: config.ARWEAVE_FREE_BYTES, timeoutMs: config.ARWEAVE_TIMEOUT_MS, appName: "DoNotOpen" })
+      : null,
+    new ServiceFileFetcher(),
+    new JpegShrinker(),
+    config.RATS_ATTESTER_KEY && deployment.rats ? new EthersAdoptionSigner(config.RATS_ATTESTER_KEY, { chainId: deployment.chainId, verifyingContract: deployment.rats.address }) : null,
+    clock,
+    {
+      publicUrl,
+      gateway: config.ARWEAVE_GATEWAY.replace(/\/$/, ""),
+      studioUrl: config.SITE_URL ? `${config.SITE_URL.replace(/\/$/, "")}/studio` : null,
+      ticketTtl: 30 * 60,
+      maxImageBytes: 10 * 1024 * 1024,
+      maxModelBytes: 40 * 1024 * 1024,
+    },
+    log,
+  );
+  if (!deployment.rats) log.info("no Rats contract on this network: no rat to show, none to adopt");
+  else if (!config.RATS_ATTESTER_KEY) log.info("RATS_ATTESTER_KEY is not set: only seed rats can be adopted");
+
   const metrics = new Metrics({
     store,
     archive: store,
@@ -166,6 +197,7 @@ async function main() {
       dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
       open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
     },
+    rats: store,
     info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
   });
 
@@ -180,6 +212,7 @@ async function main() {
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           studio: { studio, publicUrl: config.PUBLIC_URL },
+          rats,
           chat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
           discord,

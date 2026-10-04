@@ -181,6 +181,24 @@ against `STUDIO_DAILY_BUDGET_USD`, is the sum of the estimated costs of every jo
 failed ones included: the service may have billed them. A purchase is public: it shows which account bought which pack. The prompts and
 pictures stay in the API's database and at the AI service.
 
+## Rats
+
+`Rats` is a plain ERC-721: owners are public. Per rat it keeps its kind (a seed rat or an AI
+rat), its mint time (the croquettes count from there) and its reference: the 64-bit seed, or
+the studio job's `keccak256` (`tokenOfSeed`, `tokenOfJob` make each one adoptable once). An AI
+rat's `uri` (an `ar://` record pointing at its picture on Arweave and its GLB on the API) is only in the `RatMinted`
+event. `RatPantry` keeps `paidUntil[rat]` and the plain CROQ it holds. The API keeps:
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `rats` | token id, kind, ref, uri, current owner (follows `Transfer`), minter, mint block and time | yes |
+| `rat_sniffers` | paid shakes per account, folded from `Shaken`: a rat's "boxes sniffed" are its owner's | yes |
+| `rat_adoptions` | an AI rat's Arweave ids (picture, record) by studio job, so a second adoption signs again without uploading again | no: not on the chain |
+| `rat_models` | an AI rat's 3D model (GLB) by job, served at `/rats/models/<job>.glb`: kept here rather than paid for on Arweave, and in the nightly dump | no: not on the chain |
+
+A seed rat's picture is rendered from its seed on request (`/rats/:id/image.svg`); nothing about
+it is stored.
+
 ## Release forms
 
 Before playing with a wallet (a visitor without one is asked nothing), a player signs the terms of play with their wallet (EIP-191, off-chain, no

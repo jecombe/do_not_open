@@ -90,6 +90,7 @@ were drawn for:
 | Encrypted sold count, milestone bit | mint, `announceMilestone` | Handles in the collection account | |
 | Replay of the account's own `ConfidentialTransfer` receipts | `boxesOf` | The same replay over program events naming the account, decrypting each "moved" bit | DAS (`getAssetsByOwner`) cannot help: the owner is encrypted |
 | `StudioPacks`: packs bought in plain USDC, `PackBought` | the studio | An SPL USDC transfer to the treasury in the same instruction that bumps the buyer's account (a PDA per buyer: `["studio", buyer]`) and emits the same event | No FHE: a straight port. The API's indexer reads the event the same way |
+| `Rats` (ERC-721) and `RatPantry` (plain CROQ a day) | the studio's adopted rats | A Metaplex Core asset per rat (public owner), minted by the program after an SPL USDC transfer, with the attester's ed25519 signature checked for AI rats; the pantry a PDA token account paying plain CROQ, `paid_until` in a PDA per rat | No FHE: a straight port |
 
 ### Things that are structurally different
 

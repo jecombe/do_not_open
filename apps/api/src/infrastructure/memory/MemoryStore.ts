@@ -11,6 +11,8 @@ import type { EventPosition, Post, PostStore, QueuedDraft } from "../../applicat
 import type { ArchiveStore } from "../../application/ports/archive";
 import type { StudioStore } from "../../application/ports/studio";
 import { NO_UNITS, unitsHeld, type StudioJob, type StudioLedger, type StudioUnits } from "../../domain/studio";
+import type { RatStore } from "../../application/ports/rats";
+import type { Adoption, Rat, RatKind } from "../../domain/rats";
 
 interface State {
   cursor: number | null;
@@ -45,6 +47,9 @@ interface State {
   studioBought: Map<Address, StudioUnits>;
   /** Packs and USDC (smallest unit) per account. */
   studioPaid: Map<Address, { packs: number; paid: bigint }>;
+  /** The rats, by id, and paid shakes by account: read models. */
+  rats: Map<number, Rat>;
+  sniffs: Map<Address, number>;
 }
 
 const emptyState = (): State => ({
@@ -73,6 +78,8 @@ const emptyState = (): State => ({
   archived: new Map(),
   studioBought: new Map(),
   studioPaid: new Map(),
+  rats: new Map(),
+  sniffs: new Map(),
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -83,13 +90,16 @@ const ref = (txHash: string, logIndex: number) => `${txHash}:${logIndex}`;
 const clone = <T>(v: T): T => structuredClone(v);
 
 /** The whole index in memory: for tests, and for running the API without Postgres. */
-export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore {
+export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore, RatStore {
   private s = emptyState();
   /**
    * Studio jobs, by id. Kept across replays, and outside the state a sync transaction copies and
    * swaps back: a job started while a batch runs would be lost with the copy.
    */
   private readonly jobs = new Map<string, StudioJob>();
+  /** AI rats' files on Arweave, by job id. Kept across replays and out of the swapped state, like the jobs. */
+  private readonly adoptions = new Map<string, Adoption>();
+  private readonly ratModels = new Map<string, Uint8Array>();
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
     const draft = fork(this.s);
@@ -116,7 +126,7 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore 
           .slice(0, limit)
           .map(clone),
       resetReadModels: async () => {
-        for (const m of [s.boxes, s.duels, s.requests, s.proposals, s.mints, s.milestones, s.transfers, s.published, s.credits, s.studioBought, s.studioPaid] as Map<unknown, unknown>[]) m.clear();
+        for (const m of [s.boxes, s.duels, s.requests, s.proposals, s.mints, s.milestones, s.transfers, s.published, s.credits, s.studioBought, s.studioPaid, s.rats, s.sniffs] as Map<unknown, unknown>[]) m.clear();
         // Sign-ins stay; on-chain activity is counted again by the replay.
         for (const [a, u] of s.users) {
           if (u.registeredAt === null) s.users.delete(a);
@@ -150,6 +160,9 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore 
         const p = s.studioPaid.get(account) ?? { packs: 0, paid: 0n };
         s.studioPaid.set(account, { packs: p.packs + 1, paid: p.paid + BigInt(paid) });
       },
+      rat: async (id) => clone(s.rats.get(id) ?? null),
+      saveRat: async (r) => void s.rats.set(r.id, clone(r)),
+      addSniff: async (account) => void s.sniffs.set(account, (s.sniffs.get(account) ?? 0) + 1),
     };
   }
 
@@ -492,6 +505,49 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore 
       counts.set(key, { ...c, count: c.count + 1 });
     }
     return [...counts.values()];
+  }
+
+  async rat(ratId: number) {
+    return clone(this.s.rats.get(ratId) ?? null);
+  }
+
+  async ratsOf(owner: Address) {
+    return [...this.s.rats.values()].filter((r) => r.owner === owner).sort((a, b) => a.id - b.id).map(clone);
+  }
+
+  async ratOfRef(ref: string) {
+    return clone([...this.s.rats.values()].find((r) => r.ref === ref) ?? null);
+  }
+
+  async sniffsOf(accounts: Address[]) {
+    return new Map(accounts.map((a) => [a, this.s.sniffs.get(a) ?? 0] as const));
+  }
+
+  async ratCounts() {
+    const counts = new Map<RatKind, number>();
+    for (const r of this.s.rats.values()) counts.set(r.kind, (counts.get(r.kind) ?? 0) + 1);
+    return [...counts.entries()].map(([kind, count]) => ({ kind, count }));
+  }
+
+  async adoption(jobId: string) {
+    return clone(this.adoptions.get(jobId) ?? null);
+  }
+
+  async adoptionOfRef(jobRef: string) {
+    return clone([...this.adoptions.values()].find((a) => a.jobRef === jobRef) ?? null);
+  }
+
+  async saveRatModel(jobRef: string, glb: Uint8Array, _at: number) {
+    if (!this.ratModels.has(jobRef)) this.ratModels.set(jobRef, new Uint8Array(glb));
+  }
+
+  async ratModel(jobRef: string) {
+    const glb = this.ratModels.get(jobRef);
+    return glb ? new Uint8Array(glb) : null;
+  }
+
+  async saveAdoption(a: Adoption) {
+    if (!this.adoptions.has(a.jobId)) this.adoptions.set(a.jobId, clone(a));
   }
 
   private jobsOf(account: Address): StudioJob[] {
