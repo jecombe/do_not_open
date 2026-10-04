@@ -48,6 +48,16 @@ describe("FalStudio", () => {
     ]);
   });
 
+  it("asks Tripo for a GLB with plain textures", async () => {
+    const { calls, fetch } = queue({ model_mesh: { url: "https://v3.fal.media/rat.glb" } });
+    const fal = new FalStudio({ apiKey: "k", imageModel: "fal-ai/flux/schnell", modelModel: "tripo3d/h3.1/image-to-3d", timeoutMs: 5_000, pollMs: 1, queueUrl: "https://queue.test", fetch });
+    expect(await fal.model("https://fal.media/sketch.jpg")).toEqual({ url: "https://v3.fal.media/rat.glb" });
+    expect(calls[0]).toMatchObject({
+      url: "https://queue.test/tripo3d/h3.1/image-to-3d",
+      body: { image_url: "https://fal.media/sketch.jpg", texture: true, pbr: false, texture_quality: "standard", geometry_quality: "standard" },
+    });
+  });
+
   it("turns a picture into a mesh, under either output name", async () => {
     expect(await make(queue({ model_mesh: { url: "https://fal.media/a.glb" } }).fetch).model("https://fal.media/a.png")).toEqual({ url: "https://fal.media/a.glb" });
     expect(await make(queue({ model_glb: { url: "https://fal.media/b.glb" } }).fetch).model("https://fal.media/a.png")).toEqual({ url: "https://fal.media/b.glb" });

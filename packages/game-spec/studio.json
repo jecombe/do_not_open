@@ -10,7 +10,7 @@
     },
     "model": {
       "name": "3D model",
-      "estimatedCostUsd": "0.50",
+      "estimatedCostUsd": "0.35",
       "rule": "One of the account's sketches turned into a 3D mesh (GLB), drawn in the browser with the game's toon materials."
     }
   },
