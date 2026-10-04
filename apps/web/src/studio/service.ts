@@ -171,21 +171,77 @@ export function randomSeed(): bigint {
   return (BigInt(words[0]!) << 32n) | BigInt(words[1]!);
 }
 
+/** Where the demo keeps its jobs, so a reload finds a running one still running. */
+const DEMO_KEY = "dno.studio.demo";
+
+interface DemoJob extends StudioJob {
+  /** When the stand-in finishes, in ms. */
+  doneAt: number;
+}
+
+interface DemoState {
+  list: DemoJob[];
+  used: { sketches: number; models: number };
+  next: number;
+}
+
+/** How long the demo pretends each kind of job takes, in ms: long enough to watch the wheel. */
+export const DEMO_DELAY_MS: Record<JobKind, number> = { sketch: 6000, model: 14000 };
+
 /**
  * The demo's studio: no AI, no API. A "sketch" is the generator's drawing of a random rat and a
  * "model" the same rat in 3D, after a short wait, so the whole flow can be tried without keys.
- * Units come from packs bought with the mock's USDC (`bought`).
+ * Units come from packs bought with the mock's USDC (`bought`). Jobs are kept in the browser.
  */
 export class LocalStudio implements StudioService {
   readonly demo = true;
-  private readonly list: StudioJob[] = [];
-  private used = { sketches: 0, models: 0 };
-  private next = 1;
+  private state: DemoState;
 
   constructor(
     private readonly bought: () => { sketches: number; models: number },
-    private readonly delayMs = 1600,
-  ) {}
+    private readonly delayMs: Record<JobKind, number> = DEMO_DELAY_MS,
+  ) {
+    this.state = LocalStudio.load();
+  }
+
+  private static load(): DemoState {
+    try {
+      const s = JSON.parse(window.localStorage.getItem(DEMO_KEY) ?? "null") as DemoState | null;
+      if (s && Array.isArray(s.list)) return s;
+    } catch {
+      // Blocked or broken storage: start afresh.
+    }
+    return { list: [], used: { sketches: 0, models: 0 }, next: 1 };
+  }
+
+  private save(): void {
+    try {
+      window.localStorage.setItem(DEMO_KEY, JSON.stringify(this.state));
+    } catch {
+      // The jobs then last as long as the page.
+    }
+  }
+
+  /** Finishes every job whose time is up. */
+  private settle(): void {
+    const now = Date.now();
+    let changed = false;
+    for (const job of this.state.list) {
+      if (job.status !== "running" || job.doneAt > now) continue;
+      job.status = "done";
+      job.imageUrl =
+        job.kind === "sketch"
+          ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderRatSvg(buildRatSpec(BigInt(job.seed!))))}`
+          : (this.state.list.find((j) => j.id === job.sketchId)?.imageUrl ?? null);
+      changed = true;
+    }
+    if (changed) this.save();
+  }
+
+  private view(job: DemoJob): StudioJob {
+    const { doneAt: _, ...rest } = job;
+    return rest;
+  }
 
   async info(): Promise<StudioInfo> {
     return { enabled: true, paused: null, packs: studio.packs.map((p) => ({ ...p })), allowlisted: null, block: null };
@@ -194,7 +250,7 @@ export class LocalStudio implements StudioService {
   async credits(): Promise<StudioCredits> {
     const b = this.bought();
     const count = (bought: number, used: number): UnitCount => ({ bought, used, left: Math.max(0, bought - used) });
-    return { sketches: count(b.sketches, this.used.sketches), models: count(b.models, this.used.models), block: null };
+    return { sketches: count(b.sketches, this.state.used.sketches), models: count(b.models, this.state.used.models), block: null };
   }
 
   async sketch(prompt: string): Promise<StudioJob> {
@@ -203,42 +259,44 @@ export class LocalStudio implements StudioService {
     if (DEMO_REFUSED.test(words)) throw new StudioError("refused-prompt", "Refused prompt.");
     const credits = await this.credits();
     if (credits.sketches.left < 1) throw new StudioError("no-credits", "No sketch left.");
-    this.used.sketches++;
-    const seed = randomSeed();
-    return this.start({ kind: "sketch", prompt: words, sketchId: null, seed: seed.toString() }, () => ({
-      imageUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderRatSvg(buildRatSpec(seed)))}`,
-    }));
+    this.state.used.sketches++;
+    return this.start({ kind: "sketch", prompt: words, sketchId: null, seed: randomSeed().toString() });
   }
 
   async model(sketchId: string): Promise<StudioJob> {
-    const sketch = this.list.find((j) => j.id === sketchId && j.kind === "sketch" && j.status === "done");
+    this.settle();
+    const sketch = this.state.list.find((j) => j.id === sketchId && j.kind === "sketch" && j.status === "done");
     if (!sketch) throw new StudioError("bad-prompt", "Unknown sketch.");
     const credits = await this.credits();
     if (credits.models.left < 1) throw new StudioError("no-credits", "No model left.");
-    this.used.models++;
-    return this.start({ kind: "model", prompt: sketch.prompt, sketchId, seed: sketch.seed }, () => ({ imageUrl: sketch.imageUrl }));
+    this.state.used.models++;
+    return this.start({ kind: "model", prompt: sketch.prompt, sketchId, seed: sketch.seed });
   }
 
   async jobs(): Promise<StudioJob[]> {
-    return this.list.map((j) => ({ ...j })).reverse();
+    this.settle();
+    return this.state.list.map((j) => this.view(j)).reverse();
   }
 
   async job(id: string): Promise<StudioJob> {
-    const job = this.list.find((j) => j.id === id);
+    this.settle();
+    const job = this.state.list.find((j) => j.id === id);
     if (!job) throw new StudioError("unreachable", "Unknown job.");
-    return { ...job };
+    return this.view(job);
   }
 
   async adopt(jobId: string): Promise<RatAdoption> {
-    const job = this.list.find((j) => j.id === jobId && j.kind === "model" && j.status === "done");
+    this.settle();
+    const job = this.state.list.find((j) => j.id === jobId && j.kind === "model" && j.status === "done");
     if (!job) throw new StudioError("adopt-unavailable", "Unknown model.");
     return { job: job.id, uri: `${DEMO_RAT_URI}${job.seed}`, deadline: Math.floor(Date.now() / 1000) + 600, signature: "0x", priceUsdc: studio.rats.mint.modelPriceUsdc };
   }
 
-  private start(fields: Pick<StudioJob, "kind" | "prompt" | "sketchId" | "seed">, finish: () => Partial<StudioJob>): StudioJob {
-    const job: StudioJob = { id: `demo-${this.next++}`, status: "running", imageUrl: null, modelUrl: null, error: null, createdAt: Math.floor(Date.now() / 1000), ...fields };
-    this.list.push(job);
-    setTimeout(() => Object.assign(job, { status: "done" }, finish()), this.delayMs);
-    return { ...job };
+  private start(fields: Pick<StudioJob, "kind" | "prompt" | "sketchId" | "seed">): StudioJob {
+    const now = Date.now();
+    const job: DemoJob = { id: `demo-${this.state.next++}`, status: "running", imageUrl: null, modelUrl: null, error: null, createdAt: Math.floor(now / 1000), doneAt: now + this.delayMs[fields.kind], ...fields };
+    this.state.list.push(job);
+    this.save();
+    return this.view(job);
   }
 }
