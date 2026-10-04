@@ -196,13 +196,13 @@
      "id": "fees-0",
      "section": "fees",
      "heading": null,
-     "text": "Everything in the game is priced in USDC, a dollar stablecoin, and most of it is paid in cUSDC, its encrypted form: nobody but you can read your balance or follow your payments. Here is every fee, who receives it, and what it pays for.\nPlayers pay fees in USDC; they go to the collection's treasury, except 70% of a paid shake, which goes to the box's holder; the treasury pays Zama for decryptions and the servers\nDollars come in through three doors and almost all of them land in the treasury. The treasury pays Zama for the decryptions players do not pay for themselves: their free daily ones, and every public one.\nWhat you pay for | Price | Where it goes\nMinting a box | 5 USDC a box | The collection's treasury\nOpening a box | 1 USDC | The collection's treasury\nPetting a cat | 0.5 USDC | The collection's treasury"
+     "text": "Everything in the game is priced in USDC, a dollar stablecoin, and most of it is paid in cUSDC, its encrypted form: nobody but you can read your balance or follow your payments. Here is every fee, who receives it, and what it pays for.\nPlayers pay fees in USDC; they go to the collection's treasury, except 70% of a paid shake, which goes to the box's holder; the treasury pays Zama for decryptions and the servers\nDollars come in through three doors and almost all of them land in the treasury. The treasury pays Zama for the decryptions players do not pay for themselves: their free daily ones, and every public one. The studio's packs and the rats' adoptions, in the table below, land in the treasury the same way.\nWhat you pay for | Price | Where it goes\nMinting a box | 5 USDC a box | The collection's treasury\nOpening a box | 1 USDC | The collection's treasury"
     },
     {
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Shaking someone else's box | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury. An empty id has no holder: it still shows a trait, and the 70% goes to the treasury too\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
+     "text": "Petting a cat | 0.5 USDC | The collection's treasury\nShaking someone else's box | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury. An empty id has no holder: it still shows a trait, and the 70% goes to the treasury too\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA studio pack (AI sketches and 3D models) | 2 USDC (Starter) or 8 USDC (Litter) | The treasury, which pays the AI services out of it\nAdopting a studio rat | 1 USDC, 3 USDC for an AI rat | The treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
     },
     {
      "id": "fees-2",
@@ -268,7 +268,7 @@
      "id": "croquettes-1",
      "section": "croquettes",
      "heading": null,
-     "text": "Welcome bags 1,000,000 In the Pantry. One bag for each box that can ever exist.\nMarket 4,000,000 Put in the public pool on its own, with no USDC, and locked there for good.\nTreasury 5,000,000 Plain CROQ kept for events and more liquidity later."
+     "text": "Welcome bags 1,000,000 In the Pantry. One bag for each box that can ever exist.\nMarket 4,000,000 Put in the public pool on its own, with no USDC, and locked there for good.\nTreasury 5,000,000 Plain CROQ kept for events and more liquidity later; 500,000 of it went to the rats' pantry."
     },
     {
      "id": "croquettes-2",
@@ -280,7 +280,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Croquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire\nEvery croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
+     "text": "The rats you adopt in the studio earn croquettes too, but not from the Pantry: each one gets 10 plain CROQ a day from the rats' own pantry, collected from \"My rats\", 7 days at most between two collections. Plain, not confidential: who owns a rat is public, so what it earns may be. That pantry got 500,000 CROQ from the treasury; the game reserve that feeds the boxes is not touched.\nCroquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire\nEvery croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
     },
     {
      "id": "croquettes-4",
@@ -605,28 +605,34 @@
      "id": "fees-0",
      "section": "fees",
      "heading": null,
-     "text": "Tout dans le jeu a un prix en USDC, un stablecoin indexé sur le dollar, et presque tout se paie en cUSDC, sa forme chiffrée : personne d'autre que vous ne peut lire votre solde ni suivre vos paiements. Voici chaque frais, qui le reçoit, et ce qu'il paie.\nLes joueurs paient des frais en USDC ; ils vont à la trésorerie de la collection, sauf 70 % d'un secouage payant, qui vont au détenteur de la boîte ; la trésorerie paie Zama pour les déchiffrements, et les serveurs\nLes dollars entrent par trois portes et presque tous finissent dans la trésorerie. La trésorerie paie Zama pour les déchiffrements que les joueurs ne paient pas eux-mêmes : leurs gratuits du jour, et chaque déchiffrement public.\nCe que vous payez | Prix | Où ça va\nMinter une boîte | 5 USDC la boîte | La trésorerie de la collection\nOuvrir une boîte | 1 USDC | La trésorerie de la collection"
+     "text": "Tout dans le jeu a un prix en USDC, un stablecoin indexé sur le dollar, et presque tout se paie en cUSDC, sa forme chiffrée : personne d'autre que vous ne peut lire votre solde ni suivre vos paiements. Voici chaque frais, qui le reçoit, et ce qu'il paie.\nLes joueurs paient des frais en USDC ; ils vont à la trésorerie de la collection, sauf 70 % d'un secouage payant, qui vont au détenteur de la boîte ; la trésorerie paie Zama pour les déchiffrements, et les serveurs\nLes dollars entrent par trois portes et presque tous finissent dans la trésorerie. La trésorerie paie Zama pour les déchiffrements que les joueurs ne paient pas eux-mêmes : leurs gratuits du jour, et chaque déchiffrement public. Les packs du studio et les adoptions de rats, dans le tableau ci-dessous, arrivent de la même façon à la trésorerie.\nCe que vous payez | Prix | Où ça va"
     },
     {
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Caresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie. Un id vide n'a pas de détenteur : il montre quand même un trait, et les 70 % vont aussi à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien\nSecouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction"
+     "text": "Minter une boîte | 5 USDC la boîte | La trésorerie de la collection\nOuvrir une boîte | 1 USDC | La trésorerie de la collection\nCaresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie. Un id vide n'a pas de détenteur : il montre quand même un trait, et les 70 % vont aussi à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn pack du studio (croquis et modèles 3D par IA) | 2 USDC (Starter) ou 8 USDC (Litter) | La trésorerie, qui paie les services d'IA avec\nAdopter un rat du studio | 1 USDC, 3 USDC pour un rat IA | La trésorerie"
     },
     {
      "id": "fees-2",
      "section": "fees",
      "heading": null,
-     "text": "Pourquoi les déchiffrements coûtent quelque chose : lire une valeur chiffrée demande du travail au réseau de Zama. Les parties qui se partagent la clé de déchiffrement doivent chacune y prendre part, et Zama le facture, pour chaque valeur lue, d'un dixième de centime à dix centimes selon la formule. Vérifier la preuve qui accompagne une valeur chiffrée par votre navigateur coûte cinq fois plus. Il le facture à la collection, pas à vous. Secouer, retrouver vos boîtes, lire votre propre solde, le résultat d'un duel : chacun est un déchiffrement. Minter, nourrir un chat ou envoyer des croquettes : chacun chiffre une valeur."
+     "text": "Un repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien\nSecouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction"
     },
     {
      "id": "fees-3",
      "section": "fees",
      "heading": null,
-     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés au bureau de change. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie. Dans le jeu, le compteur Déchiffrements en haut à droite montre ce qu'il reste (gratuits du jour, plus crédits) : il clignote quand vous arrivez au bout, passe au rouge à zéro, et un clic ouvre le bureau de change pour en racheter."
+     "text": "Pourquoi les déchiffrements coûtent quelque chose : lire une valeur chiffrée demande du travail au réseau de Zama. Les parties qui se partagent la clé de déchiffrement doivent chacune y prendre part, et Zama le facture, pour chaque valeur lue, d'un dixième de centime à dix centimes selon la formule. Vérifier la preuve qui accompagne une valeur chiffrée par votre navigateur coûte cinq fois plus. Il le facture à la collection, pas à vous. Secouer, retrouver vos boîtes, lire votre propre solde, le résultat d'un duel : chacun est un déchiffrement. Minter, nourrir un chat ou envoyer des croquettes : chacun chiffre une valeur."
     },
     {
      "id": "fees-4",
+     "section": "fees",
+     "heading": null,
+     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés au bureau de change. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie. Dans le jeu, le compteur Déchiffrements en haut à droite montre ce qu'il reste (gratuits du jour, plus crédits) : il clignote quand vous arrivez au bout, passe au rouge à zéro, et un clic ouvre le bureau de change pour en racheter."
+    },
+    {
+     "id": "fees-5",
      "section": "fees",
      "heading": null,
      "text": "La trésorerie paie ce qui fait tourner le jeu : les frais de Zama pour chaque déchiffrement gratuit et chaque déchiffrement public, et les serveurs qui suivent la chaîne pour que le site reste rapide. Le reste va au projet. Personne ne peut lire les cUSDC qu'elle reçoit, propriétaire compris : lus après chaque paiement, ils trahiraient la quantité cachée de chaque mint, et donc qui a acheté quelles boîtes. Le propriétaire les retire au plus une fois tous les 7 jours, et n'apprend donc jamais que des sommes hebdomadaires. Les frais de 1 USDC d'une ouverture attendent qu'elle se règle : ils rejoignent la trésorerie quand la boîte s'ouvre, et reviennent à celui qui l'ouvrait si la boîte intriquée avec elle l'a ouverte d'abord."
@@ -683,7 +689,7 @@
      "id": "croquettes-1",
      "section": "croquettes",
      "heading": null,
-     "text": "Réserve de jeu 10 000 000 Dans le Garde-manger. Paie le ronron quotidien, et récupère une part de chaque repas.\nSacs de bienvenue 1 000 000 Dans le Garde-manger. Un sac pour chaque boîte qui pourra exister.\nMarché 4 000 000 Versé seul dans le pool public, sans USDC, et bloqué là pour toujours.\nTrésorerie 5 000 000 Du CROQ ordinaire gardé pour des événements et plus de liquidité plus tard."
+     "text": "Réserve de jeu 10 000 000 Dans le Garde-manger. Paie le ronron quotidien, et récupère une part de chaque repas.\nSacs de bienvenue 1 000 000 Dans le Garde-manger. Un sac pour chaque boîte qui pourra exister.\nMarché 4 000 000 Versé seul dans le pool public, sans USDC, et bloqué là pour toujours.\nTrésorerie 5 000 000 Du CROQ ordinaire gardé pour des événements et plus de liquidité plus tard ; 500 000 sont allés au garde-manger des rats."
     },
     {
      "id": "croquettes-2",
@@ -695,34 +701,40 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Les croquettes vont de la réserve aux joueurs et des joueurs à leurs chats ; chaque repas est partagé entre la trésorerie, la réserve et le feu\nChaque croquette du Garde-manger est dans exactement un tas chiffré : la réserve, la part de la trésorerie, ou le tas brûlé. Un repas ne laisse rien dans le chat, sauf du poids. Les croquettes brûlées restent bloquées dans le Garde-manger ; aucune fonction ne peut les déplacer, et personne ne peut lire combien il y en a."
+     "text": "Les rats que vous adoptez dans le studio gagnent aussi des croquettes, mais pas dans le Pantry : chacun reçoit 10 CROQ classiques par jour du garde-manger des rats, à récolter depuis « Mes rats », 7 jours au plus entre deux récoltes. Classiques, pas confidentielles : le propriétaire d'un rat est public, ce qu'il gagne peut l'être aussi. Ce garde-manger a reçu 500 000 CROQ de la trésorerie ; la réserve du jeu qui nourrit les boîtes n'est pas touchée.\nLes croquettes vont de la réserve aux joueurs et des joueurs à leurs chats ; chaque repas est partagé entre la trésorerie, la réserve et le feu"
     },
     {
      "id": "croquettes-4",
      "section": "croquettes",
      "heading": null,
-     "text": "Seul le détenteur nourrit son chat : au plus 2 repas et 1 000 croquettes par jour, quelle que soit la répartition. Qui détient le chat, combien de repas il a eus aujourd'hui et le montant sont tous vérifiés sous chiffrement : un repas qui dépasse les limites, ou servi par quelqu'un qui ne détient pas le chat, déplace 0, sans bruit. Une offre qui dépasse ce qui reste du jour est ramenée à ce reste. Ton navigateur chiffre le montant et le chat mange tout : son poids augmente d'autant, chiffré, et personne ne peut le lire tant que la boîte est scellée, détenteur compris. Les croquettes sont partagées : 20 % pour la trésorerie de la collection, 60 % retournent à la réserve qui paie le ronron, 20 % sont brûlés. Personne ne peut lire la part de la trésorerie entre deux collectes, trésorerie comprise : lue après chaque repas, elle dirait qui a nourri quel chat, et de combien. Elle lui est envoyée au plus une fois tous les 7 jours. Si tu en as moins que ce que tu offres, le repas ne déplace rien, sans erreur ni indice. Le repas lui-même est public et nomme celui qui le sert, et l'app ne nourrit que les chats que tu détiens : un repas montre donc que tu détiens ce chat."
+     "text": "Chaque croquette du Garde-manger est dans exactement un tas chiffré : la réserve, la part de la trésorerie, ou le tas brûlé. Un repas ne laisse rien dans le chat, sauf du poids. Les croquettes brûlées restent bloquées dans le Garde-manger ; aucune fonction ne peut les déplacer, et personne ne peut lire combien il y en a."
     },
     {
      "id": "croquettes-5",
      "section": "croquettes",
      "heading": null,
-     "text": "Une fois la boîte ouverte, n'importe qui peut peser le chat : son poids est déchiffré publiquement et fixe sa corpulence. Chaque chat a aussi sa propre tolérance, tirée de sa graine. Personne ne peut la connaître tant que la graine est chiffrée, et quand elle devient publique le chat a fini de manger. Pesé à sa tolérance ou au-delà, le chat est malade : un trophée ultra rare, jamais une mort.\nCorpulence | Croquettes mangées | Jours au plafond quotidien | Score\nMaigre | 0 – 0 | – | +0\nNormal | 1 – 9 999 | 1 | +0\nDodu | 10 000 – 49 999 | 10 | +100\nGros | 50 000 – 149 999 | 50 | +300\nÉnorme | 150 000+ | 150 | +700\nMalade (une limite bien à lui) | 300 000 – 600 000 | 300 – 600 | +2000"
+     "text": "Seul le détenteur nourrit son chat : au plus 2 repas et 1 000 croquettes par jour, quelle que soit la répartition. Qui détient le chat, combien de repas il a eus aujourd'hui et le montant sont tous vérifiés sous chiffrement : un repas qui dépasse les limites, ou servi par quelqu'un qui ne détient pas le chat, déplace 0, sans bruit. Une offre qui dépasse ce qui reste du jour est ramenée à ce reste. Ton navigateur chiffre le montant et le chat mange tout : son poids augmente d'autant, chiffré, et personne ne peut le lire tant que la boîte est scellée, détenteur compris. Les croquettes sont partagées : 20 % pour la trésorerie de la collection, 60 % retournent à la réserve qui paie le ronron, 20 % sont brûlés. Personne ne peut lire la part de la trésorerie entre deux collectes, trésorerie comprise : lue après chaque repas, elle dirait qui a nourri quel chat, et de combien. Elle lui est envoyée au plus une fois tous les 7 jours. Si tu en as moins que ce que tu offres, le repas ne déplace rien, sans erreur ni indice. Le repas lui-même est public et nomme celui qui le sert, et l'app ne nourrit que les chats que tu détiens : un repas montre donc que tu détiens ce chat."
     },
     {
      "id": "croquettes-6",
      "section": "croquettes",
      "heading": null,
-     "text": "Le poids suit la boîte, et sa réserve aussi. Un acheteur ne sait rien de ses repas : ni combien, ni la quantité, ni la distance qui sépare le chat de sa tolérance. Le vendeur sait au moins ce qu'il a servi lui-même. Le marché fait le prix du reste.\nPersonne ne peut lire un poids avant l'ouverture, détenteur compris, pour la même raison que personne n'a jamais accès à une graine : un droit d'accès ne se reprend pas, donc un ancien détenteur continuerait à le lire après une vente. Ce qui reste secret, et ce qui ne l'est pas :\nInformation | Qui peut le lire\nTon solde de cCROQ | Toi\nLe montant d'un transfert, d'un repas ou d'une réclamation | Les deux parties\nLe poids d'un chat | Personne tant que la boîte est scellée. Tout le monde une fois le chat pesé\nCombien a été brûlé | Personne"
+     "text": "Une fois la boîte ouverte, n'importe qui peut peser le chat : son poids est déchiffré publiquement et fixe sa corpulence. Chaque chat a aussi sa propre tolérance, tirée de sa graine. Personne ne peut la connaître tant que la graine est chiffrée, et quand elle devient publique le chat a fini de manger. Pesé à sa tolérance ou au-delà, le chat est malade : un trophée ultra rare, jamais une mort.\nCorpulence | Croquettes mangées | Jours au plafond quotidien | Score\nMaigre | 0 – 0 | – | +0\nNormal | 1 – 9 999 | 1 | +0\nDodu | 10 000 – 49 999 | 10 | +100\nGros | 50 000 – 149 999 | 50 | +300\nÉnorme | 150 000+ | 150 | +700\nMalade (une limite bien à lui) | 300 000 – 600 000 | 300 – 600 | +2000"
     },
     {
      "id": "croquettes-7",
      "section": "croquettes",
      "heading": null,
-     "text": "Qui a essayé de nourrir quel chat | Tout le monde, et comme l'app ne nourrit que tes chats, que tu le détiens. Si ça a compté : celui qui a nourri seulement\nQui a réclamé, et pour quelles boîtes | Tout le monde, mais l'app réclame dix numéros de boîte à la suite à chaque fois, donc pas lesquels sont à toi. Combien : lui seul\nCe que pèse un chat ouvert, et s'il est malade | Tout le monde\nEmballer, déballer, échanges sur le marché | Tout le monde, montants compris\nL'offre totale | Tout le monde. Combien circule encore : personne\nLa part de la trésorerie sur les repas | Personne, trésorerie comprise. Elle est collectée au plus une fois tous les 7 jours\nIl n'y a pas de prix officiel. Leur valeur apparaît indirectement, dans le prix d'un chat scellé bien lourd."
+     "text": "Le poids suit la boîte, et sa réserve aussi. Un acheteur ne sait rien de ses repas : ni combien, ni la quantité, ni la distance qui sépare le chat de sa tolérance. Le vendeur sait au moins ce qu'il a servi lui-même. Le marché fait le prix du reste.\nPersonne ne peut lire un poids avant l'ouverture, détenteur compris, pour la même raison que personne n'a jamais accès à une graine : un droit d'accès ne se reprend pas, donc un ancien détenteur continuerait à le lire après une vente. Ce qui reste secret, et ce qui ne l'est pas :\nInformation | Qui peut le lire\nTon solde de cCROQ | Toi\nLe montant d'un transfert, d'un repas ou d'une réclamation | Les deux parties\nLe poids d'un chat | Personne tant que la boîte est scellée. Tout le monde une fois le chat pesé\nCombien a été brûlé | Personne"
     },
     {
      "id": "croquettes-8",
+     "section": "croquettes",
+     "heading": null,
+     "text": "Qui a essayé de nourrir quel chat | Tout le monde, et comme l'app ne nourrit que tes chats, que tu le détiens. Si ça a compté : celui qui a nourri seulement\nQui a réclamé, et pour quelles boîtes | Tout le monde, mais l'app réclame dix numéros de boîte à la suite à chaque fois, donc pas lesquels sont à toi. Combien : lui seul\nCe que pèse un chat ouvert, et s'il est malade | Tout le monde\nEmballer, déballer, échanges sur le marché | Tout le monde, montants compris\nL'offre totale | Tout le monde. Combien circule encore : personne\nLa part de la trésorerie sur les repas | Personne, trésorerie comprise. Elle est collectée au plus une fois tous les 7 jours\nIl n'y a pas de prix officiel. Leur valeur apparaît indirectement, dans le prix d'un chat scellé bien lourd."
+    },
+    {
+     "id": "croquettes-9",
      "section": "croquettes",
      "heading": null,
      "text": "Le marché public est un pool Uniswap où le CROQ s'échange contre de l'USDC. La collection n'y a mis que des croquettes, aucun dollar : elles se vendent à partir de 0,001 USDC pièce, en montant, et jamais moins cher, car vendre ne rend que l'USDC que des acheteurs ont apporté. Tant que personne n'a acheté, il n'y a rien contre quoi vendre, et le bureau de change le dit. Les croquettes du pool y sont bloquées pour toujours : personne ne peut les retirer, pas même la collection. Chaque échange paie au pool 1 % de frais, qui vont à la trésorerie de la collection."
@@ -1038,19 +1050,19 @@
      "id": "fees-0",
      "section": "fees",
      "heading": null,
-     "text": "Todo en el juego tiene precio en USDC, una stablecoin en dólares, y casi todo se paga en cUSDC, su forma cifrada: nadie más que tú puede leer tu saldo ni seguir tus pagos. Aquí está cada tarifa, quién la recibe y para qué sirve.\nLos jugadores pagan las tarifas en USDC; van a la tesorería de la colección, salvo el 70 % de una agitada de pago, que va al titular de la caja; la tesorería paga a Zama los descifrados y los servidores\nLos dólares entran por tres puertas y casi todos acaban en la tesorería. La tesorería paga a Zama los descifrados que los jugadores no pagan ellos mismos: sus gratuitos de cada día, y todos los públicos.\nLo que pagas | Precio | Adónde va\nMintear una caja | 5 USDC por caja | La tesorería de la colección\nAbrir una caja | 1 USDC | La tesorería de la colección\nAcariciar a un gato | 0,5 USDC | La tesorería de la colección"
+     "text": "Todo en el juego tiene precio en USDC, una stablecoin en dólares, y casi todo se paga en cUSDC, su forma cifrada: nadie más que tú puede leer tu saldo ni seguir tus pagos. Aquí está cada tarifa, quién la recibe y para qué sirve.\nLos jugadores pagan las tarifas en USDC; van a la tesorería de la colección, salvo el 70 % de una agitada de pago, que va al titular de la caja; la tesorería paga a Zama los descifrados y los servidores\nLos dólares entran por tres puertas y casi todos acaban en la tesorería. La tesorería paga a Zama los descifrados que los jugadores no pagan ellos mismos: sus gratuitos de cada día, y todos los públicos. Los packs del estudio y las adopciones de ratas, en la tabla de abajo, llegan igual a la tesorería.\nLo que pagas | Precio | Adónde va\nMintear una caja | 5 USDC por caja | La tesorería de la colección\nAbrir una caja | 1 USDC | La tesorería de la colección"
     },
     {
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Agitar la caja de otro | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería. Un id vacío no tiene titular: muestra igualmente un rasgo, y el 70 % también va a la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario\nAgitar tu propia caja, la comprobación de vida, entrelazar, los duelos, enviar una caja | Gratis | Solo el gas de la red, como cualquier transacción"
+     "text": "Acariciar a un gato | 0,5 USDC | La tesorería de la colección\nAgitar la caja de otro | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería. Un id vacío no tiene titular: muestra igualmente un rasgo, y el 70 % también va a la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUn pack del estudio (bocetos y modelos 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesorería, que paga con él los servicios de IA\nAdoptar una rata del estudio | 1 USDC, 3 USDC por una rata de IA | La tesorería\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario"
     },
     {
      "id": "fees-2",
      "section": "fees",
      "heading": null,
-     "text": "Por qué los descifrados cuestan algo: leer algo cifrado le da trabajo a la red de Zama. Cada una de las partes que comparten la clave de descifrado tiene que intervenir, y Zama lo cobra, por cada valor leído, desde una décima de céntimo hasta diez céntimos según el plan. Verificar la prueba que acompaña a un valor que cifra tu navegador cuesta cinco veces más. Se lo cobra a la colección, no a ti. Agitar, encontrar tus cajas, leer tu propio saldo, el resultado de un duelo: cada uno es un descifrado. Mintear, alimentar a un gato o enviar croquetas: cada uno cifra un valor."
+     "text": "Agitar tu propia caja, la comprobación de vida, entrelazar, los duelos, enviar una caja | Gratis | Solo el gas de la red, como cualquier transacción\nPor qué los descifrados cuestan algo: leer algo cifrado le da trabajo a la red de Zama. Cada una de las partes que comparten la clave de descifrado tiene que intervenir, y Zama lo cobra, por cada valor leído, desde una décima de céntimo hasta diez céntimos según el plan. Verificar la prueba que acompaña a un valor que cifra tu navegador cuesta cinco veces más. Se lo cobra a la colección, no a ti. Agitar, encontrar tus cajas, leer tu propio saldo, el resultado de un duelo: cada uno es un descifrado. Mintear, alimentar a un gato o enviar croquetas: cada uno cifra un valor."
     },
     {
      "id": "fees-3",
@@ -1116,7 +1128,7 @@
      "id": "croquettes-1",
      "section": "croquettes",
      "heading": null,
-     "text": "Reserva del juego 10.000.000 En la Despensa. Paga el ronroneo diario, y recupera parte de cada comida.\nBolsas de bienvenida 1.000.000 En la Despensa. Una bolsa para cada caja que pueda existir.\nMercado 4.000.000 Aportado solo al pool público, sin USDC, y bloqueado allí para siempre.\nTesorería 5.000.000 CROQ corriente guardado para eventos y más liquidez más adelante."
+     "text": "Reserva del juego 10.000.000 En la Despensa. Paga el ronroneo diario, y recupera parte de cada comida.\nBolsas de bienvenida 1.000.000 En la Despensa. Una bolsa para cada caja que pueda existir.\nMercado 4.000.000 Aportado solo al pool público, sin USDC, y bloqueado allí para siempre.\nTesorería 5.000.000 CROQ corriente guardado para eventos y más liquidez más adelante; 500.000 fueron a la despensa de las ratas."
     },
     {
      "id": "croquettes-2",
@@ -1128,7 +1140,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Las croquetas van de la reserva a los jugadores y de los jugadores a sus gatos; cada comida se reparte entre la tesorería, la reserva y el fuego\nCada croqueta de la Despensa está en exactamente un montón cifrado: la reserva, la parte de la tesorería o el quemado. Una comida no deja nada en el gato salvo peso. Las croquetas quemadas quedan bloqueadas en la Despensa; ninguna función puede moverlas y nadie puede leer cuántas hay."
+     "text": "Las ratas que adoptas en el estudio también ganan croquetas, pero no del Pantry: cada una recibe 10 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas», 7 días como mucho entre dos recogidas. Normales, no confidenciales: el dueño de una rata es público, así que lo que gana también puede serlo. Esa despensa recibió 500.000 CROQ de la tesorería; la reserva del juego que alimenta las cajas no se toca.\nLas croquetas van de la reserva a los jugadores y de los jugadores a sus gatos; cada comida se reparte entre la tesorería, la reserva y el fuego\nCada croqueta de la Despensa está en exactamente un montón cifrado: la reserva, la parte de la tesorería o el quemado. Una comida no deja nada en el gato salvo peso. Las croquetas quemadas quedan bloqueadas en la Despensa; ninguna función puede moverlas y nadie puede leer cuántas hay."
     },
     {
      "id": "croquettes-4",
@@ -1465,19 +1477,19 @@
      "id": "fees-0",
      "section": "fees",
      "heading": null,
-     "text": "Tutto nel gioco ha un prezzo in USDC, una stablecoin in dollari, e quasi tutto si paga in cUSDC, la sua forma cifrata: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti. Ecco ogni commissione, chi la riceve, e cosa paga.\nI giocatori pagano le commissioni in USDC; vanno alla tesoreria della collezione, tranne il 70% di uno scuotimento a pagamento, che va a chi detiene la scatola; la tesoreria paga Zama per le decifrature e i server\nI dollari entrano da tre porte e quasi tutti finiscono nella tesoreria. La tesoreria paga Zama per le decifrature che i giocatori non pagano di tasca propria: quelle gratuite di ogni giorno, e ogni decifratura pubblica.\nCosa paghi | Prezzo | Dove va\nMintare una scatola | 5 USDC a scatola | La tesoreria della collezione\nAprire una scatola | 1 USDC | La tesoreria della collezione\nAccarezzare un gatto | 0,5 USDC | La tesoreria della collezione"
+     "text": "Tutto nel gioco ha un prezzo in USDC, una stablecoin in dollari, e quasi tutto si paga in cUSDC, la sua forma cifrata: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti. Ecco ogni commissione, chi la riceve, e cosa paga.\nI giocatori pagano le commissioni in USDC; vanno alla tesoreria della collezione, tranne il 70% di uno scuotimento a pagamento, che va a chi detiene la scatola; la tesoreria paga Zama per le decifrature e i server\nI dollari entrano da tre porte e quasi tutti finiscono nella tesoreria. La tesoreria paga Zama per le decifrature che i giocatori non pagano di tasca propria: quelle gratuite di ogni giorno, e ogni decifratura pubblica. I pack dello studio e le adozioni dei ratti, nella tabella qui sotto, arrivano allo stesso modo in tesoreria.\nCosa paghi | Prezzo | Dove va\nMintare una scatola | 5 USDC a scatola | La tesoreria della collezione"
     },
     {
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Scuotere la scatola di qualcun altro | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria. Un id vuoto non ha detentore: mostra comunque un tratto, e anche il 70% va alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane\nScuotere la propria scatola, il controllo di vita, intrecciare, i duelli, inviare una scatola | Gratis | Solo il gas della rete, come ogni transazione"
+     "text": "Aprire una scatola | 1 USDC | La tesoreria della collezione\nAccarezzare un gatto | 0,5 USDC | La tesoreria della collezione\nScuotere la scatola di qualcun altro | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria. Un id vuoto non ha detentore: mostra comunque un tratto, e anche il 70% va alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pack dello studio (schizzi e modelli 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesoreria, che ci paga i servizi di IA\nAdottare un ratto dello studio | 1 USDC, 3 USDC per un ratto IA | La tesoreria\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane"
     },
     {
      "id": "fees-2",
      "section": "fees",
      "heading": null,
-     "text": "Perché le decifrature costano qualcosa: leggere qualcosa di cifrato richiede lavoro alla rete di Zama. Le parti che condividono la chiave di decifratura devono partecipare tutte, e Zama lo fa pagare, per ogni valore letto, da un decimo di centesimo a dieci centesimi a seconda del piano. Verificare la prova che accompagna un valore cifrato dal tuo browser costa cinque volte tanto. Lo fa pagare alla collezione, non a te. Scuotere, trovare le tue scatole, leggere il tuo saldo, il risultato di un duello: ognuna di queste è una decifratura. Mintare, nutrire un gatto o inviare crocchette: ognuna cifra un valore."
+     "text": "Scuotere la propria scatola, il controllo di vita, intrecciare, i duelli, inviare una scatola | Gratis | Solo il gas della rete, come ogni transazione\nPerché le decifrature costano qualcosa: leggere qualcosa di cifrato richiede lavoro alla rete di Zama. Le parti che condividono la chiave di decifratura devono partecipare tutte, e Zama lo fa pagare, per ogni valore letto, da un decimo di centesimo a dieci centesimi a seconda del piano. Verificare la prova che accompagna un valore cifrato dal tuo browser costa cinque volte tanto. Lo fa pagare alla collezione, non a te. Scuotere, trovare le tue scatole, leggere il tuo saldo, il risultato di un duello: ognuna di queste è una decifratura. Mintare, nutrire un gatto o inviare crocchette: ognuna cifra un valore."
     },
     {
      "id": "fees-3",
@@ -1543,7 +1555,7 @@
      "id": "croquettes-1",
      "section": "croquettes",
      "heading": null,
-     "text": "Riserva di gioco 10.000.000 Nella Dispensa. Paga le fusa quotidiane, e si riprende parte di ogni pasto.\nSacchetti di benvenuto 1.000.000 Nella Dispensa. Un sacchetto per ogni scatola che potrà esistere.\nMercato 4.000.000 Versato da solo nel pool pubblico, senza USDC, e bloccato lì per sempre.\nTesoreria 5.000.000 CROQ normale tenuto per eventi e altra liquidità in futuro."
+     "text": "Riserva di gioco 10.000.000 Nella Dispensa. Paga le fusa quotidiane, e si riprende parte di ogni pasto.\nSacchetti di benvenuto 1.000.000 Nella Dispensa. Un sacchetto per ogni scatola che potrà esistere.\nMercato 4.000.000 Versato da solo nel pool pubblico, senza USDC, e bloccato lì per sempre.\nTesoreria 5.000.000 CROQ normale tenuto per eventi e altra liquidità in futuro; 500.000 sono andati alla dispensa dei ratti."
     },
     {
      "id": "croquettes-2",
@@ -1555,7 +1567,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Le crocchette vanno dalla riserva ai giocatori e dai giocatori ai loro gatti; ogni pasto si divide tra tesoreria, riserva e fuoco\nOgni crocchetta della Dispensa sta esattamente in un mucchio cifrato: la riserva, la parte della tesoreria o quello bruciato. Un pasto non lascia nel gatto altro che peso. Le crocchette bruciate restano bloccate nella Dispensa; nessuna funzione può spostarle e nessuno può leggere quante sono."
+     "text": "I ratti che adotti nello studio guadagnano anche loro crocchette, ma non dal Pantry: ognuno riceve 10 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti», al massimo 7 giorni tra due raccolte. Normali, non confidenziali: chi possiede un ratto è pubblico, quindi anche quello che guadagna può esserlo. Quella dispensa ha ricevuto 500.000 CROQ dalla tesoreria; la riserva del gioco che nutre le scatole non viene toccata.\nLe crocchette vanno dalla riserva ai giocatori e dai giocatori ai loro gatti; ogni pasto si divide tra tesoreria, riserva e fuoco\nOgni crocchetta della Dispensa sta esattamente in un mucchio cifrato: la riserva, la parte della tesoreria o quello bruciato. Un pasto non lascia nel gatto altro che peso. Le crocchette bruciate restano bloccate nella Dispensa; nessuna funzione può spostarle e nessuno può leggere quante sono."
     },
     {
      "id": "croquettes-4",

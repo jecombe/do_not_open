@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { spec } from "@dno/game-spec";
+import { spec, studio } from "@dno/game-spec";
 import { Box, C, Crate, Heads, Lane, Pipe } from "./croq";
 import { useT } from "./i18n";
 
@@ -158,6 +158,8 @@ const FEES = [
   { key: "f4", to: "docs.fees.f4.to" },
   { key: "f5", to: "docs.fees.treasury" },
   { key: "f6", to: "docs.fees.treasury" },
+  { key: "f9", to: "docs.fees.f9.to" },
+  { key: "f10", to: "docs.fees.f10.to" },
   { key: "f7", to: "docs.fees.f7.to" },
   { key: "f8", to: "docs.fees.f8.to" },
 ] as const;
@@ -171,6 +173,10 @@ export function FeeTable() {
     treasury: meal.treasuryBps / 100,
     burn: meal.burnBps / 100,
     reserve: (10_000 - meal.treasuryBps - meal.burnBps) / 100,
+    starter: studio.packs[0]!.priceUsdc,
+    litter: studio.packs[1]!.priceUsdc,
+    seedRat: studio.rats.mint.seedPriceUsdc,
+    modelRat: studio.rats.mint.modelPriceUsdc,
   };
   return (
     <div className="form">

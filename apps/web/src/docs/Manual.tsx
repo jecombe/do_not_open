@@ -343,6 +343,15 @@ export function Manual() {
                 })}
               </p>
             </div>
+            <div className="prose">
+              <p>
+                {t("docs.croq.rats", {
+                  perDay: studio.rats.croquettes.perDay,
+                  maxDays: studio.rats.croquettes.maxDays,
+                  fund: studio.rats.croquettes.fund.toLocaleString(locale),
+                })}
+              </p>
+            </div>
             <TokenFlowFigure />
             <div className="prose">
               <p>
