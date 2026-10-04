@@ -7,20 +7,28 @@ import { appPath, homePath } from "../site";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
 import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY, RAMP_PCT } from "./fees";
+import { BureauFigure } from "./bureau";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
+import { MapFigure } from "./map";
+import { BoxVsRatTable, RatCroquettesFigure, RatFigure, StudioFigure } from "./rats";
 
 const DOCS = `${REPO}/blob/dev/docs`;
 const EXPLORER = "https://sepolia.etherscan.io/address/";
 
 /**
- * Three parts: the manual itself, for players and anyone curious, with no code in it; a short
- * part about the testnet, which goes away at mainnet; and the part for developers.
+ * Six parts. Four for players and anyone curious, with no code in them: a start, the boxes, the
+ * money, the studio and its rats. Then a short part about the testnet, which goes away at
+ * mainnet, and the part for developers. `audience` is what the API's chatbot and lessons know
+ * a part by: "manual" for the players' four.
  */
 export const PARTS = [
-  { key: "manual", sections: ["box", "cats", "seed", "holders", "privacy", "flows", "mechanics", "fees", "exchange", "transfer", "croquettes", "studio", "terms"] },
-  { key: "testnet", sections: ["testnet"] },
-  { key: "dev", sections: ["code", "solana", "more"] },
+  { key: "start", audience: "manual", sections: ["box", "map", "cats", "terms"] },
+  { key: "boxes", audience: "manual", sections: ["seed", "holders", "privacy", "mechanics", "flows", "transfer"] },
+  { key: "money", audience: "manual", sections: ["fees", "exchange", "croquettes"] },
+  { key: "rats", audience: "manual", sections: ["studio", "rats"] },
+  { key: "testnet", audience: "testnet", sections: ["testnet"] },
+  { key: "dev", audience: "dev", sections: ["code", "solana", "more"] },
 ] as const;
 const SECTIONS = PARTS.flatMap((p) => p.sections);
 
@@ -34,6 +42,9 @@ const CONTRACTS = [
   { key: "locker", address: "0x85b827d5F40C15F0842F48C830B956cf8C5Da108" },
   { key: "ramp", address: "0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1" },
   { key: "credits", address: "0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e" },
+  { key: "studio", address: "0x672cf76a68d4f181387B59caA1813eC425c1354C" },
+  { key: "rats", address: "0xd4f8Df0F14Ced442077762cb81e843656BAc3856" },
+  { key: "ratPantry", address: "0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A" },
 ] as const;
 
 /** Highlights the section being read in the routing slip. */
@@ -98,6 +109,28 @@ const REFS = [
   { key: "r9", href: `${REPO}/blob/dev/apps/api/README.md#relayer-proxy` },
 ] as const;
 
+type PartKey = (typeof PARTS)[number]["key"];
+
+/** The title page of a part: its number, its name, what is in it, and its chapters. */
+function PartHead({ part }: { part: PartKey }) {
+  const t = useT();
+  const index = PARTS.findIndex((p) => p.key === part);
+  return (
+    <div className="part" id={`part-${part}`}>
+      <p className="part-no">{t("docs.part", { n: index + 1 })}</p>
+      <h2>{t(`docs.group.${part}`)}</h2>
+      <p>{t(`docs.group.${part}.v`)}</p>
+      <ol className="part-contents">
+        {PARTS[index]!.sections.map((id) => (
+          <li key={id}>
+            <a href={`#${id}`}>{t(`docs.section.${id}`)}</a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function Manual() {
   const t = useT();
   const locale = useLocale();
@@ -105,6 +138,7 @@ export function Manual() {
   const supply = spec.collection.maxSupply.toLocaleString(locale);
   const { economy } = spec;
   const maxPerTx = Number(spec.mechanics.mint?.maxPerTx ?? 10);
+  const rats = { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay, maxDays: studio.rats.croquettes.maxDays, maxSeed: studio.rats.mint.maxSeedRats, maxModel: studio.rats.mint.maxModelRats, perWallet: studio.rats.mint.maxPerWallet, fund: studio.rats.croquettes.fund.toLocaleString(locale) };
   const milestones = spec.collection.milestones.map((m) => m.toLocaleString(locale)).join(", ");
 
   // The tab title and description follow the language too.
@@ -132,7 +166,7 @@ export function Manual() {
         <div>
           <p className="lede">{t("docs.hero.lede", { supply })}</p>
           <p className="hero-links">
-            <a className="stamp-link" href="#seed">
+            <a className="stamp-link" href="#map">
               {t("docs.hero.seed")}
             </a>
             <a href={appPath(locale)}>{t("docs.hero.shake")}</a>
@@ -160,6 +194,8 @@ export function Manual() {
         </nav>
 
         <main>
+          <PartHead part="start" />
+
           <section id="box">
             <h2>{t("docs.section.box")}</h2>
             <div className="prose">
@@ -167,6 +203,14 @@ export function Manual() {
               <p>{t("docs.box.p2")}</p>
               <p>{t("docs.box.p3")}</p>
             </div>
+          </section>
+
+          <section id="map">
+            <h2>{t("docs.section.map")}</h2>
+            <div className="prose">
+              <p>{t("docs.map.p1")}</p>
+            </div>
+            <MapFigure />
           </section>
 
           <section id="cats">
@@ -179,6 +223,17 @@ export function Manual() {
               <p>{t("docs.cats.p2")}</p>
             </div>
           </section>
+
+          <section id="terms">
+            <h2>{t("docs.section.terms")}</h2>
+            <div className="prose">
+              <p>{t("docs.terms.p1")}</p>
+              <p>{t("docs.terms.p2")}</p>
+              <p>{t("docs.terms.p3")}</p>
+            </div>
+          </section>
+
+          <PartHead part="boxes" />
 
           <section id="seed">
             <h2>{t("docs.section.seed")}</h2>
@@ -241,15 +296,6 @@ export function Manual() {
             </div>
           </section>
 
-          <section id="flows">
-            <h2>{t("docs.section.flows")}</h2>
-            <div className="prose">
-              <p>{t("docs.flows.p1")}</p>
-              <p>{t("docs.flows.p2")}</p>
-            </div>
-            <FlowFigure />
-          </section>
-
           <section id="mechanics">
             <h2>{t("docs.section.mechanics")}</h2>
             <div className="form">
@@ -280,6 +326,35 @@ export function Manual() {
             </div>
           </section>
 
+          <section id="flows">
+            <h2>{t("docs.section.flows")}</h2>
+            <div className="prose">
+              <p>{t("docs.flows.p1")}</p>
+              <p>{t("docs.flows.p2")}</p>
+            </div>
+            <FlowFigure />
+          </section>
+
+          <section id="transfer">
+            <h2>{t("docs.section.transfer")}</h2>
+            <div className="prose">
+              <p>{t("docs.transfer.p1")}</p>
+            </div>
+            <ol className="timeline">
+              {(["t1", "t2", "t3", "t4", "t5", "t6"] as const).map((k) => (
+                <li key={k}>
+                  <strong>{t(`docs.transfer.${k}`)}</strong>
+                  <span>{t(`docs.transfer.${k}.v`)}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="prose">
+              <p>{t("docs.transfer.p2")}</p>
+            </div>
+          </section>
+
+          <PartHead part="money" />
+
           <section id="fees">
             <h2>{t("docs.section.fees")}</h2>
             <div className="prose">
@@ -298,28 +373,13 @@ export function Manual() {
             <h2>{t("docs.section.exchange")}</h2>
             <div className="prose">
               <p>{t("docs.exchange.p1")}</p>
+            </div>
+            <BureauFigure />
+            <div className="prose">
               <p>{t("docs.exchange.p2")}</p>
               <p>{t("docs.exchange.p3", { pct: RAMP_PCT })}</p>
               <p>{t("docs.exchange.p4")}</p>
               <p>{t("docs.exchange.p5")}</p>
-            </div>
-          </section>
-
-          <section id="transfer">
-            <h2>{t("docs.section.transfer")}</h2>
-            <div className="prose">
-              <p>{t("docs.transfer.p1")}</p>
-            </div>
-            <ol className="timeline">
-              {(["t1", "t2", "t3", "t4", "t5", "t6"] as const).map((k) => (
-                <li key={k}>
-                  <strong>{t(`docs.transfer.${k}`)}</strong>
-                  <span>{t(`docs.transfer.${k}.v`)}</span>
-                </li>
-              ))}
-            </ol>
-            <div className="prose">
-              <p>{t("docs.transfer.p2")}</p>
             </div>
           </section>
 
@@ -377,30 +437,46 @@ export function Manual() {
             </div>
           </section>
 
+          <PartHead part="rats" />
+
           <section id="studio">
             <h2>{t("docs.section.studio")}</h2>
             <div className="prose">
               <p>{t("docs.studio.p1")}</p>
+            </div>
+            <StudioFigure />
+            <div className="prose">
               <p>{t("docs.studio.p2", { starter: studio.packs[0]!.priceUsdc, litter: studio.packs[1]!.priceUsdc })}</p>
               <p>{t("docs.studio.p3")}</p>
               <p>{t("docs.studio.p4", { min: studio.prompt.minLength, max: studio.prompt.maxLength })}</p>
               <p>{t("docs.studio.p5")}</p>
-              <p>{t("docs.studio.p6", { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay, maxDays: studio.rats.croquettes.maxDays, maxSeed: studio.rats.mint.maxSeedRats, maxModel: studio.rats.mint.maxModelRats, perWallet: studio.rats.mint.maxPerWallet })}</p>
             </div>
           </section>
 
-          <section id="terms">
-            <h2>{t("docs.section.terms")}</h2>
+          <section id="rats">
+            <h2>{t("docs.section.rats")}</h2>
             <div className="prose">
-              <p>{t("docs.terms.p1")}</p>
-              <p>{t("docs.terms.p2")}</p>
-              <p>{t("docs.terms.p3")}</p>
+              <p>{t("docs.rats.p1", rats)}</p>
+              <p>{t("docs.rats.p2", rats)}</p>
+            </div>
+            <RatFigure />
+            <div className="prose">
+              <p>{t("docs.rats.p3")}</p>
+            </div>
+            <BoxVsRatTable />
+            <h3>{t("docs.rats.h.croq")}</h3>
+            <div className="prose">
+              <p>{t("docs.rats.p4", rats)}</p>
+            </div>
+            <RatCroquettesFigure />
+            <h3>{t("docs.rats.h.sniff")}</h3>
+            <div className="prose">
+              <p>{t("docs.rats.p5")}</p>
+              <p>{t("docs.rats.p6")}</p>
             </div>
           </section>
 
-          <div className="part" id="part-testnet">
-            <h2>{t("docs.group.testnet")}</h2>
-          </div>
+          <PartHead part="testnet" />
 
           <section id="testnet">
             <h2>{t("docs.section.testnet")}</h2>
@@ -441,10 +517,7 @@ export function Manual() {
             </div>
           </section>
 
-          <div className="part" id="part-dev">
-            <h2>{t("docs.group.dev")}</h2>
-            <p>{t("docs.group.dev.v")}</p>
-          </div>
+          <PartHead part="dev" />
 
           <section id="code">
             <h2>{t("docs.section.code")}</h2>
@@ -500,6 +573,7 @@ export function Manual() {
               ))}
             </ul>
           </section>
+
         </main>
       </div>
 

@@ -22,6 +22,7 @@ export const C = {
   spectral: "#7de3d0",
   red: "#e0473c",
   kraft: "#b8895a",
+  pink: "#e85d9c",
 };
 
 /**
@@ -33,11 +34,11 @@ function squeeze(text: string, room: number, perChar: number): { textLength?: nu
 }
 
 /** A labelled crate: a title in stencil and one line underneath. */
-export function Crate({ x, y, w, h, title, sub, fill, dashed }: { x: number; y: number; w: number; h: number; title: string; sub: string; fill: string; dashed?: boolean }) {
+export function Crate({ x, y, w, h, title, sub, fill, dashed, symbol }: { x: number; y: number; w: number; h: number; title: string; sub: string; fill: string; dashed?: boolean; symbol?: boolean }) {
   return (
     <g>
       <rect x={x} y={y} width={w} height={h} rx={10} fill={fill} stroke={C.ink} strokeWidth={3} strokeDasharray={dashed ? "8 6" : undefined} />
-      <text x={x + w / 2} y={y + h / 2 - 6} textAnchor="middle" className="croq-svg-title" {...squeeze(title, w - 24, 15)}>
+      <text x={x + w / 2} y={y + h / 2 - 6} textAnchor="middle" className="croq-svg-title" style={symbol ? { textTransform: "none" } : undefined} {...squeeze(title, w - 24, 15)}>
         {title}
       </text>
       <text x={x + w / 2} y={y + h / 2 + 20} textAnchor="middle" className="croq-svg-sub" {...squeeze(sub, w - 20, 8.6)}>
@@ -60,10 +61,10 @@ export function Pipe({ d, label, lx, ly, color = C.tape, anchor = "middle" }: { 
 }
 
 /** A crate for the phone versions: the same box, drawn in HTML so its words wrap. */
-export function Box({ title, sub, fill, dashed }: { title: string; sub: string; fill: string; dashed?: boolean }) {
+export function Box({ title, sub, fill, dashed, symbol }: { title: string; sub: string; fill: string; dashed?: boolean; symbol?: boolean }) {
   return (
     <div className={dashed ? "croq-box is-dashed" : "croq-box"} style={{ background: fill }}>
-      <strong>{title}</strong>
+      <strong style={symbol ? { textTransform: "none" } : undefined}>{title}</strong>
       <span>{sub}</span>
     </div>
   );
@@ -88,7 +89,7 @@ export function Lane({ label, note, color, up, side = "right" }: { label: string
 export function Heads() {
   return (
     <defs>
-      {[C.tape, C.sodium, C.spectral, C.red, C.kraft].map((color) => (
+      {[C.tape, C.sodium, C.spectral, C.red, C.kraft, C.pink].map((color) => (
         <marker key={color} id={`croq-head-${color.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 Z" fill={color} />
         </marker>
@@ -119,7 +120,7 @@ export function TwoTokensFigure() {
 
           <Crate x={30} y={110} w={210} h={96} fill={C.sodium} title={t("fig.croq.two.market")} sub={t("fig.croq.two.marketSub")} />
           <Crate x={330} y={110} w={210} h={96} fill={C.paper} title={symbol} sub={t("fig.croq.two.plainSub")} />
-          <Crate x={690} y={110} w={210} h={96} fill={C.spectral} title={confidentialSymbol} sub={t("fig.croq.two.confSub")} />
+          <Crate x={690} y={110} w={210} h={96} fill={C.spectral} title={confidentialSymbol} sub={t("fig.croq.two.confSub")} symbol />
 
           <Pipe d="M244 142 L326 142" label={t("fig.croq.two.buy")} lx={285} ly={130} color={C.sodium} />
           <Pipe d="M326 176 L244 176" label={t("fig.croq.two.sell")} lx={285} ly={200} color={C.sodium} />
@@ -160,7 +161,7 @@ export function TwoTokensFigure() {
           <p className="croq-zone-head" style={{ color: C.spectral }}>
             {t("fig.croq.two.secret")}
           </p>
-          <Box fill={C.spectral} title={confidentialSymbol} sub={t("fig.croq.two.confSub")} />
+          <Box fill={C.spectral} title={confidentialSymbol} sub={t("fig.croq.two.confSub")} symbol />
           <div className="croq-lanes is-single">
             <Lane color={C.spectral} label={t("fig.croq.two.game")} />
           </div>

@@ -9,8 +9,18 @@
      "part": "manual"
     },
     {
+     "id": "map",
+     "title": "The depot at a glance",
+     "part": "manual"
+    },
+    {
      "id": "cats",
      "title": "Who could be inside",
+     "part": "manual"
+    },
+    {
+     "id": "terms",
+     "title": "The release form",
      "part": "manual"
     },
     {
@@ -29,13 +39,18 @@
      "part": "manual"
     },
     {
+     "id": "mechanics",
+     "title": "Twelve things to do",
+     "part": "manual"
+    },
+    {
      "id": "flows",
      "title": "How things come out",
      "part": "manual"
     },
     {
-     "id": "mechanics",
-     "title": "Twelve things to do",
+     "id": "transfer",
+     "title": "What a sale changes",
      "part": "manual"
     },
     {
@@ -49,11 +64,6 @@
      "part": "manual"
     },
     {
-     "id": "transfer",
-     "title": "What a sale changes",
-     "part": "manual"
-    },
-    {
      "id": "croquettes",
      "title": "Croquettes",
      "part": "manual"
@@ -64,8 +74,8 @@
      "part": "manual"
     },
     {
-     "id": "terms",
-     "title": "The release form",
+     "id": "rats",
+     "title": "The rats",
      "part": "manual"
     },
     {
@@ -97,6 +107,12 @@
      "text": "DO NOT OPEN is a collection of 10,000 NFTs on Ethereum, built with Zama's encryption. Each token is a cardboard box. When a box is minted, the contract draws a random number for it and keeps that number encrypted. The cat inside, its state, its five traits and its rarity are all worked out from that one number. Who holds each box is encrypted too.\nEncrypted here does not mean hidden behind a server or revealed later from a list someone prepared. The number is a ciphertext on-chain from the moment it exists. The contract can still compute with it: compare it, cut a piece out of it, add to it. It does that without ever decrypting it, which is what fully homomorphic encryption is for.\nSo the game is about what you choose to find out, and what that costs you. Shake a box and you learn one thing about it, privately. Open it and everyone learns everything, for good."
     },
     {
+     "id": "map-0",
+     "section": "map",
+     "heading": null,
+     "text": "The game has five counters. One rule tells them apart: what is about a box is encrypted, what is about a rat is not. Money crosses between the two at the bureau de change, and the amount shows at the border.\nDollars buy boxes, studio packs and rats; boxes and rats earn croquettes; croquettes feed the cats. Each card leads to its chapter."
+    },
+    {
      "id": "cats-0",
      "section": "cats",
      "heading": null,
@@ -107,6 +123,24 @@
      "section": "cats",
      "heading": "Tabby",
      "text": "About 1 box in 5\nThe classic. Stripes, strong opinions, and a firm belief that your chair is theirs.\nThe odds under each cat come straight from the game's tables. How a box lands on one of them is the next section."
+    },
+    {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "The first time you connect a wallet, the game hands you a release form, Form DNO-1: the terms of play, eight short clauses. They say plainly what you are walking into. The contracts are experimental software: nobody has audited them, and a bug, an exploit or a hack could lose what you put in, without the creators being liable as far as the law allows. The website is only a window: your boxes, cats and balances live on-chain, so if the site breaks, nothing of yours is lost. Nobody holds your money for you, nothing is refunded, and none of this is an investment."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "You initial each clause, one click each, then sign with your wallet. The signature is free and sends no transaction: your wallet shows a readable message naming your address, the version of the terms and a fingerprint of the full English text. The translations are there to read; the English text is what you sign. The signature is kept as a record of your acceptance, by the game's server when it is reachable, and always in your browser. Without a wallet, nothing is asked: you can look around the whole site, and the form only comes up when a wallet that has not signed it connects. You can close it to keep looking around, or switch to another wallet from it; any action you then ask for (a mint, a shake, a feed) brings it back until it is signed."
+    },
+    {
+     "id": "terms-2",
+     "section": "terms",
+     "heading": null,
+     "text": "Each new wallet signs once, and a new version of the terms is signed again before playing on. To read the form again and see your signature, open the menu and choose Terms of play."
     },
     {
      "id": "seed-0",
@@ -157,6 +191,24 @@
      "text": "Two consequences are deliberate. A holder who shakes often enough learns all five traits: a shake shows one of five at random, so about eleven cover them. What stays hidden even from the holder is the state, which is worth up to a third of the score, and the affection. And duels leak order: each one publishes which of two boxes scores higher. Putting a box up for a duel also shows that you hold it: that is how the duel shelf only carries boxes someone holds. That is the price of duelling."
     },
     {
+     "id": "mechanics-0",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Action | Who | Cost | What becomes public\nMint | Anyone, hiding how many among 1 to 10 ids | 5 cUSDC a box | The buyer and how many ids, not how many are real\nShake | The holder | Gas only | That someone shook, not whether they hold it\nPaid shake (or a rat's sniff) | Anyone | 2.5 cUSDC, 70% waits in the box for its holder | That someone paid to shake\nCollect shake earnings | Anyone, for the boxes they hold | Gas only | Ten box numbers in a row, not which or how much\nPet | Anyone | 0.5 cUSDC | That someone petted it, not whether it counted or what it earned\nAlive check | The holder, once | Gas only | One bit, and that the caller held the box\nEntangle | Both holders | Gas only | The link, and that both held their boxes. Opening one then opens both"
+    },
+    {
+     "id": "mechanics-1",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Duel | The holder puts it up, any holder takes it up | Gas only | That the challenger holds the box, then who won and one trait of the loser, or a void duel\nOpen | The holder | 1 cUSDC | Everything, permanently, and who opened it\nFeed croquettes | The holder | Up to 1,000 croquettes a day, all eaten | Who fed which cat (the app only feeds your own), not whether it counted or what it held\nClaim croquettes | Anyone | Gas only | Ten box numbers in a row, not which are yours or how much\nWeigh an opened cat | Anyone | Gas only | Its weight, its build, whether it is sick\nPetting adds a hidden amount between 0 and 3 to a hidden counter, and nothing at all if the pet was not paid. So the pets anyone can see on-chain say nothing about the counter, not even how many counted. Past 10, the accessory turns golden when the box is opened, and a cat with no accessory gets a golden bell collar."
+    },
+    {
+     "id": "mechanics-2",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Every price is in cUSDC, Zama's confidential USDC: nobody but you can read your balance or follow your payments, and the amount you paid is encrypted like the rest. A cUSDC payment cannot fail on-chain: a short balance just moves 0, and the action then does nothing. A mint gets no boxes, a paid shake reads \"not yours\", a pet adds nothing, an opening is refused. Paying from plain USDC means shielding the exact price into cUSDC first, in public, and for a mint that amount gives the quantity away. Shielding a round amount ahead of time, at the bureau de change, does not."
+    },
+    {
      "id": "flows-0",
      "section": "flows",
      "heading": null,
@@ -175,34 +227,28 @@
      "text": "The proof goes on-chain\nChecked against its own records\nThe box opens\nTransaction\nCiphertext\nValue with proof\nClear value"
     },
     {
-     "id": "mechanics-0",
-     "section": "mechanics",
+     "id": "transfer-0",
+     "section": "transfer",
      "heading": null,
-     "text": "Action | Who | Cost | What becomes public\nMint | Anyone, hiding how many among 1 to 10 ids | 5 cUSDC a box | The buyer and how many ids, not how many are real\nShake | The holder | Gas only | That someone shook, not whether they hold it\nPaid shake | Anyone | 2.5 cUSDC, 70% waits in the box for its holder | That someone paid to shake\nCollect shake earnings | Anyone, for the boxes they hold | Gas only | Ten box numbers in a row, not which or how much\nPet | Anyone | 0.5 cUSDC | That someone petted it, not whether it counted or what it earned\nAlive check | The holder, once | Gas only | One bit, and that the caller held the box\nEntangle | Both holders | Gas only | The link, and that both held their boxes. Opening one then opens both\nDuel | The holder puts it up, any holder takes it up | Gas only | That the challenger holds the box, then who won and one trait of the loser, or a void duel"
+     "text": "On this protocol an access grant cannot be revoked. A design that put the holder on the seed's access list could never take the seller off it. This one never puts anyone on, so a sale has nothing to undo on the seed. What changes hands is the encrypted owner, along with what waits in the box: paid-shake earnings and croquettes go with it.\nMint Seed: the contract only. Owner: Alice, encrypted. The receipt: Alice only.\nAlice shakes A fresh ciphertext holding one trait: the contract and Alice.\nAlice sells to Bob She sends it. The owner changes under encryption, and the receipt, moved or not, is readable by Alice and Bob only. Nothing about the seed changes.\nBob shakes Another fresh ciphertext: the contract and Bob.\nAlice tries again No error. She reads \"not yours\"; everyone else sees a shake, not that it failed. She keeps what she already saw, and gets nothing new."
     },
     {
-     "id": "mechanics-1",
-     "section": "mechanics",
+     "id": "transfer-1",
+     "section": "transfer",
      "heading": null,
-     "text": "Open | The holder | 1 cUSDC | Everything, permanently, and who opened it\nFeed croquettes | The holder | Up to 1,000 croquettes a day, all eaten | Who fed which cat (the app only feeds your own), not whether it counted or what it held\nClaim croquettes | Anyone | Gas only | Ten box numbers in a row, not which are yours or how much\nWeigh an opened cat | Anyone | Gas only | Its weight, its build, whether it is sick\nPetting adds a hidden amount between 0 and 3 to a hidden counter, and nothing at all if the pet was not paid. So the pets anyone can see on-chain say nothing about the counter, not even how many counted. Past 10, the accessory turns golden when the box is opened, and a cat with no accessory gets a golden bell collar."
-    },
-    {
-     "id": "mechanics-2",
-     "section": "mechanics",
-     "heading": null,
-     "text": "Every price is in cUSDC, Zama's confidential USDC: nobody but you can read your balance or follow your payments, and the amount you paid is encrypted like the rest. A cUSDC payment cannot fail on-chain: a short balance just moves 0, and the action then does nothing. A mint gets no boxes, a paid shake reads \"not yours\", a pet adds nothing, an opening is refused. Paying from plain USDC means shielding the exact price into cUSDC first, in public, and for a mint that amount gives the quantity away. Shielding a round amount ahead of time, at the bureau de change, does not."
+     "text": "Bob claims The paid-shake earnings and croquettes waiting in the box go to him now, not to Alice.\nIf you buy a sealed box, assume the seller knows its five traits. A few paid shakes before buying level that. And a transfer that names you is only a maybe until you decrypt its receipt: Show my boxes does it for you."
     },
     {
      "id": "fees-0",
      "section": "fees",
      "heading": null,
-     "text": "Everything in the game is priced in USDC, a dollar stablecoin, and most of it is paid in cUSDC, its encrypted form: nobody but you can read your balance or follow your payments. Here is every fee, who receives it, and what it pays for.\nPlayers pay fees in USDC; they go to the collection's treasury, except 70% of a paid shake, which goes to the box's holder; the treasury pays Zama for decryptions and the servers\nDollars come in through three doors and almost all of them land in the treasury. The treasury pays Zama for the decryptions players do not pay for themselves: their free daily ones, and every public one. The studio's packs and the rats' adoptions, in the table below, land in the treasury the same way.\nWhat you pay for | Price | Where it goes\nMinting a box | 5 USDC a box | The collection's treasury\nOpening a box | 1 USDC | The collection's treasury"
+     "text": "Everything in the game is priced in USDC, a dollar stablecoin, and most of it is paid in cUSDC, its encrypted form: nobody but you can read your balance or follow your payments. Here is every fee, who receives it, and what it pays for.\nPlayers pay fees in USDC; they go to the collection's treasury, except 70% of a paid shake, which goes to the box's holder; the treasury pays Zama for decryptions and the servers\nDollars come in through four doors and almost all of them land in the treasury. The treasury pays Zama for the decryptions players do not pay for themselves (their free daily ones, and every public one), the servers that follow the chain, and the AI services behind the studio.\nWhat you pay for | Price | Where it goes\nMinting a box | 5 USDC a box | The collection's treasury\nOpening a box | 1 USDC | The collection's treasury\nPetting a cat | 0.5 USDC | The collection's treasury"
     },
     {
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Petting a cat | 0.5 USDC | The collection's treasury\nShaking someone else's box | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury. An empty id has no holder: it still shows a trait, and the 70% goes to the treasury too\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA studio pack (AI sketches and 3D models) | 2 USDC (Starter) or 8 USDC (Litter) | The treasury, which pays the AI services out of it\nAdopting a studio rat | 1 USDC, 3 USDC for an AI rat | The treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
+     "text": "Shaking someone else's box, or sending your rat to sniff it | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury. An empty id has no holder: it still shows a trait, and the 70% goes to the treasury too\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA studio pack (AI sketches and 3D models) | 2 USDC (Starter) or 8 USDC (Litter) | The treasury, which pays the AI services out of it\nAdopting a studio rat | 1 USDC, 3 USDC for an AI rat | The treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
     },
     {
      "id": "fees-2",
@@ -226,13 +272,13 @@
      "id": "exchange-0",
      "section": "exchange",
      "heading": null,
-     "text": "The game uses five tokens: ETH for the network's gas, USDC and CROQ, which are plain, and cUSDC and cCROQ, the same money sealed. A plain balance is public, like any ordinary token; a sealed one is encrypted, and only you can read it. To go from one to another, open the menu and choose Bureau de change: say what you hand over and what you want, and it finds the way and shows every cost before you sign. The rate and the number of transactions stay in sight under the form; Details unfolds the route, each fee and what becomes public. It also lists what you hold; sealed balances are decrypted on demand, for you alone, with one signature."
+     "text": "The game uses five tokens: ETH for the network's gas, USDC and CROQ, which are plain, and cUSDC and cCROQ, the same money sealed. A plain balance is public, like any ordinary token; a sealed one is encrypted, and only you can read it. To go from one to another, open the menu and choose Bureau de change: say what you hand over and what you want, and it finds the way and shows every cost before you sign. The rate and the number of transactions stay in sight under the form; Details unfolds the route, each fee and what becomes public. It also lists what you hold; sealed balances are decrypted on demand, for you alone, with one signature.\nThe five tokens of the bureau de change: ETH, USDC and CROQ are plain, cUSDC and cCROQ sealed, and the roads between them"
     },
     {
      "id": "exchange-1",
      "section": "exchange",
      "heading": null,
-     "text": "Some exchanges take one transaction: buying USDC with ETH (it can arrive sealed, as cUSDC), shielding USDC into cUSDC or unshielding it back, buying or selling CROQ for USDC, sealing CROQ into cCROQ or unsealing it. Any other pair chains these steps: ETH to cCROQ, for example, is three. Each step is its own transaction, signed one after the other, and in between the money waits in your wallet as plain USDC or CROQ. If a step delivers nothing, because a sealed balance smaller than the amount moves nothing, without a word, the bureau stops and tells you where your money is. ETH can only be handed over, never received."
+     "text": "Every arrow is one transaction; any other pair chains them, ETH to cCROQ in three. ETH can also land straight in cUSDC through the ramp. Each crossing of the border shows its amount; inside the sealed side, nothing does.\nSome exchanges take one transaction: buying USDC with ETH (it can arrive sealed, as cUSDC), shielding USDC into cUSDC or unshielding it back, buying or selling CROQ for USDC, sealing CROQ into cCROQ or unsealing it. Any other pair chains these steps: ETH to cCROQ, for example, is three. Each step is its own transaction, signed one after the other, and in between the money waits in your wallet as plain USDC or CROQ. If a step delivers nothing, because a sealed balance smaller than the amount moves nothing, without a word, the bureau stops and tells you where your money is. ETH can only be handed over, never received."
     },
     {
      "id": "exchange-2",
@@ -245,18 +291,6 @@
      "section": "exchange",
      "heading": null,
      "text": "Decryption credits are bought in plain USDC only. So when what you want is cUSDC, from ETH or from USDC, the bureau can keep a share of it plain: none, 5%, 10% or 20%, the choice is remembered. From ETH that takes two buys on the ramp, one plain and one sealed, at the same fee; from USDC, only the rest is shielded. The bureau shows the USDC kept and how many credits it buys at least. The credits themselves are sold only at the bureau, in a window of their own to the left of the counter (under your holdings on a narrow screen), since they are spent rather than held: pick a quantity, see the price, buy. When the plain USDC is short, it sends you back to the counter to get some."
-    },
-    {
-     "id": "transfer-0",
-     "section": "transfer",
-     "heading": null,
-     "text": "On this protocol an access grant cannot be revoked. A design that put the holder on the seed's access list could never take the seller off it. This one never puts anyone on, so a sale has nothing to undo on the seed. What changes hands is the encrypted owner, along with what waits in the box: paid-shake earnings and croquettes go with it.\nMint Seed: the contract only. Owner: Alice, encrypted. The receipt: Alice only.\nAlice shakes A fresh ciphertext holding one trait: the contract and Alice.\nAlice sells to Bob She sends it. The owner changes under encryption, and the receipt, moved or not, is readable by Alice and Bob only. Nothing about the seed changes.\nBob shakes Another fresh ciphertext: the contract and Bob.\nAlice tries again No error. She reads \"not yours\"; everyone else sees a shake, not that it failed. She keeps what she already saw, and gets nothing new."
-    },
-    {
-     "id": "transfer-1",
-     "section": "transfer",
-     "heading": null,
-     "text": "Bob claims The paid-shake earnings and croquettes waiting in the box go to him now, not to Alice.\nIf you buy a sealed box, assume the seller knows its five traits. A few paid shakes before buying level that. And a transfer that names you is only a maybe until you decrypt its receipt: Show my boxes does it for you."
     },
     {
      "id": "croquettes-0",
@@ -310,13 +344,13 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "The studio is a page of its own, open to anyone, wallet or not: there you draw one of the depot's rats yourself. Rats, not cats, on purpose: the cats only come out of boxes, so nothing drawn in the studio can be taken for one. The button Another rat asks the game's own rat generator for a random one, in your browser: procedural, free, endless, and in 3D, turned with a drag. Buck teeth, big ears, a hat or a wedge of cheese, as the seed falls. No AI and nothing on-chain."
+     "text": "The studio is a page of its own, open to anyone, wallet or not: there you draw one of the depot's rats yourself. Rats, not cats, on purpose: the cats only come out of boxes, so nothing drawn in the studio can be taken for one. The button Another rat asks the game's own rat generator for a random one, in your browser: procedural, free, endless, and in 3D, turned with a drag. Buck teeth, big ears, a hat or a wedge of cheese, as the seed falls. No AI and nothing on-chain.\nThe studio's road, step by step, across your browser, the studio's server with the AI, and the chain\nA random rat skips the AI: from step 1 it can go straight to adoption. An AI rat takes every step. Your words and drawings stay with the studio's server; only the pack and the adoption go on-chain.\n1 Another rat Random, free, endless. No AI Your browser\n2 Buy a pack 2 or 8 USDC, to the treasury On-chain"
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Drawing a rat from your own words goes through paid AI services, so it is sold first, in packs bought on-chain in plain USDC from the StudioPacks contract: the Starter pack, 2 USDC for 10 sketches and one 3D model, and the Litter, 8 USDC for 50 sketches and five 3D models. The payment goes straight to the collection's treasury and the units never expire. A purchase is public, like any plain USDC payment; what you draw with it is not on-chain."
+     "text": "3 Sign in A free signature, no transaction Your browser\n4 Sketch One unit: a picture from your words Studio and AI\n5 3D model One unit, a minute or two Studio and AI\n6 Adopt 1 USDC a random rat, 3 an AI rat On-chain\n7 My rats 3 CROQ a day, and sniffing On-chain\nDrawing a rat from your own words goes through paid AI services, so it is sold first, in packs bought on-chain in plain USDC from the StudioPacks contract: the Starter pack, 2 USDC for 10 sketches and one 3D model, and the Litter, 8 USDC for 50 sketches and five 3D models. The payment goes straight to the collection's treasury and the units never expire. A purchase is public, like any plain USDC payment; what you draw with it is not on-chain."
     },
     {
      "id": "studio-2",
@@ -331,34 +365,40 @@
      "text": "To spend your units, sign in once with your wallet: a free signature, no transaction, that tells the studio which units are yours. The site spends a unit before it calls the AI and gives it back if the service fails, up to three times a day: past that, or when the AI's safety checker refuses the picture, the unit is spent, since the service was paid. A prompt is 3 to 240 characters; licensed characters and adult content are refused before anything is spent. Each day the studio stops at a spending cap: past it, come back tomorrow.\nOn the testnet the USDC is pretend money while the AI costs real money, so the AI studio may be closed or kept to a list of testers there; the random rats stay free everywhere."
     },
     {
-     "id": "studio-4",
-     "section": "studio",
+     "id": "rats-0",
+     "section": "rats",
      "heading": null,
-     "text": "A rat you like can be adopted: minted as an NFT of your own in the Rats contract, 1 USDC for a random rat (each one once), 3 USDC for an AI rat, whose picture is first stored on Arweave for good, like the cats' pictures, while its 3D model is kept by the game's server. There will only ever be 700 random rats and 300 AI rats, set for good in the contract, and one wallet adopts 5 at most (a rat can still be given or sold to it); the studio shows how many are left. Unlike the boxes, nothing about a rat is secret: who owns it is public. Each rat earns 3 plain CROQ a day from the rats' pantry, collected from \"My rats\" in the game; a rat keeps 7 days at most between two collections. And it sniffs: a paid shake of a sealed box you do not hold is your rat telling you one of its traits."
+     "text": "A rat you like in the studio can be adopted: minted as an NFT of your own in the Rats contract, paid in plain USDC straight to the collection's treasury. A random rat costs 1 USDC and is adopted by its seed, each seed once: its look is worked out from that number again wherever it is shown, so there is nothing else to store. An AI rat costs 3 USDC: its picture is first stored on Arweave for good, like the cats' pictures, while its 3D model is kept by the game's server.\nThere will only ever be 700 random rats and 300 AI rats, set for good in the contract, and one wallet adopts 5 at most, both kinds together. A rat can still be given or sold to a wallet past that. The studio and the home page show how many are left.\nOne of the 700 random rats there will ever be, drawn in your browser from a random seed. Click it and another one lands."
     },
     {
-     "id": "terms-0",
-     "section": "terms",
+     "id": "rats-1",
+     "section": "rats",
      "heading": null,
-     "text": "The first time you connect a wallet, the game hands you a release form, Form DNO-1: the terms of play, eight short clauses. They say plainly what you are walking into. The contracts are experimental software: nobody has audited them, and a bug, an exploit or a hack could lose what you put in, without the creators being liable as far as the law allows. The website is only a window: your boxes, cats and balances live on-chain, so if the site breaks, nothing of yours is lost. Nobody holds your money for you, nothing is refunded, and none of this is an investment."
+     "text": "A rat is everything a box is not, on purpose: the cats are the depot's secret residents, the rats its open ones. Nothing about a rat is encrypted, so it works like any NFT.\n| A box | A rat\nWhat it is | A sealed box with a cat nobody can see | A cartoon rat, there for anyone to see\nWho holds it | Encrypted: only the holder knows | Public, like any NFT\nWhat it is made of | One encrypted seed, readable by the contract only | Its seed, or its picture on Arweave, in the clear\nPrice | 5 cUSDC, encrypted payment | 1 USDC, 3 for an AI rat, plain payment\nHow many | 10,000; how many are sold is encrypted | 700 random and 300 AI, 5 per wallet\nEarns | A bag of 100 cCROQ, then 0 to 4 a day, hidden in the box | 3 plain CROQ a day, to its owner\nWallets and markets | Need a market built for the confidential ERC-721 | A standard ERC-721: any wallet or market can show it"
     },
     {
-     "id": "terms-1",
-     "section": "terms",
-     "heading": null,
-     "text": "You initial each clause, one click each, then sign with your wallet. The signature is free and sends no transaction: your wallet shows a readable message naming your address, the version of the terms and a fingerprint of the full English text. The translations are there to read; the English text is what you sign. The signature is kept as a record of your acceptance, by the game's server when it is reachable, and always in your browser. Without a wallet, nothing is asked: you can look around the whole site, and the form only comes up when a wallet that has not signed it connects. You can close it to keep looking around, or switch to another wallet from it; any action you then ask for (a mint, a shake, a feed) brings it back until it is signed."
+     "id": "rats-2",
+     "section": "rats",
+     "heading": "A rat's croquettes",
+     "text": "Each rat earns 3 plain CROQ a day from the day it was adopted. They come from the rats' own pantry, the RatPantry, which got 500,000 CROQ from the treasury, and not from the Pantry that feeds the boxes: the rats never touch the game reserve. Collect them from \"My rats\" in the game, for all your rats at once. A rat keeps 7 days at most between two collections; left alone longer, it earns nothing more. If the pantry is ever empty, collecting fails and the days wait; when it runs low, it pays what is left. The croquettes are plain because a rat's owner is public anyway: there is nothing to hide in what it earns. Sealed at the bureau de change, they can feed a cat.\nA rat's croquettes go from the treasury to the rats' pantry, from there to the rat's owner, and sealed, into a cat"
     },
     {
-     "id": "terms-2",
-     "section": "terms",
-     "heading": null,
-     "text": "Each new wallet signs once, and a new version of the terms is signed again before playing on. To read the form again and see your signature, open the menu and choose Terms of play."
+     "id": "rats-3",
+     "section": "rats",
+     "heading": "A rat's croquettes",
+     "text": "The rats' pantry is separate from the boxes' one: what the rats earn never comes out of the purr. Plain until you seal them, a rat's croquettes become secret the moment they enter cCROQ.\nTreasury 500,000 CROQ, once\nfunded Rats' pantry 3 CROQ a rat a day\ncollect, 7 days at most You plain CROQ, in public\nseal, then feed Your cat a meal, encrypted"
+    },
+    {
+     "id": "rats-4",
+     "section": "rats",
+     "heading": "Sniffing the boxes",
+     "text": "A rat also sniffs. From \"My rats\", send it sniffing: pick a sealed box you do not hold, and your rat tells you one of its traits, for your eyes only. Under the hood it is a paid shake, 2.5 cUSDC: 70% waits in the box for its holder, 30% goes to the treasury, and everyone else only sees that someone paid to shake.\nThat is how a rat helps before a purchase: a few sniffs of a box you are thinking of buying, and you know as much about it as the seller did."
     },
     {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "This part goes away at mainnet.\nThe game runs on Sepolia, Ethereum's test network. Nothing here is worth money. The USDC is Zama's test token, free from the wallet slip or the bureau de change; the ETH for gas comes from a faucet; the croquette pool only exists so the market can be tried; and every price in this manual is a test price.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e"
+     "text": "This part goes away at mainnet.\nThe game runs on Sepolia, Ethereum's test network. Nothing here is worth money. The USDC is Zama's test token, free from the wallet slip or the bureau de change; the ETH for gas comes from a faucet; the croquette pool only exists so the market can be tried; and every price in this manual is a test price.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0xd4f8…3856\nThe rats' pantry (RatPantry) 0x9c83…0a0A"
     },
     {
      "id": "testnet-1",
@@ -406,8 +446,18 @@
      "part": "manual"
     },
     {
+     "id": "map",
+     "title": "Le dépôt en un coup d'œil",
+     "part": "manual"
+    },
+    {
      "id": "cats",
      "title": "Qui pourrait être dedans",
+     "part": "manual"
+    },
+    {
+     "id": "terms",
+     "title": "La décharge",
      "part": "manual"
     },
     {
@@ -426,13 +476,18 @@
      "part": "manual"
     },
     {
+     "id": "mechanics",
+     "title": "Douze choses à faire",
+     "part": "manual"
+    },
+    {
      "id": "flows",
      "title": "Comment les choses sortent",
      "part": "manual"
     },
     {
-     "id": "mechanics",
-     "title": "Douze choses à faire",
+     "id": "transfer",
+     "title": "Ce qu'une vente change",
      "part": "manual"
     },
     {
@@ -446,11 +501,6 @@
      "part": "manual"
     },
     {
-     "id": "transfer",
-     "title": "Ce qu'une vente change",
-     "part": "manual"
-    },
-    {
      "id": "croquettes",
      "title": "Les croquettes",
      "part": "manual"
@@ -461,8 +511,8 @@
      "part": "manual"
     },
     {
-     "id": "terms",
-     "title": "La décharge",
+     "id": "rats",
+     "title": "Les rats",
      "part": "manual"
     },
     {
@@ -500,6 +550,12 @@
      "text": "Le jeu consiste donc à choisir ce que vous voulez découvrir, et ce que ça vous coûte. Secouez une boîte et vous apprenez une chose sur elle, en privé. Ouvrez-la et tout le monde apprend tout, pour de bon."
     },
     {
+     "id": "map-0",
+     "section": "map",
+     "heading": null,
+     "text": "Le jeu a cinq guichets. Une règle les sépare : ce qui touche à une boîte est chiffré, ce qui touche à un rat ne l'est pas. L'argent passe de l'un à l'autre au bureau de change, et le montant se voit à la frontière.\nLes dollars achètent des boîtes, des packs du studio et des rats ; les boîtes et les rats gagnent des croquettes ; les croquettes nourrissent les chats. Chaque carte mène à son chapitre."
+    },
+    {
      "id": "cats-0",
      "section": "cats",
      "heading": null,
@@ -510,6 +566,24 @@
      "section": "cats",
      "heading": "Tigré",
      "text": "Environ 1 boîte sur 5\nLe classique. Des rayures, des opinions bien arrêtées, et la certitude que ta chaise est à lui.\nLes chances sous chaque chat viennent directement des tables du jeu. Comment une boîte tombe sur l'un d'eux, c'est la section suivante."
+    },
+    {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "La première fois que vous connectez un wallet, le jeu vous tend une décharge, le formulaire DNO-1 : les conditions de jeu, huit clauses courtes. Elles disent clairement dans quoi vous vous engagez. Les contrats sont un logiciel expérimental : personne ne les a audités, et un bug, une faille ou un piratage pourrait faire perdre ce que vous y mettez, sans que les créateurs en soient responsables, dans la mesure où la loi le permet. Le site n'est qu'une fenêtre : vos boîtes, vos chats et vos soldes vivent on-chain, donc si le site tombe en panne, vous ne perdez rien. Personne ne garde votre argent pour vous, rien n'est remboursé, et rien de tout cela n'est un investissement."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "Vous paraphez chaque clause, d'un clic, puis vous signez avec votre wallet. La signature est gratuite et n'envoie aucune transaction : votre wallet affiche un message lisible qui nomme votre adresse, la version des conditions et une empreinte du texte anglais complet. Les traductions servent à la lecture ; c'est le texte anglais que vous signez. La signature est gardée comme preuve de votre accord, par le serveur du jeu quand il répond, et toujours dans votre navigateur. Sans wallet, rien n'est demandé : vous pouvez visiter tout le site, et le formulaire n'apparaît que lorsqu'un wallet qui ne l'a pas encore signé se connecte. Vous pouvez le fermer pour continuer à visiter, ou passer à un autre wallet depuis le formulaire ; toute action demandée ensuite (un mint, une secousse, un repas) le fait revenir tant qu'il n'est pas signé."
+    },
+    {
+     "id": "terms-2",
+     "section": "terms",
+     "heading": null,
+     "text": "Chaque nouveau wallet signe une fois, et une nouvelle version des conditions se signe à nouveau avant de continuer à jouer. Pour relire le formulaire et voir votre signature, ouvrez le menu et choisissez Conditions de jeu."
     },
     {
      "id": "seed-0",
@@ -566,6 +640,30 @@
      "text": "Combien de fois il a été caressé, et combien de repas il a mangés | Personne. Les tentatives sont publiques, pas le fait qu'elles aient compté\nCombien d'affection ça a rapporté | Non | Non\nDeux conséquences sont voulues. Un détenteur qui secoue assez souvent apprend les cinq traits : un secouage en montre un sur cinq au hasard, donc une onzaine suffit à les couvrir. Ce qui reste caché même au détenteur, c'est l'état, qui vaut jusqu'à un tiers du score, et l'affection. Et les duels laissent fuir un ordre : chacun publie laquelle de deux boîtes a le score le plus haut. Mettre une boîte en duel montre aussi que vous la détenez : c'est ainsi que l'étagère des duels ne porte que des boîtes que quelqu'un détient. C'est le prix du duel."
     },
     {
+     "id": "mechanics-0",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Action | Qui | Coût | Ce qui devient public\nMint | N'importe qui, en cachant combien parmi 1 à 10 ids | 5 cUSDC la boîte | L'acheteur et combien d'ids, pas combien sont réels\nSecouer | Le détenteur | Gas seulement | Que quelqu'un a secoué, pas s'il détient la boîte\nSecouage payant (ou le flair d'un rat) | N'importe qui | 2,5 cUSDC, 70 % attendent dans la boîte son détenteur | Que quelqu'un a payé pour secouer\nRécupérer les gains des secouages | N'importe qui, pour les boîtes qu'il détient | Gas seulement | Dix numéros à la suite, pas lesquels ni combien\nCaresser | N'importe qui | 0.5 cUSDC | Que quelqu'un l'a caressé, pas si ça a compté ni ce que ça a rapporté\nVérification de vie | Le détenteur, une fois | Gas seulement | Un bit, et que celui qui demande détenait la boîte"
+    },
+    {
+     "id": "mechanics-1",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Intriquer | Les deux détenteurs | Gas seulement | Le lien, et que les deux détenaient leurs boîtes. Ouvrir une boîte ouvre alors les deux\nDuel | Le détenteur la met en jeu, n'importe quel détenteur la relève | Gas seulement | Que le challenger détient la boîte, puis qui a gagné et un trait du perdant, ou un duel annulé\nOuvrir | Le détenteur | 1 cUSDC | Tout, définitivement, et qui l'a ouverte\nDonner des croquettes | Le détenteur | Jusqu'à 1 000 croquettes par jour, toutes mangées | Qui a nourri quel chat (l'app ne nourrit que les vôtres), pas si ça a compté ni ce qu'il contenait\nRéclamer des croquettes | N'importe qui | Gas seulement | Dix numéros à la suite, pas lesquels sont à vous ni combien\nPeser un chat ouvert | N'importe qui | Gas seulement | Son poids, sa corpulence, s'il est malade"
+    },
+    {
+     "id": "mechanics-2",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Caresser ajoute une quantité cachée entre 0 et 3 à un compteur caché, et rien du tout si la caresse n'a pas été payée. Les caresses visibles sur la chaîne ne disent donc rien du compteur, pas même combien ont compté. Au-delà de 10, l'accessoire devient doré à l'ouverture de la boîte, et un chat sans accessoire reçoit un collier à grelot en or."
+    },
+    {
+     "id": "mechanics-3",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Tous les prix sont en cUSDC, l'USDC confidentiel de Zama : personne d'autre que toi ne lit ton solde ni ne suit tes paiements, et le montant payé est chiffré comme le reste. Un paiement cUSDC ne peut pas échouer on-chain : un solde trop court déplace simplement 0, et l'action ne fait alors rien. Un mint n'obtient aucune boîte, un secouage payant lit « pas à toi », une caresse n'ajoute rien, une ouverture est refusée. Payer depuis de l'USDC ordinaire veut dire convertir d'abord le prix exact en cUSDC, en public, et pour un mint ce montant trahit la quantité. Convertir un montant rond à l'avance, au bureau de change, ne trahit rien."
+    },
+    {
      "id": "flows-0",
      "section": "flows",
      "heading": null,
@@ -584,96 +682,6 @@
      "text": "Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. Ils sont gardés jusqu'au règlement de l'ouverture, et vous reviennent si la boîte intriquée avec celle-ci l'a ouverte d'abord. Sinon, à partir d'ici, pas de retour en arrière.\nDétenteur et frais, vérifiés à l'aveugle\nN'importe qui peut maintenant la demander\nLes valeurs, signées\nLa preuve part sur la chaîne\nVérifiée contre ses propres registres\nLa boîte s'ouvre\nTransaction\nChiffré\nValeur avec preuve\nValeur en clair"
     },
     {
-     "id": "mechanics-0",
-     "section": "mechanics",
-     "heading": null,
-     "text": "Action | Qui | Coût | Ce qui devient public\nMint | N'importe qui, en cachant combien parmi 1 à 10 ids | 5 cUSDC la boîte | L'acheteur et combien d'ids, pas combien sont réels\nSecouer | Le détenteur | Gas seulement | Que quelqu'un a secoué, pas s'il détient la boîte\nSecouage payant | N'importe qui | 2,5 cUSDC, 70 % attendent dans la boîte son détenteur | Que quelqu'un a payé pour secouer\nRécupérer les gains des secouages | N'importe qui, pour les boîtes qu'il détient | Gas seulement | Dix numéros à la suite, pas lesquels ni combien\nCaresser | N'importe qui | 0.5 cUSDC | Que quelqu'un l'a caressé, pas si ça a compté ni ce que ça a rapporté\nVérification de vie | Le détenteur, une fois | Gas seulement | Un bit, et que celui qui demande détenait la boîte\nIntriquer | Les deux détenteurs | Gas seulement | Le lien, et que les deux détenaient leurs boîtes. Ouvrir une boîte ouvre alors les deux"
-    },
-    {
-     "id": "mechanics-1",
-     "section": "mechanics",
-     "heading": null,
-     "text": "Duel | Le détenteur la met en jeu, n'importe quel détenteur la relève | Gas seulement | Que le challenger détient la boîte, puis qui a gagné et un trait du perdant, ou un duel annulé\nOuvrir | Le détenteur | 1 cUSDC | Tout, définitivement, et qui l'a ouverte\nDonner des croquettes | Le détenteur | Jusqu'à 1 000 croquettes par jour, toutes mangées | Qui a nourri quel chat (l'app ne nourrit que les vôtres), pas si ça a compté ni ce qu'il contenait\nRéclamer des croquettes | N'importe qui | Gas seulement | Dix numéros à la suite, pas lesquels sont à vous ni combien\nPeser un chat ouvert | N'importe qui | Gas seulement | Son poids, sa corpulence, s'il est malade"
-    },
-    {
-     "id": "mechanics-2",
-     "section": "mechanics",
-     "heading": null,
-     "text": "Caresser ajoute une quantité cachée entre 0 et 3 à un compteur caché, et rien du tout si la caresse n'a pas été payée. Les caresses visibles sur la chaîne ne disent donc rien du compteur, pas même combien ont compté. Au-delà de 10, l'accessoire devient doré à l'ouverture de la boîte, et un chat sans accessoire reçoit un collier à grelot en or."
-    },
-    {
-     "id": "mechanics-3",
-     "section": "mechanics",
-     "heading": null,
-     "text": "Tous les prix sont en cUSDC, l'USDC confidentiel de Zama : personne d'autre que toi ne lit ton solde ni ne suit tes paiements, et le montant payé est chiffré comme le reste. Un paiement cUSDC ne peut pas échouer on-chain : un solde trop court déplace simplement 0, et l'action ne fait alors rien. Un mint n'obtient aucune boîte, un secouage payant lit « pas à toi », une caresse n'ajoute rien, une ouverture est refusée. Payer depuis de l'USDC ordinaire veut dire convertir d'abord le prix exact en cUSDC, en public, et pour un mint ce montant trahit la quantité. Convertir un montant rond à l'avance, au bureau de change, ne trahit rien."
-    },
-    {
-     "id": "fees-0",
-     "section": "fees",
-     "heading": null,
-     "text": "Tout dans le jeu a un prix en USDC, un stablecoin indexé sur le dollar, et presque tout se paie en cUSDC, sa forme chiffrée : personne d'autre que vous ne peut lire votre solde ni suivre vos paiements. Voici chaque frais, qui le reçoit, et ce qu'il paie.\nLes joueurs paient des frais en USDC ; ils vont à la trésorerie de la collection, sauf 70 % d'un secouage payant, qui vont au détenteur de la boîte ; la trésorerie paie Zama pour les déchiffrements, et les serveurs\nLes dollars entrent par trois portes et presque tous finissent dans la trésorerie. La trésorerie paie Zama pour les déchiffrements que les joueurs ne paient pas eux-mêmes : leurs gratuits du jour, et chaque déchiffrement public. Les packs du studio et les adoptions de rats, dans le tableau ci-dessous, arrivent de la même façon à la trésorerie.\nCe que vous payez | Prix | Où ça va"
-    },
-    {
-     "id": "fees-1",
-     "section": "fees",
-     "heading": null,
-     "text": "Minter une boîte | 5 USDC la boîte | La trésorerie de la collection\nOuvrir une boîte | 1 USDC | La trésorerie de la collection\nCaresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie. Un id vide n'a pas de détenteur : il montre quand même un trait, et les 70 % vont aussi à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn pack du studio (croquis et modèles 3D par IA) | 2 USDC (Starter) ou 8 USDC (Litter) | La trésorerie, qui paie les services d'IA avec\nAdopter un rat du studio | 1 USDC, 3 USDC pour un rat IA | La trésorerie"
-    },
-    {
-     "id": "fees-2",
-     "section": "fees",
-     "heading": null,
-     "text": "Un repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien\nSecouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction"
-    },
-    {
-     "id": "fees-3",
-     "section": "fees",
-     "heading": null,
-     "text": "Pourquoi les déchiffrements coûtent quelque chose : lire une valeur chiffrée demande du travail au réseau de Zama. Les parties qui se partagent la clé de déchiffrement doivent chacune y prendre part, et Zama le facture, pour chaque valeur lue, d'un dixième de centime à dix centimes selon la formule. Vérifier la preuve qui accompagne une valeur chiffrée par votre navigateur coûte cinq fois plus. Il le facture à la collection, pas à vous. Secouer, retrouver vos boîtes, lire votre propre solde, le résultat d'un duel : chacun est un déchiffrement. Minter, nourrir un chat ou envoyer des croquettes : chacun chiffre une valeur."
-    },
-    {
-     "id": "fees-4",
-     "section": "fees",
-     "heading": null,
-     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés au bureau de change. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie. Dans le jeu, le compteur Déchiffrements en haut à droite montre ce qu'il reste (gratuits du jour, plus crédits) : il clignote quand vous arrivez au bout, passe au rouge à zéro, et un clic ouvre le bureau de change pour en racheter."
-    },
-    {
-     "id": "fees-5",
-     "section": "fees",
-     "heading": null,
-     "text": "La trésorerie paie ce qui fait tourner le jeu : les frais de Zama pour chaque déchiffrement gratuit et chaque déchiffrement public, et les serveurs qui suivent la chaîne pour que le site reste rapide. Le reste va au projet. Personne ne peut lire les cUSDC qu'elle reçoit, propriétaire compris : lus après chaque paiement, ils trahiraient la quantité cachée de chaque mint, et donc qui a acheté quelles boîtes. Le propriétaire les retire au plus une fois tous les 7 jours, et n'apprend donc jamais que des sommes hebdomadaires. Les frais de 1 USDC d'une ouverture attendent qu'elle se règle : ils rejoignent la trésorerie quand la boîte s'ouvre, et reviennent à celui qui l'ouvrait si la boîte intriquée avec elle l'a ouverte d'abord."
-    },
-    {
-     "id": "exchange-0",
-     "section": "exchange",
-     "heading": null,
-     "text": "Le jeu utilise cinq jetons : l'ETH pour le gas du réseau, l'USDC et le CROQ, en clair, et le cUSDC et le cCROQ, la même monnaie scellée. Un solde en clair est public, comme n'importe quel jeton ; un solde scellé est chiffré, et toi seul peux le lire. Pour passer de l'un à l'autre, ouvre le menu et choisis Bureau de change : dis ce que tu donnes et ce que tu veux, il trouve le chemin et affiche chaque coût avant que tu signes. Le taux et le nombre de transactions restent sous le formulaire ; Détails déplie le trajet, chaque frais et ce qui devient public. Il liste aussi ce que tu détiens ; les soldes scellés se déchiffrent à la demande, pour toi seul, en une signature."
-    },
-    {
-     "id": "exchange-1",
-     "section": "exchange",
-     "heading": null,
-     "text": "Certains échanges tiennent en une transaction : acheter de l'USDC avec de l'ETH (il peut arriver scellé, en cUSDC), convertir de l'USDC en cUSDC ou l'inverse (Shield et Unshield), acheter ou vendre du CROQ contre de l'USDC, sceller du CROQ en cCROQ ou le desceller. Toute autre paire enchaîne ces étapes : de l'ETH au cCROQ, par exemple, il y en a trois. Chaque étape est une transaction à part, signée l'une après l'autre, et entre deux l'argent attend dans ton wallet en USDC ou en CROQ en clair. Si une étape ne livre rien, parce qu'un solde scellé plus petit que le montant ne déplace rien, sans un mot, le bureau s'arrête et te dit où est ton argent. L'ETH se donne seulement, il ne se reçoit jamais."
-    },
-    {
-     "id": "exchange-2",
-     "section": "exchange",
-     "heading": null,
-     "text": "Acheter de l'USDC avec de l'ETH coûte 0,3 % de l'ETH, gardés par le site. Shield et Unshield sont gratuits. Chaque étape paie le gas du réseau, comme toute transaction. Un échange sur un pool peut se faire à un prix moins bon que celui annoncé si quelqu'un passe avant : la tolérance de slippage, 1 % sauf si tu la changes (de 0,01 % à 50 %), est l'écart que tu acceptes avant que la transaction s'annule d'elle-même, en ne coûtant que le gas. Le bureau montre aussi l'impact sur le prix, de combien ton propre échange fait bouger le prix du pool, et te prévient au-delà de 2 %."
-    },
-    {
-     "id": "exchange-3",
-     "section": "exchange",
-     "heading": null,
-     "text": "Ce qui devient public : les jetons en clair circulent à découvert, donc chaque échange montre ses montants, comme chaque passage entre en clair et scellé. Le montant que tu convertis en cUSDC ou scelles est public, et celui que tu ramènes en clair aussi : il est déchiffré en public pour être versé, c'est pourquoi ces étapes prennent une minute de plus. Une fois ton argent scellé, ce que tu en fais reste privé."
-    },
-    {
-     "id": "exchange-4",
-     "section": "exchange",
-     "heading": null,
-     "text": "Les crédits de déchiffrement s'achètent seulement en USDC en clair. Alors quand tu veux du cUSDC, depuis de l'ETH ou de l'USDC, le bureau peut en garder une part en clair : rien, 5 %, 10 % ou 20 %, et il retient ton choix. Depuis l'ETH, cela fait deux achats sur la rampe, un en clair et un scellé, aux mêmes frais ; depuis l'USDC, seul le reste est converti en cUSDC. Le bureau affiche l'USDC gardé et le nombre minimum de crédits qu'il achète. Les crédits eux-mêmes s'achètent seulement au bureau, dans un guichet à part à gauche du comptoir (sous tes avoirs sur un écran étroit), puisqu'ils se dépensent au lieu de se garder : tu choisis une quantité, tu vois le prix, tu achètes. S'il manque de l'USDC en clair, il te renvoie au comptoir pour en obtenir."
-    },
-    {
      "id": "transfer-0",
      "section": "transfer",
      "heading": null,
@@ -684,6 +692,72 @@
      "section": "transfer",
      "heading": null,
      "text": "Alice réessaie Pas d'erreur. Elle lit « pas à toi » ; tous les autres voient un secouage, pas qu'il a échoué. Elle garde ce qu'elle a déjà vu, et n'obtient rien de nouveau.\nBob récupère Les gains des secouages payants et les croquettes qui attendent dans la boîte vont à lui maintenant, plus à Alice.\nSi vous achetez une boîte scellée, partez du principe que le vendeur connaît ses cinq traits. Quelques secouages payants avant d'acheter rétablissent l'équilibre. Et un transfert qui vous nomme n'est qu'un peut-être tant que vous n'avez pas déchiffré son reçu : Afficher mes boîtes le fait pour vous."
+    },
+    {
+     "id": "fees-0",
+     "section": "fees",
+     "heading": null,
+     "text": "Tout dans le jeu a un prix en USDC, un stablecoin indexé sur le dollar, et presque tout se paie en cUSDC, sa forme chiffrée : personne d'autre que vous ne peut lire votre solde ni suivre vos paiements. Voici chaque frais, qui le reçoit, et ce qu'il paie.\nLes joueurs paient des frais en USDC ; ils vont à la trésorerie de la collection, sauf 70 % d'un secouage payant, qui vont au détenteur de la boîte ; la trésorerie paie Zama pour les déchiffrements, et les serveurs\nLes dollars entrent par quatre portes et presque tous finissent dans la trésorerie. La trésorerie paie Zama pour les déchiffrements que les joueurs ne paient pas eux-mêmes (leurs gratuits du jour, et chaque déchiffrement public), les serveurs qui suivent la chaîne, et les services d'IA derrière le studio.\nCe que vous payez | Prix | Où ça va\nMinter une boîte | 5 USDC la boîte | La trésorerie de la collection"
+    },
+    {
+     "id": "fees-1",
+     "section": "fees",
+     "heading": null,
+     "text": "Ouvrir une boîte | 1 USDC | La trésorerie de la collection\nCaresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre, ou la faire renifler par votre rat | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie. Un id vide n'a pas de détenteur : il montre quand même un trait, et les 70 % vont aussi à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn pack du studio (croquis et modèles 3D par IA) | 2 USDC (Starter) ou 8 USDC (Litter) | La trésorerie, qui paie les services d'IA avec\nAdopter un rat du studio | 1 USDC, 3 USDC pour un rat IA | La trésorerie\nUn repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien"
+    },
+    {
+     "id": "fees-2",
+     "section": "fees",
+     "heading": null,
+     "text": "Secouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction\nPourquoi les déchiffrements coûtent quelque chose : lire une valeur chiffrée demande du travail au réseau de Zama. Les parties qui se partagent la clé de déchiffrement doivent chacune y prendre part, et Zama le facture, pour chaque valeur lue, d'un dixième de centime à dix centimes selon la formule. Vérifier la preuve qui accompagne une valeur chiffrée par votre navigateur coûte cinq fois plus. Il le facture à la collection, pas à vous. Secouer, retrouver vos boîtes, lire votre propre solde, le résultat d'un duel : chacun est un déchiffrement. Minter, nourrir un chat ou envoyer des croquettes : chacun chiffre une valeur."
+    },
+    {
+     "id": "fees-3",
+     "section": "fees",
+     "heading": null,
+     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés au bureau de change. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie. Dans le jeu, le compteur Déchiffrements en haut à droite montre ce qu'il reste (gratuits du jour, plus crédits) : il clignote quand vous arrivez au bout, passe au rouge à zéro, et un clic ouvre le bureau de change pour en racheter."
+    },
+    {
+     "id": "fees-4",
+     "section": "fees",
+     "heading": null,
+     "text": "La trésorerie paie ce qui fait tourner le jeu : les frais de Zama pour chaque déchiffrement gratuit et chaque déchiffrement public, et les serveurs qui suivent la chaîne pour que le site reste rapide. Le reste va au projet. Personne ne peut lire les cUSDC qu'elle reçoit, propriétaire compris : lus après chaque paiement, ils trahiraient la quantité cachée de chaque mint, et donc qui a acheté quelles boîtes. Le propriétaire les retire au plus une fois tous les 7 jours, et n'apprend donc jamais que des sommes hebdomadaires. Les frais de 1 USDC d'une ouverture attendent qu'elle se règle : ils rejoignent la trésorerie quand la boîte s'ouvre, et reviennent à celui qui l'ouvrait si la boîte intriquée avec elle l'a ouverte d'abord."
+    },
+    {
+     "id": "exchange-0",
+     "section": "exchange",
+     "heading": null,
+     "text": "Le jeu utilise cinq jetons : l'ETH pour le gas du réseau, l'USDC et le CROQ, en clair, et le cUSDC et le cCROQ, la même monnaie scellée. Un solde en clair est public, comme n'importe quel jeton ; un solde scellé est chiffré, et toi seul peux le lire. Pour passer de l'un à l'autre, ouvre le menu et choisis Bureau de change : dis ce que tu donnes et ce que tu veux, il trouve le chemin et affiche chaque coût avant que tu signes. Le taux et le nombre de transactions restent sous le formulaire ; Détails déplie le trajet, chaque frais et ce qui devient public. Il liste aussi ce que tu détiens ; les soldes scellés se déchiffrent à la demande, pour toi seul, en une signature.\nLes cinq jetons du bureau de change : ETH, USDC et CROQ sont classiques, cUSDC et cCROQ scellés, et les chemins entre eux"
+    },
+    {
+     "id": "exchange-1",
+     "section": "exchange",
+     "heading": null,
+     "text": "Chaque flèche est une transaction ; toute autre paire les enchaîne, ETH vers cCROQ en trois. L'ETH peut aussi arriver directement en cUSDC par la rampe. Chaque passage de la frontière montre son montant ; du côté scellé, rien ne se voit."
+    },
+    {
+     "id": "exchange-2",
+     "section": "exchange",
+     "heading": null,
+     "text": "Certains échanges tiennent en une transaction : acheter de l'USDC avec de l'ETH (il peut arriver scellé, en cUSDC), convertir de l'USDC en cUSDC ou l'inverse (Shield et Unshield), acheter ou vendre du CROQ contre de l'USDC, sceller du CROQ en cCROQ ou le desceller. Toute autre paire enchaîne ces étapes : de l'ETH au cCROQ, par exemple, il y en a trois. Chaque étape est une transaction à part, signée l'une après l'autre, et entre deux l'argent attend dans ton wallet en USDC ou en CROQ en clair. Si une étape ne livre rien, parce qu'un solde scellé plus petit que le montant ne déplace rien, sans un mot, le bureau s'arrête et te dit où est ton argent. L'ETH se donne seulement, il ne se reçoit jamais."
+    },
+    {
+     "id": "exchange-3",
+     "section": "exchange",
+     "heading": null,
+     "text": "Acheter de l'USDC avec de l'ETH coûte 0,3 % de l'ETH, gardés par le site. Shield et Unshield sont gratuits. Chaque étape paie le gas du réseau, comme toute transaction. Un échange sur un pool peut se faire à un prix moins bon que celui annoncé si quelqu'un passe avant : la tolérance de slippage, 1 % sauf si tu la changes (de 0,01 % à 50 %), est l'écart que tu acceptes avant que la transaction s'annule d'elle-même, en ne coûtant que le gas. Le bureau montre aussi l'impact sur le prix, de combien ton propre échange fait bouger le prix du pool, et te prévient au-delà de 2 %."
+    },
+    {
+     "id": "exchange-4",
+     "section": "exchange",
+     "heading": null,
+     "text": "Ce qui devient public : les jetons en clair circulent à découvert, donc chaque échange montre ses montants, comme chaque passage entre en clair et scellé. Le montant que tu convertis en cUSDC ou scelles est public, et celui que tu ramènes en clair aussi : il est déchiffré en public pour être versé, c'est pourquoi ces étapes prennent une minute de plus. Une fois ton argent scellé, ce que tu en fais reste privé."
+    },
+    {
+     "id": "exchange-5",
+     "section": "exchange",
+     "heading": null,
+     "text": "Les crédits de déchiffrement s'achètent seulement en USDC en clair. Alors quand tu veux du cUSDC, depuis de l'ETH ou de l'USDC, le bureau peut en garder une part en clair : rien, 5 %, 10 % ou 20 %, et il retient ton choix. Depuis l'ETH, cela fait deux achats sur la rampe, un en clair et un scellé, aux mêmes frais ; depuis l'USDC, seul le reste est converti en cUSDC. Le bureau affiche l'USDC gardé et le nombre minimum de crédits qu'il achète. Les crédits eux-mêmes s'achètent seulement au bureau, dans un guichet à part à gauche du comptoir (sous tes avoirs sur un écran étroit), puisqu'ils se dépensent au lieu de se garder : tu choisis une quantité, tu vois le prix, tu achètes. S'il manque de l'USDC en clair, il te renvoie au comptoir pour en obtenir."
     },
     {
      "id": "croquettes-0",
@@ -749,55 +823,73 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "Le studio est une page à part, ouverte à tous, avec ou sans wallet : on y dessine soi-même l'un des rats du dépôt. Des rats, pas des chats, exprès : les chats ne sortent que des boîtes, donc rien de ce qu'on dessine au studio ne peut passer pour l'un d'eux. Le bouton Un autre rat demande un rat au hasard au générateur de rats du jeu, dans votre navigateur : procédural, gratuit, sans fin, et en 3D, qu'on fait tourner en le faisant glisser. Dents de lapin, grandes oreilles, un chapeau ou un morceau de fromage, selon le seed. Ni IA, ni rien sur la chaîne."
+     "text": "Le studio est une page à part, ouverte à tous, avec ou sans wallet : on y dessine soi-même l'un des rats du dépôt. Des rats, pas des chats, exprès : les chats ne sortent que des boîtes, donc rien de ce qu'on dessine au studio ne peut passer pour l'un d'eux. Le bouton Un autre rat demande un rat au hasard au générateur de rats du jeu, dans votre navigateur : procédural, gratuit, sans fin, et en 3D, qu'on fait tourner en le faisant glisser. Dents de lapin, grandes oreilles, un chapeau ou un morceau de fromage, selon le seed. Ni IA, ni rien sur la chaîne.\nLe chemin du studio, étape par étape, entre votre navigateur, le serveur du studio avec l'IA, et la chaîne\nUn rat au hasard saute l'IA : dès l'étape 1, il peut passer directement à l'adoption. Un rat IA passe par toutes les étapes. Vos mots et vos dessins restent sur le serveur du studio ; seuls le pack et l'adoption vont on-chain."
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Dessiner un rat à partir de vos mots passe par des services d'IA payants : c'est donc vendu d'abord, en packs achetés sur la chaîne en USDC classique au contrat StudioPacks. Le pack Starter coûte 2 USDC pour 10 croquis et un modèle 3D, le pack Litter, 8 USDC pour 50 croquis et cinq modèles 3D. Le paiement va directement au trésor de la collection et les unités n'expirent jamais. Un achat est public, comme tout paiement en USDC classique ; ce que vous dessinez avec ne va pas sur la chaîne."
+     "text": "1 Un autre rat Au hasard, gratuit, sans fin. Pas d'IA Votre navigateur\n2 Acheter un pack 2 ou 8 USDC, à la trésorerie On-chain\n3 Se connecter Une signature gratuite, aucune transaction Votre navigateur\n4 Croquis Une unité : une image d'après vos mots Studio et IA\n5 Modèle 3D Une unité, une minute ou deux Studio et IA\n6 Adopter 1 USDC un rat au hasard, 3 un rat IA On-chain\n7 Mes rats 3 CROQ par jour, et du flair On-chain"
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Un croquis est une image cartoon de votre rat, dessinée par l'IA à partir de ce que vous avez écrit dans un style imposé : elle sort toujours avec l'allure du dépôt. Il coûte peu : recommencez jusqu'à ce que le rat vous plaise. Un modèle 3D transforme l'un de vos croquis en maillage que la page dessine avec l'ombrage cartoon et le contour du jeu, respirant doucement sur le plateau. Comptez une à deux minutes. Un interrupteur en haut de la page passe des rats au hasard, gratuits, au bureau de l'IA. Un croquis s'affiche en grand sur la planche à dessin, et c'est de là que vous le passez en 3D. Pendant que l'IA travaille, un rat court dans sa roue au-dessus d'une barre de progression ; vous pouvez quitter la page, le travail continue et la barre reprend où elle en était à votre retour."
+     "text": "Dessiner un rat à partir de vos mots passe par des services d'IA payants : c'est donc vendu d'abord, en packs achetés sur la chaîne en USDC classique au contrat StudioPacks. Le pack Starter coûte 2 USDC pour 10 croquis et un modèle 3D, le pack Litter, 8 USDC pour 50 croquis et cinq modèles 3D. Le paiement va directement au trésor de la collection et les unités n'expirent jamais. Un achat est public, comme tout paiement en USDC classique ; ce que vous dessinez avec ne va pas sur la chaîne."
     },
     {
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Pour dépenser vos unités, connectez-vous une fois avec votre wallet : une signature gratuite, sans transaction, qui dit au studio quelles unités sont les vôtres. Le site dépense une unité avant d'appeler l'IA et la rend si le service échoue, jusqu'à trois fois par jour : au-delà, ou si le filtre de sécurité de l'IA refuse l'image, l'unité est dépensée, car le service a été payé. Un prompt fait de 3 à 240 caractères ; les personnages sous licence et le contenu adulte sont refusés avant toute dépense. Chaque jour, le studio s'arrête à un plafond de dépense : au-delà, revenez le lendemain.\nSur le testnet, l'USDC est de la monnaie de test alors que l'IA coûte de l'argent réel : le studio IA peut donc y être fermé ou réservé à une liste de testeurs ; les rats au hasard restent gratuits partout."
+     "text": "Un croquis est une image cartoon de votre rat, dessinée par l'IA à partir de ce que vous avez écrit dans un style imposé : elle sort toujours avec l'allure du dépôt. Il coûte peu : recommencez jusqu'à ce que le rat vous plaise. Un modèle 3D transforme l'un de vos croquis en maillage que la page dessine avec l'ombrage cartoon et le contour du jeu, respirant doucement sur le plateau. Comptez une à deux minutes. Un interrupteur en haut de la page passe des rats au hasard, gratuits, au bureau de l'IA. Un croquis s'affiche en grand sur la planche à dessin, et c'est de là que vous le passez en 3D. Pendant que l'IA travaille, un rat court dans sa roue au-dessus d'une barre de progression ; vous pouvez quitter la page, le travail continue et la barre reprend où elle en était à votre retour."
     },
     {
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "Un rat qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, 1 USDC pour un rat au hasard (chacun une seule fois), 3 USDC pour un rat IA, dont l'image est d'abord stockée sur Arweave pour de bon, comme celles des chats, et le modèle 3D gardé par le serveur du jeu. Il n'y aura jamais que 700 rats au hasard et 300 rats IA, fixés pour de bon dans le contrat, et un wallet en adopte 5 au plus (on peut toujours lui en donner ou lui en vendre) ; le studio affiche combien il en reste. Contrairement aux boîtes, rien n'est secret chez un rat : son propriétaire est public. Chaque rat gagne 3 CROQ classiques par jour dans le garde-manger des rats, à récolter depuis « Mes rats » dans le jeu ; un rat garde 7 jours au plus entre deux récoltes. Et il renifle : une secousse payante d'une boîte scellée qui n'est pas à vous, c'est votre rat qui vous révèle un de ses traits."
+     "text": "Pour dépenser vos unités, connectez-vous une fois avec votre wallet : une signature gratuite, sans transaction, qui dit au studio quelles unités sont les vôtres. Le site dépense une unité avant d'appeler l'IA et la rend si le service échoue, jusqu'à trois fois par jour : au-delà, ou si le filtre de sécurité de l'IA refuse l'image, l'unité est dépensée, car le service a été payé. Un prompt fait de 3 à 240 caractères ; les personnages sous licence et le contenu adulte sont refusés avant toute dépense. Chaque jour, le studio s'arrête à un plafond de dépense : au-delà, revenez le lendemain.\nSur le testnet, l'USDC est de la monnaie de test alors que l'IA coûte de l'argent réel : le studio IA peut donc y être fermé ou réservé à une liste de testeurs ; les rats au hasard restent gratuits partout."
     },
     {
-     "id": "terms-0",
-     "section": "terms",
+     "id": "rats-0",
+     "section": "rats",
      "heading": null,
-     "text": "La première fois que vous connectez un wallet, le jeu vous tend une décharge, le formulaire DNO-1 : les conditions de jeu, huit clauses courtes. Elles disent clairement dans quoi vous vous engagez. Les contrats sont un logiciel expérimental : personne ne les a audités, et un bug, une faille ou un piratage pourrait faire perdre ce que vous y mettez, sans que les créateurs en soient responsables, dans la mesure où la loi le permet. Le site n'est qu'une fenêtre : vos boîtes, vos chats et vos soldes vivent on-chain, donc si le site tombe en panne, vous ne perdez rien. Personne ne garde votre argent pour vous, rien n'est remboursé, et rien de tout cela n'est un investissement."
+     "text": "Un rat du studio qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, payé en USDC classique directement à la trésorerie de la collection. Un rat au hasard coûte 1 USDC et s'adopte par sa graine, chaque graine une seule fois : son allure est recalculée à partir de ce nombre partout où il s'affiche, il n'y a donc rien d'autre à stocker. Un rat IA coûte 3 USDC : son image est d'abord stockée sur Arweave pour de bon, comme celles des chats, et son modèle 3D est gardé par le serveur du jeu.\nIl n'y aura jamais que 700 rats au hasard et 300 rats IA, fixés pour de bon dans le contrat, et un wallet en adopte 5 au plus, les deux sortes ensemble. On peut toujours lui donner ou lui vendre un rat au-delà. Le studio et la page d'accueil affichent combien il en reste."
     },
     {
-     "id": "terms-1",
-     "section": "terms",
+     "id": "rats-1",
+     "section": "rats",
      "heading": null,
-     "text": "Vous paraphez chaque clause, d'un clic, puis vous signez avec votre wallet. La signature est gratuite et n'envoie aucune transaction : votre wallet affiche un message lisible qui nomme votre adresse, la version des conditions et une empreinte du texte anglais complet. Les traductions servent à la lecture ; c'est le texte anglais que vous signez. La signature est gardée comme preuve de votre accord, par le serveur du jeu quand il répond, et toujours dans votre navigateur. Sans wallet, rien n'est demandé : vous pouvez visiter tout le site, et le formulaire n'apparaît que lorsqu'un wallet qui ne l'a pas encore signé se connecte. Vous pouvez le fermer pour continuer à visiter, ou passer à un autre wallet depuis le formulaire ; toute action demandée ensuite (un mint, une secousse, un repas) le fait revenir tant qu'il n'est pas signé."
+     "text": "Un des 700 rats au hasard qui existeront jamais, dessiné dans votre navigateur à partir d'une graine au hasard. Cliquez dessus et un autre atterrit.\nUn rat est tout ce qu'une boîte n'est pas, exprès : les chats sont les résidents secrets du dépôt, les rats ses résidents à découvert. Rien n'est chiffré chez un rat, il fonctionne donc comme n'importe quel NFT.\n| Une boîte | Un rat\nCe que c'est | Une boîte scellée avec un chat que personne ne voit | Un rat de dessin animé, visible par tous\nQui le détient | Chiffré : seul le détenteur le sait | Public, comme n'importe quel NFT\nDe quoi il est fait | Une graine chiffrée, lisible par le contrat seul | Sa graine, ou son image sur Arweave, en clair\nPrix | 5 cUSDC, paiement chiffré | 1 USDC, 3 pour un rat IA, paiement en clair\nCombien | 10 000 ; le nombre vendu est chiffré | 700 au hasard et 300 IA, 5 par wallet"
     },
     {
-     "id": "terms-2",
-     "section": "terms",
+     "id": "rats-2",
+     "section": "rats",
      "heading": null,
-     "text": "Chaque nouveau wallet signe une fois, et une nouvelle version des conditions se signe à nouveau avant de continuer à jouer. Pour relire le formulaire et voir votre signature, ouvrez le menu et choisissez Conditions de jeu."
+     "text": "Gagne | Un sac de 100 cCROQ, puis 0 à 4 par jour, cachés dans la boîte | 3 CROQ classiques par jour, pour son propriétaire\nWallets et marchés | Il faut un marché fait pour l'ERC-721 confidentiel | Un ERC-721 standard : n'importe quel wallet ou marché l'affiche"
+    },
+    {
+     "id": "rats-3",
+     "section": "rats",
+     "heading": "Les croquettes d'un rat",
+     "text": "Chaque rat gagne 3 CROQ classiques par jour à partir du jour de son adoption. Elles viennent du garde-manger des rats, le RatPantry, qui a reçu 500 000 CROQ de la trésorerie, et pas du Pantry qui nourrit les boîtes : les rats ne touchent jamais à la réserve du jeu. Récoltez-les depuis « Mes rats » dans le jeu, pour tous vos rats d'un coup. Un rat garde 7 jours au plus entre deux récoltes ; laissé seul plus longtemps, il ne gagne rien de plus. Si le garde-manger est vide, la récolte échoue et les jours attendent ; quand il s'épuise, il paie ce qui reste. Les croquettes sont classiques parce que le propriétaire d'un rat est public de toute façon : il n'y a rien à cacher dans ce qu'il gagne. Scellées au bureau de change, elles peuvent nourrir un chat.\nLes croquettes d'un rat vont de la trésorerie au garde-manger des rats, de là au propriétaire du rat, et une fois scellées, dans un chat"
+    },
+    {
+     "id": "rats-4",
+     "section": "rats",
+     "heading": "Les croquettes d'un rat",
+     "text": "Le garde-manger des rats est séparé de celui des boîtes : ce que gagnent les rats ne sort jamais du ronron. Classiques jusqu'à ce que vous les scelliez, les croquettes d'un rat deviennent secrètes dès qu'elles entrent en cCROQ.\nTrésorerie 500 000 CROQ, une fois\nfinancé Garde-manger des rats 3 CROQ par rat et par jour\nrécolte, 7 jours au plus Vous CROQ classiques, en public\nsceller, puis nourrir Votre chat un repas, chiffré"
+    },
+    {
+     "id": "rats-5",
+     "section": "rats",
+     "heading": "Renifler les boîtes",
+     "text": "Un rat renifle aussi. Depuis « Mes rats », envoyez-le renifler : choisissez une boîte scellée qui n'est pas à vous, et votre rat vous révèle un de ses traits, à vous seul. En coulisse, c'est un secouage payant, 2,5 cUSDC : 70 % attendent dans la boîte son détenteur, 30 % vont à la trésorerie, et tous les autres voient seulement que quelqu'un a payé pour secouer.\nC'est ainsi qu'un rat aide avant un achat : quelques reniflements d'une boîte que vous pensez acheter, et vous en savez autant que le vendeur."
     },
     {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Cette partie disparaîtra au mainnet.\nLe jeu tourne sur Sepolia, le réseau de test d'Ethereum. Rien ici n'a de valeur. L'USDC est le jeton de test de Zama, gratuit depuis le volet du wallet ou le bureau de change ; l'ETH pour le gas vient d'un faucet ; le pool de croquettes n'existe que pour qu'on puisse essayer le marché ; et chaque prix de ce manuel est un prix de test.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e"
+     "text": "Cette partie disparaîtra au mainnet.\nLe jeu tourne sur Sepolia, le réseau de test d'Ethereum. Rien ici n'a de valeur. L'USDC est le jeton de test de Zama, gratuit depuis le volet du wallet ou le bureau de change ; l'ETH pour le gas vient d'un faucet ; le pool de croquettes n'existe que pour qu'on puisse essayer le marché ; et chaque prix de ce manuel est un prix de test.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0xd4f8…3856\nLe garde-manger des rats (RatPantry) 0x9c83…0a0A"
     },
     {
      "id": "testnet-1",
@@ -851,8 +943,18 @@
      "part": "manual"
     },
     {
+     "id": "map",
+     "title": "El depósito de un vistazo",
+     "part": "manual"
+    },
+    {
      "id": "cats",
      "title": "Quién podría estar dentro",
+     "part": "manual"
+    },
+    {
+     "id": "terms",
+     "title": "El descargo",
      "part": "manual"
     },
     {
@@ -871,13 +973,18 @@
      "part": "manual"
     },
     {
+     "id": "mechanics",
+     "title": "Doce cosas que hacer",
+     "part": "manual"
+    },
+    {
      "id": "flows",
      "title": "Cómo salen las cosas",
      "part": "manual"
     },
     {
-     "id": "mechanics",
-     "title": "Doce cosas que hacer",
+     "id": "transfer",
+     "title": "Qué cambia una venta",
      "part": "manual"
     },
     {
@@ -891,11 +998,6 @@
      "part": "manual"
     },
     {
-     "id": "transfer",
-     "title": "Qué cambia una venta",
-     "part": "manual"
-    },
-    {
      "id": "croquettes",
      "title": "Las croquetas",
      "part": "manual"
@@ -906,8 +1008,8 @@
      "part": "manual"
     },
     {
-     "id": "terms",
-     "title": "El descargo",
+     "id": "rats",
+     "title": "Las ratas",
      "part": "manual"
     },
     {
@@ -945,6 +1047,12 @@
      "text": "Así que el juego va de lo que eliges averiguar, y lo que eso te cuesta. Agita una caja y aprendes una cosa sobre ella, en privado. Ábrela y todos lo aprenden todo, para siempre."
     },
     {
+     "id": "map-0",
+     "section": "map",
+     "heading": null,
+     "text": "El juego tiene cinco mostradores. Una regla los separa: lo que toca a una caja está cifrado, lo que toca a una rata no. El dinero pasa de un lado a otro en la casa de cambio, y el importe se ve en la frontera.\nLos dólares compran cajas, packs del estudio y ratas; las cajas y las ratas ganan croquetas; las croquetas alimentan a los gatos. Cada tarjeta lleva a su capítulo."
+    },
+    {
      "id": "cats-0",
      "section": "cats",
      "heading": null,
@@ -955,6 +1063,24 @@
      "section": "cats",
      "heading": "Atigrado",
      "text": "Más o menos 1 caja de cada 5\nEl clásico. Rayas, opiniones firmes y la certeza de que tu silla es suya.\nLas probabilidades bajo cada gato salen directamente de las tablas del juego. Cómo una caja acaba en uno de ellos está en la sección siguiente."
+    },
+    {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "La primera vez que conectas un wallet, el juego te entrega un descargo, el formulario DNO-1: las condiciones de juego, ocho cláusulas breves. Dicen claramente en qué te metes. Los contratos son software experimental: nadie los ha auditado, y un fallo, una vulnerabilidad o un hackeo podría hacerte perder lo que pongas, sin que los creadores sean responsables, en la medida en que la ley lo permita. La web es solo una ventana: tus cajas, tus gatos y tus saldos viven on-chain, así que si la web se rompe, no pierdes nada. Nadie guarda tu dinero por ti, nada se reembolsa y nada de esto es una inversión."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "Rubricas cada cláusula, con un clic, y luego firmas con tu wallet. La firma es gratuita y no envía ninguna transacción: tu wallet muestra un mensaje legible que nombra tu dirección, la versión de las condiciones y una huella del texto completo en inglés. Las traducciones sirven para leer; lo que firmas es el texto en inglés. La firma se guarda como constancia de tu aceptación, en el servidor del juego cuando responde, y siempre en tu navegador. Sin wallet no se pide nada: puedes recorrer toda la web, y el formulario solo aparece cuando se conecta un wallet que aún no lo ha firmado. Puedes cerrarlo para seguir mirando, o cambiar a otro wallet desde él; cualquier acción que pidas después (un mint, una sacudida, una comida) lo trae de vuelta hasta que esté firmado."
+    },
+    {
+     "id": "terms-2",
+     "section": "terms",
+     "heading": null,
+     "text": "Cada wallet nuevo firma una vez, y una nueva versión de las condiciones se vuelve a firmar antes de seguir jugando. Para releer el formulario y ver tu firma, abre el menú y elige Condiciones de juego."
     },
     {
      "id": "seed-0",
@@ -1011,28 +1137,10 @@
      "text": "Cuánto afecto ganó con ello | No | No\nDos consecuencias son deliberadas. Un titular que agita lo suficiente aprende los cinco rasgos: una agitada muestra uno de cinco al azar, así que unas once los cubren. Lo que queda oculto incluso para el titular es el estado, que vale hasta un tercio de la puntuación, y el afecto. Y los duelos filtran orden: cada uno publica cuál de dos cajas puntúa más alto. Poner una caja en duelo también muestra que la tienes: así el estante de duelos solo lleva cajas que alguien tiene. Ese es el precio del duelo."
     },
     {
-     "id": "flows-0",
-     "section": "flows",
-     "heading": null,
-     "text": "Hay dos salidas del cifrado. Un descifrado privado vuelve a cifrar un valor para una persona, que debe estar en su lista de acceso. Un descifrado público publica un valor con firmas de las partes que comparten la clave, y el contrato verifica esas firmas antes de creerse nada.\nEl contrato nunca recibe un callback. Una revelación es una petición en la cadena, un descifrado fuera de la cadena, y una segunda transacción que trae la prueba de vuelta. Cualquiera puede enviar esa segunda transacción. Cada petición comprueba además, bajo cifrado, que quien la hace tiene la caja; ese bit se descifra con lo demás, y un no resuelve la petición como rechazada, con ceros en lugar de los valores de la caja.\nQué flujo\nQué son los paquetes"
-    },
-    {
-     "id": "flows-1",
-     "section": "flows",
-     "heading": null,
-     "text": "Mintear Agitar Abrir Duelo Transferir Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás."
-    },
-    {
-     "id": "flows-2",
-     "section": "flows",
-     "heading": null,
-     "text": "Titular y tarifa, comprobados a ciegas\nCualquiera puede pedirla ahora\nLos valores, firmados\nLa prueba va a la cadena\nComprobada contra sus propios registros\nLa caja se abre\nTransacción\nTexto cifrado\nValor con prueba\nValor en claro"
-    },
-    {
      "id": "mechanics-0",
      "section": "mechanics",
      "heading": null,
-     "text": "Acción | Quién | Coste | Qué se hace público\nMintear | Cualquiera, escondiendo cuántas entre 1 y 10 ids | 5 cUSDC por caja | El comprador y cuántos ids, no cuántos son reales\nAgitar | El titular | Solo gas | Que alguien agitó, no si tiene la caja\nAgitada de pago | Cualquiera | 2,5 cUSDC, el 70 % espera en la caja a su titular | Que alguien pagó por agitar\nCobrar lo ganado con agitadas | Cualquiera, por las cajas que tiene | Solo gas | Diez números seguidos, no cuáles ni cuánto\nAcariciar | Cualquiera | 0.5 cUSDC | Que alguien lo acarició, no si contó ni lo que ganó\nComprobación de vida | El titular, una vez | Solo gas | Un bit, y que quien lo pidió tenía la caja\nEntrelazar | Ambos titulares | Solo gas | El enlace, y que ambos tenían sus cajas. Abrir una caja abre entonces las dos"
+     "text": "Acción | Quién | Coste | Qué se hace público\nMintear | Cualquiera, escondiendo cuántas entre 1 y 10 ids | 5 cUSDC por caja | El comprador y cuántos ids, no cuántos son reales\nAgitar | El titular | Solo gas | Que alguien agitó, no si tiene la caja\nAgitada de pago (o el olfato de una rata) | Cualquiera | 2,5 cUSDC, el 70 % espera en la caja a su titular | Que alguien pagó por agitar\nCobrar lo ganado con agitadas | Cualquiera, por las cajas que tiene | Solo gas | Diez números seguidos, no cuáles ni cuánto\nAcariciar | Cualquiera | 0.5 cUSDC | Que alguien lo acarició, no si contó ni lo que ganó\nComprobación de vida | El titular, una vez | Solo gas | Un bit, y que quien lo pidió tenía la caja\nEntrelazar | Ambos titulares | Solo gas | El enlace, y que ambos tenían sus cajas. Abrir una caja abre entonces las dos"
     },
     {
      "id": "mechanics-1",
@@ -1053,16 +1161,46 @@
      "text": "Todos los precios están en cUSDC, el USDC confidencial de Zama: nadie más que tú puede leer tu saldo ni seguir tus pagos, y el importe que pagaste está cifrado como lo demás. Un pago en cUSDC no puede fallar on-chain: un saldo corto simplemente mueve 0, y la acción entonces no hace nada. Un minteo no consigue cajas, una agitada de pago lee «no es tuya», una caricia no añade nada, una apertura se rechaza. Pagar desde USDC normal significa convertir antes el precio exacto a cUSDC, en público, y en un minteo ese importe delata la cantidad. Blindar un importe redondo con antelación, en la casa de cambio, no delata nada."
     },
     {
+     "id": "flows-0",
+     "section": "flows",
+     "heading": null,
+     "text": "Hay dos salidas del cifrado. Un descifrado privado vuelve a cifrar un valor para una persona, que debe estar en su lista de acceso. Un descifrado público publica un valor con firmas de las partes que comparten la clave, y el contrato verifica esas firmas antes de creerse nada.\nEl contrato nunca recibe un callback. Una revelación es una petición en la cadena, un descifrado fuera de la cadena, y una segunda transacción que trae la prueba de vuelta. Cualquiera puede enviar esa segunda transacción. Cada petición comprueba además, bajo cifrado, que quien la hace tiene la caja; ese bit se descifra con lo demás, y un no resuelve la petición como rechazada, con ceros en lugar de los valores de la caja.\nQué flujo\nQué son los paquetes"
+    },
+    {
+     "id": "flows-1",
+     "section": "flows",
+     "heading": null,
+     "text": "Mintear Agitar Abrir Duelo Transferir Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás."
+    },
+    {
+     "id": "flows-2",
+     "section": "flows",
+     "heading": null,
+     "text": "Titular y tarifa, comprobados a ciegas\nCualquiera puede pedirla ahora\nLos valores, firmados\nLa prueba va a la cadena\nComprobada contra sus propios registros\nLa caja se abre\nTransacción\nTexto cifrado\nValor con prueba\nValor en claro"
+    },
+    {
+     "id": "transfer-0",
+     "section": "transfer",
+     "heading": null,
+     "text": "En este protocolo un permiso de acceso no se puede revocar. Un diseño que pusiera al titular en la lista de acceso de la semilla nunca podría quitar de ella al vendedor. Este no pone nunca a nadie, así que una venta no tiene nada que deshacer en la semilla. Lo que cambia de manos es el propietario cifrado, junto con lo que espera en la caja: lo ganado con agitadas de pago y las croquetas van con ella.\nMintear Semilla: solo el contrato. Propietaria: Alice, cifrada. El recibo: solo Alice.\nAlice agita Un texto cifrado nuevo con un rasgo: el contrato y Alice.\nAlice vende a Bob Ella la envía. El propietario cambia bajo cifrado, y el recibo, movida o no, solo lo pueden leer Alice y Bob. Nada de la semilla cambia.\nBob agita Otro texto cifrado nuevo: el contrato y Bob."
+    },
+    {
+     "id": "transfer-1",
+     "section": "transfer",
+     "heading": null,
+     "text": "Alice lo intenta de nuevo Sin error. Lee «no es tuya»; los demás ven una agitada, no que falló. Se queda con lo que ya vio, y no consigue nada nuevo.\nBob cobra Lo ganado con agitadas de pago y las croquetas que esperan en la caja son ahora para él, no para Alice.\nSi compras una caja sellada, da por hecho que el vendedor conoce sus cinco rasgos. Unas cuantas agitadas de pago antes de comprar lo equilibran. Y una transferencia que te nombra es solo un quizás hasta que descifras su recibo: Mostrar mis cajas lo hace por ti."
+    },
+    {
      "id": "fees-0",
      "section": "fees",
      "heading": null,
-     "text": "Todo en el juego tiene precio en USDC, una stablecoin en dólares, y casi todo se paga en cUSDC, su forma cifrada: nadie más que tú puede leer tu saldo ni seguir tus pagos. Aquí está cada tarifa, quién la recibe y para qué sirve.\nLos jugadores pagan las tarifas en USDC; van a la tesorería de la colección, salvo el 70 % de una agitada de pago, que va al titular de la caja; la tesorería paga a Zama los descifrados y los servidores\nLos dólares entran por tres puertas y casi todos acaban en la tesorería. La tesorería paga a Zama los descifrados que los jugadores no pagan ellos mismos: sus gratuitos de cada día, y todos los públicos. Los packs del estudio y las adopciones de ratas, en la tabla de abajo, llegan igual a la tesorería.\nLo que pagas | Precio | Adónde va\nMintear una caja | 5 USDC por caja | La tesorería de la colección\nAbrir una caja | 1 USDC | La tesorería de la colección"
+     "text": "Todo en el juego tiene precio en USDC, una stablecoin en dólares, y casi todo se paga en cUSDC, su forma cifrada: nadie más que tú puede leer tu saldo ni seguir tus pagos. Aquí está cada tarifa, quién la recibe y para qué sirve.\nLos jugadores pagan las tarifas en USDC; van a la tesorería de la colección, salvo el 70 % de una agitada de pago, que va al titular de la caja; la tesorería paga a Zama los descifrados y los servidores\nLos dólares entran por cuatro puertas y casi todos acaban en la tesorería. La tesorería paga a Zama los descifrados que los jugadores no pagan ellos mismos (los gratis del día, y cada descifrado público), los servidores que siguen la cadena, y los servicios de IA detrás del estudio.\nLo que pagas | Precio | Adónde va\nMintear una caja | 5 USDC por caja | La tesorería de la colección\nAbrir una caja | 1 USDC | La tesorería de la colección"
     },
     {
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Acariciar a un gato | 0,5 USDC | La tesorería de la colección\nAgitar la caja de otro | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería. Un id vacío no tiene titular: muestra igualmente un rasgo, y el 70 % también va a la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUn pack del estudio (bocetos y modelos 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesorería, que paga con él los servicios de IA\nAdoptar una rata del estudio | 1 USDC, 3 USDC por una rata de IA | La tesorería\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario"
+     "text": "Acariciar a un gato | 0,5 USDC | La tesorería de la colección\nAgitar la caja de otro, o mandar a tu rata a olfatearla | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería. Un id vacío no tiene titular: muestra igualmente un rasgo, y el 70 % también va a la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUn pack del estudio (bocetos y modelos 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesorería, que paga con él los servicios de IA\nAdoptar una rata del estudio | 1 USDC, 3 USDC por una rata de IA | La tesorería\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario"
     },
     {
      "id": "fees-2",
@@ -1086,13 +1224,13 @@
      "id": "exchange-0",
      "section": "exchange",
      "heading": null,
-     "text": "El juego usa cinco tokens: ETH para el gas de la red, USDC y CROQ, a la vista, y cUSDC y cCROQ, el mismo dinero sellado. Un saldo a la vista es público, como el de cualquier token; uno sellado está cifrado y solo tú puedes leerlo. Para pasar de uno a otro, abre el menú y elige Casa de cambio: di qué entregas y qué quieres, y ella encuentra el camino y muestra cada coste antes de que firmes. El tipo y el número de transacciones quedan a la vista bajo el formulario; Detalles despliega la ruta, cada comisión y lo que se hace público. También lista lo que tienes; los saldos sellados se descifran cuando lo pides, solo para ti, con una firma."
+     "text": "El juego usa cinco tokens: ETH para el gas de la red, USDC y CROQ, a la vista, y cUSDC y cCROQ, el mismo dinero sellado. Un saldo a la vista es público, como el de cualquier token; uno sellado está cifrado y solo tú puedes leerlo. Para pasar de uno a otro, abre el menú y elige Casa de cambio: di qué entregas y qué quieres, y ella encuentra el camino y muestra cada coste antes de que firmes. El tipo y el número de transacciones quedan a la vista bajo el formulario; Detalles despliega la ruta, cada comisión y lo que se hace público. También lista lo que tienes; los saldos sellados se descifran cuando lo pides, solo para ti, con una firma.\nLos cinco tokens de la casa de cambio: ETH, USDC y CROQ son normales, cUSDC y cCROQ sellados, y los caminos entre ellos"
     },
     {
      "id": "exchange-1",
      "section": "exchange",
      "heading": null,
-     "text": "Algunos cambios se hacen en una transacción: comprar USDC con ETH (puede llegar sellado, como cUSDC), blindar USDC en cUSDC o desblindarlo, comprar o vender CROQ por USDC, sellar CROQ en cCROQ o desellarlo. Cualquier otro par encadena estos pasos: de ETH a cCROQ, por ejemplo, son tres. Cada paso es su propia transacción, firmadas una tras otra, y entre medias el dinero espera en tu wallet como USDC o CROQ a la vista. Si un paso no entrega nada, porque un saldo sellado menor que el importe no mueve nada, sin avisar, la casa de cambio se detiene y te dice dónde está tu dinero. El ETH solo se entrega, nunca se recibe."
+     "text": "Cada flecha es una transacción; cualquier otro par las encadena, de ETH a cCROQ en tres. El ETH también puede llegar directamente en cUSDC por la rampa. Cada cruce de la frontera muestra su importe; dentro del lado sellado, nada se ve.\nAlgunos cambios se hacen en una transacción: comprar USDC con ETH (puede llegar sellado, como cUSDC), blindar USDC en cUSDC o desblindarlo, comprar o vender CROQ por USDC, sellar CROQ en cCROQ o desellarlo. Cualquier otro par encadena estos pasos: de ETH a cCROQ, por ejemplo, son tres. Cada paso es su propia transacción, firmadas una tras otra, y entre medias el dinero espera en tu wallet como USDC o CROQ a la vista. Si un paso no entrega nada, porque un saldo sellado menor que el importe no mueve nada, sin avisar, la casa de cambio se detiene y te dice dónde está tu dinero. El ETH solo se entrega, nunca se recibe."
     },
     {
      "id": "exchange-2",
@@ -1111,18 +1249,6 @@
      "section": "exchange",
      "heading": null,
      "text": "Los créditos de descifrado solo se compran en USDC en claro. Así que cuando quieres cUSDC, desde ETH o desde USDC, el bureau puede guardar una parte en claro: nada, 5 %, 10 % o 20 %, y recuerda tu elección. Desde ETH son dos compras en la rampa, una en claro y otra sellada, con la misma comisión; desde USDC, solo se protege el resto. El bureau muestra el USDC guardado y cuántos créditos compra como mínimo. Los créditos solo se compran en la oficina, en una ventanilla aparte a la izquierda del mostrador (bajo tus haberes en una pantalla estrecha), ya que se gastan en lugar de guardarse: eliges una cantidad, ves el precio y compras. Si falta USDC sin cifrar, te devuelve al mostrador para conseguirlo."
-    },
-    {
-     "id": "transfer-0",
-     "section": "transfer",
-     "heading": null,
-     "text": "En este protocolo un permiso de acceso no se puede revocar. Un diseño que pusiera al titular en la lista de acceso de la semilla nunca podría quitar de ella al vendedor. Este no pone nunca a nadie, así que una venta no tiene nada que deshacer en la semilla. Lo que cambia de manos es el propietario cifrado, junto con lo que espera en la caja: lo ganado con agitadas de pago y las croquetas van con ella.\nMintear Semilla: solo el contrato. Propietaria: Alice, cifrada. El recibo: solo Alice.\nAlice agita Un texto cifrado nuevo con un rasgo: el contrato y Alice.\nAlice vende a Bob Ella la envía. El propietario cambia bajo cifrado, y el recibo, movida o no, solo lo pueden leer Alice y Bob. Nada de la semilla cambia.\nBob agita Otro texto cifrado nuevo: el contrato y Bob."
-    },
-    {
-     "id": "transfer-1",
-     "section": "transfer",
-     "heading": null,
-     "text": "Alice lo intenta de nuevo Sin error. Lee «no es tuya»; los demás ven una agitada, no que falló. Se queda con lo que ya vio, y no consigue nada nuevo.\nBob cobra Lo ganado con agitadas de pago y las croquetas que esperan en la caja son ahora para él, no para Alice.\nSi compras una caja sellada, da por hecho que el vendedor conoce sus cinco rasgos. Unas cuantas agitadas de pago antes de comprar lo equilibran. Y una transferencia que te nombra es solo un quizás hasta que descifras su recibo: Mostrar mis cajas lo hace por ti."
     },
     {
      "id": "croquettes-0",
@@ -1182,13 +1308,13 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "El estudio es una página aparte, abierta a todos, con wallet o sin él: allí dibujas tú mismo una de las ratas del depósito. Ratas, no gatos, a propósito: los gatos solo salen de las cajas, así que nada de lo que se dibuja en el estudio puede pasar por uno de ellos. El botón Otra rata le pide una rata al azar al generador de ratas del juego, en tu navegador: procedural, gratis, sin fin y en 3D, y se gira arrastrando. Dientes de conejo, orejas grandes, un sombrero o un trozo de queso, según caiga el seed. Sin IA y nada en la cadena."
+     "text": "El estudio es una página aparte, abierta a todos, con wallet o sin él: allí dibujas tú mismo una de las ratas del depósito. Ratas, no gatos, a propósito: los gatos solo salen de las cajas, así que nada de lo que se dibuja en el estudio puede pasar por uno de ellos. El botón Otra rata le pide una rata al azar al generador de ratas del juego, en tu navegador: procedural, gratis, sin fin y en 3D, y se gira arrastrando. Dientes de conejo, orejas grandes, un sombrero o un trozo de queso, según caiga el seed. Sin IA y nada en la cadena.\nEl camino del estudio, paso a paso, entre tu navegador, el servidor del estudio con la IA, y la cadena\nUna rata al azar se salta la IA: desde el paso 1 puede ir directa a la adopción. Una rata IA pasa por todos los pasos. Tus palabras y tus dibujos se quedan en el servidor del estudio; solo el pack y la adopción van a la cadena."
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Dibujar una rata a partir de tus palabras pasa por servicios de IA de pago, así que se vende antes, en packs comprados en la cadena en USDC normal al contrato StudioPacks: el pack Starter, 2 USDC por 10 bocetos y un modelo 3D, y el pack Litter, 8 USDC por 50 bocetos y cinco modelos 3D. El pago va directo al tesoro de la colección y las unidades no caducan. Una compra es pública, como cualquier pago en USDC normal; lo que dibujas con ella no va a la cadena."
+     "text": "1 Otra rata Al azar, gratis, sin fin. Sin IA Tu navegador\n2 Comprar un pack 2 o 8 USDC, a la tesorería En la cadena\n3 Iniciar sesión Una firma gratis, ninguna transacción Tu navegador\n4 Boceto Una unidad: una imagen a partir de tus palabras Estudio e IA\n5 Modelo 3D Una unidad, un minuto o dos Estudio e IA\n6 Adoptar 1 USDC una rata al azar, 3 una rata IA En la cadena\n7 Mis ratas 3 CROQ al día, y olfato En la cadena\nDibujar una rata a partir de tus palabras pasa por servicios de IA de pago, así que se vende antes, en packs comprados en la cadena en USDC normal al contrato StudioPacks: el pack Starter, 2 USDC por 10 bocetos y un modelo 3D, y el pack Litter, 8 USDC por 50 bocetos y cinco modelos 3D. El pago va directo al tesoro de la colección y las unidades no caducan. Una compra es pública, como cualquier pago en USDC normal; lo que dibujas con ella no va a la cadena."
     },
     {
      "id": "studio-2",
@@ -1203,34 +1329,46 @@
      "text": "Para gastar tus unidades, entra una vez con tu wallet: una firma gratuita, sin transacción, que le dice al estudio qué unidades son tuyas. El sitio gasta una unidad antes de llamar a la IA y la devuelve si el servicio falla, hasta tres veces al día: después, o si el filtro de seguridad de la IA rechaza la imagen, la unidad se gasta, porque el servicio se pagó. Un prompt tiene de 3 a 240 caracteres; los personajes con licencia y el contenido adulto se rechazan antes de gastar nada. Cada día el estudio se detiene en un tope de gasto: pasado, vuelve mañana.\nEn la testnet el USDC es dinero de mentira mientras que la IA cuesta dinero real, así que allí el estudio de IA puede estar cerrado o reservado a una lista de testers; las ratas al azar siguen siendo gratis en todas partes."
     },
     {
-     "id": "studio-4",
-     "section": "studio",
+     "id": "rats-0",
+     "section": "rats",
      "heading": null,
-     "text": "Una rata que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, 1 USDC por una rata al azar (cada una una sola vez), 3 USDC por una rata de IA, cuya imagen se guarda antes en Arweave para siempre, como las de los gatos, y su modelo 3D lo conserva el servidor del juego. Solo habrá 700 ratas al azar y 300 ratas de IA, fijadas para siempre en el contrato, y un wallet adopta 5 como mucho (aún se le pueden regalar o vender); el estudio muestra cuántas quedan. A diferencia de las cajas, nada de una rata es secreto: su dueño es público. Cada rata gana 3 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas» en el juego; una rata guarda 7 días como mucho entre dos recogidas. Y olfatea: una sacudida de pago de una caja sellada que no es tuya es tu rata contándote uno de sus rasgos."
+     "text": "Una rata del estudio que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, pagada en USDC normal directamente a la tesorería de la colección. Una rata al azar cuesta 1 USDC y se adopta por su semilla, cada semilla una sola vez: su aspecto se vuelve a calcular a partir de ese número allí donde se muestra, así que no hay nada más que guardar. Una rata IA cuesta 3 USDC: su imagen se guarda antes en Arweave para siempre, como las de los gatos, y su modelo 3D lo guarda el servidor del juego.\nNunca habrá más de 700 ratas al azar y 300 ratas IA, fijadas para siempre en el contrato, y una wallet adopta 5 como mucho, de los dos tipos juntos. Aun así se le puede regalar o vender una rata por encima de eso. El estudio y la página de inicio muestran cuántas quedan."
     },
     {
-     "id": "terms-0",
-     "section": "terms",
+     "id": "rats-1",
+     "section": "rats",
      "heading": null,
-     "text": "La primera vez que conectas un wallet, el juego te entrega un descargo, el formulario DNO-1: las condiciones de juego, ocho cláusulas breves. Dicen claramente en qué te metes. Los contratos son software experimental: nadie los ha auditado, y un fallo, una vulnerabilidad o un hackeo podría hacerte perder lo que pongas, sin que los creadores sean responsables, en la medida en que la ley lo permita. La web es solo una ventana: tus cajas, tus gatos y tus saldos viven on-chain, así que si la web se rompe, no pierdes nada. Nadie guarda tu dinero por ti, nada se reembolsa y nada de esto es una inversión."
+     "text": "Una de las 700 ratas al azar que habrá jamás, dibujada en tu navegador a partir de una semilla al azar. Haz clic y aterriza otra.\nUna rata es todo lo que una caja no es, a propósito: los gatos son los residentes secretos del depósito, las ratas los que van a cara descubierta. Nada en una rata está cifrado, así que funciona como cualquier NFT.\n| Una caja | Una rata\nQué es | Una caja sellada con un gato que nadie ve | Una rata de dibujos animados, a la vista de todos\nQuién la tiene | Cifrado: solo lo sabe quien la tiene | Público, como cualquier NFT\nDe qué está hecha | Una semilla cifrada, legible solo por el contrato | Su semilla, o su imagen en Arweave, en claro\nPrecio | 5 cUSDC, pago cifrado | 1 USDC, 3 una rata IA, pago en claro\nCuántas | 10.000; cuántas se han vendido está cifrado | 700 al azar y 300 IA, 5 por wallet"
     },
     {
-     "id": "terms-1",
-     "section": "terms",
+     "id": "rats-2",
+     "section": "rats",
      "heading": null,
-     "text": "Rubricas cada cláusula, con un clic, y luego firmas con tu wallet. La firma es gratuita y no envía ninguna transacción: tu wallet muestra un mensaje legible que nombra tu dirección, la versión de las condiciones y una huella del texto completo en inglés. Las traducciones sirven para leer; lo que firmas es el texto en inglés. La firma se guarda como constancia de tu aceptación, en el servidor del juego cuando responde, y siempre en tu navegador. Sin wallet no se pide nada: puedes recorrer toda la web, y el formulario solo aparece cuando se conecta un wallet que aún no lo ha firmado. Puedes cerrarlo para seguir mirando, o cambiar a otro wallet desde él; cualquier acción que pidas después (un mint, una sacudida, una comida) lo trae de vuelta hasta que esté firmado."
+     "text": "Gana | Una bolsa de 100 cCROQ, luego de 0 a 4 al día, ocultas en la caja | 3 CROQ normales al día, para su dueño\nWallets y mercados | Necesita un mercado hecho para el ERC-721 confidencial | Un ERC-721 estándar: cualquier wallet o mercado la muestra"
     },
     {
-     "id": "terms-2",
-     "section": "terms",
-     "heading": null,
-     "text": "Cada wallet nuevo firma una vez, y una nueva versión de las condiciones se vuelve a firmar antes de seguir jugando. Para releer el formulario y ver tu firma, abre el menú y elige Condiciones de juego."
+     "id": "rats-3",
+     "section": "rats",
+     "heading": "Las croquetas de una rata",
+     "text": "Cada rata gana 3 CROQ normales al día desde el día en que se adoptó. Salen de la despensa de las ratas, el RatPantry, que recibió 500.000 CROQ de la tesorería, y no del Pantry que alimenta las cajas: las ratas nunca tocan la reserva del juego. Recógelas desde «Mis ratas» en el juego, para todas tus ratas a la vez. Una rata guarda 7 días como mucho entre dos recogidas; si la dejas sola más tiempo, no gana nada más. Si la despensa se vacía, la recogida falla y los días esperan; cuando le queda poco, paga lo que queda. Las croquetas son normales porque el dueño de una rata es público de todos modos: no hay nada que ocultar en lo que gana. Selladas en la casa de cambio, pueden alimentar a un gato.\nLas croquetas de una rata van de la tesorería a la despensa de las ratas, de ahí al dueño de la rata, y una vez selladas, a un gato"
+    },
+    {
+     "id": "rats-4",
+     "section": "rats",
+     "heading": "Las croquetas de una rata",
+     "text": "La despensa de las ratas está separada de la de las cajas: lo que ganan las ratas nunca sale del ronroneo. Normales hasta que las sellas, las croquetas de una rata se vuelven secretas en cuanto entran en cCROQ.\nTesorería 500.000 CROQ, una vez\nfinanciada Despensa de ratas 3 CROQ por rata y día\nrecoger, 7 días como mucho Tú CROQ normales, en público\nsellar, y dar de comer Tu gato una comida, cifrada"
+    },
+    {
+     "id": "rats-5",
+     "section": "rats",
+     "heading": "Olfatear las cajas",
+     "text": "Una rata también olfatea. Desde «Mis ratas», mándala a olfatear: elige una caja sellada que no tengas, y tu rata te dice uno de sus rasgos, solo a ti. Por dentro es una agitada de pago, 2,5 cUSDC: el 70 % espera en la caja a quien la tiene, el 30 % va a la tesorería, y los demás solo ven que alguien pagó por agitarla.\nAsí ayuda una rata antes de una compra: unas cuantas olfateadas a una caja que piensas comprar, y sabes tanto de ella como el vendedor."
     },
     {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Esta parte desaparece con mainnet.\nEl juego corre en Sepolia, la red de pruebas de Ethereum. Nada de aquí vale dinero. Los USDC son el token de prueba de Zama, gratis desde la ficha del wallet o la casa de cambio; el ETH para el gas sale de un faucet; el pool de croquetas solo existe para poder probar el mercado; y todos los precios de este manual son precios de prueba.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e"
+     "text": "Esta parte desaparece con mainnet.\nEl juego corre en Sepolia, la red de pruebas de Ethereum. Nada de aquí vale dinero. Los USDC son el token de prueba de Zama, gratis desde la ficha del wallet o la casa de cambio; el ETH para el gas sale de un faucet; el pool de croquetas solo existe para poder probar el mercado; y todos los precios de este manual son precios de prueba.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0xd4f8…3856\nLa despensa de las ratas (RatPantry) 0x9c83…0a0A"
     },
     {
      "id": "testnet-1",
@@ -1284,8 +1422,18 @@
      "part": "manual"
     },
     {
+     "id": "map",
+     "title": "Il deposito in un colpo d'occhio",
+     "part": "manual"
+    },
+    {
      "id": "cats",
      "title": "Chi potrebbe esserci dentro",
+     "part": "manual"
+    },
+    {
+     "id": "terms",
+     "title": "La liberatoria",
      "part": "manual"
     },
     {
@@ -1304,13 +1452,18 @@
      "part": "manual"
     },
     {
+     "id": "mechanics",
+     "title": "Dodici cose da fare",
+     "part": "manual"
+    },
+    {
      "id": "flows",
      "title": "Come escono le cose",
      "part": "manual"
     },
     {
-     "id": "mechanics",
-     "title": "Dodici cose da fare",
+     "id": "transfer",
+     "title": "Cosa cambia una vendita",
      "part": "manual"
     },
     {
@@ -1324,11 +1477,6 @@
      "part": "manual"
     },
     {
-     "id": "transfer",
-     "title": "Cosa cambia una vendita",
-     "part": "manual"
-    },
-    {
      "id": "croquettes",
      "title": "Le crocchette",
      "part": "manual"
@@ -1339,8 +1487,8 @@
      "part": "manual"
     },
     {
-     "id": "terms",
-     "title": "La liberatoria",
+     "id": "rats",
+     "title": "I ratti",
      "part": "manual"
     },
     {
@@ -1378,6 +1526,12 @@
      "text": "Il gioco riguarda quindi cosa scegli di scoprire, e quanto ti costa. Scuoti una scatola e impari una cosa su di lei, in privato. Aprila e tutti imparano tutto, per sempre."
     },
     {
+     "id": "map-0",
+     "section": "map",
+     "heading": null,
+     "text": "Il gioco ha cinque sportelli. Una regola li separa: ciò che riguarda una scatola è cifrato, ciò che riguarda un ratto no. Il denaro passa dall'uno all'altro al cambiavalute, e l'importo si vede al confine.\nI dollari comprano scatole, pacchetti dello studio e ratti; scatole e ratti guadagnano crocchette; le crocchette nutrono i gatti. Ogni scheda porta al suo capitolo."
+    },
+    {
      "id": "cats-0",
      "section": "cats",
      "heading": null,
@@ -1388,6 +1542,24 @@
      "section": "cats",
      "heading": "Tigrato",
      "text": "Circa 1 scatola su 5\nIl classico. Strisce, idee chiare e la certezza che la tua sedia sia sua.\nLe probabilità sotto ogni gatto vengono dritte dalle tabelle del gioco. Come una scatola finisce su uno di loro è nella sezione successiva."
+    },
+    {
+     "id": "terms-0",
+     "section": "terms",
+     "heading": null,
+     "text": "La prima volta che colleghi un wallet, il gioco ti porge una liberatoria, il modulo DNO-1: le condizioni di gioco, otto clausole brevi. Dicono chiaramente in cosa ti stai cacciando. I contratti sono software sperimentale: nessuno li ha verificati, e un bug, una falla o un attacco potrebbe farti perdere ciò che ci metti, senza che i creatori ne rispondano, nei limiti consentiti dalla legge. Il sito è solo una finestra: le tue scatole, i tuoi gatti e i tuoi saldi vivono on-chain, quindi se il sito si guasta, non perdi nulla. Nessuno custodisce i tuoi soldi per te, nulla viene rimborsato e niente di tutto questo è un investimento."
+    },
+    {
+     "id": "terms-1",
+     "section": "terms",
+     "heading": null,
+     "text": "Siglerai ogni clausola, con un clic, poi firmerai con il tuo wallet. La firma è gratuita e non invia alcuna transazione: il wallet mostra un messaggio leggibile che nomina il tuo indirizzo, la versione delle condizioni e un'impronta del testo inglese completo. Le traduzioni servono per leggere; quello che firmi è il testo inglese. La firma viene conservata come prova della tua accettazione, dal server del gioco quando risponde, e sempre nel tuo browser. Senza wallet non ti viene chiesto nulla: puoi girare tutto il sito, e il modulo compare solo quando si collega un wallet che non l'ha ancora firmato. Puoi chiuderlo per continuare a guardare, o passare a un altro wallet dal modulo; qualsiasi azione chiesta dopo (un mint, una scossa, un pasto) lo fa tornare finché non è firmato."
+    },
+    {
+     "id": "terms-2",
+     "section": "terms",
+     "heading": null,
+     "text": "Ogni nuovo wallet firma una volta, e una nuova versione delle condizioni si firma di nuovo prima di continuare a giocare. Per rileggere il modulo e vedere la tua firma, apri il menu e scegli Condizioni di gioco."
     },
     {
      "id": "seed-0",
@@ -1444,28 +1616,10 @@
      "text": "Quante volte è stato accarezzato, e quanti pasti ha mangiato | Nessuno. I tentativi sono pubblici, non se sono contati\nQuanto affetto ha guadagnato | No | No\nDue conseguenze sono volute. Un detentore che scuote abbastanza spesso impara tutti e cinque i tratti: uno scuotimento ne mostra uno su cinque a caso, quindi circa undici li coprono. Ciò che resta nascosto anche al detentore è lo stato, che vale fino a un terzo del punteggio, e l'affetto. E i duelli lasciano trapelare un ordine: ognuno pubblica quale di due scatole ha il punteggio più alto. Mettere una scatola in duello mostra anche che la detieni: così lo scaffale dei duelli porta solo scatole che qualcuno detiene. È il prezzo del duello."
     },
     {
-     "id": "flows-0",
-     "section": "flows",
-     "heading": null,
-     "text": "Ci sono due uscite dalla cifratura. Una decifratura privata ricifra un valore per una persona, che deve essere nella sua lista di accesso. Una decifratura pubblica pubblica un valore con le firme delle parti che condividono la chiave, e il contratto verifica quelle firme prima di credere a qualsiasi cosa.\nIl contratto non riceve mai un callback. Una rivelazione è una richiesta on-chain, una decifratura off-chain, e una seconda transazione che riporta la prova. Chiunque può inviare quella seconda transazione. Ogni richiesta controlla anche, sotto cifratura, che chi la fa detenga la scatola; quel bit viene decifrato con il resto, e un no chiude la richiesta con un rifiuto, con degli zeri al posto dei valori della scatola.\nQuale flusso\nCosa sono i pacchi"
-    },
-    {
-     "id": "flows-1",
-     "section": "flows",
-     "heading": null,
-     "text": "Mint Scuotere Aprire Duello Trasferire Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro"
-    },
-    {
-     "id": "flows-2",
-     "section": "flows",
-     "heading": null,
-     "text": "Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro.\nDetentore e tariffa, controllati alla cieca\nChiunque può ora chiederlo\nI valori, firmati\nLa prova va on-chain\nControllata contro i suoi stessi registri\nLa scatola si apre\nTransazione\nTesto cifrato\nValore con prova\nValore in chiaro"
-    },
-    {
      "id": "mechanics-0",
      "section": "mechanics",
      "heading": null,
-     "text": "Azione | Chi | Costo | Cosa diventa pubblico\nMint | Chiunque, nascondendo quante tra 1 e 10 id | 5 cUSDC a scatola | Chi compra e quanti id, non quanti sono veri\nScuotere | Il detentore | Solo gas | Che qualcuno ha scosso, non se detiene la scatola\nScuotimento a pagamento | Chiunque | 2,5 cUSDC, il 70% aspetta nella scatola il suo detentore | Che qualcuno ha pagato per scuotere\nRitirare i guadagni degli scuotimenti | Chiunque, per le scatole che detiene | Solo gas | Dieci numeri di fila, non quali né quanto\nAccarezzare | Chiunque | 0.5 cUSDC | Che qualcuno l'ha accarezzato, non se è contato né quanto ha reso\nControllo di vita | Il detentore, una volta | Solo gas | Un bit, e che chi l'ha chiesto deteneva la scatola\nIntrecciare | Entrambi i detentori | Solo gas | Il legame, e che entrambi detenevano le loro scatole. Aprire una scatola apre poi entrambe"
+     "text": "Azione | Chi | Costo | Cosa diventa pubblico\nMint | Chiunque, nascondendo quante tra 1 e 10 id | 5 cUSDC a scatola | Chi compra e quanti id, non quanti sono veri\nScuotere | Il detentore | Solo gas | Che qualcuno ha scosso, non se detiene la scatola\nScuotimento a pagamento (o il fiuto di un ratto) | Chiunque | 2,5 cUSDC, il 70% aspetta nella scatola il suo detentore | Che qualcuno ha pagato per scuotere\nRitirare i guadagni degli scuotimenti | Chiunque, per le scatole che detiene | Solo gas | Dieci numeri di fila, non quali né quanto\nAccarezzare | Chiunque | 0.5 cUSDC | Che qualcuno l'ha accarezzato, non se è contato né quanto ha reso\nControllo di vita | Il detentore, una volta | Solo gas | Un bit, e che chi l'ha chiesto deteneva la scatola\nIntrecciare | Entrambi i detentori | Solo gas | Il legame, e che entrambi detenevano le loro scatole. Aprire una scatola apre poi entrambe"
     },
     {
      "id": "mechanics-1",
@@ -1486,16 +1640,46 @@
      "text": "Tutti i prezzi sono in cUSDC, l'USDC confidenziale di Zama: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti, e l'importo che hai pagato è cifrato come il resto. Un pagamento in cUSDC non può fallire on-chain: un saldo insufficiente sposta semplicemente 0, e l'azione allora non fa niente. Un mint non ottiene scatole, uno scuotimento a pagamento legge «non è tua», una carezza non aggiunge niente, un'apertura viene rifiutata. Pagare da USDC normale significa convertire prima il prezzo esatto in cUSDC, in pubblico, e per un mint quell'importo tradisce la quantità. Schermare in anticipo un importo tondo, al cambiavalute, non tradisce niente."
     },
     {
+     "id": "flows-0",
+     "section": "flows",
+     "heading": null,
+     "text": "Ci sono due uscite dalla cifratura. Una decifratura privata ricifra un valore per una persona, che deve essere nella sua lista di accesso. Una decifratura pubblica pubblica un valore con le firme delle parti che condividono la chiave, e il contratto verifica quelle firme prima di credere a qualsiasi cosa.\nIl contratto non riceve mai un callback. Una rivelazione è una richiesta on-chain, una decifratura off-chain, e una seconda transazione che riporta la prova. Chiunque può inviare quella seconda transazione. Ogni richiesta controlla anche, sotto cifratura, che chi la fa detenga la scatola; quel bit viene decifrato con il resto, e un no chiude la richiesta con un rifiuto, con degli zeri al posto dei valori della scatola.\nQuale flusso\nCosa sono i pacchi"
+    },
+    {
+     "id": "flows-1",
+     "section": "flows",
+     "heading": null,
+     "text": "Mint Scuotere Aprire Duello Trasferire Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro"
+    },
+    {
+     "id": "flows-2",
+     "section": "flows",
+     "heading": null,
+     "text": "Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro.\nDetentore e tariffa, controllati alla cieca\nChiunque può ora chiederlo\nI valori, firmati\nLa prova va on-chain\nControllata contro i suoi stessi registri\nLa scatola si apre\nTransazione\nTesto cifrato\nValore con prova\nValore in chiaro"
+    },
+    {
+     "id": "transfer-0",
+     "section": "transfer",
+     "heading": null,
+     "text": "Su questo protocollo un permesso di accesso non può essere revocato. Un design che mettesse il detentore nella lista di accesso del seed non potrebbe mai toglierne il venditore. Questo non ci mette mai nessuno, quindi una vendita non ha niente da annullare sul seed. Quello che passa di mano è il proprietario cifrato, insieme a ciò che aspetta nella scatola: i guadagni degli scuotimenti a pagamento e le crocchette la seguono.\nMint Seed: solo il contratto. Proprietaria: Alice, cifrata. La ricevuta: solo Alice.\nAlice scuote Un nuovo testo cifrato con un tratto: il contratto e Alice.\nAlice vende a Bob Lei la invia. Il proprietario cambia sotto cifratura, e la ricevuta, spostata o no, è leggibile solo da Alice e Bob. Niente del seed cambia.\nBob scuote Un altro nuovo testo cifrato: il contratto e Bob."
+    },
+    {
+     "id": "transfer-1",
+     "section": "transfer",
+     "heading": null,
+     "text": "Alice riprova Nessun errore. Legge «non è tua»; tutti gli altri vedono uno scuotimento, non che è fallito. Tiene ciò che ha già visto, e non ottiene niente di nuovo.\nBob ritira I guadagni degli scuotimenti a pagamento e le crocchette che aspettano nella scatola ora vanno a lui, non ad Alice.\nSe compri una scatola sigillata, dai per scontato che il venditore conosca i suoi cinque tratti. Qualche scuotimento a pagamento prima di comprare pareggia i conti. E un trasferimento che ti nomina è solo un forse finché non decifri la sua ricevuta: Mostra le mie scatole lo fa per te."
+    },
+    {
      "id": "fees-0",
      "section": "fees",
      "heading": null,
-     "text": "Tutto nel gioco ha un prezzo in USDC, una stablecoin in dollari, e quasi tutto si paga in cUSDC, la sua forma cifrata: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti. Ecco ogni commissione, chi la riceve, e cosa paga.\nI giocatori pagano le commissioni in USDC; vanno alla tesoreria della collezione, tranne il 70% di uno scuotimento a pagamento, che va a chi detiene la scatola; la tesoreria paga Zama per le decifrature e i server\nI dollari entrano da tre porte e quasi tutti finiscono nella tesoreria. La tesoreria paga Zama per le decifrature che i giocatori non pagano di tasca propria: quelle gratuite di ogni giorno, e ogni decifratura pubblica. I pack dello studio e le adozioni dei ratti, nella tabella qui sotto, arrivano allo stesso modo in tesoreria.\nCosa paghi | Prezzo | Dove va\nMintare una scatola | 5 USDC a scatola | La tesoreria della collezione"
+     "text": "Tutto nel gioco ha un prezzo in USDC, una stablecoin in dollari, e quasi tutto si paga in cUSDC, la sua forma cifrata: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti. Ecco ogni commissione, chi la riceve, e cosa paga.\nI giocatori pagano le commissioni in USDC; vanno alla tesoreria della collezione, tranne il 70% di uno scuotimento a pagamento, che va a chi detiene la scatola; la tesoreria paga Zama per le decifrature e i server\nI dollari entrano da quattro porte e quasi tutti finiscono nella tesoreria. La tesoreria paga Zama per le decifrature che i giocatori non pagano da sé (le gratuite del giorno, e ogni decifratura pubblica), i server che seguono la catena, e i servizi di IA dietro lo studio.\nCosa paghi | Prezzo | Dove va\nMintare una scatola | 5 USDC a scatola | La tesoreria della collezione\nAprire una scatola | 1 USDC | La tesoreria della collezione"
     },
     {
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Aprire una scatola | 1 USDC | La tesoreria della collezione\nAccarezzare un gatto | 0,5 USDC | La tesoreria della collezione\nScuotere la scatola di qualcun altro | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria. Un id vuoto non ha detentore: mostra comunque un tratto, e anche il 70% va alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pack dello studio (schizzi e modelli 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesoreria, che ci paga i servizi di IA\nAdottare un ratto dello studio | 1 USDC, 3 USDC per un ratto IA | La tesoreria\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane"
+     "text": "Accarezzare un gatto | 0,5 USDC | La tesoreria della collezione\nScuotere la scatola di qualcun altro, o mandare il tuo ratto ad annusarla | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria. Un id vuoto non ha detentore: mostra comunque un tratto, e anche il 70% va alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pack dello studio (schizzi e modelli 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesoreria, che ci paga i servizi di IA\nAdottare un ratto dello studio | 1 USDC, 3 USDC per un ratto IA | La tesoreria\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane"
     },
     {
      "id": "fees-2",
@@ -1519,43 +1703,37 @@
      "id": "exchange-0",
      "section": "exchange",
      "heading": null,
-     "text": "Il gioco usa cinque token: ETH per il gas della rete, USDC e CROQ, in chiaro, e cUSDC e cCROQ, la stessa moneta sigillata. Un saldo in chiaro è pubblico, come quello di qualsiasi token; uno sigillato è cifrato e solo tu puoi leggerlo. Per passare dall'uno all'altro, apri il menu e scegli Cambiavalute: dici cosa consegni e cosa vuoi, lui trova la strada e mostra ogni costo prima che tu firmi. Il tasso e il numero di transazioni restano in vista sotto il modulo; Dettagli apre il percorso, ogni commissione e ciò che diventa pubblico. Elenca anche quello che possiedi; i saldi sigillati si decifrano su richiesta, solo per te, con una firma."
+     "text": "Il gioco usa cinque token: ETH per il gas della rete, USDC e CROQ, in chiaro, e cUSDC e cCROQ, la stessa moneta sigillata. Un saldo in chiaro è pubblico, come quello di qualsiasi token; uno sigillato è cifrato e solo tu puoi leggerlo. Per passare dall'uno all'altro, apri il menu e scegli Cambiavalute: dici cosa consegni e cosa vuoi, lui trova la strada e mostra ogni costo prima che tu firmi. Il tasso e il numero di transazioni restano in vista sotto il modulo; Dettagli apre il percorso, ogni commissione e ciò che diventa pubblico. Elenca anche quello che possiedi; i saldi sigillati si decifrano su richiesta, solo per te, con una firma.\nI cinque token del cambiavalute: ETH, USDC e CROQ sono normali, cUSDC e cCROQ sigillati, e le strade tra loro"
     },
     {
      "id": "exchange-1",
      "section": "exchange",
      "heading": null,
-     "text": "Alcuni cambi richiedono una sola transazione: comprare USDC con ETH (può arrivare sigillato, come cUSDC), schermare USDC in cUSDC o sbloccarlo, comprare o vendere CROQ contro USDC, sigillare CROQ in cCROQ o dissigillarlo. Ogni altra coppia concatena questi passi: da ETH a cCROQ, per esempio, sono tre. Ogni passo è una transazione a sé, firmate una dopo l'altra, e nel frattempo il denaro aspetta nel tuo wallet come USDC o CROQ in chiaro. Se un passo non consegna nulla, perché un saldo sigillato inferiore all'importo non sposta niente, senza avvisare, il cambiavalute si ferma e ti dice dove sono i tuoi soldi. L'ETH si consegna soltanto, non si riceve mai."
+     "text": "Ogni freccia è una transazione; ogni altra coppia le concatena, da ETH a cCROQ in tre. L'ETH può anche arrivare direttamente in cUSDC tramite la rampa. Ogni passaggio del confine mostra il suo importo; dentro il lato sigillato, niente si vede."
     },
     {
      "id": "exchange-2",
      "section": "exchange",
      "heading": null,
-     "text": "Comprare USDC con ETH costa lo 0,3% dell'ETH, trattenuto dal sito. Schermare e sbloccare è gratis. Ogni passo paga il gas della rete, come qualsiasi transazione. Uno scambio su un pool può avvenire a un prezzo peggiore di quello indicato se qualcuno opera prima: la tolleranza di slippage, 1% se non la cambi (da 0,01% a 50%), è quanto peggio accetti prima che la transazione si annulli da sola, costando solo il gas. Il cambiavalute mostra anche l'impatto sul prezzo, quanto il tuo scambio sposta il prezzo del pool, e ti avvisa oltre il 2%."
+     "text": "Alcuni cambi richiedono una sola transazione: comprare USDC con ETH (può arrivare sigillato, come cUSDC), schermare USDC in cUSDC o sbloccarlo, comprare o vendere CROQ contro USDC, sigillare CROQ in cCROQ o dissigillarlo. Ogni altra coppia concatena questi passi: da ETH a cCROQ, per esempio, sono tre. Ogni passo è una transazione a sé, firmate una dopo l'altra, e nel frattempo il denaro aspetta nel tuo wallet come USDC o CROQ in chiaro. Se un passo non consegna nulla, perché un saldo sigillato inferiore all'importo non sposta niente, senza avvisare, il cambiavalute si ferma e ti dice dove sono i tuoi soldi. L'ETH si consegna soltanto, non si riceve mai."
     },
     {
      "id": "exchange-3",
      "section": "exchange",
      "heading": null,
-     "text": "Cosa diventa pubblico: i token in chiaro si muovono allo scoperto, quindi ogni scambio mostra i suoi importi, come ogni passaggio tra in chiaro e sigillato. L'importo che schermi o sigilli è pubblico, e anche quello che sblocchi o dissigilli: viene decifrato in pubblico per essere pagato, per questo quei passi richiedono un minuto in più. Una volta sigillato il tuo denaro, quello che ne fai resta privato."
+     "text": "Comprare USDC con ETH costa lo 0,3% dell'ETH, trattenuto dal sito. Schermare e sbloccare è gratis. Ogni passo paga il gas della rete, come qualsiasi transazione. Uno scambio su un pool può avvenire a un prezzo peggiore di quello indicato se qualcuno opera prima: la tolleranza di slippage, 1% se non la cambi (da 0,01% a 50%), è quanto peggio accetti prima che la transazione si annulli da sola, costando solo il gas. Il cambiavalute mostra anche l'impatto sul prezzo, quanto il tuo scambio sposta il prezzo del pool, e ti avvisa oltre il 2%."
     },
     {
      "id": "exchange-4",
      "section": "exchange",
      "heading": null,
+     "text": "Cosa diventa pubblico: i token in chiaro si muovono allo scoperto, quindi ogni scambio mostra i suoi importi, come ogni passaggio tra in chiaro e sigillato. L'importo che schermi o sigilli è pubblico, e anche quello che sblocchi o dissigilli: viene decifrato in pubblico per essere pagato, per questo quei passi richiedono un minuto in più. Una volta sigillato il tuo denaro, quello che ne fai resta privato."
+    },
+    {
+     "id": "exchange-5",
+     "section": "exchange",
+     "heading": null,
      "text": "I crediti di decifratura si comprano solo in USDC in chiaro. Quindi quando vuoi cUSDC, da ETH o da USDC, il bureau può tenerne una parte in chiaro: niente, 5%, 10% o 20%, e ricorda la scelta. Da ETH sono due acquisti sulla rampa, uno in chiaro e uno sigillato, con la stessa commissione; da USDC, si protegge solo il resto. Il bureau mostra gli USDC tenuti e quanti crediti comprano come minimo. I crediti si comprano solo all'ufficio, in uno sportello a parte a sinistra del bancone (sotto i tuoi averi su uno schermo stretto), perché si spendono invece di tenersi: scegli una quantità, vedi il prezzo, compri. Se manca USDC in chiaro, ti rimanda al bancone per procurartelo."
-    },
-    {
-     "id": "transfer-0",
-     "section": "transfer",
-     "heading": null,
-     "text": "Su questo protocollo un permesso di accesso non può essere revocato. Un design che mettesse il detentore nella lista di accesso del seed non potrebbe mai toglierne il venditore. Questo non ci mette mai nessuno, quindi una vendita non ha niente da annullare sul seed. Quello che passa di mano è il proprietario cifrato, insieme a ciò che aspetta nella scatola: i guadagni degli scuotimenti a pagamento e le crocchette la seguono.\nMint Seed: solo il contratto. Proprietaria: Alice, cifrata. La ricevuta: solo Alice.\nAlice scuote Un nuovo testo cifrato con un tratto: il contratto e Alice.\nAlice vende a Bob Lei la invia. Il proprietario cambia sotto cifratura, e la ricevuta, spostata o no, è leggibile solo da Alice e Bob. Niente del seed cambia.\nBob scuote Un altro nuovo testo cifrato: il contratto e Bob."
-    },
-    {
-     "id": "transfer-1",
-     "section": "transfer",
-     "heading": null,
-     "text": "Alice riprova Nessun errore. Legge «non è tua»; tutti gli altri vedono uno scuotimento, non che è fallito. Tiene ciò che ha già visto, e non ottiene niente di nuovo.\nBob ritira I guadagni degli scuotimenti a pagamento e le crocchette che aspettano nella scatola ora vanno a lui, non ad Alice.\nSe compri una scatola sigillata, dai per scontato che il venditore conosca i suoi cinque tratti. Qualche scuotimento a pagamento prima di comprare pareggia i conti. E un trasferimento che ti nomina è solo un forse finché non decifri la sua ricevuta: Mostra le mie scatole lo fa per te."
     },
     {
      "id": "croquettes-0",
@@ -1615,55 +1793,73 @@
      "id": "studio-0",
      "section": "studio",
      "heading": null,
-     "text": "Lo studio è una pagina a sé, aperta a tutti, con o senza wallet: lì disegni tu stesso uno dei ratti del deposito. Ratti, non gatti, apposta: i gatti escono solo dalle scatole, così niente di ciò che si disegna nello studio può passare per uno di loro. Il pulsante Un altro ratto chiede un ratto a caso al generatore di ratti del gioco, nel tuo browser: procedurale, gratis, senza fine e in 3D, da girare trascinando. Denti da coniglio, orecchie grandi, un cappello o una fetta di formaggio, come cade il seed. Niente IA e niente sulla catena."
+     "text": "Lo studio è una pagina a sé, aperta a tutti, con o senza wallet: lì disegni tu stesso uno dei ratti del deposito. Ratti, non gatti, apposta: i gatti escono solo dalle scatole, così niente di ciò che si disegna nello studio può passare per uno di loro. Il pulsante Un altro ratto chiede un ratto a caso al generatore di ratti del gioco, nel tuo browser: procedurale, gratis, senza fine e in 3D, da girare trascinando. Denti da coniglio, orecchie grandi, un cappello o una fetta di formaggio, come cade il seed. Niente IA e niente sulla catena.\nIl percorso dello studio, passo per passo, tra il tuo browser, il server dello studio con l'IA, e la catena\nUn ratto a caso salta l'IA: dal passo 1 può andare dritto all'adozione. Un ratto IA fa tutti i passi. Le tue parole e i tuoi disegni restano sul server dello studio; solo il pacchetto e l'adozione vanno sulla catena."
     },
     {
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Disegnare un ratto dalle tue parole passa per servizi di IA a pagamento, quindi si vende prima, a pacchetti comprati sulla catena in USDC normale dal contratto StudioPacks: il pacchetto Starter, 2 USDC per 10 schizzi e un modello 3D, e il pacchetto Litter, 8 USDC per 50 schizzi e cinque modelli 3D. Il pagamento va dritto alla tesoreria della collezione e le unità non scadono mai. Un acquisto è pubblico, come ogni pagamento in USDC normale; quello che ci disegni non va sulla catena."
+     "text": "1 Un altro ratto A caso, gratis, senza fine. Niente IA Il tuo browser\n2 Comprare un pacchetto 2 o 8 USDC, alla tesoreria Sulla catena\n3 Accedere Una firma gratis, nessuna transazione Il tuo browser\n4 Schizzo Un'unità: un'immagine dalle tue parole Studio e IA\n5 Modello 3D Un'unità, un minuto o due Studio e IA\n6 Adottare 1 USDC un ratto a caso, 3 un ratto IA Sulla catena\n7 I miei ratti 3 CROQ al giorno, e fiuto Sulla catena"
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Uno schizzo è un'immagine cartoon del tuo ratto, disegnata dall'IA da quello che hai scritto dentro uno stile fisso, così esce sempre con l'aspetto del deposito. Costa poco: riprova finché il ratto ti piace. Un modello 3D trasforma uno dei tuoi schizzi in una mesh che la pagina disegna con l'ombreggiatura cartoon e il contorno del gioco, mentre respira piano sulla piattaforma. Ci vogliono uno o due minuti. Un interruttore in cima alla pagina passa dai ratti a caso, gratis, alla scrivania dell'IA. Uno schizzo appare in grande sul tavolo da disegno, e da lì lo passi al 3D. Mentre l'IA lavora, un ratto corre nella sua ruota sopra una barra di avanzamento; puoi lasciare la pagina, il lavoro continua e la barra riprende da dove era quando torni."
+     "text": "Disegnare un ratto dalle tue parole passa per servizi di IA a pagamento, quindi si vende prima, a pacchetti comprati sulla catena in USDC normale dal contratto StudioPacks: il pacchetto Starter, 2 USDC per 10 schizzi e un modello 3D, e il pacchetto Litter, 8 USDC per 50 schizzi e cinque modelli 3D. Il pagamento va dritto alla tesoreria della collezione e le unità non scadono mai. Un acquisto è pubblico, come ogni pagamento in USDC normale; quello che ci disegni non va sulla catena."
     },
     {
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester; i ratti a caso restano gratis ovunque."
+     "text": "Uno schizzo è un'immagine cartoon del tuo ratto, disegnata dall'IA da quello che hai scritto dentro uno stile fisso, così esce sempre con l'aspetto del deposito. Costa poco: riprova finché il ratto ti piace. Un modello 3D trasforma uno dei tuoi schizzi in una mesh che la pagina disegna con l'ombreggiatura cartoon e il contorno del gioco, mentre respira piano sulla piattaforma. Ci vogliono uno o due minuti. Un interruttore in cima alla pagina passa dai ratti a caso, gratis, alla scrivania dell'IA. Uno schizzo appare in grande sul tavolo da disegno, e da lì lo passi al 3D. Mentre l'IA lavora, un ratto corre nella sua ruota sopra una barra di avanzamento; puoi lasciare la pagina, il lavoro continua e la barra riprende da dove era quando torni."
     },
     {
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "Un ratto che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, 1 USDC per un ratto a caso (ognuno una volta sola), 3 USDC per un ratto IA, la cui immagine viene prima conservata su Arweave per sempre, come quelle dei gatti, mentre il modello 3D lo tiene il server del gioco. Ci saranno sempre e solo 700 ratti a caso e 300 ratti IA, fissati per sempre nel contratto, e un wallet ne adotta al massimo 5 (gli si possono comunque regalare o vendere); lo studio mostra quanti ne restano. A differenza delle scatole, niente di un ratto è segreto: chi lo possiede è pubblico. Ogni ratto guadagna 3 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti» nel gioco; un ratto tiene al massimo 7 giorni tra due raccolte. E annusa: una scossa a pagamento di una scatola sigillata che non è tua è il tuo ratto che ti rivela uno dei suoi tratti."
+     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester; i ratti a caso restano gratis ovunque."
     },
     {
-     "id": "terms-0",
-     "section": "terms",
+     "id": "rats-0",
+     "section": "rats",
      "heading": null,
-     "text": "La prima volta che colleghi un wallet, il gioco ti porge una liberatoria, il modulo DNO-1: le condizioni di gioco, otto clausole brevi. Dicono chiaramente in cosa ti stai cacciando. I contratti sono software sperimentale: nessuno li ha verificati, e un bug, una falla o un attacco potrebbe farti perdere ciò che ci metti, senza che i creatori ne rispondano, nei limiti consentiti dalla legge. Il sito è solo una finestra: le tue scatole, i tuoi gatti e i tuoi saldi vivono on-chain, quindi se il sito si guasta, non perdi nulla. Nessuno custodisce i tuoi soldi per te, nulla viene rimborsato e niente di tutto questo è un investimento."
+     "text": "Un ratto dello studio che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, pagato in USDC normale direttamente alla tesoreria della collezione. Un ratto a caso costa 1 USDC e si adotta tramite il suo seme, ogni seme una volta sola: il suo aspetto viene ricalcolato da quel numero ovunque sia mostrato, quindi non c'è altro da conservare. Un ratto IA costa 3 USDC: la sua immagine viene prima salvata su Arweave per sempre, come quelle dei gatti, e il suo modello 3D è conservato dal server del gioco.\nNon ci saranno mai più di 700 ratti a caso e 300 ratti IA, fissati per sempre nel contratto, e un wallet ne adotta 5 al massimo, dei due tipi insieme. Gli si può comunque regalare o vendere un ratto oltre quel limite. Lo studio e la home mostrano quanti ne restano."
     },
     {
-     "id": "terms-1",
-     "section": "terms",
+     "id": "rats-1",
+     "section": "rats",
      "heading": null,
-     "text": "Siglerai ogni clausola, con un clic, poi firmerai con il tuo wallet. La firma è gratuita e non invia alcuna transazione: il wallet mostra un messaggio leggibile che nomina il tuo indirizzo, la versione delle condizioni e un'impronta del testo inglese completo. Le traduzioni servono per leggere; quello che firmi è il testo inglese. La firma viene conservata come prova della tua accettazione, dal server del gioco quando risponde, e sempre nel tuo browser. Senza wallet non ti viene chiesto nulla: puoi girare tutto il sito, e il modulo compare solo quando si collega un wallet che non l'ha ancora firmato. Puoi chiuderlo per continuare a guardare, o passare a un altro wallet dal modulo; qualsiasi azione chiesta dopo (un mint, una scossa, un pasto) lo fa tornare finché non è firmato."
+     "text": "Uno dei 700 ratti a caso che esisteranno mai, disegnato nel tuo browser da un seme a caso. Cliccalo e ne atterra un altro.\nUn ratto è tutto ciò che una scatola non è, apposta: i gatti sono gli abitanti segreti del deposito, i ratti quelli allo scoperto. Niente di un ratto è cifrato, quindi funziona come qualsiasi NFT.\n| Una scatola | Un ratto\nCos'è | Una scatola sigillata con un gatto che nessuno vede | Un ratto da cartone animato, sotto gli occhi di tutti\nChi lo tiene | Cifrato: lo sa solo chi la tiene | Pubblico, come qualsiasi NFT\nDi cosa è fatto | Un seme cifrato, leggibile solo dal contratto | Il suo seme, o la sua immagine su Arweave, in chiaro\nPrezzo | 5 cUSDC, pagamento cifrato | 1 USDC, 3 un ratto IA, pagamento in chiaro\nQuanti | 10.000; quante ne sono vendute è cifrato | 700 a caso e 300 IA, 5 per wallet"
     },
     {
-     "id": "terms-2",
-     "section": "terms",
+     "id": "rats-2",
+     "section": "rats",
      "heading": null,
-     "text": "Ogni nuovo wallet firma una volta, e una nuova versione delle condizioni si firma di nuovo prima di continuare a giocare. Per rileggere il modulo e vedere la tua firma, apri il menu e scegli Condizioni di gioco."
+     "text": "Guadagna | Un sacchetto di 100 cCROQ, poi da 0 a 4 al giorno, nascoste nella scatola | 3 CROQ normali al giorno, al suo proprietario\nWallet e mercati | Serve un mercato fatto per l'ERC-721 confidenziale | Un ERC-721 standard: qualsiasi wallet o mercato lo mostra"
+    },
+    {
+     "id": "rats-3",
+     "section": "rats",
+     "heading": "Le crocchette di un ratto",
+     "text": "Ogni ratto guadagna 3 CROQ normali al giorno dal giorno in cui è stato adottato. Vengono dalla dispensa dei ratti, il RatPantry, che ha ricevuto 500.000 CROQ dalla tesoreria, e non dal Pantry che nutre le scatole: i ratti non toccano mai la riserva del gioco. Raccoglile da «I miei ratti» nel gioco, per tutti i tuoi ratti in una volta. Un ratto tiene al massimo 7 giorni tra due raccolte; lasciato solo più a lungo, non guadagna altro. Se la dispensa è vuota, la raccolta fallisce e i giorni aspettano; quando sta finendo, paga ciò che resta. Le crocchette sono normali perché il proprietario di un ratto è comunque pubblico: non c'è niente da nascondere in ciò che guadagna. Sigillate al cambiavalute, possono nutrire un gatto.\nLe crocchette di un ratto vanno dalla tesoreria alla dispensa dei ratti, da lì al proprietario del ratto, e una volta sigillate, a un gatto"
+    },
+    {
+     "id": "rats-4",
+     "section": "rats",
+     "heading": "Le crocchette di un ratto",
+     "text": "La dispensa dei ratti è separata da quella delle scatole: ciò che guadagnano i ratti non esce mai dalle fusa. Normali finché non le sigilli, le crocchette di un ratto diventano segrete appena entrano in cCROQ.\nTesoreria 500.000 CROQ, una volta\nfinanziata Dispensa dei ratti 3 CROQ per ratto al giorno\nraccolta, 7 giorni al massimo Tu CROQ normali, in pubblico\nsigillare, poi nutrire Il tuo gatto un pasto, cifrato"
+    },
+    {
+     "id": "rats-5",
+     "section": "rats",
+     "heading": "Annusare le scatole",
+     "text": "Un ratto annusa anche. Da «I miei ratti», mandalo ad annusare: scegli una scatola sigillata che non tieni, e il tuo ratto ti rivela uno dei suoi tratti, solo a te. Sotto il cofano è uno scuotimento a pagamento, 2,5 cUSDC: il 70% aspetta nella scatola chi la tiene, il 30% va alla tesoreria, e tutti gli altri vedono solo che qualcuno ha pagato per scuoterla.\nEcco come un ratto aiuta prima di un acquisto: qualche annusata a una scatola che pensi di comprare, e ne sai quanto il venditore."
     },
     {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Questa parte sparisce con la mainnet.\nIl gioco gira su Sepolia, la rete di prova di Ethereum. Niente qui vale denaro. Gli USDC sono il token di prova di Zama, gratis dal pannello del wallet o dal cambiavalute; l'ETH per il gas viene da un faucet; il pool delle crocchette esiste solo per poter provare il mercato; e ogni prezzo in questo manuale è un prezzo di prova.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37\nLa Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d\nCROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e"
+     "text": "Questa parte sparisce con la mainnet.\nIl gioco gira su Sepolia, la rete di prova di Ethereum. Niente qui vale denaro. Gli USDC sono il token di prova di Zama, gratis dal pannello del wallet o dal cambiavalute; l'ETH per il gas viene da un faucet; il pool delle crocchette esiste solo per poter provare il mercato; e ogni prezzo in questo manuale è un prezzo di prova.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37\nLa Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d\nCROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e\nI pacchetti dello studio (StudioPacks) 0x672c…354C\nI ratti (Rats, ERC-721) 0xd4f8…3856\nLa dispensa dei ratti (RatPantry) 0x9c83…0a0A"
     },
     {
      "id": "testnet-1",

@@ -32,7 +32,7 @@ describe("the exported manual", () => {
       expect(MANUALS[l].passages.length).toBeGreaterThan(30);
       for (const p of MANUALS[l].passages) expect(ids(l)).toContain(p.section);
     }
-    expect(ids("en").slice(0, 3)).toEqual(["box", "cats", "seed"]);
+    expect(ids("en").slice(0, 3)).toEqual(["box", "map", "cats"]);
     expect(MANUALS.en.sections.find((s) => s.id === "code")?.part).toBe("dev");
   });
 
