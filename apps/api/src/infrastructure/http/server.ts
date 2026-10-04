@@ -13,6 +13,7 @@ import { normalizeAddress } from "../../domain/types";
 import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
 import type { IndexerStatus } from "../Indexer";
 import type { EndpointStatus } from "../chain/RpcPool";
+import type { Metrics } from "./metrics";
 
 export interface HttpDeps {
   queries: Queries;
@@ -35,6 +36,8 @@ export interface HttpDeps {
   /** Absent when this process does not index (ROLE=api). */
   indexer?: { status(): IndexerStatus; nudge(): void };
   rpcStatus?: () => EndpointStatus[];
+  /** Prometheus metrics at GET /metrics. The edge proxy refuses that path from outside; the monitoring stack scrapes it over the Docker network. */
+  metrics?: Metrics;
   /** Origins allowed to call from a browser. `*` alone allows any; inside an origin, it matches one DNS label. */
   corsOrigins: string[];
   /** Requests per minute per IP. */
@@ -100,6 +103,17 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
   };
 
   // --- health ---
+
+  if (deps.metrics) {
+    const metrics = deps.metrics;
+    app.addHook("onResponse", async (req, reply) => {
+      metrics.observe(req.method, req.routeOptions.url ?? "unmatched", reply.statusCode, reply.elapsedTime / 1000);
+    });
+    app.get("/metrics", { config: { rateLimit: false } }, async (_req, reply) => {
+      reply.header("content-type", metrics.contentType).header("cache-control", "no-store");
+      return metrics.render();
+    });
+  }
 
   app.get("/health", async (_req, reply) => {
     const block = await queries.indexedBlock();

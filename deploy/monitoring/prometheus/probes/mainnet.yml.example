@@ -1,0 +1,6 @@
+# Rename to mainnet.yml at launch (the apex serves Sepolia until then).
+- targets:
+    - https://api.do-not-open.app/health
+    - https://do-not-open.app/
+  labels:
+    network: mainnet

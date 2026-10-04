@@ -583,6 +583,16 @@ export class PgStore implements Store, PostStore, ArchiveStore {
     return new Map(rows.map((r) => [r.hash as string, r.arweave_id as string]));
   }
 
+  async archivedCount() {
+    const { rows } = await this.pool.query("select count(*)::int as n from archived_images");
+    return rows[0].n as number;
+  }
+
+  async postCounts() {
+    const { rows } = await this.pool.query("select network, status, count(*)::int as n from posts group by network, status");
+    return rows.map((r) => ({ network: r.network as string, status: r.status as Post["status"], count: r.n as number }));
+  }
+
   async saveArchivedImage(hash: string, id: string, archivedAt: number) {
     await this.pool.query("insert into archived_images (hash, arweave_id, archived_at) values ($1, $2, $3) on conflict (hash) do nothing", [hash, id, archivedAt]);
   }

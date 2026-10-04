@@ -60,7 +60,7 @@ contracts-evm ──(logs)──> apps/api (indexer + Postgres) ──(VITE_API_
 
 **API (`apps/api`):** clean architecture — `domain` (pure) ← `application` (use cases `SyncChain`, `Queries`, `SignIn`, `Metadata`, plus ports `ChainSource`/`ChainState`/`Store`) ← `infrastructure` (ethers `RpcPool` over free RPCs, Postgres, Fastify); `main.ts` is the only composition point. The `events` table is the source of truth; every other table is a fold of it and can be rebuilt with `replayAll`. Each batch + projections + cursor is one transaction. Only public facts are indexed; the backend never learns who holds a box.
 
-**Deployment:** the web app is on Vercel (`vercel.json`). The API is a Docker image built by `.github/workflows/deploy-api.yml` on pushes to `main` only, after CI is green, then deployed over SSH with docker-compose + Caddy (`deploy/`).
+**Deployment:** the web app is on Vercel (`vercel.json`). The API is a Docker image built by `.github/workflows/deploy-api.yml` on pushes to `main` only, after CI is green, then deployed over SSH with docker-compose + Caddy (`deploy/`). Monitoring (`deploy/monitoring`: Prometheus, Grafana, Alertmanager to Discord) is one stack for testnet and mainnet: every series has a `network` label, one Prometheus target file per network.
 
 ## Conventions
 

@@ -294,6 +294,10 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.hasPost("discord", "opening:2")).toBe(false);
       expect((await store.posts(10, "discord")).map((p) => p.network)).toEqual(["discord"]);
       expect(await store.posts(10)).toHaveLength(2);
+      expect((await store.postCounts()).sort((a, b) => a.network.localeCompare(b.network))).toEqual([
+        { network: "discord", status: "posted", count: 1 },
+        { network: "x", status: "queued", count: 1 },
+      ]);
     });
 
     it("keeps the herald's posts through a replay", async () => {
@@ -310,6 +314,7 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       await store.transaction((tx) => tx.resetReadModels());
       expect(await store.archivedImages(["a", "b"])).toEqual(new Map([["a", "id-a"]]));
       expect(await store.archivedImages([])).toEqual(new Map());
+      expect(await store.archivedCount()).toBe(1);
     });
   });
 }

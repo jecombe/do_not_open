@@ -1,0 +1,107 @@
+# DO NOT OPEN monitoring: Prometheus scrapes every network's API (testnet and mainnet, one
+# target file each in prometheus/targets), the server and its containers, and probes the public
+# URLs; Grafana shows it at MONITORING_DOMAIN; Alertmanager posts alerts to a Discord channel.
+# Only Grafana is reachable from outside, through the shared edge proxy. Values come from .env
+# next to this file (see .env.example). Started by ../deploy.sh when that .env exists.
+name: dno-monitoring
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-90d}
+      - --storage.tsdb.retention.size=5GB
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus:/prometheus
+    mem_limit: 512m
+    networks:
+      monitoring: {}
+      # To reach each network's API (dno-api, dno-api-mainnet) where the edge proxy does.
+      edge: {}
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    # Alertmanager reads the webhook from a file only: write it from the environment first.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - printf %s "$$ALERT_DISCORD_WEBHOOK_URL" > /tmp/discord_webhook && exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager
+    environment:
+      ALERT_DISCORD_WEBHOOK_URL: ${ALERT_DISCORD_WEBHOOK_URL:?set ALERT_DISCORD_WEBHOOK_URL in monitoring/.env}
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - alertmanager:/alertmanager
+    mem_limit: 128m
+    networks: [monitoring]
+
+  grafana:
+    image: grafana/grafana-oss:12.1.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in monitoring/.env}
+      GF_SERVER_ROOT_URL: https://${MONITORING_DOMAIN:?set MONITORING_DOMAIN in monitoring/.env}
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana:/var/lib/grafana
+    mem_limit: 256m
+    networks:
+      monitoring: {}
+      edge:
+        aliases: [dno-grafana]
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.27.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+    mem_limit: 64m
+    networks: [monitoring]
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+)($|/)
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+    networks: [monitoring]
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    restart: unless-stopped
+    command: ["--docker_only=true", "--housekeeping_interval=30s", "--store_container_labels=false", "--whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service"]
+    privileged: true
+    devices: ["/dev/kmsg"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    mem_limit: 192m
+    networks: [monitoring]
+
+networks:
+  monitoring: {}
+  edge:
+    external: true
+
+volumes:
+  prometheus:
+  alertmanager:
+  grafana:

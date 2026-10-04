@@ -9,6 +9,7 @@ import { silentLogger } from "../src/application/ports/logger";
 import { Queries } from "../src/application/queries";
 import { SyncChain } from "../src/application/syncChain";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
+import { Metrics } from "../src/infrastructure/http/metrics";
 import { buildServer } from "../src/infrastructure/http/server";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { ALICE, BOB, ev, FakeChain, FakeChainState } from "./fixtures";
@@ -59,6 +60,14 @@ beforeAll(async () => {
     signIn,
     terms: new AcceptTerms(store, ethersVerifier, { now: () => now }),
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
+    metrics: new Metrics({
+      store,
+      archive: store,
+      posts: store,
+      indexer: { status: () => ({ running: true, lastPass: { from: 100, to: 108, applied: 0, target: 110 }, lastPassAt: 1_790_000_000_000, lastError: null, failures: 0, tasks: { reconcile: { lastRunAt: 1_790_000_000_000, lastResult: null, lastError: "boom" } } }) },
+      rpcStatus: () => [{ name: "publicnode", healthy: true, cooldownSeconds: 0, logRange: 1000, latencyMs: 250, served: 7, failed: 1 }],
+      info: { chain: "sepolia", collection: "0xABC", version: "test" },
+    }),
     corsOrigins: ["https://donotopen.vercel.app", "https://donotopen-*.vercel.app"],
     rateLimitPerMinute: 10_000,
   });
@@ -167,6 +176,32 @@ describe("reads", () => {
       const other = await app.inject({ method: "GET", url: "/v1/stats", headers: { origin } });
       expect(other.headers["access-control-allow-origin"]).toBeUndefined();
     }
+  });
+});
+
+describe("metrics", () => {
+  it("serves the protocol, the indexer, the RPC pool and the HTTP traffic for Prometheus", async () => {
+    await get("/v1/stats");
+    const res = await app.inject({ method: "GET", url: "/metrics" });
+    expect(res.headers["content-type"]).toContain("text/plain");
+    const text = res.body;
+    for (const line of [
+      'dno_info{chain="sepolia",collection="0xabc",version="test"} 1',
+      "dno_boxes_minted 4",
+      "dno_boxes_opened 1",
+      "dno_duels_open 2",
+      'dno_requests_pending{kind="aliveCheck"} 1',
+      "dno_request_oldest_pending_blocks 0",
+      "dno_indexer_block 108",
+      "dno_indexer_lag_blocks 2",
+      'dno_task_failing{task="reconcile"} 1',
+      'dno_rpc_healthy{endpoint="publicnode"} 1',
+      'dno_rpc_requests_total{endpoint="publicnode",result="failed"} 1',
+      "dno_images_archived 0",
+    ])
+      expect(text).toContain(line);
+    expect(text).toMatch(/dno_http_request_duration_seconds_count\{method="GET",route="\/v1\/stats",status="200"\} \d+/);
+    expect(text).not.toMatch(/0x[0-9a-f]{40}/); // no address of any player
   });
 });
 

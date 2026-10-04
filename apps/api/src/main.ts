@@ -36,6 +36,7 @@ import { DiscordNetwork } from "./infrastructure/social/DiscordNetwork";
 import { RehearsalNetwork } from "./infrastructure/social/RehearsalNetwork";
 import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
 import { TurboStorage } from "./infrastructure/archive/TurboStorage";
+import { Metrics } from "./infrastructure/http/metrics";
 
 /** The composition root: the one place that knows every concrete class. */
 async function main() {
@@ -125,6 +126,16 @@ async function main() {
         }
       : undefined;
 
+  const metrics = new Metrics({
+    store,
+    archive: store,
+    posts: store,
+    indexer,
+    rpcStatus: () => rpc.status(),
+    chat,
+    info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
+  });
+
   const server =
     config.ROLE === "indexer"
       ? null
@@ -141,6 +152,7 @@ async function main() {
           herald: config.HERALD_DISCORD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
           indexer,
           rpcStatus: () => rpc.status(),
+          metrics,
           corsOrigins: config.CORS_ORIGINS,
           rateLimitPerMinute: config.RATE_LIMIT_PER_MINUTE,
           logger: { level: config.LOG_LEVEL },

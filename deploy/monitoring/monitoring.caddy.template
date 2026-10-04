@@ -1,0 +1,12 @@
+# DO NOT OPEN monitoring (Grafana). Rendered by deploy.sh into /opt/edge/sites/dno-monitoring.caddy
+# from MONITORING_DOMAIN in monitoring/.env. Grafana asks for its own login.
+__MONITORING_HOST__ {
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+	reverse_proxy dno-grafana:3000
+}
