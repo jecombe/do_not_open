@@ -427,4 +427,16 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 14,
+    name: "capped rats",
+    sql: /* sql */ `
+      -- Rats and RatPantry were deployed again with the caps (block 11845258). Rats are keyed by
+      -- token id, so the first contract's rats would collide with the new one's: forget them, and
+      -- read again from the new deployment (events already stored are skipped, not projected twice).
+      delete from events where source in ('rats', 'ratPantry');
+      delete from rats;
+      update sync_state set block = least(block, 11845257);
+    `,
+  },
 ];

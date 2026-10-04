@@ -608,8 +608,12 @@ address, both kinds together (`WalletLimit`). Each rat is paid from the `RatPant
 500,000 CROQ, so an unlimited mint would have emptied it; the daily pay went from 10 to 3 CROQ
 at the same time, so the fund lasts about 167 days with every rat claiming. The caps are
 immutable constructor arguments (from `studio.json`), so `Rats` and `RatPantry` (bound to its
-`Rats`) were deployed again; the first pair's two rats stay where they are, and the 500,000
-CROQ sent to the first `RatPantry` stay locked there (it has no owner), paying those two rats.
+`Rats`) were deployed again on 2026-10-05, at block 11845258, by `0x5908…029A`, with the same
+owner, treasury, attester and metadata URL: `Rats` at `0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264` (2.35M gas) and
+`RatPantry` at `0x1334d72fC60cBedcF409d6583F0Ec009c285E75B` (563k gas). The first pair (`Rats` at `0xd4f8Df0F14Ced442077762cb81e843656BAc3856`,
+`RatPantry` at `0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A`, 10 CROQ a day) stays where it is with its two rats, and the
+500,000 CROQ sent to the first `RatPantry` stay locked there (it has no owner), paying those two
+rats. The API forgot them (migration 14), since its `rats` table is keyed by token id alone.
 
 ### Sepolia deployment (2026-10-03): decoys and the security review
 
@@ -637,8 +641,8 @@ started fresh. `UsdcRamp` was redeployed because its owner argument still named
 | `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
 | `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
 | `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
-| `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0xd4f8Df0F14Ced442077762cb81e843656BAc3856`](https://sepolia.etherscan.io/address/0xd4f8Df0F14Ced442077762cb81e843656BAc3856) |
-| `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A`](https://sepolia.etherscan.io/address/0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A) |
+| `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264`](https://sepolia.etherscan.io/address/0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264) |
+| `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
 
 Gas: `DoNotOpenConfig` 914,027, `DoNotOpen` 5,792,149, `DoNotOpenHooks` 357,103,
 `DecryptionCredits` 478,835, `Croq` 532,843, `ConfidentialCroq` 2,455,772, `Pantry` 3,253,237,
