@@ -1,5 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { ratParamsFromSpec } from "../lib/ratParams";
 import { economyFromSpec, pantryParamsFromSpec } from "../lib/specParams";
 import { croqPriceAtTick, planSingleSided, seedSingleSided } from "../lib/uniswapV3";
 import { PAYMENT_TOKENS } from "./deploy";
@@ -126,10 +127,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
   }
 
+  // The treasury goes to the owner, less the rats' pantry fund: rats.ts (next, alphabetically)
+  // sends that from the deployer, so the pantry is funded in the same run whoever the owner is.
   const owner = process.env.COLLECTION_OWNER;
   if (owner && owner.toLowerCase() !== deployer.toLowerCase()) {
-    const left = (await read("Croq", "balanceOf", deployer)) as bigint;
-    if (left > 0n) await execute("Croq", { from: deployer, log: true }, "transfer", owner, left);
+    const left = BigInt(String(await read("Croq", "balanceOf", deployer)));
+    const ratPantry = await hre.deployments.getOrNull("RatPantry");
+    const ratsHave = ratPantry ? BigInt(String(await read("Croq", "balanceOf", ratPantry.address))) : 0n;
+    const fund = ratParamsFromSpec().fund;
+    const keep = fund > ratsHave ? (fund - ratsHave < left ? fund - ratsHave : left) : 0n;
+    if (left - keep > 0n) await execute("Croq", { from: deployer, log: true }, "transfer", owner, left - keep);
+    if (keep > 0n) console.log(`kept ${keep} CROQ with the deployer for the rats' pantry (deploy/rats.ts sends them)`);
   }
 
   console.log(`Croq            : ${croq.address}`);

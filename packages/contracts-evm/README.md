@@ -144,7 +144,10 @@ network's deployment file.
 `deploy/rats.ts` deploys `Rats` and `RatPantry` (attester `RATS_ATTESTER`, metadata at
 `RATS_BASE_URI`, default `https://api.do-not-open.app/rats/`) and funds the pantry up to the
 spec's `fund` from whichever key holds the CROQ: the deployer, or the treasury's key in
-`TREASURY_PRIVATE_KEY`; it stops with the exact amount and address when neither does. It lists
+`TREASURY_PRIVATE_KEY`; when neither does, it deploys the pantry empty and prints the amount to
+send (claims revert until then, so no earned day is lost). In a full deploy it always can:
+`economy.ts` hands the treasury to `COLLECTION_OWNER` less the pantry's `fund`, which it keeps
+with the deployer for `rats.ts`, so one `pnpm deploy:<net>` funds the pantry whoever the owner is. It lists
 no dependency, so `npx hardhat deploy --network sepolia --tags Rats` deploys the rats alone.
 `CROQ_CONTRACT_URI` sets cCROQ's contract URI (default empty).
 
