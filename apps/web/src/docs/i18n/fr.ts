@@ -161,7 +161,7 @@ export const docsFr: Record<DocsKey, string> = {
   "docs.mainnet.f2": "Rien ne limite un minteur.",
   "docs.mainnet.f2.v": "Un bot ne peut pas choisir les bonnes boîtes, mais il peut toutes les minter.",
   "docs.mainnet.f3": "Le propriétaire peut rediriger les métadonnées.",
-  "docs.mainnet.f3.v": "Il n'y a pas de gel, et le propriétaire est une seule clé.",
+  "docs.mainnet.f3.v": "Il n'y a pas de gel, et le propriétaire est une seule clé. Les images, elles, sont stockées pour toujours sur Arweave : des métadonnées redirigées ne peuvent pas les changer.",
   "docs.mainnet.f4": "Deux vérifications au déploiement manquent.",
   "docs.mainnet.f4.v": "Le contrat de configuration suppose que le score tient sur seize bits et que les décalages des traits ne se chevauchent pas.",
   "docs.mainnet.f5": "Les places de marché ne sont pas prévenues quand une boîte s'ouvre.",

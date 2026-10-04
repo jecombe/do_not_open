@@ -109,7 +109,7 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `POST /v1/terms` | Files a signed release form (terms of play): `{ address, message, signature }`. The message must name the address, a version and the SHA-256 of the text, and be signed by that address (EIP-191, no gas). The first signature per address and version is kept. Answers `address`, `version`, `hash`, `receivedAt`; `400` if it is not a form or names another address, `401` if another account signed it. 10 a minute per IP |
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
-| `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. |
+| `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
@@ -152,6 +152,36 @@ Migration 8 adds `posts` and `herald_state`, the herald's queue and where it rea
 to. Not on the chain either: a replay keeps them. Migration 9 gives each network its own queue
 and cursor: `posts.network` (a key is unique per network) and `herald_state` keyed by network.
 Rows queued before it are filed under `x`, the account the herald was first written for.
+
+Migration 11 adds `archived_images`: the token pictures stored on Arweave, by SHA-256 of their
+SVG, with their Arweave id. Not a fold of the chain: a replay keeps it, and a picture is never
+uploaded twice.
+
+## Token images on Arweave
+
+The metadata JSON changes as the game goes (an opening, duels won, the vet, entanglement), so it
+stays live on this API. The pictures do not, so they are stored for good on Arweave, and the
+JSON's `image` links `https://turbo-gateway.com/<id>` as soon as one is there:
+
+- `ArchiveImages` (`src/application/archive.ts`) is a periodic task of the indexer. Each pass
+  (`ARCHIVE_EVERY_MS`, a minute) uploads up to `ARCHIVE_PER_PASS` (30) missing pictures: the
+  cats opened since the last pass, or redrawn after a weigh-in, then the sealed boxes in token
+  order up to the last minted one. 10,000 boxes take about six hours, once.
+- It stores only what is public already: a sealed box drawn from its token id, a cat from the
+  seed its opening published. The same builders as `/metadata/:id/image.svg`, so anyone can
+  redraw a picture and check its hash.
+- Uploads go through ArDrive's Turbo bundler (`TurboStorage`), which stores data items under
+  100 KiB for free (`winc: 0`); the SVGs are about 3 KB. A larger picture is logged and stays on
+  the API. Each upload is an ANS-104 data item signed with `ARWEAVE_KEY`, a fresh Ethereum key
+  that holds nothing (`src/infrastructure/archive/ans104.ts`, checked byte for byte against
+  `@dha-team/arbundles`, without its Solana and native dependencies). Its address is the
+  uploader every item shows, so the collection's pictures can be listed on Arweave by owner.
+- Without `ARWEAVE_KEY` nothing is uploaded and `image` stays on this API. With `ROLE=api`, the
+  API still links what the indexer stored.
+- A new upload is served at once by Turbo's gateway (`turbo-gateway.com`, the default
+  `ARWEAVE_GATEWAY`), and by `arweave.net` or any other Arweave gateway only once it is bundled,
+  which can take hours: a marketplace that fetched it then would cache a broken image. The id
+  is the permanent part; the gateway can be changed at any time.
 
 ## Relayer proxy
 
@@ -285,5 +315,5 @@ Configuration is environment variables, all optional in development: see `src/co
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
-`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`...). Deployment is in
+`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

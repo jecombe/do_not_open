@@ -160,7 +160,7 @@ export const docsEn = {
   "docs.mainnet.f2": "Nothing limits one minter.",
   "docs.mainnet.f2.v": "A bot cannot pick good boxes, but it can mint all of them.",
   "docs.mainnet.f3": "The owner can repoint the metadata.",
-  "docs.mainnet.f3.v": "There is no freeze, and the owner is a single key.",
+  "docs.mainnet.f3.v": "There is no freeze, and the owner is a single key. The pictures themselves are stored for good on Arweave: a repointed metadata file cannot change them.",
   "docs.mainnet.f4": "Two deploy-time checks are missing.",
   "docs.mainnet.f4.v": "The config contract trusts that the score fits sixteen bits and that trait offsets do not overlap.",
   "docs.mainnet.f5": "Marketplaces are not told when a box opens.",

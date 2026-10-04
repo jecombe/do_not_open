@@ -3,7 +3,8 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SignIn } from "../src/application/auth";
 import { AcceptTerms } from "../src/application/terms";
-import { Metadata } from "../src/application/metadata";
+import { ImageArchive, sha256Hex } from "../src/application/archive";
+import { Metadata, sealedImageOf } from "../src/application/metadata";
 import { silentLogger } from "../src/application/ports/logger";
 import { Queries } from "../src/application/queries";
 import { SyncChain } from "../src/application/syncChain";
@@ -54,7 +55,7 @@ beforeAll(async () => {
   const signIn = new SignIn(store, ethersVerifier, new HmacSessions("x".repeat(32)), { now: () => now }, "donotopen.test", () => `nonce${++n}`);
   app = await buildServer({
     queries,
-    metadata: new Metadata(queries, "https://api.test"),
+    metadata: new Metadata(queries, "https://api.test", new ImageArchive(store, "https://arweave.net")),
     signIn,
     terms: new AcceptTerms(store, ethersVerifier, { now: () => now }),
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
@@ -166,6 +167,12 @@ describe("metadata", () => {
     expect(body.image).toBe("https://api.test/metadata/1/image.svg");
     expect(body.attributes).toContainEqual({ trait_type: "Status", value: "Sealed" });
     expect(JSON.stringify(body)).not.toMatch(/seed/i);
+  });
+
+  it("links the image on Arweave once it is stored there", async () => {
+    await store.saveArchivedImage(sha256Hex(sealedImageOf(2)), "abc", 1);
+    expect((await get("/metadata/2")).body.image).toBe("https://arweave.net/abc");
+    expect((await get("/metadata/3")).body.image).toBe("https://api.test/metadata/3/image.svg");
   });
 
   it("describes an opened cat, and draws it", async () => {

@@ -91,7 +91,10 @@ switch modes without restarting. The menu does the same under the languages: ETH
 the page with `?chain=sepolia` or `?chain=mainnet`. Mainnet runs the mock depot, with a
 footer saying so, until a mainnet deployment exists.
 
-Token metadata (JSON, a 3D render and an SVG fallback per token):
+Token metadata is served live by the API (`GET /metadata/:id`); its images are stored for
+good on Arweave, for free, as soon as a box is minted or a cat opened (see
+[`apps/api/README.md`](apps/api/README.md#token-images-on-arweave)). Offline render (JSON, a
+3D render and an SVG fallback per token):
 
 ```bash
 pnpm --filter @dno/web render:metadata                    # fixtures

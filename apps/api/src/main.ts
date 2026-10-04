@@ -5,6 +5,8 @@ import { AskManual, type AnswerModel } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import type { Store } from "./application/ports/store";
+import { ArchiveImages, ImageArchive } from "./application/archive";
+import type { ArchiveStore } from "./application/ports/archive";
 import { Metadata } from "./application/metadata";
 import { Queries } from "./application/queries";
 import { RelayerGate } from "./application/relayerGate";
@@ -33,6 +35,7 @@ import { DiscordClerk } from "./infrastructure/discord/DiscordClerk";
 import { DiscordNetwork } from "./infrastructure/social/DiscordNetwork";
 import { RehearsalNetwork } from "./infrastructure/social/RehearsalNetwork";
 import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
+import { TurboStorage } from "./infrastructure/archive/TurboStorage";
 
 /** The composition root: the one place that knows every concrete class. */
 async function main() {
@@ -40,7 +43,7 @@ async function main() {
   const log = pino({ level: config.LOG_LEVEL });
 
   let pool: pg.Pool | null = null;
-  let store: Store & PostStore;
+  let store: Store & PostStore & ArchiveStore;
   if (config.DATABASE_URL) {
     pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE });
     await migrate(pool, log);
@@ -75,6 +78,12 @@ async function main() {
       { name: "reconcile", everyMs: config.RECONCILE_EVERY_MS, run: () => reconciler.run() },
     ];
     for (const herald of heraldsOf(config, store, model, log)) tasks.push({ name: `herald:${herald.channel}`, everyMs: config.HERALD_EVERY_MS, run: () => herald.run() });
+    // The token images, stored for good on Arweave (free under Turbo's size limit).
+    if (config.ARWEAVE_KEY) {
+      const storage = new TurboStorage({ privateKey: config.ARWEAVE_KEY, uploadUrl: config.ARWEAVE_UPLOAD_URL, maxBytes: config.ARWEAVE_FREE_BYTES, timeoutMs: config.ARWEAVE_TIMEOUT_MS, appName: "DoNotOpen" });
+      const archiver = new ArchiveImages(store, store, storage, config.ARCHIVE_PER_PASS, log);
+      tasks.push({ name: "archiveImages", everyMs: config.ARCHIVE_EVERY_MS, run: () => archiver.run() });
+    } else log.info("ARWEAVE_KEY is not set: token images are served by the API only");
     indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, tasks);
     indexer.start();
     log.info({ network: config.NETWORK, from: deployment.indexFrom, endpoints: rpc.status().map((e) => e.name) }, "indexer started");
@@ -121,7 +130,7 @@ async function main() {
       ? null
       : await buildServer({
           queries,
-          metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, "")),
+          metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
           relayer,

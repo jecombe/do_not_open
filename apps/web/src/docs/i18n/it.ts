@@ -161,7 +161,7 @@ export const docsIt: Record<DocsKey, string> = {
   "docs.mainnet.f2": "Niente limita un singolo minter.",
   "docs.mainnet.f2.v": "Un bot non può scegliere le scatole buone, ma può mintarle tutte.",
   "docs.mainnet.f3": "Il proprietario può reindirizzare i metadati.",
-  "docs.mainnet.f3.v": "Non c'è un freeze, e il proprietario è una sola chiave.",
+  "docs.mainnet.f3.v": "Non c'è un freeze, e il proprietario è una sola chiave. Le immagini, invece, restano salvate per sempre su Arweave: dei metadati reindirizzati non possono cambiarle.",
   "docs.mainnet.f4": "Mancano due controlli al deploy.",
   "docs.mainnet.f4.v": "Il contratto di configurazione si fida che il punteggio stia in sedici bit e che gli offset dei tratti non si sovrappongano.",
   "docs.mainnet.f5": "I marketplace non vengono avvisati quando una scatola si apre.",

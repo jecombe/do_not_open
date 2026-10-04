@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { ArchiveStore } from "../src/application/ports/archive";
 import type { PostStore } from "../src/application/ports/herald";
 import type { Store } from "../src/application/ports/store";
 import * as B from "../src/domain/box";
@@ -9,9 +10,9 @@ import { ALICE, BOB, CAROL, ev } from "./fixtures";
  * What any Store must do, run against each implementation: the in-memory one the tests use and
  * the Postgres one production uses must not drift apart.
  */
-export function storeContract(name: string, make: () => Promise<Store & PostStore>) {
+export function storeContract(name: string, make: () => Promise<Store & PostStore & ArchiveStore>) {
   describe(`${name} store`, () => {
-    let store: Store & PostStore;
+    let store: Store & PostStore & ArchiveStore;
     beforeEach(async () => {
       store = await make();
     });
@@ -291,13 +292,20 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.posts(10)).toHaveLength(2);
     });
 
-    
-
     it("keeps the herald's posts through a replay", async () => {
       await store.queuePosts("x", [{ key: "opening:1", kind: "opening", text: "one" }], { block: 1, logIndex: 0 }, 1);
       await store.transaction((tx) => tx.resetReadModels());
       expect(await store.hasPost("x", "opening:1")).toBe(true);
       expect(await store.heraldCursor("x")).toEqual({ block: 1, logIndex: 0 });
+    });
+
+    it("remembers the images stored on Arweave, once each, through a replay", async () => {
+      expect(await store.archivedImages(["a", "b"])).toEqual(new Map());
+      await store.saveArchivedImage("a", "id-a", 1);
+      await store.saveArchivedImage("a", "id-other", 2);
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.archivedImages(["a", "b"])).toEqual(new Map([["a", "id-a"]]));
+      expect(await store.archivedImages([])).toEqual(new Map());
     });
   });
 }

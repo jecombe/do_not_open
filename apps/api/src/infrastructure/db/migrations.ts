@@ -331,4 +331,17 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       update posts set key = 'v0x5eBa:' || key where kind not in ('digest', 'lesson');
     `,
   },
+  {
+    version: 11,
+    name: "images stored on Arweave",
+    sql: /* sql */ `
+      -- Token images stored for good, by SHA-256 of their SVG. Not on the chain: a replay keeps
+      -- it, and the same picture is never uploaded twice.
+      create table archived_images (
+        hash text primary key,
+        arweave_id text not null,
+        archived_at bigint not null
+      );
+    `,
+  },
 ];
