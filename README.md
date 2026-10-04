@@ -87,9 +87,9 @@ menu) shields it as cUSDC, buys it with ETH or trades it for croquettes.
 Who holds a box is encrypted, so the app finds yours from your own transfer receipts: one
 decryption signature per visit ("Show my boxes"). `?chain=mock` and `?chain=sepolia`
 switch modes without restarting. The menu does the same under the languages: ETH / SOL
-(Solana stays disabled until Zama ships SVM support) and Testnet / Mainnet, which reloads
-the page with `?chain=sepolia` or `?chain=mainnet`. Mainnet runs the mock depot, with a
-footer saying so, until a mainnet deployment exists.
+(Solana stays disabled until Zama ships SVM support) and Testnet / Mainnet: Testnet reloads
+the page with `?chain=sepolia`, Mainnet stays disabled until a mainnet deployment exists
+(an old `?chain=mainnet` link lands on Sepolia).
 
 Token metadata is served live by the API (`GET /metadata/:id`); its images are stored for
 good on Arweave, for free, as soon as a box is minted or a cat opened (see

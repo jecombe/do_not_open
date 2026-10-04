@@ -33,7 +33,7 @@ export const es: Record<AppKey, string> = {
   "nav.testnet": "Testnet",
   "nav.mainnet": "Mainnet",
   "nav.testnetTitle": "Ethereum Sepolia: tokens de prueba gratuitos",
-  "nav.mainnetTitle": "Ethereum mainnet: dinero real",
+  "nav.mainnetTitle": "Mainnet: más adelante",
   "footer.offline": "No se puede llegar a la cadena. {reason}",
   "footer.mock": "Depósito simulado. Sin cadena conectada; las semillas son sustitutos locales.",
   "footer.unavailable": "{mode} aún no está disponible: esta versión usa el depósito simulado. Las semillas son sustitutos locales.",

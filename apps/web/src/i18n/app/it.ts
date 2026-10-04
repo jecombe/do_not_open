@@ -33,7 +33,7 @@ export const it: Record<AppKey, string> = {
   "nav.testnet": "Testnet",
   "nav.mainnet": "Mainnet",
   "nav.testnetTitle": "Ethereum Sepolia: token di prova gratuiti",
-  "nav.mainnetTitle": "Ethereum mainnet: denaro vero",
+  "nav.mainnetTitle": "Mainnet: più avanti",
   "footer.offline": "Impossibile raggiungere la chain. {reason}",
   "footer.mock": "Deposito fittizio. Nessuna chain collegata; i seed sono controfigure locali.",
   "footer.unavailable": "{mode} non è ancora disponibile: questa versione usa il deposito fittizio. I seed sono controfigure locali.",

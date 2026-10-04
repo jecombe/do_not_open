@@ -33,7 +33,7 @@ export const fr: Record<AppKey, string> = {
   "nav.testnet": "Testnet",
   "nav.mainnet": "Mainnet",
   "nav.testnetTitle": "Ethereum Sepolia : jetons de test gratuits",
-  "nav.mainnetTitle": "Ethereum mainnet : de l'argent réel",
+  "nav.mainnetTitle": "Mainnet : plus tard",
   "footer.offline": "La chaîne est injoignable. {reason}",
   "footer.mock": "Dépôt factice. Aucune chaîne connectée ; les graines sont des doublures locales.",
   "footer.unavailable": "{mode} n'est pas encore disponible : cette version tourne sur le dépôt factice. Les graines sont des doublures locales.",
