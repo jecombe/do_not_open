@@ -54,5 +54,9 @@ if [ -f monitoring/.env ]; then
 fi
 docker exec edge-caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null
 
+# Every deploy pulls a new <repo>:<sha> tag, which a plain prune never removes: keep the
+# running image and the two before it (for a rollback), drop older ones, then the untagged layers.
+REPO="${IMAGE%:*}"
+docker images "$REPO" --format '{{.ID}}' | awk '!seen[$0]++' | tail -n +4 | xargs -r docker rmi -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null
 echo "deployed $IMAGE at https://${API_HOSTS//, / https://}"

@@ -163,5 +163,9 @@ It relies on a `vps_zama` host in `~/.ssh/config` pointing at the server.
 Rolling back is deploying an older image: `bash /opt/dno/deploy.sh ghcr.io/jecombe/do_not_open-api:<older-sha>`
 (after `docker login ghcr.io`).
 
+Each deploy keeps the running API image and the two before it on the server and deletes older
+ones (every deploy pulls a new `:<sha>` tag, which `docker image prune` alone never removes). An
+older rollback pulls its image again.
+
 Starting the index over (it rebuilds from the chain in a minute or two):
 `docker compose exec postgres psql -U dno -c 'drop schema public cascade; create schema public' && docker compose restart api`.
