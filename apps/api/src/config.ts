@@ -117,6 +117,24 @@ const schema = z.object({
   HERALD_DISCORD_MIN_GAP_MINUTES: z.coerce.number().int().min(0).default(0),
   /** Also post what happens under encryption (🔒 mints, shakes, pets, meals), beside the reveals (🔓). */
   HERALD_DISCORD_SEALED: z.stringbool().default(true),
+  /**
+   * Signs the token images stored on Arweave through Turbo. Any fresh Ethereum key: it needs no
+   * funds (small files are free) and only shows who uploaded. Without it, images stay on the API.
+   */
+  ARWEAVE_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "0x and 64 hex characters").optional(),
+  ARWEAVE_UPLOAD_URL: z.string().url().default("https://upload.ardrive.io"),
+  /**
+   * Where the metadata links the stored images, the id appended. Turbo's own gateway serves an
+   * upload at once; arweave.net only once it is bundled, and a marketplace would cache the miss.
+   */
+  ARWEAVE_GATEWAY: z.string().url().default("https://turbo-gateway.com"),
+  /** Turbo's free size for one data item (100 KiB); a bigger image stays on the API. */
+  ARWEAVE_FREE_BYTES: z.coerce.number().int().positive().default(100 * 1024),
+  ARWEAVE_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  ARCHIVE_EVERY_MS: z.coerce.number().int().positive().default(60_000),
+  /** Uploads a pass may make: new cats first, then the sealed boxes in token order. */
+  ARCHIVE_PER_PASS: z.coerce.number().int().positive().default(30),
+
   /** The Discord application behind `/ask` (Developer Portal → General Information): its id and public key. Both set: the command is served. */
   DISCORD_APPLICATION_ID: z.string().optional(),
   DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "64 hex characters").optional(),

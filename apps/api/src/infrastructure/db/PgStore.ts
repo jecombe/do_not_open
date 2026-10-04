@@ -9,6 +9,7 @@ import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
+import type { ArchiveStore } from "../../application/ports/archive";
 
 // Block numbers and unix times are int8 columns; they all fit a JS number.
 pg.types.setTypeParser(20, (v) => Number(v));
@@ -133,7 +134,7 @@ const getUser = (q: Q, address: Address) => one(q, "select * from users where ad
 /** The index in Postgres. */
 const proposalFrom = (r: Row): EntangleProposal => ({ tokenA: r.token_a, tokenB: r.token_b, proposer: r.proposer, block: Number(r.block) });
 
-export class PgStore implements Store, PostStore {
+export class PgStore implements Store, PostStore, ArchiveStore {
   constructor(private readonly pool: Pool) {}
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
@@ -574,6 +575,16 @@ export class PgStore implements Store, PostStore {
       ? await this.pool.query("select * from posts where network = $2 order by id desc limit $1", [limit, network])
       : await this.pool.query("select * from posts order by id desc limit $1", [limit]);
     return rows.map(postFrom);
+  }
+
+  async archivedImages(hashes: string[]) {
+    if (hashes.length === 0) return new Map<string, string>();
+    const { rows } = await this.pool.query("select hash, arweave_id from archived_images where hash = any($1)", [hashes]);
+    return new Map(rows.map((r) => [r.hash as string, r.arweave_id as string]));
+  }
+
+  async saveArchivedImage(hash: string, id: string, archivedAt: number) {
+    await this.pool.query("insert into archived_images (hash, arweave_id, archived_at) values ($1, $2, $3) on conflict (hash) do nothing", [hash, id, archivedAt]);
   }
 }
 

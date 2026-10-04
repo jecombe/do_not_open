@@ -56,6 +56,13 @@ The manual's chatbot answers with Google's Gemini when `/opt/dno/.env` holds
 no billing, so it can never cost anything), then `docker compose up -d api`. Without it, the
 chat quotes the manual.
 
+The token images are stored for good on Arweave when `/opt/dno/.env` holds `ARWEAVE_KEY=0x...`:
+a fresh Ethereum key made for this only (`node -e "console.log(require('ethers').Wallet.createRandom().privateKey)"`
+from the repo, or any wallet's "create account"), never one with funds. Uploads under 100 KiB
+are free on ArDrive's Turbo, so it never needs any. Then `docker compose up -d api`: about 30
+images a minute go up, opened cats first, then every minted box. See
+[`apps/api/README.md`](../apps/api/README.md#token-images-on-arweave).
+
 The collection speaks in a Discord channel (see [`apps/api/README.md`](../apps/api/README.md#the-collections-discord-channel-the-herald)):
 in the channel's settings, Integrations, Webhooks, create one and copy its URL, then add
 `HERALD_DISCORD=live` and `DISCORD_WEBHOOK_URL=...` to `/opt/dno/.env` (`HERALD_DISCORD=rehearse`

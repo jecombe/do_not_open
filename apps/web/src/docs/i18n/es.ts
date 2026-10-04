@@ -162,7 +162,7 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.mainnet.f2": "Nada limita a un minteador.",
   "docs.mainnet.f2.v": "Un bot no puede elegir cajas buenas, pero puede mintearlas todas.",
   "docs.mainnet.f3": "El propietario puede redirigir los metadatos.",
-  "docs.mainnet.f3.v": "No hay congelación, y el propietario es una sola clave.",
+  "docs.mainnet.f3.v": "No hay congelación, y el propietario es una sola clave. Las imágenes, en cambio, quedan guardadas para siempre en Arweave: unos metadatos redirigidos no pueden cambiarlas.",
   "docs.mainnet.f4": "Faltan dos comprobaciones en el despliegue.",
   "docs.mainnet.f4.v": "El contrato de configuración confía en que la puntuación cabe en dieciséis bits y en que los desplazamientos de los rasgos no se solapan.",
   "docs.mainnet.f5": "A los marketplaces no se les avisa cuando una caja se abre.",

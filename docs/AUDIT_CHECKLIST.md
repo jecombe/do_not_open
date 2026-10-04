@@ -28,7 +28,7 @@ mainnet), **Not done** (a check nobody has run).
 | O3 | `DoNotOpenConfig` does not check that the maximum score fits 16 bits | Low (deploy-time) | constructor |
 | O4 | `DoNotOpenConfig` does not check that trait offsets are distinct and byte-aligned | Low (deploy-time) | constructor |
 | O5 | Single-step `Ownable`; the owner is an externally owned account on Sepolia | Low on testnet, High on mainnet | admin |
-| O6 | `setBaseURI` can repoint every token's metadata, with no freeze | Medium (trust) | admin |
+| O6 | `setBaseURI` can repoint every token's metadata, with no freeze (the images are on Arweave for good) | Medium (trust) | admin |
 | O7 | No ERC-4906 `MetadataUpdate` on reveal: marketplaces keep the sealed image | Low | `finalize` |
 | O8 | Anyone can take up an open duel with a box they do not hold: it is held up until the proof sends it back to the shelf | Low (griefing) | `acceptDuel`, `finalizeDuel` |
 | O9 | Mainnet relayer needs an API key behind a proxy: built (`apps/api`), the key and Zama's plan are not set yet | Blocker for mainnet | `apps/api` relayer proxy |
@@ -181,7 +181,7 @@ clear values and a KMS proof.
 | --- | --- | --- |
 | Owner powers are limited to `withdraw`, `setTrustedReader` and `setBaseURI` | Pass | Test: "lets only the owner withdraw the revenue, trust readers and set the base URI". The owner cannot mint for free, change rules, pause, or read a seed, an owner or the revenue; it learns the revenue only as what `withdraw` pays, at most once a week. `setTrustedReader` is a confidentiality power: see O15 |
 | **O5. Ownership** | Open | `Ownable` is single-step, and on Sepolia the owner is the deployer's hot key. For mainnet: `Ownable2Step` and a multisig |
-| **O6. Metadata control** | Open | `setBaseURI` can be called at any time. Add a one-way freeze, or point at content-addressed storage and say so |
+| **O6. Metadata control** | Partly mitigated | `setBaseURI` can be called at any time. The images are content-addressed: the API stores each sealed box and each opened cat on Arweave (`ArchiveImages`, free through Turbo, signed by the collection's `ARWEAVE_KEY`) and the metadata links them there, so a repointed JSON cannot change a stored picture, and anyone can redraw it from public facts with `@dno/generator`. The JSON stays live on the API because it changes (opening, duels, vet, entanglement). Left: a one-way freeze of the base URI |
 | **O7. Metadata refresh** | Open | Emit ERC-4906 `MetadataUpdate(tokenId)` when an opening is finalised so marketplaces re-fetch the image |
 | The contract is not upgradeable | Accepted | A bug cannot be patched, and seeds in a broken deployment stay sealed forever. The config is immutable too |
 | Rules are verifiable | Pass | `specHash` on-chain equals `keccak256(spec.json)`. Test: "records the hash of the spec it was built from" |

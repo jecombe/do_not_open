@@ -8,6 +8,7 @@ import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
+import type { ArchiveStore } from "../../application/ports/archive";
 
 interface State {
   cursor: number | null;
@@ -36,6 +37,8 @@ interface State {
   /** The herald's queues, by id, and where each network read up to. Kept across replays. */
   posts: Map<number, Post>;
   heraldCursors: Map<string, EventPosition>;
+  /** Images stored on Arweave: permanent id by SHA-256. Kept across replays. */
+  archived: Map<string, string>;
 }
 
 const emptyState = (): State => ({
@@ -61,6 +64,7 @@ const emptyState = (): State => ({
   terms: new Map(),
   posts: new Map(),
   heraldCursors: new Map(),
+  archived: new Map(),
 });
 
 /** Copies every map, so a failed transaction can be thrown away. Values are never mutated in place. */
@@ -71,7 +75,7 @@ const ref = (txHash: string, logIndex: number) => `${txHash}:${logIndex}`;
 const clone = <T>(v: T): T => structuredClone(v);
 
 /** The whole index in memory: for tests, and for running the API without Postgres. */
-export class MemoryStore implements Store, PostStore {
+export class MemoryStore implements Store, PostStore, ArchiveStore {
   private s = emptyState();
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
@@ -372,5 +376,18 @@ export class MemoryStore implements Store, PostStore {
 
   private queue(network: string): Post[] {
     return [...this.s.posts.values()].filter((p) => p.network === network);
+  }
+
+  async archivedImages(hashes: string[]) {
+    const found = new Map<string, string>();
+    for (const h of hashes) {
+      const id = this.s.archived.get(h);
+      if (id) found.set(h, id);
+    }
+    return found;
+  }
+
+  async saveArchivedImage(hash: string, id: string, _archivedAt: number) {
+    if (!this.s.archived.has(hash)) this.s.archived.set(hash, id);
   }
 }
