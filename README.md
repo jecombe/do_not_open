@@ -37,7 +37,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
-| Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC), 10 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
+| Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
 
 ## Layout
 
@@ -185,10 +185,13 @@ numbers are in [`packages/game-spec/studio.json`](packages/game-spec/studio.json
 
 A rat can then be adopted: minted in `Rats`, a plain ERC-721, for 1 USDC (a free rat, by its
 seed) or 3 USDC (an AI rat: the API stores its picture on Arweave like a cat's and keeps its 3D model). An
-adopted rat earns 10 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ sent from the
+adopted rat earns 3 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ sent from the
 treasury with a plain transfer, at most 7 days kept between two claims; while it is empty a
 claim waits rather than losing the days) and sniffs boxes for its
-owner through the paid shake. "My rats" in the game lists them.
+owner through the paid shake. "My rats" in the game lists them. There will only ever be 700
+free rats and 300 AI rats, and one wallet mints 5 at most: every rat is paid from the same
+fixed fund, so the supply is capped in the contract, and the home page and the studio count
+the rats left.
 
 ## On Sepolia
 

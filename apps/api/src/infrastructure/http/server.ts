@@ -460,6 +460,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       "not-found": 404,
       "not-adoptable": 400,
       "already-adopted": 409,
+      "sold-out": 409,
+      "wallet-limit": 409,
       "storage-failed": 503,
       "adopt-unavailable": 503,
     };
@@ -469,6 +471,11 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const { owner } = z.object({ owner: address }).parse(req.query);
       reply.header("cache-control", PUBLIC_CACHE);
       return { rats: await rats.list(owner), block: await queries.indexedBlock() };
+    });
+
+    app.get("/v1/rats/supply", async (_req, reply) => {
+      reply.header("cache-control", PUBLIC_CACHE);
+      return { supply: await rats.supply(), block: await queries.indexedBlock() };
     });
 
     app.get("/v1/rats/:id", async (req, reply) => {

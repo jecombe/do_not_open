@@ -164,15 +164,21 @@ is nothing to simulate and nothing to retry on a bad day.
 
 ### The rats' croquettes
 
-**10 plain CROQ per adopted rat per day**, from its mint, claimed by its current owner from
+**3 plain CROQ per adopted rat per day**, from its mint, claimed by its current owner from
 the `RatPantry`, at most 7 days kept between two claims. Plain CROQ, not cCROQ: a rat's owner
 is public, so its earnings may be too; the bureau de change wraps them for the boxes. The
 pantry gets 500,000 CROQ from the treasury by a plain transfer and has no owner: nothing
 refills it but a transfer. While it is empty a claim reverts (`PantryEmpty`), so the days a
 rat earned wait for the CROQ; when it runs low a claim pays what is left. A rat costs
 at least 1 USDC, so farming croquettes with rats costs more than it brings at the market's
-floor (0.001 USDC a CROQ: 100 days to earn a seed rat's price back). Numbers in
-`packages/game-spec/studio.json` (`rats.croquettes`).
+floor (0.001 USDC a CROQ: about 333 days to earn a seed rat's price back).
+
+The rats are capped for good in the `Rats` contract: 700 seed rats and 300 AI rats, never
+more, and one address mints 5 at most. With every rat adopted and claiming, the pantry pays
+3,000 CROQ a day, so its 500,000 last about 167 days; longer in practice, since a rat left
+alone more than 7 days earns nothing more. It was 10 CROQ a day with no cap before the
+2026-10-04 redeployment: an unlimited mint would have emptied the fixed fund. Numbers in
+`packages/game-spec/studio.json` (`rats.mint`, `rats.croquettes`).
 
 ## Where croquettes go
 

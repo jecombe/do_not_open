@@ -671,6 +671,12 @@ free Arweave upload and stores it there for good, keeps the 3D model itself (no 
 storage), writes a small record on Arweave pointing at both, and signs the adoption for the
 caller's address.
 
+The supply is capped for good: 700 seed rats and 300 AI rats (`SoldOut` past either), and one
+address mints 5 at most, both kinds together (`WalletLimit`; holding more, by transfer, is
+fine). The app reads what is left (`seedMinted`, `modelMinted`, `mintedBy`) and refuses before
+any approval; the API refuses to sign (`sold-out`, `wallet-limit`) before putting anything on
+Arweave. The home page and the studio show the rats left, from `GET /v1/rats/supply`.
+
 ```mermaid
 sequenceDiagram
   participant U as Player
@@ -679,10 +685,10 @@ sequenceDiagram
   participant AR as Arweave
   participant R as Rats
   alt a free rat
-    U->>R: mintSeed(seed, maxPrice): 1 USDC to the treasury
+    U->>R: mintSeed(seed, maxPrice): 1 USDC to the treasury (SoldOut past 700, WalletLimit past 5)
   else an AI rat
     App->>API: POST /v1/studio/jobs/:id/adopt (signed in)
-    API->>API: the job is the caller's, a finished 3D model, not adopted yet
+    API->>API: the job is the caller's, a finished 3D model, not adopted yet, an AI rat left, the caller under 5
     API->>API: the GLB, kept by the API (served at /rats/models/<job>.glb)
     API->>AR: the picture shrunk under 100 KB, then a record of both (free uploads)
     API-->>App: uri, deadline, EIP-712 signature (minter = the caller)
@@ -694,7 +700,7 @@ sequenceDiagram
 
 ### The rats' croquettes, and sniffing
 
-Each rat earns 10 plain CROQ a day from its mint, paid by the `RatPantry` to whoever owns it,
+Each rat earns 3 plain CROQ a day from its mint, paid by the `RatPantry` to whoever owns it,
 at most 7 days kept between two claims ("Collect croquettes" claims every rat at once). The
 pantry gets 500,000 CROQ from the treasury by a plain transfer and has no owner; while it is
 empty a claim reverts, so no day is lost, and when it runs low a claim pays what is left. A rat sniffs a box through the paid shake that

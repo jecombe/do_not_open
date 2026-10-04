@@ -59,10 +59,14 @@
     "mint": {
       "seedPriceUsdc": "1",
       "modelPriceUsdc": "3",
-      "maxPriceUsdc": "100"
+      "maxPriceUsdc": "100",
+      "maxSeedRats": 700,
+      "maxModelRats": 300,
+      "maxPerWallet": 5,
+      "rule": "The supply is capped for good when the contract is deployed: maxSeedRats free rats and maxModelRats AI rats, never more. One address mints at most maxPerWallet rats, both kinds together; buying a rat from someone is not limited. Every rat earns croquettes from a fixed fund, so an unlimited mint would empty it."
     },
     "croquettes": {
-      "perDay": 10,
+      "perDay": 3,
       "maxDays": 7,
       "fund": 500000,
       "rule": "Each rat earns perDay plain CROQ a day, from its mint, claimed by its owner from the RatPantry. At most maxDays are kept between two claims: a rat left alone longer earns nothing more. The RatPantry is funded with `fund` CROQ by a plain transfer from the treasury (the deploy script sends them when its key holds them). While it is empty a claim reverts, so the days earned wait; when it runs low, claims pay what is left."

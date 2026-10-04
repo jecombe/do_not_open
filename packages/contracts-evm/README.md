@@ -39,8 +39,12 @@ Hardhat project built on the official Zama template. Ten contracts, and a reusab
   AI rat, each studio job once (3 USDC), on an EIP-712 signature of the `attester` (the API's
   key) naming the caller, once the API has put its picture on Arweave and kept its 3D model (`uri`, an Arweave record of both).
   Plain USDC straight to the treasury; `_mint`, never `_safeMint`. Prices from `studio.json`
-  (`lib/ratParams.ts`), changeable by the owner up to 100 USDC, never 0.
-- **`RatPantry`** — pays each rat `perDay` (10) plain CROQ a day from its mint, to its current
+  (`lib/ratParams.ts`), changeable by the owner up to 100 USDC, never 0. The supply is capped
+  for good at deployment, from `studio.json`: `maxSeedRats` (700) and `maxModelRats` (300),
+  `SoldOut` past either, and `maxPerWallet` (5) mints an address, both kinds together
+  (`WalletLimit`; `mintedBy` counts mints, not holdings). `seedMinted`, `modelMinted` and
+  `mintedBy` are public for the app's counters.
+- **`RatPantry`** — pays each rat `perDay` (3) plain CROQ a day from its mint, to its current
   owner, at most `maxDays` (7) kept between two claims; while it is empty a claim reverts
   (`PantryEmpty`), so no earned day is lost; when it runs low a claim pays what is left. No
   owner, immutable numbers. Funded with `fund` (500,000) CROQ by a plain transfer from the
@@ -85,8 +89,8 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `Pantry.claim`, 10 boxes | | ~14.8M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
-`Rats` and `RatPantry` have no FHE: `mintSeed` ~204k gas (~153k after the first), `mintModel`
-~164k, `RatPantry.claim` ~90k for one rat (~103k for two); ~2.19M and ~554k to deploy.
+`Rats` and `RatPantry` have no FHE: `mintSeed` ~248k gas (~163k after the first), `mintModel`
+~190k, `RatPantry.claim` ~90k for one rat (~103k for two); ~2.30M and ~554k to deploy (Hardhat).
 `StudioPacks` has no FHE either: `buy` takes ~115k gas the first time (~63k after), and the
 contract ~641k to deploy (Hardhat).
 

@@ -529,6 +529,10 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
     return [...counts.entries()].map(([kind, count]) => ({ kind, count }));
   }
 
+  async ratsMintedBy(minter: Address) {
+    return [...this.s.rats.values()].filter((r) => r.minter === minter).length;
+  }
+
   async adoption(jobId: string) {
     return clone(this.adoptions.get(jobId) ?? null);
   }

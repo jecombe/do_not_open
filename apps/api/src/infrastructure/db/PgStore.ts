@@ -595,6 +595,11 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
     return rows.map((r) => ({ kind: r.kind as RatKind, count: r.count as number }));
   }
 
+  async ratsMintedBy(minter: Address) {
+    const { rows } = await this.pool.query("select count(*)::int as count from rats where minter = $1", [minter]);
+    return rows[0].count as number;
+  }
+
   adoption(jobId: string) {
     return one(this.pool, "select * from rat_adoptions where job_id = $1", [jobId], adoptionFrom);
   }

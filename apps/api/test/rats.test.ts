@@ -163,6 +163,21 @@ describe("adopting an AI rat", () => {
     expect(ctx.storage!.puts).toEqual([]);
   });
 
+  it("counts the rats left, and puts nothing on Arweave for a rat the contract would refuse", async () => {
+    expect(await ctx.rats.supply()).toEqual({ seed: { minted: 0, max: spec.rats.mint.maxSeedRats }, model: { minted: 0, max: spec.rats.mint.maxModelRats }, perWallet: spec.rats.mint.maxPerWallet });
+    const tight = { ...spec, rats: { ...spec.rats, mint: { ...spec.rats.mint, maxModelRats: 1, maxPerWallet: 2 } } };
+    const rats = new Rats(ctx.store, ctx.store, ctx.storage, fakeFiles, fakeShrinker, ctx.signer, { now: () => now }, CFG, silentLogger, tight);
+    await fold(ctx.store, [
+      ev("RatMinted", 20, { ratId: 1, minter: ALICE, kind: "seed", ref: "1", uri: "", paid: "1000000" }),
+      ev("RatMinted", 21, { ratId: 2, minter: ALICE, kind: "seed", ref: "2", uri: "", paid: "1000000" }),
+    ]);
+    expect((await rats.supply()).seed.minted).toBe(2);
+    await expect(rats.adopt(ALICE, job({}).id)).rejects.toMatchObject({ code: "wallet-limit" });
+    await fold(ctx.store, [ev("RatMinted", 22, { ratId: 3, minter: BOB, kind: "model", ref: "0x01", uri: "ar://x", paid: "3000000" })]);
+    await expect(rats.adopt(ALICE, job({}).id)).rejects.toMatchObject({ code: "sold-out" });
+    expect(ctx.storage!.puts).toEqual([]);
+  });
+
   it("says when Arweave refuses the picture, and when adoption is not set up", async () => {
     ctx.storage!.broke = true;
     await expect(ctx.rats.adopt(ALICE, job({}).id)).rejects.toMatchObject({ code: "storage-failed" });
@@ -223,6 +238,8 @@ describe("rat routes", () => {
     expect((await get(`/v1/rats?owner=${BOB}`)).body.rats).toEqual([]);
     expect((await get("/v1/rats")).status).toBe(400);
     expect((await get("/v1/rats/1")).body.rat).toMatchObject({ id: 1 });
+    const supply = await get("/v1/rats/supply");
+    expect(supply.body.supply).toMatchObject({ seed: { minted: 1, max: spec.rats.mint.maxSeedRats }, model: { minted: 0 } });
     expect((await get("/v1/rats/2")).status).toBe(404);
   });
 

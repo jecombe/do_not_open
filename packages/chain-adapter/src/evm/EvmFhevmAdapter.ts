@@ -65,6 +65,7 @@ import {
   type RatInfo,
   type RatPantryInfo,
   type RatPrices,
+  type RatSupply,
 } from "../types";
 import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
 import { gateRefusal, toChainError } from "./errors";
@@ -1113,6 +1114,33 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return { seed: BigInt(seed), model: BigInt(model) };
   }
 
+  async ratSupply(account?: Address | null): Promise<RatSupply | null> {
+    const deployed = this.opts.rats;
+    if (!deployed) return null;
+    const rats = this.at(deployed);
+    const [seedMinted, maxSeed, modelMinted, maxModel, perWallet, mintedBy] = await Promise.all([
+      this.reading(rats.seedMinted!()),
+      this.reading(rats.maxSeedRats!()),
+      this.reading(rats.modelMinted!()),
+      this.reading(rats.maxModelRats!()),
+      this.reading(rats.maxPerWallet!()),
+      account ? this.reading(rats.mintedBy!(account)) : Promise.resolve(null),
+    ]);
+    return {
+      seed: { minted: Number(seedMinted), max: Number(maxSeed) },
+      model: { minted: Number(modelMinted), max: Number(maxModel) },
+      perWallet: Number(perWallet),
+      mintedBy: mintedBy === null ? null : Number(mintedBy),
+    };
+  }
+
+  /** Refuses before any approval or transaction what the contract would refuse. */
+  private async checkRatLeft(kind: "seed" | "model", account: Address): Promise<void> {
+    const s = (await this.ratSupply(account))!;
+    if (s[kind].minted >= s[kind].max) throw new ChainError("reverted", "Every rat of this kind has been adopted.", "SoldOut");
+    if ((s.mintedBy ?? 0) >= s.perWallet) throw new ChainError("reverted", "This wallet adopted all the rats it may.", "WalletLimit");
+  }
+
   async seedRatTaken(seed: bigint): Promise<boolean> {
     const deployed = this.opts.rats;
     if (!deployed) return false;
@@ -1123,6 +1151,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const deployed = this.rats();
     if (seed < 0n || seed >= 2n ** 64n) throw new ChainError("unknown", "Not a rat seed.");
     const price = (await this.ratPrices())!.seed;
+    await this.checkRatLeft("seed", (await this.signer().getAddress()) as Address);
     const account = await this.payRats(price, opts);
     // At most the price just read: a change meanwhile reverts instead of charging more.
     const receipt = await this.send(opts, () => this.writer(deployed).mintSeed!(seed, price));
@@ -1132,6 +1161,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   async mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number> {
     const deployed = this.rats();
     const price = (await this.ratPrices())!.model;
+    await this.checkRatLeft("model", (await this.signer().getAddress()) as Address);
     const account = await this.payRats(price, opts);
     const receipt = await this.send(opts, () => this.writer(deployed).mintModel!(ratJob(adoption.job), adoption.uri, adoption.deadline, adoption.signature, price));
     return this.mintedRat(receipt, account);

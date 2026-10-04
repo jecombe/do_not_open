@@ -42,6 +42,7 @@ import {
   type RatInfo,
   type RatPantryInfo,
   type RatPrices,
+  type RatSupply,
 } from "../types";
 import { MockPool } from "./pool";
 
@@ -961,6 +962,17 @@ export class MockAdapter implements ChainAdapter {
     return { seed: usdcUnits(studioSpec.rats.mint.seedPriceUsdc), model: usdcUnits(studioSpec.rats.mint.modelPriceUsdc) };
   }
 
+  async ratSupply(account?: Address | null): Promise<RatSupply | null> {
+    const m = studioSpec.rats.mint;
+    const count = (kind: "seed" | "model") => this.ratList.filter((r) => r.kind === kind).length;
+    return {
+      seed: { minted: count("seed"), max: m.maxSeedRats },
+      model: { minted: count("model"), max: m.maxModelRats },
+      perWallet: m.maxPerWallet,
+      mintedBy: account ? this.ratList.filter((r) => r.minter === account).length : null,
+    };
+  }
+
   async seedRatTaken(seed: bigint): Promise<boolean> {
     return this.ratList.some((r) => r.kind === "seed" && r.seed === seed.toString());
   }
@@ -1046,6 +1058,9 @@ export class MockAdapter implements ChainAdapter {
   /** Stands in for an AI rat's model in the demo: the studio's own demo shows the procedural rat. */
   private async adoptRat(fields: Pick<MockRat, "kind" | "seed" | "job" | "uri">, price: bigint, opts?: ActionOptions): Promise<number> {
     const me = this.signer();
+    const supply = (await this.ratSupply(me))!;
+    if (supply[fields.kind].minted >= supply[fields.kind].max) throw revert("SoldOut");
+    if (supply.mintedBy! >= supply.perWallet) throw revert("WalletLimit");
     const held = this.usdc.get(me) ?? 0n;
     if (held < price) throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held, needed: price });
     await this.send(opts, fields.kind === "seed" ? "mintSeed" : "mintModel");

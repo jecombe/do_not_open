@@ -280,7 +280,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "The rats you adopt in the studio earn croquettes too, but not from the Pantry: each one gets 10 plain CROQ a day from the rats' own pantry, collected from \"My rats\", 7 days at most between two collections. Plain, not confidential: who owns a rat is public, so what it earns may be. That pantry got 500,000 CROQ from the treasury; the game reserve that feeds the boxes is not touched.\nCroquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire\nEvery croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
+     "text": "The rats you adopt in the studio earn croquettes too, but not from the Pantry: each one gets 3 plain CROQ a day from the rats' own pantry, collected from \"My rats\", 7 days at most between two collections. Plain, not confidential: who owns a rat is public, so what it earns may be. That pantry got 500,000 CROQ from the treasury; the game reserve that feeds the boxes is not touched.\nCroquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire\nEvery croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
     },
     {
      "id": "croquettes-4",
@@ -316,19 +316,25 @@
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Drawing a rat from your own words goes through paid AI services, so it is sold first, in packs bought on-chain in plain USDC from the StudioPacks contract: the Starter pack, 2 USDC for 10 sketches and one 3D model, and the Litter, 8 USDC for 50 sketches and five 3D models. The payment goes straight to the collection's treasury and the units never expire. A purchase is public, like any plain USDC payment; what you draw with it is not on-chain.\nA sketch is one cartoon picture of your rat, drawn by the AI from what you wrote inside a fixed style, so it always comes out in the depot's look. It is cheap: try again until the rat looks right. A 3D model turns one of your sketches into a mesh that the page draws with the game's toon shading and outline, breathing slowly on the turntable. It takes a minute or two."
+     "text": "Drawing a rat from your own words goes through paid AI services, so it is sold first, in packs bought on-chain in plain USDC from the StudioPacks contract: the Starter pack, 2 USDC for 10 sketches and one 3D model, and the Litter, 8 USDC for 50 sketches and five 3D models. The payment goes straight to the collection's treasury and the units never expire. A purchase is public, like any plain USDC payment; what you draw with it is not on-chain."
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "To spend your units, sign in once with your wallet: a free signature, no transaction, that tells the studio which units are yours. The site spends a unit before it calls the AI and gives it back if the service fails, up to three times a day: past that, or when the AI's safety checker refuses the picture, the unit is spent, since the service was paid. A prompt is 3 to 240 characters; licensed characters and adult content are refused before anything is spent. Each day the studio stops at a spending cap: past it, come back tomorrow.\nOn the testnet the USDC is pretend money while the AI costs real money, so the AI studio may be closed or kept to a list of testers there; the random rats stay free everywhere."
+     "text": "A sketch is one cartoon picture of your rat, drawn by the AI from what you wrote inside a fixed style, so it always comes out in the depot's look. It is cheap: try again until the rat looks right. A 3D model turns one of your sketches into a mesh that the page draws with the game's toon shading and outline, breathing slowly on the turntable. It takes a minute or two. A switch at the top of the page goes from the free random rats to the AI desk. A sketch shows up big on the drawing board, and you turn it into 3D from there. While the AI works, a rat runs in its wheel over a progress bar; you can leave the page, the work goes on, and the bar is back where it was when you return."
     },
     {
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "A rat you like can be adopted: minted as an NFT of your own in the Rats contract, 1 USDC for a random rat (each one once), 3 USDC for an AI rat, whose picture is first stored on Arweave for good, like the cats' pictures, while its 3D model is kept by the game's server. Unlike the boxes, nothing about a rat is secret: who owns it is public. Each rat earns 10 plain CROQ a day from the rats' pantry, collected from \"My rats\" in the game; a rat keeps 7 days at most between two collections. And it sniffs: a paid shake of a sealed box you do not hold is your rat telling you one of its traits."
+     "text": "To spend your units, sign in once with your wallet: a free signature, no transaction, that tells the studio which units are yours. The site spends a unit before it calls the AI and gives it back if the service fails, up to three times a day: past that, or when the AI's safety checker refuses the picture, the unit is spent, since the service was paid. A prompt is 3 to 240 characters; licensed characters and adult content are refused before anything is spent. Each day the studio stops at a spending cap: past it, come back tomorrow.\nOn the testnet the USDC is pretend money while the AI costs real money, so the AI studio may be closed or kept to a list of testers there; the random rats stay free everywhere."
+    },
+    {
+     "id": "studio-4",
+     "section": "studio",
+     "heading": null,
+     "text": "A rat you like can be adopted: minted as an NFT of your own in the Rats contract, 1 USDC for a random rat (each one once), 3 USDC for an AI rat, whose picture is first stored on Arweave for good, like the cats' pictures, while its 3D model is kept by the game's server. There will only ever be 700 random rats and 300 AI rats, set for good in the contract, and one wallet adopts 5 at most (a rat can still be given or sold to it); the studio shows how many are left. Unlike the boxes, nothing about a rat is secret: who owns it is public. Each rat earns 3 plain CROQ a day from the rats' pantry, collected from \"My rats\" in the game; a rat keeps 7 days at most between two collections. And it sniffs: a paid shake of a sealed box you do not hold is your rat telling you one of its traits."
     },
     {
      "id": "terms-0",
@@ -701,7 +707,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Les rats que vous adoptez dans le studio gagnent aussi des croquettes, mais pas dans le Pantry : chacun reçoit 10 CROQ classiques par jour du garde-manger des rats, à récolter depuis « Mes rats », 7 jours au plus entre deux récoltes. Classiques, pas confidentielles : le propriétaire d'un rat est public, ce qu'il gagne peut l'être aussi. Ce garde-manger a reçu 500 000 CROQ de la trésorerie ; la réserve du jeu qui nourrit les boîtes n'est pas touchée.\nLes croquettes vont de la réserve aux joueurs et des joueurs à leurs chats ; chaque repas est partagé entre la trésorerie, la réserve et le feu"
+     "text": "Les rats que vous adoptez dans le studio gagnent aussi des croquettes, mais pas dans le Pantry : chacun reçoit 3 CROQ classiques par jour du garde-manger des rats, à récolter depuis « Mes rats », 7 jours au plus entre deux récoltes. Classiques, pas confidentielles : le propriétaire d'un rat est public, ce qu'il gagne peut l'être aussi. Ce garde-manger a reçu 500 000 CROQ de la trésorerie ; la réserve du jeu qui nourrit les boîtes n'est pas touchée.\nLes croquettes vont de la réserve aux joueurs et des joueurs à leurs chats ; chaque repas est partagé entre la trésorerie, la réserve et le feu"
     },
     {
      "id": "croquettes-4",
@@ -755,7 +761,7 @@
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Un croquis est une image cartoon de votre rat, dessinée par l'IA à partir de ce que vous avez écrit dans un style imposé : elle sort toujours avec l'allure du dépôt. Il coûte peu : recommencez jusqu'à ce que le rat vous plaise. Un modèle 3D transforme l'un de vos croquis en maillage que la page dessine avec l'ombrage cartoon et le contour du jeu, respirant doucement sur le plateau. Comptez une à deux minutes."
+     "text": "Un croquis est une image cartoon de votre rat, dessinée par l'IA à partir de ce que vous avez écrit dans un style imposé : elle sort toujours avec l'allure du dépôt. Il coûte peu : recommencez jusqu'à ce que le rat vous plaise. Un modèle 3D transforme l'un de vos croquis en maillage que la page dessine avec l'ombrage cartoon et le contour du jeu, respirant doucement sur le plateau. Comptez une à deux minutes. Un interrupteur en haut de la page passe des rats au hasard, gratuits, au bureau de l'IA. Un croquis s'affiche en grand sur la planche à dessin, et c'est de là que vous le passez en 3D. Pendant que l'IA travaille, un rat court dans sa roue au-dessus d'une barre de progression ; vous pouvez quitter la page, le travail continue et la barre reprend où elle en était à votre retour."
     },
     {
      "id": "studio-3",
@@ -767,7 +773,7 @@
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "Un rat qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, 1 USDC pour un rat au hasard (chacun une seule fois), 3 USDC pour un rat IA, dont l'image est d'abord stockée sur Arweave pour de bon, comme celles des chats, et le modèle 3D gardé par le serveur du jeu. Contrairement aux boîtes, rien n'est secret chez un rat : son propriétaire est public. Chaque rat gagne 10 CROQ classiques par jour dans le garde-manger des rats, à récolter depuis « Mes rats » dans le jeu ; un rat garde 7 jours au plus entre deux récoltes. Et il renifle : une secousse payante d'une boîte scellée qui n'est pas à vous, c'est votre rat qui vous révèle un de ses traits."
+     "text": "Un rat qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, 1 USDC pour un rat au hasard (chacun une seule fois), 3 USDC pour un rat IA, dont l'image est d'abord stockée sur Arweave pour de bon, comme celles des chats, et le modèle 3D gardé par le serveur du jeu. Il n'y aura jamais que 700 rats au hasard et 300 rats IA, fixés pour de bon dans le contrat, et un wallet en adopte 5 au plus (on peut toujours lui en donner ou lui en vendre) ; le studio affiche combien il en reste. Contrairement aux boîtes, rien n'est secret chez un rat : son propriétaire est public. Chaque rat gagne 3 CROQ classiques par jour dans le garde-manger des rats, à récolter depuis « Mes rats » dans le jeu ; un rat garde 7 jours au plus entre deux récoltes. Et il renifle : une secousse payante d'une boîte scellée qui n'est pas à vous, c'est votre rat qui vous révèle un de ses traits."
     },
     {
      "id": "terms-0",
@@ -1140,7 +1146,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Las ratas que adoptas en el estudio también ganan croquetas, pero no del Pantry: cada una recibe 10 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas», 7 días como mucho entre dos recogidas. Normales, no confidenciales: el dueño de una rata es público, así que lo que gana también puede serlo. Esa despensa recibió 500.000 CROQ de la tesorería; la reserva del juego que alimenta las cajas no se toca.\nLas croquetas van de la reserva a los jugadores y de los jugadores a sus gatos; cada comida se reparte entre la tesorería, la reserva y el fuego\nCada croqueta de la Despensa está en exactamente un montón cifrado: la reserva, la parte de la tesorería o el quemado. Una comida no deja nada en el gato salvo peso. Las croquetas quemadas quedan bloqueadas en la Despensa; ninguna función puede moverlas y nadie puede leer cuántas hay."
+     "text": "Las ratas que adoptas en el estudio también ganan croquetas, pero no del Pantry: cada una recibe 3 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas», 7 días como mucho entre dos recogidas. Normales, no confidenciales: el dueño de una rata es público, así que lo que gana también puede serlo. Esa despensa recibió 500.000 CROQ de la tesorería; la reserva del juego que alimenta las cajas no se toca.\nLas croquetas van de la reserva a los jugadores y de los jugadores a sus gatos; cada comida se reparte entre la tesorería, la reserva y el fuego\nCada croqueta de la Despensa está en exactamente un montón cifrado: la reserva, la parte de la tesorería o el quemado. Una comida no deja nada en el gato salvo peso. Las croquetas quemadas quedan bloqueadas en la Despensa; ninguna función puede moverlas y nadie puede leer cuántas hay."
     },
     {
      "id": "croquettes-4",
@@ -1182,19 +1188,25 @@
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Dibujar una rata a partir de tus palabras pasa por servicios de IA de pago, así que se vende antes, en packs comprados en la cadena en USDC normal al contrato StudioPacks: el pack Starter, 2 USDC por 10 bocetos y un modelo 3D, y el pack Litter, 8 USDC por 50 bocetos y cinco modelos 3D. El pago va directo al tesoro de la colección y las unidades no caducan. Una compra es pública, como cualquier pago en USDC normal; lo que dibujas con ella no va a la cadena.\nUn boceto es una imagen de dibujos animados de tu rata, dibujada por la IA a partir de lo que escribiste dentro de un estilo fijo, así que siempre sale con el aspecto del depósito. Es barato: repite hasta que la rata te guste. Un modelo 3D convierte uno de tus bocetos en una malla que la página dibuja con el sombreado de dibujos animados y el contorno del juego, respirando despacio en la plataforma. Tarda uno o dos minutos."
+     "text": "Dibujar una rata a partir de tus palabras pasa por servicios de IA de pago, así que se vende antes, en packs comprados en la cadena en USDC normal al contrato StudioPacks: el pack Starter, 2 USDC por 10 bocetos y un modelo 3D, y el pack Litter, 8 USDC por 50 bocetos y cinco modelos 3D. El pago va directo al tesoro de la colección y las unidades no caducan. Una compra es pública, como cualquier pago en USDC normal; lo que dibujas con ella no va a la cadena."
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Para gastar tus unidades, entra una vez con tu wallet: una firma gratuita, sin transacción, que le dice al estudio qué unidades son tuyas. El sitio gasta una unidad antes de llamar a la IA y la devuelve si el servicio falla, hasta tres veces al día: después, o si el filtro de seguridad de la IA rechaza la imagen, la unidad se gasta, porque el servicio se pagó. Un prompt tiene de 3 a 240 caracteres; los personajes con licencia y el contenido adulto se rechazan antes de gastar nada. Cada día el estudio se detiene en un tope de gasto: pasado, vuelve mañana.\nEn la testnet el USDC es dinero de mentira mientras que la IA cuesta dinero real, así que allí el estudio de IA puede estar cerrado o reservado a una lista de testers; las ratas al azar siguen siendo gratis en todas partes."
+     "text": "Un boceto es una imagen de dibujos animados de tu rata, dibujada por la IA a partir de lo que escribiste dentro de un estilo fijo, así que siempre sale con el aspecto del depósito. Es barato: repite hasta que la rata te guste. Un modelo 3D convierte uno de tus bocetos en una malla que la página dibuja con el sombreado de dibujos animados y el contorno del juego, respirando despacio en la plataforma. Tarda uno o dos minutos. Un interruptor arriba de la página pasa de las ratas al azar, gratis, al escritorio de la IA. Un boceto aparece en grande en el tablero de dibujo, y desde ahí lo pasas a 3D. Mientras la IA trabaja, una rata corre en su rueda sobre una barra de progreso; puedes salir de la página, el trabajo sigue y la barra vuelve donde estaba cuando regresas."
     },
     {
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Una rata que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, 1 USDC por una rata al azar (cada una una sola vez), 3 USDC por una rata de IA, cuya imagen se guarda antes en Arweave para siempre, como las de los gatos, y su modelo 3D lo conserva el servidor del juego. A diferencia de las cajas, nada de una rata es secreto: su dueño es público. Cada rata gana 10 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas» en el juego; una rata guarda 7 días como mucho entre dos recogidas. Y olfatea: una sacudida de pago de una caja sellada que no es tuya es tu rata contándote uno de sus rasgos."
+     "text": "Para gastar tus unidades, entra una vez con tu wallet: una firma gratuita, sin transacción, que le dice al estudio qué unidades son tuyas. El sitio gasta una unidad antes de llamar a la IA y la devuelve si el servicio falla, hasta tres veces al día: después, o si el filtro de seguridad de la IA rechaza la imagen, la unidad se gasta, porque el servicio se pagó. Un prompt tiene de 3 a 240 caracteres; los personajes con licencia y el contenido adulto se rechazan antes de gastar nada. Cada día el estudio se detiene en un tope de gasto: pasado, vuelve mañana.\nEn la testnet el USDC es dinero de mentira mientras que la IA cuesta dinero real, así que allí el estudio de IA puede estar cerrado o reservado a una lista de testers; las ratas al azar siguen siendo gratis en todas partes."
+    },
+    {
+     "id": "studio-4",
+     "section": "studio",
+     "heading": null,
+     "text": "Una rata que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, 1 USDC por una rata al azar (cada una una sola vez), 3 USDC por una rata de IA, cuya imagen se guarda antes en Arweave para siempre, como las de los gatos, y su modelo 3D lo conserva el servidor del juego. Solo habrá 700 ratas al azar y 300 ratas de IA, fijadas para siempre en el contrato, y un wallet adopta 5 como mucho (aún se le pueden regalar o vender); el estudio muestra cuántas quedan. A diferencia de las cajas, nada de una rata es secreto: su dueño es público. Cada rata gana 3 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas» en el juego; una rata guarda 7 días como mucho entre dos recogidas. Y olfatea: una sacudida de pago de una caja sellada que no es tuya es tu rata contándote uno de sus rasgos."
     },
     {
      "id": "terms-0",
@@ -1567,7 +1579,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "I ratti che adotti nello studio guadagnano anche loro crocchette, ma non dal Pantry: ognuno riceve 10 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti», al massimo 7 giorni tra due raccolte. Normali, non confidenziali: chi possiede un ratto è pubblico, quindi anche quello che guadagna può esserlo. Quella dispensa ha ricevuto 500.000 CROQ dalla tesoreria; la riserva del gioco che nutre le scatole non viene toccata.\nLe crocchette vanno dalla riserva ai giocatori e dai giocatori ai loro gatti; ogni pasto si divide tra tesoreria, riserva e fuoco\nOgni crocchetta della Dispensa sta esattamente in un mucchio cifrato: la riserva, la parte della tesoreria o quello bruciato. Un pasto non lascia nel gatto altro che peso. Le crocchette bruciate restano bloccate nella Dispensa; nessuna funzione può spostarle e nessuno può leggere quante sono."
+     "text": "I ratti che adotti nello studio guadagnano anche loro crocchette, ma non dal Pantry: ognuno riceve 3 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti», al massimo 7 giorni tra due raccolte. Normali, non confidenziali: chi possiede un ratto è pubblico, quindi anche quello che guadagna può esserlo. Quella dispensa ha ricevuto 500.000 CROQ dalla tesoreria; la riserva del gioco che nutre le scatole non viene toccata.\nLe crocchette vanno dalla riserva ai giocatori e dai giocatori ai loro gatti; ogni pasto si divide tra tesoreria, riserva e fuoco\nOgni crocchetta della Dispensa sta esattamente in un mucchio cifrato: la riserva, la parte della tesoreria o quello bruciato. Un pasto non lascia nel gatto altro che peso. Le crocchette bruciate restano bloccate nella Dispensa; nessuna funzione può spostarle e nessuno può leggere quante sono."
     },
     {
      "id": "croquettes-4",
@@ -1609,19 +1621,25 @@
      "id": "studio-1",
      "section": "studio",
      "heading": null,
-     "text": "Disegnare un ratto dalle tue parole passa per servizi di IA a pagamento, quindi si vende prima, a pacchetti comprati sulla catena in USDC normale dal contratto StudioPacks: il pacchetto Starter, 2 USDC per 10 schizzi e un modello 3D, e il pacchetto Litter, 8 USDC per 50 schizzi e cinque modelli 3D. Il pagamento va dritto alla tesoreria della collezione e le unità non scadono mai. Un acquisto è pubblico, come ogni pagamento in USDC normale; quello che ci disegni non va sulla catena.\nUno schizzo è un'immagine cartoon del tuo ratto, disegnata dall'IA da quello che hai scritto dentro uno stile fisso, così esce sempre con l'aspetto del deposito. Costa poco: riprova finché il ratto ti piace. Un modello 3D trasforma uno dei tuoi schizzi in una mesh che la pagina disegna con l'ombreggiatura cartoon e il contorno del gioco, mentre respira piano sulla piattaforma. Ci vogliono uno o due minuti."
+     "text": "Disegnare un ratto dalle tue parole passa per servizi di IA a pagamento, quindi si vende prima, a pacchetti comprati sulla catena in USDC normale dal contratto StudioPacks: il pacchetto Starter, 2 USDC per 10 schizzi e un modello 3D, e il pacchetto Litter, 8 USDC per 50 schizzi e cinque modelli 3D. Il pagamento va dritto alla tesoreria della collezione e le unità non scadono mai. Un acquisto è pubblico, come ogni pagamento in USDC normale; quello che ci disegni non va sulla catena."
     },
     {
      "id": "studio-2",
      "section": "studio",
      "heading": null,
-     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester; i ratti a caso restano gratis ovunque."
+     "text": "Uno schizzo è un'immagine cartoon del tuo ratto, disegnata dall'IA da quello che hai scritto dentro uno stile fisso, così esce sempre con l'aspetto del deposito. Costa poco: riprova finché il ratto ti piace. Un modello 3D trasforma uno dei tuoi schizzi in una mesh che la pagina disegna con l'ombreggiatura cartoon e il contorno del gioco, mentre respira piano sulla piattaforma. Ci vogliono uno o due minuti. Un interruttore in cima alla pagina passa dai ratti a caso, gratis, alla scrivania dell'IA. Uno schizzo appare in grande sul tavolo da disegno, e da lì lo passi al 3D. Mentre l'IA lavora, un ratto corre nella sua ruota sopra una barra di avanzamento; puoi lasciare la pagina, il lavoro continua e la barra riprende da dove era quando torni."
     },
     {
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Un ratto che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, 1 USDC per un ratto a caso (ognuno una volta sola), 3 USDC per un ratto IA, la cui immagine viene prima conservata su Arweave per sempre, come quelle dei gatti, mentre il modello 3D lo tiene il server del gioco. A differenza delle scatole, niente di un ratto è segreto: chi lo possiede è pubblico. Ogni ratto guadagna 10 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti» nel gioco; un ratto tiene al massimo 7 giorni tra due raccolte. E annusa: una scossa a pagamento di una scatola sigillata che non è tua è il tuo ratto che ti rivela uno dei suoi tratti."
+     "text": "Per spendere le tue unità, entra una volta con il tuo wallet: una firma gratuita, senza transazione, che dice allo studio quali unità sono tue. Il sito spende un'unità prima di chiamare l'IA e la restituisce se il servizio fallisce, fino a tre volte al giorno: oltre, o se il filtro di sicurezza dell'IA rifiuta l'immagine, l'unità è spesa, perché il servizio è stato pagato. Un prompt va da 3 a 240 caratteri; personaggi su licenza e contenuti per adulti vengono rifiutati prima di spendere. Ogni giorno lo studio si ferma a un tetto di spesa: oltre, torna domani.\nSulla testnet l'USDC è denaro finto mentre l'IA costa denaro vero, quindi lì lo studio IA può essere chiuso o riservato a una lista di tester; i ratti a caso restano gratis ovunque."
+    },
+    {
+     "id": "studio-4",
+     "section": "studio",
+     "heading": null,
+     "text": "Un ratto che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, 1 USDC per un ratto a caso (ognuno una volta sola), 3 USDC per un ratto IA, la cui immagine viene prima conservata su Arweave per sempre, come quelle dei gatti, mentre il modello 3D lo tiene il server del gioco. Ci saranno sempre e solo 700 ratti a caso e 300 ratti IA, fissati per sempre nel contratto, e un wallet ne adotta al massimo 5 (gli si possono comunque regalare o vendere); lo studio mostra quanti ne restano. A differenza delle scatole, niente di un ratto è segreto: chi lo possiede è pubblico. Ogni ratto guadagna 3 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti» nel gioco; un ratto tiene al massimo 7 giorni tra due raccolte. E annusa: una scossa a pagamento di una scatola sigillata che non è tua è il tuo ratto che ti rivela uno dei suoi tratti."
     },
     {
      "id": "terms-0",

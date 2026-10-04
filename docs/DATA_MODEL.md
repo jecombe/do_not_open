@@ -187,7 +187,9 @@ pictures stay in the API's database and at the AI service.
 rat), its mint time (the croquettes count from there) and its reference: the 64-bit seed, or
 the studio job's `keccak256` (`tokenOfSeed`, `tokenOfJob` make each one adoptable once). An AI
 rat's `uri` (an `ar://` record pointing at its picture on Arweave and its GLB on the API) is only in the `RatMinted`
-event. `RatPantry` keeps `paidUntil[rat]` and the plain CROQ it holds. The API keeps:
+event. It counts `seedMinted` and `modelMinted` against the immutable caps `maxSeedRats` (700)
+and `maxModelRats` (300), and `mintedBy[address]` against `maxPerWallet` (5). `RatPantry` keeps
+`paidUntil[rat]` and the plain CROQ it holds. The API keeps:
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |

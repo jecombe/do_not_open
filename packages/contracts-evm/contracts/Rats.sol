@@ -16,6 +16,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 ///         job, each job once, on a signature of the app's backend (the attester), which has
 ///         stored its picture on Arweave and kept its 3D model first (`uri`). Paid in plain USDC, straight
 ///         to the treasury. Unrelated to the collection: it never reads or writes DoNotOpen.
+///         The supply is capped for good, per kind, and each address mints at most `maxPerWallet`
+///         rats: every rat earns croquettes from the RatPantry, which holds a fixed fund.
 contract Rats is ERC721, Ownable, EIP712 {
     using SafeERC20 for IERC20;
 
@@ -43,6 +45,14 @@ contract Rats is ERC721, Ownable, EIP712 {
     uint256 public seedPrice;
     uint256 public modelPrice;
     uint256 public totalSupply;
+    /// @notice The most seed rats and AI rats there will ever be, set at deployment.
+    uint256 public immutable maxSeedRats;
+    uint256 public immutable maxModelRats;
+    /// @notice The most rats one address may mint, both kinds together. Buying one is not limited.
+    uint256 public immutable maxPerWallet;
+    uint256 public seedMinted;
+    uint256 public modelMinted;
+    mapping(address account => uint256) public mintedBy;
 
     mapping(uint256 tokenId => Rat) private _rats;
     /// @notice The rat minted from a seed or a job, or 0. Token ids start at 1.
@@ -58,6 +68,9 @@ contract Rats is ERC721, Ownable, EIP712 {
     error ZeroAddress();
     error Expired();
     error BadSignature();
+    error SoldOut();
+    error WalletLimit();
+    error ZeroCap();
 
     event RatMinted(uint256 indexed tokenId, address indexed minter, Kind kind, bytes32 ref, string uri, uint256 paid);
     event PricesSet(uint256 seedPrice, uint256 modelPrice);
@@ -72,19 +85,27 @@ contract Rats is ERC721, Ownable, EIP712 {
         address attester_,
         uint256 seedPrice_,
         uint256 modelPrice_,
-        string memory baseURI_
+        string memory baseURI_,
+        uint256 maxSeedRats_,
+        uint256 maxModelRats_,
+        uint256 maxPerWallet_
     ) ERC721("DO NOT OPEN Rats", "DNORAT") Ownable(owner_) EIP712("DO NOT OPEN Rats", "1") {
         usdc = usdc_;
         _setTreasury(treasury_);
         _setAttester(attester_);
         _setPrices(seedPrice_, modelPrice_);
         _base = baseURI_;
+        if (maxSeedRats_ == 0 || maxModelRats_ == 0 || maxPerWallet_ == 0) revert ZeroCap();
+        maxSeedRats = maxSeedRats_;
+        maxModelRats = maxModelRats_;
+        maxPerWallet = maxPerWallet_;
     }
 
     /// @notice Adopts the free rat of `seed`, at most `maxPrice` USDC. The caller must have
     ///         approved this contract for the price.
     function mintSeed(uint64 seed, uint256 maxPrice) external returns (uint256 tokenId) {
         if (tokenOfSeed[seed] != 0) revert AlreadyAdopted();
+        if (++seedMinted > maxSeedRats) revert SoldOut();
         tokenId = ++totalSupply;
         tokenOfSeed[seed] = tokenId;
         _adopt(tokenId, Kind.Seed, bytes32(uint256(seed)), "", seedPrice, maxPrice);
@@ -97,6 +118,7 @@ contract Rats is ERC721, Ownable, EIP712 {
         if (tokenOfJob[job] != 0) revert AlreadyAdopted();
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(ADOPT_TYPEHASH, msg.sender, job, keccak256(bytes(uri)), deadline)));
         if (ECDSA.recover(digest, signature) != attester) revert BadSignature();
+        if (++modelMinted > maxModelRats) revert SoldOut();
         tokenId = ++totalSupply;
         tokenOfJob[job] = tokenId;
         _adopt(tokenId, Kind.Model, job, uri, modelPrice, maxPrice);
@@ -137,6 +159,7 @@ contract Rats is ERC721, Ownable, EIP712 {
 
     function _adopt(uint256 tokenId, Kind kind, bytes32 ref, string memory uri, uint256 price, uint256 maxPrice) private {
         if (price > maxPrice) revert PriceChanged();
+        if (++mintedBy[msg.sender] > maxPerWallet) revert WalletLimit();
         _rats[tokenId] = Rat(kind, uint64(block.timestamp), ref);
         usdc.safeTransferFrom(msg.sender, treasury, price);
         // _mint, not _safeMint: no call into the receiver, so nothing can re-enter.

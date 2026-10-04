@@ -116,7 +116,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 | `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
-| `GET /v1/rats?owner=` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
+| `GET /v1/rats?owner=` · `GET /v1/rats/supply` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
 | `POST /v1/discord/interactions` | Discord's `/ask` (below): called by Discord only, signed with the application's Ed25519 key (`401` otherwise) |
 | `GET /v1/herald?token=&limit=&network=` | The collection's Discord channel (below): its posts, newest first, queued, sent or rehearsed; `network=discord` for that network only. With `HERALD_ADMIN_TOKEN` set, only with that token |
@@ -331,11 +331,12 @@ account only:
 | Route | Auth | Answer |
 | --- | --- | --- |
 | `GET /v1/rats?owner=0x…` | none | `{ rats: Rat[], block }` |
+| `GET /v1/rats/supply` | none | `{ supply: { seed: { minted, max }, model: { minted, max }, perWallet }, block }`: rats minted as of the index, against the caps of `studio.json` (the contract's, set at deployment). The home page's counter |
 | `GET /v1/rats/:id` | none | `{ rat: Rat, block }`, `404` if unknown |
 | `GET /rats/:id` | none | ERC-721 metadata (the contract's base URI): name, description, image, `animation_url` (the GLB of an AI rat, which marketplaces show in 3D), `external_url` (`SITE_URL`'s studio), attributes (a seed rat's coat, pose, face, eyes, hat, prop, scarf) |
 | `GET /rats/:id/image.svg` | none | A seed rat's picture, cached for a year |
 | `GET /rats/models/<job>.glb` | none | An adopted AI rat's 3D model, kept by the API, cached for a year; `404` if none, 60 a minute per IP |
-| `POST /v1/studio/jobs/:id/adopt` | session | `{ job, uri, deadline, signature, priceUsdc }` for `Rats.mintModel`. 10 a minute per IP. `404 not-found` (not the caller's job), `400 not-adoptable` (not a finished 3D model, or its files are gone), `409 already-adopted`, `503 storage-failed`, `503 adopt-unavailable` (no Rats contract or no attester key) |
+| `POST /v1/studio/jobs/:id/adopt` | session | `{ job, uri, deadline, signature, priceUsdc }` for `Rats.mintModel`. 10 a minute per IP. `404 not-found` (not the caller's job), `400 not-adoptable` (not a finished 3D model, or its files are gone), `409 already-adopted`, `409 sold-out` (every AI rat minted, as of the index), `409 wallet-limit` (the caller minted `maxPerWallet` rats), both checked before anything goes to Arweave, `503 storage-failed`, `503 adopt-unavailable` (no Rats contract or no attester key) |
 
 A `Rat` is `{ id, kind: "seed" | "model", seed, job, uri, owner, minter, mintedBlock, imageUrl,
 modelUrl, sniffs }`: `seed` in decimal for a seed rat, `job` (bytes32) and `uri` for an AI rat,

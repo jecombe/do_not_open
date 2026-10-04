@@ -601,6 +601,16 @@ amount would need cCROQ, the coprocessor and an ACL grant per claim for nothing 
 Like the studio's packs, both live outside `DoNotOpen` (no room left) and read nothing from
 it; their numbers are in `studio.json`, not `spec.json`.
 
+### The rats are capped (2026-10-04)
+
+`Rats` now caps its supply for good: 700 seed rats and 300 AI rats (`SoldOut`), and 5 mints an
+address, both kinds together (`WalletLimit`). Each rat is paid from the `RatPantry`'s fixed
+500,000 CROQ, so an unlimited mint would have emptied it; the daily pay went from 10 to 3 CROQ
+at the same time, so the fund lasts about 167 days with every rat claiming. The caps are
+immutable constructor arguments (from `studio.json`), so `Rats` and `RatPantry` (bound to its
+`Rats`) were deployed again; the first pair's two rats stay where they are, and the 500,000
+CROQ sent to the first `RatPantry` stay locked there (it has no owner), paying those two rats.
+
 ### Sepolia deployment (2026-10-03): decoys and the security review
 
 Current. Deployed at block 11836238 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
