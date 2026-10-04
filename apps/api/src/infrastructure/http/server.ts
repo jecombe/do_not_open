@@ -460,7 +460,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       "not-found": 404,
       "not-adoptable": 400,
       "already-adopted": 409,
-      "storage-unfunded": 503,
+      "storage-failed": 503,
       "adopt-unavailable": 503,
     };
     const ratId = z.object({ id: z.coerce.number().int().min(1).max(2 ** 31 - 1) });
@@ -482,6 +482,17 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const { id: raw } = z.object({ id: z.string().regex(/^\d+(\.json)?$/) }).parse(req.params);
       reply.header("cache-control", "public, max-age=60");
       return rats.metadata(Number(raw.replace(".json", "")));
+    });
+
+    // An adopted AI rat's 3D model: kept by this API, not on Arweave. Immutable once saved.
+    app.get("/rats/models/:file", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const { file } = z.object({ file: z.string().regex(/^0x[0-9a-fA-F]{64}\.glb$/) }).parse(req.params);
+      const glb = await rats.model(file.slice(0, -4).toLowerCase());
+      return reply
+        .header("cache-control", "public, max-age=31536000, immutable")
+        .header("x-content-type-options", "nosniff")
+        .type("model/gltf-binary")
+        .send(Buffer.from(glb));
     });
 
     app.get("/rats/:id/image.svg", async (req, reply) => {

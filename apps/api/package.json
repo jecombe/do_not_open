@@ -20,6 +20,7 @@
     "@fastify/rate-limit": "^10",
     "ethers": "^6.16.0",
     "fastify": "^5",
+    "jpeg-js": "^0.4.4",
     "pg": "^8",
     "pino": "^10",
     "prom-client": "^15.1.3",

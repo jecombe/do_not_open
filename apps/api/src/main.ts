@@ -42,6 +42,7 @@ import { Metrics } from "./infrastructure/http/metrics";
 import { FalStudio } from "./infrastructure/studio/FalStudio";
 import { Rats } from "./application/rats";
 import type { RatStore } from "./application/ports/rats";
+import { JpegShrinker } from "./infrastructure/rats/JpegShrinker";
 import { EthersAdoptionSigner } from "./infrastructure/rats/EthersAdoptionSigner";
 import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 
@@ -156,16 +157,17 @@ async function main() {
   if (!deployment.studio) log.info("no StudioPacks contract on this network: the studio is off");
   else if (!config.FAL_KEY) log.info("FAL_KEY is not set: the studio is off");
 
-  // The depot's rats: read back from the index; AI rats adopted once their files are on Arweave,
-  // with the attester's signature. Seed rats need neither.
+  // The depot's rats: read back from the index; an AI rat adopted once its picture is on Arweave
+  // (a free upload, like the cats') and its model kept here, with the attester's signature.
   const publicUrl = config.PUBLIC_URL.replace(/\/$/, "");
   const rats = new Rats(
     store,
     store,
     config.ARWEAVE_KEY
-      ? new TurboStorage({ privateKey: config.ARWEAVE_KEY, uploadUrl: config.ARWEAVE_UPLOAD_URL, maxBytes: config.ARWEAVE_PAID_MAX_BYTES, timeoutMs: Math.max(config.ARWEAVE_TIMEOUT_MS, 120_000), appName: "DoNotOpen" })
+      ? new TurboStorage({ privateKey: config.ARWEAVE_KEY, uploadUrl: config.ARWEAVE_UPLOAD_URL, maxBytes: config.ARWEAVE_FREE_BYTES, timeoutMs: config.ARWEAVE_TIMEOUT_MS, appName: "DoNotOpen" })
       : null,
     new ServiceFileFetcher(),
+    new JpegShrinker(),
     config.RATS_ATTESTER_KEY && deployment.rats ? new EthersAdoptionSigner(config.RATS_ATTESTER_KEY, { chainId: deployment.chainId, verifyingContract: deployment.rats.address }) : null,
     clock,
     {

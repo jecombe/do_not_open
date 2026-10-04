@@ -20,7 +20,10 @@ export interface Rat {
   mintedAt: number | null;
 }
 
-/** An AI rat's files once on Arweave: kept so a second adoption signs again without uploading again. */
+/**
+ * An AI rat's picture and record once on Arweave (its model stays with the API): kept so a second
+ * adoption signs again without uploading again.
+ */
 export interface Adoption {
   /** The studio job's id (a UUID). */
   jobId: string;
@@ -29,7 +32,6 @@ export interface Adoption {
   account: Address;
   prompt: string;
   imageId: string;
-  modelId: string;
   recordId: string;
   createdAt: number;
 }

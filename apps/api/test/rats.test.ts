@@ -8,7 +8,7 @@ import { ImageArchive } from "../src/application/archive";
 import { Metadata } from "../src/application/metadata";
 import type { PermanentStorage } from "../src/application/ports/archive";
 import { silentLogger } from "../src/application/ports/logger";
-import type { ServiceFiles } from "../src/application/ports/rats";
+import type { ImageShrinker, ServiceFiles } from "../src/application/ports/rats";
 import { project } from "../src/application/projector";
 import { Queries } from "../src/application/queries";
 import { RatRefused, Rats, type RatsConfig } from "../src/application/rats";
@@ -30,7 +30,7 @@ const now = 1_790_000_000;
 const CFG: RatsConfig = { publicUrl: "https://api.test", gateway: "https://gw.test", studioUrl: "https://site.test/studio", ticketTtl: 1800, maxImageBytes: 1000, maxModelBytes: 5000 };
 
 class FakeStorage implements PermanentStorage {
-  readonly maxBytes = 50_000_000;
+  readonly maxBytes = 100_000;
   puts: string[] = [];
   broke = false;
   async put(_data: Uint8Array, contentType: string) {
@@ -43,6 +43,15 @@ class FakeStorage implements PermanentStorage {
 const fakeFiles: ServiceFiles = {
   async get(url) {
     return { bytes: new Uint8Array([1, 2, 3]), contentType: url.endsWith(".glb") ? "application/octet-stream" : "image/jpeg" };
+  },
+};
+
+/** Shrinks to a fixed small picture, and remembers the budget it was given. */
+const shrunk: number[] = [];
+const fakeShrinker: ImageShrinker = {
+  shrink(_jpeg, maxBytes) {
+    shrunk.push(maxBytes);
+    return new Uint8Array([9, 9]);
   },
 };
 
@@ -64,7 +73,7 @@ function setup(opts: { storage?: FakeStorage | null; signer?: boolean } = {}) {
   const store = new MemoryStore();
   const storage = opts.storage === undefined ? new FakeStorage() : opts.storage;
   const signer = opts.signer === false ? null : new EthersAdoptionSigner(attester.privateKey, { chainId: DOMAIN.chainId, verifyingContract: RATS_ADDRESS });
-  const rats = new Rats(store, store, storage, fakeFiles, signer, { now: () => now }, CFG, silentLogger);
+  const rats = new Rats(store, store, storage, fakeFiles, fakeShrinker, signer, { now: () => now }, CFG, silentLogger);
   return { store, storage, signer, rats };
 }
 
@@ -121,10 +130,13 @@ describe("adopting an AI rat", () => {
     await seedJobs(ctx.store, [SKETCH, job({})]);
   });
 
-  it("stores the files on Arweave, then signs for the caller what the contract checks", async () => {
+  it("puts the shrunk picture on Arweave like a cat's, keeps the model here, then signs for the caller", async () => {
     const t = await ctx.rats.adopt(ALICE, job({}).id);
-    expect(ctx.storage!.puts).toEqual(["image/jpeg", "model/gltf-binary", "application/json"]);
-    expect(t).toMatchObject({ uri: "ar://ar3", deadline: now + 1800, priceUsdc: spec.rats.mint.modelPriceUsdc });
+    // The picture and the record go to Arweave, within the free size; the GLB never does.
+    expect(ctx.storage!.puts).toEqual(["image/jpeg", "application/json"]);
+    expect(shrunk.at(-1)).toBe(ctx.storage!.maxBytes);
+    expect(await ctx.rats.model(t.job)).toEqual(new Uint8Array([1, 2, 3]));
+    expect(t).toMatchObject({ uri: "ar://ar2", deadline: now + 1800, priceUsdc: spec.rats.mint.modelPriceUsdc });
     expect(t.job).toBe(ctx.signer!.jobRef(job({}).id));
     const signer = verifyTypedData(DOMAIN, ADOPT, { minter: ALICE, job: t.job, uri: t.uri, deadline: t.deadline }, t.signature);
     expect(signer).toBe(attester.address);
@@ -132,12 +144,13 @@ describe("adopting an AI rat", () => {
     // Asked again: signed again, uploaded once.
     const again = await ctx.rats.adopt(ALICE, job({}).id);
     expect(again.uri).toBe(t.uri);
-    expect(ctx.storage!.puts).toHaveLength(3);
+    expect(ctx.storage!.puts).toHaveLength(2);
 
-    // Once minted, the rat shows its files from Arweave.
+    // Once minted, the rat shows its picture from Arweave and its model from this API.
+    const modelUrl = `https://api.test/rats/models/${t.job}.glb`;
     await fold(ctx.store, [ev("RatMinted", 20, { ratId: 1, minter: ALICE, kind: "model", ref: t.job, uri: t.uri, paid: "3000000" })]);
-    expect(await ctx.rats.get(1)).toMatchObject({ kind: "model", job: t.job, imageUrl: "https://gw.test/ar1", modelUrl: "https://gw.test/ar2" });
-    expect(await ctx.rats.metadata(1)).toMatchObject({ animation_url: "https://gw.test/ar2", description: expect.stringContaining("a rat chef") });
+    expect(await ctx.rats.get(1)).toMatchObject({ kind: "model", job: t.job, imageUrl: "https://gw.test/ar1", modelUrl });
+    expect(await ctx.rats.metadata(1)).toMatchObject({ animation_url: modelUrl, description: expect.stringContaining("a rat chef") });
     await expect(ctx.rats.adopt(ALICE, job({}).id)).rejects.toMatchObject({ code: "already-adopted" });
   });
 
@@ -150,9 +163,9 @@ describe("adopting an AI rat", () => {
     expect(ctx.storage!.puts).toEqual([]);
   });
 
-  it("says when the storage has no credits, and when adoption is not set up", async () => {
+  it("says when Arweave refuses the picture, and when adoption is not set up", async () => {
     ctx.storage!.broke = true;
-    await expect(ctx.rats.adopt(ALICE, job({}).id)).rejects.toMatchObject({ code: "storage-unfunded" });
+    await expect(ctx.rats.adopt(ALICE, job({}).id)).rejects.toMatchObject({ code: "storage-failed" });
     const off = setup({ signer: false });
     await expect(off.rats.adopt(ALICE, job({}).id)).rejects.toBeInstanceOf(RatRefused);
     await expect(off.rats.adopt(ALICE, job({}).id)).rejects.toMatchObject({ code: "adopt-unavailable" });
@@ -228,7 +241,13 @@ describe("rat routes", () => {
     const token = (await app.inject({ method: "POST", url: "/v1/auth/verify", payload: { address: wallet.address, signature: await wallet.signMessage(message) } })).json().token;
     const res = await app.inject({ method: "POST", url: `/v1/studio/jobs/${job({}).id}/adopt`, headers: { authorization: `Bearer ${token}` } });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ uri: "ar://ar3", priceUsdc: spec.rats.mint.modelPriceUsdc });
+    expect(res.json()).toMatchObject({ uri: "ar://ar2", priceUsdc: spec.rats.mint.modelPriceUsdc });
+    // The model is served by this API, as a GLB.
+    const glb = await app.inject({ method: "GET", url: `/rats/models/${res.json().job}.glb` });
+    expect(glb.statusCode).toBe(200);
+    expect(glb.headers["content-type"]).toContain("model/gltf-binary");
+    expect((await app.inject({ method: "GET", url: `/rats/models/0x${"0".repeat(64)}.glb` })).statusCode).toBe(404);
+    expect((await app.inject({ method: "GET", url: "/rats/models/nope.glb" })).statusCode).toBe(400);
     const sketch = await app.inject({ method: "POST", url: `/v1/studio/jobs/${SKETCH.id}/adopt`, headers: { authorization: `Bearer ${token}` } });
     expect(sketch.statusCode).toBe(400);
     expect(sketch.json()).toMatchObject({ error: "not-adoptable" });

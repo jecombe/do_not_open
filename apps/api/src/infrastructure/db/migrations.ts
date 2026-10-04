@@ -407,16 +407,22 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
         select data->>'viewer', count(*) from events
         where name = 'Shaken' and (data->>'paid')::boolean
         group by data->>'viewer';
-      -- AI rats' files once on Arweave, by studio job. Not on the chain: a replay keeps it, and a
-      -- second adoption signs again without uploading again.
+      -- AI rats' picture and record once on Arweave, by studio job. Not on the chain: a replay
+      -- keeps it, and a second adoption signs again without uploading again.
       create table rat_adoptions (
         job_id text primary key,
         job_ref text not null unique,
         account text not null,
         prompt text not null,
         image_id text not null,
-        model_id text not null,
         record_id text not null,
+        created_at bigint not null
+      );
+      -- AI rats' 3D models (GLB): kept here and served by the API, like the cats' meshes are
+      -- rebuilt by the app, rather than paid for on Arweave. In the nightly dump.
+      create table rat_models (
+        job_ref text primary key,
+        glb bytea not null,
         created_at bigint not null
       );
     `,

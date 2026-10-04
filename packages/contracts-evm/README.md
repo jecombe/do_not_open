@@ -37,7 +37,7 @@ Hardhat project built on the official Zama template. Ten contracts, and a reusab
   public, unlike the boxes. `mintSeed(seed, maxPrice)` adopts the studio's free rat of a 64-bit
   seed, each seed once (1 USDC); `mintModel(job, uri, deadline, signature, maxPrice)` adopts an
   AI rat, each studio job once (3 USDC), on an EIP-712 signature of the `attester` (the API's
-  key) naming the caller, once the API has put its picture and 3D model on Arweave (`uri`).
+  key) naming the caller, once the API has put its picture on Arweave and kept its 3D model (`uri`, an Arweave record of both).
   Plain USDC straight to the treasury; `_mint`, never `_safeMint`. Prices from `studio.json`
   (`lib/ratParams.ts`), changeable by the owner up to 100 USDC, never 0.
 - **`RatPantry`** — pays each rat `perDay` (10) plain CROQ a day from its mint, to its current

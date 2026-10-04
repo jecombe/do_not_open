@@ -125,7 +125,7 @@ flowchart LR
 
   BoxSpec --> cb["createBox()<br/>canvas textures: cardboard, label, stamp"]
   CatSpec --> cc["createCat() / createDiorama()<br/>kit meshes, zone colours, toon ramp, outlines"]
-  py["assets/blender/*.py<br/>blender -b, SDF to mesh"] --> glb["cat-BREED.glb, cat-kit.glb<br/>AssetLibrary + placeholders"] --> cc
+  py["assets/blender/*.py<br/>blender -b, SDF to mesh"] --> glb["cat-BREED.glb, cat-kit.glb, rat.glb<br/>AssetLibrary + placeholders"] --> cc
 
   cb --> live["Live scene (apps/web)<br/>depot, shaker, opener, inspector, effects"]
   cc --> live
@@ -214,7 +214,7 @@ server. Details: [`apps/api/README.md`](../apps/api/README.md).
 
 The studio's rats can be adopted on-chain (`Rats`, a plain ERC-721, and `RatPantry`, their
 daily CROQ). The API indexes them for "My rats", serves their metadata (`/rats/:id`, a seed
-rat's picture rendered from its seed), and, for an AI rat, copies its files to Arweave and
+rat's picture rendered from its seed), and, for an AI rat, stores its picture on Arweave (a free upload, like a cat's), keeps its 3D model, and
 signs the adoption with the attester key.
 
 It also runs the manual's chatbot, the depot clerk (`POST /v1/chat`): Google's Gemini, on

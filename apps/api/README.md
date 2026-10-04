@@ -309,13 +309,14 @@ nothing here is needed, and its picture is recomputed from the seed (`renderRatS
 needs two things first, which `POST /v1/studio/jobs/:id/adopt` hands out to the job's own
 account only:
 
-1. Its files on Arweave for good: the sketch's picture, the GLB (both fetched back from fal,
-   only from its hosts, capped at 10 and 40 MB) and a small JSON record pointing at both
-   (`{ name, prompt, image: "ar://…", model: "ar://…", job }`). The picture and the mesh are past
-   Turbo's free 100 KB, so the `ARWEAVE_KEY` account pays for them in **Turbo credits**: buy some
-   for it (turbo.ardrive.io), or adoptions answer `503 storage-unfunded` (nothing is minted,
-   nothing is lost). Uploads are kept by job (`rat_adoptions`): asking again signs again
-   without uploading again.
+1. Its files, like a cat's: the sketch's picture is shrunk to a JPEG of at most 512 px that fits
+   Turbo's free 100 KB (`JpegShrinker`, plain JavaScript) and stored on Arweave for good; the
+   GLB stays with the API (`rat_models`, served at `/rats/models/<job>.glb`), never paid for on
+   Arweave; a small JSON record on Arweave points at both (`{ name, prompt, image: "ar://…",
+   model: "https://…/rats/models/<job>.glb", job }`). Both are fetched back from fal, only from
+   its hosts, capped at 10 and 40 MB. No Turbo credits are needed. If Arweave refuses the
+   upload, adoptions answer `503 storage-failed` (nothing is minted, nothing is lost). Uploads
+   are kept by job (`rat_adoptions`): asking again signs again without uploading again.
 2. The attester's EIP-712 signature (`RATS_ATTESTER_KEY`): `Adopt(minter, job, uri, deadline)`
    in the domain `{ "DO NOT OPEN Rats", "1", chainId, Rats }`, where `job` is
    `keccak256(jobId)`, `uri` is `ar://<record>` and the deadline 30 minutes away. The contract
@@ -327,12 +328,13 @@ account only:
 | `GET /v1/rats/:id` | none | `{ rat: Rat, block }`, `404` if unknown |
 | `GET /rats/:id` | none | ERC-721 metadata (the contract's base URI): name, description, image, `animation_url` (the GLB of an AI rat, which marketplaces show in 3D), `external_url` (`SITE_URL`'s studio), attributes (a seed rat's coat, pose, face, eyes, hat, prop, scarf) |
 | `GET /rats/:id/image.svg` | none | A seed rat's picture, cached for a year |
-| `POST /v1/studio/jobs/:id/adopt` | session | `{ job, uri, deadline, signature, priceUsdc }` for `Rats.mintModel`. 10 a minute per IP. `404 not-found` (not the caller's job), `400 not-adoptable` (not a finished 3D model, or its files are gone), `409 already-adopted`, `503 storage-unfunded`, `503 adopt-unavailable` (no Rats contract or no attester key) |
+| `GET /rats/models/<job>.glb` | none | An adopted AI rat's 3D model, kept by the API, cached for a year; `404` if none, 60 a minute per IP |
+| `POST /v1/studio/jobs/:id/adopt` | session | `{ job, uri, deadline, signature, priceUsdc }` for `Rats.mintModel`. 10 a minute per IP. `404 not-found` (not the caller's job), `400 not-adoptable` (not a finished 3D model, or its files are gone), `409 already-adopted`, `503 storage-failed`, `503 adopt-unavailable` (no Rats contract or no attester key) |
 
 A `Rat` is `{ id, kind: "seed" | "model", seed, job, uri, owner, minter, mintedBlock, imageUrl,
 modelUrl, sniffs }`: `seed` in decimal for a seed rat, `job` (bytes32) and `uri` for an AI rat,
-`imageUrl` the API's SVG or the picture on Arweave (`ARWEAVE_GATEWAY`), `modelUrl` the GLB on
-Arweave, and `sniffs` the paid shakes of its owner. The croquettes a rat earns are read from the
+`imageUrl` the API's SVG or the picture on Arweave (`ARWEAVE_GATEWAY`), `modelUrl` the GLB served by
+the API (`/rats/models/<job>.glb`), and `sniffs` the paid shakes of its owner. The croquettes a rat earns are read from the
 `RatPantry` contract itself (`claimable(id)`); the index only records `RatsFed` in the feed.
 
 ## The manual's chatbot
@@ -440,5 +442,5 @@ Configuration is environment variables, all optional in development: see `src/co
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
-`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `ARWEAVE_PAID_MAX_BYTES`, `SITE_URL`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`...). Deployment is in
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

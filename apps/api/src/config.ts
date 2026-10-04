@@ -159,11 +159,6 @@ const schema = z.object({
    * Its address is RATS_ATTESTER at deployment. Without it, only seed rats can be adopted.
    */
   RATS_ATTESTER_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "0x and 64 hex characters").optional(),
-  /**
-   * Largest data item uploaded for an AI rat (its picture, its GLB). Past Turbo's free size, the
-   * ARWEAVE_KEY account pays in Turbo credits: buy some for it, or adoptions answer storage-unfunded.
-   */
-  ARWEAVE_PAID_MAX_BYTES: z.coerce.number().int().positive().default(50 * 1024 * 1024),
   /** The site, e.g. https://do-not-open.app: rats' metadata links its studio. */
   SITE_URL: z.string().url().optional(),
 

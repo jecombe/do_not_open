@@ -1009,7 +1009,7 @@ export const es: Record<AppKey, string> = {
   "rats.closed": "Las ratas aún no se pueden adoptar en esta red.",
   "rats.title": "Mis ratas",
   "studio.err.adoptUnavailable": "Esta rata no se puede adoptar. No se gastó nada.",
-  "studio.err.storageUnfunded": "Las ratas de IA no se pueden adoptar ahora mismo: sus archivos aún no se pueden guardar para siempre. No se gastó nada.",
+  "studio.err.storageFailed": "La imagen de la rata no se pudo guardar para siempre ahora mismo. No se gastó nada: vuelve a intentarlo en un momento.",
   "studio.err.alreadyAdopted": "Esta rata ya fue adoptada.",
   "studio.adopt.see": "Ver mis ratas",
   "studio.adopt.done": "La rata n.º {id} es tuya. Gana {perDay} croquetas al día.",

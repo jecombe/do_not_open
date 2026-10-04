@@ -328,7 +328,7 @@
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "A rat you like can be adopted: minted as an NFT of your own in the Rats contract, 1 USDC for a random rat (each one once), 3 USDC for an AI rat, whose picture and 3D model are first copied to Arweave for good. Unlike the boxes, nothing about a rat is secret: who owns it is public. Each rat earns 10 plain CROQ a day from the rats' pantry, collected from \"My rats\" in the game; a rat keeps 7 days at most between two collections. And it sniffs: a paid shake of a sealed box you do not hold is your rat telling you one of its traits."
+     "text": "A rat you like can be adopted: minted as an NFT of your own in the Rats contract, 1 USDC for a random rat (each one once), 3 USDC for an AI rat, whose picture is first stored on Arweave for good, like the cats' pictures, while its 3D model is kept by the game's server. Unlike the boxes, nothing about a rat is secret: who owns it is public. Each rat earns 10 plain CROQ a day from the rats' pantry, collected from \"My rats\" in the game; a rat keeps 7 days at most between two collections. And it sniffs: a paid shake of a sealed box you do not hold is your rat telling you one of its traits."
     },
     {
      "id": "terms-0",
@@ -755,7 +755,7 @@
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "Un rat qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, 1 USDC pour un rat au hasard (chacun une seule fois), 3 USDC pour un rat IA, dont l'image et le modèle 3D sont d'abord copiés sur Arweave pour de bon. Contrairement aux boîtes, rien n'est secret chez un rat : son propriétaire est public. Chaque rat gagne 10 CROQ classiques par jour dans le garde-manger des rats, à récolter depuis « Mes rats » dans le jeu ; un rat garde 7 jours au plus entre deux récoltes. Et il renifle : une secousse payante d'une boîte scellée qui n'est pas à vous, c'est votre rat qui vous révèle un de ses traits."
+     "text": "Un rat qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, 1 USDC pour un rat au hasard (chacun une seule fois), 3 USDC pour un rat IA, dont l'image est d'abord stockée sur Arweave pour de bon, comme celles des chats, et le modèle 3D gardé par le serveur du jeu. Contrairement aux boîtes, rien n'est secret chez un rat : son propriétaire est public. Chaque rat gagne 10 CROQ classiques par jour dans le garde-manger des rats, à récolter depuis « Mes rats » dans le jeu ; un rat garde 7 jours au plus entre deux récoltes. Et il renifle : une secousse payante d'une boîte scellée qui n'est pas à vous, c'est votre rat qui vous révèle un de ses traits."
     },
     {
      "id": "terms-0",
@@ -1182,7 +1182,7 @@
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Una rata que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, 1 USDC por una rata al azar (cada una una sola vez), 3 USDC por una rata de IA, cuya imagen y modelo 3D se copian antes a Arweave para siempre. A diferencia de las cajas, nada de una rata es secreto: su dueño es público. Cada rata gana 10 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas» en el juego; una rata guarda 7 días como mucho entre dos recogidas. Y olfatea: una sacudida de pago de una caja sellada que no es tuya es tu rata contándote uno de sus rasgos."
+     "text": "Una rata que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, 1 USDC por una rata al azar (cada una una sola vez), 3 USDC por una rata de IA, cuya imagen se guarda antes en Arweave para siempre, como las de los gatos, y su modelo 3D lo conserva el servidor del juego. A diferencia de las cajas, nada de una rata es secreto: su dueño es público. Cada rata gana 10 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas» en el juego; una rata guarda 7 días como mucho entre dos recogidas. Y olfatea: una sacudida de pago de una caja sellada que no es tuya es tu rata contándote uno de sus rasgos."
     },
     {
      "id": "terms-0",
@@ -1609,7 +1609,7 @@
      "id": "studio-3",
      "section": "studio",
      "heading": null,
-     "text": "Un ratto che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, 1 USDC per un ratto a caso (ognuno una volta sola), 3 USDC per un ratto IA, la cui immagine e il cui modello 3D vengono prima copiati su Arweave per sempre. A differenza delle scatole, niente di un ratto è segreto: chi lo possiede è pubblico. Ogni ratto guadagna 10 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti» nel gioco; un ratto tiene al massimo 7 giorni tra due raccolte. E annusa: una scossa a pagamento di una scatola sigillata che non è tua è il tuo ratto che ti rivela uno dei suoi tratti."
+     "text": "Un ratto che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, 1 USDC per un ratto a caso (ognuno una volta sola), 3 USDC per un ratto IA, la cui immagine viene prima conservata su Arweave per sempre, come quelle dei gatti, mentre il modello 3D lo tiene il server del gioco. A differenza delle scatole, niente di un ratto è segreto: chi lo possiede è pubblico. Ogni ratto guadagna 10 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti» nel gioco; un ratto tiene al massimo 7 giorni tra due raccolte. E annusa: una scossa a pagamento di una scatola sigillata che non è tua è il tuo ratto che ti rivela uno dei suoi tratti."
     },
     {
      "id": "terms-0",

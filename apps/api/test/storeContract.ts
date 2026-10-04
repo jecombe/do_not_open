@@ -258,16 +258,22 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.sniffsOf([ALICE, BOB])).toEqual(new Map([[ALICE, 2], [BOB, 0]]));
       expect((await store.ratCounts()).sort((a, b) => (a.kind < b.kind ? -1 : 1))).toEqual([{ kind: "model", count: 1 }, { kind: "seed", count: 2 }]);
 
-      const adoption = { jobId: "00000000-0000-4000-8000-000000000001", jobRef: "0xabc", account: ALICE, prompt: "a rat", imageId: "img", modelId: "glb", recordId: "rec", createdAt: 5 };
+      const adoption = { jobId: "00000000-0000-4000-8000-000000000001", jobRef: "0xabc", account: ALICE, prompt: "a rat", imageId: "img", recordId: "rec", createdAt: 5 };
       await store.saveAdoption(adoption);
       await store.saveAdoption({ ...adoption, imageId: "other" });
       expect(await store.adoption(adoption.jobId)).toEqual(adoption);
       expect(await store.adoptionOfRef("0xabc")).toEqual(adoption);
+      // The model stays here, saved once.
+      await store.saveRatModel("0xabc", new Uint8Array([1, 2, 3]), 5);
+      await store.saveRatModel("0xabc", new Uint8Array([7]), 6);
+      expect(await store.ratModel("0xabc")).toEqual(new Uint8Array([1, 2, 3]));
+      expect(await store.ratModel("0xdef")).toBeNull();
 
       await store.transaction((tx) => tx.resetReadModels());
       expect(await store.rat(1)).toBeNull();
       expect(await store.sniffsOf([ALICE])).toEqual(new Map([[ALICE, 0]]));
       expect(await store.adoption(adoption.jobId)).toEqual(adoption);
+      expect(await store.ratModel("0xabc")).toEqual(new Uint8Array([1, 2, 3]));
     });
 
     it("folds studio packs as a read model, and keeps its jobs across replays", async () => {

@@ -79,7 +79,7 @@ const ERRORS: Record<StudioErrorCode, AppKey> = {
   "no-credits": "studio.err.noCredits",
   "studio-paused": "studio.err.paused",
   "already-adopted": "studio.err.alreadyAdopted",
-  "storage-unfunded": "studio.err.storageUnfunded",
+  "storage-failed": "studio.err.storageFailed",
   "adopt-unavailable": "studio.err.adoptUnavailable",
   unauthorized: "studio.err.unauthorized",
   unreachable: "studio.err.unreachable",

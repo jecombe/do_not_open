@@ -24,7 +24,7 @@ describe("FalStudio", () => {
       url: "https://queue.test/fal-ai/flux/schnell",
       method: "POST",
       auth: "Key secret",
-      body: { prompt: "a styled cat", image_size: "square_hd", num_images: 1, enable_safety_checker: true },
+      body: { prompt: "a styled cat", image_size: "square_hd", num_images: 1, enable_safety_checker: true, output_format: "jpeg" },
     });
     expect(calls.map((c) => c.url)).toEqual(["https://queue.test/fal-ai/flux/schnell", "https://q/r1/status", "https://q/r1/status", "https://q/r1"]);
   });

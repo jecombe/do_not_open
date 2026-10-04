@@ -144,7 +144,6 @@ const adoptionFrom = (r: Row): Adoption => ({
   account: r.account,
   prompt: r.prompt,
   imageId: r.image_id,
-  modelId: r.model_id,
   recordId: r.record_id,
   createdAt: r.created_at,
 });
@@ -606,10 +605,18 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
 
   async saveAdoption(a: Adoption) {
     await this.pool.query(
-      `insert into rat_adoptions (job_id, job_ref, account, prompt, image_id, model_id, record_id, created_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (job_id) do nothing`,
-      [a.jobId, a.jobRef, a.account, a.prompt, a.imageId, a.modelId, a.recordId, a.createdAt],
+      `insert into rat_adoptions (job_id, job_ref, account, prompt, image_id, record_id, created_at)
+       values ($1, $2, $3, $4, $5, $6, $7) on conflict (job_id) do nothing`,
+      [a.jobId, a.jobRef, a.account, a.prompt, a.imageId, a.recordId, a.createdAt],
     );
+  }
+
+  async saveRatModel(jobRef: string, glb: Uint8Array, at: number) {
+    await this.pool.query("insert into rat_models (job_ref, glb, created_at) values ($1, $2, $3) on conflict (job_ref) do nothing", [jobRef, Buffer.from(glb), at]);
+  }
+
+  async ratModel(jobRef: string) {
+    return one(this.pool, "select glb from rat_models where job_ref = $1", [jobRef], (r) => new Uint8Array(r.glb as Buffer));
   }
 
   async studioJobCounts() {

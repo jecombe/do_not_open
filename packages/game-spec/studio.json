@@ -55,7 +55,7 @@
   },
   "rats": {
     "name": "The depot's rats",
-    "rule": "A rat drawn in the studio can be adopted: minted as an ERC-721 in the Rats contract, paid in plain USDC straight to the treasury. A free rat is minted by its seed (each seed once; its look is recomputed from the seed, nothing to store). An AI rat is minted with its job: the API copies its picture and 3D model to Arweave and signs the adoption, and each job is minted once. Nothing about a rat is secret: owners are public, unlike the boxes.",
+    "rule": "A rat drawn in the studio can be adopted: minted as an ERC-721 in the Rats contract, paid in plain USDC straight to the treasury. A free rat is minted by its seed (each seed once; its look is recomputed from the seed, nothing to store). An AI rat is minted with its job: the API stores its picture on Arweave (shrunk to a free upload, like the cats' pictures), keeps its 3D model itself, and signs the adoption, and each job is minted once. Nothing about a rat is secret: owners are public, unlike the boxes.",
     "mint": {
       "seedPriceUsdc": "1",
       "modelPriceUsdc": "3",

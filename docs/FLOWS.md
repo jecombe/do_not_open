@@ -617,8 +617,9 @@ reverts, where a cUSDC payment that falls short moves 0 without a word.
 
 The studio (`/studio`) draws the depot's rats. Rats, not cats, on purpose: the cats only come
 out of boxes, so nothing drawn in the studio can be taken for one. A random rat is free and
-never leaves the browser: a procedural rat generator (`buildRatSpec` and `createRat`, drawn
-with the game's toon materials), no AI, no wallet. A rat from a prompt goes through paid AI services, so it is paid for first, in packs
+never leaves the browser: a procedural rat generator (`buildRatSpec` and `createRat`,
+assembled from the Blender rat kit and drawn with the game's toon materials), no AI, no
+wallet. A rat from a prompt goes through paid AI services, so it is paid for first, in packs
 bought on-chain in plain USDC from `StudioPacks` (numbers in
 [`packages/game-spec/studio.json`](../packages/game-spec/studio.json)): Starter, 2 USDC for 10
 sketches and 1 3D model; Litter, 8 USDC for 50 and 5. A sketch is one cartoon picture of the
@@ -665,8 +666,10 @@ local stand-in (a random procedural rat), with no API and no AI.
 A rat drawn in the studio is adopted by minting it in `Rats`, a plain ERC-721: rats are not
 secret, their owners are public. A free rat is minted by its seed for 1 USDC, each seed once
 (its look is recomputed from the seed, so nothing is stored). An AI rat costs 3 USDC and
-needs the API first: it copies the rat's picture and GLB to Arweave, writes a small record
-pointing at both, and signs the adoption for the caller's address.
+needs the API first, which does as for the cats' pictures: it shrinks the rat's picture to a
+free Arweave upload and stores it there for good, keeps the 3D model itself (no paid
+storage), writes a small record on Arweave pointing at both, and signs the adoption for the
+caller's address.
 
 ```mermaid
 sequenceDiagram
@@ -680,7 +683,8 @@ sequenceDiagram
   else an AI rat
     App->>API: POST /v1/studio/jobs/:id/adopt (signed in)
     API->>API: the job is the caller's, a finished 3D model, not adopted yet
-    API->>AR: the picture, the GLB, then a record of both
+    API->>API: the GLB, kept by the API (served at /rats/models/<job>.glb)
+    API->>AR: the picture shrunk under 100 KB, then a record of both (free uploads)
     API-->>App: uri, deadline, EIP-712 signature (minter = the caller)
     U->>R: mintModel(job, uri, deadline, signature, maxPrice): 3 USDC to the treasury
   end

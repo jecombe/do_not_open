@@ -171,7 +171,8 @@ The studio (`/studio`) is the way in for people who do not care about blockchain
 the depot's rats, not cats, on purpose: the cats only come out of boxes, so nothing drawn in
 the studio can be taken for one. Anyone draws a random rat there for free: a procedural rat
 generator (`buildRatSpec` in `packages/generator`, `createRat` in `packages/scene`: buck teeth,
-big ears, hats, a wedge of cheese), in the browser, no wallet. To draw a rat from a prompt
+big ears, hats, a wedge of cheese, assembled from the Blender rat kit `rat.glb`), in the
+browser, no wallet. To draw a rat from a prompt
 ("a chubby rat chef stealing a wheel of cheese"), a player buys a
 pack in plain USDC from `StudioPacks`: **Starter**, 2 USDC for 10 sketches and 1 3D model;
 **Litter**, 8 USDC for 50 and 5. A sketch is a cartoon picture in the house style (try again
@@ -183,7 +184,7 @@ numbers are in [`packages/game-spec/studio.json`](packages/game-spec/studio.json
 [`docs/FLOWS.md`](docs/FLOWS.md#the-studio).
 
 A rat can then be adopted: minted in `Rats`, a plain ERC-721, for 1 USDC (a free rat, by its
-seed) or 3 USDC (an AI rat, whose picture and 3D model the API copies to Arweave first). An
+seed) or 3 USDC (an AI rat: the API stores its picture on Arweave like a cat's and keeps its 3D model). An
 adopted rat earns 10 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ from the
 treasury at deployment, at most 7 days kept between two claims) and sniffs boxes for its
 owner through the paid shake. "My rats" in the game lists them.

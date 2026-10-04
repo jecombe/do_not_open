@@ -14,7 +14,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 ///         unlike the boxes. A free rat is minted by its 64-bit seed, each seed once: its look is
 ///         recomputed from the seed by the game's generator. An AI rat is minted with its studio
 ///         job, each job once, on a signature of the app's backend (the attester), which has
-///         copied its picture and 3D model to Arweave first (`uri`). Paid in plain USDC, straight
+///         stored its picture on Arweave and kept its 3D model first (`uri`). Paid in plain USDC, straight
 ///         to the treasury. Unrelated to the collection: it never reads or writes DoNotOpen.
 contract Rats is ERC721, Ownable, EIP712 {
     using SafeERC20 for IERC20;

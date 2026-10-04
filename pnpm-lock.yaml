@@ -31,6 +31,9 @@ importers:
       fastify:
         specifier: ^5
         version: 5.12.5
+      jpeg-js:
+        specifier: ^0.4.4
+        version: 0.4.4
       pg:
         specifier: ^8
         version: 8.23.1
@@ -2736,6 +2739,9 @@ packages:
 
   jose@6.2.12:
     resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
+
+  jpeg-js@0.4.4:
+    resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
 
   js-sha3@0.8.0:
     resolution: {integrity: sha512-gF1cRrHhIzNfToc802P800N8PpXS+evLLXfsVpowqmAFR9uwbi89WvXg2QspOmXL8QL86J4T1EpFu+yUkwJY3Q==}
@@ -7741,6 +7747,8 @@ snapshots:
 
   jose@6.2.12:
     optional: true
+
+  jpeg-js@0.4.4: {}
 
   js-sha3@0.8.0: {}
 

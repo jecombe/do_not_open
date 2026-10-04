@@ -99,6 +99,7 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
   private readonly jobs = new Map<string, StudioJob>();
   /** AI rats' files on Arweave, by job id. Kept across replays and out of the swapped state, like the jobs. */
   private readonly adoptions = new Map<string, Adoption>();
+  private readonly ratModels = new Map<string, Uint8Array>();
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
     const draft = fork(this.s);
@@ -534,6 +535,15 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
 
   async adoptionOfRef(jobRef: string) {
     return clone([...this.adoptions.values()].find((a) => a.jobRef === jobRef) ?? null);
+  }
+
+  async saveRatModel(jobRef: string, glb: Uint8Array, _at: number) {
+    if (!this.ratModels.has(jobRef)) this.ratModels.set(jobRef, new Uint8Array(glb));
+  }
+
+  async ratModel(jobRef: string) {
+    const glb = this.ratModels.get(jobRef);
+    return glb ? new Uint8Array(glb) : null;
   }
 
   async saveAdoption(a: Adoption) {

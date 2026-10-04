@@ -61,7 +61,7 @@ export type StudioErrorCode =
   | "no-credits"
   | "studio-paused"
   | "already-adopted"
-  | "storage-unfunded"
+  | "storage-failed"
   | "adopt-unavailable"
   | "unauthorized"
   | "unreachable";
@@ -96,7 +96,7 @@ const CODES = new Set<StudioErrorCode>([
   "no-credits",
   "studio-paused",
   "already-adopted",
-  "storage-unfunded",
+  "storage-failed",
   "adopt-unavailable",
   "unauthorized",
 ]);

@@ -34,7 +34,7 @@ export class FalStudio implements ImageGenerator, ModelGenerator {
   }
 
   async sketch(styledPrompt: string): Promise<{ url: string }> {
-    const out = await this.generate(this.opts.imageModel, { prompt: styledPrompt, image_size: "square_hd", num_images: 1, enable_safety_checker: true });
+    const out = await this.generate(this.opts.imageModel, { prompt: styledPrompt, image_size: "square_hd", num_images: 1, enable_safety_checker: true, output_format: "jpeg" });
     const image = (out as { images?: { url?: unknown }[]; has_nsfw_concepts?: unknown[] }).images?.[0];
     const nsfw = (out as { has_nsfw_concepts?: unknown[] }).has_nsfw_concepts?.[0] === true;
     if (nsfw) throw new StudioRejected("the picture was flagged by the safety checker");

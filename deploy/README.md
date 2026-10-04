@@ -75,9 +75,9 @@ fail, when jobs pile up in fal's queue, when the studio is off with packs sold, 
 has cost more than the packs brought in. See [`apps/api/README.md`](../apps/api/README.md#the-studio).
 
 The rats need `RATS_ATTESTER_KEY=0x...` in `/opt/dno/.env` (a fresh key; its address is
-`RATS_ATTESTER` when `Rats` is deployed) and, for AI rats, Turbo credits on the `ARWEAVE_KEY`
-account (their picture and GLB are past the free 100 KB; without credits, adoptions answer
-`storage-unfunded` and nothing is minted). `SITE_URL=https://do-not-open.app` links the studio
+`RATS_ATTESTER` when `Rats` is deployed) and `ARWEAVE_KEY`: an AI rat's picture is shrunk to a
+free Arweave upload like a cat's, and its 3D model stays in Postgres (`rat_models`, in the
+nightly dump), so no Turbo credits are needed. `SITE_URL=https://do-not-open.app` links the studio
 from each rat's metadata. Ship the API that knows the `Rats` address before the first rat is
 minted. See [`apps/api/README.md`](../apps/api/README.md#the-depots-rats).
 

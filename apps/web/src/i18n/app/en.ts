@@ -1018,7 +1018,7 @@ export const en = {
   "rats.closed": "Rats cannot be adopted on this network yet.",
   "rats.title": "My rats",
   "studio.err.adoptUnavailable": "This rat cannot be adopted. Nothing was spent.",
-  "studio.err.storageUnfunded": "AI rats cannot be adopted right now: their files cannot be stored for good yet. Nothing was spent.",
+  "studio.err.storageFailed": "The rat's picture could not be stored for good right now. Nothing was spent: try again in a moment.",
   "studio.err.alreadyAdopted": "This rat was already adopted.",
   "studio.adopt.see": "See my rats",
   "studio.adopt.done": "Rat #{id} is yours. It earns {perDay} croquettes a day.",

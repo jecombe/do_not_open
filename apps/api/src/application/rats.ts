@@ -5,11 +5,11 @@ import type { Address } from "../domain/types";
 import type { Clock } from "./auth";
 import type { PermanentStorage } from "./ports/archive";
 import type { Logger } from "./ports/logger";
-import type { AdoptionSigner, RatStore, ServiceFiles } from "./ports/rats";
+import type { AdoptionSigner, ImageShrinker, RatStore, ServiceFiles } from "./ports/rats";
 import type { StudioStore } from "./ports/studio";
 import { NotFound } from "./queries";
 
-export type RatRefusal = "not-found" | "not-adoptable" | "already-adopted" | "storage-unfunded" | "adopt-unavailable";
+export type RatRefusal = "not-found" | "not-adoptable" | "already-adopted" | "storage-failed" | "adopt-unavailable";
 
 /** An adoption turned away before anything was minted: no money moved. */
 export class RatRefused extends Error {
@@ -62,8 +62,9 @@ export interface RatsConfig {
 
 /**
  * The depot's rats: read back from the index, described for marketplaces, and adopted. A seed rat
- * needs nothing from here to be minted; an AI rat needs its files on Arweave and the attester's
- * signature, which this hands out to the job's own account only.
+ * needs nothing from here to be minted; an AI rat needs its picture on Arweave (shrunk to a free
+ * upload, like a cat's), its 3D model kept here, and the attester's signature, which this hands
+ * out to the job's own account only.
  */
 export class Rats {
   constructor(
@@ -71,6 +72,7 @@ export class Rats {
     private readonly jobs: Pick<StudioStore, "studioJob">,
     private readonly storage: PermanentStorage | null,
     private readonly files: ServiceFiles,
+    private readonly shrinker: ImageShrinker,
     private readonly signer: AdoptionSigner | null,
     private readonly clock: Clock,
     private readonly cfg: RatsConfig,
@@ -131,7 +133,7 @@ export class Rats {
     };
   }
 
-  /** A seed rat's picture, recomputed from its seed. An AI rat has none here: its picture is on Arweave. */
+  /** A seed rat's picture, recomputed from its seed. An AI rat's is on Arweave. */
   async svg(id: number): Promise<string> {
     const rat = await this.rats.rat(id);
     if (!rat || rat.kind !== "seed") throw new NotFound(`no generated picture for rat ${id}`);
@@ -139,8 +141,8 @@ export class Rats {
   }
 
   /**
-   * What the caller needs to mint the AI rat of their studio job: its files go to Arweave first
-   * (once), then the attester signs for this caller only.
+   * What the caller needs to mint the AI rat of their studio job: its picture goes to Arweave and
+   * its model to this API's store first (once), then the attester signs for this caller only.
    */
   async adopt(account: Address, jobId: string): Promise<AdoptionTicket> {
     if (!this.signer) throw new RatRefused("adopt-unavailable", "AI rats cannot be adopted on this network yet");
@@ -159,7 +161,22 @@ export class Rats {
     return { job: jobRef, uri, deadline, signature, priceUsdc: this.spec.rats.mint.modelPriceUsdc };
   }
 
-  /** Copies the sketch and the mesh to Arweave, then a small record pointing at both. */
+  /** An adopted AI rat's 3D model, served by this API. */
+  async model(jobRef: string): Promise<Uint8Array> {
+    const glb = /^0x[0-9a-f]{64}$/.test(jobRef) ? await this.rats.ratModel(jobRef) : null;
+    if (!glb) throw new NotFound("no such rat model");
+    return glb;
+  }
+
+  /** Where an AI rat's model is served, by its job's bytes32. */
+  modelUrl(jobRef: string): string {
+    return `${this.cfg.publicUrl}/rats/models/${jobRef}.glb`;
+  }
+
+  /**
+   * Like a cat's picture: the sketch, shrunk to fit Arweave's free uploads, goes there for good;
+   * the mesh stays with this API (no paid storage); a small record on Arweave points at both.
+   */
   private async archive(account: Address, jobId: string, jobRef: string, prompt: string, sketchId: string, modelUrl: string): Promise<Adoption> {
     if (!this.storage) throw new RatRefused("adopt-unavailable", "AI rats cannot be adopted on this network yet: no permanent storage");
     const sketch = await this.jobs.studioJob(sketchId);
@@ -169,8 +186,8 @@ export class Rats {
       try {
         return await storage.put(bytes, type);
       } catch (error) {
-        this.log.warn({ job: jobId, err: error instanceof Error ? error.message : String(error) }, "rat files could not be stored");
-        throw new RatRefused("storage-unfunded", "the rat's files could not be stored on Arweave (the storage has no credits left?): nothing was minted, try again later");
+        this.log.warn({ job: jobId, err: error instanceof Error ? error.message : String(error) }, "rat picture could not be stored");
+        throw new RatRefused("storage-failed", "the rat's picture could not be stored on Arweave: nothing was minted, try again later");
       }
     };
     const fetchFile = async (url: string, max: number) => {
@@ -183,11 +200,18 @@ export class Rats {
     };
     const image = await fetchFile(sketch.resultUrl, this.cfg.maxImageBytes);
     const model = await fetchFile(modelUrl, this.cfg.maxModelBytes);
-    const imageId = await put(image.bytes, image.contentType);
-    const modelId = await put(model.bytes, "model/gltf-binary");
-    const record = new TextEncoder().encode(JSON.stringify({ name: "Rat", prompt, image: `ar://${imageId}`, model: `ar://${modelId}`, job: jobId }));
+    let picture: Uint8Array;
+    try {
+      picture = this.shrinker.shrink(image.bytes, storage.maxBytes);
+    } catch (error) {
+      this.log.warn({ job: jobId, err: error instanceof Error ? error.message : String(error) }, "rat picture could not be shrunk");
+      throw new RatRefused("not-adoptable", "the rat's picture could not be prepared: draw it again");
+    }
+    await this.rats.saveRatModel(jobRef, model.bytes, this.clock.now());
+    const imageId = await put(picture, "image/jpeg");
+    const record = new TextEncoder().encode(JSON.stringify({ name: "Rat", prompt, image: `ar://${imageId}`, model: this.modelUrl(jobRef), job: jobId }));
     const recordId = await put(record, "application/json");
-    const adoption: Adoption = { jobId, jobRef, account, prompt, imageId, modelId, recordId, createdAt: this.clock.now() };
+    const adoption: Adoption = { jobId, jobRef, account, prompt, imageId, recordId, createdAt: this.clock.now() };
     await this.rats.saveAdoption(adoption);
     return adoption;
   }
@@ -205,7 +229,7 @@ export class Rats {
       job: rat.ref,
       // Files this API did not store itself are only known through the record.
       imageUrl: adoption ? gateway(adoption.imageId) : record ? gateway(record) : `${this.cfg.publicUrl}/rats/${rat.id}`,
-      modelUrl: adoption ? gateway(adoption.modelId) : null,
+      modelUrl: adoption ? this.modelUrl(rat.ref) : null,
     };
   }
 
