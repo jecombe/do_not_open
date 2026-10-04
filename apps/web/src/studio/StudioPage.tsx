@@ -646,7 +646,7 @@ function StudioLive() {
                     <ul className="studio-models">
                       {models.map((j) => (
                         <li key={j.id}>
-                          <span className="studio-model-name">{j.prompt}</span>
+                          <span className="studio-model-name" title={j.prompt}>{j.prompt}</span>
                           {j.status === "done" ? (
                             <button type="button" className="link" onClick={() => focusJob(j.id)} aria-pressed={focus === j.id}>
                               {focus === j.id ? t("studio.model.onStage") : t("studio.model.show")}
