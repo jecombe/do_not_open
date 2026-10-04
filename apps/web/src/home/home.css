@@ -312,6 +312,189 @@ h2 {
   margin: 0;
 }
 
+/* --- The departure board: split-flap letters, live on Sepolia, mainnet soon --- */
+.board {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 22px;
+  padding: 10px 14px 12px;
+  background: var(--dock);
+  color: var(--sun);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 5px 5px 0 var(--ink);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  transform: rotate(-1deg);
+}
+
+/* On a wide screen it hangs over the toy's corner like a station sign; on a phone it sits between the text and the toy. */
+.home-hero {
+  position: relative;
+}
+
+@media (min-width: 761px) {
+  .home-hero > .board {
+    position: absolute;
+    top: clamp(16px, 2.5vw, 36px);
+    right: 0;
+    z-index: 3;
+    transform: rotate(2deg);
+  }
+}
+
+.board-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px 16px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px dashed rgb(255 214 107 / 0.35);
+  font-family: var(--stencil);
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.board-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--label);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: rgb(255 214 107 / 0.7);
+}
+
+.board-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.board-row + .board-row,
+.board-next + .board-row {
+  margin-top: 6px;
+}
+
+.board-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flaps {
+  display: inline-flex;
+  gap: 2px;
+}
+
+/* One flap: a dark tile split across the middle, its letter in the sodium of the depot. */
+.flap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1.05em;
+  height: 1.45em;
+  border-radius: 3px;
+  background: linear-gradient(#2a241e 0 49%, #1f1a15 51%);
+  font-size: clamp(13px, 1.25vw, 17px);
+  font-weight: 700;
+  line-height: 1;
+  white-space: pre;
+}
+
+.flap::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 1px;
+  background: rgb(0 0 0 / 0.7);
+}
+
+.flaps.is-soon .flap {
+  color: var(--orange);
+}
+
+.flaps.is-small .flap {
+  width: 0.95em;
+  height: 1.35em;
+  font-size: 13px;
+  color: var(--mint);
+}
+
+/* The time to the next block, roughly: a thin bar under Sepolia's line that fills and starts over with each new one. */
+.board-next {
+  display: block;
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: linear-gradient(var(--mint), var(--mint)) 0 0 / 0% 100% no-repeat, rgb(125 227 208 / 0.18);
+  animation: board-next 12s linear forwards;
+}
+
+@keyframes board-next {
+  to {
+    background-size: 100% 100%, auto;
+  }
+}
+
+.board-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #7be078;
+  box-shadow: 0 0 0 0 rgb(123 224 120 / 0.7);
+  animation: board-pulse 1.6s ease-out infinite;
+}
+
+.board-dot.is-off {
+  background: var(--orange);
+  box-shadow: none;
+  animation: board-blink 1.3s steps(2, start) infinite;
+}
+
+@keyframes board-pulse {
+  to {
+    box-shadow: 0 0 0 9px rgb(123 224 120 / 0);
+  }
+}
+
+@keyframes board-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.board .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .board .flap {
+    font-size: 11px;
+  }
+
+  .board .flaps.is-small .flap {
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-dot,
+  .board-dot.is-off,
+  .board-next {
+    animation: none;
+  }
+}
+
 /* --- The toy box --- */
 .toy {
   position: relative;
