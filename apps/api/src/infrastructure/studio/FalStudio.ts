@@ -24,7 +24,7 @@ export interface FalOptions {
  * Each picture-to-mesh model names its input its own way. Tripo and Hunyuan3D paint the sides the
  * picture does not show; Trellis leaves them black. Tripo's colours stay plain (no PBR) since the
  * app dresses the mesh in toon materials anyway, and without quads it answers a GLB, not an FBX.
- * Left to itself Tripo sizes the mesh by the picture and can pass the 40 MB a model may weigh:
+ * Left to itself Tripo sizes the mesh by the picture: one rat came out at 41 MB, heavy to adopt and show;
  * a cartoon rat under a toon outline needs no more than TRIPO_FACES faces.
  */
 const TRIPO_FACES = 30_000;
