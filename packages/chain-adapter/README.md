@@ -165,9 +165,12 @@ every unit bought through `studioPending` (there is no API to count them) and ha
 
 The depot's rats are a plain ERC-721 (`Rats`), owners public, with the `RatPantry` paying each
 rat its daily plain CROQ (`studio.json` `rats`). `ratPrices()` reads `{ seed, model }` in USDC's
-smallest unit, null where no Rats contract is deployed. `seedRatTaken(seed)` says whether a free
-rat was adopted already. `mintSeedRat(seed)` and `mintModelRat(adoption)` approve the USDC if
-needed, mint at the price just read and return the token id; the adoption is the API's answer to
+smallest unit, null where no Rats contract is deployed. `ratSupply(account)` reads
+`{ seed: { minted, max }, model: { minted, max }, perWallet, mintedBy }` (the caps are the
+contract's, `mintedBy` null without an account). `seedRatTaken(seed)` says whether a free
+rat was adopted already. `mintSeedRat(seed)` and `mintModelRat(adoption)` refuse with `reverted` (`SoldOut`,
+`WalletLimit`) before any approval when no rat of the kind is left or the account minted its
+share, approve the USDC if needed, mint at the price just read and return the token id; the adoption is the API's answer to
 `POST /v1/studio/jobs/:id/adopt` (`{ job, uri, deadline, signature, priceUsdc }`), its `job` the
 bytes32 the API signed (keccak256 of the job's UUID), passed through as is (`ratJob`). `ratsOf(account)` reads
 `GET /v1/rats?owner=` first and the chain's `Transfer` logs from the deploy block when the API is

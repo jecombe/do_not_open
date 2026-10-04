@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { formatAmount, type ApiSession, type RatPrices, type StudioPack } from "@dno/chain-adapter";
+import { formatAmount, type ApiSession, type RatPrices, type RatSupply, type StudioPack } from "@dno/chain-adapter";
 import { studio } from "@dno/game-spec";
 import { ChainProvider, useAction, useChain, useLedger } from "../chain/ChainProvider";
 import { useT, type AppKey } from "../i18n/app";
@@ -81,11 +81,33 @@ const ERRORS: Record<StudioErrorCode, AppKey> = {
   "no-credits": "studio.err.noCredits",
   "studio-paused": "studio.err.paused",
   "already-adopted": "studio.err.alreadyAdopted",
+  "sold-out": "studio.err.soldOut",
+  "wallet-limit": "studio.err.walletLimit",
   "storage-failed": "studio.err.storageFailed",
   "adopt-unavailable": "studio.err.adoptUnavailable",
   unauthorized: "studio.err.unauthorized",
   unreachable: "studio.err.unreachable",
 };
+
+/** How many rats of a kind are left out of the most there will ever be, and the wallet's share. */
+function RatCount({ supply, kind }: { supply: RatSupply; kind: "seed" | "model" }) {
+  const t = useT();
+  const { minted, max } = supply[kind];
+  return (
+    <p className="fine studio-rat-count">
+      <strong>{t(kind === "seed" ? "studio.supply.seed" : "studio.supply.model", { left: Math.max(0, max - minted), max })}</strong>
+      {supply.mintedBy !== null && <> {t("studio.supply.mine", { mine: supply.mintedBy, max: supply.perWallet })}</>}
+    </p>
+  );
+}
+
+/** Why no rat of this kind can be adopted by this wallet, or null when one can. */
+function closedFor(supply: RatSupply | null | undefined, kind: "seed" | "model"): AppKey | null {
+  if (!supply) return null;
+  if (supply[kind].minted >= supply[kind].max) return "studio.adopt.soldOut";
+  if (supply.mintedBy !== null && supply.mintedBy >= supply.perWallet) return "studio.adopt.walletFull";
+  return null;
+}
 
 function Trouble({ code }: { code: StudioErrorCode }) {
   const t = useT();
@@ -179,6 +201,8 @@ function StudioLive() {
   const [signing, setSigning] = useState(false);
   const [sending, setSending] = useState(false);
   const [ratPrices, setRatPrices] = useState<RatPrices | null | undefined>(undefined);
+  /** Rats left, per kind, and this wallet's share. */
+  const [ratSupply, setRatSupply] = useState<RatSupply | null | undefined>(undefined);
   /** Whether the random rat on the turntable was adopted already, by anyone. */
   const [taken, setTaken] = useState(false);
   /** The rat this visit adopted, to say so and point to it. */
@@ -205,6 +229,18 @@ function StudioLive() {
       live = false;
     };
   }, [service, adapter]);
+
+  // Read again after an adoption: one fewer left, one more for this wallet.
+  useEffect(() => {
+    let live = true;
+    adapter.ratSupply(account).then(
+      (s) => live && setRatSupply(s),
+      () => live && setRatSupply(null),
+    );
+    return () => {
+      live = false;
+    };
+  }, [adapter, account, adopted]);
 
   const signedIn = demo ? !!account : !!session;
 
@@ -449,13 +485,18 @@ function StudioLive() {
           </Suspense>
         )}
         {adoptArea(
-          ratPrices ? (
-            <button type="button" className="stamp-button studio-adopt-button" disabled={!!adopting.busy} onClick={() => void adoptModel(focused)}>
-              {t("studio.adopt.model", { price: formatAmount(ratPrices.model, 6) })}
-            </button>
-          ) : ratPrices === null ? (
-            <p className="fine">{t("studio.adopt.closed")}</p>
-          ) : null,
+          <>
+            {ratPrices && closedFor(ratSupply, "model") ? (
+              <p className="fine">{t(closedFor(ratSupply, "model")!, { max: ratSupply!.perWallet })}</p>
+            ) : ratPrices ? (
+              <button type="button" className="stamp-button studio-adopt-button" disabled={!!adopting.busy} onClick={() => void adoptModel(focused)}>
+                {t("studio.adopt.model", { price: formatAmount(ratPrices.model, 6) })}
+              </button>
+            ) : ratPrices === null ? (
+              <p className="fine">{t("studio.adopt.closed")}</p>
+            ) : null}
+            {ratPrices && ratSupply && <RatCount supply={ratSupply} kind="model" />}
+          </>,
         )}
         {problem?.at === "model" && <Trouble code={problem.code} />}
       </>
@@ -489,12 +530,15 @@ function StudioLive() {
                   <p className="fine">{t("studio.adopt.closed")}</p>
                 ) : taken ? (
                   <p className="fine">{t("studio.adopt.taken")}</p>
+                ) : closedFor(ratSupply, "seed") ? (
+                  <p className="fine">{t(closedFor(ratSupply, "seed")!, { max: ratSupply!.perWallet })}</p>
                 ) : (
                   <button type="button" className="stamp-button studio-adopt-button" disabled={!ratPrices || !!adopting.busy} onClick={() => void adoptSeed(seed)}>
                     {t("studio.adopt.seed", { price: ratPrices ? formatAmount(ratPrices.seed, 6) : studio.rats.mint.seedPriceUsdc })}
                   </button>
                 )}
-                {ratPrices !== null && !taken && <p className="fine">{t("studio.adopt.hint", { perDay })}</p>}
+                {ratPrices !== null && !taken && !closedFor(ratSupply, "seed") && <p className="fine">{t("studio.adopt.hint", { perDay })}</p>}
+                {ratPrices && ratSupply && <RatCount supply={ratSupply} kind="seed" />}
               </>,
             )}
           </div>

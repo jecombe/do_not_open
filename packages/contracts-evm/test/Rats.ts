@@ -34,7 +34,7 @@ describe("Rats and RatPantry", function () {
     usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     croq = (await (await ethers.getContractFactory("Croq")).deploy(20_000_000, deployer.address)) as unknown as Croq;
     rats = (await (await ethers.getContractFactory("Rats")).deploy(
-      await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/",
+      await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/", 700, 300, 50,
     )) as unknown as Rats;
     pantry = (await (await ethers.getContractFactory("RatPantry")).deploy(await croq.getAddress(), await rats.getAddress(), 10, 7)) as unknown as RatPantry;
     await croq.transfer(await pantry.getAddress(), 1_000);
@@ -139,11 +139,55 @@ describe("Rats and RatPantry", function () {
     expect(await croq.balanceOf(alice.address)).to.eq(30);
   });
 
+  it("caps each kind for good, and each wallet's mints, but not what a wallet holds", async function () {
+    const Rats = await ethers.getContractFactory("Rats");
+    const args = [await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/"] as const;
+    await expect(Rats.deploy(...args, 0, 1, 1)).to.be.revertedWithCustomError(rats, "ZeroCap");
+    await expect(Rats.deploy(...args, 1, 1, 0)).to.be.revertedWithCustomError(rats, "ZeroCap");
+    const small = (await Rats.deploy(...args, 2, 1, 2)) as unknown as Rats;
+    const at = await small.getAddress();
+    await usdc.connect(alice).approve(at, usd("20"));
+    await usdc.mint(bob.address, usd("20"));
+    await usdc.connect(bob).approve(at, usd("20"));
+
+    await small.connect(alice).mintSeed(1, usd("1"));
+    await small.connect(alice).mintSeed(2, usd("1"));
+    expect(await small.mintedBy(alice.address)).to.eq(2);
+    // Two seed rats out of two: none left, whoever asks.
+    await expect(small.connect(bob).mintSeed(3, usd("1"))).to.be.revertedWithCustomError(small, "SoldOut");
+    expect(await small.seedMinted()).to.eq(2);
+
+    // Alice minted her two: the AI rat left is refused to her, not to Bob.
+    const job = ethers.id("job-cap");
+    const deadline = (await time.latest()) + 600;
+    const sign = async (who: string) =>
+      attester.signTypedData(
+        { name: "DO NOT OPEN Rats", version: "1", chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: at },
+        { Adopt: [{ name: "minter", type: "address" }, { name: "job", type: "bytes32" }, { name: "uri", type: "string" }, { name: "deadline", type: "uint256" }] },
+        { minter: who, job, uri: "ar://x", deadline },
+      );
+    await expect(small.connect(alice).mintModel(job, "ar://x", deadline, await sign(alice.address), usd("3"))).to.be.revertedWithCustomError(small, "WalletLimit");
+    await small.connect(bob).mintModel(job, "ar://x", deadline, await sign(bob.address), usd("3"));
+    const job2 = ethers.id("job-cap-2");
+    const sig2 = await attester.signTypedData(
+      { name: "DO NOT OPEN Rats", version: "1", chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: at },
+      { Adopt: [{ name: "minter", type: "address" }, { name: "job", type: "bytes32" }, { name: "uri", type: "string" }, { name: "deadline", type: "uint256" }] },
+      { minter: bob.address, job: job2, uri: "ar://x", deadline },
+    );
+    await expect(small.connect(bob).mintModel(job2, "ar://x", deadline, sig2, usd("3"))).to.be.revertedWithCustomError(small, "SoldOut");
+
+    // Holding more is fine: Bob can be given Alice's rats.
+    await small.connect(alice).transferFrom(alice.address, bob.address, 1);
+    await small.connect(alice).transferFrom(alice.address, bob.address, 2);
+    expect(await small.balanceOf(bob.address)).to.eq(3);
+  });
+
   it("takes its numbers from studio.json", function () {
     const p = ratParamsFromSpec();
     expect(p.seedPrice).to.eq(usd(studio.rats.mint.seedPriceUsdc));
     expect(p.modelPrice).to.eq(usd(studio.rats.mint.modelPriceUsdc));
     expect(p.perDay).to.eq(studio.rats.croquettes.perDay);
+    expect([p.maxSeedRats, p.maxModelRats, p.maxPerWallet]).to.deep.eq([studio.rats.mint.maxSeedRats, studio.rats.mint.maxModelRats, studio.rats.mint.maxPerWallet]);
     expect(() => ratParamsFromSpec({ ...studio, rats: { ...studio.rats, mint: { ...studio.rats.mint, seedPriceUsdc: "0" } } })).to.throw(/positive/);
   });
 });

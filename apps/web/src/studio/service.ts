@@ -61,6 +61,8 @@ export type StudioErrorCode =
   | "no-credits"
   | "studio-paused"
   | "already-adopted"
+  | "sold-out"
+  | "wallet-limit"
   | "storage-failed"
   | "adopt-unavailable"
   | "unauthorized"
@@ -96,6 +98,8 @@ const CODES = new Set<StudioErrorCode>([
   "no-credits",
   "studio-paused",
   "already-adopted",
+  "sold-out",
+  "wallet-limit",
   "storage-failed",
   "adopt-unavailable",
   "unauthorized",

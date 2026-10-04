@@ -256,6 +256,8 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect((await store.ratOfRef("0xabc"))?.id).toBe(2);
       expect(await store.ratOfRef("nope")).toBeNull();
       expect(await store.sniffsOf([ALICE, BOB])).toEqual(new Map([[ALICE, 2], [BOB, 0]]));
+      expect(await store.ratsMintedBy(ALICE)).toBe(3);
+      expect(await store.ratsMintedBy(BOB)).toBe(0);
       expect((await store.ratCounts()).sort((a, b) => (a.kind < b.kind ? -1 : 1))).toEqual([{ kind: "model", count: 1 }, { kind: "seed", count: 2 }]);
 
       const adoption = { jobId: "00000000-0000-4000-8000-000000000001", jobRef: "0xabc", account: ALICE, prompt: "a rat", imageId: "img", recordId: "rec", createdAt: 5 };

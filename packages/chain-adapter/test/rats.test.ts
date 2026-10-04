@@ -36,6 +36,16 @@ describe("MockAdapter rats", () => {
     expect((await chain.ratsOf(MOCK_YOU))[0]).toMatchObject({ kind: "model", uri: "ar://x" });
   });
 
+  it("counts the rats left and refuses a wallet past its share", async () => {
+    const { chain } = await fresh();
+    const { maxSeedRats, maxModelRats, maxPerWallet } = studio.rats.mint;
+    expect(await chain.ratSupply(MOCK_YOU)).toEqual({ seed: { minted: 0, max: maxSeedRats }, model: { minted: 0, max: maxModelRats }, perWallet: maxPerWallet, mintedBy: 0 });
+    for (let s = 1; s <= maxPerWallet; s++) await chain.mintSeedRat(BigInt(s));
+    expect(await chain.ratSupply(MOCK_YOU)).toMatchObject({ seed: { minted: maxPerWallet }, mintedBy: maxPerWallet });
+    expect((await chain.ratSupply(null))?.mintedBy).toBeNull();
+    await expect(chain.mintSeedRat(999n)).rejects.toMatchObject({ code: "reverted", reason: "WalletLimit" });
+  });
+
   it("pays each rat its croquettes a day, at most maxDays at once, from the pantry", async () => {
     const { chain, advance } = await fresh();
     const { perDay, maxDays } = studio.rats.croquettes;

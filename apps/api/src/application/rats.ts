@@ -9,7 +9,14 @@ import type { AdoptionSigner, ImageShrinker, RatStore, ServiceFiles } from "./po
 import type { StudioStore } from "./ports/studio";
 import { NotFound } from "./queries";
 
-export type RatRefusal = "not-found" | "not-adoptable" | "already-adopted" | "storage-failed" | "adopt-unavailable";
+export type RatRefusal = "not-found" | "not-adoptable" | "already-adopted" | "sold-out" | "wallet-limit" | "storage-failed" | "adopt-unavailable";
+
+/** How many rats were minted, per kind, out of the most there will ever be. */
+export interface RatSupplyView {
+  seed: { minted: number; max: number };
+  model: { minted: number; max: number };
+  perWallet: number;
+}
 
 /** An adoption turned away before anything was minted: no money moved. */
 export class RatRefused extends Error {
@@ -93,6 +100,14 @@ export class Rats {
     return this.view(rat, sniffs.get(rat.owner) ?? 0);
   }
 
+  /** Rats minted and the caps, as of the index. The caps are the contract's, set from the spec at deployment. */
+  async supply(): Promise<RatSupplyView> {
+    const counts = await this.rats.ratCounts();
+    const minted = (kind: string) => counts.find((c) => c.kind === kind)?.count ?? 0;
+    const m = this.spec.rats.mint;
+    return { seed: { minted: minted("seed"), max: m.maxSeedRats }, model: { minted: minted("model"), max: m.maxModelRats }, perWallet: m.maxPerWallet };
+  }
+
   /** ERC-721 metadata. */
   async metadata(id: number): Promise<Record<string, unknown>> {
     const rat = await this.rats.rat(id);
@@ -153,6 +168,10 @@ export class Rats {
     }
     const jobRef = this.signer.jobRef(jobId);
     if (await this.rats.ratOfRef(jobRef)) throw new RatRefused("already-adopted", "this rat was adopted already");
+    // The contract would refuse these: nothing is put on Arweave for a rat that cannot be minted.
+    const supply = await this.supply();
+    if (supply.model.minted >= supply.model.max) throw new RatRefused("sold-out", "every AI rat has been adopted");
+    if ((await this.rats.ratsMintedBy(account)) >= supply.perWallet) throw new RatRefused("wallet-limit", `an address adopts at most ${supply.perWallet} rats`);
 
     const adoption = (await this.rats.adoption(jobId)) ?? (await this.archive(account, jobId, jobRef, job.prompt, job.sketchId, job.resultUrl));
     const uri = `ar://${adoption.recordId}`;

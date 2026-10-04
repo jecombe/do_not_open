@@ -15,6 +15,8 @@ export interface RatStore {
   /** Paid shakes by each of these addresses. */
   sniffsOf(accounts: Address[]): Promise<Map<Address, number>>;
   ratCounts(): Promise<{ kind: RatKind; count: number }[]>;
+  /** Rats this address minted, both kinds: each address mints at most the spec's maxPerWallet. */
+  ratsMintedBy(minter: Address): Promise<number>;
   adoption(jobId: string): Promise<Adoption | null>;
   adoptionOfRef(jobRef: string): Promise<Adoption | null>;
   saveAdoption(a: Adoption): Promise<void>;

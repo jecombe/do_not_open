@@ -11,6 +11,7 @@ import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
+import { RatsLeft } from "./RatsLeft";
 import { RatToy } from "./ratToy";
 import { Shipped } from "./Shipped";
 import { boxComplaint, pageSound, setMuted } from "./sound";
@@ -218,6 +219,7 @@ export function Home() {
               <strong>{t("home.studio.next.title")}</strong> {t("home.studio.next.body", { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay })}
             </li>
           </ul>
+          <RatsLeft />
           <a className="btn" href={studioPath(locale)}>
             {t("home.studio.cta")}&nbsp;→
           </a>

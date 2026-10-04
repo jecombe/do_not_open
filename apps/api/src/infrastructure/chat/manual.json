@@ -280,7 +280,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "The rats you adopt in the studio earn croquettes too, but not from the Pantry: each one gets 10 plain CROQ a day from the rats' own pantry, collected from \"My rats\", 7 days at most between two collections. Plain, not confidential: who owns a rat is public, so what it earns may be. That pantry got 500,000 CROQ from the treasury; the game reserve that feeds the boxes is not touched.\nCroquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire\nEvery croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
+     "text": "The rats you adopt in the studio earn croquettes too, but not from the Pantry: each one gets 3 plain CROQ a day from the rats' own pantry, collected from \"My rats\", 7 days at most between two collections. Plain, not confidential: who owns a rat is public, so what it earns may be. That pantry got 500,000 CROQ from the treasury; the game reserve that feeds the boxes is not touched.\nCroquettes go from the reserve to players and from players into their cats; every meal is split between the treasury, the reserve and the fire\nEvery croquette in the Pantry sits in exactly one encrypted pile: the reserve, the treasury's share, or the burnt one. A meal leaves nothing in the cat but weight. Burnt croquettes stay locked in the Pantry; no function can move them, and nobody can read how many there are."
     },
     {
      "id": "croquettes-4",
@@ -334,7 +334,7 @@
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "A rat you like can be adopted: minted as an NFT of your own in the Rats contract, 1 USDC for a random rat (each one once), 3 USDC for an AI rat, whose picture is first stored on Arweave for good, like the cats' pictures, while its 3D model is kept by the game's server. Unlike the boxes, nothing about a rat is secret: who owns it is public. Each rat earns 10 plain CROQ a day from the rats' pantry, collected from \"My rats\" in the game; a rat keeps 7 days at most between two collections. And it sniffs: a paid shake of a sealed box you do not hold is your rat telling you one of its traits."
+     "text": "A rat you like can be adopted: minted as an NFT of your own in the Rats contract, 1 USDC for a random rat (each one once), 3 USDC for an AI rat, whose picture is first stored on Arweave for good, like the cats' pictures, while its 3D model is kept by the game's server. There will only ever be 700 random rats and 300 AI rats, set for good in the contract, and one wallet adopts 5 at most (a rat can still be given or sold to it); the studio shows how many are left. Unlike the boxes, nothing about a rat is secret: who owns it is public. Each rat earns 3 plain CROQ a day from the rats' pantry, collected from \"My rats\" in the game; a rat keeps 7 days at most between two collections. And it sniffs: a paid shake of a sealed box you do not hold is your rat telling you one of its traits."
     },
     {
      "id": "terms-0",
@@ -707,7 +707,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Les rats que vous adoptez dans le studio gagnent aussi des croquettes, mais pas dans le Pantry : chacun reçoit 10 CROQ classiques par jour du garde-manger des rats, à récolter depuis « Mes rats », 7 jours au plus entre deux récoltes. Classiques, pas confidentielles : le propriétaire d'un rat est public, ce qu'il gagne peut l'être aussi. Ce garde-manger a reçu 500 000 CROQ de la trésorerie ; la réserve du jeu qui nourrit les boîtes n'est pas touchée.\nLes croquettes vont de la réserve aux joueurs et des joueurs à leurs chats ; chaque repas est partagé entre la trésorerie, la réserve et le feu"
+     "text": "Les rats que vous adoptez dans le studio gagnent aussi des croquettes, mais pas dans le Pantry : chacun reçoit 3 CROQ classiques par jour du garde-manger des rats, à récolter depuis « Mes rats », 7 jours au plus entre deux récoltes. Classiques, pas confidentielles : le propriétaire d'un rat est public, ce qu'il gagne peut l'être aussi. Ce garde-manger a reçu 500 000 CROQ de la trésorerie ; la réserve du jeu qui nourrit les boîtes n'est pas touchée.\nLes croquettes vont de la réserve aux joueurs et des joueurs à leurs chats ; chaque repas est partagé entre la trésorerie, la réserve et le feu"
     },
     {
      "id": "croquettes-4",
@@ -773,7 +773,7 @@
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "Un rat qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, 1 USDC pour un rat au hasard (chacun une seule fois), 3 USDC pour un rat IA, dont l'image est d'abord stockée sur Arweave pour de bon, comme celles des chats, et le modèle 3D gardé par le serveur du jeu. Contrairement aux boîtes, rien n'est secret chez un rat : son propriétaire est public. Chaque rat gagne 10 CROQ classiques par jour dans le garde-manger des rats, à récolter depuis « Mes rats » dans le jeu ; un rat garde 7 jours au plus entre deux récoltes. Et il renifle : une secousse payante d'une boîte scellée qui n'est pas à vous, c'est votre rat qui vous révèle un de ses traits."
+     "text": "Un rat qui vous plaît peut être adopté : minté comme NFT à vous dans le contrat Rats, 1 USDC pour un rat au hasard (chacun une seule fois), 3 USDC pour un rat IA, dont l'image est d'abord stockée sur Arweave pour de bon, comme celles des chats, et le modèle 3D gardé par le serveur du jeu. Il n'y aura jamais que 700 rats au hasard et 300 rats IA, fixés pour de bon dans le contrat, et un wallet en adopte 5 au plus (on peut toujours lui en donner ou lui en vendre) ; le studio affiche combien il en reste. Contrairement aux boîtes, rien n'est secret chez un rat : son propriétaire est public. Chaque rat gagne 3 CROQ classiques par jour dans le garde-manger des rats, à récolter depuis « Mes rats » dans le jeu ; un rat garde 7 jours au plus entre deux récoltes. Et il renifle : une secousse payante d'une boîte scellée qui n'est pas à vous, c'est votre rat qui vous révèle un de ses traits."
     },
     {
      "id": "terms-0",
@@ -1146,7 +1146,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "Las ratas que adoptas en el estudio también ganan croquetas, pero no del Pantry: cada una recibe 10 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas», 7 días como mucho entre dos recogidas. Normales, no confidenciales: el dueño de una rata es público, así que lo que gana también puede serlo. Esa despensa recibió 500.000 CROQ de la tesorería; la reserva del juego que alimenta las cajas no se toca.\nLas croquetas van de la reserva a los jugadores y de los jugadores a sus gatos; cada comida se reparte entre la tesorería, la reserva y el fuego\nCada croqueta de la Despensa está en exactamente un montón cifrado: la reserva, la parte de la tesorería o el quemado. Una comida no deja nada en el gato salvo peso. Las croquetas quemadas quedan bloqueadas en la Despensa; ninguna función puede moverlas y nadie puede leer cuántas hay."
+     "text": "Las ratas que adoptas en el estudio también ganan croquetas, pero no del Pantry: cada una recibe 3 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas», 7 días como mucho entre dos recogidas. Normales, no confidenciales: el dueño de una rata es público, así que lo que gana también puede serlo. Esa despensa recibió 500.000 CROQ de la tesorería; la reserva del juego que alimenta las cajas no se toca.\nLas croquetas van de la reserva a los jugadores y de los jugadores a sus gatos; cada comida se reparte entre la tesorería, la reserva y el fuego\nCada croqueta de la Despensa está en exactamente un montón cifrado: la reserva, la parte de la tesorería o el quemado. Una comida no deja nada en el gato salvo peso. Las croquetas quemadas quedan bloqueadas en la Despensa; ninguna función puede moverlas y nadie puede leer cuántas hay."
     },
     {
      "id": "croquettes-4",
@@ -1206,7 +1206,7 @@
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "Una rata que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, 1 USDC por una rata al azar (cada una una sola vez), 3 USDC por una rata de IA, cuya imagen se guarda antes en Arweave para siempre, como las de los gatos, y su modelo 3D lo conserva el servidor del juego. A diferencia de las cajas, nada de una rata es secreto: su dueño es público. Cada rata gana 10 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas» en el juego; una rata guarda 7 días como mucho entre dos recogidas. Y olfatea: una sacudida de pago de una caja sellada que no es tuya es tu rata contándote uno de sus rasgos."
+     "text": "Una rata que te guste se puede adoptar: acuñada como NFT tuyo en el contrato Rats, 1 USDC por una rata al azar (cada una una sola vez), 3 USDC por una rata de IA, cuya imagen se guarda antes en Arweave para siempre, como las de los gatos, y su modelo 3D lo conserva el servidor del juego. Solo habrá 700 ratas al azar y 300 ratas de IA, fijadas para siempre en el contrato, y un wallet adopta 5 como mucho (aún se le pueden regalar o vender); el estudio muestra cuántas quedan. A diferencia de las cajas, nada de una rata es secreto: su dueño es público. Cada rata gana 3 CROQ normales al día de la despensa de las ratas, que se recogen desde «Mis ratas» en el juego; una rata guarda 7 días como mucho entre dos recogidas. Y olfatea: una sacudida de pago de una caja sellada que no es tuya es tu rata contándote uno de sus rasgos."
     },
     {
      "id": "terms-0",
@@ -1579,7 +1579,7 @@
      "id": "croquettes-3",
      "section": "croquettes",
      "heading": null,
-     "text": "I ratti che adotti nello studio guadagnano anche loro crocchette, ma non dal Pantry: ognuno riceve 10 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti», al massimo 7 giorni tra due raccolte. Normali, non confidenziali: chi possiede un ratto è pubblico, quindi anche quello che guadagna può esserlo. Quella dispensa ha ricevuto 500.000 CROQ dalla tesoreria; la riserva del gioco che nutre le scatole non viene toccata.\nLe crocchette vanno dalla riserva ai giocatori e dai giocatori ai loro gatti; ogni pasto si divide tra tesoreria, riserva e fuoco\nOgni crocchetta della Dispensa sta esattamente in un mucchio cifrato: la riserva, la parte della tesoreria o quello bruciato. Un pasto non lascia nel gatto altro che peso. Le crocchette bruciate restano bloccate nella Dispensa; nessuna funzione può spostarle e nessuno può leggere quante sono."
+     "text": "I ratti che adotti nello studio guadagnano anche loro crocchette, ma non dal Pantry: ognuno riceve 3 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti», al massimo 7 giorni tra due raccolte. Normali, non confidenziali: chi possiede un ratto è pubblico, quindi anche quello che guadagna può esserlo. Quella dispensa ha ricevuto 500.000 CROQ dalla tesoreria; la riserva del gioco che nutre le scatole non viene toccata.\nLe crocchette vanno dalla riserva ai giocatori e dai giocatori ai loro gatti; ogni pasto si divide tra tesoreria, riserva e fuoco\nOgni crocchetta della Dispensa sta esattamente in un mucchio cifrato: la riserva, la parte della tesoreria o quello bruciato. Un pasto non lascia nel gatto altro che peso. Le crocchette bruciate restano bloccate nella Dispensa; nessuna funzione può spostarle e nessuno può leggere quante sono."
     },
     {
      "id": "croquettes-4",
@@ -1639,7 +1639,7 @@
      "id": "studio-4",
      "section": "studio",
      "heading": null,
-     "text": "Un ratto che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, 1 USDC per un ratto a caso (ognuno una volta sola), 3 USDC per un ratto IA, la cui immagine viene prima conservata su Arweave per sempre, come quelle dei gatti, mentre il modello 3D lo tiene il server del gioco. A differenza delle scatole, niente di un ratto è segreto: chi lo possiede è pubblico. Ogni ratto guadagna 10 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti» nel gioco; un ratto tiene al massimo 7 giorni tra due raccolte. E annusa: una scossa a pagamento di una scatola sigillata che non è tua è il tuo ratto che ti rivela uno dei suoi tratti."
+     "text": "Un ratto che ti piace si può adottare: coniato come NFT tuo nel contratto Rats, 1 USDC per un ratto a caso (ognuno una volta sola), 3 USDC per un ratto IA, la cui immagine viene prima conservata su Arweave per sempre, come quelle dei gatti, mentre il modello 3D lo tiene il server del gioco. Ci saranno sempre e solo 700 ratti a caso e 300 ratti IA, fissati per sempre nel contratto, e un wallet ne adotta al massimo 5 (gli si possono comunque regalare o vendere); lo studio mostra quanti ne restano. A differenza delle scatole, niente di un ratto è segreto: chi lo possiede è pubblico. Ogni ratto guadagna 3 CROQ normali al giorno dalla dispensa dei ratti, da raccogliere da «I miei ratti» nel gioco; un ratto tiene al massimo 7 giorni tra due raccolte. E annusa: una scossa a pagamento di una scatola sigillata che non è tua è il tuo ratto che ti rivela uno dei suoi tratti."
     },
     {
      "id": "terms-0",

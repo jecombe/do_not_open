@@ -1771,3 +1771,67 @@ h2 {
     box-shadow: 6px 6px 0 var(--ink);
   }
 }
+
+/* How many rats are left: a strip of tape per kind, shorter as rats are adopted. */
+.rats-left {
+  display: grid;
+  gap: 8px;
+  max-width: 46ch;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--manifest);
+}
+
+.rats-left-title {
+  margin: 0;
+  font-family: var(--label);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rats-left-row {
+  display: grid;
+  grid-template-columns: minmax(7ch, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.rats-left-label,
+.rats-left-count {
+  font-family: var(--label);
+  font-size: 17px;
+}
+
+.rats-left-count strong {
+  font-size: 20px;
+}
+
+.rats-left-bar {
+  height: 14px;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+}
+
+.rats-left-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--sun);
+  transition: width 0.6s ease;
+}
+
+.rats-left-note {
+  margin: 0;
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rats-left-bar > span {
+    transition: none;
+  }
+}
