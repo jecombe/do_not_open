@@ -342,6 +342,12 @@ Because the app only sees `ChainAdapter`, moving to it later is a change inside 
 - **Two views added to the contract** for the front end: `feedCount(tokenId)` and
   `entangleProposer(a, b)`. Deployed bytecode was then 20,468 bytes. `feedCount` was
   removed with the hidden owners.
+- **The duel ranking and the mainnet allow list are off-chain.** No contract change, no
+  byte added to `DoNotOpen`. The ranking is a fold of `DuelResolved` (winner and loser, by
+  box). The allow list counts only facts the chain already made public about an address (the
+  duels it fought, whose two parties a valid duel proves, and the boxes it opened) and ranks
+  only the addresses that claimed by signing a message, filed by the API. It leaks nothing the
+  chain did not already show, except that an address asked.
 
 ### Mainnet
 

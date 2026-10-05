@@ -11,6 +11,7 @@ import { punchTicket, recallTicket, type Ticket } from "../chain/ticketStore";
 import { useT, type AppKey } from "../i18n/app";
 import { cap, catNames } from "../i18n/names";
 import { BoxScene, type BoxSceneHandle, type InspectAngle } from "../scenes/Scenes";
+import { rosetteOf, useDuelStandings } from "../chain/standings";
 import { Declaration } from "./Declaration";
 import { PayLine } from "./PayWith";
 import { ShareBox } from "./ShareBox";
@@ -151,6 +152,9 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
   const missing = missingId === tokenId;
   const box = useMemo(() => buildBoxSpec(tokenId), [tokenId]);
   const minted = collection?.tokenCount ?? 0;
+  // Read again when the box's own wins change: a duel it just won may lift it to the podium.
+  const standings = useDuelStandings(info?.wins);
+  const rosette = rosetteOf(standings, tokenId);
 
   const load = useCallback(async () => {
     try {
@@ -435,6 +439,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
           opened={cat}
           vet={info?.aliveCheck === "alive" || info?.aliveCheck === "notAlive" ? info.aliveCheck : null}
           tags={tags}
+          rosette={rosette}
           quality={quality}
           sound={sound}
           onShakeDone={noop}
@@ -542,6 +547,7 @@ export function BoxView({ quality, sound, tokenId, onTokenChange, onPair, onShel
 
               {info && (info.aliveCheck === "alive" || info.aliveCheck === "notAlive" || info.partner !== null || info.wins > 0 || info.publicTraits.length > 0) && (
                 <ul className="marks">
+                  {rosette && <li className="mark-good">{t(`box.markRosette${rosette.place}` as "box.markRosette1")}</li>}
                   {info.aliveCheck === "alive" && <li className="mark-good">{t("box.markVet")}</li>}
                   {info.aliveCheck === "notAlive" && <li>{t("box.markNotAlive")}</li>}
                   {info.partner !== null && <li className="mark-entangled">{t("box.markEntangled", { serial: buildBoxSpec(info.partner).serial })}</li>}

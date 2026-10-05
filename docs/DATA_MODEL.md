@@ -261,6 +261,26 @@ clauses and the signatures by address). What this tells the backend: that an add
 accepted a version of the terms, and when. Nothing about what it holds; no IP is stored.
 `GET /v1/terms/:address` answers it to anyone.
 
+## Duel ranking and the mainnet allow list
+
+The duel ranking is not stored: it is a fold of the resolved duels (`duelStandings` in
+`@dno/chain-adapter/standings`), by box: wins, then fewest losses, then the lower serial. The
+first three with a win wear a rosette in the app. Nothing new is public: each `DuelResolved`
+already names its winner and loser.
+
+A player claims a place on the mainnet allow list by signing a message (EIP-191, off-chain, no
+gas; see [FLOWS.md](FLOWS.md#mainnet-allow-list-claim)). The API files it:
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `allow_list_claims` | `address`, the best `points` it had at a claim, its last `message` and `signature`, `claimed_at` (first claim), `updated_at`; one row per address | no: not on the chain, and kept by a redeploy, so the test network's claims and points survive it |
+
+The points (`playerPoints`) count only public facts about the address: 3 per distinct opponent
+beaten in a resolved duel, 1 per distinct opponent faced, 2 per box it opened (10 at most); a
+duel against itself counts nothing. The ranking counts, for each claimant, the best of its kept
+points and its points now; ties go to the earlier claim. What this tells the backend: that an
+address asked for a place, and when. Nobody is ranked who did not ask.
+
 ## Croquettes
 
 The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CROQ.md).

@@ -8,6 +8,7 @@ export * from "./box/shaker";
 export * from "./box/opener";
 export * from "./box/anticipation";
 export * from "./box/vet";
+export * from "./box/rosette";
 export * from "./box/tags";
 export * from "./box/inspector";
 export * from "./box/unbox";

@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
+import type { AllowList } from "../../application/allowList";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
 import type { AcceptTerms } from "../../application/terms";
@@ -24,6 +25,8 @@ export interface HttpDeps {
   signIn: SignIn;
   /** Signed release forms. Absent: the app keeps its signatures in the browser only. */
   terms?: AcceptTerms;
+  /** The mainnet allow list, with the token that reads the whole list. Absent: no claims. */
+  allowList?: { list: AllowList; adminToken: string | null };
   /** The relayer proxy. Absent: the app talks to Zama's relayer directly. */
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
@@ -169,6 +172,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
 
   app.get("/v1/leaderboard", async (_req, reply) => send(reply, await queries.leaderboard()));
 
+  app.get("/v1/leaderboard/duels", async (_req, reply) => send(reply, await queries.duelStandings()));
+
   // --- duels ---
 
   app.get("/v1/proposals", async (req, reply) => {
@@ -261,6 +266,29 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const all = await terms.of(p.address);
       reply.header("cache-control", "no-store");
       return { data: all.map((a) => ({ version: a.version, hash: a.hash, signature: a.signature, message: a.message, receivedAt: a.receivedAt })) };
+    });
+  }
+
+  // --- mainnet allow list ---
+
+  const allowList = deps.allowList;
+  if (allowList) {
+    app.post("/v1/allowlist", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ address, message: z.string().min(1).max(1_000), signature: z.string().regex(/^0x[0-9a-fA-F]+$/) }).parse(req.body);
+      return send(reply, await allowList.list.claim(body.address, body.message, body.signature), "no-store");
+    });
+
+    app.get("/v1/allowlist/:address", async (req, reply) => {
+      const p = z.object({ address }).parse(req.params);
+      return send(reply, await allowList.list.status(p.address), "private, no-store");
+    });
+
+    // The whole list names every claimant: only for whoever holds the token.
+    app.get("/v1/allowlist", async (req, reply) => {
+      const q = z.object({ token: z.string().optional() }).parse(req.query);
+      reply.header("cache-control", "no-store");
+      if (!allowList.adminToken || q.token !== allowList.adminToken) return reply.status(401).send({ error: "unauthorized" });
+      return { data: await allowList.list.ranked() };
     });
   }
 

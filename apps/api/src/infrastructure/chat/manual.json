@@ -219,6 +219,12 @@
      "text": "Every price is in cUSDC, Zama's confidential USDC: nobody but you can read your balance or follow your payments, and the amount you paid is encrypted like the rest. A cUSDC payment cannot fail on-chain: a short balance just moves 0, and the action then does nothing. A mint gets no boxes, a paid shake reads \"not yours\", a pet adds nothing, an opening is refused. Paying from plain USDC means shielding the exact price into cUSDC first, in public, and for a mint that amount gives the quantity away. Shielding a round amount ahead of time, at the bureau de change, does not."
     },
     {
+     "id": "mechanics-3",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Duels have a ranking of their own, in the leaderboard's Duels tab: boxes, not players, by duels won, then by fewest lost. The top three wear a rosette pinned to the front of their box, gold, silver and bronze, as at a cat show. A box can climb the podium and stay sealed: the ranking uses only the winners and losers that every duel already makes public, never who holds the box."
+    },
+    {
      "id": "flows-0",
      "section": "flows",
      "heading": null,
@@ -450,16 +456,28 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "This part goes away at mainnet.\nThe game runs on Sepolia, Ethereum's test network. Nothing here is worth money. The USDC is Zama's test token, free from the wallet slip or the bureau de change; the ETH for gas comes from a faucet; the croquette pool only exists so the market can be tried; and every price in this manual is a test price.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0x138f…1264\nThe rats' pantry (RatPantry) 0x1334…E75B"
+     "text": "This part goes away at mainnet.\nThe game runs on Sepolia, Ethereum's test network. Nothing here is worth money. The USDC is Zama's test token, free from the wallet slip or the bureau de change; the ETH for gas comes from a faucet; the croquette pool only exists so the market can be tried; and every price in this manual is a test price."
     },
     {
      "id": "testnet-1",
+     "section": "testnet",
+     "heading": null,
+     "text": "The best players of the test network get a place on the mainnet allow list. Your points: 3 for each opponent you beat in a duel, 1 for each opponent you faced, 2 for each box you opened, up to 10 boxes. Each opponent counts once, however many times you meet, and duels between your own wallets count nothing. Claim your place from the leaderboard's Duels tab by signing with your wallet: it is free and sends no transaction, and it tells the game only that your address is asking. Sign again later to update your points; the best you ever had are kept, even if the test network starts over. The 500 claimants with the most points get a place; between equal points, the earlier claim goes first.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81"
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": null,
+     "text": "CROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0x138f…1264\nThe rats' pantry (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-3",
      "section": "testnet",
      "heading": "Left to do before mainnet",
      "text": "The contracts have been reviewed by the people who wrote them and by nobody else. They should not hold real money until that changes. These points are open:\nAn opening can hang between its two steps. If the key service never answers, there is no timeout and no refund. The box stays sealed, and its holder can only ask again and pay again.\nNothing limits one minter. A bot cannot pick good boxes, but it can mint all of them.\nThe owner can repoint the metadata. There is no freeze, and the owner is a single key. The pictures themselves are stored for good on Arweave: a repointed metadata file cannot change them.\nTwo deploy-time checks are missing. The config contract trusts that the score fits sixteen bits and that trait offsets do not overlap.\nMarketplaces are not told when a box opens. The contract does not emit a metadata update event."
     },
     {
-     "id": "testnet-2",
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Left to do before mainnet",
      "text": "Zama's relayer needs the collection's API key. The server that keeps it out of browsers and counts each wallet's decryptions is in place; the key itself is requested from Zama.\nCommon wallets and marketplaces do not know the confidential ERC-721. They cannot show these boxes or list them. A sale needs a market built for this standard.\nNo external audit, no static analysis, no fuzzing.\nThe audit checklist has each check, the test that backs it, and the rest of the findings."
@@ -724,6 +742,12 @@
      "section": "mechanics",
      "heading": null,
      "text": "Tous les prix sont en cUSDC, l'USDC confidentiel de Zama : personne d'autre que toi ne lit ton solde ni ne suit tes paiements, et le montant payé est chiffré comme le reste. Un paiement cUSDC ne peut pas échouer on-chain : un solde trop court déplace simplement 0, et l'action ne fait alors rien. Un mint n'obtient aucune boîte, un secouage payant lit « pas à toi », une caresse n'ajoute rien, une ouverture est refusée. Payer depuis de l'USDC ordinaire veut dire convertir d'abord le prix exact en cUSDC, en public, et pour un mint ce montant trahit la quantité. Convertir un montant rond à l'avance, au bureau de change, ne trahit rien."
+    },
+    {
+     "id": "mechanics-4",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Les duels ont leur propre classement, dans l'onglet Duels du classement : des boîtes, pas des joueurs, par duels gagnés, puis par le moins de défaites. Les trois premières portent une rosette épinglée sur le devant de leur boîte, or, argent et bronze, comme dans une exposition féline. Une boîte peut monter sur le podium et rester scellée : le classement n'utilise que les gagnants et les perdants que chaque duel rend déjà publics, jamais qui détient la boîte."
     },
     {
      "id": "flows-0",
@@ -993,16 +1017,28 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Cette partie disparaîtra au mainnet.\nLe jeu tourne sur Sepolia, le réseau de test d'Ethereum. Rien ici n'a de valeur. L'USDC est le jeton de test de Zama, gratuit depuis le volet du wallet ou le bureau de change ; l'ETH pour le gas vient d'un faucet ; le pool de croquettes n'existe que pour qu'on puisse essayer le marché ; et chaque prix de ce manuel est un prix de test.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0x138f…1264\nLe garde-manger des rats (RatPantry) 0x1334…E75B"
+     "text": "Cette partie disparaîtra au mainnet.\nLe jeu tourne sur Sepolia, le réseau de test d'Ethereum. Rien ici n'a de valeur. L'USDC est le jeton de test de Zama, gratuit depuis le volet du wallet ou le bureau de change ; l'ETH pour le gas vient d'un faucet ; le pool de croquettes n'existe que pour qu'on puisse essayer le marché ; et chaque prix de ce manuel est un prix de test."
     },
     {
      "id": "testnet-1",
+     "section": "testnet",
+     "heading": null,
+     "text": "Les meilleurs joueurs du réseau de test obtiennent une place sur la liste blanche du mainnet. Vos points : 3 par adversaire battu en duel, 1 par adversaire affronté, 2 par boîte ouverte, jusqu'à 10 boîtes. Chaque adversaire compte une fois, peu importe combien de fois vous l'affrontez, et les duels entre vos propres wallets ne comptent pas. Réclamez votre place depuis l'onglet Duels du classement en signant avec votre wallet : c'est gratuit, aucune transaction n'est envoyée, et le jeu apprend seulement que votre adresse le demande. Signez à nouveau plus tard pour mettre vos points à jour ; vos meilleurs points sont gardés, même si le réseau de test repart de zéro. Les 500 joueurs qui ont réclamé et ont le plus de points ont une place ; à points égaux, la réclamation la plus ancienne passe devant.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37"
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": null,
+     "text": "Le Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0x138f…1264\nLe garde-manger des rats (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-3",
      "section": "testnet",
      "heading": "Ce qui reste à faire avant le mainnet",
      "text": "Les contrats ont été relus par les gens qui les ont écrits et par personne d'autre. Ils ne devraient pas détenir d'argent réel tant que ça ne change pas. Ces points sont ouverts :\nUne ouverture peut rester bloquée entre ses deux étapes. Si le service de clés ne répond jamais, il n'y a ni délai d'expiration ni remboursement. La boîte reste scellée, et son détenteur ne peut que redemander et repayer.\nRien ne limite un minteur. Un bot ne peut pas choisir les bonnes boîtes, mais il peut toutes les minter.\nLe propriétaire peut rediriger les métadonnées. Il n'y a pas de gel, et le propriétaire est une seule clé. Les images, elles, sont stockées pour toujours sur Arweave : des métadonnées redirigées ne peuvent pas les changer.\nDeux vérifications au déploiement manquent. Le contrat de configuration suppose que le score tient sur seize bits et que les décalages des traits ne se chevauchent pas."
     },
     {
-     "id": "testnet-2",
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Ce qui reste à faire avant le mainnet",
      "text": "Les places de marché ne sont pas prévenues quand une boîte s'ouvre. Le contrat n'émet pas d'événement de mise à jour des métadonnées.\nLe relayer de Zama a besoin de la clé d'API de la collection. Le serveur qui la tient à l'écart des navigateurs et compte les déchiffrements de chaque wallet est en place ; la clé elle-même est demandée à Zama.\nLes wallets et places de marché courants ne connaissent pas l'ERC-721 confidentiel. Ils ne peuvent ni afficher ces boîtes ni les lister. Une vente demande un marché conçu pour ce standard.\nPas d'audit externe, pas d'analyse statique, pas de fuzzing.\nLa checklist d'audit contient chaque vérification, le test qui la couvre, et le reste des constats."
@@ -1275,6 +1311,12 @@
      "text": "Todos los precios están en cUSDC, el USDC confidencial de Zama: nadie más que tú puede leer tu saldo ni seguir tus pagos, y el importe que pagaste está cifrado como lo demás. Un pago en cUSDC no puede fallar on-chain: un saldo corto simplemente mueve 0, y la acción entonces no hace nada. Un minteo no consigue cajas, una agitada de pago lee «no es tuya», una caricia no añade nada, una apertura se rechaza. Pagar desde USDC normal significa convertir antes el precio exacto a cUSDC, en público, y en un minteo ese importe delata la cantidad. Blindar un importe redondo con antelación, en la casa de cambio, no delata nada."
     },
     {
+     "id": "mechanics-4",
+     "section": "mechanics",
+     "heading": null,
+     "text": "Los duelos tienen su propio ranking, en la pestaña Duelos de la clasificación: cajas, no jugadores, por duelos ganados y luego por menos derrotas. Las tres primeras llevan una escarapela prendida en el frente de su caja, de oro, plata y bronce, como en una exposición felina. Una caja puede subir al podio y seguir sellada: el ranking solo usa los ganadores y perdedores que cada duelo ya hace públicos, nunca quién tiene la caja."
+    },
+    {
      "id": "flows-0",
      "section": "flows",
      "heading": null,
@@ -1524,16 +1566,28 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Esta parte desaparece con mainnet.\nEl juego corre en Sepolia, la red de pruebas de Ethereum. Nada de aquí vale dinero. Los USDC son el token de prueba de Zama, gratis desde la ficha del wallet o la casa de cambio; el ETH para el gas sale de un faucet; el pool de croquetas solo existe para poder probar el mercado; y todos los precios de este manual son precios de prueba.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0x138f…1264\nLa despensa de las ratas (RatPantry) 0x1334…E75B"
+     "text": "Esta parte desaparece con mainnet.\nEl juego corre en Sepolia, la red de pruebas de Ethereum. Nada de aquí vale dinero. Los USDC son el token de prueba de Zama, gratis desde la ficha del wallet o la casa de cambio; el ETH para el gas sale de un faucet; el pool de croquetas solo existe para poder probar el mercado; y todos los precios de este manual son precios de prueba."
     },
     {
      "id": "testnet-1",
+     "section": "testnet",
+     "heading": null,
+     "text": "Los mejores jugadores de la red de pruebas obtienen un lugar en la lista blanca de mainnet. Tus puntos: 3 por cada rival que vences en un duelo, 1 por cada rival al que te enfrentas, 2 por cada caja que abres, hasta 10 cajas. Cada rival cuenta una vez, por muchas veces que os enfrentéis, y los duelos entre tus propias wallets no cuentan. Reclama tu lugar desde la pestaña Duelos de la clasificación firmando con tu wallet: es gratis, no envía ninguna transacción, y el juego solo sabe que tu dirección lo pide. Vuelve a firmar más tarde para actualizar tus puntos; se guardan los mejores que hayas tenido, aunque la red de pruebas vuelva a empezar. Los 500 jugadores que reclamaron con más puntos tienen lugar; a igualdad de puntos, pasa primero quien reclamó antes.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d"
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": null,
+     "text": "CROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0x138f…1264\nLa despensa de las ratas (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-3",
      "section": "testnet",
      "heading": "Lo que queda antes de mainnet",
      "text": "Los contratos los han revisado quienes los escribieron y nadie más. No deberían guardar dinero real hasta que eso cambie. Estos puntos están abiertos:\nUna apertura puede quedarse atascada entre sus dos pasos. Si el servicio de claves nunca responde, no hay tiempo de espera ni reembolso. La caja sigue sellada, y su titular solo puede pedirlo otra vez y pagar otra vez.\nNada limita a un minteador. Un bot no puede elegir cajas buenas, pero puede mintearlas todas.\nEl propietario puede redirigir los metadatos. No hay congelación, y el propietario es una sola clave. Las imágenes, en cambio, quedan guardadas para siempre en Arweave: unos metadatos redirigidos no pueden cambiarlas.\nFaltan dos comprobaciones en el despliegue. El contrato de configuración confía en que la puntuación cabe en dieciséis bits y en que los desplazamientos de los rasgos no se solapan."
     },
     {
-     "id": "testnet-2",
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Lo que queda antes de mainnet",
      "text": "A los marketplaces no se les avisa cuando una caja se abre. El contrato no emite un evento de actualización de metadatos.\nEl relayer de Zama necesita la clave de API de la colección. El servidor que la mantiene fuera de los navegadores y cuenta los descifrados de cada cartera ya está en marcha; la clave en sí se ha pedido a Zama.\nLos wallets y marketplaces habituales no conocen el ERC-721 confidencial. No pueden mostrar estas cajas ni listarlas. Una venta necesita un mercado hecho para este estándar.\nSin auditoría externa, sin análisis estático, sin fuzzing.\nLa lista de auditoría tiene cada comprobación, la prueba que la respalda, y el resto de los hallazgos."
@@ -1806,6 +1860,12 @@
      "text": "Tutti i prezzi sono in cUSDC, l'USDC confidenziale di Zama: nessuno tranne te può leggere il tuo saldo o seguire i tuoi pagamenti, e l'importo che hai pagato è cifrato come il resto. Un pagamento in cUSDC non può fallire on-chain: un saldo insufficiente sposta semplicemente 0, e l'azione allora non fa niente. Un mint non ottiene scatole, uno scuotimento a pagamento legge «non è tua», una carezza non aggiunge niente, un'apertura viene rifiutata. Pagare da USDC normale significa convertire prima il prezzo esatto in cUSDC, in pubblico, e per un mint quell'importo tradisce la quantità. Schermare in anticipo un importo tondo, al cambiavalute, non tradisce niente."
     },
     {
+     "id": "mechanics-4",
+     "section": "mechanics",
+     "heading": null,
+     "text": "I duelli hanno una classifica tutta loro, nella scheda Duelli della classifica: scatole, non giocatori, per duelli vinti, poi per meno sconfitte. Le prime tre portano una coccarda appuntata sul davanti della scatola, d'oro, d'argento e di bronzo, come a un'esposizione felina. Una scatola può salire sul podio e restare sigillata: la classifica usa solo i vincitori e i perdenti che ogni duello rende già pubblici, mai chi detiene la scatola."
+    },
+    {
      "id": "flows-0",
      "section": "flows",
      "heading": null,
@@ -2067,16 +2127,28 @@
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
-     "text": "Questa parte sparisce con la mainnet.\nIl gioco gira su Sepolia, la rete di prova di Ethereum. Niente qui vale denaro. Gli USDC sono il token di prova di Zama, gratis dal pannello del wallet o dal cambiavalute; l'ETH per il gas viene da un faucet; il pool delle crocchette esiste solo per poter provare il mercato; e ogni prezzo in questo manuale è un prezzo di prova.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37\nLa Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d\nCROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e\nI pacchetti dello studio (StudioPacks) 0x672c…354C\nI ratti (Rats, ERC-721) 0x138f…1264\nLa dispensa dei ratti (RatPantry) 0x1334…E75B"
+     "text": "Questa parte sparisce con la mainnet.\nIl gioco gira su Sepolia, la rete di prova di Ethereum. Niente qui vale denaro. Gli USDC sono il token di prova di Zama, gratis dal pannello del wallet o dal cambiavalute; l'ETH per il gas viene da un faucet; il pool delle crocchette esiste solo per poter provare il mercato; e ogni prezzo in questo manuale è un prezzo di prova."
     },
     {
      "id": "testnet-1",
+     "section": "testnet",
+     "heading": null,
+     "text": "I migliori giocatori della rete di prova ottengono un posto nella lista bianca della mainnet. I tuoi punti: 3 per ogni avversario battuto in duello, 1 per ogni avversario affrontato, 2 per ogni scatola aperta, fino a 10 scatole. Ogni avversario conta una volta, per quante volte vi affrontiate, e i duelli tra i tuoi stessi wallet non contano. Reclama il tuo posto dalla scheda Duelli della classifica firmando con il tuo wallet: è gratis, non invia nessuna transazione, e il gioco sa solo che il tuo indirizzo lo chiede. Firma di nuovo più tardi per aggiornare i punti; restano i migliori che hai avuto, anche se la rete di prova riparte da zero. I 500 giocatori che hanno reclamato con più punti hanno un posto; a parità di punti, passa prima chi ha reclamato prima.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37\nLa Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d"
+    },
+    {
+     "id": "testnet-2",
+     "section": "testnet",
+     "heading": null,
+     "text": "CROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e\nI pacchetti dello studio (StudioPacks) 0x672c…354C\nI ratti (Rats, ERC-721) 0x138f…1264\nLa dispensa dei ratti (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-3",
      "section": "testnet",
      "heading": "Cosa resta da fare prima della mainnet",
      "text": "I contratti sono stati rivisti da chi li ha scritti e da nessun altro. Non dovrebbero custodire denaro vero finché questo non cambia. Questi punti sono aperti:\nUn'apertura può bloccarsi tra i suoi due passi. Se il servizio di chiavi non risponde mai, non c'è timeout né rimborso. La scatola resta sigillata, e il suo detentore può solo chiedere di nuovo e pagare di nuovo.\nNiente limita un singolo minter. Un bot non può scegliere le scatole buone, ma può mintarle tutte.\nIl proprietario può reindirizzare i metadati. Non c'è un freeze, e il proprietario è una sola chiave. Le immagini, invece, restano salvate per sempre su Arweave: dei metadati reindirizzati non possono cambiarle.\nMancano due controlli al deploy. Il contratto di configurazione si fida che il punteggio stia in sedici bit e che gli offset dei tratti non si sovrappongano."
     },
     {
-     "id": "testnet-2",
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Cosa resta da fare prima della mainnet",
      "text": "I marketplace non vengono avvisati quando una scatola si apre. Il contratto non emette un evento di aggiornamento dei metadati.\nIl relayer di Zama ha bisogno della chiave API della collezione. Il server che la tiene fuori dai browser e conta le decifrature di ogni wallet è pronto; la chiave stessa è stata richiesta a Zama.\nWallet e marketplace comuni non conoscono l'ERC-721 confidenziale. Non possono mostrare queste scatole né elencarle. Una vendita richiede un mercato fatto per questo standard.\nNessun audit esterno, nessuna analisi statica, nessun fuzzing.\nLa checklist di audit contiene ogni controllo, il test che lo copre, e il resto dei rilievi."

@@ -224,6 +224,21 @@ describe("MockAdapter", () => {
     expect(await refusal(chain.acceptDuel(listed.duelId, 1))).toBe("WrongDuelStatus");
   });
 
+  it("ranks the duel boxes and counts the duel towards the allow list", async () => {
+    const chain = await fresh();
+    expect(await chain.duelStandings()).toEqual([]);
+    const listed = (await chain.duelShelf()).find((d) => d.tokenA === 3)!;
+    const result = (await chain.acceptDuel(listed.duelId, 0))!;
+    expect(await chain.duelStandings()).toEqual([
+      { tokenId: result.winner, wins: 1, losses: 0 },
+      { tokenId: result.loser, wins: 0, losses: 1 },
+    ]);
+    const won = result.winner === 0;
+    const before = (await chain.allowList())!;
+    expect(before).toMatchObject({ live: { faced: 1, beaten: won ? 1 : 0 }, rank: null, claimants: 0 });
+    expect(await chain.claimAllowList()).toMatchObject({ points: won ? 4 : 1, rank: 1, claimants: 1 });
+  });
+
   it("takes a listing off the shelf once its box is opened", async () => {
     const chain = await fresh();
     await chain.postDuel(0);
