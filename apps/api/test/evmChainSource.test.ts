@@ -158,9 +158,9 @@ describe("EvmChainSource", () => {
     const decryptionProof = collection.getEvent("PublicDecryptionVerified")!.topicHash;
     expect(filter!.topics[0]).not.toContain(decryptionProof);
     for (const name of ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened"]) expect(filter!.topics[0]).toContain(collection.getEvent(name)!.topicHash);
-    // The ACL, only where the protocol's own contracts are the caller.
+    // The ACL, only where the protocol's own contracts are the caller: the flea market publishes its "arrived" and "paid" bits too.
     expect(acl!.address).toEqual([d.fhevm.acl.toLowerCase()]);
-    expect(acl!.topics[1]).toEqual([d.collection.address, d.pantry!.address, d.cCroq!.address].map((a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`));
+    expect(acl!.topics[1]).toEqual([d.collection.address, d.pantry!.address, d.cCroq!.address, d.fleaMarket!.address].map((a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`));
   });
 
   it("reads which handles the protocol made public from the ACL", async () => {
