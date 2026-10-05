@@ -312,6 +312,25 @@ h2 {
   margin: 0;
 }
 
+/* A quiet line under the buttons: the testnet's best players get a place on mainnet. */
+.hero-allow {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 20px;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-decoration: underline dashed 2px;
+  text-underline-offset: 5px;
+}
+
+.hero-allow:hover,
+.hero-allow:focus-visible {
+  text-decoration-style: solid;
+}
+
 /* --- The departure board: split-flap letters, live on Sepolia, mainnet soon --- */
 .board {
   width: fit-content;

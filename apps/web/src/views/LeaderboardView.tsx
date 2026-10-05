@@ -18,6 +18,12 @@ interface Props {
   onSelect: (tokenId: number) => void;
 }
 
+/** `app?view=leaderboard&board=duels` opens on that ranking: where the home page's allow list line leads. */
+const linkedBoard = (() => {
+  const raw = new URLSearchParams(window.location.search).get("board");
+  return raw === "players" || raw === "duels" ? raw : null;
+})();
+
 /** Cats shown in 3D behind the ranking. */
 const PODIUM = 3;
 
@@ -39,7 +45,7 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
   const { foldClass, foldButton } = useFold();
   const [opened, setOpened] = useState<OpenedCat[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [board, setBoard] = useState<Board>("cats");
+  const [board, setBoard] = useState<Board>(linkedBoard ?? "cats");
   const [selected, setSelected] = useState(0);
   // Read again when the sale moves: a new milestone, a new box.
   const stamp = collection?.tokenCount;

@@ -15,8 +15,14 @@ export const studioPath = (locale: Locale): string => (locale === "en" ? "/studi
 /** The game: one page for every language, which it reads from `?lang=`. */
 export const appPath = (locale: Locale): string => (locale === "en" ? "/app" : `/app?lang=${locale}`);
 
+/** The game opened on one of its views, with more of the query after it. */
+const appViewPath = (locale: Locale, query: string): string => `${appPath(locale)}${locale === "en" ? "?" : "&"}${query}`;
+
 /** The game opened on its flea market. */
-export const marketPath = (locale: Locale): string => `${appPath(locale)}${locale === "en" ? "?" : "&"}view=market`;
+export const marketPath = (locale: Locale): string => appViewPath(locale, "view=market");
+
+/** The game opened on the duel ranking, where the mainnet allow list is claimed. */
+export const duelRankingPath = (locale: Locale): string => appViewPath(locale, "view=leaderboard&board=duels");
 
 /** The pages served once per language, as their path names them (prefix removed). */
 export type LocalizedPage = "home" | "docs" | "studio";
