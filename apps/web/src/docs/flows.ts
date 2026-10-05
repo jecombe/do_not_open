@@ -21,13 +21,16 @@ export interface Flow {
   key: string;
   name: string;
   summary: string;
+  /** Whose parties these are, when not the collection's: names the stations differently. */
+  cast?: string;
   steps: FlowStep[];
 }
 
-export const stationName = (id: StationId): string => t(`station.${id}`);
+/** A station's name; a `cast` (the market's flows) may rename it, `station.contract.market`. */
+export const stationName = (id: StationId, cast?: string): string => (cast && lookup(`station.${id}.${cast}`)) || t(`station.${id}`);
 export const packetName = (kind: PacketKind): string => t(`packet.${kind}`);
 
-type FlowKey = "mint" | "shake" | "open" | "duel" | "transfer";
+type FlowKey = "mint" | "shake" | "open" | "duel" | "transfer" | "buy" | "offer";
 type Route = [from: StationId, to: StationId, kind: PacketKind];
 
 /** Who talks to whom, per step. The words for each step live in the dictionaries. */
@@ -80,14 +83,37 @@ const ROUTES: Record<FlowKey, Route[]> = {
     ["kms", "other", "cipher"],
     ["other", "other", "plain"],
   ],
+  buy: [
+    ["you", "contract", "tx"],
+    ["contract", "copro", "cipher"],
+    ["you", "kms", "cipher"],
+    ["kms", "you", "proof"],
+    ["you", "contract", "proof"],
+    ["contract", "contract", "plain"],
+    ["contract", "other", "cipher"],
+    ["contract", "you", "plain"],
+  ],
+  offer: [
+    ["you", "contract", "tx"],
+    ["contract", "copro", "cipher"],
+    ["contract", "other", "cipher"],
+    ["other", "kms", "sign"],
+    ["kms", "other", "cipher"],
+    ["other", "contract", "tx"],
+    ["contract", "you", "plain"],
+  ],
 };
 
-/** The five flows in the current language. Call it again after a language change. */
+/** The flows that happen at the flea market: its contract and a seller stand on the dock. */
+const CAST: Partial<Record<FlowKey, string>> = { buy: "market", offer: "market" };
+
+/** The flows in the current language. Call it again after a language change. */
 export function flows(): Flow[] {
   return (Object.keys(ROUTES) as FlowKey[]).map((key) => ({
     key,
     name: t(`flow.${key}.name`),
     summary: t(`flow.${key}.summary`),
+    cast: CAST[key],
     steps: ROUTES[key].map(([from, to, kind], i) => ({ from, to, kind, title: tx(`flow.${key}.s${i + 1}`), text: tx(`flow.${key}.s${i + 1}.v`) })),
   }));
 }

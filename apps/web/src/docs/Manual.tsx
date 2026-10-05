@@ -11,22 +11,24 @@ import { BureauFigure } from "./bureau";
 import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 import { MapFigure } from "./map";
+import { MarketWaysTable } from "./market";
 import { BoxVsRatTable, RatCroquettesFigure, RatFigure, StudioFigure } from "./rats";
 
 const DOCS = `${REPO}/blob/dev/docs`;
 const EXPLORER = "https://sepolia.etherscan.io/address/";
 
 /**
- * Six parts. Four for players and anyone curious, with no code in them: a start, the boxes, the
- * money, the studio and its rats. Then a short part about the testnet, which goes away at
- * mainnet, and the part for developers. `audience` is what the API's chatbot and lessons know
- * a part by: "manual" for the players' four.
+ * Seven parts. Five for players and anyone curious, with no code in them: a start, the boxes, the
+ * money, the studio and its rats, the flea market. Then a short part about the testnet, which
+ * goes away at mainnet, and the part for developers. `audience` is what the API's chatbot and
+ * lessons know a part by: "manual" for the players' five.
  */
 export const PARTS = [
   { key: "start", audience: "manual", sections: ["box", "map", "cats", "terms"] },
   { key: "boxes", audience: "manual", sections: ["seed", "holders", "privacy", "mechanics", "flows", "transfer"] },
   { key: "money", audience: "manual", sections: ["fees", "exchange", "croquettes"] },
   { key: "rats", audience: "manual", sections: ["studio", "rats"] },
+  { key: "market", audience: "manual", sections: ["market", "stall"] },
   { key: "testnet", audience: "testnet", sections: ["testnet"] },
   { key: "dev", audience: "dev", sections: ["code", "solana", "more"] },
 ] as const;
@@ -139,6 +141,7 @@ export function Manual() {
   const { economy } = spec;
   const maxPerTx = Number(spec.mechanics.mint?.maxPerTx ?? 10);
   const rats = { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay, maxDays: studio.rats.croquettes.maxDays, maxSeed: studio.rats.mint.maxSeedRats, maxModel: studio.rats.mint.maxModelRats, perWallet: studio.rats.mint.maxPerWallet, fund: studio.rats.croquettes.fund.toLocaleString(locale) };
+  const market = { fee: spec.market.feeBps / 100, max: spec.market.maxFeeBps / 100, pct: 70 };
   const milestones = spec.collection.milestones.map((m) => m.toLocaleString(locale)).join(", ");
 
   // The tab title and description follow the language too.
@@ -473,6 +476,37 @@ export function Manual() {
             <div className="prose">
               <p>{t("docs.rats.p5")}</p>
               <p>{t("docs.rats.p6")}</p>
+            </div>
+          </section>
+
+          <PartHead part="market" />
+
+          <section id="market">
+            <h2>{t("docs.section.market")}</h2>
+            <div className="prose">
+              <p>{t("docs.market.p1")}</p>
+              <p>{t("docs.market.p2")}</p>
+              <p>{t("docs.market.p3")}</p>
+            </div>
+            <MarketWaysTable />
+            <div className="prose">
+              <p>{t("docs.market.p4", market)}</p>
+            </div>
+            <h3>{t("docs.market.h.state")}</h3>
+            <div className="prose">
+              <p>{t("docs.market.p5")}</p>
+              <p>{t("docs.market.p6")}</p>
+            </div>
+          </section>
+
+          <section id="stall">
+            <h2>{t("docs.section.stall")}</h2>
+            <div className="prose">
+              <p>{t("docs.stall.p1", market)}</p>
+              <p>{t("docs.stall.p2")}</p>
+              <p>{t("docs.stall.p3")}</p>
+              <p>{t("docs.stall.p4")}</p>
+              <p>{t("docs.stall.p5", market)}</p>
             </div>
           </section>
 

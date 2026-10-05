@@ -47,6 +47,7 @@ export function createSepoliaNodeAdapter(opts: NodeEvmOptions = {}): EvmFhevmAda
     studio: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.studio ?? undefined),
     rats: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.rats ?? undefined),
     ratPantry: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.ratPantry ?? undefined),
+    market: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.market ?? undefined),
     readProvider: provider,
     wallet: signer
       ? new StaticWallet(signer)

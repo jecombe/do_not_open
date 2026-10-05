@@ -70,6 +70,16 @@ import {
   type RatRef,
   type RatSupply,
   type RatTaken,
+  type FleaMarketInfo,
+  type Listing,
+  type ListingQuery,
+  type ListingStatus,
+  type MarketCollection,
+  type MarketOffer,
+  type MarketPurchase,
+  type OfferQuery,
+  type OfferStatus,
+  type PurchaseStatus,
 } from "../types";
 import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
 import { gateRefusal, toChainError } from "./errors";
@@ -151,6 +161,8 @@ export interface EvmAdapterOptions {
   /** The Rats ERC-721 and the RatPantry. Without them, no rat can be adopted. */
   rats?: Deployed & { deployBlock?: number | null };
   ratPantry?: Deployed;
+  /** The FleaMarket, where players sell each other boxes, cats and rats. Without it, nothing can be listed. */
+  market?: Deployed & { deployBlock?: number | null };
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -209,6 +221,23 @@ function withSlippage(quoted: bigint, opts?: SwapOptions): bigint {
   return (quoted * BigInt(10_000 - bps)) / 10_000n;
 }
 const ZERO_HANDLE = "0x" + "0".repeat(64);
+
+/** The FleaMarket's enums, in their contract order. */
+const COLLECTIONS: MarketCollection[] = ["boxes", "rats"];
+const LISTING_STATUS: (ListingStatus | "none")[] = ["none", "pending", "active", "sold", "cancelled", "refused"];
+const PURCHASE_STATUS: (PurchaseStatus | "none")[] = ["none", "pending", "done", "unpaid", "missed"];
+const OFFER_STATUS: (OfferStatus | "none")[] = ["none", "open", "accepted", "withdrawn"];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const listingFrom = (listingId: number, l: Record<string, any>): Listing => ({
+  listingId,
+  collection: COLLECTIONS[Number(l.collection)]!,
+  tokenId: Number(l.tokenId),
+  seller: String(l.seller),
+  price: BigInt(l.price),
+  listedAt: Number(l.listedAt),
+  status: LISTING_STATUS[Number(l.status)] as ListingStatus,
+});
 
 /** On-chain values; "opening" and "pending" come from the account's own requests. */
 const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
@@ -335,7 +364,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -767,7 +796,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * cUSDC operator, and the balance must cover it. With `pay: "usdc"`, the amount is shielded
    * from plain USDC first, which is public.
    */
-  private async prepay(opts: PayOptions | undefined, amount: bigint): Promise<void> {
+  private async prepay(opts: PayOptions | undefined, amount: bigint, operator: string = this.opts.address): Promise<void> {
     const { cUsdc } = await this.payment();
     const account = await this.signer().getAddress();
     if (opts?.pay === "usdc") await this.shieldUsdc(amount, opts);
@@ -775,7 +804,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       const held = await this.confidentialUsdcBalance(opts);
       if (held < amount) throw new ChainError("unpaid", "The cUSDC balance does not cover the price. Shield some USDC first.", undefined, { held, needed: amount });
     }
-    await this.ensureOperator(cUsdc, account, this.opts.address, opts);
+    await this.ensureOperator(cUsdc, account, operator, opts);
   }
 
   /** Sends a request and proves it at once. Throws `not-yours` when it was refused. */
@@ -1281,6 +1310,224 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return out;
   }
 
+  async rat(id: number): Promise<RatInfo> {
+    const rats = this.at(this.rats());
+    const [owner, r] = await Promise.all([this.reading(rats.ownerOf!(id)), this.reading(rats.ratOf!(id))]);
+    const kind = Number(r.kind) === 0 ? "seed" : "model";
+    return {
+      id,
+      kind,
+      seed: kind === "seed" ? BigInt(r.ref).toString() : null,
+      job: kind === "model" ? String(r.ref) : null,
+      uri: null,
+      owner: String(owner),
+      minter: String(owner),
+      mintedBlock: null,
+      imageUrl: null,
+      modelUrl: null,
+      sniffs: 0,
+    };
+  }
+
+  // --- flea market ---
+
+  private market(): Deployed & { deployBlock?: number | null } {
+    const deployed = this.opts.market;
+    if (!deployed) throw new ChainError("unknown", "The flea market is not open on this network yet.");
+    return deployed;
+  }
+
+  async fleaMarket(): Promise<FleaMarketInfo | null> {
+    const deployed = this.opts.market;
+    if (!deployed) return null;
+    const m = this.at(deployed);
+    const [feeBps, maxPrice] = await Promise.all([this.reading(m.feeBps!()), this.reading(m.MAX_PRICE!())]);
+    return { address: deployed.address, explorerUrl: this.link(deployed.address), feeBps: Number(feeBps), maxPrice: BigInt(maxPrice) };
+  }
+
+  async listings(query: ListingQuery = {}): Promise<Listing[]> {
+    if (!this.opts.market) return [];
+    const m = this.at(this.opts.market);
+    const count = Number(await this.reading(m.listingCount!()));
+    const pages: Promise<Listing[]>[] = [];
+    for (let from = 0; from < count; from += READ_CHUNK) {
+      pages.push(this.reading(m.listings!(from, READ_CHUNK)).then((page: unknown[]) => page.map((l, i) => listingFrom(from + i, l as Record<string, unknown>))));
+    }
+    return (await Promise.all(pages))
+      .flat()
+      .filter((l) => (!query.status || l.status === query.status) && (!query.seller || sameAddress(l.seller, query.seller)) && (!query.collection || l.collection === query.collection))
+      .reverse();
+  }
+
+  private async listing(listingId: number): Promise<Listing> {
+    return listingFrom(listingId, await this.reading(this.at(this.market()).listingInfo!(listingId)));
+  }
+
+  async listItem(collection: MarketCollection, tokenId: number, price: bigint, opts?: ActionOptions): Promise<Listing> {
+    const market = this.market();
+    const account = (await this.signer().getAddress()) as Address;
+    if (collection === "boxes") {
+      // The market pulls the box with `confidentialTransferFrom`, as the holder's operator.
+      if (!(await this.reading(this.contract.isOperator!(account, market.address)))) {
+        const until = Math.floor(Date.now() / 1000) + OPERATOR_DAYS * 86_400;
+        await this.send(opts, (c) => c.setOperator!(market.address, until));
+      }
+    } else {
+      const rats = this.rats();
+      if (!(await this.reading(this.at(rats).isApprovedForAll!(account, market.address)))) {
+        await this.send(opts, () => this.writer(rats).setApprovalForAll!(market.address, true));
+      }
+    }
+    const receipt = await this.send(opts, () => this.writer(market).list!(COLLECTIONS.indexOf(collection), tokenId, price));
+    const listingId = Number(this.events(receipt, "Listed", market.address)[0]!.listingId);
+    if (collection === "rats") return this.listing(listingId);
+    return this.afterSent("resumable", () => this.finishListing(listingId, opts));
+  }
+
+  async finishListing(listingId: number, opts?: ActionOptions): Promise<Listing> {
+    const market = this.market();
+    const info = await this.reading(this.at(market).listingInfo!(listingId));
+    if (LISTING_STATUS[Number(info.status)] === "pending") {
+      const decrypted = await this.publicDecrypt([String(info.arrived)], opts);
+      opts?.onStep?.("proving");
+      await this.send(opts, () => this.writer(market).finalizeListing!(listingId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    }
+    const listing = await this.listing(listingId);
+    await this.refreshHoldings();
+    if (listing.status === "refused") throw new ChainError("not-yours", "This box is not yours: it never reached the market. Nothing happened.");
+    return listing;
+  }
+
+  async repriceListing(listingId: number, price: bigint, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).reprice!(listingId, price));
+  }
+
+  async cancelListing(listingId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).cancelListing!(listingId));
+    await this.refreshHoldings();
+  }
+
+  async buyListing(listingId: number, opts?: PayOptions): Promise<void> {
+    const market = this.market();
+    const listing = await this.listing(listingId);
+    await this.prepay(opts, listing.price, market.address);
+    const receipt = await this.send(opts, () => this.writer(market).buy!(listingId));
+    const purchaseId = Number(this.events(receipt, "PurchaseRequested", market.address)[0]!.purchaseId);
+    await this.afterSent("resumable", () => this.finishPurchase(purchaseId, opts));
+  }
+
+  async finishPurchase(purchaseId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    const m = this.at(market);
+    const info = await this.reading(m.purchaseInfo!(purchaseId));
+    if (PURCHASE_STATUS[Number(info.status)] === "pending") {
+      const decrypted = await this.publicDecrypt([String(info.ok)], opts);
+      opts?.onStep?.("proving");
+      await this.send(opts, () => this.writer(market).finalizePurchase!(purchaseId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    }
+    const status = PURCHASE_STATUS[Number((await this.reading(m.purchaseInfo!(purchaseId))).status)];
+    await this.refreshHoldings();
+    if (status === "unpaid") throw new ChainError("unpaid", "The cUSDC did not cover the price. Nothing was taken.");
+    if (status === "missed") throw new ChainError("missed", "Someone got it first, or the listing changed. Your payment came back in full.");
+  }
+
+  async pendingPurchases(account: Address): Promise<MarketPurchase[]> {
+    const deployed = this.opts.market;
+    if (!deployed) return [];
+    const m = this.at(deployed);
+    const latest = await this.opts.readProvider.getBlockNumber();
+    const ids: number[] = [];
+    for (let lo = deployed.deployBlock ?? 0; lo <= latest; lo += LOG_SPAN) {
+      const hi = Math.min(latest, lo + LOG_SPAN - 1);
+      for (const log of await this.reading(m.queryFilter(m.filters.PurchaseRequested!(null, null, account), lo, hi))) {
+        ids.push(Number((log as EventLog).args.purchaseId));
+      }
+    }
+    const out: MarketPurchase[] = [];
+    for (const purchaseId of ids.reverse()) {
+      const p = await this.reading(m.purchaseInfo!(purchaseId));
+      const status = PURCHASE_STATUS[Number(p.status)] as PurchaseStatus;
+      if (status === "pending") out.push({ purchaseId, listingId: Number(p.listingId), buyer: String(p.buyer), price: BigInt(p.price), status });
+    }
+    return out;
+  }
+
+  async makeOffer(listingId: number, amount: bigint, opts?: PayOptions): Promise<number> {
+    const market = this.market();
+    const account = (await this.signer().getAddress()) as Address;
+    await this.ensureDecryptions(0, 1);
+    await this.prepay(opts, amount, market.address);
+    const input = await this.encrypt64(market.address, account, amount, opts);
+    const receipt = await this.send(opts, () => this.writer(market).makeOffer!(listingId, input.handles[0], input.inputProof));
+    return Number(this.events(receipt, "OfferMade", market.address)[0]!.offerId);
+  }
+
+  async withdrawOffer(offerId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).withdrawOffer!(offerId));
+  }
+
+  async acceptOffer(offerId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).acceptOffer!(offerId));
+    await this.refreshHoldings();
+  }
+
+  private async allOffers(): Promise<(MarketOffer & { handle: string })[]> {
+    if (!this.opts.market) return [];
+    const m = this.at(this.opts.market);
+    const count = Number(await this.reading(m.offerCount!()));
+    const out: (MarketOffer & { handle: string })[] = [];
+    for (let from = 0; from < count; from += READ_CHUNK) {
+      const ids = Array.from({ length: Math.min(READ_CHUNK, count - from) }, (_, i) => from + i);
+      const rows = await Promise.all(ids.map((id) => this.reading(m.offerInfo!(id))));
+      rows.forEach((o, i) =>
+        out.push({ offerId: ids[i]!, listingId: Number(o.listingId), buyer: String(o.buyer), status: OFFER_STATUS[Number(o.status)] as OfferStatus, handle: String(o.amount) }),
+      );
+    }
+    return out;
+  }
+
+  async offers(query: OfferQuery = {}): Promise<MarketOffer[]> {
+    const all = await this.allOffers();
+    const sellers = query.seller ? new Map((await this.listings()).map((l) => [l.listingId, l.seller])) : null;
+    return all
+      .filter(
+        (o) =>
+          (query.listingId === undefined || o.listingId === query.listingId) &&
+          (!query.buyer || sameAddress(o.buyer, query.buyer)) &&
+          (!sellers || sameAddress(sellers.get(o.listingId), query.seller)) &&
+          (!query.status || o.status === query.status),
+      )
+      .map(({ offerId, listingId, buyer, status }) => ({ offerId, listingId, buyer, status }))
+      .reverse();
+  }
+
+  async offerAmounts(offerIds: number[], opts?: ActionOptions): Promise<Record<number, bigint>> {
+    const market = this.market();
+    const account = (await this.signer().getAddress()) as Address;
+    const m = this.at(market);
+    const rows = await Promise.all(offerIds.map(async (offerId) => ({ offerId, o: await this.reading(m.offerInfo!(offerId)) })));
+    const readable: { offerId: number; handle: string }[] = [];
+    for (const { offerId, o } of rows) {
+      const mine = sameAddress(String(o.buyer), account) || sameAddress((await this.listing(Number(o.listingId))).seller, account);
+      if (mine && String(o.amount) !== ZERO_HANDLE) readable.push({ offerId, handle: String(o.amount) });
+    }
+    const out: Record<number, bigint> = {};
+    if (!readable.length) return out;
+    const clear = await this.userDecrypt(readable.map((r) => r.handle), market.address, opts);
+    for (const r of readable) out[r.offerId] = BigInt(clear[r.handle] as bigint);
+    return out;
+  }
+
+  /** A box left or reached the account through the market: its receipts tell it, read them again. */
+  private async refreshHoldings(): Promise<void> {
+    const account = this.opts.wallet.current() ? await this.signer().getAddress() : null;
+    if (account && this.holdings?.account === account) await this.boxesOf(account).catch(() => undefined);
+  }
+
   private async creditPrice(): Promise<bigint | null> {
     const deployed = this.opts.credits;
     if (!deployed) return null;
@@ -1670,7 +1917,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private async permitContracts(): Promise<string[]> {
     const e = this.opts.economy;
     const { cUsdc } = await this.payment();
-    return [this.opts.address, cUsdc.address, ...(e ? [e.cCroq.address, e.pantry.address] : [])];
+    return [this.opts.address, cUsdc.address, ...(e ? [e.cCroq.address, e.pantry.address] : []), ...(this.opts.market ? [this.opts.market.address] : [])];
   }
 
   // --- internals ---
@@ -1766,7 +2013,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       return await run();
     } catch (error) {
       const e = this.toChainError(error);
-      throw e.code === "not-yours" || e.code === "unpaid" ? e : e.with({ [how]: true });
+      throw e.code === "not-yours" || e.code === "unpaid" || e.code === "missed" ? e : e.with({ [how]: true });
     }
   }
 

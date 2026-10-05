@@ -60,7 +60,7 @@ export const homeEn = {
   "home.how.s3": "Open it (or don't)",
   "home.how.s3.v": "Opening shows your cat to the whole world, for good. Alive? Asleep? A ghost? Both at once? No take-backs.",
   "home.how.s4": "Play with the others",
-  "home.how.s4.v": "Put your box on the duel shelf or take up someone else's, tie two boxes together so they open as one, or slip a snack through the flap.",
+  "home.how.s4.v": "Put your box on the duel shelf or take up someone else's, tie two boxes together so they open as one, slip a snack through the flap, or sell it at the flea market, where offers come in sealed envelopes.",
   "home.how.more": "Read more",
   "home.secret.title": "So how can nobody peek?",
   "home.secret.p1": "The cat is written in a secret code that no single person holds the key to. The game can still work with it, like comparing two boxes or picking one clue for you, without ever reading it out loud.",

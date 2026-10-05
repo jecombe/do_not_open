@@ -61,7 +61,7 @@ export const homeFr: Record<HomeKey, string> = {
   "home.how.s3": "Ouvre-la (ou pas)",
   "home.how.s3.v": "Ouvrir montre ton chat au monde entier, pour toujours. Vivant ? Endormi ? Fantôme ? Les deux à la fois ? Pas de retour en arrière.",
   "home.how.s4": "Joue avec les autres",
-  "home.how.s4.v": "Pose ta boîte sur l'étagère des duels ou relève celle d'un autre, attache deux boîtes pour qu'elles s'ouvrent ensemble, ou glisse un snack par la fente.",
+  "home.how.s4.v": "Pose ta boîte sur l'étagère des duels ou relève celle d'un autre, attache deux boîtes pour qu'elles s'ouvrent ensemble, glisse un snack par la fente, ou vends-la au marché aux puces, où les offres arrivent sous enveloppe scellée.",
   "home.how.more": "En savoir plus",
   "home.secret.title": "Mais comment personne ne peut tricher ?",
   "home.secret.p1": "Le chat est écrit dans un code secret dont personne n'a la clé tout seul. Le jeu peut quand même s'en servir, pour comparer deux boîtes ou te choisir un indice, sans jamais le lire à voix haute.",

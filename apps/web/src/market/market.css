@@ -1,0 +1,1367 @@
+/* --- The flea market: a night market behind the depot, under a string of bulbs --- */
+.fm {
+  --awning-a: #c2261d;
+  --awning-b: #e9dfc8;
+  --stall-wood: #5a3d26;
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: calc(var(--gutter) + 96px) var(--gutter) calc(var(--gutter) + 72px);
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgb(255 180 84 / 0.22), transparent 70%),
+    radial-gradient(ellipse 50% 30% at 15% 100%, rgb(125 227 208 / 0.08), transparent 70%),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 46px),
+    var(--dock-shadow);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* A sagging cable of bulbs across the top, each glowing on its own beat. */
+.fm-lights {
+  position: absolute;
+  top: calc(var(--gutter) + 70px);
+  left: 0;
+  right: 0;
+  height: 40px;
+  display: flex;
+  justify-content: space-around;
+  pointer-events: none;
+}
+
+.fm-lights::before {
+  content: "";
+  position: absolute;
+  inset: 0 -4% auto;
+  height: 28px;
+  border-bottom: 2px solid #2b2119;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+}
+
+.fm-lights span {
+  position: relative;
+  width: 12px;
+  height: 17px;
+  margin-top: 10px;
+  border-radius: 50% 50% 45% 45%;
+  background: var(--sodium);
+  box-shadow: 0 0 14px 4px rgb(255 180 84 / 0.55);
+  animation: fm-glow 2.4s ease-in-out infinite;
+}
+
+.fm-lights span:nth-child(3n) {
+  background: #ff6b5b;
+  box-shadow: 0 0 14px 4px rgb(255 107 91 / 0.5);
+}
+
+.fm-lights span:nth-child(4n) {
+  background: var(--spectral);
+  box-shadow: 0 0 14px 4px rgb(125 227 208 / 0.45);
+}
+
+/* The middle of the cable hangs lowest. */
+.fm-lights span:nth-child(n + 5):nth-child(-n + 14) {
+  margin-top: 18px;
+}
+
+.fm-lights span:nth-child(n + 8):nth-child(-n + 11) {
+  margin-top: 23px;
+}
+
+@keyframes fm-glow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.45;
+    box-shadow: none;
+  }
+}
+
+/* --- The sign: hand-painted, swinging a little on its chains --- */
+.fm-head {
+  position: relative;
+  text-align: center;
+  margin: 18px auto 22px;
+  max-width: 900px;
+}
+
+.fm-sign {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 10px 26px 8px;
+  background: linear-gradient(180deg, #3b2a1c, #2a1d13);
+  border: 3px solid var(--sodium);
+  border-radius: 8px;
+  box-shadow: 0 0 0 4px #2a1d13, 0 0 40px rgb(255 180 84 / 0.25), 0 20px 40px rgb(0 0 0 / 0.6);
+  transform-origin: 50% -40px;
+  animation: fm-swing 5s ease-in-out infinite;
+}
+
+.fm-sign-small {
+  font-family: var(--label);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--spectral);
+}
+
+.fm-sign-big {
+  font-family: var(--stencil);
+  font-size: clamp(30px, 6vw, 62px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sodium);
+  text-shadow: 0 0 18px rgb(255 180 84 / 0.6), 3px 3px 0 var(--ink-red);
+  animation: fm-neon 6s steps(1) infinite;
+}
+
+@keyframes fm-swing {
+  0%,
+  100% {
+    transform: rotate(-1.4deg);
+  }
+  50% {
+    transform: rotate(1.4deg);
+  }
+}
+
+/* A tube that flickers now and then. */
+@keyframes fm-neon {
+  0%,
+  92%,
+  95%,
+  100% {
+    opacity: 1;
+  }
+  93%,
+  96% {
+    opacity: 0.55;
+  }
+}
+
+.fm-tagline {
+  margin: 14px auto 0;
+  max-width: 52ch;
+  font-size: 19px;
+  color: var(--tape);
+}
+
+/* --- Three big doors: mint a box, adopt a rat, sell --- */
+.fm-ctas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 980px;
+  margin: 0 auto 26px;
+}
+
+.fm-cta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  text-align: left;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--manifest);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 4px var(--manifest), 0 10px 0 4px #0c0a08;
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
+}
+
+.fm-cta:nth-child(1) {
+  transform: rotate(-1deg);
+}
+.fm-cta:nth-child(2) {
+  transform: rotate(0.8deg);
+}
+.fm-cta:nth-child(3) {
+  transform: rotate(-0.5deg);
+  background: var(--sodium);
+  box-shadow: 0 0 0 4px var(--sodium), 0 10px 0 4px #0c0a08;
+}
+
+.fm-cta:hover:not(:disabled) {
+  transform: translateY(-4px) rotate(0deg);
+  box-shadow: 0 0 0 4px var(--manifest), 0 14px 0 4px #0c0a08;
+}
+
+.fm-cta:nth-child(3):hover:not(:disabled) {
+  box-shadow: 0 0 0 4px var(--sodium), 0 14px 0 4px #0c0a08;
+}
+
+.fm-cta:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 4px var(--manifest), 0 4px 0 4px #0c0a08;
+}
+
+.fm-cta:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.fm-cta-icon {
+  flex: 0 0 52px;
+  height: 52px;
+}
+
+.fm-cta-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fm-cta:hover .fm-cta-icon {
+  animation: fm-hop 0.5s ease-out;
+}
+
+.fm-cta:hover .fm-rat-tail {
+  animation: fm-tail 0.25s ease-in-out 3 alternate;
+  transform-origin: 10px 32px;
+}
+
+@keyframes fm-hop {
+  30% {
+    transform: translateY(-8px) rotate(-6deg);
+  }
+  60% {
+    transform: translateY(0) rotate(4deg);
+  }
+}
+
+@keyframes fm-tail {
+  to {
+    transform: rotate(-22deg);
+  }
+}
+
+.fm-cta-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fm-cta-text strong {
+  font-family: var(--stencil);
+  font-size: 22px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.fm-cta-text small {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+/* --- Filters: wooden signposts --- */
+.fm-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1180px;
+  margin: 0 auto 6px;
+}
+
+.fm-signs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fm-signpost {
+  position: relative;
+  padding: 7px 14px 5px;
+  font-family: var(--stencil);
+  font-size: 17px;
+  text-transform: uppercase;
+  color: var(--tape);
+  background: linear-gradient(180deg, #6b4a2f, var(--stall-wood));
+  border: 2px solid #2a1d13;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 4px 0 #1a120b;
+  transition: transform 120ms ease-out, background 120ms;
+}
+
+.fm-signpost:hover {
+  transform: translateY(-2px) rotate(0deg) !important;
+}
+
+.fm-signpost[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--sodium);
+  box-shadow: 0 0 18px rgb(255 180 84 / 0.5), 0 4px 0 #1a120b;
+}
+
+.fm-badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-family: var(--label);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--manifest);
+  background: var(--ink-red);
+  border-radius: 10px;
+  animation: fm-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes fm-pulse {
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+.fm-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--tape);
+}
+
+.fm-sort select {
+  padding: 5px 8px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--manifest);
+  border: 2px solid var(--ink);
+}
+
+.fm-stats,
+.fm-note {
+  max-width: 1180px;
+  margin: 10px auto 18px;
+  font-size: 16px;
+  color: rgb(233 223 200 / 0.75);
+}
+
+.fm-stats .link {
+  color: var(--sodium);
+}
+
+/* --- The stalls --- */
+.fm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 26px 18px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.fm-item {
+  animation: fm-drop 520ms cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+
+.fm-item-cat {
+  --awning-a: #1f7d6d;
+}
+
+.fm-item-rat {
+  --awning-a: #c08a2b;
+}
+
+@keyframes fm-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) rotate(-4deg);
+  }
+}
+
+.fm-stall {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 34px 12px 12px;
+  color: var(--manifest);
+  text-align: center;
+  background: linear-gradient(180deg, #2a2019, #1d1712);
+  border: 2px solid #3a2b1f;
+  border-top: 0;
+  box-shadow: 0 16px 30px rgb(0 0 0 / 0.5);
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.fm-stall:hover,
+.fm-stall:focus-visible {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 36px rgb(0 0 0 / 0.6), 0 0 30px rgb(255 180 84 / 0.15);
+}
+
+/* A striped awning with a scalloped edge. */
+.fm-awning {
+  position: absolute;
+  top: -10px;
+  left: -8px;
+  right: -8px;
+  height: 34px;
+  background: repeating-linear-gradient(90deg, var(--awning-a) 0 22px, var(--awning-b) 22px 44px);
+  border-radius: 4px 4px 0 0;
+  box-shadow: 0 6px 10px rgb(0 0 0 / 0.35);
+  transform-origin: 50% 0;
+}
+
+.fm-awning::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -11px;
+  height: 12px;
+  background: radial-gradient(circle at 11px 0, var(--awning-a) 10px, transparent 11px) 0 0 / 44px 12px repeat-x,
+    radial-gradient(circle at 33px 0, var(--awning-b) 10px, transparent 11px) 0 0 / 44px 12px repeat-x;
+}
+
+.fm-stall:hover .fm-awning {
+  animation: fm-flap 0.6s ease-in-out;
+}
+
+@keyframes fm-flap {
+  40% {
+    transform: scaleY(1.12) skewX(-2deg);
+  }
+  70% {
+    transform: scaleY(0.96) skewX(1deg);
+  }
+}
+
+.fm-art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-top: 8px;
+  overflow: hidden;
+  border: 2px solid #0e0b08;
+  background: #0e0b08;
+}
+
+.fm-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 300ms ease-out;
+}
+
+.fm-stall:hover .fm-art img {
+  transform: scale(1.06) rotate(-1deg);
+}
+
+.fm-item-box .fm-stall:hover .fm-art img {
+  animation: fm-rattle 0.4s ease-in-out 2;
+}
+
+@keyframes fm-rattle {
+  25% {
+    transform: scale(1.05) rotate(-3deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(3deg);
+  }
+}
+
+.fm-art-blank {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(45deg, #2a2019 0 8px, #1d1712 8px 16px);
+}
+
+/* A sealed box: what is inside is anyone's guess. */
+.fm-mystery {
+  position: absolute;
+  right: 8px;
+  top: 4px;
+  font-family: var(--stencil);
+  font-size: 40px;
+  color: var(--spectral);
+  text-shadow: 0 0 12px rgb(125 227 208 / 0.8);
+  animation: fm-float 2.6s ease-in-out infinite;
+}
+
+@keyframes fm-float {
+  50% {
+    transform: translateY(-6px) rotate(10deg);
+  }
+}
+
+/* The price tag, hanging on its string, swinging. */
+.fm-tag {
+  position: absolute;
+  top: 46px;
+  left: -10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 78px;
+  padding: 6px 10px 5px 16px;
+  color: var(--ink);
+  background: var(--tape);
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 14px 100%, 0 50%);
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.5));
+  transform-origin: 6px 50%;
+  animation: fm-tag 3.2s ease-in-out infinite;
+}
+
+.fm-item:nth-child(2n) .fm-tag {
+  animation-delay: -1.1s;
+}
+
+.fm-item:nth-child(3n) .fm-tag {
+  animation-delay: -2s;
+}
+
+@keyframes fm-tag {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+.fm-tag-hole {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #1d1712;
+}
+
+.fm-tag-price {
+  font-family: var(--stencil);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.fm-tag-unit {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.fm-name {
+  margin-top: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fm-kind {
+  font-size: 15px;
+  color: var(--tape);
+}
+
+.fm-ribbon {
+  position: absolute;
+  top: 34px;
+  right: -6px;
+  padding: 3px 8px 2px;
+  font-family: var(--stencil);
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--manifest);
+  background: var(--ink-red);
+  transform: rotate(6deg);
+  box-shadow: 0 3px 6px rgb(0 0 0 / 0.4);
+}
+
+.fm-envelope-badge {
+  position: absolute;
+  bottom: 70px;
+  right: 10px;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--manifest);
+  border: 2px solid var(--ink);
+  animation: fm-wiggle 1.6s ease-in-out infinite;
+}
+
+@keyframes fm-wiggle {
+  0%,
+  80%,
+  100% {
+    transform: rotate(0);
+  }
+  85% {
+    transform: rotate(-8deg);
+  }
+  90% {
+    transform: rotate(8deg);
+  }
+  95% {
+    transform: rotate(-4deg);
+  }
+}
+
+/* --- Empty market: a tumbleweed rolls through --- */
+.fm-empty {
+  position: relative;
+  max-width: 600px;
+  margin: 30px auto;
+  padding-top: 80px;
+  overflow: hidden;
+  text-align: center;
+  color: var(--tape);
+}
+
+.fm-tumbleweed {
+  position: absolute;
+  top: 10px;
+  left: -60px;
+  width: 50px;
+  height: 50px;
+  border: 3px dashed #8a6a45;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 6px rgb(138 106 69 / 0.4);
+  animation: fm-roll 6s linear infinite;
+}
+
+@keyframes fm-roll {
+  0% {
+    transform: translateX(0) translateY(0) rotate(0);
+  }
+  25% {
+    transform: translateX(170px) translateY(-14px) rotate(260deg);
+  }
+  50% {
+    transform: translateX(340px) translateY(0) rotate(520deg);
+  }
+  75% {
+    transform: translateX(510px) translateY(-10px) rotate(780deg);
+  }
+  100% {
+    transform: translateX(700px) translateY(0) rotate(1040deg);
+  }
+}
+
+.fm-closed {
+  max-width: 600px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+.fm-closed-sign {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 8px 18px 4px;
+  font-family: var(--stencil);
+  font-size: 30px;
+  text-transform: uppercase;
+  color: var(--ink-red);
+  border: 4px solid var(--ink-red);
+  transform: rotate(-4deg);
+}
+
+.fm-closed .fine {
+  max-width: none;
+  color: var(--tape);
+}
+
+/* --- The ticker of recent sales --- */
+.fm-ticker {
+  position: relative;
+  max-width: 1180px;
+  margin: 34px auto 0;
+  overflow: hidden;
+  border-block: 2px solid #3a2b1f;
+  background: #120e0b;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.fm-ticker-track {
+  display: flex;
+  gap: 40px;
+  width: max-content;
+  padding: 8px 0;
+  animation: fm-ticker 40s linear infinite;
+}
+
+.fm-ticker:hover .fm-ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes fm-ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.fm-ticker-item {
+  white-space: nowrap;
+  color: var(--tape);
+}
+
+.fm-ticker-item b {
+  margin-right: 6px;
+  padding: 1px 6px 0;
+  font-family: var(--stencil);
+  font-weight: 400;
+  color: var(--ink-red);
+  border: 2px solid var(--ink-red);
+}
+
+/* --- The booth: one item up close --- */
+.fm-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  background: rgb(10 8 6 / 0.72);
+  backdrop-filter: blur(3px);
+  animation: fm-fade 180ms ease-out;
+}
+
+@keyframes fm-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.fm-booth,
+.fm-drawer {
+  position: relative;
+  width: min(880px, 100%);
+  max-height: calc(100dvh - 2 * var(--gutter));
+  overflow-y: auto;
+  color: var(--ink);
+  background: var(--manifest);
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 6px var(--manifest), 0 30px 60px rgb(0 0 0 / 0.7);
+  animation: fm-pop 360ms cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+.fm-booth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+}
+
+@keyframes fm-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotate(-2deg);
+  }
+}
+
+.fm-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--manifest);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+
+.fm-close:hover:not(:disabled) {
+  color: var(--ink-red);
+  transform: rotate(90deg);
+  transition: transform 160ms;
+}
+
+.fm-booth-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+  overflow: hidden;
+  background: #120e0b;
+}
+
+.fm-booth-art img {
+  position: relative;
+  width: 82%;
+  max-width: 360px;
+  border: 3px solid #0e0b08;
+  box-shadow: 0 20px 40px rgb(0 0 0 / 0.6);
+  animation: fm-bob 4s ease-in-out infinite;
+}
+
+@keyframes fm-bob {
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+.fm-booth-cat .fm-booth-art img {
+  border-color: #1f7d6d;
+}
+
+.fm-spot {
+  position: absolute;
+  inset: -20% 10% 20%;
+  background: radial-gradient(ellipse at 50% 0%, rgb(255 233 196 / 0.35), transparent 65%);
+  animation: fm-spot 5s ease-in-out infinite;
+}
+
+@keyframes fm-spot {
+  50% {
+    transform: translateX(14px) rotate(3deg);
+  }
+}
+
+.fm-qmarks i {
+  position: absolute;
+  font-family: var(--stencil);
+  font-style: normal;
+  font-size: 54px;
+  color: var(--spectral);
+  text-shadow: 0 0 16px rgb(125 227 208 / 0.9);
+  animation: fm-float 3s ease-in-out infinite;
+}
+
+.fm-qmarks i:nth-child(1) {
+  top: 12%;
+  left: 10%;
+}
+
+.fm-qmarks i:nth-child(2) {
+  top: 20%;
+  right: 10%;
+  animation-delay: -1s;
+  font-size: 40px;
+}
+
+.fm-qmarks i:nth-child(3) {
+  bottom: 12%;
+  left: 18%;
+  animation-delay: -2s;
+  font-size: 34px;
+}
+
+.fm-sold-stamp {
+  position: absolute;
+  padding: 6px 20px 2px;
+  font-family: var(--stencil);
+  font-size: 54px;
+  text-transform: uppercase;
+  color: var(--ink-red);
+  border: 6px solid var(--ink-red);
+  transform: rotate(-14deg);
+  mix-blend-mode: screen;
+  animation: fm-slam 420ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes fm-slam {
+  from {
+    opacity: 0;
+    transform: rotate(-14deg) scale(2.6);
+  }
+}
+
+.fm-booth-body {
+  padding: 22px 22px 20px;
+}
+
+.fm-booth-kind {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-red);
+}
+
+.fm-booth-name {
+  margin: 0 0 8px;
+  font-size: 46px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.fm-booth-price {
+  font-family: var(--stencil);
+  font-size: 30px;
+}
+
+.fm-booth-price small {
+  font-family: var(--label);
+  font-size: 15px;
+}
+
+.fm-buy {
+  margin: 14px 0 6px;
+}
+
+.fm-offer {
+  position: relative;
+  margin-top: 16px;
+  padding: 12px;
+  background: repeating-linear-gradient(-45deg, #f3ecdd 0 12px, #ece2cd 12px 24px);
+  border: 2px dashed var(--ink);
+}
+
+.fm-offer-row,
+.fm-reprice {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin: 6px 0;
+}
+
+.fm-offer-row input,
+.fm-reprice input,
+.fm-price-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 20px;
+  color: var(--ink);
+  background: #fffaf0;
+  border: 2px solid var(--ink);
+}
+
+.fm-reprice {
+  align-items: flex-end;
+  margin-top: 14px;
+}
+
+.fm-reprice label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-size: 15px;
+}
+
+/* An offer sent: a red wax seal presses onto the envelope. */
+.fm-offer.is-sealed {
+  animation: fm-fold 500ms ease-out;
+}
+
+@keyframes fm-fold {
+  40% {
+    transform: scaleY(0.6) rotate(-1deg);
+  }
+}
+
+.fm-wax {
+  position: absolute;
+  right: 14px;
+  top: -16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e04a3c, #8e1810 70%);
+  box-shadow: 0 3px 6px rgb(0 0 0 / 0.4), inset 0 0 0 5px rgb(0 0 0 / 0.15);
+  animation: fm-press 520ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.fm-wax::after {
+  content: "DNO";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--stencil);
+  font-size: 12px;
+  color: rgb(255 255 255 / 0.7);
+}
+
+@keyframes fm-press {
+  from {
+    opacity: 0;
+    transform: scale(2.2) rotate(-30deg);
+  }
+}
+
+.fm-offers {
+  margin-top: 10px;
+}
+
+.fm-envelopes {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.fm-envelope {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 14px 12px 10px 58px;
+  background: #fffaf0;
+  border: 2px solid var(--ink);
+  overflow: hidden;
+}
+
+.fm-envelope-flap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 46px;
+  background: var(--tape);
+  border-right: 2px solid var(--ink);
+  transform-origin: 0 50%;
+  transition: transform 500ms cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.fm-envelope-seal {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e04a3c, #8e1810 70%);
+  transition: transform 400ms ease-in, opacity 400ms;
+}
+
+.fm-envelope.is-open .fm-envelope-flap {
+  transform: perspective(300px) rotateY(-70deg);
+}
+
+.fm-envelope.is-open .fm-envelope-seal {
+  transform: translateY(40px) rotate(120deg);
+  opacity: 0;
+}
+
+.fm-envelope-from {
+  font-size: 15px;
+  color: rgb(28 24 20 / 0.7);
+}
+
+.fm-envelope-amount {
+  flex: 1;
+  font-family: var(--stencil);
+  font-size: 22px;
+}
+
+.fm-envelope.is-open .fm-envelope-amount {
+  animation: fm-reveal 500ms ease-out;
+}
+
+@keyframes fm-reveal {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+.fm-mine {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+}
+
+.fm-feeline {
+  margin-top: 12px;
+  color: rgb(28 24 20 / 0.65);
+}
+
+.fm-leak {
+  color: var(--ink-red);
+}
+
+/* --- The sell drawer --- */
+.fm-drawer {
+  width: min(640px, 100%);
+  padding: 22px;
+}
+
+.fm-drawer-title {
+  margin: 0 0 12px;
+  font-family: var(--stencil);
+  font-size: 32px;
+  text-transform: uppercase;
+  color: var(--ink-red);
+}
+
+.fm-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px;
+  margin: 10px 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.fm-pick button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 6px 6px 4px;
+  color: var(--ink);
+  background: #fffaf0;
+  border: 2px solid var(--ink);
+  transition: transform 120ms;
+}
+
+.fm-pick button:hover {
+  transform: translateY(-3px) rotate(-1deg);
+}
+
+.fm-pick button[aria-pressed="true"] {
+  background: var(--sodium);
+  box-shadow: 0 0 0 3px var(--ink);
+  animation: fm-hop 0.45s ease-out;
+}
+
+.fm-pick img,
+.fm-pick .fm-art-blank {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid var(--ink);
+}
+
+.fm-pick span {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.fm-pick small {
+  font-size: 13px;
+}
+
+.fm-price-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+}
+
+.fm-price-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fm-chips {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.fm-chip {
+  padding: 4px 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--tape);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+.fm-chip[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--manifest);
+}
+
+.fm-price-form .stamp-button {
+  margin-top: 12px;
+}
+
+/* --- A deal: confetti and a stamp --- */
+.fm-party {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fm-bit {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 10px;
+  animation-name: fm-fall;
+  animation-timing-function: cubic-bezier(0.3, 0.5, 0.6, 1);
+  animation-fill-mode: forwards;
+}
+
+.fm-bit-strip {
+  width: 6px;
+  height: 16px;
+}
+
+.fm-bit-dot {
+  border-radius: 50%;
+}
+
+/* A fish bone, for the cats. */
+.fm-bit-fish {
+  width: 18px;
+  height: 8px;
+  background: none;
+  border-top: 2px solid currentColor;
+  border-radius: 50% 50% 0 0;
+}
+
+@keyframes fm-fall {
+  to {
+    transform: translate(var(--drift), 110vh) rotate(var(--spin));
+  }
+}
+
+.fm-party-stamp {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  max-width: 90vw;
+  margin: 0;
+  padding: 10px 26px 4px;
+  font-family: var(--stencil);
+  font-size: clamp(26px, 5vw, 54px);
+  line-height: 1.05;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--sodium);
+  background: rgb(23 19 15 / 0.85);
+  border: 6px solid var(--sodium);
+  box-shadow: 0 0 40px rgb(255 180 84 / 0.5);
+  transform: translate(-50%, -50%) rotate(-6deg);
+  animation: fm-party-stamp 3.2s ease-out forwards;
+}
+
+@keyframes fm-party-stamp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-6deg) scale(2.4);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-6deg) scale(1);
+  }
+  16% {
+    transform: translate(-50%, -50%) rotate(-6deg) scale(1.06);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-6deg) scale(1);
+  }
+}
+
+/* --- Phones --- */
+@media (max-width: 700px) {
+  /* The masthead stacks its stamp, menu and balances: the market starts below them. */
+  .fm {
+    padding-top: calc(var(--gutter) + 164px);
+  }
+
+  .fm-lights {
+    top: calc(var(--gutter) + 140px);
+  }
+
+  .fm-lights span:nth-child(n + 11) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .fm-ctas {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .fm-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 24px 12px;
+  }
+
+  .fm-booth {
+    grid-template-columns: 1fr;
+  }
+
+  .fm-booth-art {
+    min-height: 220px;
+  }
+
+  .fm-booth-art img {
+    width: 56%;
+  }
+
+  .fm-booth-name {
+    font-size: 36px;
+  }
+
+  .fm-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fm *,
+  .fm *::before,
+  .fm *::after,
+  .fm-veil *,
+  .fm-party * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .fm-bit {
+    display: none;
+  }
+
+  .fm-party-stamp {
+    opacity: 1;
+  }
+}
+
+/* The booth's facts, one per line, label left and value right. */
+.fm-booth .fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 6px 0 10px;
+  border-top: 2px solid var(--ink);
+}
+
+.fm-booth .fields > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 0 5px;
+  border-bottom: 1px dashed rgb(28 24 20 / 0.35);
+}
+
+.fm-booth .fields dt {
+  flex-shrink: 0;
+  font-size: 15px;
+}
+
+.fm-booth .fields dd {
+  margin: 0;
+  text-align: right;
+  font-size: 18px;
+}

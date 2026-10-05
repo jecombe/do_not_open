@@ -61,7 +61,7 @@ export const homeEs: Record<HomeKey, string> = {
   "home.how.s3": "Ábrela (o no)",
   "home.how.s3.v": "Abrirla enseña tu gato a todo el mundo, para siempre. ¿Vivo? ¿Dormido? ¿Un fantasma? ¿Las dos cosas a la vez? No hay vuelta atrás.",
   "home.how.s4": "Juega con los demás",
-  "home.how.s4.v": "Pon tu caja en el estante de duelos o acepta la de otro, ata dos cajas para que se abran juntas o cuela un bocado por la rendija.",
+  "home.how.s4.v": "Pon tu caja en el estante de duelos o acepta la de otro, ata dos cajas para que se abran juntas, cuela un bocado por la rendija o véndela en el mercadillo, donde las ofertas llegan en sobre sellado.",
   "home.how.more": "Saber más",
   "home.secret.title": "¿Y cómo es que nadie puede mirar?",
   "home.secret.p1": "El gato está escrito en un código secreto cuya llave no tiene nadie por sí solo. El juego puede usarlo igualmente, para comparar dos cajas o elegirte una pista, sin leerlo nunca en voz alta.",
