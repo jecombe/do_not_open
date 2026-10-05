@@ -191,21 +191,51 @@ h1 {
   top: 24px;
 }
 
-.toc ol {
-  display: grid;
-  gap: 5px;
+.toc-parts,
+.toc-parts ol {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.toc a {
+/* A part: its name, always there; its chapters, only while it is the one being read. */
+.toc-parts > li + li {
+  margin-top: 4px;
+}
+
+.toc-parts ol {
+  display: none;
+}
+
+.toc-parts > li.is-open > ol {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 12px;
+}
+
+.toc .toc-group {
   display: block;
-  padding: 6px 12px 6px 26px;
+  padding: 5px 0;
+  font-family: var(--stencil);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(233 223 200 / 0.6);
+  text-decoration: none;
+}
+
+.toc .toc-group:hover,
+.toc .toc-group[aria-current] {
+  color: var(--tape);
+}
+
+.toc-parts ol a {
+  display: block;
+  padding: 5px 12px 5px 26px;
   background: var(--tape);
   background-image: radial-gradient(circle at 14px 50%, var(--dock-shadow) 3.5px, transparent 4px);
   color: var(--ink);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.25;
   text-decoration: none;
@@ -213,13 +243,18 @@ h1 {
   opacity: 0.5;
 }
 
-.toc a:hover,
-.toc a[aria-current] {
+.toc-parts ol a:hover,
+.toc-parts ol a[aria-current] {
   opacity: 1;
 }
 
-.toc a[aria-current] {
+.toc-parts ol a[aria-current] {
   background-color: var(--manifest);
+}
+
+/* The phone's bar: one line naming the chapter being read, the list under it. */
+.toc-narrow {
+  display: none;
 }
 
 main > section {
@@ -727,18 +762,79 @@ h2 {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* The routing slip becomes a row of tags that scrolls sideways. */
+  /* The routing slip becomes one bar at the top of the screen, unfolding the list under it. */
   .toc {
-    position: static;
+    top: 0;
+    z-index: 20;
     margin: 0 calc(-1 * var(--gutter));
-    padding: 0 var(--gutter);
-    overflow-x: auto;
+    padding: 8px var(--gutter);
+    background: var(--dock-shadow);
+    border-bottom: 2px dashed rgb(233 223 200 / 0.22);
   }
 
-  .toc ol {
+  .toc-wide {
+    display: none;
+  }
+
+  .toc-narrow {
+    display: block;
+  }
+
+  .toc-narrow summary {
     display: flex;
-    gap: 6px;
-    width: max-content;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--tape);
+    color: var(--ink);
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .toc-narrow summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .toc-narrow summary::after {
+    content: "▾";
+    margin-left: auto;
+  }
+
+  .toc-narrow[open] summary::after {
+    content: "▴";
+  }
+
+  .toc-label {
+    font-family: var(--stencil);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .toc-now {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Unfolded, the list lies over the page instead of pushing it down. */
+  .toc-narrow .toc-parts {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: 10px var(--gutter) 14px;
+    background: var(--dock-shadow);
+    border-bottom: 2px dashed rgb(233 223 200 / 0.22);
+    box-shadow: 0 18px 30px rgb(0 0 0 / 0.45);
+  }
+
+  /* A chapter reached from the bar lands below it, not under it. */
+  main > section,
+  .part {
+    scroll-margin-top: 72px;
   }
 
   .stage,
@@ -1226,20 +1322,7 @@ h2 {
   }
 }
 
-/* --- The manual's three parts --- */
-.toc-group {
-  margin: 22px 0 8px;
-  font-family: var(--stencil);
-  font-size: 14px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgb(233 223 200 / 0.6);
-}
-
-.toc-group:first-child {
-  margin-top: 0;
-}
-
+/* --- The manual's parts --- */
 .part {
   padding: clamp(36px, 6vw, 64px) 0 0;
   border-top: 4px double rgb(233 223 200 / 0.35);
@@ -1291,10 +1374,6 @@ h2 {
 }
 
 @media (max-width: 860px) {
-  .toc-group {
-    display: none;
-  }
-
   .addresses li {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
@@ -1670,15 +1749,11 @@ main h3 {
   }
 }
 
-/* Six parts make a long routing slip: it scrolls on its own when the window is short. */
+/* Only a very short window still needs the slip to scroll on its own. */
 @media (min-width: 861px) {
   .toc {
     max-height: calc(100vh - 48px);
     overflow-y: auto;
     scrollbar-width: thin;
-  }
-
-  .toc > div + div .toc-group {
-    margin-top: 18px;
   }
 }
