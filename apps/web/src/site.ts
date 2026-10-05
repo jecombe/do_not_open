@@ -15,6 +15,9 @@ export const studioPath = (locale: Locale): string => (locale === "en" ? "/studi
 /** The game: one page for every language, which it reads from `?lang=`. */
 export const appPath = (locale: Locale): string => (locale === "en" ? "/app" : `/app?lang=${locale}`);
 
+/** The game opened on its flea market. */
+export const marketPath = (locale: Locale): string => `${appPath(locale)}${locale === "en" ? "?" : "&"}view=market`;
+
 /** The pages served once per language, as their path names them (prefix removed). */
 export type LocalizedPage = "home" | "docs" | "studio";
 
