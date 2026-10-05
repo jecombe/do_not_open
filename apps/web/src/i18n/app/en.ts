@@ -1021,6 +1021,7 @@ export const en = {
   "studio.adopt.done": "Rat #{id} is yours. It earns {perDay} croquettes a day.",
   "studio.adopt.adopting": "Adopting your rat",
   "studio.adopt.closed": "Adopting rats is not open on this network yet.",
+  "studio.adopt.yours": "You adopted this rat already: it is rat #{id}.",
   "studio.adopt.taken": "Someone already adopted this rat. Draw another one.",
   "studio.adopt.hint": "An adopted rat is yours on-chain: it earns {perDay} croquettes a day and can sniff the boxes.",
   "studio.adopt.model": "Adopt · {price} USDC",

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { formatAmount, type ApiSession, type RatPrices, type RatSupply, type StudioPack } from "@dno/chain-adapter";
+import { formatAmount, sameAddress, type ApiSession, type RatPrices, type RatSupply, type RatTaken, type StudioPack } from "@dno/chain-adapter";
 import { studio } from "@dno/game-spec";
 import { ChainProvider, useAction, useChain, useLedger } from "../chain/ChainProvider";
 import { useT, type AppKey } from "../i18n/app";
@@ -203,8 +203,8 @@ function StudioLive() {
   const [ratPrices, setRatPrices] = useState<RatPrices | null | undefined>(undefined);
   /** Rats left, per kind, and this wallet's share. */
   const [ratSupply, setRatSupply] = useState<RatSupply | null | undefined>(undefined);
-  /** Whether the random rat on the turntable was adopted already, by anyone. */
-  const [taken, setTaken] = useState(false);
+  /** Who adopted the rat on show already, the random one or the AI one on the board. */
+  const [taken, setTaken] = useState<RatTaken | null>(null);
   /** The rat this visit adopted, to say so and point to it. */
   const [adopted, setAdopted] = useState<number | null>(null);
 
@@ -255,18 +255,21 @@ function StudioLive() {
   const aiLocked = !demo && (info === null || (info.testersOnly === true && info.allowlisted !== true));
   const mode: Mode = aiLocked ? "random" : chosenMode;
 
-  const randomSeedShown = mode === "random" ? seed : null;
   // Something else on show: the last adoption's message makes way for its own button.
   useEffect(() => setAdopted(null), [seed, focus, mode]);
+  // A rat adopted already, by this wallet or another, is not offered again. Read again after an
+  // adoption, so coming back to it says it is yours.
+  const shownRef = mode === "random" ? `seed:${seed}` : focus ? `job:${focus}` : null;
   useEffect(() => {
-    setTaken(false);
-    if (randomSeedShown === null || !ratPrices) return;
+    setTaken(null);
+    if (shownRef === null || !ratPrices) return;
     let live = true;
-    adapter.seedRatTaken(randomSeedShown).then((t) => live && setTaken(t), () => undefined);
+    const ref = shownRef.startsWith("seed:") ? { seed: BigInt(shownRef.slice(5)) } : { job: shownRef.slice(4) };
+    adapter.ratTaken(ref).then((t) => live && setTaken(t), () => undefined);
     return () => {
       live = false;
     };
-  }, [adapter, randomSeedShown, ratPrices, ledger]);
+  }, [adapter, shownRef, ratPrices, ledger, adopted]);
 
   /** A session the API no longer takes: forget it, the visitor signs in again. */
   const failed = useCallback((error: unknown, at: "sketch" | "model" | "desk" = "desk") => {
@@ -424,16 +427,25 @@ function StudioLive() {
   const stateOf = (job: StudioJob) =>
     job.status === "running" ? t(job.kind === "sketch" ? "studio.job.drawing" : "studio.job.modelling") : job.status === "rejected" ? t("studio.job.rejected") : t("studio.job.failed");
 
+  const seeMine = (
+    <a className="link" href={gameAt(locale, "rats")}>
+      {t("studio.adopt.see")}
+    </a>
+  );
+
   const adoptArea = (content: ReactNode) => (
     <TxPending busy={adopting.busy} step={adopting.step} title={t("studio.adopt.adopting")}>
       <div className="studio-adopt">
         {adopted !== null ? (
           <p className="studio-adopted" role="status">
-            {t("studio.adopt.done", { id: adopted, perDay })}{" "}
-            <a className="link" href={gameAt(locale, "rats")}>
-              {t("studio.adopt.see")}
-            </a>
+            {t("studio.adopt.done", { id: adopted, perDay })} {seeMine}
           </p>
+        ) : taken && sameAddress(taken.owner, account) ? (
+          <p className="studio-adopted">
+            {t("studio.adopt.yours", { id: taken.id })} {seeMine}
+          </p>
+        ) : taken ? (
+          <p className="fine">{t(mode === "random" ? "studio.adopt.taken" : "studio.err.alreadyAdopted")}</p>
         ) : (
           content
         )}
@@ -546,8 +558,6 @@ function StudioLive() {
               <>
                 {ratPrices === null ? (
                   <p className="fine">{t("studio.adopt.closed")}</p>
-                ) : taken ? (
-                  <p className="fine">{t("studio.adopt.taken")}</p>
                 ) : closedFor(ratSupply, "seed") ? (
                   <p className="fine">{t(closedFor(ratSupply, "seed")!, { max: ratSupply!.perWallet })}</p>
                 ) : (

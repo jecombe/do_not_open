@@ -2,6 +2,8 @@ import {
   Contract,
   Interface,
   isError,
+  keccak256,
+  toUtf8Bytes,
   VoidSigner,
   type ContractTransactionReceipt,
   type ContractTransactionResponse,
@@ -65,7 +67,9 @@ import {
   type RatInfo,
   type RatPantryInfo,
   type RatPrices,
+  type RatRef,
   type RatSupply,
+  type RatTaken,
 } from "../types";
 import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
 import { gateRefusal, toChainError } from "./errors";
@@ -130,6 +134,11 @@ export interface EvmAdapterOptions {
   indexer?: IndexerClient;
   /** Where decrypted values are kept by handle, so none is paid for twice. In memory by default. */
   decryptCache?: DecryptCache;
+  /**
+   * Where the block of this browser's last transaction is kept, so the site's other pages (the
+   * studio, the game) also wait for the API to index it. In memory by default.
+   */
+  lastTxBlock?: { get(): number; set(block: number): void };
   /**
    * Decryptions go through the API's relayer proxy, which counts them against a free daily
    * allowance and the wallet's credits. Needs `indexer`: the allowance is read from it.
@@ -320,6 +329,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   constructor(private readonly opts: EvmAdapterOptions) {
     this.decryptCache = opts.decryptCache ?? new MemoryDecryptCache();
+    this.minBlock = opts.lastTxBlock?.get() ?? 0;
     this.iface = new Interface(opts.abi);
     this.contract = new Contract(opts.address, this.iface, opts.readProvider);
     const e = opts.economy;
@@ -1141,10 +1151,18 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if ((s.mintedBy ?? 0) >= s.perWallet) throw new ChainError("reverted", "This wallet adopted all the rats it may.", "WalletLimit");
   }
 
-  async seedRatTaken(seed: bigint): Promise<boolean> {
+  async ratTaken(ref: RatRef): Promise<RatTaken | null> {
     const deployed = this.opts.rats;
-    if (!deployed) return false;
-    return BigInt(await this.reading(this.at(deployed).tokenOfSeed!(seed))) !== 0n;
+    if (!deployed) return null;
+    const rats = this.at(deployed);
+    // The contract keys an AI rat by the keccak256 of its job's UUID, as the API signs it.
+    const id = Number(
+      "seed" in ref
+        ? await this.reading(rats.tokenOfSeed!(ref.seed))
+        : await this.reading(rats.tokenOfJob!(/^0x[0-9a-fA-F]{64}$/.test(ref.job) ? ref.job : keccak256(toUtf8Bytes(ref.job)))),
+    );
+    if (id === 0) return null;
+    return { id, owner: (await this.reading(rats.ownerOf!(id))) as Address };
   }
 
   async mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number> {
@@ -1690,6 +1708,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       opts?.onTx?.({ ...sent, status: "confirmed", block: receipt.blockNumber, gasUsed: receipt.gasUsed });
       // Until the API has indexed this block, reads go to the chain; and it is told to look now.
       this.minBlock = Math.max(this.minBlock, receipt.blockNumber);
+      this.opts.lastTxBlock?.set(this.minBlock);
       this.opts.indexer?.nudge();
       await this.caughtUp(receipt.blockNumber);
       return receipt;

@@ -1013,6 +1013,7 @@ export const es: Record<AppKey, string> = {
   "studio.adopt.done": "La rata n.º {id} es tuya. Gana {perDay} croquetas al día.",
   "studio.adopt.adopting": "Adoptando tu rata",
   "studio.adopt.closed": "La adopción de ratas aún no está abierta en esta red.",
+  "studio.adopt.yours": "Ya adoptaste esta rata: es la rata n.º {id}.",
   "studio.adopt.taken": "Alguien ya adoptó esta rata. Saca otra.",
   "studio.adopt.hint": "Una rata adoptada es tuya en la cadena: gana {perDay} croquetas al día y puede olfatear las cajas.",
   "studio.adopt.model": "Adoptar · {price} USDC",
