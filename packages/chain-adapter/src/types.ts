@@ -483,6 +483,15 @@ export interface RatSupply {
   mintedBy: number | null;
 }
 
+/** A rat, free or AI, as it is looked up before adopting it: by its seed, or by its studio job. */
+export type RatRef = { seed: bigint } | { job: string };
+
+/** Who adopted a rat already. */
+export interface RatTaken {
+  id: number;
+  owner: Address;
+}
+
 /** The API's go-ahead to mint an AI rat: its files are on Arweave and the attester signed. */
 export interface RatAdoption {
   /** The job id as the contract takes it (bytes32 hex), or the studio's UUID. */
@@ -713,8 +722,9 @@ export interface ChainAdapter {
   ratPrices(): Promise<RatPrices | null>;
   /** Rats minted and left, per kind, and what `account` minted. Null where no Rats contract is deployed. */
   ratSupply(account?: Address | null): Promise<RatSupply | null>;
-  /** Whether the free rat of `seed` was already adopted. */
-  seedRatTaken(seed: bigint): Promise<boolean>;
+  /** The rat a seed or a studio job (its UUID, or the bytes32 an adoption carries) became, and who
+   *  holds it now; null while nobody adopted it. */
+  ratTaken(ref: RatRef): Promise<RatTaken | null>;
   /** Adopts the free rat of `seed` for the connected account, in plain USDC. Returns its token id.
    *  Throws `insufficient-usdc` before any transaction when the wallet holds too little, and
    *  `reverted` (`SoldOut`, `WalletLimit`) when no seed rat is left or the account minted its share. */

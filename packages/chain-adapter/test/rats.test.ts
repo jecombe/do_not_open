@@ -17,10 +17,10 @@ describe("MockAdapter rats", () => {
     const prices = await chain.ratPrices();
     expect(prices).toEqual({ seed: 1_000_000n, model: 3_000_000n });
     const before = await chain.usdcBalance(MOCK_YOU);
-    expect(await chain.seedRatTaken(42n)).toBe(false);
+    expect(await chain.ratTaken({ seed: 42n })).toBeNull();
     const id = await chain.mintSeedRat(42n);
     expect(id).toBe(1);
-    expect(await chain.seedRatTaken(42n)).toBe(true);
+    expect(await chain.ratTaken({ seed: 42n })).toEqual({ id: 1, owner: MOCK_YOU });
     expect(await chain.usdcBalance(MOCK_YOU)).toBe(before - 1_000_000n);
     await expect(chain.mintSeedRat(42n)).rejects.toThrow();
     const rats = await chain.ratsOf(MOCK_YOU);
@@ -31,7 +31,9 @@ describe("MockAdapter rats", () => {
   it("adopts an AI rat with the API's go-ahead, once", async () => {
     const { chain } = await fresh();
     const adoption = { job: "00000000-0000-4000-8000-000000000001", uri: "ar://x", deadline: 10_000_000, signature: "0x", priceUsdc: "3" };
+    expect(await chain.ratTaken({ job: adoption.job })).toBeNull();
     expect(await chain.mintModelRat(adoption)).toBe(1);
+    expect(await chain.ratTaken({ job: adoption.job })).toEqual({ id: 1, owner: MOCK_YOU });
     await expect(chain.mintModelRat(adoption)).rejects.toThrow();
     expect((await chain.ratsOf(MOCK_YOU))[0]).toMatchObject({ kind: "model", uri: "ar://x" });
   });

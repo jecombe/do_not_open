@@ -49,6 +49,8 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     ratPantry: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.ratPantry ?? undefined),
     // Decrypted receipts, balances and shakes, kept per collection so a new deployment starts clean.
     decryptCache: new LocalStorageDecryptCache(`dno:decrypted:${(opts.address || SEPOLIA_DEPLOYMENT.address).toLowerCase()}`),
+    // A rat adopted in the studio is in "my rats" on the next page, before the API indexes it.
+    lastTxBlock: storedBlock(`dno:last-tx:${(opts.address || SEPOLIA_DEPLOYMENT.address).toLowerCase()}`),
     readProvider: new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true }),
     wallet: new InjectedWallet(ethereum, chain, opts.walletConnectProjectId || undefined),
     loadRelayer: async () => {
@@ -59,4 +61,24 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
       return createInstance({ ...SepoliaConfig, network: chain.rpcUrl, ...(proxy && (await indexer!.matches()) ? { relayerUrl: proxy } : {}) });
     },
   });
+}
+
+/** A block number kept in localStorage; 0 where storage is blocked. */
+function storedBlock(key: string): { get(): number; set(block: number): void } {
+  return {
+    get() {
+      try {
+        return Number(localStorage.getItem(key)) || 0;
+      } catch {
+        return 0;
+      }
+    },
+    set(block) {
+      try {
+        localStorage.setItem(key, String(block));
+      } catch {
+        // Then only this page waits for the API.
+      }
+    },
+  };
 }

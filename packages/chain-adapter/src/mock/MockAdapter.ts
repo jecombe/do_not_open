@@ -42,7 +42,9 @@ import {
   type RatInfo,
   type RatPantryInfo,
   type RatPrices,
+  type RatRef,
   type RatSupply,
+  type RatTaken,
 } from "../types";
 import { MockPool } from "./pool";
 
@@ -973,19 +975,20 @@ export class MockAdapter implements ChainAdapter {
     };
   }
 
-  async seedRatTaken(seed: bigint): Promise<boolean> {
-    return this.ratList.some((r) => r.kind === "seed" && r.seed === seed.toString());
+  async ratTaken(ref: RatRef): Promise<RatTaken | null> {
+    const r = this.ratList.find((r) => ("seed" in ref ? r.kind === "seed" && r.seed === ref.seed.toString() : r.kind === "model" && r.job === ref.job));
+    return r ? { id: r.id, owner: r.owner } : null;
   }
 
   async mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number> {
     if (seed < 0n || seed >= 2n ** 64n) throw new ChainError("unknown", "Not a rat seed.");
-    if (await this.seedRatTaken(seed)) throw revert("AlreadyAdopted");
+    if (await this.ratTaken({ seed })) throw revert("AlreadyAdopted");
     return this.adoptRat({ kind: "seed", seed: seed.toString(), job: null, uri: null }, (await this.ratPrices())!.seed, opts);
   }
 
   async mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number> {
     if (adoption.deadline * 1000 < this.now()) throw revert("Expired");
-    if (this.ratList.some((r) => r.job === adoption.job)) throw revert("AlreadyAdopted");
+    if (await this.ratTaken({ job: adoption.job })) throw revert("AlreadyAdopted");
     return this.adoptRat({ kind: "model", seed: null, job: adoption.job, uri: adoption.uri }, (await this.ratPrices())!.model, opts);
   }
 
