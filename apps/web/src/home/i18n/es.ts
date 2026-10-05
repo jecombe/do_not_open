@@ -5,7 +5,7 @@ export const homeEs: Record<HomeKey, string> = {
   "home.description": "{supply} cajas selladas, un gato en cada una, y nadie sabe cuál. Un juego NFT confidencial en el fhEVM de Zama: gatos y titulares cifrados on-chain.",
   "home.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN y, dentro, un gato que nadie ve",
   "home.nav": "Sitio",
-  "home.nav.cats": "Los gatos",
+  "home.nav.market": "Mercadillo",
   "home.nav.how": "Cómo jugar",
   "home.nav.docs": "Manual",
   "home.nav.studio": "Estudio",

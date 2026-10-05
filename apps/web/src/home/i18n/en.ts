@@ -4,7 +4,7 @@ export const homeEn = {
   "home.description": "{supply} sealed boxes, one cat in each, and nobody knows which. A confidential NFT game on Zama's fhEVM: cats and holders stay encrypted on-chain.",
   "home.imageAlt": "A sealed cardboard box stamped DO NOT OPEN, with a cat inside that nobody can see",
   "home.nav": "Site",
-  "home.nav.cats": "The cats",
+  "home.nav.market": "Flea market",
   "home.nav.how": "How to play",
   "home.nav.docs": "Manual",
   "home.nav.studio": "Studio",
