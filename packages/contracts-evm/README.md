@@ -182,7 +182,7 @@ It only looks up `DoNotOpen`, `DoNotOpenHooks` and `Rats`, never redeploys them,
 every other script (`runAtTheEnd`), so `npx hardhat deploy --network sepolia --tags Market` (or
 `pnpm --filter @dno/contracts-evm exec hardhat deploy --network sepolia --tags Market` from the
 root) adds the market next to a live collection; `pnpm export:sepolia` then writes it under
-`market` in `sepolia.json`. It is not deployed on Sepolia yet. To sell, a player makes the
+`market` in `sepolia.json`. On Sepolia since 2026-10-05: `0xb5c799bF626e70DcE6804BDef06199661cDc8665`. To sell, a player makes the
 market their operator on the boxes (`setOperator(market, until)`) or approves it on the rats
 (`setApprovalForAll`); to buy or offer, their cUSDC operator. The adapter does both when
 needed (a year for the boxes).

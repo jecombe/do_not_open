@@ -13,7 +13,7 @@ and `Pantry.sol` (section 9) and `LiquidityLocker.sol`, which holds the CROQ mar
 Uniswap V3 position (section 10); `Rats.sol` and `RatPantry.sol`, the studio's adopted rats and their croquettes (deployed at
 `0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264` and `0x1334d72fC60cBedcF409d6583F0Ec009c285E75B` on 2026-10-05, block 11845258, with the caps; the first pair, without them, at `0xd4f8Df0F14Ced442077762cb81e843656BAc3856` and `0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A` on 2026-10-04); `StudioPacks.sol`, the studio's USDC packs (deployed
 at `0x672cf76a68d4f181387B59caA1813eC425c1354C` on 2026-10-04, block 11842636); `FleaMarket.sol`, the
-players' marketplace for boxes, cats and rats (section 12, not deployed yet); plus the parts of the
+players' marketplace for boxes, cats and rats (section 12; deployed at `0xb5c799bF626e70DcE6804BDef06199661cDc8665` on 2026-10-05, block 11849253); plus the parts of the
 adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
 `0xe8f699eEBc22767413A9edBb48826B10D3117f61` is the previous version, an ERC-721 with
 public owners, and is not what this list reviews.

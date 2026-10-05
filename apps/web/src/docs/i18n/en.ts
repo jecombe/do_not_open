@@ -710,7 +710,7 @@ export const docsEn = {
   "docs.stall.p2": "A rat is a plain NFT: it goes to the market and is listed at once. A box is not so simple, since nobody can check who holds it, the market included. So it goes to the market in a maybe transfer, like any gift, and whether it arrived is then decrypted in public. Only if it did does the listing open, so only a box's real holder can sell it, and once the market holds it nobody else can list it. Until then it shows as On its way.",
   "docs.stall.p3": "Selling is a public act: selling a box shows everyone that you held it. What is inside stays sealed, for you as for the buyer. The seller of each listing, its asking price, the buyer of each sale, and whether each buyer at the asking price could pay are public. Balances, offer amounts and the price of a sale by offer never are.",
   "docs.stall.p4": "While an item is on sale, Retag changes its price (purchases pending at the old price are refunded), and Take it back brings it home. Buyers keep their sealed offers to take back.",
-  "docs.stall.p5": "On Sepolia the flea market is not open yet: its page says Closed tonight. In the demo, the night shift keeps a few stalls, slips a secret offer onto whatever you put on sale, and takes any offer worth at least {pct}% of your asking price.",
+  "docs.stall.p5": "The flea market is open on Sepolia, with test dollars. In the demo, the night shift keeps a few stalls, slips a secret offer onto whatever you put on sale, and takes any offer worth at least {pct}% of your asking price.",
   "fig.ways.ask": "At the asking price",
   "fig.ways.offer": "With a secret offer",
   "fig.ways.price": "The price",

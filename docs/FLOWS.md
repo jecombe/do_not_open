@@ -722,7 +722,7 @@ back. Two more participants:
 Before a first sale the seller lets the market move the item: `setOperator(market, until)`
 on the boxes (the adapter asks for 365 days) or `setApprovalForAll(market, true)` on the rats.
 A buyer makes the market their cUSDC operator, as for any payment. The adapter sends these
-when they are missing. The market is not deployed on Sepolia yet; the API does not index it,
+when they are missing. The market is on Sepolia at `0xb5c799bF626e70DcE6804BDef06199661cDc8665`; the API does not index it,
 so the adapter reads listings (`listings(from, count)`) and offers (`offerInfo`) from the chain.
 
 ### List a box

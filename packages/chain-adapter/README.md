@@ -187,7 +187,7 @@ there in the game.
 
 `FleaMarket` sells boxes, cats and rats between players, in cUSDC. `fleaMarket()` reads its
 terms (`address`, `explorerUrl`, `feeBps`, `maxPrice`), null where no market is deployed: the
-app then shows "Closed tonight". It is not on Sepolia yet; the EVM adapter takes it as its
+app then shows "Closed tonight". On Sepolia at `0xb5c799bF626e70DcE6804BDef06199661cDc8665`; the EVM adapter takes it as its
 `market` option (`sepolia.json`'s `market` entry in `createSepoliaBrowserAdapter` and
 `createSepoliaNodeAdapter`). `rat(id)` reads one rat whoever holds it (the market, while it is for
 sale).

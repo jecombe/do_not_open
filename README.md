@@ -238,9 +238,9 @@ fixes, decoy transfers and a fresh croquette economy. The deployer
 | `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
 | `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264`](https://sepolia.etherscan.io/address/0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264) |
 | `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
+| `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xb5c799bF626e70DcE6804BDef06199661cDc8665`](https://sepolia.etherscan.io/address/0xb5c799bF626e70DcE6804BDef06199661cDc8665) |
 
-`FleaMarket` is not deployed on Sepolia yet; until it is, the app's flea market says "Closed
-tonight" there (mock mode has stalls to try it). It deploys next to the live collection with
+`FleaMarket` was added next to the live collection on 2026-10-05 (block 11849253) with
 `pnpm --filter @dno/contracts-evm exec hardhat deploy --network sepolia --tags Market`, then
 `pnpm --filter @dno/contracts-evm export:sepolia`.
 

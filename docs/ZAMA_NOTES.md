@@ -692,9 +692,11 @@ started fresh. `UsdcRamp` was redeployed because its owner argument still named
 | `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
 | `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264`](https://sepolia.etherscan.io/address/0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264) |
 | `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
+| `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xb5c799bF626e70DcE6804BDef06199661cDc8665`](https://sepolia.etherscan.io/address/0xb5c799bF626e70DcE6804BDef06199661cDc8665) |
 
-`FleaMarket` is not deployed yet. It goes next to this collection with `--tags Market` (see
-the `contracts-evm` README), and its address will be added here.
+`FleaMarket` was added next to this collection on 2026-10-05 at block 11849253, with
+`--tags Market` (see the `contracts-evm` README), by `0x5908…029A`, which is for now also its
+owner and treasury (the collection's `0x6a18…3208` is to take both over). 2.89M gas.
 
 Gas: `DoNotOpenConfig` 914,027, `DoNotOpen` 5,792,149, `DoNotOpenHooks` 357,103,
 `DecryptionCredits` 478,835, `Croq` 532,843, `ConfidentialCroq` 2,455,772, `Pantry` 3,253,237,
