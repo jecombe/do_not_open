@@ -29,7 +29,7 @@ describe("Costs", function () {
       HardhatEthersSigner,
       HardhatEthersSigner,
     ];
-    const { dno, address } = await deploy();
+    const { dno, address, usdc, cUsdc } = await deploy();
     const { croq, cCroq, pantry, pantryAddress } = await deployEconomy(dno);
     const rows: { action: string; gas: number; hcu: number; depth: number }[] = [];
     const measure = async (action: string, tx: Promise<ContractTransactionResponse>) => {
@@ -82,6 +82,35 @@ describe("Costs", function () {
     await measure("Pantry.claim (3 boxes, welcome)", pantry.connect(bob).claim(B));
     await time.increase(86_400);
     await measure("Pantry.claim (3 boxes, purr)", pantry.connect(bob).claim(B));
+
+    // The flea market: a box listed by alice, bought by carol; a rat sold to a secret offer.
+    const hooks = await (await ethers.getContractFactory("DoNotOpenHooks")).deploy(address);
+    const rats = await (await ethers.getContractFactory("Rats")).deploy(
+      await usdc.getAddress(), alice.address, alice.address, alice.address, 1_000_000, 3_000_000, "", 10, 10, 5,
+    );
+    const market = await (await ethers.getContractFactory("FleaMarket")).deploy(
+      address, await hooks.getAddress(), await rats.getAddress(), await cUsdc.getAddress(), alice.address, alice.address, 250,
+    );
+    const marketAddress = await market.getAddress();
+    const nextYear = (await time.latest()) + 86_400 * 365;
+    for (const who of [alice, bob, carol]) {
+      await (await cUsdc.connect(who).setOperator(marketAddress, nextYear)).wait();
+      await (await dno.connect(who).setOperator(marketAddress, nextYear)).wait();
+      await (await rats.connect(who).setApprovalForAll(marketAddress, true)).wait();
+    }
+    await measure("FleaMarket.list (box)", market.connect(alice).list(0, A[1]!, 25_000_000));
+    let proof = await fhevm.publicDecrypt([(await market.listingInfo(0)).arrived]);
+    await measure("FleaMarket.finalizeListing", market.connect(carol).finalizeListing(0, proof.abiEncodedClearValues, proof.decryptionProof));
+    await measure("FleaMarket.buy", market.connect(carol).buy(0));
+    proof = await fhevm.publicDecrypt([(await market.purchaseInfo(0)).ok]);
+    await measure("FleaMarket.finalizePurchase (box)", market.connect(bob).finalizePurchase(0, proof.abiEncodedClearValues, proof.decryptionProof));
+    await (await usdc.mint(bob.address, 1_000_000)).wait();
+    await (await usdc.connect(bob).approve(await rats.getAddress(), 1_000_000)).wait();
+    await (await rats.connect(bob).mintSeed(1, 1_000_000)).wait();
+    await measure("FleaMarket.list (rat)", market.connect(bob).list(1, 1, 5_000_000));
+    const offer = await fhevm.createEncryptedInput(marketAddress, carol.address).add64(4_000_000n).encrypt();
+    await measure("FleaMarket.makeOffer", market.connect(carol).makeOffer(1, offer.handles[0]!, offer.inputProof));
+    await measure("FleaMarket.acceptOffer (rat)", market.connect(bob).acceptOffer(0));
 
     console.table(rows);
   });

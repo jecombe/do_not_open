@@ -99,9 +99,19 @@ them; [`docs/CROQ.md`](../../docs/CROQ.md) explains them.
 | `meal.treasuryBps`, `meal.burnBps` | 2000, 2000 | 20% of each meal to the treasury, 20% burnt, the rest back to the game reserve |
 | `weight` | builds, sick, diseases | Build floors, the sickness tolerance range and the disease odds, applied at the weigh-in |
 
+## Flea market
+
+The `market` section holds the flea market's terms: `feeBps` (250, the treasury's share of
+each sale), `maxFeeBps` (1,000) and `maxPriceUsdc` ("1000000", the most an item may be listed
+or offered for), with the rules in plain words (`rule`, `stateRule`, `leaks`). The deploy
+script reads `feeBps` through `marketParamsFromSpec()` (`packages/contracts-evm/lib/marketParams.ts`),
+which refuses a fee above `maxFeeBps`; `FleaMarket` hardcodes `MAX_FEE_BPS` and `MAX_PRICE`
+and a test checks them against the spec. The mock adapter reads the same numbers.
+
 ## Mechanics and events
 
-See `mechanics` and `events` in `spec.json`. Each rule is written so that it can be
+See `mechanics` and `events` in `spec.json` (the flea market's events, `Listed` to `Sold`,
+are at the end of `events`). Each rule is written so that it can be
 implemented by any program that can compute on encrypted integers and publish a
 verified decryption.
 

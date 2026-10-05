@@ -38,6 +38,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
 | Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
+| Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Done** on the mock and in the tests, not yet deployed on Sepolia |
 
 ## Layout
 
@@ -47,7 +48,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, FleaMarket"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
   api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
@@ -193,6 +194,27 @@ free rats and 300 AI rats, and one wallet mints 5 at most: every rat is paid fro
 fixed fund, so the supply is capped in the contract, and the home page and the studio count
 the rats left.
 
+## The flea market
+
+`FleaMarket` lets players sell each other sealed boxes, cats (opened boxes) and rats, paid in
+cUSDC. The market holds what it sells. A rat is escrowed at once. A box goes to the market in
+a "maybe" transfer whose arrival is proven by a public decryption, so only a seller who really
+held it gets an active listing. Two ways to buy:
+
+- **at the asking price**, which is public: the buyer pays, then a public decryption of the
+  single bit "paid" delivers the item, or refunds the payment if someone else was faster or
+  the listing changed;
+- **with a secret offer**: an encrypted amount of cUSDC escrowed on the listing that only the
+  buyer and the seller can read. The seller may accept it at once, and that price never
+  becomes public.
+
+2.5% of each sale goes to the treasury (`market.feeBps` in the spec, never more than 10%). A
+box is sold in the public state it was listed in: if it is opened or entangled while it waits,
+the sale is refused and a pending payment comes back. Public: the seller of an active listing
+(so selling a box shows you held it), the asking price, the buyer of a sale. Never public:
+balances, offer amounts, the price of a sale by offer, what is inside a sealed box. The flows
+are in [`docs/FLOWS.md`](docs/FLOWS.md#the-flea-market).
+
 ## On Sepolia
 
 The current contracts, deployed on 2026-10-03 (block 11836238) with the security review's
@@ -216,6 +238,11 @@ fixes, decoy transfers and a fresh croquette economy. The deployer
 | `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
 | `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264`](https://sepolia.etherscan.io/address/0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264) |
 | `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
+| `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xb5c799bF626e70DcE6804BDef06199661cDc8665`](https://sepolia.etherscan.io/address/0xb5c799bF626e70DcE6804BDef06199661cDc8665) |
+
+`FleaMarket` was added next to the live collection on 2026-10-05 (block 11849253) with
+`pnpm --filter @dno/contracts-evm exec hardhat deploy --network sepolia --tags Market`, then
+`pnpm --filter @dno/contracts-evm export:sepolia`.
 
 CROQ trades through Uniswap's own V3 contracts on Sepolia: `SwapRouter02`
 `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`, `QuoterV2`

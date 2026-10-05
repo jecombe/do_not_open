@@ -615,6 +615,55 @@ owner, treasury, attester and metadata URL: `Rats` at `0x138f8F6aae87f3762C9d03C
 500,000 CROQ sent to the first `RatPantry` stay locked there (it has no owner), paying those two
 rats. The API forgot them (migration 14), since its `rats` table is keyed by token id alone.
 
+### The flea market (2026-10-05)
+
+`FleaMarket` sells boxes, cats and rats between players, in cUSDC. It is its own contract
+(12,377 bytes deployed): `DoNotOpen` has no room left, and the market needs no privilege in
+it. It is an ordinary holder: it moves a box only as the operator its seller named
+(`setOperator`), and only to itself. It is not deployed on Sepolia yet. Decisions:
+
+- **Escrow, proven by a public decryption.** The market cannot read who holds a box, so
+  `list` pulls it with `confidentialTransferFrom`, which never reverts, and makes the returned
+  "moved" `ebool` publicly decryptable; `finalizeListing` checks the KMS proof and settles the
+  listing `Active` or `Refused`. Escrow is what makes a listing worth anything: while the
+  market holds the box nobody else can list it (a second listing never arrives), and the
+  seller cannot move it out from under a buyer. A rat, with public owners, is escrowed with
+  `transferFrom` and active at once.
+- **Payments are all-or-nothing.** An ERC-7984 pull moves the whole amount or zero, encrypted.
+  A purchase keeps what arrived (`paid`) and publishes only `ok = (paid == price)`; nothing is
+  locked, several purchases may wait on one listing, and the first one settled with "paid"
+  wins. The others settle `Missed` and get back exactly what left their wallet; an `Unpaid`
+  one took nothing and has nothing to send back.
+- **Proofs are checked against stored handles.** `finalizeListing` and `finalizePurchase`
+  build the handle list from storage (`listing.arrived`, `purchase.ok`) and each settles once
+  (`ListingNotPending`, `PurchaseNotPending`), so a proof for another listing or purchase, or
+  the same proof twice, is refused.
+- **ACL on an offer: the buyer and the seller.** `makeOffer` takes an `externalEuint64` and
+  allows the escrowed amount to the market, the buyer and the listing's seller, nobody else.
+  The seller must read an offer to decide on it; grants cannot be revoked (see 2.), so the
+  seller keeps knowing the amount of an offer that lost, which is fine: it was made to them.
+  The fee on a sale by offer is computed encrypted (`div(mul(amount, feeBps), 10000)`) and the
+  treasury learns it only as the cUSDC transfer it receives. `OfferMade` carries no amount and
+  `Sold` reports price 0 with `byOffer` true.
+- **An overflow cap under encryption.** The market cannot revert on an amount it cannot read,
+  so an offer is capped with `FHE.min(amount, MAX_PRICE)` before it is pulled. With
+  `MAX_PRICE` 10^12 (1,000,000 USDC) and `MAX_FEE_BPS` 1,000, `amount * feeBps` stays under
+  2^64, so the encrypted fee never wraps. The asking price is a cleartext, checked by `BadPrice`.
+- **The public state is a snapshot.** A box is sold as listed: the already deployed
+  `DoNotOpenHooks` hashes its status, entangled partner and vet check at listing; `buy` and
+  `acceptOffer` revert `StateChanged` when it moved (an entangled partner opened, say).
+  `finalizePurchase` asks the same question through `try/catch`, so a failing hook can never
+  block a settlement: it settles `Missed` and refunds.
+- **The owner's powers.** `Ownable`: `setFee` (at most `MAX_FEE_BPS`, 10%) and `setTreasury`.
+  No function lets the owner move an escrowed item or cUSDC; items leave only to their buyer
+  or back to their seller. Every function that moves tokens is `nonReentrant`.
+
+What becomes public: the seller of an active listing (selling a box shows you held it), the
+asking price, the buyer of a sale, and for each purchase at the asking price whether the buyer
+could pay. Never public: balances, offer amounts, the price of a sale by offer, what is inside
+a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
+`acceptOffer`, is about 2.41M HCU.
+
 ### Sepolia deployment (2026-10-03): decoys and the security review
 
 Current. Deployed at block 11836238 by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, which
@@ -643,6 +692,11 @@ started fresh. `UsdcRamp` was redeployed because its owner argument still named
 | `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
 | `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264`](https://sepolia.etherscan.io/address/0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264) |
 | `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
+| `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xb5c799bF626e70DcE6804BDef06199661cDc8665`](https://sepolia.etherscan.io/address/0xb5c799bF626e70DcE6804BDef06199661cDc8665) |
+
+`FleaMarket` was added next to this collection on 2026-10-05 at block 11849253, with
+`--tags Market` (see the `contracts-evm` README), by `0x5908…029A`, which is for now also its
+owner and treasury (the collection's `0x6a18…3208` is to take both over). 2.89M gas.
 
 Gas: `DoNotOpenConfig` 914,027, `DoNotOpen` 5,792,149, `DoNotOpenHooks` 357,103,
 `DecryptionCredits` 478,835, `Croq` 532,843, `ConfidentialCroq` 2,455,772, `Pantry` 3,253,237,

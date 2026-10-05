@@ -76,7 +76,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       apiUrl: import.meta.env.VITE_API_URL,
       walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
       relayerProxy: import.meta.env.VITE_RELAYER_PROXY === "true",
-      mock: { ratStore: MOCK_RAT_STORE },
+      mock: { ratStore: MOCK_RAT_STORE, fleaMarket: true },
     }).then((a) => {
       if (!live) return;
       unsubscribe = a.onAccountChange(setAccount);

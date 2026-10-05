@@ -201,6 +201,51 @@ and `maxModelRats` (300), and `mintedBy[address]` against `maxPerWallet` (5). `R
 A seed rat's picture is rendered from its seed on request (`/rats/:id/image.svg`); nothing about
 it is stored.
 
+## Flea market
+
+`FleaMarket` keeps three maps, each with a public counter (`listingCount`, `purchaseCount`,
+`offerCount`) and a view (`listingInfo`, `purchaseInfo`, `offerInfo`; `listings(from, count)`
+pages through listings). Flows in [FLOWS.md](FLOWS.md#the-flea-market).
+
+| Struct | Field | Type | Who can read it | Meaning |
+| --- | --- | --- | --- | --- |
+| `Listing` | `collection` | `Boxes` / `Rats` | public | A box (sealed, or a cat once opened) or a rat |
+| | `status` | `None`, `Pending`, `Active`, `Sold`, `Cancelled`, `Refused` | public | `Pending`: a box on its way, waiting for the proof it arrived; `Refused`: it never did |
+| | `seller`, `price`, `listedAt`, `tokenId` | `address`, `uint64`, `uint64`, `uint256` | public | The asking price is in cUSDC's smallest unit, 1 to `MAX_PRICE` (1,000,000 USDC) |
+| | `snapshot` | `bytes32` | public | `DoNotOpenHooks`' hash of the box's public state at listing (status, partner, vet check); zero for a rat |
+| | `arrived` | `ebool` | publicly decryptable | Boxes only: what the "maybe" transfer to the market moved |
+| `Purchase` | `listingId`, `buyer`, `price` | plain | public | A purchase at the asking price, at the price of that moment |
+| | `status` | `None`, `Pending`, `Done`, `Unpaid`, `Missed` | public | `Unpaid`: nothing was taken; `Missed`: paid, but the listing was sold, cancelled, repriced or changed first, refunded |
+| | `paid` | `euint64` | the market, the buyer | What arrived from the buyer: the price or zero (all-or-nothing pull) |
+| | `ok` | `ebool` | publicly decryptable | `paid == price` |
+| `Offer` | `listingId`, `buyer` | plain | public | Who offered on what |
+| | `status` | `None`, `Open`, `Accepted`, `Withdrawn` | public | |
+| | `amount` | `euint64` | the market, the buyer, the listing's seller | The escrowed cUSDC, capped at `MAX_PRICE` under encryption; zero if the buyer held less |
+
+Plus `treasury` and `feeBps` (public, set by the owner, `feeBps` at most `MAX_FEE_BPS`,
+1,000), and the immutables `boxes`, `rats`, `confidentialUsdc`, `boxHooks`. The escrowed items
+themselves are ordinary holdings: a box's encrypted owner slot names the market while it is
+for sale, and a rat's `ownerOf` shows the market.
+
+Events: `Listed(listingId, collection, tokenId, seller, price)`, `ListingSettled(listingId,
+active)`, `Repriced(listingId, price)`, `ListingCancelled(listingId)`,
+`PurchaseRequested(purchaseId, listingId, buyer, price)`, `PurchaseSettled(purchaseId,
+status)`, `OfferMade(offerId, listingId, buyer)` (no amount), `OfferWithdrawn(offerId)`,
+`OfferAccepted(offerId, listingId)`, `Sold(listingId, seller, buyer, price, byOffer)` (price 0
+for a sale by offer), `FeeSet`, `TreasurySet`. The API does not index any of them yet.
+
+| Fact | The parties | Anyone else | How |
+| --- | --- | --- | --- |
+| Who sells an active listing | Yes | Yes | `Listed`, and an active box listing proves the seller held it |
+| A box listing that was refused | Yes | Yes, that it was refused | `ListingSettled(listingId, false)`: the caller did not hold the box then |
+| The asking price | Yes | Yes | Plain storage and events |
+| Whether a buyer at the asking price could pay | Yes | Yes | `ok` is decrypted in public; `PurchaseSettled` |
+| Who bought | Yes | Yes | `Sold` |
+| An offer's amount | The buyer and the seller | No | User decryption; `OfferMade` carries no amount |
+| The price of a sale by offer, and its fee | The buyer and the seller (the treasury learns its fee as a cUSDC transfer) | No | `Sold` says price 0, `byOffer` true |
+| Balances | Their account | No | cUSDC is ERC-7984 |
+| What is inside a sealed box | No | No | Unchanged by a sale |
+
 ## Release forms
 
 Before playing with a wallet (a visitor without one is asked nothing), a player signs the terms of play with their wallet (EIP-191, off-chain, no

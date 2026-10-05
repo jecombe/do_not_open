@@ -13,6 +13,7 @@ import { DuelShelfView } from "./views/DuelShelfView";
 import { ExchangeView } from "./views/ExchangeView";
 import { onOpenExchange } from "./views/exchangeLink";
 import { LeaderboardView } from "./views/LeaderboardView";
+import { MarketView } from "./market/MarketView";
 import { PairView, type PairIntent } from "./views/PairView";
 import { PantryView } from "./views/PantryView";
 import { RatsView } from "./views/RatsView";
@@ -107,6 +108,7 @@ export function App() {
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "exchange" && <ExchangeView />}
+      {view === "market" && <MarketView onShop={() => setView("shelf")} onInspect={showBox} />}
       {view === "rats" && <RatsView quality={quality} onSniff={() => setView("warehouse")} />}
 
       <Masthead

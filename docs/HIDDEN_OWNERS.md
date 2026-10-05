@@ -130,6 +130,29 @@ The same rule holds in `DoNotOpen`: nobody may read the cUSDC revenue, the owner
 and `withdraw` runs at most once a week. A revenue readable after each transaction would
 give each mint's quantity, and so who bought which ids.
 
+## 5b. The flea market
+
+`FleaMarket` sells boxes between players without asking who holds them. A seller makes the
+market their operator (`setOperator`) and lists; the market pulls the box with
+`confidentialTransferFrom`, which never reverts, and the "arrived" bit is decrypted in public
+(`finalizeListing`). So:
+
+- **An active box listing proves the seller held the box** at that moment, like an opening
+  or an alive check. A refused listing shows that the caller did not hold it, which a
+  stranger's listing attempt can show about themselves only.
+- **While it is for sale, the market holds the box**, through the same encrypted owner slot
+  as anyone. The seller cannot send it, shake it as its holder or claim its earnings; paid-shake
+  earnings keep piling up in the box and go to whoever holds it at `claimEarnings`, the buyer.
+- **A sale names the buyer** (`Sold`), and the market's transfer to them certainly moved the
+  box: the buyer is a proven holder, and their next transfer of it is certain too (see the
+  public proof below). A buyer who wants doubt again sends it on with decoys.
+- **A purchase at the asking price shows whether the buyer could pay** (one bit, decrypted in
+  public), not their balance.
+- **The price of a sale by secret offer is never public**: only the buyer and the seller can
+  decrypt the escrowed amount. What is inside a sealed box stays sealed through a sale.
+
+Rats have public owners anyway; selling one shows nothing new.
+
 ## 6. What still leaks
 
 | Fact | Visible to everyone |
@@ -140,10 +163,11 @@ give each mint's quantity, and so who bought which ids.
 | A transfer attempt | sender and recipient addresses, not whether it moved |
 | A paid shake, a feed, a meal | that the caller did it. The contract treats a non-holder's the same way, but the app only feeds the caller's own boxes, so in practice a meal (`MealServed`) names a box the caller holds |
 | A claim (`Pantry.claim`, `claimEarnings`) | the ids it lists. The app lists whole windows of ten ids, the same windows every time: "maybe one of these ten", as a mint of ten ids shows. Random padding would not do: claims made over months would intersect down to the boxes held |
-| An opening, an alive check, an accepted entanglement, a proven duel posting, a valid duel | that the caller held the box at that moment |
+| An opening, an alive check, an accepted entanglement, a proven duel posting, a valid duel, an active flea market listing | that the caller held the box at that moment |
 | A milestone | which mint crossed it |
 | Operator approvals | that an account made an address its operator |
 | Signing the terms of play (off-chain, filed by the API) | that an address signed the terms: address, version, signature, time. Nothing about holdings |
+| A flea market listing or sale (`FleaMarket`) | the seller of an active listing (so it held the box), the asking price, the buyer of a sale (now a proven holder), and for each purchase at the asking price whether the buyer could pay. Not the amount of a secret offer, nor the price of a sale by offer |
 | An adopted rat (`Rats`, plain ERC-721) | who owns it and every transfer, as for any NFT, and the CROQ its owner claims from the `RatPantry`. A rat says nothing about boxes, but an owner who also sniffs boxes ties those paid shakes to the address that owns the rat (the paid shake already names its caller) |
 | A studio pack (`StudioPacks.buy`, plain USDC) | the payer, the account and the pack. The studio never touches the boxes, so it says nothing about holdings; the API also sees the prompts and pictures of the account that signed in, and sends the prompts to the AI services |
 
@@ -152,7 +176,7 @@ transfers naming it), never know them.
 
 **A public proof follows the box.** Only a holder (or their operator) can send a transfer
 `from` themselves. So once an opening, an alive check, an accepted entanglement, a proven
-duel posting or a valid duel shows that an address held a box, that address's next transfer
+duel posting, a valid duel or a flea market sale shows that an address held a box, that address's next transfer
 of the box certainly moved it: the recipient holds it now, and their next transfer of it is
 certain too. A stranger's decoys add no doubt on that path, since they do not come `from`
 the holder.
@@ -192,6 +216,11 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | `observe` + `finalize`, entangled pair | 828,000 + 411,000 | 1,230,000 |
 | `Pantry.feed` | 1,205,000 | 3,683,000 |
 | `Pantry.claim`, 3 boxes | 1,151,000 to 1,335,000 | 3,125,000 to 5,000,000 |
+| `FleaMarket.list` (box) + `finalizeListing` | 341,000 + 94,000 | 200,000 |
+| `FleaMarket.buy` + `finalizePurchase` (box) | 546,000 + 855,000 | 2,078,000 |
+| `FleaMarket.makeOffer` | 543,000 | 736,000 |
+| `FleaMarket.acceptOffer` (rat) | 677,000 | 2,414,000 |
+| `FleaMarket.list` (rat) | 139,000 | 0 |
 
 Every transaction stays well under the protocol limits (20M HCU, 5M depth); a full 10-box
 `Pantry.claim` measures about 14.8M HCU. The price in dollars is gas × gas price × ETH price:

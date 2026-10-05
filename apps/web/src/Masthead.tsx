@@ -26,6 +26,7 @@ export const VIEWS = [
   { key: "warehouse", label: "nav.boxes" },
   { key: "duels", label: "nav.duels" },
   { key: "pantry", label: "nav.pantry" },
+  { key: "market", label: "nav.market" },
   { key: "exchange", label: "nav.exchange" },
   { key: "leaderboard", label: "nav.leaderboard" },
   { key: "rats", label: "nav.rats" },

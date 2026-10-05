@@ -24,7 +24,7 @@ function seedOf(rat: RatInfo): bigint | null {
 }
 
 /** A small picture of a rat: the API's when it has one, else the generator's drawing of its seed. */
-function thumbOf(rat: RatInfo): string | null {
+export function thumbOf(rat: RatInfo): string | null {
   if (rat.imageUrl) return rat.imageUrl;
   const seed = seedOf(rat);
   return seed === null ? null : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderRatSvg(buildRatSpec(seed)))}`;

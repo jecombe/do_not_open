@@ -61,7 +61,7 @@ export const homeIt: Record<HomeKey, string> = {
   "home.how.s3": "Aprila (o no)",
   "home.how.s3.v": "Aprirla mostra il tuo gatto a tutto il mondo, per sempre. Vivo? Addormentato? Un fantasma? Tutte e due le cose? Non si torna indietro.",
   "home.how.s4": "Gioca con gli altri",
-  "home.how.s4.v": "Metti la tua scatola sullo scaffale dei duelli o accetta quella di un altro, lega due scatole perché si aprano insieme, o infila uno spuntino nella fessura.",
+  "home.how.s4.v": "Metti la tua scatola sullo scaffale dei duelli o accetta quella di un altro, lega due scatole perché si aprano insieme, infila uno spuntino nella fessura, o vendila al mercatino, dove le offerte arrivano in busta sigillata.",
   "home.how.more": "Scopri di più",
   "home.secret.title": "E come fa nessuno a sbirciare?",
   "home.secret.p1": "Il gatto è scritto in un codice segreto di cui nessuno ha la chiave da solo. Il gioco può comunque usarlo, per confrontare due scatole o sceglierti un indizio, senza mai leggerlo ad alta voce.",

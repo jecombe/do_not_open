@@ -1,6 +1,6 @@
 # @dno/contracts-evm
 
-Hardhat project built on the official Zama template. Ten contracts, and a reusable base:
+Hardhat project built on the official Zama template. Eleven contracts, and a reusable base:
 
 - **`DoNotOpenConfig`** — the game's numbers, read from `packages/game-spec/spec.json`
   at deploy (`lib/specParams.ts`), plus the plaintext rule that turns a revealed seed
@@ -49,6 +49,21 @@ Hardhat project built on the official Zama template. Ten contracts, and a reusab
   (`PantryEmpty`), so no earned day is lost; when it runs low a claim pays what is left. No
   owner, immutable numbers. Funded with `fund` (500,000) CROQ by a plain transfer from the
   treasury.
+- **`FleaMarket`** — the flea market: players sell each other sealed boxes, cats (opened
+  boxes) and rats, in cUSDC. The market escrows what it sells: a rat with `transferFrom`,
+  listed at once; a box with `confidentialTransferFrom` (a "maybe" transfer), whose "arrived"
+  bit is made publicly decryptable and proven by `finalizeListing`, so only a seller who held
+  the box gets an active listing. `buy` pulls the public asking price (all-or-nothing) and
+  `finalizePurchase` settles on the decrypted "paid" bit: `Done` (fee to the treasury, the rest
+  to the seller, item delivered), `Unpaid` (nothing was taken) or `Missed` (sold, cancelled,
+  repriced or changed first: refunded in full). `makeOffer` escrows an encrypted amount, capped
+  at `MAX_PRICE` under encryption, readable by the buyer and the seller only; `acceptOffer`
+  sells at once and the price is never public. A box's public state (status, partner, vet
+  check) is snapshotted by `DoNotOpenHooks` at listing; buying and accepting revert
+  `StateChanged` if it moved. Fee from the spec's `market` section (`lib/marketParams.ts`,
+  250 bps), at most `MAX_FEE_BPS` (1,000) hardcoded; `MAX_PRICE` is 1,000,000 USDC. The owner
+  (`Ownable`) can only `setFee` and `setTreasury`, never move an escrowed item. Never writes to
+  `DoNotOpen` beyond the transfers its sellers allowed.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -67,6 +82,7 @@ The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 | Boxes sold         | `euint16`                        | Nobody; milestones only                    |
 | Status, badge, revealed contents, opener | plain storage, events | Everyone                       |
 | Weight, today's meals, stash | `euint64`/`euint8` in the Pantry | Nobody (the holder reads today's meals) |
+| A secret offer on the flea market | `euint64` escrowed in `FleaMarket` | Its buyer and the listing's seller |
 
 ## Cost per function
 
@@ -87,6 +103,11 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `acceptDuel` (first score) + `finalizeDuel` | ~1.12M + ~177k | ~2.77M |
 | `Pantry.feed` | ~1.20M | ~3.68M |
 | `Pantry.claim`, 10 boxes | | ~14.8M |
+| `FleaMarket.list` (box) + `finalizeListing` | ~341k + ~94k | ~200k |
+| `FleaMarket.list` (rat) | ~139k | 0 |
+| `FleaMarket.buy` + `finalizePurchase` (box) | ~546k + ~855k | ~0.71M + ~1.37M |
+| `FleaMarket.makeOffer` | ~543k | ~0.74M |
+| `FleaMarket.acceptOffer` (rat) | ~677k | ~2.41M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
 `Rats` and `RatPantry` have no FHE: `mintSeed` ~248k gas (~163k after the first), `mintModel`
@@ -94,7 +115,8 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 `StudioPacks` has no FHE either: `buy` takes ~115k gas the first time (~63k after), and the
 contract ~641k to deploy (Hardhat).
 
-Deployed size: `DoNotOpen` 24,512 bytes (limit 24,576), `Pantry` about 14,000. To stay under
+Deployed size: `DoNotOpen` 24,512 bytes (limit 24,576), `Pantry` about 14,000, `FleaMarket`
+12,377. To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
@@ -103,7 +125,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 162 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker
+pnpm test                 # 194 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -154,6 +176,16 @@ send (claims revert until then, so no earned day is lost). In a full deploy it a
 with the deployer for `rats.ts`, so one `pnpm deploy:<net>` funds the pantry whoever the owner is. It lists
 no dependency, so `npx hardhat deploy --network sepolia --tags Rats` deploys the rats alone.
 `CROQ_CONTRACT_URI` sets cCROQ's contract URI (default empty).
+`deploy/market.ts` deploys `FleaMarket` with the spec's fee, paying the treasury
+(`STUDIO_TREASURY`, or the collection's owner), owned by `COLLECTION_OWNER` (or the deployer).
+It only looks up `DoNotOpen`, `DoNotOpenHooks` and `Rats`, never redeploys them, and runs after
+every other script (`runAtTheEnd`), so `npx hardhat deploy --network sepolia --tags Market` (or
+`pnpm --filter @dno/contracts-evm exec hardhat deploy --network sepolia --tags Market` from the
+root) adds the market next to a live collection; `pnpm export:sepolia` then writes it under
+`market` in `sepolia.json`. On Sepolia since 2026-10-05: `0xb5c799bF626e70DcE6804BDef06199661cDc8665`. To sell, a player makes the
+market their operator on the boxes (`setOperator(market, until)`) or approves it on the rats
+(`setApprovalForAll`); to buy or offer, their cUSDC operator. The adapter does both when
+needed (a year for the boxes).
 
 `Pantry.fund` calls FHE, so the economy script fails on the bare in-process `hardhat`
 network. Use `pnpm chain` + `pnpm deploy:localhost`, which runs the FHEVM mock.
@@ -188,5 +220,6 @@ Alive checks and entanglements work the same way. Duels have their own `finalize
 twice: once on "the challenger holds A" after `postDuel`, which puts the box on the duel
 shelf for 7 days or voids the duel, and once on the outcome after `acceptDuel`, which
 resolves it, voids it (A no longer held) or puts it back on the shelf (B not held). A
-milestone has `announceMilestone`. The CLI tasks and the app do both steps in one go. A
+milestone has `announceMilestone`. `FleaMarket` follows the same shape with
+`finalizeListing` ("the box arrived") and `finalizePurchase` ("the buyer paid"). The CLI tasks and the app do both steps in one go. A
 request whose second step was never sent stays pending; anyone can finish it.

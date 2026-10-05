@@ -10,7 +10,7 @@ flowchart TB
     scene["scene<br/>three.js builders, effects, sound"]
   end
   subgraph chain["Chain-specific"]
-    evm["contracts-evm<br/>ConfidentialERC721.sol, DoNotOpen.sol, DoNotOpenConfig.sol<br/>Croq.sol, ConfidentialCroq.sol, Pantry.sol"]
+    evm["contracts-evm<br/>ConfidentialERC721.sol, DoNotOpen.sol, DoNotOpenConfig.sol<br/>Croq.sol, ConfidentialCroq.sol, Pantry.sol<br/>Rats.sol, RatPantry.sol, FleaMarket.sol"]
     impl["chain-adapter / evm<br/>ethers + Relayer SDK"]
     sol["chain-adapter / solana<br/>not started"]
   end
@@ -51,6 +51,7 @@ flowchart LR
   json --> ts["generator (TypeScript)<br/>decodeSeed, resolveTraits, rarityScore"]
   json -- "configParamsFromSpec()<br/>+ keccak256 of the file" --> cfg["DoNotOpenConfig (Solidity)<br/>decode(seed)"]
   json -- "pantryParamsFromSpec()<br/>economyFromSpec()" --> pantry["Pantry + Croq (Solidity)<br/>bag, purr, meal split, daily cap,<br/>builds, tolerance, supply split"]
+  json -- "marketParamsFromSpec()" --> market["FleaMarket (Solidity)<br/>fee, checked against<br/>MAX_FEE_BPS, MAX_PRICE"]
   json --> mock["MockAdapter"]
   ts <-- "test: same state, rolls and score<br/>for random seeds" --> cfg
   ts <-- "smoke test: every reveal on Sepolia<br/>matches the generator" --> cfg
@@ -73,6 +74,11 @@ flowchart LR
   pantry -- "confidentialTransferFrom,<br/>confidentialTransfer, wrap" --> ccroq
   croq -- "4M, no USDC" --> pool["Uniswap V3 pool<br/>CROQ/USDC, 1%"]
   locker["LiquidityLocker<br/>holds the position for good,<br/>fees to the treasury"] -- "owns the position" --> pool
+  flea["FleaMarket<br/>listings, purchases,<br/>secret offers, escrow"] -- "confidentialTransferFrom (operator),<br/>confidentialTransfer" --> dno
+  flea -- "snapshot of public state" --> hooks["DoNotOpenHooks<br/>status, partner, vet check"]
+  hooks -- "reads" --> dno
+  flea -- "transferFrom (approved)" --> rats["Rats<br/>ERC-721"]
+  flea -- "pulls and pays" --> cusdc
 ```
 
 `DoNotOpen` knows the Pantry only as a trusted reader: the owner's `setTrustedReader`
@@ -83,6 +89,12 @@ touching one. `ConfidentialERC721` is a reusable base, ERC-165 id `0x87ffe7a2`, 
 cCROQ balance and splits it into encrypted buckets: the reserve, the treasury's
 uncollected share, and the burnt pile. A cat's weight is a counter, not a bucket: the
 croquettes it ate have already been split. See [CROQ.md](CROQ.md).
+
+The `FleaMarket` is an ordinary holder to `DoNotOpen`: it moves a box only as the operator
+its seller named (`setOperator`), and only to itself; then it holds the box in escrow like
+anyone else, through its encrypted owner slot. It reads the box's public state through
+`DoNotOpenHooks` and nothing else, and has no special role in `DoNotOpen` or `Rats`. See
+[FLOWS.md](FLOWS.md#the-flea-market).
 
 ## Data flow at run time
 
@@ -216,6 +228,9 @@ The studio's rats can be adopted on-chain (`Rats`, a plain ERC-721, and `RatPant
 daily CROQ). The API indexes them for "My rats", serves their metadata (`/rats/:id`, a seed
 rat's picture rendered from its seed), and, for an AI rat, stores its picture on Arweave (a free upload, like a cat's), keeps its 3D model, and
 signs the adoption with the attester key.
+
+The API does not index the flea market yet: the EVM adapter reads its listings in pages
+(`listings(from, count)`) and its offers (`offerInfo`) straight from the chain.
 
 It also runs the manual's chatbot, the depot clerk (`POST /v1/chat`): Google's Gemini, on
 its free tier, answers from the whole manual of the player's language, with the key kept on

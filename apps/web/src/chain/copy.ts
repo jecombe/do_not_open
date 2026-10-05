@@ -93,6 +93,10 @@ export function problemOf(error: unknown, ctx: ProblemContext = {}): Problem {
       p.fix = "exchange";
       p.wanted = "cusdc";
       break;
+    case "missed":
+      p.text = t("error.missed");
+      p.hints.push(t("problem.missedHint"));
+      break;
     case "not-yours":
       p.text = t("error.notYours");
       p.hints.push(t("problem.notYoursHint"));

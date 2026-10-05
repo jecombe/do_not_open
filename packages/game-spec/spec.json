@@ -234,6 +234,15 @@
       "rule": "Burnt cCROQ stays locked in the Pantry: no code path moves it. The encrypted running total is readable by nobody, so the circulating supply is unknown even though the total supply is public."
     }
   },
+  "market": {
+    "name": "The flea market",
+    "feeBps": 250,
+    "maxFeeBps": 1000,
+    "maxPriceUsdc": "1000000",
+    "rule": "Players sell each other sealed boxes, cats (opened boxes) and rats, in cUSDC. The market holds what it sells: a rat is escrowed at once; a box goes in a maybe-transfer whose arrival is proven by a public decryption, so only its real holder gets an active listing. Buying at the asking price (public) takes two steps: the payment, then a public decryption of the single bit 'paid', which delivers the item or refunds it. A secret offer escrows an encrypted amount only the buyer and the seller can read; the seller may accept it at once and that price is never public. feeBps of each sale goes to the treasury, never more than maxFeeBps.",
+    "stateRule": "A box is sold in the public state it was listed in (sealed or opened, entangled partner, vet check). If that changes in escrow, buying and accepting are refused and a pending purchase is refunded.",
+    "leaks": "Public: the seller of an active listing (so selling a box shows who held it), the asking price, the buyer of a sale, and whether each buyer at the asking price could pay. Never public: balances, offer amounts, the price of a sale by offer, what is inside a sealed box."
+  },
   "events": {
     "MintPlaced": { "fields": ["firstTokenId", "buyer", "count", "quantity"], "note": "count ids are created; how many the buyer holds is the encrypted quantity, readable by the buyer only." },
     "ConfidentialTransfer": { "fields": ["tokenId", "from", "to", "moved"], "note": "moved is an encrypted bool readable by from and to: a transfer from a non-holder, or a decoy, moves nothing and looks the same." },
@@ -260,6 +269,16 @@
     "Claimed": { "fields": ["caller", "boxes"], "note": "Pantry. The app claims whole windows of ten ids, so the ids named are not the ones held." },
     "WeighInRequested": { "fields": ["tokenId", "weightHandle"], "note": "Pantry." },
     "Weighed": { "fields": ["tokenId", "weight", "build", "sick", "disease"], "note": "Pantry. The weight is public once the box is open." },
-    "Collected": { "fields": ["treasury"], "note": "Pantry. The amount is not emitted." }
+    "Collected": { "fields": ["treasury"], "note": "Pantry. The amount is not emitted." },
+    "Listed": { "fields": ["listingId", "collection", "tokenId", "seller", "price"], "note": "FleaMarket. A box listing is pending until ListingSettled." },
+    "ListingSettled": { "fields": ["listingId", "active"], "note": "FleaMarket. active is false when the box never arrived: the seller did not hold it." },
+    "Repriced": { "fields": ["listingId", "price"], "note": "FleaMarket." },
+    "ListingCancelled": { "fields": ["listingId"], "note": "FleaMarket. The item went back to its seller." },
+    "PurchaseRequested": { "fields": ["purchaseId", "listingId", "buyer", "price"], "note": "FleaMarket. Waits for the public decryption of 'paid'." },
+    "PurchaseSettled": { "fields": ["purchaseId", "status"], "note": "FleaMarket. Done, Unpaid (nothing taken) or Missed (refunded in full)." },
+    "OfferMade": { "fields": ["offerId", "listingId", "buyer"], "note": "FleaMarket. The amount is not emitted: only the buyer and the seller can decrypt it." },
+    "OfferWithdrawn": { "fields": ["offerId"], "note": "FleaMarket." },
+    "OfferAccepted": { "fields": ["offerId", "listingId"], "note": "FleaMarket." },
+    "Sold": { "fields": ["listingId", "seller", "buyer", "price", "byOffer"], "note": "FleaMarket. price is 0 for a sale by secret offer: that price stays encrypted." }
   }
 }

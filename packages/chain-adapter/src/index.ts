@@ -7,7 +7,7 @@ export { duelSettles, duelUnderway, onShelf, shelfBoxes } from "./duels";
 export { CLAIM_WINDOW, claimWindows } from "./claims";
 export { decoyPlan, type Send } from "./decoys";
 export { ratJob } from "./rats";
-export { MockAdapter, mockSeedForToken, mockWeighIn, MOCK_YOU, MOCK_NIGHT_SHIFT, type MockOptions } from "./mock/MockAdapter";
+export { MockAdapter, mockSeedForToken, mockWeighIn, MOCK_YOU, MOCK_NIGHT_SHIFT, MOCK_MARKET, type MockOptions } from "./mock/MockAdapter";
 
 export type ChainMode = "mock" | "sepolia";
 

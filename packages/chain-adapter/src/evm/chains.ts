@@ -19,6 +19,8 @@ export interface Deployment {
   /** The depot's rats (ERC-721) and the pantry that pays them CROQ. Null where none was deployed. */
   rats?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
   ratPantry?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  /** The flea market, where players sell each other boxes, cats and rats. Null where none was deployed. */
+  market?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
 }
 
 export const SEPOLIA: ChainParams = {

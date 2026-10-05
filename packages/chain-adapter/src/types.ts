@@ -251,6 +251,9 @@ export type ChainErrorCode =
   | "unpaid"
   /** The caller did not hold the box. Nothing happened, and nobody else learned it. */
   | "not-yours"
+  /** The flea market sold the item to someone else first, or the listing changed (repriced,
+   *  cancelled, its box opened): the payment came back in full. */
+  | "missed"
   /** The chain refused the transaction. `reason` carries the contract's error name. */
   | "reverted"
   /** The decryption service failed or timed out. */
@@ -513,6 +516,76 @@ export interface RatPantryInfo {
   reserve: bigint;
 }
 
+/** Where an item for sale comes from: the boxes (a sealed box, or a cat once opened) or the rats. */
+export type MarketCollection = "boxes" | "rats";
+
+/**
+ * "pending": a box on its way to the market, waiting for the proof that it arrived. "refused": it
+ * never arrived, the seller did not hold it; nothing happened.
+ */
+export type ListingStatus = "pending" | "active" | "sold" | "cancelled" | "refused";
+
+/** One item on the flea market. */
+export interface Listing {
+  listingId: number;
+  collection: MarketCollection;
+  tokenId: number;
+  /** Public once the listing is active: selling a box shows who held it. */
+  seller: Address;
+  /** The asking price, in cUSDC's smallest unit. Public. */
+  price: bigint;
+  /** Unix seconds. */
+  listedAt: number;
+  status: ListingStatus;
+}
+
+/** The flea market's terms. */
+export interface FleaMarketInfo {
+  /** Where the market lives, and its page in a block explorer if there is one. */
+  address: string;
+  explorerUrl: string | null;
+  /** Share of each sale paid to the treasury, in basis points. */
+  feeBps: number;
+  /** The most an item may be listed or offered for, in cUSDC's smallest unit. */
+  maxPrice: bigint;
+}
+
+export type OfferStatus = "open" | "accepted" | "withdrawn";
+
+/** A secret offer: an encrypted amount of cUSDC escrowed on a listing. */
+export interface MarketOffer {
+  offerId: number;
+  listingId: number;
+  buyer: Address;
+  status: OfferStatus;
+}
+
+export type PurchaseStatus = "pending" | "done" | "unpaid" | "missed";
+
+/** A purchase at the asking price, as it waits for (or got) the proof that it was paid. */
+export interface MarketPurchase {
+  purchaseId: number;
+  listingId: number;
+  buyer: Address;
+  price: bigint;
+  status: PurchaseStatus;
+}
+
+export interface ListingQuery {
+  /** Only listings in this state. All when left out. */
+  status?: ListingStatus;
+  seller?: Address;
+  collection?: MarketCollection;
+}
+
+export interface OfferQuery {
+  listingId?: number;
+  buyer?: Address;
+  /** Offers on listings of this seller. */
+  seller?: Address;
+  status?: OfferStatus;
+}
+
 /** A session with the DO NOT OPEN API, opened by a wallet signature (no transaction). */
 export interface ApiSession {
   account: Address;
@@ -739,6 +812,50 @@ export interface ChainAdapter {
   ratPantry(): Promise<RatPantryInfo | null>;
   /** Collects what the connected account's rats `ids` earned. Returns the CROQ paid. */
   claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint>;
+  /** One rat, whoever holds it (the flea market, while it is for sale). */
+  rat(id: number): Promise<RatInfo>;
+
+  // --- flea market ---
+  // Everything is paid in cUSDC. The asking price is public; a secret offer's amount is
+  // readable by its buyer and the listing's seller only, and so is the price of a sale made by offer.
+  /** The market's terms. Null where no market is deployed. */
+  fleaMarket(): Promise<FleaMarketInfo | null>;
+  /** Listings, newest first. */
+  listings(query?: ListingQuery): Promise<Listing[]>;
+  /**
+   * Puts the connected account's box, cat or rat up for `price` cUSDC. Lets the market move the
+   * item first if it may not yet. A box goes to the market in a "maybe" transfer, then the proof
+   * that it arrived is relayed: throws `not-yours` when the caller did not hold it (nothing
+   * moved, nobody else learned it). Returns the listing, active.
+   */
+  listItem(collection: MarketCollection, tokenId: number, price: bigint, opts?: ActionOptions): Promise<Listing>;
+  /** Relays the arrival proof of a box listing left pending. Anyone may. Throws `not-yours` when it was refused. */
+  finishListing(listingId: number, opts?: ActionOptions): Promise<Listing>;
+  /** Seller only. Purchases placed at the old price are refunded. */
+  repriceListing(listingId: number, price: bigint, opts?: ActionOptions): Promise<void>;
+  /** Seller only: the item comes back. Open offers stay withdrawable by their buyers. */
+  cancelListing(listingId: number, opts?: ActionOptions): Promise<void>;
+  /**
+   * Buys at the asking price, then relays the proof of payment, which delivers the item. Throws
+   * `unpaid` when the cUSDC did not cover it (nothing was taken) and `missed` when someone else
+   * got it first or the listing changed (refunded in full).
+   */
+  buyListing(listingId: number, opts?: PayOptions): Promise<void>;
+  /** Relays the payment proof of a purchase left pending. Anyone may. Throws like `buyListing`. */
+  finishPurchase(purchaseId: number, opts?: ActionOptions): Promise<void>;
+  /** The purchases `account` placed that still wait for their proof. */
+  pendingPurchases(account: Address): Promise<MarketPurchase[]>;
+  /** Escrows a secret offer of `amount` cUSDC, encrypted in this page. Returns the offer's id. */
+  makeOffer(listingId: number, amount: bigint, opts?: PayOptions): Promise<number>;
+  /** The buyer takes an open offer back, in full, whatever became of the listing. */
+  withdrawOffer(offerId: number, opts?: ActionOptions): Promise<void>;
+  /** The seller sells to an offer, at its secret amount. */
+  acceptOffer(offerId: number, opts?: ActionOptions): Promise<void>;
+  /** Offers, newest first. Amounts are not in here: see `offerAmounts`. */
+  offers(query?: OfferQuery): Promise<MarketOffer[]>;
+  /** Decrypts the amounts of offers the connected account made or received, for its eyes only.
+   *  Offers it may not read are left out. */
+  offerAmounts(offerIds: number[], opts?: ActionOptions): Promise<Record<number, bigint>>;
 }
 
 /** "0.002" for 2000000000000000n at 18 decimals. No trailing zeros. */
