@@ -69,6 +69,7 @@ export function App() {
     else url.searchParams.delete("box");
     // Read once at load: past that, the menu decides.
     url.searchParams.delete("view");
+    url.searchParams.delete("board");
     if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
   }, [view, tokenId]);
 
