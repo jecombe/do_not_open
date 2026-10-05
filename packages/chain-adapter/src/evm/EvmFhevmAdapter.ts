@@ -2,9 +2,12 @@ import {
   Contract,
   Interface,
   isError,
+  keccak256,
+  toUtf8Bytes,
   VoidSigner,
   type ContractTransactionReceipt,
   type ContractTransactionResponse,
+  type EventLog,
   type InterfaceAbi,
   type Provider,
   type Signer,
@@ -12,9 +15,11 @@ import {
   type TransactionResponse,
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
+import { studio as studioSpec } from "@dno/game-spec";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import { traitIndexAtOffset } from "../layout";
+import { ratJob } from "../rats";
 import { allowListMessage, duelStandings, type DuelStanding } from "../standings";
 import {
   ChainError,
@@ -57,6 +62,26 @@ import {
   type WalletOption,
   type WeighIn,
   type MarketInfo,
+  type ApiSession,
+  type StudioPack,
+  type StudioUnits,
+  type RatAdoption,
+  type RatInfo,
+  type RatPantryInfo,
+  type RatPrices,
+  type RatRef,
+  type RatSupply,
+  type RatTaken,
+  type FleaMarketInfo,
+  type Listing,
+  type ListingQuery,
+  type ListingStatus,
+  type MarketCollection,
+  type MarketOffer,
+  type MarketPurchase,
+  type OfferQuery,
+  type OfferStatus,
+  type PurchaseStatus,
 } from "../types";
 import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptCache } from "./decryptCache";
 import { gateRefusal, toChainError } from "./errors";
@@ -122,12 +147,24 @@ export interface EvmAdapterOptions {
   /** Where decrypted values are kept by handle, so none is paid for twice. In memory by default. */
   decryptCache?: DecryptCache;
   /**
+   * Where the block of this browser's last transaction is kept, so the site's other pages (the
+   * studio, the game) also wait for the API to index it. In memory by default.
+   */
+  lastTxBlock?: { get(): number; set(block: number): void };
+  /**
    * Decryptions go through the API's relayer proxy, which counts them against a free daily
    * allowance and the wallet's credits. Needs `indexer`: the allowance is read from it.
    */
   metered?: boolean;
   /** The DecryptionCredits contract. Without it, credits cannot be bought. */
   credits?: Deployed;
+  /** The StudioPacks contract. Without it, the studio's packs cannot be bought. */
+  studio?: Deployed;
+  /** The Rats ERC-721 and the RatPantry. Without them, no rat can be adopted. */
+  rats?: Deployed & { deployBlock?: number | null };
+  ratPantry?: Deployed;
+  /** The FleaMarket, where players sell each other boxes, cats and rats. Without it, nothing can be listed. */
+  market?: Deployed & { deployBlock?: number | null };
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -186,6 +223,23 @@ function withSlippage(quoted: bigint, opts?: SwapOptions): bigint {
   return (quoted * BigInt(10_000 - bps)) / 10_000n;
 }
 const ZERO_HANDLE = "0x" + "0".repeat(64);
+
+/** The FleaMarket's enums, in their contract order. */
+const COLLECTIONS: MarketCollection[] = ["boxes", "rats"];
+const LISTING_STATUS: (ListingStatus | "none")[] = ["none", "pending", "active", "sold", "cancelled", "refused"];
+const PURCHASE_STATUS: (PurchaseStatus | "none")[] = ["none", "pending", "done", "unpaid", "missed"];
+const OFFER_STATUS: (OfferStatus | "none")[] = ["none", "open", "accepted", "withdrawn"];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const listingFrom = (listingId: number, l: Record<string, any>): Listing => ({
+  listingId,
+  collection: COLLECTIONS[Number(l.collection)]!,
+  tokenId: Number(l.tokenId),
+  seller: String(l.seller),
+  price: BigInt(l.price),
+  listedAt: Number(l.listedAt),
+  status: LISTING_STATUS[Number(l.status)] as ListingStatus,
+});
 
 /** On-chain values; "opening" and "pending" come from the account's own requests. */
 const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
@@ -300,16 +354,19 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private minBlock = 0;
   /** Credits bought by this account that the API may not have indexed yet, by block. */
   private boughtCredits: { account: Address; block: number; credits: number }[] = [];
+  /** Studio packs bought by this account that the API may not have indexed yet, by block. */
+  private boughtPacks: { account: Address; block: number; sketches: number; models: number }[] = [];
   private readonly decryptCache: DecryptCache;
 
   constructor(private readonly opts: EvmAdapterOptions) {
     this.decryptCache = opts.decryptCache ?? new MemoryDecryptCache();
+    this.minBlock = opts.lastTxBlock?.get() ?? 0;
     this.iface = new Interface(opts.abi);
     this.contract = new Contract(opts.address, this.iface, opts.readProvider);
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -783,7 +840,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * cUSDC operator, and the balance must cover it. With `pay: "usdc"`, the amount is shielded
    * from plain USDC first, which is public.
    */
-  private async prepay(opts: PayOptions | undefined, amount: bigint): Promise<void> {
+  private async prepay(opts: PayOptions | undefined, amount: bigint, operator: string = this.opts.address): Promise<void> {
     const { cUsdc } = await this.payment();
     const account = await this.signer().getAddress();
     if (opts?.pay === "usdc") await this.shieldUsdc(amount, opts);
@@ -791,7 +848,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       const held = await this.confidentialUsdcBalance(opts);
       if (held < amount) throw new ChainError("unpaid", "The cUSDC balance does not cover the price. Shield some USDC first.", undefined, { held, needed: amount });
     }
-    await this.ensureOperator(cUsdc, account, this.opts.address, opts);
+    await this.ensureOperator(cUsdc, account, operator, opts);
   }
 
   /** Sends a request and proves it at once. Throws `not-yours` when it was refused. */
@@ -1074,6 +1131,445 @@ export class EvmFhevmAdapter implements ChainAdapter {
     // At most today's price: a change meanwhile reverts instead of charging more.
     const receipt = await this.send(opts, () => this.writer(deployed).buy!(account, credits, price));
     this.boughtCredits.push({ account: account as Address, block: receipt.blockNumber, credits });
+  }
+
+  // --- studio ---
+
+  async studioPacks(): Promise<StudioPack[] | null> {
+    const deployed = this.opts.studio;
+    if (!deployed) return null;
+    const contract = this.at(deployed);
+    const packs = await Promise.all(
+      studioSpec.packs.map(async (p) => {
+        const [price, sketches, models] = await this.reading(contract.packs!(p.id));
+        return { id: p.id, key: p.key, name: p.name, price: BigInt(price), sketches: Number(sketches), models: Number(models) };
+      }),
+    );
+    // A pack the owner withdrew has a zero price.
+    return packs.filter((p) => p.price > 0n);
+  }
+
+  async buyStudioPack(packId: number, opts?: ActionOptions): Promise<void> {
+    const deployed = this.opts.studio;
+    if (!deployed) throw new ChainError("unknown", "The studio's packs cannot be bought on this network.");
+    const pack = (await this.studioPacks())?.find((p) => p.id === packId);
+    if (!pack) throw new ChainError("unknown", "This pack is not for sale.");
+    const { usdc } = await this.payment();
+    const account = await this.signer().getAddress();
+    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
+    if (held < pack.price) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: pack.price });
+    await this.ensureAllowance(usdc, deployed.address, account, pack.price, opts);
+    // At most the price just read: a change meanwhile reverts instead of charging more.
+    const receipt = await this.send(opts, () => this.writer(deployed).buy!(account, packId, pack.price));
+    this.boughtPacks.push({ account: account as Address, block: receipt.blockNumber, sketches: pack.sketches, models: pack.models });
+    this.opts.indexer?.nudge();
+  }
+
+  studioPending(block: number | null): StudioUnits {
+    if (block !== null) this.boughtPacks = this.boughtPacks.filter((b) => b.block > block);
+    const mine = this.boughtPacks.filter((b) => sameAddress(b.account, this.address_));
+    return { sketches: mine.reduce((n, b) => n + b.sketches, 0), models: mine.reduce((n, b) => n + b.models, 0) };
+  }
+
+  async apiSession(): Promise<ApiSession | null> {
+    const ix = this.opts.indexer;
+    if (!ix) return null;
+    const signer = this.signer();
+    const account = (await signer.getAddress()) as Address;
+    const { message } = await ix.signInMessage(account);
+    let signature: string;
+    try {
+      signature = await signer.signMessage(message);
+    } catch (error) {
+      throw this.toChainError(error);
+    }
+    const { token, expiresAt } = await ix.signIn(account, signature);
+    return { account, token, expiresAt };
+  }
+
+  // --- rats ---
+
+  async ratPrices(): Promise<RatPrices | null> {
+    const deployed = this.opts.rats;
+    if (!deployed) return null;
+    const rats = this.at(deployed);
+    const [seed, model] = await Promise.all([this.reading(rats.seedPrice!()), this.reading(rats.modelPrice!())]);
+    return { seed: BigInt(seed), model: BigInt(model) };
+  }
+
+  async ratSupply(account?: Address | null): Promise<RatSupply | null> {
+    const deployed = this.opts.rats;
+    if (!deployed) return null;
+    const rats = this.at(deployed);
+    const [seedMinted, maxSeed, modelMinted, maxModel, perWallet, mintedBy] = await Promise.all([
+      this.reading(rats.seedMinted!()),
+      this.reading(rats.maxSeedRats!()),
+      this.reading(rats.modelMinted!()),
+      this.reading(rats.maxModelRats!()),
+      this.reading(rats.maxPerWallet!()),
+      account ? this.reading(rats.mintedBy!(account)) : Promise.resolve(null),
+    ]);
+    return {
+      seed: { minted: Number(seedMinted), max: Number(maxSeed) },
+      model: { minted: Number(modelMinted), max: Number(maxModel) },
+      perWallet: Number(perWallet),
+      mintedBy: mintedBy === null ? null : Number(mintedBy),
+    };
+  }
+
+  /** Refuses before any approval or transaction what the contract would refuse. */
+  private async checkRatLeft(kind: "seed" | "model", account: Address): Promise<void> {
+    const s = (await this.ratSupply(account))!;
+    if (s[kind].minted >= s[kind].max) throw new ChainError("reverted", "Every rat of this kind has been adopted.", "SoldOut");
+    if ((s.mintedBy ?? 0) >= s.perWallet) throw new ChainError("reverted", "This wallet adopted all the rats it may.", "WalletLimit");
+  }
+
+  async ratTaken(ref: RatRef): Promise<RatTaken | null> {
+    const deployed = this.opts.rats;
+    if (!deployed) return null;
+    const rats = this.at(deployed);
+    // The contract keys an AI rat by the keccak256 of its job's UUID, as the API signs it.
+    const id = Number(
+      "seed" in ref
+        ? await this.reading(rats.tokenOfSeed!(ref.seed))
+        : await this.reading(rats.tokenOfJob!(/^0x[0-9a-fA-F]{64}$/.test(ref.job) ? ref.job : keccak256(toUtf8Bytes(ref.job)))),
+    );
+    if (id === 0) return null;
+    return { id, owner: (await this.reading(rats.ownerOf!(id))) as Address };
+  }
+
+  async mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number> {
+    const deployed = this.rats();
+    if (seed < 0n || seed >= 2n ** 64n) throw new ChainError("unknown", "Not a rat seed.");
+    const price = (await this.ratPrices())!.seed;
+    await this.checkRatLeft("seed", (await this.signer().getAddress()) as Address);
+    const account = await this.payRats(price, opts);
+    // At most the price just read: a change meanwhile reverts instead of charging more.
+    const receipt = await this.send(opts, () => this.writer(deployed).mintSeed!(seed, price));
+    return this.mintedRat(receipt, account);
+  }
+
+  async mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number> {
+    const deployed = this.rats();
+    const price = (await this.ratPrices())!.model;
+    await this.checkRatLeft("model", (await this.signer().getAddress()) as Address);
+    const account = await this.payRats(price, opts);
+    const receipt = await this.send(opts, () => this.writer(deployed).mintModel!(ratJob(adoption.job), adoption.uri, adoption.deadline, adoption.signature, price));
+    return this.mintedRat(receipt, account);
+  }
+
+  async ratsOf(account: Address): Promise<RatInfo[]> {
+    if (!this.opts.rats) return [];
+    return this.indexed((ix) => ix.rats(account), () => this.ratsFromChain(account));
+  }
+
+  async ratClaimable(ids: number[]): Promise<bigint[]> {
+    const deployed = this.opts.ratPantry;
+    if (!deployed || ids.length === 0) return ids.map(() => 0n);
+    const pantry = this.at(deployed);
+    return Promise.all(ids.map(async (id) => BigInt(await this.reading(pantry.claimable!(id)))));
+  }
+
+  async ratPantry(): Promise<RatPantryInfo | null> {
+    const deployed = this.opts.ratPantry;
+    if (!deployed) return null;
+    const pantry = this.at(deployed);
+    const [perDay, maxDays, reserve] = await Promise.all([this.reading(pantry.perDay!()), this.reading(pantry.maxDays!()), this.reading(pantry.reserve!())]);
+    return { perDay: Number(perDay), maxDays: Number(maxDays), reserve: BigInt(reserve) };
+  }
+
+  async claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint> {
+    const deployed = this.opts.ratPantry;
+    if (!deployed) throw new ChainError("unknown", "The rats' pantry is not deployed on this network.");
+    if (ids.length === 0) throw new ChainError("unknown", "Pick at least one rat.");
+    const receipt = await this.send(opts, () => this.writer(deployed).claim!(ids));
+    const iface = new Interface(deployed.abi);
+    for (const log of receipt.logs) {
+      if (!sameAddress(log.address, deployed.address)) continue;
+      const parsed = iface.parseLog(log);
+      if (parsed?.name === "RatsFed") return BigInt(parsed.args.amount);
+    }
+    return 0n;
+  }
+
+  private rats(): Deployed & { deployBlock?: number | null } {
+    const deployed = this.opts.rats;
+    if (!deployed) throw new ChainError("unknown", "Rats cannot be adopted on this network yet.");
+    return deployed;
+  }
+
+  /** Checks the wallet holds `price` USDC and lets the Rats contract take it. */
+  private async payRats(price: bigint, opts?: ActionOptions): Promise<Address> {
+    const { usdc } = await this.payment();
+    const account = (await this.signer().getAddress()) as Address;
+    const held: bigint = await this.reading(this.at(usdc).balanceOf!(account));
+    if (held < price) throw new ChainError("insufficient-usdc", "This wallet does not hold enough USDC.", undefined, { held, needed: price });
+    await this.ensureAllowance(usdc, this.rats().address, account, price, opts);
+    return account;
+  }
+
+  private mintedRat(receipt: ContractTransactionReceipt, account: Address): number {
+    const deployed = this.rats();
+    const iface = new Interface(deployed.abi);
+    for (const log of receipt.logs) {
+      if (!sameAddress(log.address, deployed.address)) continue;
+      const parsed = iface.parseLog(log);
+      if (parsed?.name === "RatMinted" && sameAddress(parsed.args.minter, account)) return Number(parsed.args.tokenId);
+    }
+    throw new ChainError("unknown", "The rat was minted, but its id could not be read from the receipt.");
+  }
+
+  /** The account's rats from the chain: every rat ever sent to it that it still owns. */
+  private async ratsFromChain(account: Address): Promise<RatInfo[]> {
+    const deployed = this.rats();
+    const rats = this.at(deployed);
+    const latest = await this.opts.readProvider.getBlockNumber();
+    const ids = new Set<number>();
+    for (let lo = deployed.deployBlock ?? 0; lo <= latest; lo += LOG_SPAN) {
+      const hi = Math.min(latest, lo + LOG_SPAN - 1);
+      for (const log of await this.reading(rats.queryFilter(rats.filters.Transfer!(null, account), lo, hi))) {
+        ids.add(Number((log as EventLog).args.tokenId));
+      }
+    }
+    const out: RatInfo[] = [];
+    for (const id of [...ids].sort((a, b) => b - a)) {
+      const owner: string = await this.reading(rats.ownerOf!(id));
+      if (!sameAddress(owner, account)) continue;
+      const r = await this.reading(rats.ratOf!(id));
+      const kind = Number(r.kind) === 0 ? "seed" : "model";
+      out.push({
+        id,
+        kind,
+        seed: kind === "seed" ? BigInt(r.ref).toString() : null,
+        job: kind === "model" ? String(r.ref) : null,
+        uri: null,
+        owner: account,
+        minter: account,
+        mintedBlock: null,
+        imageUrl: null,
+        modelUrl: null,
+        sniffs: 0,
+      });
+    }
+    return out;
+  }
+
+  async rat(id: number): Promise<RatInfo> {
+    const rats = this.at(this.rats());
+    const [owner, r] = await Promise.all([this.reading(rats.ownerOf!(id)), this.reading(rats.ratOf!(id))]);
+    const kind = Number(r.kind) === 0 ? "seed" : "model";
+    return {
+      id,
+      kind,
+      seed: kind === "seed" ? BigInt(r.ref).toString() : null,
+      job: kind === "model" ? String(r.ref) : null,
+      uri: null,
+      owner: String(owner),
+      minter: String(owner),
+      mintedBlock: null,
+      imageUrl: null,
+      modelUrl: null,
+      sniffs: 0,
+    };
+  }
+
+  // --- flea market ---
+
+  private market(): Deployed & { deployBlock?: number | null } {
+    const deployed = this.opts.market;
+    if (!deployed) throw new ChainError("unknown", "The flea market is not open on this network yet.");
+    return deployed;
+  }
+
+  async fleaMarket(): Promise<FleaMarketInfo | null> {
+    const deployed = this.opts.market;
+    if (!deployed) return null;
+    const m = this.at(deployed);
+    const [feeBps, maxPrice] = await Promise.all([this.reading(m.feeBps!()), this.reading(m.MAX_PRICE!())]);
+    return { address: deployed.address, explorerUrl: this.link(deployed.address), feeBps: Number(feeBps), maxPrice: BigInt(maxPrice) };
+  }
+
+  async listings(query: ListingQuery = {}): Promise<Listing[]> {
+    if (!this.opts.market) return [];
+    const m = this.at(this.opts.market);
+    const count = Number(await this.reading(m.listingCount!()));
+    const pages: Promise<Listing[]>[] = [];
+    for (let from = 0; from < count; from += READ_CHUNK) {
+      pages.push(this.reading(m.listings!(from, READ_CHUNK)).then((page: unknown[]) => page.map((l, i) => listingFrom(from + i, l as Record<string, unknown>))));
+    }
+    return (await Promise.all(pages))
+      .flat()
+      .filter((l) => (!query.status || l.status === query.status) && (!query.seller || sameAddress(l.seller, query.seller)) && (!query.collection || l.collection === query.collection))
+      .reverse();
+  }
+
+  private async listing(listingId: number): Promise<Listing> {
+    return listingFrom(listingId, await this.reading(this.at(this.market()).listingInfo!(listingId)));
+  }
+
+  async listItem(collection: MarketCollection, tokenId: number, price: bigint, opts?: ActionOptions): Promise<Listing> {
+    const market = this.market();
+    const account = (await this.signer().getAddress()) as Address;
+    if (collection === "boxes") {
+      // The market pulls the box with `confidentialTransferFrom`, as the holder's operator.
+      if (!(await this.reading(this.contract.isOperator!(account, market.address)))) {
+        const until = Math.floor(Date.now() / 1000) + OPERATOR_DAYS * 86_400;
+        await this.send(opts, (c) => c.setOperator!(market.address, until));
+      }
+    } else {
+      const rats = this.rats();
+      if (!(await this.reading(this.at(rats).isApprovedForAll!(account, market.address)))) {
+        await this.send(opts, () => this.writer(rats).setApprovalForAll!(market.address, true));
+      }
+    }
+    const receipt = await this.send(opts, () => this.writer(market).list!(COLLECTIONS.indexOf(collection), tokenId, price));
+    const listingId = Number(this.events(receipt, "Listed", market.address)[0]!.listingId);
+    if (collection === "rats") return this.listing(listingId);
+    return this.afterSent("resumable", () => this.finishListing(listingId, opts));
+  }
+
+  async finishListing(listingId: number, opts?: ActionOptions): Promise<Listing> {
+    const market = this.market();
+    const info = await this.reading(this.at(market).listingInfo!(listingId));
+    if (LISTING_STATUS[Number(info.status)] === "pending") {
+      const decrypted = await this.publicDecrypt([String(info.arrived)], opts);
+      opts?.onStep?.("proving");
+      await this.send(opts, () => this.writer(market).finalizeListing!(listingId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    }
+    const listing = await this.listing(listingId);
+    await this.refreshHoldings();
+    if (listing.status === "refused") throw new ChainError("not-yours", "This box is not yours: it never reached the market. Nothing happened.");
+    return listing;
+  }
+
+  async repriceListing(listingId: number, price: bigint, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).reprice!(listingId, price));
+  }
+
+  async cancelListing(listingId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).cancelListing!(listingId));
+    await this.refreshHoldings();
+  }
+
+  async buyListing(listingId: number, opts?: PayOptions): Promise<void> {
+    const market = this.market();
+    const listing = await this.listing(listingId);
+    await this.prepay(opts, listing.price, market.address);
+    const receipt = await this.send(opts, () => this.writer(market).buy!(listingId));
+    const purchaseId = Number(this.events(receipt, "PurchaseRequested", market.address)[0]!.purchaseId);
+    await this.afterSent("resumable", () => this.finishPurchase(purchaseId, opts));
+  }
+
+  async finishPurchase(purchaseId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    const m = this.at(market);
+    const info = await this.reading(m.purchaseInfo!(purchaseId));
+    if (PURCHASE_STATUS[Number(info.status)] === "pending") {
+      const decrypted = await this.publicDecrypt([String(info.ok)], opts);
+      opts?.onStep?.("proving");
+      await this.send(opts, () => this.writer(market).finalizePurchase!(purchaseId, decrypted.abiEncodedClearValues, decrypted.decryptionProof), false);
+    }
+    const status = PURCHASE_STATUS[Number((await this.reading(m.purchaseInfo!(purchaseId))).status)];
+    await this.refreshHoldings();
+    if (status === "unpaid") throw new ChainError("unpaid", "The cUSDC did not cover the price. Nothing was taken.");
+    if (status === "missed") throw new ChainError("missed", "Someone got it first, or the listing changed. Your payment came back in full.");
+  }
+
+  async pendingPurchases(account: Address): Promise<MarketPurchase[]> {
+    const deployed = this.opts.market;
+    if (!deployed) return [];
+    const m = this.at(deployed);
+    const latest = await this.opts.readProvider.getBlockNumber();
+    const ids: number[] = [];
+    for (let lo = deployed.deployBlock ?? 0; lo <= latest; lo += LOG_SPAN) {
+      const hi = Math.min(latest, lo + LOG_SPAN - 1);
+      for (const log of await this.reading(m.queryFilter(m.filters.PurchaseRequested!(null, null, account), lo, hi))) {
+        ids.push(Number((log as EventLog).args.purchaseId));
+      }
+    }
+    const out: MarketPurchase[] = [];
+    for (const purchaseId of ids.reverse()) {
+      const p = await this.reading(m.purchaseInfo!(purchaseId));
+      const status = PURCHASE_STATUS[Number(p.status)] as PurchaseStatus;
+      if (status === "pending") out.push({ purchaseId, listingId: Number(p.listingId), buyer: String(p.buyer), price: BigInt(p.price), status });
+    }
+    return out;
+  }
+
+  async makeOffer(listingId: number, amount: bigint, opts?: PayOptions): Promise<number> {
+    const market = this.market();
+    const account = (await this.signer().getAddress()) as Address;
+    await this.ensureDecryptions(0, 1);
+    await this.prepay(opts, amount, market.address);
+    const input = await this.encrypt64(market.address, account, amount, opts);
+    const receipt = await this.send(opts, () => this.writer(market).makeOffer!(listingId, input.handles[0], input.inputProof));
+    return Number(this.events(receipt, "OfferMade", market.address)[0]!.offerId);
+  }
+
+  async withdrawOffer(offerId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).withdrawOffer!(offerId));
+  }
+
+  async acceptOffer(offerId: number, opts?: ActionOptions): Promise<void> {
+    const market = this.market();
+    await this.send(opts, () => this.writer(market).acceptOffer!(offerId));
+    await this.refreshHoldings();
+  }
+
+  private async allOffers(): Promise<(MarketOffer & { handle: string })[]> {
+    if (!this.opts.market) return [];
+    const m = this.at(this.opts.market);
+    const count = Number(await this.reading(m.offerCount!()));
+    const out: (MarketOffer & { handle: string })[] = [];
+    for (let from = 0; from < count; from += READ_CHUNK) {
+      const ids = Array.from({ length: Math.min(READ_CHUNK, count - from) }, (_, i) => from + i);
+      const rows = await Promise.all(ids.map((id) => this.reading(m.offerInfo!(id))));
+      rows.forEach((o, i) =>
+        out.push({ offerId: ids[i]!, listingId: Number(o.listingId), buyer: String(o.buyer), status: OFFER_STATUS[Number(o.status)] as OfferStatus, handle: String(o.amount) }),
+      );
+    }
+    return out;
+  }
+
+  async offers(query: OfferQuery = {}): Promise<MarketOffer[]> {
+    const all = await this.allOffers();
+    const sellers = query.seller ? new Map((await this.listings()).map((l) => [l.listingId, l.seller])) : null;
+    return all
+      .filter(
+        (o) =>
+          (query.listingId === undefined || o.listingId === query.listingId) &&
+          (!query.buyer || sameAddress(o.buyer, query.buyer)) &&
+          (!sellers || sameAddress(sellers.get(o.listingId), query.seller)) &&
+          (!query.status || o.status === query.status),
+      )
+      .map(({ offerId, listingId, buyer, status }) => ({ offerId, listingId, buyer, status }))
+      .reverse();
+  }
+
+  async offerAmounts(offerIds: number[], opts?: ActionOptions): Promise<Record<number, bigint>> {
+    const market = this.market();
+    const account = (await this.signer().getAddress()) as Address;
+    const m = this.at(market);
+    const rows = await Promise.all(offerIds.map(async (offerId) => ({ offerId, o: await this.reading(m.offerInfo!(offerId)) })));
+    const readable: { offerId: number; handle: string }[] = [];
+    for (const { offerId, o } of rows) {
+      const mine = sameAddress(String(o.buyer), account) || sameAddress((await this.listing(Number(o.listingId))).seller, account);
+      if (mine && String(o.amount) !== ZERO_HANDLE) readable.push({ offerId, handle: String(o.amount) });
+    }
+    const out: Record<number, bigint> = {};
+    if (!readable.length) return out;
+    const clear = await this.userDecrypt(readable.map((r) => r.handle), market.address, opts);
+    for (const r of readable) out[r.offerId] = BigInt(clear[r.handle] as bigint);
+    return out;
+  }
+
+  /** A box left or reached the account through the market: its receipts tell it, read them again. */
+  private async refreshHoldings(): Promise<void> {
+    const account = this.opts.wallet.current() ? await this.signer().getAddress() : null;
+    if (account && this.holdings?.account === account) await this.boxesOf(account).catch(() => undefined);
   }
 
   private async creditPrice(): Promise<bigint | null> {
@@ -1465,7 +1961,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private async permitContracts(): Promise<string[]> {
     const e = this.opts.economy;
     const { cUsdc } = await this.payment();
-    return [this.opts.address, cUsdc.address, ...(e ? [e.cCroq.address, e.pantry.address] : [])];
+    return [this.opts.address, cUsdc.address, ...(e ? [e.cCroq.address, e.pantry.address] : []), ...(this.opts.market ? [this.opts.market.address] : [])];
   }
 
   // --- internals ---
@@ -1503,6 +1999,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       opts?.onTx?.({ ...sent, status: "confirmed", block: receipt.blockNumber, gasUsed: receipt.gasUsed });
       // Until the API has indexed this block, reads go to the chain; and it is told to look now.
       this.minBlock = Math.max(this.minBlock, receipt.blockNumber);
+      this.opts.lastTxBlock?.set(this.minBlock);
       this.opts.indexer?.nudge();
       await this.caughtUp(receipt.blockNumber);
       return receipt;
@@ -1560,7 +2057,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       return await run();
     } catch (error) {
       const e = this.toChainError(error);
-      throw e.code === "not-yours" || e.code === "unpaid" ? e : e.with({ [how]: true });
+      throw e.code === "not-yours" || e.code === "unpaid" || e.code === "missed" ? e : e.with({ [how]: true });
     }
   }
 

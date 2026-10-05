@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import pg from "pg";
 import pino from "pino";
 import { AskManual, type AnswerModel } from "./application/askManual";
@@ -9,6 +9,8 @@ import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
 import type { ArchiveStore } from "./application/ports/archive";
 import { Metadata } from "./application/metadata";
+import type { StudioStore } from "./application/ports/studio";
+import { Studio } from "./application/studio";
 import { Queries } from "./application/queries";
 import { RelayerGate } from "./application/relayerGate";
 import { FinalitySweep } from "./application/finalitySweep";
@@ -37,6 +39,13 @@ import { DiscordNetwork } from "./infrastructure/social/DiscordNetwork";
 import { RehearsalNetwork } from "./infrastructure/social/RehearsalNetwork";
 import { eip712PermitVerifier } from "./infrastructure/relayer/permit";
 import { TurboStorage } from "./infrastructure/archive/TurboStorage";
+import { Metrics } from "./infrastructure/http/metrics";
+import { FalStudio } from "./infrastructure/studio/FalStudio";
+import { Rats } from "./application/rats";
+import type { RatStore } from "./application/ports/rats";
+import { JpegShrinker } from "./infrastructure/rats/JpegShrinker";
+import { EthersAdoptionSigner } from "./infrastructure/rats/EthersAdoptionSigner";
+import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 
 /** The composition root: the one place that knows every concrete class. */
 async function main() {
@@ -44,7 +53,7 @@ async function main() {
   const log = pino({ level: config.LOG_LEVEL });
 
   let pool: pg.Pool | null = null;
-  let store: Store & PostStore & ArchiveStore;
+  let store: Store & PostStore & ArchiveStore & StudioStore & RatStore;
   if (config.DATABASE_URL) {
     pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE });
     await migrate(pool, log);
@@ -126,6 +135,74 @@ async function main() {
         }
       : undefined;
 
+  // The studio: cats drawn by fal.ai out of packs bought on-chain. It needs the key and the
+  // StudioPacks contract; without either it reports itself disabled.
+  const fal = new FalStudio({ apiKey: config.FAL_KEY ?? "", imageModel: config.STUDIO_IMAGE_MODEL, modelModel: config.STUDIO_3D_MODEL, cutoutModel: config.STUDIO_CUTOUT_MODEL === "none" ? null : config.STUDIO_CUTOUT_MODEL, timeoutMs: config.STUDIO_TIMEOUT_MS });
+  const studio = new Studio(
+    store,
+    fal,
+    fal,
+    clock,
+    {
+      enabled: !!config.FAL_KEY && !!deployment.studio,
+      paused: config.STUDIO_PAUSED,
+      dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
+      allowlist: config.STUDIO_ALLOWLIST?.length ? new Set(config.STUDIO_ALLOWLIST.map((a) => a.toLowerCase())) : null,
+      staleAfter: Math.ceil(config.STUDIO_TIMEOUT_MS / 1000) * 2,
+      refundsPerDay: config.STUDIO_REFUNDS_PER_DAY,
+      newId: randomUUID,
+    },
+    log,
+  );
+  await studio.recover();
+  if (!deployment.studio) log.info("no StudioPacks contract on this network: the studio is off");
+  else if (!config.FAL_KEY) log.info("FAL_KEY is not set: the studio is off");
+
+  // The depot's rats: read back from the index; an AI rat adopted once its picture is on Arweave
+  // (a free upload, like the cats') and its model kept here, with the attester's signature.
+  const publicUrl = config.PUBLIC_URL.replace(/\/$/, "");
+  const rats = new Rats(
+    store,
+    store,
+    config.ARWEAVE_KEY
+      ? new TurboStorage({ privateKey: config.ARWEAVE_KEY, uploadUrl: config.ARWEAVE_UPLOAD_URL, maxBytes: config.ARWEAVE_FREE_BYTES, timeoutMs: config.ARWEAVE_TIMEOUT_MS, appName: "DoNotOpen" })
+      : null,
+    new ServiceFileFetcher(),
+    new JpegShrinker(),
+    config.RATS_ATTESTER_KEY && deployment.rats ? new EthersAdoptionSigner(config.RATS_ATTESTER_KEY, { chainId: deployment.chainId, verifyingContract: deployment.rats.address }) : null,
+    clock,
+    {
+      publicUrl,
+      gateway: config.ARWEAVE_GATEWAY.replace(/\/$/, ""),
+      studioUrl: config.SITE_URL ? `${config.SITE_URL.replace(/\/$/, "")}/studio` : null,
+      ticketTtl: 30 * 60,
+      maxImageBytes: 10 * 1024 * 1024,
+      // Tripo's first meshes, before its face limit, weighed just over 40 MB: they stay adoptable.
+      maxModelBytes: 50 * 1024 * 1024,
+    },
+    log,
+  );
+  if (!deployment.rats) log.info("no Rats contract on this network: no rat to show, none to adopt");
+  else if (!config.RATS_ATTESTER_KEY) log.info("RATS_ATTESTER_KEY is not set: only seed rats can be adopted");
+
+  const metrics = new Metrics({
+    store,
+    archive: store,
+    posts: store,
+    indexer,
+    rpcStatus: () => rpc.status(),
+    chat,
+    studio: {
+      store,
+      spentToday: () => studio.spentToday(),
+      spentTotal: () => studio.spentTotal(),
+      dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
+      open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
+    },
+    rats: store,
+    info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
+  });
+
   const server =
     config.ROLE === "indexer"
       ? null
@@ -137,12 +214,15 @@ async function main() {
           allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
+          studio: { studio, publicUrl: config.PUBLIC_URL },
+          rats,
           chat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
           discord,
           herald: config.HERALD_DISCORD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
           indexer,
           rpcStatus: () => rpc.status(),
+          metrics,
           corsOrigins: config.CORS_ORIGINS,
           rateLimitPerMinute: config.RATE_LIMIT_PER_MINUTE,
           logger: { level: config.LOG_LEVEL },

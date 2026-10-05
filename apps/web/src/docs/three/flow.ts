@@ -111,6 +111,8 @@ export class FlowScene {
   private step: FlowStep | null = null;
   private progress = 1;
   private used = new Set<StationId>(["you", "contract", "copro", "kms"]);
+  /** Whose dock this is: the market's flows name its contract and the seller. */
+  private cast: string | undefined;
 
   constructor(host: HTMLElement) {
     const stage = (this.stage = new Stage(host));
@@ -163,13 +165,15 @@ export class FlowScene {
 
   /** Rewrites the station labels, after a language change. */
   relabel(): void {
-    for (const s of this.stations.values()) s.label.textContent = stationName(s.id);
+    for (const s of this.stations.values()) s.label.textContent = stationName(s.id, this.cast);
     if (this.step) this.packetLabel.textContent = packetName(this.step.kind);
   }
 
-  /** Which parties this flow involves. The others step back into the dark. */
-  setParties(ids: StationId[]): void {
+  /** Which parties this flow involves, and whose they are. The others step back into the dark. */
+  setParties(ids: StationId[], cast?: string): void {
     this.used = new Set(ids);
+    this.cast = cast;
+    this.relabel();
     this.stage.wake();
   }
 

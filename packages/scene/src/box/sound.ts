@@ -230,6 +230,29 @@ export class ShakeSound {
     osc.stop(now + 0.07);
   }
 
+  /** A rat's squeak: two or three quick high chirps, a little different each time. */
+  squeak(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const chirps = 2 + Math.floor(Math.random() * 2);
+    const pitch = 2400 + Math.random() * 900;
+    for (let i = 0; i < chirps; i++) {
+      const at = ctx.currentTime + i * 0.09;
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(pitch * 0.8, at);
+      osc.frequency.exponentialRampToValueAtTime(pitch * (1.15 + Math.random() * 0.2), at + 0.03);
+      osc.frequency.exponentialRampToValueAtTime(pitch * 0.7, at + 0.07);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.09, at + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.075);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(at);
+      osc.stop(at + 0.08);
+    }
+  }
+
   /** The brass bell on a shop counter, struck `times` times: "ding", or an impatient "ding-ding". */
   bell(times = 1): void {
     const ctx = this.ctx;

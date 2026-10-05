@@ -1,4 +1,4 @@
-import { spec, TRAIT_KEYS } from "@dno/game-spec";
+import { spec, studio as studioSpec, TRAIT_KEYS } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
@@ -36,6 +36,24 @@ import {
   type TxRecord,
   type WalletOption,
   type WeighIn,
+  type ApiSession,
+  type StudioPack,
+  type StudioUnits,
+  type RatAdoption,
+  type RatInfo,
+  type RatPantryInfo,
+  type RatPrices,
+  type RatRef,
+  type RatSupply,
+  type RatTaken,
+  type FleaMarketInfo,
+  type Listing,
+  type ListingQuery,
+  type MarketCollection,
+  type MarketOffer,
+  type MarketPurchase,
+  type OfferQuery,
+  type OfferStatus,
 } from "../types";
 import { MockPool } from "./pool";
 import {
@@ -51,6 +69,8 @@ import {
 /** The account the mock signs you in as, and the one that holds the other boxes. */
 export const MOCK_YOU: Address = "0x00000000000000000000000000000000000d0c4a";
 export const MOCK_NIGHT_SHIFT: Address = "0x000000000000000000000000000000000000beef";
+/** The flea market's address in the demo: it holds what it sells. */
+export const MOCK_MARKET: Address = "0x0000000000000000000000000000000000f1ea00";
 
 /** One USDC, in its smallest unit. */
 const USD = 1_000_000n;
@@ -118,7 +138,52 @@ export interface MockOptions {
   dayMs?: number;
   /** Stands in for the clock. Tests move it by hand. */
   now?: () => number;
+  /**
+   * Opens the flea market with the night shift's stalls: a sealed box, a cat and two rats for
+   * sale. The night shift also makes a secret offer on whatever you list, and takes any offer
+   * of yours worth at least 70% of its asking price. Off by default, so counts stay as above.
+   */
+  fleaMarket?: boolean;
+  /** Keeps the demo's rats between pages (the studio and the game are two pages). In memory without it. */
+  ratStore?: { load(): string | null; save(value: string): void };
 }
+
+interface MockRat {
+  id: number;
+  kind: "seed" | "model";
+  seed: string | null;
+  job: string | null;
+  uri: string | null;
+  owner: Address;
+  minter: Address;
+  /** Mock milliseconds. */
+  mintedAt: number;
+  paidUntil: number | null;
+  mintedBlock: number;
+  modelUrl: string | null;
+}
+
+interface MockListing extends Listing {
+  /** The item's public state when it was listed: a box sold in another state is refused. */
+  snapshot: string;
+}
+
+interface MockOffer extends MarketOffer {
+  /** Encrypted on a real chain, readable by the buyer and the seller only. */
+  amount: bigint;
+}
+
+const MARKET = spec.market;
+const MARKET_MAX_PRICE = usdcUnitsOf(MARKET.maxPriceUsdc);
+/** The night shift takes an offer worth this share of the asking price, in basis points. */
+const NIGHT_SHIFT_TAKES_BPS = 7_000n;
+
+function usdcUnitsOf(amount: string): bigint {
+  return BigInt(Math.round(Number(amount) * 1e6));
+}
+
+/** "1.5" USDC in its smallest unit. */
+const usdcUnits = (amount: string): bigint => BigInt(Math.round(Number(amount) * 1e6));
 
 /** Stand-in seed. On a real chain this value is encrypted and nobody can compute it. */
 export function mockSeedForToken(tokenId: number): bigint {
@@ -159,7 +224,7 @@ export class MockAdapter implements ChainAdapter {
   private readonly boxes: MockBox[] = [];
   private readonly duelList: MockDuel[] = [];
   /** Box id to its duel on the shelf. */
-  private readonly listings = new Map<number, number>();
+  private readonly duelListings = new Map<number, number>();
   /** Every duel that had an outcome, for the rankings. */
   private readonly settled: SettledDuel[] = [];
   /** Allow list claims: best points and when, by address. */
@@ -170,6 +235,14 @@ export class MockAdapter implements ChainAdapter {
   private milestonesReached = 0;
   /** Plain USDC, public. */
   private readonly usdc = new Map<Address, bigint>();
+  /** Studio units bought per account, in the demo. */
+  private readonly studioBought = new Map<Address, StudioUnits>();
+  /** The depot's rats, by token id - 1. Owners are public, as on chain. */
+  private readonly ratList: MockRat[] = [];
+  /** Plain CROQ left in the rats' pantry. */
+  private ratReserve = BigInt(studioSpec.rats.croquettes.fund);
+  /** Paid shakes by account: the API's "boxes sniffed". */
+  private readonly sniffs = new Map<Address, number>();
   /** cUSDC: encrypted on a real chain, readable by its holder only. */
   private readonly cUsdc = new Map<Address, bigint>();
   /** Bumped on every cUSDC move, standing in for the fresh ciphertext a real transfer makes. */
@@ -192,7 +265,16 @@ export class MockAdapter implements ChainAdapter {
   private readonly pool = new MockPool(allocation("liquidity"), POOL_START, POOL_RANGE, POOL_FEE_BPS);
   private purrs = 0;
 
+  private readonly ratStore: MockOptions["ratStore"];
+  private readonly marketListings: MockListing[] = [];
+  private readonly marketOffers: MockOffer[] = [];
+  private readonly nightShiftTrades: boolean;
+  /** The approvals a real wallet gives the market once: the mock asks once too. */
+  private marketMayMove = new Set<string>();
+
   constructor(opts: MockOptions = {}) {
+    this.ratStore = opts.ratStore;
+    this.loadRats();
     this.latency = opts.latency ?? 450;
     this.dayMs = opts.dayMs ?? 60_000;
     this.now = opts.now ?? Date.now;
@@ -208,6 +290,8 @@ export class MockAdapter implements ChainAdapter {
       this.duelList.push({ tokenA: id, tokenB: null, reserved: false, challenger: MOCK_NIGHT_SHIFT, accepter: null, status: "posted", openUntil: null });
       this.openListing(this.duelList.length - 1);
     }
+    this.nightShiftTrades = !!opts.fleaMarket;
+    if (opts.fleaMarket) this.openNightShiftStalls();
   }
 
   // --- account ---
@@ -484,6 +568,8 @@ export class MockAdapter implements ChainAdapter {
     }
     // An empty id has no holder to claim the share: the contract books the whole fee as revenue.
     if (box.owner !== null) box.earnings += (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
+    this.sniffs.set(me, (this.sniffs.get(me) ?? 0) + 1);
+    this.saveRats();
     return this.decryptShake(tokenId, opts);
   }
 
@@ -525,21 +611,7 @@ export class MockAdapter implements ChainAdapter {
     await this.publish(opts, "finalize");
     if (!ok) throw notYours();
     const ids = box.partner === null ? [tokenId] : [tokenId, box.partner];
-    for (const id of ids) {
-      const b = this.get(id);
-      if (b.status !== "sealed") continue;
-      const cat = buildCatSpec({ seed: mockSeedForToken(id), affection: b.affection });
-      b.revealed = {
-        seed: mockSeedForToken(id),
-        state: stateDef(cat.state).id,
-        traits: TRAIT_KEYS.map((k) => cat.traits[k].roll),
-        score: cat.rarity.score,
-        affection: b.affection,
-        golden: cat.rarity.golden,
-      };
-      b.status = "revealed";
-      b.openedBy = me;
-    }
+    for (const id of ids) this.reveal(id, me);
     return ids.map((id) => this.info(id));
   }
 
@@ -650,21 +722,21 @@ export class MockAdapter implements ChainAdapter {
   /** A proven posting goes on the shelf, replacing the box's earlier one. */
   private openListing(duelId: number): void {
     const duel = this.duel(duelId);
-    const previous = this.listings.get(duel.tokenA);
+    const previous = this.duelListings.get(duel.tokenA);
     // An accepted duel runs to its end: the new posting gives way to it.
     if (previous !== undefined && this.duel(previous).status === "pending") {
       duel.status = "cancelled";
       return;
     }
     if (previous !== undefined) this.duel(previous).status = "cancelled";
-    this.listings.set(duel.tokenA, duelId);
+    this.duelListings.set(duel.tokenA, duelId);
     Object.assign(duel, { status: "open", openUntil: Math.floor(this.seconds()) + DUEL_LIFETIME });
   }
 
   private close(duelId: number, status: "resolved" | "cancelled" | "void"): void {
     const duel = this.duel(duelId);
     duel.status = status;
-    if (this.listings.get(duel.tokenA) === duelId) this.listings.delete(duel.tokenA);
+    if (this.duelListings.get(duel.tokenA) === duelId) this.duelListings.delete(duel.tokenA);
   }
 
   private seconds(): number {
@@ -929,6 +1001,440 @@ export class MockAdapter implements ChainAdapter {
     throw new ChainError("unknown", "The demo has no decryption credits: its decryptions are free.");
   }
 
+  // --- studio ---
+
+  /** The packs of studio.json, as the contract would sell them. */
+  async studioPacks(): Promise<StudioPack[] | null> {
+    return studioSpec.packs.map((p) => ({ id: p.id, key: p.key, name: p.name, price: BigInt(Math.round(Number(p.priceUsdc) * 1e6)), sketches: p.sketches, models: p.models }));
+  }
+
+  async buyStudioPack(packId: number, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    const pack = (await this.studioPacks())!.find((p) => p.id === packId);
+    if (!pack) throw new ChainError("unknown", "This pack is not for sale.");
+    const held = this.usdc.get(me) ?? 0n;
+    if (held < pack.price) throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held, needed: pack.price });
+    await this.send(opts, "buy");
+    this.credit(this.usdc, me, -pack.price);
+    const had = this.studioBought.get(me) ?? { sketches: 0, models: 0 };
+    this.studioBought.set(me, { sketches: had.sketches + pack.sketches, models: had.models + pack.models });
+  }
+
+  /** No API counts anything in the demo: every unit bought is "pending", for the page to count. */
+  studioPending(_block: number | null): StudioUnits {
+    const me = this.account();
+    return (me && this.studioBought.get(me)) || { sketches: 0, models: 0 };
+  }
+
+  /** The demo has no API to sign in to. */
+  async apiSession(): Promise<ApiSession | null> {
+    return null;
+  }
+
+  // --- rats ---
+
+  async ratPrices(): Promise<RatPrices | null> {
+    return { seed: usdcUnits(studioSpec.rats.mint.seedPriceUsdc), model: usdcUnits(studioSpec.rats.mint.modelPriceUsdc) };
+  }
+
+  async ratSupply(account?: Address | null): Promise<RatSupply | null> {
+    const m = studioSpec.rats.mint;
+    const count = (kind: "seed" | "model") => this.ratList.filter((r) => r.kind === kind).length;
+    return {
+      seed: { minted: count("seed"), max: m.maxSeedRats },
+      model: { minted: count("model"), max: m.maxModelRats },
+      perWallet: m.maxPerWallet,
+      mintedBy: account ? this.ratList.filter((r) => r.minter === account).length : null,
+    };
+  }
+
+  async ratTaken(ref: RatRef): Promise<RatTaken | null> {
+    const r = this.ratList.find((r) => ("seed" in ref ? r.kind === "seed" && r.seed === ref.seed.toString() : r.kind === "model" && r.job === ref.job));
+    return r ? { id: r.id, owner: r.owner } : null;
+  }
+
+  async mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number> {
+    if (seed < 0n || seed >= 2n ** 64n) throw new ChainError("unknown", "Not a rat seed.");
+    if (await this.ratTaken({ seed })) throw revert("AlreadyAdopted");
+    return this.adoptRat({ kind: "seed", seed: seed.toString(), job: null, uri: null }, (await this.ratPrices())!.seed, opts);
+  }
+
+  async mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number> {
+    if (adoption.deadline * 1000 < this.now()) throw revert("Expired");
+    if (await this.ratTaken({ job: adoption.job })) throw revert("AlreadyAdopted");
+    return this.adoptRat({ kind: "model", seed: null, job: adoption.job, uri: adoption.uri }, (await this.ratPrices())!.model, opts);
+  }
+
+  async ratsOf(account: Address): Promise<RatInfo[]> {
+    // A rat for sale is held by the market, as on chain.
+    return this.ratList
+      .filter((r) => r.owner === account && !this.escrowed("rats", r.id))
+      .map((r) => this.ratInfo(r))
+      .reverse();
+  }
+
+  async ratClaimable(ids: number[]): Promise<bigint[]> {
+    return ids.map((id) => this.ratDue(this.rat_(id)).days * BigInt(studioSpec.rats.croquettes.perDay));
+  }
+
+  async ratPantry(): Promise<RatPantryInfo | null> {
+    const c = studioSpec.rats.croquettes;
+    return { perDay: c.perDay, maxDays: c.maxDays, reserve: this.ratReserve };
+  }
+
+  async claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint> {
+    const me = this.signer();
+    if (ids.length === 0) throw revert("NoRats");
+    const dues = ids.map((id) => {
+      const r = this.rat_(id);
+      if (r.owner !== me || this.escrowed("rats", id)) throw revert("NotYourRat");
+      return { r, due: this.ratDue(r) };
+    });
+    await this.send(opts, "claim");
+    let owed = 0n;
+    for (const { r, due } of dues) {
+      if (due.days === 0n) continue;
+      r.paidUntil = due.until;
+      owed += due.days * BigInt(studioSpec.rats.croquettes.perDay);
+    }
+    const paid = owed < this.ratReserve ? owed : this.ratReserve;
+    this.ratReserve -= paid;
+    this.credit(this.plain, me, paid);
+    this.saveRats();
+    return paid;
+  }
+
+  private loadRats(): void {
+    try {
+      const saved = JSON.parse(this.ratStore?.load() ?? "null") as { rats: MockRat[]; reserve: string; sniffs: [Address, number][] } | null;
+      if (!saved) return;
+      this.ratList.push(...saved.rats);
+      this.ratReserve = BigInt(saved.reserve);
+      for (const [who, n] of saved.sniffs) this.sniffs.set(who, n);
+    } catch {
+      // A record from another version: start again.
+    }
+  }
+
+  private saveRats(): void {
+    this.ratStore?.save(JSON.stringify({ rats: this.ratList, reserve: this.ratReserve.toString(), sniffs: [...this.sniffs] }));
+  }
+
+  /** Stands in for an AI rat's model in the demo: the studio's own demo shows the procedural rat. */
+  private async adoptRat(fields: Pick<MockRat, "kind" | "seed" | "job" | "uri">, price: bigint, opts?: ActionOptions): Promise<number> {
+    const me = this.signer();
+    const supply = (await this.ratSupply(me))!;
+    if (supply[fields.kind].minted >= supply[fields.kind].max) throw revert("SoldOut");
+    if (supply.mintedBy! >= supply.perWallet) throw revert("WalletLimit");
+    const held = this.usdc.get(me) ?? 0n;
+    if (held < price) throw new ChainError("insufficient-usdc", "Not enough USDC.", undefined, { held, needed: price });
+    await this.send(opts, fields.kind === "seed" ? "mintSeed" : "mintModel");
+    this.credit(this.usdc, me, -price);
+    const id = this.ratList.length + 1;
+    this.ratList.push({ id, ...fields, owner: me, minter: me, mintedAt: this.now(), paidUntil: null, mintedBlock: this.block, modelUrl: null });
+    this.saveRats();
+    return id;
+  }
+
+  private rat_(id: number): MockRat {
+    const r = this.ratList[id - 1];
+    if (!r) throw revert("ERC721NonexistentToken");
+    return r;
+  }
+
+  /** Whole mock days owed, at most maxDays, and the time they pay up to: the RatPantry's rule. */
+  private ratDue(r: MockRat): { days: bigint; until: number } {
+    const from = r.paidUntil ?? r.mintedAt;
+    let days = Math.floor(Math.max(0, this.now() - from) / this.dayMs);
+    const max = studioSpec.rats.croquettes.maxDays;
+    if (days > max) return { days: BigInt(max), until: this.now() };
+    return { days: BigInt(days), until: from + days * this.dayMs };
+  }
+
+  async rat(id: number): Promise<RatInfo> {
+    const r = this.rat_(id);
+    return this.ratInfo(r);
+  }
+
+  // --- flea market ---
+
+  async fleaMarket(): Promise<FleaMarketInfo | null> {
+    return { address: MOCK_MARKET, explorerUrl: null, feeBps: MARKET.feeBps, maxPrice: MARKET_MAX_PRICE };
+  }
+
+  async listings(query: ListingQuery = {}): Promise<Listing[]> {
+    return this.marketListings
+      .filter((l) => (!query.status || l.status === query.status) && (!query.seller || sameAddress(l.seller, query.seller)) && (!query.collection || l.collection === query.collection))
+      .map(publicListing)
+      .reverse();
+  }
+
+  async listItem(collection: MarketCollection, tokenId: number, price: bigint, opts?: ActionOptions): Promise<Listing> {
+    const me = this.signer();
+    checkPrice(price);
+    if (collection === "rats") {
+      const r = this.rat_(tokenId);
+      if (r.owner !== me || this.escrowed("rats", tokenId)) throw revert("ERC721IncorrectOwner");
+      await this.marketApproval("rats", opts);
+      await this.send(opts, "list");
+      const listing = this.newListing("rats", tokenId, me, price, "active");
+      this.nightShiftBids(listing);
+      return publicListing(listing);
+    }
+    const box = this.get(tokenId);
+    await this.marketApproval("boxes", opts);
+    await this.send(opts, "list");
+    // A "maybe" transfer: only the holder's box moves, and the proof says which.
+    const arrived = box.owner === me;
+    const listing = this.newListing("boxes", tokenId, me, price, "pending");
+    if (arrived) box.owner = MOCK_MARKET;
+    await this.publish(opts, "finalizeListing");
+    listing.status = arrived ? "active" : "refused";
+    if (!arrived) throw notYours();
+    this.nightShiftBids(listing);
+    return publicListing(listing);
+  }
+
+  /** Mock listings never wait for a proof. */
+  async finishListing(listingId: number): Promise<Listing> {
+    const l = this.listing(listingId);
+    if (l.status === "refused") throw notYours();
+    return publicListing(l);
+  }
+
+  async repriceListing(listingId: number, price: bigint, opts?: ActionOptions): Promise<void> {
+    const l = this.activeListing(listingId);
+    if (!sameAddress(l.seller, this.signer())) throw revert("NotSeller");
+    checkPrice(price);
+    await this.send(opts, "reprice");
+    l.price = price;
+  }
+
+  async cancelListing(listingId: number, opts?: ActionOptions): Promise<void> {
+    const l = this.activeListing(listingId);
+    const me = this.signer();
+    if (!sameAddress(l.seller, me)) throw revert("NotSeller");
+    await this.send(opts, "cancelListing");
+    l.status = "cancelled";
+    this.deliver(l, me);
+  }
+
+  async buyListing(listingId: number, opts?: PayOptions): Promise<void> {
+    const me = this.signer();
+    const l = this.activeListing(listingId);
+    if (sameAddress(l.seller, me)) throw revert("OwnListing");
+    if (this.snapshotOf(l) !== l.snapshot) throw revert("StateChanged");
+    await this.prepay(opts, l.price);
+    await this.send(opts, "buy");
+    const paid = this.pull(me, l.price);
+    await this.publish(opts, "finalizePurchase");
+    if (!paid) throw new ChainError("unpaid", "The cUSDC did not cover the price. Nothing was taken.");
+    this.sell(l, me, l.price);
+  }
+
+  /** Mock purchases never wait for a proof. */
+  async finishPurchase(): Promise<void> {}
+
+  async pendingPurchases(): Promise<MarketPurchase[]> {
+    return [];
+  }
+
+  async makeOffer(listingId: number, amount: bigint, opts?: PayOptions): Promise<number> {
+    const me = this.signer();
+    const l = this.activeListing(listingId);
+    if (sameAddress(l.seller, me)) throw revert("OwnListing");
+    if (amount <= 0n) throw revert("BadPrice");
+    await this.prepay(opts, amount);
+    opts?.onStep?.("encrypting");
+    await this.wait(0.6);
+    await this.send(opts, "makeOffer");
+    const wanted = amount < MARKET_MAX_PRICE ? amount : MARKET_MAX_PRICE;
+    const escrowed = this.pull(me, wanted) ? wanted : 0n;
+    const offer: MockOffer = { offerId: this.marketOffers.length, listingId, buyer: me, status: "open", amount: escrowed };
+    this.marketOffers.push(offer);
+    // The night shift reads your offer (it is the seller: it may) and takes a fair one.
+    if (this.nightShiftTrades && sameAddress(l.seller, MOCK_NIGHT_SHIFT) && escrowed * BPS >= l.price * NIGHT_SHIFT_TAKES_BPS) {
+      await this.wait(1);
+      this.accept(offer, l);
+    }
+    return offer.offerId;
+  }
+
+  async withdrawOffer(offerId: number, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    const o = this.openOffer(offerId);
+    if (!sameAddress(o.buyer, me)) throw revert("NotBuyer");
+    await this.send(opts, "withdrawOffer");
+    o.status = "withdrawn";
+    this.credit(this.cUsdc, me, o.amount);
+  }
+
+  async acceptOffer(offerId: number, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    const o = this.openOffer(offerId);
+    const l = this.activeListing(o.listingId);
+    if (!sameAddress(l.seller, me)) throw revert("NotSeller");
+    if (this.snapshotOf(l) !== l.snapshot) throw revert("StateChanged");
+    await this.send(opts, "acceptOffer");
+    this.accept(o, l);
+  }
+
+  async offers(query: OfferQuery = {}): Promise<MarketOffer[]> {
+    return this.marketOffers
+      .filter(
+        (o) =>
+          (query.listingId === undefined || o.listingId === query.listingId) &&
+          (!query.buyer || sameAddress(o.buyer, query.buyer)) &&
+          (!query.seller || sameAddress(this.listing(o.listingId).seller, query.seller)) &&
+          (!query.status || o.status === query.status),
+      )
+      .map(({ offerId, listingId, buyer, status }) => ({ offerId, listingId, buyer, status }))
+      .reverse();
+  }
+
+  async offerAmounts(offerIds: number[], opts?: ActionOptions): Promise<Record<number, bigint>> {
+    const me = this.signer();
+    const out: Record<number, bigint> = {};
+    const readable = offerIds.map((id) => this.marketOffers[id]).filter((o): o is MockOffer => !!o && (sameAddress(o.buyer, me) || sameAddress(this.listing(o.listingId).seller, me)));
+    if (!readable.length) return out;
+    await this.decrypting(opts);
+    for (const o of readable) out[o.offerId] = o.amount;
+    return out;
+  }
+
+  /** The night shift's stalls: a sealed box, a cat, and two rats. */
+  private openNightShiftStalls(): void {
+    const sealedBox = this.boxes.push(this.newBox(MOCK_NIGHT_SHIFT)) - 1;
+    const catBox = this.boxes.push(this.newBox(MOCK_NIGHT_SHIFT)) - 1;
+    this.sold += 2;
+    this.reveal(catBox, MOCK_NIGHT_SHIFT);
+    for (const [tokenId, price] of [
+      [sealedBox, 12n * USD],
+      [catBox, 30n * USD],
+    ] as const) {
+      this.get(tokenId).owner = MOCK_MARKET;
+      this.newListing("boxes", tokenId, MOCK_NIGHT_SHIFT, price, "active");
+    }
+    // Their rats are kept with yours between pages: only made once.
+    const theirRats = this.ratList.filter((r) => r.owner === MOCK_NIGHT_SHIFT);
+    for (const [i, seed] of [0x5eed_0001n, 0x5eed_0002n].entries()) {
+      let r = theirRats[i];
+      if (!r) {
+        r = { id: this.ratList.length + 1, kind: "seed", seed: seed.toString(), job: null, uri: null, owner: MOCK_NIGHT_SHIFT, minter: MOCK_NIGHT_SHIFT, mintedAt: this.now(), paidUntil: null, mintedBlock: this.block, modelUrl: null };
+        this.ratList.push(r);
+      }
+      this.newListing("rats", r.id, MOCK_NIGHT_SHIFT, BigInt(3 + i * 2) * USD, "active");
+    }
+    this.saveRats();
+    this.credit(this.cUsdc, MOCK_NIGHT_SHIFT, 10_000n * USD);
+  }
+
+  /** The night shift makes a secret offer on what you list, below the asking price. */
+  private nightShiftBids(listing: MockListing): void {
+    if (!this.nightShiftTrades || sameAddress(listing.seller, MOCK_NIGHT_SHIFT)) return;
+    const share = 7_500n + BigInt(Math.floor(mulberry32(listing.listingId * 7919 + 13)() * 2_000));
+    const amount = (listing.price * share) / BPS;
+    if (amount === 0n || !this.pull(MOCK_NIGHT_SHIFT, amount)) return;
+    this.marketOffers.push({ offerId: this.marketOffers.length, listingId: listing.listingId, buyer: MOCK_NIGHT_SHIFT, status: "open", amount });
+  }
+
+  private newListing(collection: MarketCollection, tokenId: number, seller: Address, price: bigint, status: MockListing["status"]): MockListing {
+    const listing: MockListing = { listingId: this.marketListings.length, collection, tokenId, seller, price, listedAt: this.seconds(), status, snapshot: "" };
+    listing.snapshot = this.snapshotOf(listing);
+    this.marketListings.push(listing);
+    return listing;
+  }
+
+  /** What the DoNotOpenHooks snapshot covers: status, partner, vet check. Rats have none. */
+  private snapshotOf(l: Pick<Listing, "collection" | "tokenId">): string {
+    if (l.collection === "rats") return "";
+    const b = this.get(l.tokenId);
+    return `${b.status}:${b.partner}:${b.aliveCheck}`;
+  }
+
+  private escrowed(collection: MarketCollection, tokenId: number): boolean {
+    return this.marketListings.some((l) => l.collection === collection && l.tokenId === tokenId && (l.status === "active" || l.status === "pending"));
+  }
+
+  /** The approvals a wallet gives the market: operator on the boxes, approval on the rats. */
+  private async marketApproval(collection: MarketCollection, opts?: ActionOptions): Promise<void> {
+    const key = `${this.signer()}:${collection}`;
+    if (this.marketMayMove.has(key)) return;
+    await this.send(opts, collection === "boxes" ? "setOperator" : "setApprovalForAll");
+    this.marketMayMove.add(key);
+  }
+
+  private listing(listingId: number): MockListing {
+    const l = this.marketListings[listingId];
+    if (!l) throw revert("ListingNotActive");
+    return l;
+  }
+
+  private activeListing(listingId: number): MockListing {
+    const l = this.listing(listingId);
+    if (l.status !== "active") throw revert("ListingNotActive");
+    return l;
+  }
+
+  private openOffer(offerId: number): MockOffer {
+    const o = this.marketOffers[offerId];
+    if (!o || o.status !== "open") throw revert("OfferNotOpen");
+    return o;
+  }
+
+  private accept(o: MockOffer, l: MockListing): void {
+    o.status = "accepted" satisfies OfferStatus;
+    this.sell(l, o.buyer, o.amount);
+  }
+
+  /** Pays the seller, less the fee, and hands the item over. */
+  private sell(l: MockListing, buyer: Address, price: bigint): void {
+    l.status = "sold";
+    const fee = (price * BigInt(MARKET.feeBps)) / BPS;
+    this.credit(this.cUsdc, l.seller, price - fee);
+    this.deliver(l, buyer);
+  }
+
+  private deliver(l: MockListing, to: Address): void {
+    if (l.collection === "boxes") this.get(l.tokenId).owner = to;
+    else {
+      this.rat_(l.tokenId).owner = to;
+      this.saveRats();
+    }
+  }
+
+  private ratInfo(r: MockRat): RatInfo {
+    return {
+      id: r.id,
+      kind: r.kind,
+      seed: r.seed,
+      job: r.job,
+      uri: r.uri,
+      owner: this.escrowed("rats", r.id) ? MOCK_MARKET : r.owner,
+      minter: r.minter,
+      mintedBlock: r.mintedBlock,
+      imageUrl: null,
+      modelUrl: r.modelUrl,
+      sniffs: this.sniffs.get(r.owner) ?? 0,
+    };
+  }
+
+  private reveal(id: number, by: Address): void {
+    const b = this.get(id);
+    if (b.status !== "sealed") return;
+    const cat = buildCatSpec({ seed: mockSeedForToken(id), affection: b.affection });
+    b.revealed = {
+      seed: mockSeedForToken(id),
+      state: stateDef(cat.state).id,
+      traits: TRAIT_KEYS.map((k) => cat.traits[k].roll),
+      score: cat.rarity.score,
+      affection: b.affection,
+      golden: cat.rarity.golden,
+    };
+    b.status = "revealed";
+    b.openedBy = by;
+  }
+
   // --- internals ---
 
   private newBox(owner: Address | null): MockBox {
@@ -1090,3 +1596,11 @@ export class MockAdapter implements ChainAdapter {
 
 const revert = (reason: string) => new ChainError("reverted", `The depot refused: ${reason}.`, reason);
 const notYours = () => new ChainError("not-yours", "This box is not yours. Nothing happened.");
+
+function checkPrice(price: bigint): void {
+  if (price <= 0n || price > MARKET_MAX_PRICE) throw revert("BadPrice");
+}
+
+function publicListing({ snapshot: _snapshot, ...listing }: MockListing): Listing {
+  return { ...listing };
+}

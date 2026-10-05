@@ -2,6 +2,7 @@ import { TRAIT_KEYS } from "@dno/game-spec";
 import { decodeSeed } from "@dno/generator";
 import * as B from "../domain/box";
 import * as D from "../domain/duel";
+import * as R from "../domain/rats";
 import { actorsOf, type EventOf, type ProtocolEvent, type Snapshots } from "../domain/events";
 import { settle } from "../domain/request";
 import type { Build, Disease, RevealedContents } from "../domain/types";
@@ -86,6 +87,16 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
       return tx.savePublished(e.handles, e.caller, e.block);
     case "CreditsBought":
       return tx.addCredits(e.account, e.credits);
+    case "PackBought":
+      return tx.addStudioUnits(e.account, e.sketches, e.models, e.paid);
+    case "RatTransfer":
+      return tx.saveRat(R.transferred(await tx.rat(e.ratId), e));
+    case "RatMinted":
+      return tx.saveRat(R.minted(await tx.rat(e.ratId), e));
+    case "Shaken":
+      // A paid shake is a sniff: it counts for the rats of whoever paid it.
+      if (e.paid) await tx.addSniff(e.viewer);
+      return;
     case "WeighInRequested":
       return updateBox(tx, e.tokenId, e.block, B.weighRequested);
     case "Weighed":
@@ -99,7 +110,7 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
         }),
       );
     // Recorded in the activity feed and folded into their actors, nothing more to project.
-    case "Shaken":
+    case "RatsFed":
     case "Fed":
     case "MealServed":
     case "Purred":

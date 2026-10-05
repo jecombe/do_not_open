@@ -10,7 +10,10 @@ repository, the hidden-owner version (10,000 boxes, owners and sold count encryp
 `0x816a39b04e0672B4746A5B696E14145F4F852d37` (with the security fixes and decoy transfers,
 redeployed on 2026-10-03 at block 11836238); the croquette contracts `Croq.sol`, `ConfidentialCroq.sol`
 and `Pantry.sol` (section 9) and `LiquidityLocker.sol`, which holds the CROQ market's
-Uniswap V3 position (section 10); plus the parts of the
+Uniswap V3 position (section 10); `Rats.sol` and `RatPantry.sol`, the studio's adopted rats and their croquettes (deployed at
+`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264` and `0x1334d72fC60cBedcF409d6583F0Ec009c285E75B` on 2026-10-05, block 11845258, with the caps; the first pair, without them, at `0xd4f8Df0F14Ced442077762cb81e843656BAc3856` and `0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A` on 2026-10-04); `StudioPacks.sol`, the studio's USDC packs (deployed
+at `0x672cf76a68d4f181387B59caA1813eC425c1354C` on 2026-10-04, block 11842636); `FleaMarket.sol`, the
+players' marketplace for boxes, cats and rats (section 12; deployed at `0xb5c799bF626e70DcE6804BDef06199661cDc8665` on 2026-10-05, block 11849253); plus the parts of the
 adapter and the metadata pipeline that could leak or mislead. The Sepolia deployment at
 `0xe8f699eEBc22767413A9edBb48826B10D3117f61` is the previous version, an ERC-721 with
 public owners, and is not what this list reviews.
@@ -48,6 +51,10 @@ mainnet), **Not done** (a check nobody has run).
 | O23 | Near sell-out, a free mint past the cap tells the buyer the exact remaining supply | Low (privacy) | `mint` |
 | O24 | Between `observe` and `finalize` the seed is public but the box is still `Sealed`: a holder can aim for the Pantry tolerance, or sell a box whose contents are known | Low | `observe`, `Pantry.feed` |
 | O25 | Anyone can send dust Uniswap positions to `LiquidityLocker` and grow `positions()` | Low (tooling) | `LiquidityLocker` |
+| O27 | AI rats are minted on the API's signature (the attester): a stolen attester key could mint AI rats for any job, paid at the normal price; the owner can rotate it with `setAttester` | Low (trust) | `Rats.mintModel` |
+| O28 | The `RatPantry` has no owner and no refill but a transfer: once its 500,000 CROQ are paid out (about 167 days with all 1,000 rats claiming 3 a day), rats earn nothing (`claim` reverts `PantryEmpty` while it is empty, so earned days wait; it pays what is left when low) | Low (UX) | `RatPantry.claim` |
+| O29 | A box with a pending opening can be listed and sold on the flea market as sealed, its seed already public (extends O24) | Low | `FleaMarket.list`, `DoNotOpenHooks` |
+| O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
 reserve, the owner reading every mint's quantity through the revenue, the treasury reading
@@ -78,6 +85,19 @@ Details and the rest of the checks follow.
 | User-set slippage stays bounded | Pass | The bureau de change lets the player pick 0.01% to 50% (kept in `localStorage` `dno.slippage`); the adapter rejects a `SwapOptions.slippageBps` outside 1–5000 (an integer) before any transaction, for `buyUsdc` and `trade`. The bureau flags a price impact above 2% and warns in words above 5%. A wide setting is the player's choice, and the app says a bot may take it. A share kept as plain USDC (`dno.keepUsdc`, 0 to 20%) is a second `buyUsdc` with the same slippage bound, sent before the sealed one |
 | Unshielding cUSDC reveals the amount and fails silently | Accepted | `unshieldUsdc` is the wrapper's own `unwrap` + `finalizeUnwrap`, like a cCROQ unwrap: the amount is decrypted in public. A short balance burns 0 and pays out 0; the adapter returns 0 and the bureau stops a multi-leg route there, saying where the funds are. No contract of ours is involved |
 | `UsdcRamp` holds no buyer funds between calls | Pass | Unshielded USDC goes straight to the buyer; shielded USDC is wrapped to the buyer in the same call. With a wrapper `rate()` above 1, the remainder of the division would stay in the ramp: cUSDC's rate is 1 |
+| `Rats` holds no funds and cannot be re-entered | Pass | `mintSeed` / `mintModel` write the rat, pull the price to the treasury with `safeTransferFrom`, then `_mint` (no receiver callback). Test: "adopts a free rat by its seed, once, paid to the treasury" |
+| A rat is minted once per seed and per AI job | Pass | `tokenOfSeed` / `tokenOfJob` checked before minting. Tests: "adopts a free rat…", "adopts an AI rat only on the attester's signature, for the caller, once" |
+| The rats' supply is capped for good, and each address's mints | Pass | `maxSeedRats` (700), `maxModelRats` (300) and `maxPerWallet` (5) are immutable, none of them 0 (`ZeroCap`); `seedMinted` / `modelMinted` past their cap revert `SoldOut`, `mintedBy[msg.sender]` past its cap `WalletLimit`. It counts mints, not holdings: several addresses get around the per-wallet cap, which only slows a hoarder, while the supply caps hold whatever. Test: "caps each kind for good, and each wallet's mints, but not what a wallet holds" |
+| An AI rat's adoption cannot be replayed, redirected or altered | Pass | EIP-712 `Adopt(minter, job, uri, deadline)` bound to the chain and the contract; the minter is `msg.sender`, the files' `uri` is signed, `deadline` expires. Test: "adopts an AI rat only on the attester's signature…" |
+| Rats cannot be minted free to farm croquettes | Pass | Prices are never 0 (`ZeroPrice`) and at most 100 USDC; `maxPrice` guards a raise. Tests: "refuses a price raised…", "lets only the owner set prices…" |
+| The `RatPantry` pays only a rat's current owner, once per day earned | Pass | `ownerOf` checked per id, `paidUntil` keeps the remainder of a day, at most `maxDays` per claim, pays at most the reserve. An empty pantry reverts rather than marking days paid. Tests: "pays each rat its CROQ a day…", "pays what is left when the pantry runs dry…", "refuses a claim while it is empty…" |
+| `StudioPacks` holds no funds | Pass | `buy` sends the whole price to the treasury with `safeTransferFrom` in the same call, or reverts. Test: "sells a pack for plain USDC, paid straight to the treasury" |
+| A studio pack's price cannot be raised under a buyer | Pass | `buy` takes `maxPrice` and reverts with `PriceChanged`; a price is at most 100 USDC (`MAX_PRICE`) and a pack on sale cannot be empty. Tests: "refuses an unknown pack, a zero account, and a price raised after the buyer looked", "lets only the owner set, change and withdraw packs, within bounds" |
+| The studio spends no more than was bought | Pass | The API spends a unit before calling a service, atomically, and gives it back when the service fails or a job is still running after ten minutes; a daily dollar budget pauses the studio. Tests in `apps/api/test` |
+| One studio unit cannot bill the services without end | Pass (fixed in review, 2026-10-04) | A failure gave the unit back and left the day's budget untouched, though fal had billed it: a picture the safety checker flags, repeated, cost the collection on one unit. Now failed jobs count in the budget, a flagged picture keeps its unit (`rejected`), and refunds stop after `STUDIO_REFUNDS_PER_DAY` (3) per account and day. Tests: "gives units back for a few failures a day, then keeps them", "keeps the unit of a picture the safety checker refused", "counts failed jobs in the day's budget" |
+| The studio's file proxy cannot be turned against the API | Pass (fixed in review, 2026-10-04) | It fetched any URL stored for a job, whole, into memory, and served the upstream content type from the API's origin. Now: https on fal's hosts only, 10 MB a picture and 40 MB a mesh, 60 requests a minute per address, the type forced to an image or a GLB, `nosniff` and a sandboxing CSP. Test: "serves only the service's own files, capped in size, never as a page" |
+| A studio buyer gets the pack they saw | Accepted | `buy` bounds the price (`maxPrice`) but not the contents: the owner could shrink a pack between a buyer's look and their transaction. The owner is the collection; a front-run would show in `PackSet` |
+| Nothing drawn in the studio passes for a cat out of a box | Pass | The studio draws rats, never cats: the free generator is a separate rat generator (`buildRatSpec`, `createRat`) and the AI prompt sits inside a rat house style, so a studio picture cannot be shown off as a rare cat. Box cats stay provable on-chain (token, `Observed`, seed) |
 
 ## 2. ACL and confidentiality
 
@@ -225,7 +245,7 @@ clear values and a KMS proof.
 
 | Check | Status |
 | --- | --- |
-| Unit tests on the FHEVM mock | Pass: 147 tests (the standard, the boxes, the croquettes, the ramp, the credits, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
+| Unit tests on the FHEVM mock | Pass: 162 tests (the standard, the boxes, the croquettes, the ramp, the credits, the studio packs, the rats, the market hooks, the liquidity locker and the V3 seeding against Uniswap's own bytecode) |
 | Every mechanic run on Sepolia through the real KMS | Pass for the previous version: `packages/chain-adapter/scripts/smoke.ts`; croquettes: `scripts/smoke-croq.ts`. Not done for the hidden-owner contracts |
 | Optional Hardhat suite on Sepolia (`pnpm test:sepolia`) | Not done |
 | Static analysis (Slither, Aderyn) | Not done |
@@ -323,9 +343,37 @@ No path to steal funds was found. Each fix below comes with the test that fails 
 These fixes are on the branch, not on Sepolia: the deployment listed above still runs the
 code reviewed before them, until the next redeployment.
 
+## 12. The flea market: FleaMarket
+
+`FleaMarket.sol` sells boxes, cats and rats between players, in cUSDC, with escrow, public
+asking prices and secret offers (see [FLOWS.md](FLOWS.md#the-flea-market)). Not deployed on
+Sepolia yet. 31 tests in `test/FleaMarket.ts`, on the FHEVM mock, against the real
+`DoNotOpen`, `DoNotOpenHooks` and `Rats`.
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Only a seller who held a box gets an active listing | Pass | `list` pulls the box with `confidentialTransferFrom` (as the seller's operator) and `finalizeListing` settles on the decrypted "arrived" bit: `Refused` when nothing moved. Tests: "lists a box in two steps…", "refuses a box the seller does not hold, and moves nothing", "needs the market to be the seller's operator on the boxes" |
+| An item cannot be listed twice | Pass | The market holds it once active: a second box listing never arrives, a second rat listing reverts in `transferFrom`. Test: "cannot list a box twice: once escrowed, a second listing never arrives" |
+| Escrowed items leave only to their buyer or back to their seller | Pass | `_deliver` is called from `finalizePurchase` (`Done`), `acceptOffer` and `cancelListing` (seller only), each after the status left `Active`. No admin path moves an item or cUSDC. Tests: "sells a rat at the asking price…", "gives the item back on cancel…", "sells a cat (an opened box), and the cancel of a box gives it back" |
+| A buyer who cannot pay loses nothing | Pass | The cUSDC pull is all-or-nothing; `Unpaid` sends nothing back because nothing arrived, and the listing stays open. Test: "takes nothing from a buyer who cannot pay, and keeps the listing open" |
+| A buyer beaten to the item, or by a reprice, cancel or state change, is refunded in full | Pass | `Missed` pays back `paid`, exactly what arrived. Tests: "gives the item to the first purchase settled and refunds the others in full", "reprices for the seller only, and refunds purchases placed at the old price", "refuses a box whose public state changed in escrow, and refunds a purchase placed before" |
+| Offers are refunded in full, whatever became of the listing | Pass | `withdrawOffer` (the buyer, while `Open`) pays back the escrowed amount, after a sale, a cancel or a state change. Tests: "lets losing offers be withdrawn after the sale, in full", "an offer may also lose to a purchase at the asking price" |
+| Re-entrancy | Pass | `ReentrancyGuard` on every function that moves tokens (`list`, `cancelListing`, `buy`, `finalizePurchase`, `makeOffer`, `withdrawOffer`, `acceptOffer`); statuses change before any transfer; `reprice` and `finalizeListing` move nothing. Rats are sent with `transferFrom`, never `safeTransferFrom`, so no receiver hook runs |
+| A decryption proof cannot be replayed or borrowed | Pass | `finalizeListing` and `finalizePurchase` take their handle from storage (`arrived`, `ok`), check it with `FHE.checkSignatures`, and settle once (`ListingNotPending`, `PurchaseNotPending`). Tests: "refuses an arrival proof meant for another listing", "settles a purchase once, and only with its own proof" |
+| The encrypted fee cannot overflow | Pass | An offer is capped with `FHE.min(amount, MAX_PRICE)` before the pull; `MAX_PRICE` (10^12) × `MAX_FEE_BPS` (1,000) < 2^64. Asking prices are checked in the clear (`BadPrice`). Test: "caps an offer at the maximum price, under encryption" (with the fee at 10%) |
+| An offer's amount is readable by its buyer and the seller only | Pass | `allowThis`, `allow(buyer)`, `allow(seller)`; `OfferMade` has no amount and `Sold` reports 0 for a sale by offer. Tests: "escrows an encrypted amount only the buyer and the seller can read", "sells on acceptance at the secret price, and never makes the price public" |
+| A box is sold in the public state it was listed in | Pass | `DoNotOpenHooks.beforeList` snapshots status, partner and vet check; `buy` and `acceptOffer` revert `StateChanged` when it moved. `finalizePurchase` asks through `try/catch`, so a failing hook settles `Missed` instead of blocking the refund. Test: "refuses a box whose public state changed in escrow, and refunds a purchase placed before" |
+| Paid-shake earnings follow the box | Pass | They stay in the box while it is escrowed and go to whoever claims as its holder, the buyer. Test: "keeps a box's paid-shake earnings in it for whoever buys it" |
+| The owner's powers | Accepted | `setFee` (at most `MAX_FEE_BPS`, 10%) and `setTreasury` (never zero), single-step `Ownable`: the same key questions as O5. A fee raised between a buyer's look and the settlement applies to the seller's share, never to the buyer's price. Test: "lets only the owner change the fee, up to 10%, and the treasury" |
+| An active box listing shows the seller held the box; a sale names the buyer | Accepted | By design; documented in `HIDDEN_OWNERS.md` §5b. A buyer who wants doubt again sends the box on with decoys |
+| A box with a pending opening can be listed as sealed (O29, extends O24) | Open | The snapshot reads `status`, which stays `Sealed` until `finalize`, while the seed is already public. Flag boxes with a pending opening in the snapshot, or in the app |
+| Losing offers stay escrowed until their buyer withdraws them | Accepted | Nothing pushes refunds, so a sale cannot be blocked by a buyer's wallet. The app lists the account's offers to withdraw |
+| A purchase whose proof never comes keeps the buyer's cUSDC | Accepted | Anyone may send `finalizePurchase`; the adapter's `pendingPurchases` and `finishPurchase` pick it up |
+| Static analysis, fuzzing | Not done | |
+
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25. Fix O3, O4, O7, O17 (small and
+1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29. Fix O3, O4, O7, O17 (small and
    mechanical), and make room for O18.
 2. Set the relayer key and the credit price from Zama's plan (O9).
 3. Run the "Not done" rows of section 8.

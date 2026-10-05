@@ -14,4 +14,6 @@ export interface ArchiveStore {
   /** The permanent id of each of these hashes that was stored; absent ones never were. */
   archivedImages(hashes: string[]): Promise<Map<string, string>>;
   saveArchivedImage(hash: string, id: string, archivedAt: number): Promise<void>;
+  /** How many images are stored, for monitoring. */
+  archivedCount(): Promise<number>;
 }

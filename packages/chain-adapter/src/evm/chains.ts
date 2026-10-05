@@ -14,6 +14,13 @@ export interface Deployment {
   ramp?: { address: string; abi: InterfaceAbi } | null;
   /** Decryption credits, bought in USDC past the free daily allowance. Null where none was deployed. */
   credits?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  /** The studio's packs, bought in USDC before any AI generation. Null where none was deployed. */
+  studio?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  /** The depot's rats (ERC-721) and the pantry that pays them CROQ. Null where none was deployed. */
+  rats?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  ratPantry?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  /** The flea market, where players sell each other boxes, cats and rats. Null where none was deployed. */
+  market?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
 }
 
 export const SEPOLIA: ChainParams = {

@@ -1,11 +1,12 @@
+import type { RatKind } from "./rats";
 import type { Address, ChainRef, DuelStatus, RequestKind, RequestStatus, RevealedContents, WeighIn } from "./types";
 
 /** Which deployed contract emitted an event. */
-export type Source = "collection" | "pantry" | "ramp" | "credits" | "acl";
+export type Source = "collection" | "pantry" | "ramp" | "credits" | "studio" | "rats" | "ratPantry" | "acl";
 
 type Ev<N extends string, B> = ChainRef & { source: Source; name: N } & B;
 
-/** A decoded log of the collection, the Pantry, the USDC ramp, the decryption credits, or Zama's ACL about them. */
+/** A decoded log of the collection, the Pantry, the USDC ramp, the decryption credits, the studio's packs, the rats and their pantry, or Zama's ACL about them. */
 export type ProtocolEvent =
   | Ev<"MintPlaced", { firstTokenId: number; buyer: Address; count: number }>
   | Ev<"MilestoneReached", { index: number; sold: number }>
@@ -33,6 +34,12 @@ export type ProtocolEvent =
   | Ev<"Weighed", { tokenId: number; weight: string; build: number; sick: boolean; disease: number }>
   | Ev<"Bought", { buyer: Address; ethIn: string; fee: string; usdcOut: string; shielded: boolean }>
   | Ev<"CreditsBought", { payer: Address; account: Address; credits: number; paid: string }>
+  | Ev<"PackBought", { payer: Address; account: Address; packId: number; sketches: number; models: number; paid: string }>
+  /** A rat adopted. `ref` is the seed in decimal for a seed rat, the job's bytes32 for an AI rat. Rat ids are not box ids: `ratId`, never `tokenId`. */
+  | Ev<"RatMinted", { ratId: number; minter: Address; kind: RatKind; ref: string; uri: string; paid: string }>
+  /** The rats' ERC-721 Transfer, the mint included (from the zero address). */
+  | Ev<"RatTransfer", { ratId: number; from: Address; to: Address }>
+  | Ev<"RatsFed", { owner: Address; ratIds: number[]; amount: string }>
   /** Zama's ACL: one of the protocol's contracts made these handles publicly decryptable. */
   | Ev<"PubliclyDecryptable", { caller: Address; handles: string[] }>;
 
@@ -143,7 +150,12 @@ export function actorsOf(e: ProtocolEvent): Address[] {
     case "Bought":
       return [e.buyer];
     case "CreditsBought":
+    case "PackBought":
       return [e.payer];
+    case "RatMinted":
+      return [e.minter];
+    case "RatsFed":
+      return [e.owner];
     default:
       return [];
   }

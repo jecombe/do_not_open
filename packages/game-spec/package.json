@@ -4,7 +4,7 @@
   "private": true,
   "main": "index.ts",
   "types": "index.ts",
-  "exports": { ".": "./index.ts", "./spec.json": "./spec.json" },
+  "exports": { ".": "./index.ts", "./spec.json": "./spec.json", "./studio.json": "./studio.json" },
   "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
   "devDependencies": { "typescript": "~5.9.3" }
 }

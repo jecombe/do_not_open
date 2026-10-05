@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { ArchiveStore } from "../src/application/ports/archive";
 import type { PostStore } from "../src/application/ports/herald";
 import type { Store } from "../src/application/ports/store";
+import type { StudioStore } from "../src/application/ports/studio";
+import type { RatStore } from "../src/application/ports/rats";
+import type { StudioJob } from "../src/domain/studio";
 import * as B from "../src/domain/box";
 import * as D from "../src/domain/duel";
 import { ALICE, BOB, CAROL, ev } from "./fixtures";
@@ -10,9 +13,9 @@ import { ALICE, BOB, CAROL, ev } from "./fixtures";
  * What any Store must do, run against each implementation: the in-memory one the tests use and
  * the Postgres one production uses must not drift apart.
  */
-export function storeContract(name: string, make: () => Promise<Store & PostStore & ArchiveStore>) {
+export function storeContract(name: string, make: () => Promise<Store & PostStore & ArchiveStore & StudioStore & RatStore>) {
   describe(`${name} store`, () => {
-    let store: Store & PostStore & ArchiveStore;
+    let store: Store & PostStore & ArchiveStore & StudioStore & RatStore;
     beforeEach(async () => {
       store = await make();
     });
@@ -245,6 +248,107 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.meterOf(BOB, day)).toEqual({ freeUsed: 8, spent: 5, bought: 0 });
     });
 
+    it("folds the rats and the sniffs as read models, and keeps the adoptions across replays", async () => {
+      const rat = { id: 1, kind: "seed" as const, ref: "42", uri: null, owner: ALICE, minter: ALICE, mintedBlock: 10, mintedAt: 1_000 };
+      await store.transaction(async (tx) => {
+        await tx.saveRat(rat);
+        await tx.saveRat({ ...rat, id: 2, kind: "model", ref: "0xabc", uri: "ar://rec" });
+        await tx.saveRat({ ...rat, id: 3, ref: "7", owner: BOB });
+        await tx.addSniff(ALICE);
+        await tx.addSniff(ALICE);
+        expect(await tx.rat(1)).toEqual(rat);
+      });
+      await store.transaction(async (tx) => tx.saveRat({ ...(await tx.rat(1))!, owner: CAROL }));
+      expect((await store.ratsOf(ALICE)).map((r) => r.id)).toEqual([2]);
+      expect((await store.ratsOf(CAROL)).map((r) => r.id)).toEqual([1]);
+      expect(await store.rat(2)).toMatchObject({ kind: "model", ref: "0xabc", uri: "ar://rec" });
+      expect((await store.ratOfRef("0xabc"))?.id).toBe(2);
+      expect(await store.ratOfRef("nope")).toBeNull();
+      expect(await store.sniffsOf([ALICE, BOB])).toEqual(new Map([[ALICE, 2], [BOB, 0]]));
+      expect(await store.ratsMintedBy(ALICE)).toBe(3);
+      expect(await store.ratsMintedBy(BOB)).toBe(0);
+      expect((await store.ratCounts()).sort((a, b) => (a.kind < b.kind ? -1 : 1))).toEqual([{ kind: "model", count: 1 }, { kind: "seed", count: 2 }]);
+
+      const adoption = { jobId: "00000000-0000-4000-8000-000000000001", jobRef: "0xabc", account: ALICE, prompt: "a rat", imageId: "img", recordId: "rec", createdAt: 5 };
+      await store.saveAdoption(adoption);
+      await store.saveAdoption({ ...adoption, imageId: "other" });
+      expect(await store.adoption(adoption.jobId)).toEqual(adoption);
+      expect(await store.adoptionOfRef("0xabc")).toEqual(adoption);
+      // The model stays here, saved once.
+      await store.saveRatModel("0xabc", new Uint8Array([1, 2, 3]), 5);
+      await store.saveRatModel("0xabc", new Uint8Array([7]), 6);
+      expect(await store.ratModel("0xabc")).toEqual(new Uint8Array([1, 2, 3]));
+      expect(await store.ratModel("0xdef")).toBeNull();
+
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.rat(1)).toBeNull();
+      expect(await store.sniffsOf([ALICE])).toEqual(new Map([[ALICE, 0]]));
+      expect(await store.adoption(adoption.jobId)).toEqual(adoption);
+      expect(await store.ratModel("0xabc")).toEqual(new Uint8Array([1, 2, 3]));
+    });
+
+    it("folds studio packs as a read model, and keeps its jobs across replays", async () => {
+      await store.transaction(async (tx) => {
+        await tx.addStudioUnits(BOB, 10, 1, "2000000");
+        await tx.addStudioUnits(BOB, 50, 5, "8000000");
+      });
+      expect(await store.studioUnitsBought(BOB)).toEqual({ sketches: 60, models: 6 });
+      expect(await store.studioSales()).toEqual({ packs: 2, paidUsdc: 10 });
+      expect(await store.studioUnitsBought(ALICE)).toEqual({ sketches: 0, models: 0 });
+
+      const job = (id: string, over: Partial<StudioJob> = {}): StudioJob => ({
+        id, account: BOB, kind: "sketch", status: "running", prompt: "a round cat", sketchId: null, resultUrl: null, error: null, costUsd: 0.01, createdAt: 1_000, finishedAt: null, ...over,
+      });
+      const seen: unknown[] = [];
+      const a = await store.startStudioJob(BOB, 900, (ledger) => (seen.push(ledger), job("00000000-0000-4000-8000-00000000000a")));
+      expect(seen[0]).toEqual({ bought: { sketches: 60, models: 6 }, used: { sketches: 0, models: 0 }, spentTodayUsd: 0 });
+      expect(a?.id).toBe("00000000-0000-4000-8000-00000000000a");
+      expect(await store.startStudioJob(BOB, 900, () => null)).toBeNull();
+      await store.startStudioJob(BOB, 900, () => job("00000000-0000-4000-8000-00000000000b", { createdAt: 1_100 }));
+      await store.startStudioJob(BOB, 900, () =>
+        job("00000000-0000-4000-8000-00000000000c", { kind: "model", sketchId: "00000000-0000-4000-8000-00000000000a", costUsd: 0.3, createdAt: 1_200 }),
+      );
+      expect(await store.studioUnitsUsed(BOB)).toEqual({ sketches: 2, models: 1 });
+      expect(await store.studioSpentSince(900)).toBeCloseTo(0.32);
+      expect(await store.studioSpentSince(1_150)).toBeCloseTo(0.3);
+
+      // Settled once: a second settlement leaves the first.
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000a", { status: "done", resultUrl: "https://files/a.png", error: null }, 1_300);
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000a", { status: "failed", resultUrl: null, error: "late" }, 1_400);
+      expect(await store.studioJob("00000000-0000-4000-8000-00000000000a")).toMatchObject({ status: "done", resultUrl: "https://files/a.png", finishedAt: 1_300 });
+      // A failed job gives its unit back, not its dollars: the service may have billed it.
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000b", { status: "failed", resultUrl: null, error: "boom" }, 1_300);
+      expect(await store.studioUnitsUsed(BOB)).toEqual({ sketches: 1, models: 1 });
+      expect(await store.studioSpentSince(900)).toBeCloseTo(0.32);
+      expect(await store.studioRefundsSince(BOB, 900)).toBe(1);
+      expect(await store.studioRefundsSince(BOB, 1_150)).toBe(0);
+      expect(await store.studioRefundsSince(ALICE, 900)).toBe(0);
+      // Lost jobs: only running ones older than the cut fail.
+      expect(await store.failStaleStudioJobs(1_250, "lost", 2_000)).toBe(1);
+      expect(await store.studioJob("00000000-0000-4000-8000-00000000000c")).toMatchObject({ status: "failed", error: "lost", finishedAt: 2_000 });
+
+      // A rejected job keeps its unit.
+      await store.startStudioJob(BOB, 900, () => job("00000000-0000-4000-8000-00000000000d", { createdAt: 1_260 }));
+      await store.finishStudioJob("00000000-0000-4000-8000-00000000000d", { status: "rejected", resultUrl: null, error: "flagged" }, 1_270);
+      expect(await store.studioUnitsUsed(BOB)).toEqual({ sketches: 2, models: 0 });
+      expect(await store.studioRefundsSince(BOB, 900)).toBe(2);
+
+      expect((await store.studioJobs(BOB, 10)).map((j) => j.id.slice(-1))).toEqual(["d", "c", "b", "a"]);
+      expect((await store.studioJobs(BOB, 1)).length).toBe(1);
+      expect(await store.studioJobs(ALICE, 10)).toEqual([]);
+      expect((await store.studioJobCounts()).sort((x, y) => (x.kind + x.status < y.kind + y.status ? -1 : 1))).toEqual([
+        { kind: "model", status: "failed", count: 1 },
+        { kind: "sketch", status: "done", count: 1 },
+        { kind: "sketch", status: "failed", count: 1 },
+        { kind: "sketch", status: "rejected", count: 1 },
+      ]);
+
+      // A replay folds the purchases again; the jobs stay.
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.studioUnitsBought(BOB)).toEqual({ sketches: 0, models: 0 });
+      expect((await store.studioJobs(BOB, 10)).length).toBe(4);
+    });
+
     it("lists known ids, every pending request, and every open duel", async () => {
       const at = (logIndex: number) => ({ block: 1, logIndex, timestamp: null });
       await store.transaction(async (tx) => {
@@ -303,6 +407,10 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.hasPost("discord", "opening:2")).toBe(false);
       expect((await store.posts(10, "discord")).map((p) => p.network)).toEqual(["discord"]);
       expect(await store.posts(10)).toHaveLength(2);
+      expect((await store.postCounts()).sort((a, b) => a.network.localeCompare(b.network))).toEqual([
+        { network: "discord", status: "posted", count: 1 },
+        { network: "x", status: "queued", count: 1 },
+      ]);
     });
 
     it("keeps the herald's posts through a replay", async () => {
@@ -319,6 +427,7 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       await store.transaction((tx) => tx.resetReadModels());
       expect(await store.archivedImages(["a", "b"])).toEqual(new Map([["a", "id-a"]]));
       expect(await store.archivedImages([])).toEqual(new Map());
+      expect(await store.archivedCount()).toBe(1);
     });
   });
 }

@@ -9,5 +9,8 @@ __API_HOSTS__ {
 		X-Content-Type-Options nosniff
 		Referrer-Policy no-referrer
 	}
+	# Prometheus' scrape path: read over the Docker network only (deploy/monitoring).
+	@metrics path /metrics
+	respond @metrics 404
 	reverse_proxy dno-api:8080
 }

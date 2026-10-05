@@ -63,6 +63,24 @@ are free on ArDrive's Turbo, so it never needs any. Then `docker compose up -d a
 images a minute go up, opened cats first, then every minted box. See
 [`apps/api/README.md`](../apps/api/README.md#token-images-on-arweave).
 
+The studio draws rats with fal.ai when `/opt/dno/.env` holds `FAL_KEY=...` and the network's
+deployment has a `StudioPacks` address (`dno:export` writes it), then `docker compose up -d api`.
+The key bills real dollars: `STUDIO_DAILY_BUDGET_USD` (20 by default) caps the estimated spend a
+day, `STUDIO_PAUSED=true` closes the studio at once, and on Sepolia, where packs are paid in test
+USDC, `STUDIO_ALLOWLIST=0x...,0x...` keeps generation to testers. Deploy `StudioPacks` and this
+API before the first pack is sold. Grafana's "The studio" row shows it open or off, packs sold,
+USDC brought in, the estimated AI cost and the margin, today's budget used, and jobs by status;
+Discord is told when the budget passes 80% or runs out, when over 30% of an hour's generations
+fail, when jobs pile up in fal's queue, when the studio is off with packs sold, and when the AI
+has cost more than the packs brought in. See [`apps/api/README.md`](../apps/api/README.md#the-studio).
+
+The rats need `RATS_ATTESTER_KEY=0x...` in `/opt/dno/.env` (a fresh key; its address is
+`RATS_ATTESTER` when `Rats` is deployed) and `ARWEAVE_KEY`: an AI rat's picture is shrunk to a
+free Arweave upload like a cat's, and its 3D model stays in Postgres (`rat_models`, in the
+nightly dump), so no Turbo credits are needed. `SITE_URL=https://do-not-open.app` links the studio
+from each rat's metadata. Ship the API that knows the `Rats` address before the first rat is
+minted. See [`apps/api/README.md`](../apps/api/README.md#the-depots-rats).
+
 The collection speaks in a Discord channel (see [`apps/api/README.md`](../apps/api/README.md#the-collections-discord-channel-the-herald)):
 in the channel's settings, Integrations, Webhooks, create one and copy its URL, then add
 `HERALD_DISCORD=live` and `DISCORD_WEBHOOK_URL=...` to `/opt/dno/.env` (`HERALD_DISCORD=rehearse`
@@ -75,6 +93,34 @@ Endpoint URL to `https://<api-domain>/v1/discord/interactions`, then, from a mac
 repo and `DISCORD_BOT_TOKEN` in its `.env`, run `pnpm --filter @dno/api discord:commands` and open
 the link it prints to add the command to the server. All in
 [`apps/api/README.md`](../apps/api/README.md#on-discord-ask).
+
+## Monitoring
+
+`deploy/monitoring` is one stack for every network: Prometheus scrapes each API's `/metrics`
+over the `edge` network (one file per network in `prometheus/targets/`: `sepolia.yml` now,
+`mainnet.yml.example` to rename at launch), the server (node-exporter), its containers
+(cAdvisor) and the public URLs (blackbox, one file per network in `prometheus/probes/`).
+Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they share).
+Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
+indexer, RPC pool, API traffic, Zama relayer calls, Arweave, Gemini, herald, the studio) and "Server and
+URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
+each titled with its network. Only Grafana is public, behind its own login; the edge proxy
+answers `404` to `/metrics` from outside. About 1.2 GB of memory at most (limits in the compose
+file), 5 GB of disk for 90 days of series.
+
+To turn it on, once:
+
+1. An A record `monitoring` → the server's IP (IONOS).
+2. A webhook on a private Discord channel (channel settings, Integrations, Webhooks).
+3. On the server, `/opt/dno/monitoring/.env` from `deploy/monitoring/.env.example`
+   (`MONITORING_DOMAIN`, `GRAFANA_ADMIN_PASSWORD`, `ALERT_DISCORD_WEBHOOK_URL`), `chmod 600`.
+4. The next deploy (or `bash /opt/dno/deploy.sh <current image>`) starts the stack and routes
+   the domain; Grafana is at `https://<MONITORING_DOMAIN>`, folder "DO NOT OPEN".
+
+CI copies `deploy/monitoring` on every deploy and reloads Prometheus and Alertmanager; the
+`.env` stays on the server. Dashboards are written by `grafana/dashboards.py`. At mainnet
+launch: rename `prometheus/targets/mainnet.yml.example` and `probes/mainnet.yml.example` (the
+mainnet API on the edge network as `dno-api-mainnet`), and move the apex probe out of Sepolia.
 
 ## Domains
 
@@ -134,6 +180,10 @@ It relies on a `vps_zama` host in `~/.ssh/config` pointing at the server.
 
 Rolling back is deploying an older image: `bash /opt/dno/deploy.sh ghcr.io/jecombe/do_not_open-api:<older-sha>`
 (after `docker login ghcr.io`).
+
+Each deploy keeps the running API image and the two before it on the server and deletes older
+ones (every deploy pulls a new `:<sha>` tag, which `docker image prune` alone never removes). An
+older rollback pulls its image again.
 
 Starting the index over (it rebuilds from the chain in a minute or two):
 `docker compose exec postgres psql -U dno -c 'drop schema public cascade; create schema public' && docker compose restart api`.

@@ -62,7 +62,22 @@ export interface GameSpec {
   };
   mechanics: Record<string, { paid: boolean; rule: string; [k: string]: unknown }>;
   economy: EconomySpec;
+  market: MarketSpec;
   events: Record<string, { fields: string[]; note?: string }>;
+}
+
+/** The flea market, where players sell each other boxes, cats and rats in cUSDC. */
+export interface MarketSpec {
+  name: string;
+  /** Share of each sale paid to the treasury, in basis points. */
+  feeBps: number;
+  /** The most the fee can ever be set to, in basis points. */
+  maxFeeBps: number;
+  /** The most an item may be listed or offered for, in whole USDC. */
+  maxPriceUsdc: string;
+  rule: string;
+  stateRule: string;
+  leaks: string;
 }
 
 export type BuildKey = "thin" | "normal" | "chubby" | "fat" | "huge";
@@ -97,3 +112,4 @@ export interface EconomySpec {
 export const spec = raw as unknown as GameSpec;
 
 export const TRAIT_KEYS: readonly TraitKey[] = ["breed", "mood", "accessory", "brokenThing", "room"];
+export { studio, packCostUsd, styledPrompt, type StudioSpec, type StudioPackDef, type StudioUnit } from "./studioSpec";

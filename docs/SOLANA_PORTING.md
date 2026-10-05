@@ -89,6 +89,8 @@ were drawn for:
 | Sequential token ids from `tokenCount`, empty ids included | mint | A counter in the collection account | Writes to one account serialise mints: fine at this scale |
 | Encrypted sold count, milestone bit | mint, `announceMilestone` | Handles in the collection account | |
 | Replay of the account's own `ConfidentialTransfer` receipts | `boxesOf` | The same replay over program events naming the account, decrypting each "moved" bit | DAS (`getAssetsByOwner`) cannot help: the owner is encrypted |
+| `StudioPacks`: packs bought in plain USDC, `PackBought` | the studio | An SPL USDC transfer to the treasury in the same instruction that bumps the buyer's account (a PDA per buyer: `["studio", buyer]`) and emits the same event | No FHE: a straight port. The API's indexer reads the event the same way |
+| `Rats` (ERC-721) and `RatPantry` (plain CROQ a day) | the studio's adopted rats | A Metaplex Core asset per rat (public owner), minted by the program after an SPL USDC transfer, with the attester's ed25519 signature checked for AI rats; the caps (700 seed rats, 300 AI rats, 5 mints an address) as counters in a config PDA and a PDA per minter; the pantry a PDA token account paying plain CROQ, `paid_until` in a PDA per rat | No FHE: a straight port |
 
 ### Things that are structurally different
 
@@ -142,6 +144,35 @@ flowchart TB
 The instruction list is the contract's function list, one to one. The state machine of
 a box and of a duel are the ones in [FLOWS.md](FLOWS.md).
 
+### The flea market
+
+`FleaMarket` ports as its own program, with no privilege in the box program, like the EVM
+contract:
+
+- **Escrow.** The market's listing PDA becomes the box's holder through the same encrypted
+  owner handle: a "maybe" transfer by CPI, signed by the seller (no operator is needed when
+  the seller signs the listing instruction), then a public decryption of "arrived" and a
+  permissionless `finalize_listing`. A rat (a plain NFT, owner public) goes to a token account
+  owned by the listing PDA. Delivering is a transfer signed by the PDA's seeds.
+- **Accounts.** `Listing` (collection, status, seller, price, listed at, token, snapshot,
+  `arrived` handle), `Purchase` (listing, buyer, status, price, `paid` and `ok` handles) and
+  `Offer` (listing, buyer, status, `amount` handle), one PDA each, seeded by their counters,
+  plus a market config (treasury, fee, authority). `listings(from, count)` and `offerInfo`
+  become account fetches in the adapter, filtered with `getProgramAccounts`.
+- **Payments.** The confidential token program's transfers must be all-or-nothing like
+  ERC-7984's, or the market must compute `ok` itself; `paid` is stored and refunded the same
+  way. The offer cap is the same `min(amount, MAX_PRICE)` before the transfer, so the
+  encrypted fee cannot overflow 64 bits.
+- **ACL.** The offer amount is granted to the market program, the buyer and the seller; if the
+  Solana ACL is per program or per account rather than per key (open question 1), the seller's
+  read needs another shape.
+- **State snapshot.** The hooks become a read of the box account's public fields (status,
+  partner, vet check) hashed at listing and compared at sale; the box account is listed in
+  `buy`, `accept_offer` and `finalize_purchase`. A failing comparison in `finalize_purchase`
+  must still settle `Missed` and refund, never abort.
+- **Re-entrancy** does not apply (see above); account validation does: the listing's token
+  account, the seller and buyer token accounts, the treasury.
+
 ## What to write in `packages/chain-adapter/src/solana`
 
 `SolanaAdapter implements ChainAdapter`, with the same shape as `EvmFhevmAdapter`:
@@ -180,6 +211,8 @@ Sepolia one. Nothing in `apps/web` changes except the wallet button's label.
    The market's liquidity locker has no FHE in it: a CROQ-only position in a
    concentrated-liquidity pool, whose position NFT (or position account) goes to a program
    with no withdraw instruction and a fee collect that pays the treasury.
+   The flea market comes last (see "The flea market" above): it needs only the box
+   program's transfer and the confidential token.
 7. `SolanaAdapter`, then run the app in a third mode.
 8. Port the test suite: the 95 contract tests are written against behaviour, not against
    Solidity, and their names read as a specification.

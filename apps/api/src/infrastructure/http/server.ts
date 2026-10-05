@@ -10,10 +10,14 @@ import type { PostStore } from "../../application/ports/herald";
 import type { Metadata } from "../../application/metadata";
 import { BadRequest, NotFound, type Queries } from "../../application/queries";
 import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
-import { normalizeAddress } from "../../domain/types";
+import { StudioRefused, type Studio } from "../../application/studio";
+import { RatRefused, type Rats } from "../../application/rats";
+import type { StudioJob } from "../../domain/studio";
+import { normalizeAddress, type Address } from "../../domain/types";
 import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
 import type { IndexerStatus } from "../Indexer";
 import type { EndpointStatus } from "../chain/RpcPool";
+import type { Metrics } from "./metrics";
 
 export interface HttpDeps {
   queries: Queries;
@@ -27,6 +31,18 @@ export interface HttpDeps {
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
   relayerRatePerMinute?: number;
+  /** The studio: cats drawn by paid AI services out of packs bought on-chain. */
+  studio?: {
+    studio: Studio;
+    /** Where this API is reached from outside: job files are linked through it. */
+    publicUrl: string;
+    /** Fetches the services' files for the proxy routes. */
+    fetch?: typeof fetch;
+    /** Hosts the service's files may come from (and their subdomains). fal.ai's by default. */
+    fileHosts?: string[];
+  };
+  /** The depot's rats: read back, described for marketplaces, and adopted. */
+  rats?: Rats;
   /** The manual's chatbot. */
   chat?: AskManual;
   /** Chat questions per minute per IP. */
@@ -38,6 +54,8 @@ export interface HttpDeps {
   /** Absent when this process does not index (ROLE=api). */
   indexer?: { status(): IndexerStatus; nudge(): void };
   rpcStatus?: () => EndpointStatus[];
+  /** Prometheus metrics at GET /metrics. The edge proxy refuses that path from outside; the monitoring stack scrapes it over the Docker network. */
+  metrics?: Metrics;
   /** Origins allowed to call from a browser. `*` alone allows any; inside an origin, it matches one DNS label. */
   corsOrigins: string[];
   /** Requests per minute per IP. */
@@ -103,6 +121,17 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
   };
 
   // --- health ---
+
+  if (deps.metrics) {
+    const metrics = deps.metrics;
+    app.addHook("onResponse", async (req, reply) => {
+      metrics.observe(req.method, req.routeOptions.url ?? "unmatched", reply.statusCode, reply.elapsedTime / 1000);
+    });
+    app.get("/metrics", { config: { rateLimit: false } }, async (_req, reply) => {
+      reply.header("content-type", metrics.contentType).header("cache-control", "no-store");
+      return metrics.render();
+    });
+  }
 
   app.get("/health", async (_req, reply) => {
     const block = await queries.indexedBlock();
@@ -322,6 +351,204 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     app.get("/v1/relayer/allowance/:address", async (req, reply) => {
       const p = z.object({ address }).parse(req.params);
       return send(reply, await relayer.allowance(p.address), "private, no-store");
+    });
+  }
+
+  // --- the studio ---
+
+  const studio = deps.studio;
+  if (studio) {
+    const base = studio.publicUrl.replace(/\/$/, "");
+    const fileUrl = (id: string, file: "image" | "model.glb") => `${base}/v1/studio/jobs/${id}/${file}`;
+    const jobJson = (j: StudioJob) => ({
+      id: j.id,
+      kind: j.kind,
+      status: j.status,
+      prompt: j.prompt,
+      sketchId: j.sketchId,
+      // A model's picture is its sketch's, finished before the model could start.
+      imageUrl: j.kind === "model" && j.sketchId ? fileUrl(j.sketchId, "image") : j.status === "done" ? fileUrl(j.id, "image") : null,
+      modelUrl: j.kind === "model" && j.status === "done" ? fileUrl(j.id, "model.glb") : null,
+      error: j.error,
+      createdAt: j.createdAt,
+    });
+    const STATUS: Record<StudioRefused["code"], number> = {
+      "bad-prompt": 400,
+      "refused-prompt": 403,
+      "not-allowlisted": 403,
+      "no-credits": 402,
+      "studio-paused": 503,
+      "not-found": 404,
+    };
+    const guarded = async <T>(reply: FastifyReply, run: () => Promise<T>) => {
+      reply.header("cache-control", "private, no-store");
+      try {
+        return await run();
+      } catch (error) {
+        if (!(error instanceof StudioRefused)) throw error;
+        return reply.status(STATUS[error.code]).send({ error: error.code, message: error.message, ...(error.reason ? { reason: error.reason } : {}) });
+      }
+    };
+    const jobId = z.object({ id: z.string().uuid() });
+    const fetchFile = studio.fetch ?? fetch;
+
+    app.get("/v1/studio", async (req, reply) => {
+      // Signed in or not: a session only adds whether the wallet is on the testers' list.
+      const h = req.headers.authorization;
+      let who: Address | null = null;
+      if (h?.startsWith("Bearer ")) {
+        try {
+          who = deps.signIn.whoIs(h.slice(7));
+        } catch {
+          who = null;
+        }
+      }
+      // The answer depends on the token: no cache may hand the anonymous one to a signed-in call.
+      reply.header("cache-control", who ? "private, no-store" : "public, max-age=30").header("vary", "authorization");
+      return { ...(await studio.studio.info(who)), block: await queries.indexedBlock() };
+    });
+
+    app.get("/v1/studio/credits", async (req, reply) => {
+      const who = bearer(req);
+      return guarded(reply, async () => ({ ...(await studio.studio.credits(who)), block: await queries.indexedBlock() }));
+    });
+
+    app.post("/v1/studio/sketches", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const who = bearer(req);
+      const body = z.object({ prompt: z.unknown() }).parse(req.body ?? {});
+      return guarded(reply, async () => reply.status(202).send({ job: jobJson(await studio.studio.sketch(who, body.prompt)) }));
+    });
+
+    app.post("/v1/studio/models", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const who = bearer(req);
+      const body = z.object({ sketchId: z.string().uuid() }).parse(req.body);
+      return guarded(reply, async () => reply.status(202).send({ job: jobJson(await studio.studio.model(who, body.sketchId)) }));
+    });
+
+    app.get("/v1/studio/jobs", async (req, reply) => {
+      const who = bearer(req);
+      return guarded(reply, async () => ({ jobs: (await studio.studio.jobs(who)).map(jobJson) }));
+    });
+
+    app.get("/v1/studio/jobs/:id", async (req, reply) => {
+      const who = bearer(req);
+      const { id: jobIdValue } = jobId.parse(req.params);
+      return guarded(reply, async () => ({ job: jobJson(await studio.studio.job(who, jobIdValue)) }));
+    });
+
+    // A finished job's files, from the service through this API: the browser never learns where
+    // they are, and a page can draw them without the service's CORS. Ids are random: no sign-in.
+    // Only https files on the service's own hosts are fetched, up to a size, and served as an
+    // image or a mesh whatever the upstream says, never as something a browser would run.
+    const fileHosts = studio.fileHosts ?? ["fal.media", "fal.run", "fal.ai"];
+    const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+    // A model is shown up to 100 MB: Tripo's first meshes, before its face limit, weighed more than 40.
+    const MAX_FILE_BYTES = { image: 10 * 1024 * 1024, model: 100 * 1024 * 1024 };
+    const allowedFile = (raw: string) => {
+      try {
+        const u = new URL(raw);
+        return u.protocol === "https:" && fileHosts.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
+      } catch {
+        return false;
+      }
+    };
+    const proxy = async (reply: FastifyReply, id: string, file: "image" | "model", fallbackType: string) => {
+      const url = await studio.studio.fileOf(id, file);
+      if (!url) return reply.status(404).send({ error: "not-found", message: "no such file" });
+      if (!allowedFile(url)) return reply.status(502).send({ error: "upstream", message: "the file is not where the service keeps them" });
+      const res = await fetchFile(url, { signal: AbortSignal.timeout(30_000) });
+      if (!res.ok || !res.body) return reply.status(502).send({ error: "upstream", message: "the file could not be fetched" });
+      const max = MAX_FILE_BYTES[file];
+      if (Number(res.headers.get("content-length") ?? 0) > max) return reply.status(502).send({ error: "upstream", message: "the file is too large" });
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+        size += chunk.byteLength;
+        if (size > max) return reply.status(502).send({ error: "upstream", message: "the file is too large" });
+        chunks.push(chunk);
+      }
+      const upstreamType = (res.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
+      const type = file === "model" ? "model/gltf-binary" : IMAGE_TYPES.has(upstreamType) ? upstreamType : fallbackType;
+      return reply
+        .header("cache-control", "public, max-age=31536000, immutable")
+        .header("x-content-type-options", "nosniff")
+        .header("content-security-policy", "default-src 'none'; sandbox")
+        .type(type)
+        .send(Buffer.concat(chunks));
+    };
+    const fileRoute = { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } };
+
+    app.get("/v1/studio/jobs/:id/image", fileRoute, async (req, reply) => proxy(reply, jobId.parse(req.params).id, "image", "image/jpeg"));
+    app.get("/v1/studio/jobs/:id/model.glb", fileRoute, async (req, reply) => proxy(reply, jobId.parse(req.params).id, "model", "model/gltf-binary"));
+  }
+
+  // --- the rats ---
+
+  const rats = deps.rats;
+  if (rats) {
+    const RAT_STATUS: Record<RatRefused["code"], number> = {
+      "not-found": 404,
+      "not-adoptable": 400,
+      "already-adopted": 409,
+      "sold-out": 409,
+      "wallet-limit": 409,
+      "storage-failed": 503,
+      "adopt-unavailable": 503,
+    };
+    const ratId = z.object({ id: z.coerce.number().int().min(1).max(2 ** 31 - 1) });
+
+    app.get("/v1/rats", async (req, reply) => {
+      const { owner } = z.object({ owner: address }).parse(req.query);
+      reply.header("cache-control", PUBLIC_CACHE);
+      return { rats: await rats.list(owner), block: await queries.indexedBlock() };
+    });
+
+    app.get("/v1/rats/supply", async (_req, reply) => {
+      reply.header("cache-control", PUBLIC_CACHE);
+      return { supply: await rats.supply(), block: await queries.indexedBlock() };
+    });
+
+    app.get("/v1/rats/:id", async (req, reply) => {
+      const { id: ratIdValue } = ratId.parse(req.params);
+      reply.header("cache-control", PUBLIC_CACHE);
+      return { rat: await rats.get(ratIdValue), block: await queries.indexedBlock() };
+    });
+
+    // ERC-721 metadata, at the Rats contract's base URI.
+    app.get("/rats/:id", async (req, reply) => {
+      const { id: raw } = z.object({ id: z.string().regex(/^\d+(\.json)?$/) }).parse(req.params);
+      reply.header("cache-control", "public, max-age=60");
+      return rats.metadata(Number(raw.replace(".json", "")));
+    });
+
+    // An adopted AI rat's 3D model: kept by this API, not on Arweave. Immutable once saved.
+    app.get("/rats/models/:file", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const { file } = z.object({ file: z.string().regex(/^0x[0-9a-fA-F]{64}\.glb$/) }).parse(req.params);
+      const glb = await rats.model(file.slice(0, -4).toLowerCase());
+      return reply
+        .header("cache-control", "public, max-age=31536000, immutable")
+        .header("x-content-type-options", "nosniff")
+        .type("model/gltf-binary")
+        .send(Buffer.from(glb));
+    });
+
+    app.get("/rats/:id/image.svg", async (req, reply) => {
+      const { id: ratIdValue } = ratId.parse(req.params);
+      // A seed rat's picture never changes.
+      reply.header("cache-control", "public, max-age=31536000, immutable").type("image/svg+xml");
+      return rats.svg(ratIdValue);
+    });
+
+    app.post("/v1/studio/jobs/:id/adopt", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const who = bearer(req);
+      const { id: job } = z.object({ id: z.string().uuid() }).parse(req.params);
+      reply.header("cache-control", "private, no-store");
+      try {
+        return await rats.adopt(who, job);
+      } catch (error) {
+        if (!(error instanceof RatRefused)) throw error;
+        return reply.status(RAT_STATUS[error.code]).send({ error: error.code, message: error.message });
+      }
     });
   }
 

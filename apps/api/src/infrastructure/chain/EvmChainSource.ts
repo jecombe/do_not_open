@@ -23,6 +23,9 @@ const INDEXED: Record<Source, string[]> = {
   pantry: ["MealServed", "WelcomeBag", "Purred", "Claimed", "WeighInRequested", "Weighed"],
   ramp: ["Bought"],
   credits: ["CreditsBought"],
+  studio: ["PackBought"],
+  rats: ["RatMinted", "Transfer"],
+  ratPantry: ["RatsFed"],
   acl: ["AllowedForDecryption"],
 };
 
@@ -78,6 +81,9 @@ export class EvmChainSource implements ChainSource {
       ...(d.pantry ? [{ source: "pantry" as const, address: d.pantry.address, iface: this.pantry! }] : []),
       ...(d.ramp ? [{ source: "ramp" as const, address: d.ramp.address, iface: new Interface(d.ramp.abi) }] : []),
       ...(d.credits ? [{ source: "credits" as const, address: d.credits.address, iface: new Interface(d.credits.abi) }] : []),
+      ...(d.studio ? [{ source: "studio" as const, address: d.studio.address, iface: new Interface(d.studio.abi) }] : []),
+      ...(d.rats ? [{ source: "rats" as const, address: d.rats.address, iface: new Interface(d.rats.abi) }] : []),
+      ...(d.ratPantry ? [{ source: "ratPantry" as const, address: d.ratPantry.address, iface: new Interface(d.ratPantry.abi) }] : []),
     ].map((c) => ({ ...c, address: c.address.toLowerCase() }));
     this.topics = this.contracts.flatMap((c) => INDEXED[c.source].map((name) => c.iface.getEvent(name)!.topicHash));
     this.aclFilter = aclFilterFor(d);
@@ -322,6 +328,19 @@ function toBody(name: string, a: Result): Record<string, unknown> | null {
       return { name, buyer: addr(a.buyer), ethIn: String(a.ethIn), fee: String(a.fee), usdcOut: String(a.usdcOut), shielded: Boolean(a.shielded) };
     case "CreditsBought":
       return { name, payer: addr(a.payer), account: addr(a.account), credits: num(a.credits), paid: String(a.paid) };
+    case "PackBought":
+      return { name, payer: addr(a.payer), account: addr(a.account), packId: num(a.packId), sketches: num(a.sketches), models: num(a.models), paid: String(a.paid) };
+    case "RatMinted": {
+      const kind = num(a.kind) === 1 ? "model" : "seed";
+      // A seed rat's ref is the 64-bit seed, left-padded: read back in decimal, as the generator takes it.
+      const ref = kind === "seed" ? BigInt(String(a.ref)).toString() : String(a.ref).toLowerCase();
+      return { name, ratId: num(a.tokenId), minter: addr(a.minter), kind, ref, uri: String(a.uri), paid: String(a.paid) };
+    }
+    // Only the Rats contract's Transfer is indexed: the ERC-721 standard event.
+    case "Transfer":
+      return { name: "RatTransfer", ratId: num(a.tokenId), from: addr(a.from), to: addr(a.to) };
+    case "RatsFed":
+      return { name, owner: addr(a.owner), ratIds: [...a.ids].map(num), amount: String(a.amount) };
     case "AllowedForDecryption":
       return { name: "PubliclyDecryptable", caller: addr(a.caller), handles: [...a.handlesList].map((h: string) => String(h).toLowerCase()) };
     default:

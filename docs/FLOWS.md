@@ -8,6 +8,7 @@ Participants used throughout:
 - **Coprocessor**: executes the FHE operations the contract requests symbolically.
 - **Relayer / KMS**: Zama's relayer in front of the threshold key management service.
 - **cUSDC**: Zama's confidential USDC (ERC-7984), the only way to pay.
+- **Market**: the flea market, `FleaMarket` (see [The flea market](#the-flea-market)).
 
 Two things differ from the original brief in every flow:
 
@@ -651,6 +652,269 @@ player's (25).
 Credits are paid in plain USDC on purpose: `transferFrom` moves the whole price or
 reverts, where a cUSDC payment that falls short moves 0 without a word.
 
+## The studio
+
+The studio (`/studio`) draws the depot's rats. Rats, not cats, on purpose: the cats only come
+out of boxes, so nothing drawn in the studio can be taken for one. A random rat is free and
+never leaves the browser: a procedural rat generator (`buildRatSpec` and `createRat`,
+assembled from the Blender rat kit and drawn with the game's toon materials), no AI, no
+wallet. A rat from a prompt goes through paid AI services, so it is paid for first, in packs
+bought on-chain in plain USDC from `StudioPacks` (numbers in
+[`packages/game-spec/studio.json`](../packages/game-spec/studio.json)): Starter, 2 USDC for 10
+sketches and 1 3D model; Litter, 8 USDC for 50 and 5. A sketch is one cartoon picture of the
+rat; a model turns one of the account's sketches into a 3D mesh, drawn in the browser with
+the game's toon materials. Each pack sells for at least twice what its units are expected to
+cost: the services are paid back and the rest goes to the treasury.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant App
+  participant SP as StudioPacks
+  participant API
+  participant AI as AI services
+  U->>App: a random rat (free, procedural, in the browser)
+  U->>SP: buy(account, packId, maxPrice): plain USDC to the treasury
+  SP-->>API: PackBought, through the index: the account's sketches and models
+  App->>API: sign in (wallet signature, no gas)
+  App->>API: POST /v1/studio/sketches {prompt}
+  API->>API: prompt checked, daily budget left, one sketch spent
+  API->>AI: the prompt inside the rat house style
+  AI-->>API: a cartoon picture
+  App->>API: poll the job until done
+  App->>API: POST /v1/studio/models {sketchId}
+  API->>API: the sketch is the account's own, one model spent
+  API->>AI: cut the rat out of its background, then picture to textured 3D (3 to 4 minutes)
+  AI-->>API: a GLB mesh
+  App->>App: the mesh, with the toon materials and outline
+```
+
+A unit is spent before the service is called, so nobody gets work they did not pay for, and
+given back when the service fails or a job is still running after ten minutes, up to three
+failures per account and day. Past that, and whenever the picture model's safety checker
+refuses its own picture, the job is `rejected` and keeps its unit: the service was paid, and
+otherwise one unit could make the collection pay for failures without end. Failed jobs count
+against the day's budget for the same reason. The API
+stops calling the services for the day once `STUDIO_DAILY_BUDGET_USD` would be passed, and,
+when `STUDIO_ALLOWLIST` is set, only lets the listed wallets generate: on Sepolia packs are
+paid in test USDC while the services cost real money. In mock mode the whole flow runs on a
+local stand-in (a random procedural rat), with no API and no AI.
+
+### Adopt a rat
+
+A rat drawn in the studio is adopted by minting it in `Rats`, a plain ERC-721: rats are not
+secret, their owners are public. A free rat is minted by its seed for 1 USDC, each seed once
+(its look is recomputed from the seed, so nothing is stored). An AI rat costs 3 USDC and
+needs the API first, which does as for the cats' pictures: it shrinks the rat's picture to a
+free Arweave upload and stores it there for good, keeps the 3D model itself (no paid
+storage), writes a small record on Arweave pointing at both, and signs the adoption for the
+caller's address.
+
+The supply is capped for good: 700 seed rats and 300 AI rats (`SoldOut` past either), and one
+address mints 5 at most, both kinds together (`WalletLimit`; holding more, by transfer, is
+fine). The app reads what is left (`seedMinted`, `modelMinted`, `mintedBy`) and refuses before
+any approval; the API refuses to sign (`sold-out`, `wallet-limit`) before putting anything on
+Arweave. The home page and the studio show the rats left, from `GET /v1/rats/supply`.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant App
+  participant API
+  participant AR as Arweave
+  participant R as Rats
+  alt a free rat
+    U->>R: mintSeed(seed, maxPrice): 1 USDC to the treasury (SoldOut past 700, WalletLimit past 5)
+  else an AI rat
+    App->>API: POST /v1/studio/jobs/:id/adopt (signed in)
+    API->>API: the job is the caller's, a finished 3D model, not adopted yet, an AI rat left, the caller under 5
+    API->>API: the GLB, kept by the API (served at /rats/models/<job>.glb)
+    API->>AR: the picture shrunk under 100 KB, then a record of both (free uploads)
+    API-->>App: uri, deadline, EIP-712 signature (minter = the caller)
+    U->>R: mintModel(job, uri, deadline, signature, maxPrice): 3 USDC to the treasury
+  end
+  R-->>API: RatMinted, Transfer, through the index
+  App->>API: GET /v1/rats?owner=…: "My rats"
+```
+
+### The rats' croquettes, and sniffing
+
+Each rat earns 3 plain CROQ a day from its mint, paid by the `RatPantry` to whoever owns it,
+at most 7 days kept between two claims ("Collect croquettes" claims every rat at once). The
+pantry gets 500,000 CROQ from the treasury by a plain transfer and has no owner; while it is
+empty a claim reverts, so no day is lost, and when it runs low a claim pays what is left. A rat sniffs a box through the paid shake that
+already exists: its owner pays 2.5 cUSDC, sees one trait of a sealed box privately, and the
+box's hidden holder gets 70%. The API counts the paid shakes of each rat's owner as the rat's
+"boxes sniffed".
+
+## The flea market
+
+`FleaMarket` sells boxes, cats (opened boxes) and rats between players, in cUSDC. It holds
+what it sells: once listed, an item sits in the market's escrow until it is sold or taken
+back. Two more participants:
+
+- **Market**: `FleaMarket`.
+- **Hooks**: `DoNotOpenHooks`, which reads a box's public state (status, entangled partner,
+  vet check) and nothing else.
+
+Before a first sale the seller lets the market move the item: `setOperator(market, until)`
+on the boxes (the adapter asks for 365 days) or `setApprovalForAll(market, true)` on the rats.
+A buyer makes the market their cUSDC operator, as for any payment. The adapter sends these
+when they are missing. The market is on Sepolia at `0xb5c799bF626e70DcE6804BDef06199661cDc8665`; the API does not index it,
+so the adapter reads listings (`listings(from, count)`) and offers (`offerInfo`) from the chain.
+
+### List a box
+
+A box's owner is encrypted, so the market cannot check it. It pulls the box with a "maybe"
+transfer and proves the arrival with a public decryption, the same two steps as an opening.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor S as Seller
+  participant M as Market
+  participant Hk as Hooks
+  participant C as Contract
+  participant Co as Coprocessor
+  participant R as Relayer / KMS
+  S->>M: list(Boxes, tokenId, price)
+  M->>Hk: beforeList(tokenId): snapshot of the public state
+  M->>C: confidentialTransferFrom(seller, market, tokenId) (as operator)
+  C->>Co: moved = owner == seller, owner = select(moved, market, owner)
+  M->>M: arrived = moved, publicly decryptable, status = Pending
+  M-->>S: Listed(listingId, Boxes, tokenId, seller, price)
+  S->>R: publicDecrypt(listingInfo(listingId).arrived)
+  R-->>S: arrived + KMS proof
+  S->>M: finalizeListing(listingId, arrived, proof) (anyone may)
+  M->>M: checkSignatures on the stored handle
+  alt arrived
+    M->>M: status = Active
+    M-->>S: ListingSettled(listingId, true)
+  else
+    M->>M: status = Refused, nothing moved
+    M-->>S: ListingSettled(listingId, false)
+  end
+```
+
+A rat is a plain ERC-721: `list(Rats, tokenId, price)` escrows it with `transferFrom` and
+the listing is active at once (`Listed` and `ListingSettled(listingId, true)` in the same
+transaction). Since the market holds an active box, a second listing of it, by the seller or
+anyone, never arrives and settles `Refused`. In the adapter: `listItem`, which throws
+`not-yours` on a refused box, and `finishListing` for a proof left unsent.
+
+### Buy at the asking price
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor B as Buyer
+  participant M as Market
+  participant U as cUSDC
+  participant Co as Coprocessor
+  participant R as Relayer / KMS
+  actor S as Seller
+  B->>M: buy(listingId)
+  M->>M: Active, not the seller's own, public state unchanged (else StateChanged)
+  M->>U: confidentialTransferFrom(buyer, market, price)
+  U->>Co: paid = price, or 0 if the balance is short (all-or-nothing)
+  M->>Co: ok = paid == price, publicly decryptable
+  M-->>B: PurchaseRequested(purchaseId, listingId, buyer, price)
+  B->>R: publicDecrypt(purchaseInfo(purchaseId).ok)
+  R-->>B: ok + KMS proof
+  B->>M: finalizePurchase(purchaseId, ok, proof) (anyone may)
+  M->>M: checkSignatures on the stored handle
+  alt not ok
+    M->>M: Unpaid: nothing arrived, nothing to send back
+  else ok, listing still Active, same price, same public state
+    M->>U: fee to the treasury, price - fee to the seller
+    M->>B: deliver the item (confidentialTransfer or transferFrom)
+    M-->>S: Sold(listingId, seller, buyer, price, false)
+  else ok, but sold, cancelled, repriced or changed first
+    M->>U: refund paid to the buyer
+    M->>M: Missed
+  end
+  M-->>B: PurchaseSettled(purchaseId, status)
+```
+
+Nothing locks a listing: several purchases may wait on it, and the first one settled with
+"paid" wins; the others settle `Missed` and are refunded in full. A buyer whose balance was
+short only shows that much (`Unpaid`): nothing left their wallet. In the adapter: `buyListing`
+(throws `unpaid` or `missed`), `finishPurchase` and `pendingPurchases`.
+
+### Secret offer
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor B as Buyer
+  participant M as Market
+  participant U as cUSDC
+  participant Co as Coprocessor
+  participant R as Relayer / KMS
+  actor S as Seller
+  B->>B: encrypt amount for the market, in the page
+  B->>M: makeOffer(listingId, amount, proof)
+  M->>Co: wanted = min(amount, MAX_PRICE)
+  M->>U: confidentialTransferFrom(buyer, market, wanted)
+  U->>Co: escrowed = wanted, or 0 if the balance is short
+  M->>M: allow escrowed to the market, the buyer and the seller only
+  M-->>S: OfferMade(offerId, listingId, buyer) (no amount)
+  S->>R: userDecrypt(offerInfo(offerId).amount)
+  R-->>S: the amount, for the seller's eyes
+  alt the seller accepts
+    S->>M: acceptOffer(offerId)
+    M->>M: Active, public state unchanged (else StateChanged)
+    M->>Co: fee = escrowed * feeBps / 10000, encrypted
+    M->>U: fee to the treasury, escrowed - fee to the seller
+    M->>B: deliver the item
+    M-->>S: OfferAccepted(offerId, listingId), Sold(listingId, seller, buyer, 0, true)
+  else the buyer takes it back (any time while open)
+    B->>M: withdrawOffer(offerId)
+    M->>U: escrowed back to the buyer
+    M-->>B: OfferWithdrawn(offerId)
+  end
+```
+
+The amount never leaves the ciphertexts the buyer and the seller may read: `OfferMade` has no
+amount, and a sale by offer emits `Sold` with price 0. An offer from a wallet that held less
+escrows zero, and the seller sees it before accepting; the contract cannot tell them an offer
+is worth it. Offers that lost (to another offer, to a purchase, or to a cancel) stay open
+until their buyer withdraws them. In the adapter: `makeOffer`, `offers`, `offerAmounts` (one
+user decryption), `acceptOffer`, `withdrawOffer`.
+
+### Reprice, cancel, and a box that changes in escrow
+
+`reprice(listingId, price)` (the seller) changes the asking price; purchases placed at the old
+price settle `Missed` and are refunded. `cancelListing` (the seller) gives the item back;
+pending purchases are refunded, open offers stay withdrawable. A box is sold in the public state
+it was listed in: an entangled partner opened, say, and `buy` and `acceptOffer` revert
+`StateChanged`, a pending purchase settles `Missed`, and the seller can only cancel. A box's
+paid-shake earnings stay in it while it waits and go to whoever buys it.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending: list (box), maybe-transfer
+  [*] --> Active: list (rat), escrowed
+  Pending --> Active: finalizeListing, the box arrived
+  Pending --> Refused: finalizeListing, the seller did not hold it
+  Active --> Active: reprice (seller), pending purchases will be refunded
+  Active --> Sold: finalizePurchase (paid, unchanged), or acceptOffer (seller)
+  Active --> Cancelled: cancelListing (seller), the item goes back
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> PurchasePending: buy
+  PurchasePending --> Done: paid, listing Active at that price and state
+  PurchasePending --> Unpaid: not paid, nothing was taken
+  PurchasePending --> Missed: paid, but sold, cancelled, repriced or changed first: refunded
+```
+
+What becomes public: the seller of an active listing (so selling a box shows you held it),
+the asking price, the buyer of a sale, and for each purchase at the asking price whether the
+buyer could pay. Never public: balances, offer amounts, the price of a sale by offer, what is
+inside a sealed box.
+
 ## Where the money goes
 
 | Fee | Paid in | Goes to |
@@ -658,6 +922,9 @@ reverts, where a cUSDC payment that falls short moves 0 without a word.
 | Mint (5 a box), open (1, once the box opens), pet (0.5) | cUSDC | `DoNotOpen`, withdrawn by the owner at most once a week; nobody can read the total before |
 | Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen`; all of it to `DoNotOpen` for an empty id |
 | Decryption credits (0.01 each on Sepolia; on mainnet Zama's dollar price for a decryption x 2) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
+| Studio packs (Starter 2, Litter 8) | plain USDC | the treasury address set in `StudioPacks`, at once; the AI services are paid from it |
+| Adopting a rat (1 a free rat, 3 an AI rat) | plain USDC | the treasury address set in `Rats`, at once; Arweave storage of AI rats is paid from it |
+| A flea market sale (2.5%, at most 10%) | cUSDC | the treasury address set in `FleaMarket`, at the sale; the rest to the seller. For a sale by offer the fee is computed encrypted and stays secret |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 
@@ -668,9 +935,14 @@ flowchart LR
   S -- 70% --> H[Box holder]
   S -- 30% --> T
   P -- "credits, plain USDC" --> T
+  P -- "studio packs, plain USDC" --> T
   P -- "ramp, 0.3% of ETH" --> T
+  P -- "flea market sale" --> F{split}
+  F -- "2.5%" --> T
+  F -- "the rest" --> SE[Seller]
   T -- "free and public decryptions" --> Z[Zama]
   T --> I[Indexer and API servers]
+  T -- "sketches and 3D models" --> AI[AI services]
 ```
 
 The treasury pays Zama for what players do not pay themselves: each wallet's free daily
@@ -883,6 +1155,8 @@ Every two-step action can be picked up later, by anyone:
 | A milestone reached, not announced | Announced after the next mint through the app | `announceMilestone` |
 | Box revealed, not weighed | "Weigh the cat" | `weigh` |
 | Weigh-in pending | "Weigh the cat" | `weigh` (picks up the pending one: `finalizeWeigh`) |
+| Flea market: a box listing `Pending` | The seller's stall marks it as on its way | `finishListing(listingId)` (throws `not-yours` when refused) |
+| Flea market: a purchase `Pending` | Not shown yet | `finishPurchase(purchaseId)`; `pendingPurchases(account)` lists them |
 
 When the step after the first transaction fails (the decryption service is slow, the
 user declines the proof's signature), the adapter marks the `ChainError` `resumable`,

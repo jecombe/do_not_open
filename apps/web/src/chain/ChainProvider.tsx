@@ -5,6 +5,24 @@ import { chainMode } from "./mode";
 import { useLive } from "./useLive";
 import { hasSigned, requireTerms } from "../terms/terms";
 
+/** The demo's rats outlive a page: adopted in the studio, they are still there in the game. */
+const MOCK_RAT_STORE = {
+  load(): string | null {
+    try {
+      return localStorage.getItem("dno.mock.rats");
+    } catch {
+      return null;
+    }
+  },
+  save(value: string): void {
+    try {
+      localStorage.setItem("dno.mock.rats", value);
+    } catch {
+      // Private window: the rats live as long as the page.
+    }
+  },
+};
+
 interface ChainState {
   adapter: ChainAdapter;
   mode: ChainMode;
@@ -58,6 +76,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       apiUrl: import.meta.env.VITE_API_URL,
       walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
       relayerProxy: import.meta.env.VITE_RELAYER_PROXY === "true",
+      mock: { ratStore: MOCK_RAT_STORE, fleaMarket: true },
     }).then((a) => {
       if (!live) return;
       unsubscribe = a.onAccountChange(setAccount);

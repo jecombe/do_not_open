@@ -84,7 +84,8 @@ it covers the account's own last transaction, and reads the chain otherwise.
 
 ## API
 
-Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
+Every `GET` returns `{ "block": <last indexed block>, "data": ... }`, except the studio's
+routes, whose shapes are given in [The studio](#the-studio).
 
 | Route | What |
 | --- | --- |
@@ -115,8 +116,11 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
+| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`). Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
+| `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
+| `GET /v1/rats?owner=` · `GET /v1/rats/supply` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
 | `POST /v1/discord/interactions` | Discord's `/ask` (below): called by Discord only, signed with the application's Ed25519 key (`401` otherwise) |
 | `GET /v1/herald?token=&limit=&network=` | The collection's Discord channel (below): its posts, newest first, queued, sent or rehearsed; `network=discord` for that network only. With `HERALD_ADMIN_TOKEN` set, only with that token |
@@ -162,7 +166,20 @@ Migration 11 adds `archived_images`: the token pictures stored on Arweave, by SH
 SVG, with their Arweave id. Not a fold of the chain: a replay keeps it, and a picture is never
 uploaded twice.
 
-Migration 12 adds `allow_list_claims`: one row per address that claimed a place on the mainnet
+Migration 12 adds the studio: `studio_accounts`, the units bought with `StudioPacks` (a read
+model, folded from `PackBought` and rebuilt by a replay), and `studio_jobs`, every generation
+the studio paid a service for (not on the chain: a replay keeps it). The contract is newer than
+every block indexed so far, so nothing is read again. Deploy the contract and ship the API that
+knows its address (`dno:export`) before the first pack is sold: an index already past the
+contract's deploy block never goes back for its events.
+
+Migration 13 adds the rats: `rats`, the Rats contract's tokens with their public owner (a read
+model, folded from `RatMinted` and `Transfer`), `rat_sniffers`, paid shakes by account (a fold
+of `Shaken`, filled from the events already recorded), and `rat_adoptions`, the AI rats' files
+on Arweave by studio job (not on the chain: a replay keeps it). Same rule as the studio: ship
+the API that knows the Rats address before the first rat is minted.
+
+Migration 15 adds `allow_list_claims`: one row per address that claimed a place on the mainnet
 allow list, with the best points it had, its last signed message and signature, and when it
 first and last claimed. Not a fold of the chain either: a replay keeps it, and so must a
 redeploy. A migration that empties the index must never truncate `allow_list_claims` (nor
@@ -252,6 +269,103 @@ reverts; cUSDC would move 0 silently), and indexed from its `CreditsBought` even
 used is kept in `relayer_free_used` and `relayer_credits_spent`, which a replay of the
 chain does not touch. Migration 4 empties the index once so it is rebuilt with the ACL and
 credit events.
+
+## The studio
+
+Players draw a cartoon rat from a prompt (rats, not cats, so nothing drawn here can be taken
+for a cat out of a box); the API pays fal.ai (`FAL_KEY`) for the picture and
+the 3D mesh, out of units bought first, on-chain, in plain USDC. Nothing is generated on credit.
+
+- **Packs.** `StudioPacks` sells the packs of `packages/game-spec/studio.json` (Starter: 2 USDC
+  for 10 sketches and 1 model; Litter: 8 USDC for 50 and 5), straight to the treasury. Each pack
+  sells for at least `minMargin` (2) times what its units are estimated to cost
+  (`estimatedCostUsd`: 0.01 a sketch, 0.35 a model), checked at deploy: the services are paid
+  back and the rest is the collection's. The index folds `PackBought` into `studio_accounts`.
+- **Spending.** A job takes its unit when it starts, in one locked transaction with the check
+  (`pg_advisory_xact_lock`), so the last unit is never spent twice. Units left are bought minus
+  the account's running, finished and rejected jobs; a failed job gives its unit back, up to
+  `STUDIO_REFUNDS_PER_DAY` (3) failures per account and UTC day. Past that a failure is
+  `rejected` and keeps its unit: fal may have billed it, and endless failures on one unit
+  would bill the collection without end. A job still running after twice `STUDIO_TIMEOUT_MS`
+  (a crash, a lost call) is failed and its unit comes back.
+- **The day's budget.** Every job, failed ones included, counts its estimated cost against `STUDIO_DAILY_BUDGET_USD`
+  (20 by default), every account together; past it the studio answers `studio-paused` /
+  `budget` until midnight UTC, whatever was bought. `STUDIO_PAUSED=true` closes it at once.
+- **Test networks.** On Sepolia packs are paid in test USDC while fal bills real dollars: set
+  `STUDIO_ALLOWLIST` (comma-separated addresses) so only testers may generate, and keep the
+  budget small.
+- **Prompts.** Trimmed, 3 to 240 characters, put inside the fixed house style of `studio.json`
+  (a cartoon rat, thick outlines, plain background). A short list of licensed characters
+  (cats and rats alike: Remy, Ratatouille, Splinter, Jerry, Rattata, Templeton, Scabbers,
+  Mickey...), brands and adult or violent words is refused before anything is spent; the picture model's
+  own safety checker runs too, and a flagged picture is `rejected`: fal billed it, so the unit
+  is spent.
+- **Files.** `/v1/studio/jobs/:id/image` and `/model.glb` fetch only https files on fal's hosts
+  (`fal.media`, `fal.run`, `fal.ai` and their subdomains), at most 10 MB a picture and 100 MB a
+  mesh (adopting one takes 50 MB at most, since the API keeps it), 60 requests a minute per address, and serve them as an image or a GLB whatever fal says,
+  with `nosniff` and a sandboxing CSP, so nothing they return can run on the API's origin.
+- **Services.** `STUDIO_IMAGE_MODEL` (`fal-ai/flux/schnell`) draws the sketch, a few seconds.
+  A model is two calls: `STUDIO_CUTOUT_MODEL` (`fal-ai/birefnet`, `none` to skip) cuts the rat
+  out of its background, then `STUDIO_3D_MODEL` (`tripo3d/h3.1/image-to-3d`, Tripo H3.1, plain
+  standard textures without PBR, at most 30,000 faces so the GLB stays well under the 50 MB an adoption takes, 0.30 USD a mesh) turns it into a GLB in a few minutes
+  (`STUDIO_TIMEOUT_MS`, 10 minutes by default). Tripo's meshes are cleaner than Hunyuan3D v2's
+  (`fal-ai/hunyuan3d/v2`, textured, still supported), which the toon outline traced bump by
+  bump. Without the cut-out a picture-to-mesh model builds a card with the drawing on it;
+  Trellis (`fal-ai/trellis`, faster and cheaper) leaves the sides it cannot see black, and its
+  meshes come without normals, which the app computes. All go through fal's queue API (`src/infrastructure/studio/FalStudio.ts`). The studio is enabled only with
+  `FAL_KEY` and a `StudioPacks` address in the deployment.
+
+| Route | Auth | Answer |
+| --- | --- | --- |
+| `GET /v1/studio` | optional | `{ enabled, paused: null \| "off" \| "budget", packs: [{ id, key, name, priceUsdc, sketches, models }], testersOnly, allowlisted: boolean \| null, block }` (`testersOnly`: `STUDIO_ALLOWLIST` is set, and the site locks its AI tab for anyone not on it; `allowlisted` is null without a list or a session, so the list is never revealed to a visitor; cached 30 s without a session, never with one, and sent with `Vary: Authorization` so a cached anonymous answer is never served to a signed-in call) |
+| `GET /v1/studio/credits` | session | `{ sketches: { bought, used, left }, models: { bought, used, left }, block }` |
+| `POST /v1/studio/sketches` | session | `{ prompt }` → `202 { job }`. 20 a minute per IP |
+| `POST /v1/studio/models` | session | `{ sketchId }` (a finished sketch of the account) → `202 { job }`. 20 a minute per IP |
+| `GET /v1/studio/jobs` · `GET /v1/studio/jobs/:id` | session | `{ jobs }` (newest first, 50 at most) · `{ job }` (the account's own only) |
+| `GET /v1/studio/jobs/:id/image` · `/model.glb` | none | The finished picture (a model's is its sketch's) or mesh, fetched from fal and cached for a year. Job ids are random UUIDs |
+
+A job is `{ id, kind: "sketch" | "model", status: "running" | "done" | "failed" | "rejected", prompt, sketchId,
+imageUrl, modelUrl, error, createdAt }`, its URLs pointing at the routes above (`PUBLIC_URL`).
+The app polls `GET /v1/studio/jobs/:id` until the status changes. Refusals cost nothing:
+`400 bad-prompt`, `403 refused-prompt` · `not-allowlisted`, `402 no-credits`,
+`503 studio-paused` (with `reason`: `disabled`, `off` or `budget`), `404`, `401`.
+
+## The depot's rats
+
+A rat drawn in the studio is adopted as an ERC-721 of the `Rats` contract, whose owners are
+public (`src/application/rats.ts`). A seed rat is minted straight from the app with its seed:
+nothing here is needed, and its picture is recomputed from the seed (`renderRatSvg`). An AI rat
+needs two things first, which `POST /v1/studio/jobs/:id/adopt` hands out to the job's own
+account only:
+
+1. Its files, like a cat's: the sketch's picture is shrunk to a JPEG of at most 512 px that fits
+   Turbo's free 100 KB (`JpegShrinker`, plain JavaScript) and stored on Arweave for good; the
+   GLB stays with the API (`rat_models`, served at `/rats/models/<job>.glb`), never paid for on
+   Arweave; a small JSON record on Arweave points at both (`{ name, prompt, image: "ar://…",
+   model: "https://…/rats/models/<job>.glb", job }`). Both are fetched back from fal, only from
+   its hosts, capped at 10 and 50 MB. No Turbo credits are needed. If Arweave refuses the
+   upload, adoptions answer `503 storage-failed` (nothing is minted, nothing is lost). Uploads
+   are kept by job (`rat_adoptions`): asking again signs again without uploading again.
+2. The attester's EIP-712 signature (`RATS_ATTESTER_KEY`): `Adopt(minter, job, uri, deadline)`
+   in the domain `{ "DO NOT OPEN Rats", "1", chainId, Rats }`, where `job` is
+   `keccak256(jobId)`, `uri` is `ar://<record>` and the deadline 30 minutes away. The contract
+   takes it from that minter only, once per job.
+
+| Route | Auth | Answer |
+| --- | --- | --- |
+| `GET /v1/rats?owner=0x…` | none | `{ rats: Rat[], block }` |
+| `GET /v1/rats/supply` | none | `{ supply: { seed: { minted, max }, model: { minted, max }, perWallet }, block }`: rats minted as of the index, against the caps of `studio.json` (the contract's, set at deployment). The home page's counter |
+| `GET /v1/rats/:id` | none | `{ rat: Rat, block }`, `404` if unknown |
+| `GET /rats/:id` | none | ERC-721 metadata (the contract's base URI): name, description, image, `animation_url` (the GLB of an AI rat, which marketplaces show in 3D), `external_url` (`SITE_URL`'s studio), attributes (a seed rat's coat, pose, face, eyes, hat, prop, scarf) |
+| `GET /rats/:id/image.svg` | none | A seed rat's picture, cached for a year |
+| `GET /rats/models/<job>.glb` | none | An adopted AI rat's 3D model, kept by the API, cached for a year; `404` if none, 60 a minute per IP |
+| `POST /v1/studio/jobs/:id/adopt` | session | `{ job, uri, deadline, signature, priceUsdc }` for `Rats.mintModel`. 10 a minute per IP. `404 not-found` (not the caller's job), `400 not-adoptable` (not a finished 3D model, or its files are gone), `409 already-adopted`, `409 sold-out` (every AI rat minted, as of the index), `409 wallet-limit` (the caller minted `maxPerWallet` rats), both checked before anything goes to Arweave, `503 storage-failed`, `503 adopt-unavailable` (no Rats contract or no attester key) |
+
+A `Rat` is `{ id, kind: "seed" | "model", seed, job, uri, owner, minter, mintedBlock, imageUrl,
+modelUrl, sniffs }`: `seed` in decimal for a seed rat, `job` (bytes32) and `uri` for an AI rat,
+`imageUrl` the API's SVG or the picture on Arweave (`ARWEAVE_GATEWAY`), `modelUrl` the GLB served by
+the API (`/rats/models/<job>.glb`), and `sniffs` the paid shakes of its owner. The croquettes a rat earns are read from the
+`RatPantry` contract itself (`claimable(id)`); the index only records `RatsFed` in the feed.
 
 ## The manual's chatbot
 
@@ -357,5 +471,6 @@ Configuration is environment variables, all optional in development: see `src/co
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
-`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
+`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

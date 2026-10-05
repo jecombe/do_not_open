@@ -9,7 +9,7 @@ flowchart LR
   iface --> mock["MockAdapter<br/>in memory"]
   iface --> evm["EvmFhevmAdapter<br/>ethers + Relayer SDK"]
   iface -.-> sol["solana/<br/>not started"]
-  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC on Sepolia"]
+  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC,<br/>Rats, FleaMarket on Sepolia"]
   evm --> market["Uniswap V3: CROQ/USDC<br/>QuoterV2, SwapRouter02"]
   evm --> relayer["Zama relayer + KMS"]
 ```
@@ -17,11 +17,11 @@ flowchart LR
 | File | What it is |
 | --- | --- |
 | `src/types.ts` | The interface, its data types, `ChainError`, and a few chain-neutral helpers |
-| `src/mock/MockAdapter.ts` | The whole game in memory, with the contract's rules and refusals. The other holder (the night shift) keeps two of its boxes on the duel shelf, takes up at once any duel reserved for one of its boxes, and accepts every entanglement, so every flow can be played alone |
+| `src/mock/MockAdapter.ts` | The whole game in memory, with the contract's rules and refusals. The other holder (the night shift) keeps two of its boxes on the duel shelf, takes up at once any duel reserved for one of its boxes, and accepts every entanglement, so every flow can be played alone. With `fleaMarket: true` it also keeps stalls at the flea market (a sealed box, a cat, two rats), makes a secret offer below the asking price on whatever you list, and takes an offer of yours that is fair enough |
 | `src/evm/EvmFhevmAdapter.ts` | Sepolia: transactions through ethers, decryptions through `@zama-fhe/relayer-sdk` |
 | `src/evm/wallet.ts` | Where signatures come from: an injected browser wallet, or a fixed signer in Node |
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
-| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, written by `pnpm --filter @dno/contracts-evm export:sepolia` |
+| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats and the flea market (`market`, null until it is deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
 | `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
 | `src/standings.ts` | The duel ranking (`duelStandings`, `rosettePlace`, `ROSETTES`) and the mainnet allow list's points and claim message (`playerPoints`, `ALLOW_LIST_POINTS`, `allowListMessage`, `allowListAddress`, `byClaimRank`). Pure, exported as `@dno/chain-adapter/standings`, also used by the API, so every reader ranks the same way |
@@ -49,7 +49,9 @@ hold the box; nothing happened, and nobody else learned it). The others are `rej
 `wallet-busy` (the wallet already shows a request), `wrong-network`, `insufficient-funds`
 (the gas coin), `insufficient-usdc`, `nonce` (an earlier transaction in the way), `network`
 (an endpoint or the decryption service did not answer), `decryption`, `reverted`,
-`not-connected`, `no-wallet` and `unknown`.
+`not-connected`, `no-wallet` and `unknown`. The flea market adds `missed`: someone else
+bought the item first, or the listing was repriced, cancelled or its box changed, and the
+payment came back in full.
 
 `ChainError.detail` says what the app needs to word a way out: `held` and `needed` for a
 missing balance, `txUrl` for the transaction that failed, `resumable` when the first
@@ -154,6 +156,74 @@ the API has not indexed yet (a purchase shows once its block is indexed, two con
 later) are added on top of the API's count, so the figure is right as soon as `buyCredits`
 resolves.
 
+The studio's packs (AI sketches and 3D models, `packages/game-spec/studio.json`) are sold by
+the `StudioPacks` contract in plain USDC. `studioPacks()` reads them from the contract (`id`,
+`key`, `name`, `price` in USDC's smallest unit, `sketches`, `models`), dropping a withdrawn
+one, and returns null where no StudioPacks is deployed. `buyStudioPack(id)` approves the USDC
+if needed and buys at the price just read (a change meanwhile reverts); it throws
+`insufficient-usdc` before any transaction when the wallet holds too little. The API counts
+what is spent, so `studioPending(block)` gives the units this browser bought that an API
+answer as of `block` may not count yet: the page adds them to it. `apiSession()` signs in to
+the API with the connected wallet (`POST /v1/auth/nonce`, one free EIP-191 signature, then
+`/v1/auth/verify`) and returns `{ account, token, expiresAt }`, the bearer token the studio's
+routes take; null without an API. The mock sells the same packs for its pretend USDC, reports
+every unit bought through `studioPending` (there is no API to count them) and has no session.
+
+The depot's rats are a plain ERC-721 (`Rats`), owners public, with the `RatPantry` paying each
+rat its daily plain CROQ (`studio.json` `rats`). `ratPrices()` reads `{ seed, model }` in USDC's
+smallest unit, null where no Rats contract is deployed. `ratSupply(account)` reads
+`{ seed: { minted, max }, model: { minted, max }, perWallet, mintedBy }` (the caps are the
+contract's, `mintedBy` null without an account). `ratTaken({ seed } | { job })` reads which rat a
+seed or a studio job (its UUID, or the adoption's bytes32) became and who holds it, null while
+nobody adopted it: the studio offers neither a rat someone else took nor one the wallet already has. `mintSeedRat(seed)` and `mintModelRat(adoption)` refuse with `reverted` (`SoldOut`,
+`WalletLimit`) before any approval when no rat of the kind is left or the account minted its
+share, approve the USDC if needed, mint at the price just read and return the token id; the adoption is the API's answer to
+`POST /v1/studio/jobs/:id/adopt` (`{ job, uri, deadline, signature, priceUsdc }`), its `job` the
+bytes32 the API signed (keccak256 of the job's UUID), passed through as is (`ratJob`). `ratsOf(account)` reads
+`GET /v1/rats?owner=` first and the chain's `Transfer` logs from the deploy block when the API is
+behind, so a fresh mint shows at once. `ratClaimable(ids)`, `ratPantry()` (`{ perDay, maxDays,
+reserve }`) and `claimRatCroq(ids)` (returns the CROQ paid) go to the RatPantry. The mock keeps
+the same rules with its clock (a "day" is a minute) and, given `ratStore`, keeps its rats between
+pages: the web app passes one backed by `localStorage`, so a rat adopted in the studio is still
+there in the game.
+
+## The flea market
+
+`FleaMarket` sells boxes, cats and rats between players, in cUSDC. `fleaMarket()` reads its
+terms (`address`, `explorerUrl`, `feeBps`, `maxPrice`), null where no market is deployed: the
+app then shows "Closed tonight". On Sepolia at `0xb5c799bF626e70DcE6804BDef06199661cDc8665`; the EVM adapter takes it as its
+`market` option (`sepolia.json`'s `market` entry in `createSepoliaBrowserAdapter` and
+`createSepoliaNodeAdapter`). `rat(id)` reads one rat whoever holds it (the market, while it is for
+sale).
+
+- `listings({ status, seller, collection })` lists `Listing`s newest first: `listingId`,
+  `collection` (`"boxes"` or `"rats"`), `tokenId`, `seller`, `price` (public), `listedAt`,
+  `status` (`"pending"`, `"active"`, `"sold"`, `"cancelled"`, `"refused"`).
+- `listItem(collection, tokenId, price)` first makes the market the account's operator on the
+  boxes (`setOperator`, 365 days) or approves it on the rats if it may not yet move the item.
+  A rat is listed at once. A box goes to the market in a "maybe" transfer, then the adapter
+  relays the public decryption of "it arrived" (`finalizeListing`); it throws `not-yours` when
+  the account did not hold it (nothing moved, nobody else learned it). `finishListing(listingId)`
+  relays that proof for a listing left pending; anyone may.
+- `repriceListing` and `cancelListing` are the seller's. Repricing refunds purchases placed at
+  the old price; cancelling gives the item back and leaves open offers withdrawable.
+- `buyListing(listingId, { pay })` pays the asking price in cUSDC (shielding USDC first with
+  `pay: "usdc"`, and making the market the cUSDC operator if needed), then relays the proof
+  that it was paid, which delivers the item. It throws `unpaid` when the cUSDC did not cover
+  the price (nothing was taken) and `missed` when someone else got it first or the listing
+  changed (refunded in full). `pendingPurchases(account)` lists the account's purchases still
+  waiting for their proof, `finishPurchase(purchaseId)` relays it.
+- `makeOffer(listingId, amount)` encrypts the amount in the page and escrows it; it returns the
+  offer's id. `withdrawOffer` (the buyer, any time while open) and `acceptOffer` (the seller,
+  at the secret amount) close it. `offers({ listingId, buyer, seller, status })` lists
+  `MarketOffer`s without amounts; `offerAmounts(offerIds)` user-decrypts those the connected
+  account made or received and leaves the others out.
+
+The API does not index the market yet: the EVM adapter reads the chain directly, listings in
+pages through `listings(from, count)`, offers through `offerInfo`, and pending purchases from
+the account's `PurchaseRequested` logs. The flows are in
+[`docs/FLOWS.md`](../../docs/FLOWS.md#the-flea-market).
+
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its
 account picker again (EIP-2255 `wallet_requestPermissions`) rather than handing back the
 account it shared last time; the app's "Use another one" on the release form uses it.
@@ -199,7 +269,8 @@ sequenceDiagram
 Opening a box, the alive check, an entanglement, a duel and a milestone use a public
 decryption instead: the relayer returns the clear values with a KMS proof, and the
 adapter sends both back to the contract (`finalize`, `finalizeDuel`,
-`announceMilestone`), which verifies the proof before storing anything. Finding one's
+`announceMilestone`, and the flea market's `finalizeListing` and `finalizePurchase`), which
+verifies the proof before storing anything. Finding one's
 boxes and reading a mint's result use the same user decryption as a shake.
 
 ## Tests

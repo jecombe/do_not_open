@@ -100,6 +100,8 @@ jobs:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
         run: |
           scp -i ~/.ssh/deploy deploy/docker-compose.yml deploy/deploy.sh deploy/dno.caddy.template "$TARGET:/opt/dno/"
+          # The monitoring's files (its .env stays on the server, never copied over).
+          scp -i ~/.ssh/deploy -r deploy/monitoring "$TARGET:/opt/dno/"
           scp -i ~/.ssh/deploy deploy/edge/docker-compose.yml deploy/edge/Caddyfile "$TARGET:/opt/edge/"
       - name: Switch to the new image
         env:

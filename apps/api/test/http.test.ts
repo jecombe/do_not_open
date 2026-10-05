@@ -11,6 +11,7 @@ import { silentLogger } from "../src/application/ports/logger";
 import { Queries } from "../src/application/queries";
 import { SyncChain } from "../src/application/syncChain";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
+import { Metrics } from "../src/infrastructure/http/metrics";
 import { buildServer } from "../src/infrastructure/http/server";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { ALICE, BOB, ev, FakeChain, FakeChainState } from "./fixtures";
@@ -63,6 +64,25 @@ beforeAll(async () => {
     terms: new AcceptTerms(store, ethersVerifier, { now: () => now }),
     allowList: { list: new AllowList(store, ethersVerifier, { now: () => now }, 500), adminToken: ADMIN },
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
+    metrics: new Metrics({
+      store,
+      archive: store,
+      posts: store,
+      indexer: { status: () => ({ running: true, lastPass: { from: 100, to: 108, applied: 0, target: 110 }, lastPassAt: 1_790_000_000_000, lastError: null, failures: 0, tasks: { reconcile: { lastRunAt: 1_790_000_000_000, lastResult: null, lastError: "boom" } } }) },
+      rpcStatus: () => [{ name: "publicnode", healthy: true, cooldownSeconds: 0, logRange: 1000, latencyMs: 250, served: 7, failed: 1 }],
+      studio: {
+        store: {
+          studioJobCounts: async () => [{ kind: "sketch", status: "done", count: 3 }],
+          studioSales: async () => ({ packs: 2, paidUsdc: 10 }),
+        },
+        spentToday: async () => 0.33,
+        spentTotal: async () => 1.5,
+        dailyBudgetUsd: 20,
+        open: true,
+      },
+      rats: { ratCounts: async () => [{ kind: "seed" as const, count: 2 }, { kind: "model" as const, count: 1 }] },
+      info: { chain: "sepolia", collection: "0xABC", version: "test" },
+    }),
     corsOrigins: ["https://donotopen.vercel.app", "https://donotopen-*.vercel.app"],
     rateLimitPerMinute: 10_000,
   });
@@ -171,6 +191,41 @@ describe("reads", () => {
       const other = await app.inject({ method: "GET", url: "/v1/stats", headers: { origin } });
       expect(other.headers["access-control-allow-origin"]).toBeUndefined();
     }
+  });
+});
+
+describe("metrics", () => {
+  it("serves the protocol, the indexer, the RPC pool and the HTTP traffic for Prometheus", async () => {
+    await get("/v1/stats");
+    const res = await app.inject({ method: "GET", url: "/metrics" });
+    expect(res.headers["content-type"]).toContain("text/plain");
+    const text = res.body;
+    for (const line of [
+      'dno_info{chain="sepolia",collection="0xabc",version="test"} 1',
+      "dno_boxes_minted 4",
+      "dno_boxes_opened 1",
+      "dno_duels_open 2",
+      'dno_requests_pending{kind="aliveCheck"} 1',
+      "dno_request_oldest_pending_blocks 0",
+      "dno_indexer_block 108",
+      "dno_indexer_lag_blocks 2",
+      'dno_task_failing{task="reconcile"} 1',
+      'dno_rpc_healthy{endpoint="publicnode"} 1',
+      'dno_rpc_requests_total{endpoint="publicnode",result="failed"} 1',
+      "dno_images_archived 0",
+      'dno_studio_jobs{kind="sketch",status="done"} 3',
+      "dno_studio_spent_today_usd 0.33",
+      "dno_studio_daily_budget_usd 20",
+      "dno_studio_spent_total_usd 1.5",
+      "dno_studio_open 1",
+      "dno_studio_packs_sold 2",
+      "dno_studio_revenue_usdc 10",
+      'dno_rats_minted{kind="seed"} 2',
+      'dno_rats_minted{kind="model"} 1',
+    ])
+      expect(text).toContain(line);
+    expect(text).toMatch(/dno_http_request_duration_seconds_count\{method="GET",route="\/v1\/stats",status="200"\} \d+/);
+    expect(text).not.toMatch(/0x[0-9a-f]{40}/); // no address of any player
   });
 });
 

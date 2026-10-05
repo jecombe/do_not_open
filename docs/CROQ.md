@@ -55,6 +55,12 @@ function, no owner and no pause. Nothing can create more.
 | Market liquidity | 4,000,000 (20%) | A CROQ-only position in a CROQ/USDC Uniswap V3 pool, locked for good in the `LiquidityLocker` |
 | Treasury | 5,000,000 (25%) | Kept by the collection owner as plain CROQ, for events and future liquidity |
 
+Out of the treasury, 500,000 CROQ go to the `RatPantry` by a plain transfer, made by the deploy
+itself in a full deployment (the economy script keeps them aside before handing the treasury to
+the owner) (see
+"The rats' croquettes" below): the studio's adopted rats are paid from it, not from the game
+reserve.
+
 `economyFromSpec()` in `packages/contracts-evm/lib/specParams.ts` refuses a spec whose
 shares do not add up to the total, or whose welcome bags do not equal
 `maxSupply × welcomeBag`.
@@ -155,6 +161,24 @@ in 256 and the other values 51 times. The bias is accepted.
 
 Nobody can know what a claim paid, including the claimer before the transaction. There
 is nothing to simulate and nothing to retry on a bad day.
+
+### The rats' croquettes
+
+**3 plain CROQ per adopted rat per day**, from its mint, claimed by its current owner from
+the `RatPantry`, at most 7 days kept between two claims. Plain CROQ, not cCROQ: a rat's owner
+is public, so its earnings may be too; the bureau de change wraps them for the boxes. The
+pantry gets 500,000 CROQ from the treasury by a plain transfer and has no owner: nothing
+refills it but a transfer. While it is empty a claim reverts (`PantryEmpty`), so the days a
+rat earned wait for the CROQ; when it runs low a claim pays what is left. A rat costs
+at least 1 USDC, so farming croquettes with rats costs more than it brings at the market's
+floor (0.001 USDC a CROQ: about 333 days to earn a seed rat's price back).
+
+The rats are capped for good in the `Rats` contract: 700 seed rats and 300 AI rats, never
+more, and one address mints 5 at most. With every rat adopted and claiming, the pantry pays
+3,000 CROQ a day, so its 500,000 last about 167 days; longer in practice, since a rat left
+alone more than 7 days earns nothing more. It was 10 CROQ a day with no cap before the
+2026-10-04 redeployment: an unlimited mint would have emptied the fixed fund. Numbers in
+`packages/game-spec/studio.json` (`rats.mint`, `rats.croquettes`).
 
 ## Where croquettes go
 
@@ -553,6 +577,7 @@ CROQ-only V3 market:
 | `ConfidentialCroq` | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
 | `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
 | `LiquidityLocker` | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
+| `RatPantry` (the rats' croquettes, plain CROQ) | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
 | CROQ/USDC pool (Uniswap V3, 1%) | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
 | Position | #233138, ticks 69200 to 138200, 4,000,000 CROQ, 0 USDC |
 | Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |

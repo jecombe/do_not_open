@@ -1,0 +1,191 @@
+import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from "prom-client";
+import type { AskManual } from "../../application/askManual";
+import type { ArchiveStore } from "../../application/ports/archive";
+import type { PostStore } from "../../application/ports/herald";
+import type { ReadStore } from "../../application/ports/store";
+import type { StudioStore } from "../../application/ports/studio";
+import type { RatStore } from "../../application/ports/rats";
+import type { EndpointStatus } from "../chain/RpcPool";
+import type { IndexerStatus } from "../Indexer";
+
+export interface MetricsSources {
+  store: Pick<ReadStore, "stats" | "cursor" | "finalizedCursor" | "milestonesReached" | "allPendingRequests">;
+  archive?: Pick<ArchiveStore, "archivedCount">;
+  posts?: Pick<PostStore, "postCounts">;
+  indexer?: { status(): IndexerStatus };
+  rpcStatus?: () => EndpointStatus[];
+  chat?: Pick<AskManual, "usage">;
+  /** The studio's jobs, and what the services cost today against the budget. */
+  studio?: { store: Pick<StudioStore, "studioJobCounts" | "studioSales">; spentToday(): Promise<number>; spentTotal(): Promise<number>; dailyBudgetUsd: number; open: boolean };
+  /** The rats adopted, by kind. */
+  rats?: Pick<RatStore, "ratCounts">;
+  /** Shown on `dno_info`; Prometheus adds the `network` label to every series from its target. */
+  info: { chain: string; collection: string; version: string };
+}
+
+/**
+ * The protocol in Prometheus' text format, for the monitoring stack (deploy/monitoring). Only
+ * public facts, like the index itself: counts, the indexer's progress, the RPC pool, HTTP
+ * traffic. Read at each scrape; nothing is computed in between.
+ */
+export class Metrics {
+  readonly registry = new Registry();
+  readonly contentType = this.registry.contentType;
+  private readonly http: Histogram<"method" | "route" | "status">;
+
+  constructor(s: MetricsSources) {
+    const r = this.registry;
+    collectDefaultMetrics({ register: r });
+
+    new Gauge({ name: "dno_info", help: "Always 1; labels say what this API indexes", labelNames: ["chain", "collection", "version"], registers: [r] })
+      .set({ chain: s.info.chain, collection: s.info.collection.toLowerCase(), version: s.info.version }, 1);
+
+    this.http = new Histogram({
+      name: "dno_http_request_duration_seconds",
+      help: "HTTP requests by route template and status",
+      labelNames: ["method", "route", "status"],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30],
+      registers: [r],
+    });
+
+    const gauge = (name: string, help: string, collect: (g: Gauge) => Promise<void> | void, labelNames: string[] = []) =>
+      new Gauge({ name, help, labelNames, registers: [r], async collect() { await collect(this); } });
+
+    // --- the protocol ---
+    gauge("dno_boxes_minted", "Boxes minted", async (g) => g.set((await s.store.stats()).minted));
+    gauge("dno_boxes_opened", "Boxes opened (cats revealed)", async (g) => g.set((await s.store.stats()).opened));
+    gauge("dno_duels", "Duels ever posted", async (g) => g.set((await s.store.stats()).duels));
+    gauge("dno_duels_open", "Duels waiting on the shelf or for a proof", async (g) => g.set((await s.store.stats()).openDuels));
+    gauge("dno_users", "Addresses seen acting on-chain or signing in", async (g) => g.set((await s.store.stats()).users));
+    gauge("dno_users_registered", "Users who signed in", async (g) => g.set((await s.store.stats()).registered));
+    gauge("dno_events", "Protocol events indexed", async (g) => g.set((await s.store.stats()).events));
+    gauge("dno_milestones_reached", "Sale milestones reached", async (g) => g.set(await s.store.milestonesReached()));
+    gauge(
+      "dno_requests_pending",
+      "Requests waiting for their KMS proof, by kind",
+      async (g) => {
+        g.reset();
+        for (const req of await s.store.allPendingRequests()) g.inc({ kind: req.kind });
+      },
+      ["kind"],
+    );
+    gauge("dno_request_oldest_pending_blocks", "Blocks since the oldest pending request was placed (0: none)", async (g) => {
+      const [pending, cursor] = await Promise.all([s.store.allPendingRequests(), s.store.cursor()]);
+      const oldest = Math.min(...pending.map((p) => p.placedBlock));
+      g.set(pending.length && cursor !== null ? Math.max(0, cursor - oldest) : 0);
+    });
+
+    // --- the indexer ---
+    gauge("dno_indexer_block", "Last block indexed", async (g) => g.set((await s.store.cursor()) ?? 0));
+    gauge("dno_indexer_finalized_block", "Last block checked again once final", async (g) => g.set((await s.store.finalizedCursor()) ?? 0));
+    if (s.indexer) {
+      const status = () => s.indexer!.status();
+      gauge("dno_indexer_up", "1 while the indexer loop runs", (g) => g.set(status().running ? 1 : 0));
+      gauge("dno_chain_target_block", "Block the last pass aimed at (chain head minus confirmations)", (g) => g.set(status().lastPass?.target ?? 0));
+      gauge("dno_indexer_lag_blocks", "Blocks between the target and what is indexed", async (g) => {
+        const target = status().lastPass?.target;
+        const cursor = await s.store.cursor();
+        g.set(target !== undefined && cursor !== null ? Math.max(0, target - cursor) : 0);
+      });
+      gauge("dno_indexer_last_pass_timestamp_seconds", "When the last pass finished", (g) => g.set((status().lastPassAt ?? 0) / 1000));
+      gauge("dno_indexer_consecutive_failures", "Passes failed in a row", (g) => g.set(status().failures));
+      gauge(
+        "dno_task_last_run_timestamp_seconds",
+        "When each periodic task last ran",
+        (g) => {
+          for (const [task, st] of Object.entries(status().tasks)) g.set({ task }, (st.lastRunAt ?? 0) / 1000);
+        },
+        ["task"],
+      );
+      gauge(
+        "dno_task_failing",
+        "1 when a periodic task's last run threw",
+        (g) => {
+          for (const [task, st] of Object.entries(status().tasks)) g.set({ task }, st.lastError ? 1 : 0);
+        },
+        ["task"],
+      );
+    }
+
+    // --- the free RPC endpoints ---
+    if (s.rpcStatus) {
+      const rpc = s.rpcStatus;
+      gauge("dno_rpc_healthy", "1 when the endpoint is not cooling down", (g) => rpc().forEach((e) => g.set({ endpoint: e.name }, e.healthy ? 1 : 0)), ["endpoint"]);
+      gauge("dno_rpc_latency_seconds", "Recent latency of each endpoint", (g) => rpc().forEach((e) => g.set({ endpoint: e.name }, e.latencyMs / 1000)), ["endpoint"]);
+      new Counter({
+        name: "dno_rpc_requests_total",
+        help: "Calls each endpoint served or failed",
+        labelNames: ["endpoint", "result"],
+        registers: [r],
+        collect() {
+          this.reset();
+          for (const e of rpc()) {
+            this.inc({ endpoint: e.name, result: "served" }, e.served);
+            this.inc({ endpoint: e.name, result: "failed" }, e.failed);
+          }
+        },
+      });
+    }
+
+    // --- side services ---
+    if (s.archive) {
+      const archive = s.archive;
+      gauge("dno_images_archived", "Token images stored on Arweave", async (g) => g.set(await archive.archivedCount()));
+    }
+    if (s.posts) {
+      const posts = s.posts;
+      gauge(
+        "dno_herald_posts",
+        "The herald's posts by network and status",
+        async (g) => {
+          g.reset();
+          for (const c of await posts.postCounts()) g.set({ network_account: c.network, status: c.status }, c.count);
+        },
+        ["network_account", "status"],
+      );
+    }
+    if (s.chat) {
+      const chat = s.chat;
+      gauge("dno_chat_model_questions_today", "Questions sent to Gemini today (UTC)", (g) => g.set(chat.usage().asked));
+      gauge("dno_chat_model_questions_limit", "Questions Gemini may get per UTC day", (g) => g.set(chat.usage().perDay));
+    }
+    if (s.studio) {
+      const studio = s.studio;
+      gauge(
+        "dno_studio_jobs",
+        "Studio generations by kind and status",
+        async (g) => {
+          g.reset();
+          for (const c of await studio.store.studioJobCounts()) g.set({ kind: c.kind, status: c.status }, c.count);
+        },
+        ["kind", "status"],
+      );
+      gauge("dno_studio_spent_today_usd", "Estimated dollars the studio's AI services cost today (UTC)", async (g) => g.set(await studio.spentToday()));
+      gauge("dno_studio_spent_total_usd", "Estimated dollars the studio's AI services cost since it opened", async (g) => g.set(await studio.spentTotal()));
+      gauge("dno_studio_daily_budget_usd", "Dollars the studio may spend on its AI services per UTC day", (g) => g.set(studio.dailyBudgetUsd));
+      gauge("dno_studio_open", "1 when the studio can generate (key, contract, not paused), 0 when it is off", (g) => g.set(studio.open ? 1 : 0));
+      gauge("dno_studio_packs_sold", "Studio packs sold since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).packs));
+      gauge("dno_studio_revenue_usdc", "USDC the studio's packs brought in since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).paidUsdc));
+    }
+    if (s.rats) {
+      const rats = s.rats;
+      gauge(
+        "dno_rats_minted",
+        "Rats adopted from the studio, by kind (seed or AI)",
+        async (g) => {
+          g.reset();
+          for (const c of await rats.ratCounts()) g.set({ kind: c.kind }, c.count);
+        },
+        ["kind"],
+      );
+    }
+  }
+
+  observe(method: string, route: string, status: number, seconds: number) {
+    this.http.observe({ method, route, status: String(status) }, seconds);
+  }
+
+  render(): Promise<string> {
+    return this.registry.metrics();
+  }
+}

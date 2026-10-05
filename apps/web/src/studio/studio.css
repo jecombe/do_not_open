@@ -1,0 +1,724 @@
+/* The studio is a page that scrolls, unlike the game's full-screen depot. */
+html:has(body.studio-page),
+body.studio-page,
+body.studio-page #root {
+  height: auto;
+  min-height: 100%;
+}
+
+body.studio-page {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.studio {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--gutter) 40px;
+}
+
+/* The game's masthead floats over its scene; here it heads the page. */
+.studio .masthead {
+  inset: var(--gutter) 0 auto;
+  z-index: 5;
+}
+
+.studio > .boot {
+  margin: 32px 0;
+  color: var(--tape);
+}
+
+.studio-intro {
+  padding: 128px 0 8px;
+  max-width: 760px;
+}
+
+/* On a phone the balances drop under the stamp: the page starts below them. */
+@media (max-width: 700px) {
+  .studio-intro {
+    padding-top: 136px;
+  }
+}
+
+.studio-kicker {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sodium);
+}
+
+.studio-title {
+  margin: 0 0 12px;
+  font-family: var(--stencil);
+  font-size: clamp(38px, 7vw, 68px);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--manifest);
+}
+
+.studio-lead {
+  margin: 0 0 16px;
+  font-size: clamp(19px, 2.2vw, 23px);
+  line-height: 1.3;
+  max-width: 58ch;
+}
+
+.studio-steps {
+  margin: 0 0 14px;
+  padding-left: 1.3em;
+  display: grid;
+  gap: 8px;
+  max-width: 62ch;
+}
+
+.studio-steps strong {
+  color: var(--sodium);
+}
+
+.studio-next {
+  color: var(--tape);
+  max-width: 62ch;
+}
+
+.studio .link {
+  color: var(--sodium);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.studio-workshop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  margin-top: 26px;
+}
+
+.studio-h2 {
+  margin: 0 0 10px;
+  font-family: var(--stencil);
+  font-size: 26px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.studio-h3 {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.studio-stage .studio-h2 {
+  color: var(--manifest);
+}
+
+.studio-viewer {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  border: 2px solid var(--kraft);
+  box-shadow: 0 0 0 5px var(--dock-shadow), 0 18px 40px rgb(0 0 0 / 0.5);
+  background: #241d17;
+  touch-action: pan-y;
+}
+
+.studio-viewer canvas {
+  display: block;
+}
+
+.studio-viewer-state {
+  position: absolute;
+  inset: auto 0 12px;
+  margin: 0;
+  text-align: center;
+  color: var(--tape);
+  pointer-events: none;
+}
+
+.studio-stage-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.studio-stage-actions .fine {
+  color: var(--tape);
+  max-width: none;
+}
+
+.studio-adopt {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.studio-adopt .fine,
+.studio-adopted {
+  color: var(--tape);
+  max-width: none;
+}
+
+.studio-adopted {
+  margin: 0;
+  font-weight: 700;
+}
+
+.studio-adopt .link {
+  color: var(--tape);
+}
+
+/* The one buy on the dark side of the page: filled, so it reads on the dark. */
+.studio-adopt-button {
+  background: var(--ink-red);
+  border-color: var(--ink-red);
+  color: #fff7e8;
+}
+
+.studio-another {
+  color: var(--sodium);
+  border-color: var(--sodium);
+}
+
+.studio-another:hover:not(:disabled) {
+  background: var(--sodium);
+  color: var(--ink);
+}
+
+/* The desk is a slip, laid on the page instead of over a scene. */
+.studio-desk.slip {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  transform: rotate(0.4deg);
+  margin: 0 5px;
+}
+
+.studio-desk .fine {
+  max-width: none;
+}
+
+.studio-desk .stamp-button {
+  font-size: 22px;
+}
+
+.studio-demo {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 2px dashed var(--ink);
+  font-weight: 600;
+}
+
+.studio-closed {
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.studio-block {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.studio-desk > .stamp-button {
+  margin-top: 14px;
+}
+
+.studio-credits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 14px 0 0;
+  padding: 8px 10px;
+  background: var(--tape);
+  font-size: 18px;
+}
+
+.studio-credits strong {
+  font-family: var(--stencil);
+  font-size: 26px;
+}
+
+.studio-label {
+  font-weight: 700;
+}
+
+.studio-prompt {
+  width: 100%;
+  min-height: 84px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 18px;
+  color: var(--ink);
+  background: #fffaf0;
+  border: 2px solid var(--ink);
+  resize: vertical;
+}
+
+.studio-count {
+  text-align: right;
+}
+
+.studio-sketches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-sketch {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 2px;
+  background: #fffaf0;
+  border: 2px solid var(--ink);
+}
+
+.studio-sketch[aria-pressed="true"] {
+  outline: 4px solid var(--ink-red);
+  outline-offset: 1px;
+}
+
+.studio-sketch img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.studio-sketch-state {
+  font-size: 14px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.studio-models {
+  display: grid;
+  /* minmax(0, …): a long prompt, kept on one line, would otherwise size the track and widen the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-models li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  border-bottom: 1px dashed rgb(28 24 20 / 0.4);
+  padding-bottom: 4px;
+}
+
+.studio-model-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-desk .link {
+  color: var(--ink-red);
+  font-weight: 700;
+}
+
+.studio-pack-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-pack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+}
+
+.studio-pack-name {
+  font-weight: 700;
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.studio-pack .fine {
+  grid-column: 1;
+}
+
+.studio-pack-buy.stamp-button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: auto;
+  padding: 9px 12px 6px;
+  font-size: 18px;
+}
+
+.studio-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 36px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(233 223 200 / 0.2);
+}
+
+@media (min-width: 900px) {
+  .studio-workshop {
+    grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr);
+    align-items: start;
+  }
+
+  .studio-stage {
+    position: sticky;
+    top: 16px;
+  }
+
+  .studio-stage-actions {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .studio-another.stamp-button {
+    width: auto;
+    padding-inline: 18px;
+  }
+}
+
+.studio-trouble {
+  padding: 6px 8px;
+  border-left: 4px solid var(--ink-red);
+  background: rgb(194 38 29 / 0.08);
+  color: var(--ink-red);
+  font-weight: 600;
+}
+
+.studio-models .link {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* --- The switch between the free generator and the AI --- */
+.studio-mode {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 620px;
+  margin: 26px auto 0;
+  padding: 5px;
+  border: 2px solid var(--kraft);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.35);
+  box-shadow: 0 0 0 4px var(--dock-shadow);
+}
+
+.studio-mode-thumb {
+  position: absolute;
+  inset: 5px auto 5px 5px;
+  width: calc(50% - 5px);
+  border-radius: 999px;
+  background: var(--sodium);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.35);
+  transition: transform 0.28s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.studio-mode[data-mode="ai"] .studio-mode-thumb {
+  transform: translateX(100%);
+}
+
+.studio-mode-option {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 9px 12px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--manifest);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.studio-mode-option[aria-pressed="true"] {
+  color: var(--ink);
+}
+
+.studio-mode-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.studio-tester {
+  margin: 10px auto 0;
+  text-align: center;
+}
+
+.studio-tester .link {
+  color: var(--manifest);
+}
+
+.studio-mode-option:focus-visible {
+  outline: 3px solid var(--manifest);
+  outline-offset: 2px;
+}
+
+.studio-mode-title {
+  font-family: var(--stencil);
+  font-size: clamp(17px, 2.4vw, 22px);
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio-mode-hint {
+  font-size: 14px;
+  line-height: 1.15;
+  opacity: 0.85;
+}
+
+.studio-mode-busy::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  animation: studio-blink 1s ease-in-out infinite;
+}
+
+@keyframes studio-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* The free generator on its own: one turntable, centred. */
+.studio-workshop.studio-workshop-random {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 860px;
+  margin-inline: auto;
+}
+
+.studio-workshop-random .studio-stage {
+  position: static;
+}
+
+/* --- The drawing board --- */
+.studio-board-empty {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 27px, rgb(233 223 200 / 0.06) 27px 28px),
+    repeating-linear-gradient(90deg, transparent 0 27px, rgb(233 223 200 / 0.06) 27px 28px),
+    #241d17;
+}
+
+.studio-board-empty p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--tape);
+  font-size: 19px;
+  text-align: center;
+}
+
+.studio-bigsketch {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  /* Bound the width, not the height: a capped height leaves the square image sized on the full width, spilling over the button. */
+  width: min(100%, 78vh, 760px);
+  padding: 10px;
+  background: #fffaf0;
+  border: 2px solid var(--kraft);
+  box-shadow: 0 0 0 5px var(--dock-shadow), 0 18px 40px rgb(0 0 0 / 0.5);
+  transform: rotate(-0.6deg);
+  animation: studio-pop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.studio-bigsketch img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+@keyframes studio-pop {
+  from {
+    transform: rotate(-4deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+.studio-board-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.studio-board-actions .fine,
+.studio-board-prompt {
+  color: var(--tape);
+  max-width: none;
+}
+
+.studio-board-prompt {
+  margin: 12px 0 0;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.studio-board-cta {
+  background: var(--sodium);
+  border-color: var(--sodium);
+  color: var(--ink);
+}
+
+/* --- The loader: the rat in its wheel, the bar over it --- */
+.studio-loading {
+  overflow: hidden;
+}
+
+.studio-load {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 26px 16px 12px;
+  background: linear-gradient(to top, rgb(23 19 15 / 0.92) 55%, transparent);
+  pointer-events: none;
+}
+
+.studio-load-phase {
+  margin: 0 0 8px;
+  font-family: var(--stencil);
+  font-size: clamp(18px, 2.6vw, 24px);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--manifest);
+}
+
+.studio-load-bar {
+  position: relative;
+  height: 16px;
+  border: 2px solid var(--manifest);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.studio-load-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: repeating-linear-gradient(-45deg, var(--sodium) 0 10px, #ffd27a 10px 20px);
+  background-size: 28px 28px;
+  animation: studio-stripes 0.8s linear infinite;
+  transition: width 0.3s linear;
+}
+
+@keyframes studio-stripes {
+  to {
+    background-position: 28px 0;
+  }
+}
+
+.studio-load-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--tape);
+}
+
+.studio-load-meta span:first-child {
+  font-weight: 700;
+  color: var(--manifest);
+}
+
+.studio-minibar {
+  position: absolute;
+  inset: auto 4px 4px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(28 24 20 / 0.2);
+  overflow: hidden;
+}
+
+.studio-minibar > span {
+  display: block;
+  height: 100%;
+  background: var(--ink-red);
+  transition: width 0.5s linear;
+}
+
+.studio-model-running {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-mode-thumb,
+  .studio-bigsketch,
+  .studio-load-bar > span,
+  .studio-mode-busy::before {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .studio-mode {
+    margin-top: 18px;
+  }
+
+  .studio-mode-option {
+    padding: 8px 6px 7px;
+  }
+
+  .studio-mode-title {
+    font-size: 16px;
+    white-space: normal;
+  }
+
+  /* Taller on a phone: the bar sits over the floor, not over the rat. */
+  .studio-loading {
+    aspect-ratio: 1;
+  }
+
+  .studio-mode-hint {
+    font-size: 12px;
+  }
+
+  .studio-load-meta {
+    font-size: 13px;
+  }
+}

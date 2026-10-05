@@ -198,7 +198,7 @@ export function FlowFigure() {
   useEffect(() => {
     const parties = new Set<StationId>(["contract"]);
     for (const s of flow.steps) parties.add(s.from).add(s.to);
-    scene.current?.setParties([...parties]);
+    scene.current?.setParties([...parties], flow.cast);
   }, [scene, ready, flow]);
   useEffect(() => scene.current?.setStep(step), [scene, ready, step]);
   useEffect(() => scene.current?.relabel(), [scene, ready, locale]);

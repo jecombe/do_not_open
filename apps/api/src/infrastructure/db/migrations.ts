@@ -346,6 +346,101 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
   },
   {
     version: 12,
+    name: "studio packs and jobs",
+    sql: /* sql */ `
+      -- Studio units bought with StudioPacks: a read model, rebuilt by a replay. The contract is
+      -- newer than every block indexed so far, so nothing needs reading again.
+      create table studio_accounts (
+        account text primary key,
+        sketches bigint not null,
+        models bigint not null,
+        packs bigint not null default 0,
+        -- USDC paid, in its smallest unit (6 decimals).
+        paid numeric not null default 0
+      );
+      -- Every generation the studio paid a service for. Not on the chain: a replay keeps it. A
+      -- running, finished or rejected job holds one unit of its kind; a failed one gave it back.
+      create table studio_jobs (
+        id text primary key,
+        account text not null,
+        kind text not null check (kind in ('sketch', 'model')),
+        status text not null check (status in ('running', 'done', 'failed', 'rejected')),
+        prompt text not null,
+        sketch_id text references studio_jobs (id),
+        result_url text,
+        error text,
+        cost_usd double precision not null,
+        created_at bigint not null,
+        finished_at bigint
+      );
+      create index studio_jobs_account on studio_jobs (account, created_at desc);
+      create index studio_jobs_day on studio_jobs (created_at);
+      create index studio_jobs_running on studio_jobs (created_at) where status = 'running';
+    `,
+  },
+  {
+    version: 13,
+    name: "rats",
+    sql: /* sql */ `
+      -- The depot's rats (ERC-721, public owners): a read model, rebuilt by a replay. The Rats
+      -- contract is newer than every block indexed so far, so nothing needs reading again.
+      create table rats (
+        token_id integer primary key,
+        kind text not null check (kind in ('seed', 'model')),
+        -- The seed in decimal, or the studio job's bytes32.
+        ref text not null,
+        uri text,
+        owner text not null,
+        minter text not null,
+        minted_block bigint not null,
+        minted_at bigint
+      );
+      create index rats_owner on rats (owner);
+      create index rats_ref on rats (ref);
+      -- Paid shakes by account: a rat's sniffs are its owner's. A fold of the Shaken events, so it
+      -- starts from those already recorded.
+      create table rat_sniffers (
+        account text primary key,
+        sniffs bigint not null
+      );
+      insert into rat_sniffers (account, sniffs)
+        select data->>'viewer', count(*) from events
+        where name = 'Shaken' and (data->>'paid')::boolean
+        group by data->>'viewer';
+      -- AI rats' picture and record once on Arweave, by studio job. Not on the chain: a replay
+      -- keeps it, and a second adoption signs again without uploading again.
+      create table rat_adoptions (
+        job_id text primary key,
+        job_ref text not null unique,
+        account text not null,
+        prompt text not null,
+        image_id text not null,
+        record_id text not null,
+        created_at bigint not null
+      );
+      -- AI rats' 3D models (GLB): kept here and served by the API, like the cats' meshes are
+      -- rebuilt by the app, rather than paid for on Arweave. In the nightly dump.
+      create table rat_models (
+        job_ref text primary key,
+        glb bytea not null,
+        created_at bigint not null
+      );
+    `,
+  },
+  {
+    version: 14,
+    name: "capped rats",
+    sql: /* sql */ `
+      -- Rats and RatPantry were deployed again with the caps (block 11845258). Rats are keyed by
+      -- token id, so the first contract's rats would collide with the new one's: forget them, and
+      -- read again from the new deployment (events already stored are skipped, not projected twice).
+      delete from events where source in ('rats', 'ratPantry');
+      delete from rats;
+      update sync_state set block = least(block, 11845257);
+    `,
+  },
+  {
+    version: 15,
     name: "mainnet allow list claims",
     sql: /* sql */ `
       -- Players who claimed a place on the mainnet allow list, with the best points they had.

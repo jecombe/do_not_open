@@ -1,16 +1,18 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { spec } from "@dno/game-spec";
+import { spec, studio } from "@dno/game-spec";
 import type { CatSpec } from "@dno/generator";
 import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD, REPO } from "../links";
 import { useLocale } from "../i18n/locale";
-import { appPath, docsPath, homePath } from "../site";
+import { appPath, docsPath, homePath, studioPath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
+import { RatsLeft } from "./RatsLeft";
+import { RatToy } from "./ratToy";
 import { Shipped } from "./Shipped";
 import { boxComplaint, pageSound, setMuted } from "./sound";
 
@@ -63,6 +65,7 @@ function HomeTop() {
         <a href="#croquettes" onClick={close}>
           {t("home.nav.croq")}
         </a>
+        <a href={studioPath(locale)}>{t("home.nav.studio")}</a>
         <a href={DOCS}>{t("home.nav.docs")}</a>
         <LangSwitch label={t("home.nav")} />
       </nav>
@@ -76,6 +79,50 @@ function HomeTop() {
         </button>
       </div>
     </header>
+  );
+}
+
+/** One of the studio's free rats, sniffing about beside the studio's pitch. Click it for another. */
+function StudioRat() {
+  const t = useT();
+  const host = useRef<HTMLDivElement>(null);
+  const toy = useRef<RatToy | null>(null);
+  const [webgl, setWebgl] = useState(true);
+
+  useEffect(() => {
+    if (!host.current) return;
+    let made: RatToy;
+    try {
+      made = new RatToy(host.current);
+    } catch {
+      setWebgl(false);
+      return;
+    }
+    toy.current = made;
+    return () => {
+      made.dispose();
+      toy.current = null;
+    };
+  }, []);
+
+  if (!webgl) return null;
+  return (
+    <figure className="studio-rat">
+      <div
+        ref={host}
+        className="stage studio-rat-stage"
+        role="button"
+        tabIndex={0}
+        aria-label={t("home.studio.ratAria")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toy.current?.poke();
+          }
+        }}
+      />
+      <figcaption>{t("home.studio.ratHint")}</figcaption>
+    </figure>
   );
 }
 
@@ -155,6 +202,30 @@ export function Home() {
       </section>
 
       <Croquettes />
+
+      <section id="studio" className="home-section studio-teaser">
+        <div className="studio-card">
+          <p className="kicker">{t("home.studio.kicker")}</p>
+          <h2>{t("home.studio.title")}</h2>
+          <p className="section-lede">{t("home.studio.lede")}</p>
+          <ul className="studio-points">
+            <li>
+              <strong>{t("home.studio.free.title")}</strong> {t("home.studio.free.body")}
+            </li>
+            <li>
+              <strong>{t("home.studio.ai.title")}</strong> {t("home.studio.ai.body", { price: studio.packs[0]!.priceUsdc })}
+            </li>
+            <li>
+              <strong>{t("home.studio.next.title")}</strong> {t("home.studio.next.body", { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay })}
+            </li>
+          </ul>
+          <RatsLeft />
+          <a className="btn" href={studioPath(locale)}>
+            {t("home.studio.cta")}&nbsp;→
+          </a>
+        </div>
+        <StudioRat />
+      </section>
 
       <section id="cats" className="home-section">
         <h2>{t("home.cats.title")}</h2>

@@ -253,6 +253,9 @@ export type ChainErrorCode =
   | "unpaid"
   /** The caller did not hold the box. Nothing happened, and nobody else learned it. */
   | "not-yours"
+  /** The flea market sold the item to someone else first, or the listing changed (repriced,
+   *  cancelled, its box opened): the payment came back in full. */
+  | "missed"
   /** The chain refused the transaction. `reason` carries the contract's error name. */
   | "reverted"
   /** The decryption service failed or timed out. */
@@ -426,6 +429,172 @@ export interface DecryptionAllowance {
   price: bigint | null;
   /** Units one encrypted input costs. */
   inputUnits: number;
+}
+
+/** A studio pack as the StudioPacks contract sells it. */
+export interface StudioPack {
+  id: number;
+  key: string;
+  name: string;
+  /** Plain USDC, smallest unit. */
+  price: bigint;
+  /** Cartoon pictures from a prompt. */
+  sketches: number;
+  /** Sketches turned into 3D models. */
+  models: number;
+}
+
+/** Studio units: what a pack holds, what was bought, what is left. */
+export interface StudioUnits {
+  sketches: number;
+  models: number;
+}
+
+/** One of the depot's rats: a plain ERC-721, owners public. */
+export interface RatInfo {
+  id: number;
+  /** A free rat, minted by its seed, or an AI rat, minted with its studio job. */
+  kind: "seed" | "model";
+  /** Decimal 64-bit seed of a seed rat. */
+  seed: string | null;
+  /** The studio job of an AI rat. */
+  job: string | null;
+  /** Where an AI rat's files are kept (ar://). */
+  uri: string | null;
+  owner: Address;
+  minter: Address;
+  mintedBlock: number | null;
+  /** A picture of the rat, when the API serves one. */
+  imageUrl: string | null;
+  /** An AI rat's 3D model (GLB). */
+  modelUrl: string | null;
+  /** Boxes its owner sniffed (paid shakes), as the API counts them. 0 when unknown. */
+  sniffs: number;
+}
+
+/** What adopting a rat costs, in plain USDC, smallest unit. */
+export interface RatPrices {
+  seed: bigint;
+  model: bigint;
+}
+
+/** How many rats there are and can ever be: the supply is capped for good, per kind. */
+export interface RatSupply {
+  seed: { minted: number; max: number };
+  model: { minted: number; max: number };
+  /** The most rats one address may mint, both kinds together. */
+  perWallet: number;
+  /** Rats `account` minted, or null without an account. */
+  mintedBy: number | null;
+}
+
+/** A rat, free or AI, as it is looked up before adopting it: by its seed, or by its studio job. */
+export type RatRef = { seed: bigint } | { job: string };
+
+/** Who adopted a rat already. */
+export interface RatTaken {
+  id: number;
+  owner: Address;
+}
+
+/** The API's go-ahead to mint an AI rat: its files are on Arweave and the attester signed. */
+export interface RatAdoption {
+  /** The job id as the contract takes it (bytes32 hex), or the studio's UUID. */
+  job: string;
+  uri: string;
+  /** Unix seconds. */
+  deadline: number;
+  signature: string;
+  priceUsdc: string;
+}
+
+/** The rats' pantry: what it pays, and what it has left. */
+export interface RatPantryInfo {
+  /** Plain CROQ a rat earns a day. */
+  perDay: number;
+  /** Days kept between two claims. */
+  maxDays: number;
+  /** Plain CROQ left to pay out. */
+  reserve: bigint;
+}
+
+/** Where an item for sale comes from: the boxes (a sealed box, or a cat once opened) or the rats. */
+export type MarketCollection = "boxes" | "rats";
+
+/**
+ * "pending": a box on its way to the market, waiting for the proof that it arrived. "refused": it
+ * never arrived, the seller did not hold it; nothing happened.
+ */
+export type ListingStatus = "pending" | "active" | "sold" | "cancelled" | "refused";
+
+/** One item on the flea market. */
+export interface Listing {
+  listingId: number;
+  collection: MarketCollection;
+  tokenId: number;
+  /** Public once the listing is active: selling a box shows who held it. */
+  seller: Address;
+  /** The asking price, in cUSDC's smallest unit. Public. */
+  price: bigint;
+  /** Unix seconds. */
+  listedAt: number;
+  status: ListingStatus;
+}
+
+/** The flea market's terms. */
+export interface FleaMarketInfo {
+  /** Where the market lives, and its page in a block explorer if there is one. */
+  address: string;
+  explorerUrl: string | null;
+  /** Share of each sale paid to the treasury, in basis points. */
+  feeBps: number;
+  /** The most an item may be listed or offered for, in cUSDC's smallest unit. */
+  maxPrice: bigint;
+}
+
+export type OfferStatus = "open" | "accepted" | "withdrawn";
+
+/** A secret offer: an encrypted amount of cUSDC escrowed on a listing. */
+export interface MarketOffer {
+  offerId: number;
+  listingId: number;
+  buyer: Address;
+  status: OfferStatus;
+}
+
+export type PurchaseStatus = "pending" | "done" | "unpaid" | "missed";
+
+/** A purchase at the asking price, as it waits for (or got) the proof that it was paid. */
+export interface MarketPurchase {
+  purchaseId: number;
+  listingId: number;
+  buyer: Address;
+  price: bigint;
+  status: PurchaseStatus;
+}
+
+export interface ListingQuery {
+  /** Only listings in this state. All when left out. */
+  status?: ListingStatus;
+  seller?: Address;
+  collection?: MarketCollection;
+}
+
+export interface OfferQuery {
+  listingId?: number;
+  buyer?: Address;
+  /** Offers on listings of this seller. */
+  seller?: Address;
+  status?: OfferStatus;
+}
+
+/** A session with the DO NOT OPEN API, opened by a wallet signature (no transaction). */
+export interface ApiSession {
+  account: Address;
+  /** Sent as `Authorization: Bearer <token>`. */
+  token: string;
+  /** Unix seconds. */
+  expiresAt: number;
 }
 
 /** A release form signed by the connected wallet. */
@@ -635,6 +804,86 @@ export interface ChainAdapter {
   decryptionAllowance(): Promise<DecryptionAllowance | null>;
   /** Buys decryption credits for the connected account, in plain USDC: the whole price or a revert. */
   buyCredits(credits: number, opts?: ActionOptions): Promise<void>;
+
+  // --- studio ---
+  /** The studio's packs on sale, read from the StudioPacks contract. Null where none is deployed. */
+  studioPacks(): Promise<StudioPack[] | null>;
+  /** Buys pack `packId` for the connected account, in plain USDC: the whole price or a revert.
+   *  Throws `insufficient-usdc` before any transaction when the wallet holds too little. */
+  buyStudioPack(packId: number, opts?: ActionOptions): Promise<void>;
+  /** Units the connected account bought from this browser that an API answer as of `block`
+   *  may not count yet: add them to what it says, so a purchase shows at once. */
+  studioPending(block: number | null): StudioUnits;
+  /** Signs in to the API with the connected wallet: one free signature, no transaction. Null
+   *  where there is no API (the mock). Throws `rejected` if the wallet refuses. */
+  apiSession(): Promise<ApiSession | null>;
+
+  // --- rats ---
+  /** What adopting a rat costs. Null where no Rats contract is deployed. */
+  ratPrices(): Promise<RatPrices | null>;
+  /** Rats minted and left, per kind, and what `account` minted. Null where no Rats contract is deployed. */
+  ratSupply(account?: Address | null): Promise<RatSupply | null>;
+  /** The rat a seed or a studio job (its UUID, or the bytes32 an adoption carries) became, and who
+   *  holds it now; null while nobody adopted it. */
+  ratTaken(ref: RatRef): Promise<RatTaken | null>;
+  /** Adopts the free rat of `seed` for the connected account, in plain USDC. Returns its token id.
+   *  Throws `insufficient-usdc` before any transaction when the wallet holds too little, and
+   *  `reverted` (`SoldOut`, `WalletLimit`) when no seed rat is left or the account minted its share. */
+  mintSeedRat(seed: bigint, opts?: ActionOptions): Promise<number>;
+  /** Adopts an AI rat with the API's go-ahead. Returns its token id. Refused like `mintSeedRat`. */
+  mintModelRat(adoption: RatAdoption, opts?: ActionOptions): Promise<number>;
+  /** The rats `account` owns, newest first. */
+  ratsOf(account: Address): Promise<RatInfo[]>;
+  /** Plain CROQ each rat would get if claimed now, in the order of `ids`. */
+  ratClaimable(ids: number[]): Promise<bigint[]>;
+  /** The rats' pantry. Null where none is deployed. */
+  ratPantry(): Promise<RatPantryInfo | null>;
+  /** Collects what the connected account's rats `ids` earned. Returns the CROQ paid. */
+  claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint>;
+  /** One rat, whoever holds it (the flea market, while it is for sale). */
+  rat(id: number): Promise<RatInfo>;
+
+  // --- flea market ---
+  // Everything is paid in cUSDC. The asking price is public; a secret offer's amount is
+  // readable by its buyer and the listing's seller only, and so is the price of a sale made by offer.
+  /** The market's terms. Null where no market is deployed. */
+  fleaMarket(): Promise<FleaMarketInfo | null>;
+  /** Listings, newest first. */
+  listings(query?: ListingQuery): Promise<Listing[]>;
+  /**
+   * Puts the connected account's box, cat or rat up for `price` cUSDC. Lets the market move the
+   * item first if it may not yet. A box goes to the market in a "maybe" transfer, then the proof
+   * that it arrived is relayed: throws `not-yours` when the caller did not hold it (nothing
+   * moved, nobody else learned it). Returns the listing, active.
+   */
+  listItem(collection: MarketCollection, tokenId: number, price: bigint, opts?: ActionOptions): Promise<Listing>;
+  /** Relays the arrival proof of a box listing left pending. Anyone may. Throws `not-yours` when it was refused. */
+  finishListing(listingId: number, opts?: ActionOptions): Promise<Listing>;
+  /** Seller only. Purchases placed at the old price are refunded. */
+  repriceListing(listingId: number, price: bigint, opts?: ActionOptions): Promise<void>;
+  /** Seller only: the item comes back. Open offers stay withdrawable by their buyers. */
+  cancelListing(listingId: number, opts?: ActionOptions): Promise<void>;
+  /**
+   * Buys at the asking price, then relays the proof of payment, which delivers the item. Throws
+   * `unpaid` when the cUSDC did not cover it (nothing was taken) and `missed` when someone else
+   * got it first or the listing changed (refunded in full).
+   */
+  buyListing(listingId: number, opts?: PayOptions): Promise<void>;
+  /** Relays the payment proof of a purchase left pending. Anyone may. Throws like `buyListing`. */
+  finishPurchase(purchaseId: number, opts?: ActionOptions): Promise<void>;
+  /** The purchases `account` placed that still wait for their proof. */
+  pendingPurchases(account: Address): Promise<MarketPurchase[]>;
+  /** Escrows a secret offer of `amount` cUSDC, encrypted in this page. Returns the offer's id. */
+  makeOffer(listingId: number, amount: bigint, opts?: PayOptions): Promise<number>;
+  /** The buyer takes an open offer back, in full, whatever became of the listing. */
+  withdrawOffer(offerId: number, opts?: ActionOptions): Promise<void>;
+  /** The seller sells to an offer, at its secret amount. */
+  acceptOffer(offerId: number, opts?: ActionOptions): Promise<void>;
+  /** Offers, newest first. Amounts are not in here: see `offerAmounts`. */
+  offers(query?: OfferQuery): Promise<MarketOffer[]>;
+  /** Decrypts the amounts of offers the connected account made or received, for its eyes only.
+   *  Offers it may not read are left out. */
+  offerAmounts(offerIds: number[], opts?: ActionOptions): Promise<Record<number, bigint>>;
 }
 
 /** "0.002" for 2000000000000000n at 18 decimals. No trailing zeros. */

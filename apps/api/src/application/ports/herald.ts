@@ -47,6 +47,8 @@ export interface PostStore {
   lastPostedAt(network: string): Promise<number | null>;
   /** Newest first; every network's unless one is named. */
   posts(limit: number, network?: string): Promise<Post[]>;
+  /** How many posts each network has in each status, for monitoring. */
+  postCounts(): Promise<{ network: string; status: PostStatus; count: number }[]>;
 }
 
 /** Where posts go out. `post` returns null when nothing was sent: a rehearsal. */

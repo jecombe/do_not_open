@@ -5,7 +5,7 @@ import { useChain } from "./chain/ChainProvider";
 import { Clerk } from "./chat/Clerk";
 import { DISCORD } from "./links";
 import { useT } from "./i18n/app";
-import { Masthead, type View } from "./Masthead";
+import { isMenuView, Masthead, type View } from "./Masthead";
 import { TermsGate } from "./terms/TermsGate";
 import { Tour } from "./tour/Tour";
 import { BoxView } from "./views/BoxView";
@@ -13,10 +13,11 @@ import { DuelShelfView } from "./views/DuelShelfView";
 import { ExchangeView } from "./views/ExchangeView";
 import { onOpenExchange } from "./views/exchangeLink";
 import { LeaderboardView } from "./views/LeaderboardView";
+import { MarketView } from "./market/MarketView";
 import { PairView, type PairIntent } from "./views/PairView";
 import { PantryView } from "./views/PantryView";
+import { RatsView } from "./views/RatsView";
 import { ShelfView } from "./views/ShelfView";
-import { SpecimensView } from "./views/SpecimensView";
 import { WarehouseView } from "./views/WarehouseView";
 
 /** `app.html?box=42` opens straight on box 42: the link the share buttons hand out. */
@@ -26,12 +27,18 @@ const linkedBox = (() => {
   return Number.isSafeInteger(id) && id >= 0 ? id : null;
 })();
 
+/** `app.html?view=pantry` opens on that view: where the studio's menu sends the player. */
+const linkedView = (() => {
+  const raw = new URLSearchParams(window.location.search).get("view");
+  return isMenuView(raw) ? raw : null;
+})();
+
 export function App() {
   const chain = useChain();
   const t = useT();
   const quality = useMemo(detectQuality, []);
   const sound = useMemo(() => new ShakeSound(), []);
-  const [view, setView] = useState<View>(linkedBox === null ? "shelf" : "box");
+  const [view, setView] = useState<View>(linkedBox !== null ? "box" : (linkedView ?? "shelf"));
   const [tokenId, setTokenId] = useState(linkedBox ?? 0);
   // The box the warehouse opens in front of: the one last looked at, when coming from it.
   const [pair, setPair] = useState<[number, number] | null>(null);
@@ -60,6 +67,8 @@ export function App() {
     const url = new URL(window.location.href);
     if (view === "box") url.searchParams.set("box", String(tokenId));
     else url.searchParams.delete("box");
+    // Read once at load: past that, the menu decides.
+    url.searchParams.delete("view");
     if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
   }, [view, tokenId]);
 
@@ -98,8 +107,9 @@ export function App() {
       {view === "pair" && <PairView quality={quality} sound={sound} initial={pair} intent={intent} onInspect={showBox} onShelf={() => showDuels()} onOrder={() => setView("shelf")} />}
       {view === "pantry" && <PantryView quality={quality} sound={sound} onSelect={showBox} />}
       {view === "leaderboard" && <LeaderboardView quality={quality} sound={sound} onSelect={showBox} />}
-      {view === "specimens" && <SpecimensView quality={quality} />}
       {view === "exchange" && <ExchangeView />}
+      {view === "market" && <MarketView onShop={() => setView("shelf")} onInspect={showBox} />}
+      {view === "rats" && <RatsView quality={quality} onSniff={() => setView("warehouse")} />}
 
       <Masthead
         view={view}

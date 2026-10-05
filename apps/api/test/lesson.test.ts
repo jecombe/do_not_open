@@ -54,7 +54,7 @@ describe("what a lesson may say", () => {
   });
 
   it("refuses a number the manual does not have, a link, a hashtag, a forbidden word, or a long post", () => {
-    expect(lessonProblem("💸 A shake costs 3 USDC.", fees, budget)).toMatch(/numbers not in the manual: 3/);
+    expect(lessonProblem("💸 A shake costs 6 USDC.", fees, budget)).toMatch(/numbers not in the manual: 6/);
     expect(lessonProblem("💸 See https://evil.test", fees, budget)).toBe("a link");
     expect(lessonProblem("💸 Shake a box #NFT", fees, budget)).toBe("a hashtag or a mention");
     expect(lessonProblem("💸 Fully anonymous shaking.", fees, budget)).toMatch(/forbidden/);
