@@ -144,6 +144,8 @@ give each mint's quantity, and so who bought which ids.
 | A milestone | which mint crossed it |
 | Operator approvals | that an account made an address its operator |
 | Signing the terms of play (off-chain, filed by the API) | that an address signed the terms: address, version, signature, time. Nothing about holdings |
+| The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
+| Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
 transfers naming it), never know them.

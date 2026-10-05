@@ -24,6 +24,7 @@ flowchart LR
 | `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
 | `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
+| `src/standings.ts` | The duel ranking (`duelStandings`, `rosettePlace`, `ROSETTES`) and the mainnet allow list's points and claim message (`playerPoints`, `ALLOW_LIST_POINTS`, `allowListMessage`, `allowListAddress`, `byClaimRank`). Pure, exported as `@dno/chain-adapter/standings`, also used by the API, so every reader ranks the same way |
 | `src/mock/pool.ts` | `MockPool`: the mock's market, the same CROQ-only V3 range |
 | `src/solana/README.md` | What the Solana port needs |
 
@@ -102,6 +103,9 @@ so the interface has no owner field anywhere:
   ids, 0-9, 10-19…, the same every time. Claim each window with `claimEarnings` or
   `claimCroquettes`.
 - `openedCats()` lists every opened cat and who opened it: the only holders that are public.
+- `duelStandings()` ranks every box that settled a duel: most wins, then fewest losses, then
+  the lower serial. Boxes, not players: the first three with a win wear a rosette in the app.
+  From the API, or from the `DuelResolved` logs without it.
 
 The croquette economy sits on the same interface: `economy()`, `boxPantry(tokenId)`,
 `croqBalance(owner)`, `confidentialBalance()` (a user decryption), `confidentialCroqHandle(owner)`
@@ -160,6 +164,16 @@ the English text; free, no transaction), then files it with the API (`POST /v1/t
 one is configured. It returns `SignedTerms`: `account`, `message`, `signature` and
 `recorded`, false when only the browser keeps it (no API, or the API did not answer: that
 never blocks play). The mock returns a stand-in signature, never recorded.
+
+`allowList()` and `claimAllowList()` are the mainnet allow list. `claimAllowList` has the
+connected wallet sign `allowListMessage(account, now)` (EIP-191, free) and files it with the API
+(`POST /v1/allowlist`); signing again keeps the first claim's date and the best points. Both
+return `AllowListStatus`: `live` (`PlayerPoints`: `points`, `beaten`, `faced`, `opened`), the
+`points` the ranking counts (the best since the claim: a test network redeployment forgets the
+duels, not the claims), `claimedAt`, `rank` among claimants (null until it claims),
+`claimants` and `places`. The claims live in the API only: without one, `allowList()` returns
+null and `claimAllowList` throws `network`. The mock keeps its claims in memory, with the
+same rules (`playerPoints`).
 
 ## What happens in a shake
 

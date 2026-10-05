@@ -948,6 +948,60 @@ button {
   }
 }
 
+/* The duel podium: the rank wears its rosette's metal. */
+.ranking .rosette-rank {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  color: var(--ink);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgb(28 24 20 / 0.18);
+}
+
+.ranking .rosette-1 {
+  background: #e2b33c;
+}
+
+.ranking .rosette-2 {
+  background: #c9ced3;
+}
+
+.ranking .rosette-3 {
+  background: #c98648;
+}
+
+/* The mainnet allow list, under the duel ranking. */
+.allow-list {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 2px dashed rgb(28 24 20 / 0.45);
+}
+
+.allow-list h3 {
+  margin: 0 0 4px;
+  font-family: var(--stencil);
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.allow-points {
+  margin: 8px 0 4px;
+  font-size: 22px;
+}
+
+.allow-points small {
+  display: block;
+  font-size: 15px;
+}
+
+.allow-list .mark-good {
+  font-weight: 700;
+}
+
+
 /* --- Controls: a wallet tag and one manila tag that opens the packing list --- */
 .controls {
   position: relative;

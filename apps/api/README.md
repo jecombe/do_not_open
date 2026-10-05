@@ -100,6 +100,7 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `GET /v1/duels?account=&tokens=&open=` | Duels an account posted or took up, or about these boxes. `open` keeps posted, open and pending ones. The token list is not stored or cached. |
 | `GET /v1/duels/:id` | One duel |
 | `GET /v1/leaderboard` | Opened cats and their openers |
+| `GET /v1/leaderboard/duels` | Every box that settled a duel, `{ tokenId, wins, losses }`, ranked by wins, then fewest losses, then the lower serial. The first three with a win wear a rosette in the app |
 | `GET /v1/accounts/:address` | Profile: user, duels, pending requests, opened cats, activity |
 | `GET /v1/accounts/:address/requests` | Pending openings, alive checks, entanglements |
 | `GET /v1/accounts/:address/transfers?after=` | Transfer receipts naming the account, for it to decrypt |
@@ -109,6 +110,9 @@ Every `GET` returns `{ "block": <last indexed block>, "data": ... }`.
 | `POST /v1/auth/nonce` · `POST /v1/auth/verify` · `GET /v1/me` | Sign-in with a wallet signature (no gas), then a bearer session |
 | `POST /v1/terms` | Files a signed release form (terms of play): `{ address, message, signature }`. The message must name the address, a version and the SHA-256 of the text, and be signed by that address (EIP-191, no gas). The first signature per address and version is kept. Answers `address`, `version`, `hash`, `receivedAt`; `400` if it is not a form or names another address, `401` if another account signed it. 10 a minute per IP |
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
+| `POST /v1/allowlist` | Files a claim for a place on the mainnet allow list: `{ address, message, signature }`, the message from `allowListMessage` (`@dno/chain-adapter/standings`) naming that address, signed by it (EIP-191, no gas). Signing again keeps the first claim's date and the best points. Answers the status below; `400` if it is not a claim or names another address, `401` if another account signed it. 10 a minute per IP |
+| `GET /v1/allowlist/:address` | Where an address stands: `live` points (`beaten`, `faced`, `opened`), the `points` the ranking counts, `claimedAt`, `rank` among claimants (null until it claims), `claimants`, `places`. Not cached |
+| `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
@@ -157,6 +161,25 @@ Rows queued before it are filed under `x`, the account the herald was first writ
 Migration 11 adds `archived_images`: the token pictures stored on Arweave, by SHA-256 of their
 SVG, with their Arweave id. Not a fold of the chain: a replay keeps it, and a picture is never
 uploaded twice.
+
+Migration 12 adds `allow_list_claims`: one row per address that claimed a place on the mainnet
+allow list, with the best points it had, its last signed message and signature, and when it
+first and last claimed. Not a fold of the chain either: a replay keeps it, and so must a
+redeploy. A migration that empties the index must never truncate `allow_list_claims` (nor
+`archived_images`): the claims of the test network are what the mainnet list is drawn from,
+and the points kept with them survive the duels a redeploy forgets.
+
+### Mainnet allow list
+
+A player claims a place by signing a message, free. The points come only from facts the chain
+already made public about that address, and are computed by `playerPoints` in
+`@dno/chain-adapter/standings`, the same code the mock and the app use: 3 per distinct opponent
+beaten in a duel, 1 per distinct opponent faced, 2 per box opened (10 boxes at most). The two
+players of a resolved duel are public (the challenger proved holding box A, the accepter box B);
+a duel between one address and itself counts nothing. The ranking takes, for each claimant, the
+best of the points kept at its last claim and its points now; ties go to the earlier claim.
+Nobody is ranked who did not claim. `ALLOW_LIST_PLACES` (500 by default) is how many get a
+place; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
 
 ## Token images on Arweave
 
@@ -334,5 +357,5 @@ Configuration is environment variables, all optional in development: see `src/co
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
-`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`...). Deployment is in
+`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

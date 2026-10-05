@@ -6,6 +6,7 @@ import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
+import type { AllowListClaim } from "../../application/allowList";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 import type { ArchiveStore } from "../../application/ports/archive";
@@ -34,6 +35,7 @@ interface State {
   publicUses: Map<string, number>;
   /** Signed release forms, by `address:version`. Kept across replays. */
   terms: Map<string, TermsAcceptance>;
+  allowList: Map<Address, AllowListClaim>;
   /** The herald's queues, by id, and where each network read up to. Kept across replays. */
   posts: Map<number, Post>;
   heraldCursors: Map<string, EventPosition>;
@@ -62,6 +64,7 @@ const emptyState = (): State => ({
   publicDecryptions: new Map(),
   publicUses: new Map(),
   terms: new Map(),
+  allowList: new Map(),
   posts: new Map(),
   heraldCursors: new Map(),
   archived: new Map(),
@@ -320,6 +323,18 @@ export class MemoryStore implements Store, PostStore, ArchiveStore {
 
   async termsAcceptances(address: Address) {
     return [...this.s.terms.values()].filter((a) => a.address === address).sort((a, b) => a.receivedAt - b.receivedAt).map(clone);
+  }
+
+  async allowListClaim(address: Address) {
+    return clone(this.s.allowList.get(address) ?? null);
+  }
+
+  async allowListClaims() {
+    return [...this.s.allowList.values()].map(clone);
+  }
+
+  async saveAllowListClaim(c: AllowListClaim) {
+    this.s.allowList.set(c.address, clone(c));
   }
 
   async takeNonce(address: Address) {

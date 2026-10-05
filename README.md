@@ -36,6 +36,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
+| Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 12) | **Done** |
 
 ## Layout
 

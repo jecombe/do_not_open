@@ -156,6 +156,15 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.termsAcceptances(BOB)).toEqual([]);
     });
 
+    it("keeps one allow list claim per address, the last one filed", async () => {
+      const c = { address: ALICE, points: 6, message: "m", signature: "0x01", claimedAt: 100, updatedAt: 100 };
+      await store.saveAllowListClaim(c);
+      await store.saveAllowListClaim({ ...c, points: 9, signature: "0x02", updatedAt: 200 });
+      expect(await store.allowListClaim(ALICE)).toEqual({ ...c, points: 9, signature: "0x02", updatedAt: 200 });
+      expect(await store.allowListClaim(BOB)).toBeNull();
+      expect(await store.allowListClaims()).toHaveLength(1);
+    });
+
     it("stores events with their enrichment, pages them in chain order, and deletes them by key", async () => {
       const contents = { seed: "1", state: 0, traits: [1, 2, 3, 4, 5], score: 9, affection: 4, golden: false };
       const a = ev("Observed", 20, { tokenId: 1, openedBy: ALICE, seed: "1", state: 0, score: 9, golden: false }, { logIndex: 3 });

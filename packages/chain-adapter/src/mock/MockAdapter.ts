@@ -10,6 +10,7 @@ import {
   type SignedTerms,
   type Address,
   type AliveCheck,
+  type AllowListStatus,
   type BoxInfo,
   type BoxPantry,
   type BoxStatus,
@@ -37,6 +38,15 @@ import {
   type WeighIn,
 } from "../types";
 import { MockPool } from "./pool";
+import {
+  allowListMessage,
+  byClaimRank,
+  DEFAULT_ALLOW_LIST_PLACES,
+  duelStandings,
+  playerPoints,
+  type DuelStanding,
+  type SettledDuel,
+} from "../standings";
 
 /** The account the mock signs you in as, and the one that holds the other boxes. */
 export const MOCK_YOU: Address = "0x00000000000000000000000000000000000d0c4a";
@@ -150,6 +160,10 @@ export class MockAdapter implements ChainAdapter {
   private readonly duelList: MockDuel[] = [];
   /** Box id to its duel on the shelf. */
   private readonly listings = new Map<number, number>();
+  /** Every duel that had an outcome, for the rankings. */
+  private readonly settled: SettledDuel[] = [];
+  /** Allow list claims: best points and when, by address. */
+  private readonly claims = new Map<Address, { points: number; claimedAt: number }>();
   private readonly proposals = new Map<string, Address>();
   /** Boxes sold: encrypted on a real chain. */
   private sold = 0;
@@ -299,6 +313,36 @@ export class MockAdapter implements ChainAdapter {
 
   async openedCats(): Promise<OpenedCat[]> {
     return this.boxes.flatMap((b, tokenId) => (b.revealed && b.openedBy ? [{ tokenId, openedBy: b.openedBy, revealed: b.revealed }] : []));
+  }
+
+  async duelStandings(): Promise<DuelStanding[]> {
+    return duelStandings(this.settled);
+  }
+
+  async allowList(): Promise<AllowListStatus | null> {
+    return this.me ? this.standing(this.me) : null;
+  }
+
+  /** No API in the demo: the claim lives in this page, signed like the release form. */
+  async claimAllowList(): Promise<AllowListStatus> {
+    const me = this.signer();
+    await this.signTerms(allowListMessage(me, new Date(this.now())));
+    const live = this.livePoints(me).points;
+    const kept = this.claims.get(me);
+    this.claims.set(me, { points: Math.max(live, kept?.points ?? 0), claimedAt: kept?.claimedAt ?? Math.floor(this.seconds()) });
+    return this.standing(me);
+  }
+
+  private livePoints(account: Address) {
+    return playerPoints(account, this.settled, this.boxes.flatMap((b) => (b.openedBy ? [b.openedBy] : [])));
+  }
+
+  private standing(account: Address): AllowListStatus {
+    const live = this.livePoints(account);
+    const ranked = [...this.claims].map(([address, c]) => ({ address, points: Math.max(c.points, this.livePoints(address).points), claimedAt: c.claimedAt })).sort(byClaimRank);
+    const i = ranked.findIndex((c) => c.address === account);
+    const mine = i >= 0 ? ranked[i]! : null;
+    return { live, points: mine?.points ?? live.points, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: DEFAULT_ALLOW_LIST_PLACES };
   }
 
   /** Gas is free in the mock: every account holds a round 1 ETH. */
@@ -597,6 +641,7 @@ export class MockAdapter implements ChainAdapter {
     const [winner, loser] = aWins ? [duel.tokenA, tokenB] : [tokenB, duel.tokenA];
     const shown = this.pickTrait(loser, 1000 + duelId);
     this.close(duelId, "resolved");
+    this.settled.push({ tokenA: duel.tokenA, tokenB, challenger: duel.challenger, accepter: duel.accepter!, winner, loser });
     this.get(winner).wins += 1;
     this.get(loser).publicTraits.set(shown.traitIndex, shown.roll);
     return { duelId, winner, loser, shown };

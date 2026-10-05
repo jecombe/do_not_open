@@ -344,4 +344,20 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 12,
+    name: "mainnet allow list claims",
+    sql: /* sql */ `
+      -- Players who claimed a place on the mainnet allow list, with the best points they had.
+      -- Not on the chain's index: a replay or a test network redeployment keeps them.
+      create table allow_list_claims (
+        address text primary key,
+        points integer not null,
+        message text not null,
+        signature text not null,
+        claimed_at bigint not null,
+        updated_at bigint not null
+      );
+    `,
+  },
 ];

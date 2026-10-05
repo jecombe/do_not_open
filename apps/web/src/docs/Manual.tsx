@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { spec } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
@@ -277,6 +278,7 @@ export function Manual() {
             <div className="prose">
               <p>{t("docs.mech.p1", { min: spec.affection.perFeedMin, max: spec.affection.perFeedMax, threshold: spec.affection.goldenThreshold })}</p>
               <p>{t("docs.mech.p2")}</p>
+              <p>{t("docs.mech.p3")}</p>
             </div>
           </section>
 
@@ -386,6 +388,7 @@ export function Manual() {
             <p className="testnet-note">{t("docs.testnet.note")}</p>
             <div className="prose">
               <p>{t("docs.testnet.p1")}</p>
+              <p>{t("docs.testnet.allowList", { places: DEFAULT_ALLOW_LIST_PLACES })}</p>
               <p>{t("docs.testnet.contracts")}</p>
             </div>
             <ul className="addresses">

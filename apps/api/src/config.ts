@@ -106,6 +106,10 @@ const schema = z.object({
   HERALD_STALE_HOURS: z.coerce.number().positive().default(12),
   /** The app's page for a box, the id appended: linked from opening posts. Without it, no link. */
   HERALD_BOX_URL: z.string().url().optional(),
+  /** How many claimants of the mainnet allow list get a place. */
+  ALLOW_LIST_PLACES: z.coerce.number().int().min(0).default(500),
+  /** Reads the whole allow list (GET /v1/allowlist?token=). Without it, nobody can. */
+  ALLOW_LIST_ADMIN_TOKEN: z.string().min(16).optional(),
   /** Required to read GET /v1/herald when set. */
   HERALD_ADMIN_TOKEN: z.string().optional(),
   /** "off": nothing; "rehearse": posts are written and kept, never sent; "live": sent. */
