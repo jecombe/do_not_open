@@ -79,6 +79,16 @@
      "part": "manual"
     },
     {
+     "id": "market",
+     "title": "Buying second-hand",
+     "part": "manual"
+    },
+    {
+     "id": "stall",
+     "title": "Setting up a stall",
+     "part": "manual"
+    },
+    {
      "id": "testnet",
      "title": "While on the testnet",
      "part": "testnet"
@@ -218,7 +228,7 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Shake Open Duel Transfer A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing. You ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here. Holder and fee, checked blind Anyone may now ask for it The values, signed The proof goes on-chain Checked against its own records The box opens Play Next step Transaction Ciphertext Value with proof Clear value\nYou ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here.\nHolder and fee, checked blind\nAnyone may now ask for it\nThe values, signed"
+     "text": "Mint Shake Open Duel Transfer Buy Secret offer A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing. You ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here. Holder and fee, checked blind Anyone may now ask for it The values, signed The proof goes on-chain Checked against its own records The box opens Play Next step Transaction Ciphertext Value with proof Clear value\nYou ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here.\nHolder and fee, checked blind\nAnyone may now ask for it\nThe values, signed"
     },
     {
      "id": "flows-2",
@@ -374,7 +384,7 @@
      "id": "rats-1",
      "section": "rats",
      "heading": null,
-     "text": "A rat is everything a box is not, on purpose: the cats are the depot's secret residents, the rats its open ones. Nothing about a rat is encrypted, so it works like any NFT.\n| A box | A rat\nWhat it is | A sealed box with a cat nobody can see | A cartoon rat, there for anyone to see\nWho holds it | Encrypted: only the holder knows | Public, like any NFT\nWhat it is made of | One encrypted seed, readable by the contract only | Its seed, or its picture on Arweave, in the clear\nPrice | 5 cUSDC, encrypted payment | 1 USDC, 3 for an AI rat, plain payment\nHow many | 10,000; how many are sold is encrypted | 700 random and 300 AI, 5 per wallet\nEarns | A bag of 100 cCROQ, then 0 to 4 a day, hidden in the box | 3 plain CROQ a day, to its owner\nWallets and markets | Need a market built for the confidential ERC-721 | A standard ERC-721: any wallet or market can show it"
+     "text": "A rat is everything a box is not, on purpose: the cats are the depot's secret residents, the rats its open ones. Nothing about a rat is encrypted, so it works like any NFT.\n| A box | A rat\nWhat it is | A sealed box with a cat nobody can see | A cartoon rat, there for anyone to see\nWho holds it | Encrypted: only the holder knows | Public, like any NFT\nWhat it is made of | One encrypted seed, readable by the contract only | Its seed, or its picture on Arweave, in the clear\nPrice | 5 cUSDC, encrypted payment | 1 USDC, 3 for an AI rat, plain payment\nHow many | 10,000; how many are sold is encrypted | 700 random and 300 AI, 5 per wallet\nEarns | A bag of 100 cCROQ, then 0 to 4 a day, hidden in the box | 3 plain CROQ a day, to its owner\nWallets and markets | Need a market built for the confidential ERC-721, like the flea market | A standard ERC-721: any wallet or market can show it"
     },
     {
      "id": "rats-2",
@@ -393,6 +403,48 @@
      "section": "rats",
      "heading": "Sniffing the boxes",
      "text": "A rat also sniffs. From \"My rats\", send it sniffing: pick a sealed box you do not hold, and your rat tells you one of its traits, for your eyes only. Under the hood it is a paid shake, 2.5 cUSDC: 70% waits in the box for its holder, 30% goes to the treasury, and everyone else only sees that someone paid to shake.\nThat is how a rat helps before a purchase: a few sniffs of a box you are thinking of buying, and you know as much about it as the seller did."
+    },
+    {
+     "id": "market-0",
+     "section": "market",
+     "heading": null,
+     "text": "The flea market sits behind the depot, open after hours. Players sell each other sealed boxes, cats (boxes already opened) and rats, paid in cUSDC. Open it from the menu: Flea market. Each item hangs under a striped awning with its price tag, and three big buttons wait at the entrance: Mint a box takes you to the shelf for a brand new one, Mint a rat to the studio, and Sell to your own stall."
+    },
+    {
+     "id": "market-1",
+     "section": "market",
+     "heading": null,
+     "text": "There are two ways to buy. The first is the price on the tag, which is public, and it takes two steps. Buy pulls the price from your cUSDC, all or nothing: what reaches the market is the whole price or zero, encrypted, so your balance stays sealed. Then one bit, paid or not, is decrypted in public and carried back on-chain with its proof, and the market settles. If you paid and the item is still as it was listed, it is yours. If someone else's purchase settled first, or the seller retagged it or took it back, you get back exactly what left your wallet. If your cUSDC did not cover the price, nothing was taken."
+    },
+    {
+     "id": "market-2",
+     "section": "market",
+     "heading": null,
+     "text": "The second is a secret offer. Write an amount and press Seal it: your browser encrypts it, and the market holds it in escrow. Only you and the seller can ever read it; everyone else only sees that an offer was made. The seller breaks the seals, one signature for every offer on the stall, and may accept one at once: the item goes to you, the escrow to the seller, and that price is never published. An offer from a wallet that could not cover it holds zero, and the seller sees that. Until it is accepted you can take your offer back at any time, even after the listing is gone. The figure in How things come out plays both ways, step by step.\n| At the asking price | With a secret offer\nThe price | Public, on the tag | Sealed: only you and the seller read it\nHow it goes | Buy, then one bit decrypted in public | Seal it, then the seller accepts when they like"
+    },
+    {
+     "id": "market-3",
+     "section": "market",
+     "heading": null,
+     "text": "If your cUSDC falls short | Nothing is taken | The offer holds zero, and the seller sees it\nIf you change your mind, or lose the race | Beaten to it, or the listing changed: refunded in full | Take it back any time until it is accepted\nWhat everyone sees | That you bought it, and the price | That an offer was made, then that you bought it; never the price\nWhichever way an item sells, 2.5% of the price goes to the depot and the rest to the seller. The contract can never set that cut above 10%."
+    },
+    {
+     "id": "market-4",
+     "section": "market",
+     "heading": "A box keeps its state on the table",
+     "text": "A box is sold in the public state it was listed in: sealed or opened, entangled or not, vet checked or not. If that changes while it is on sale, say its entangled partner is opened and opens it too, buying it or accepting an offer on it is refused, and a purchase still pending is refunded.\nA sealed box on a table can still be sniffed: a paid shake tells you one of its traits, for your eyes only, as with any box. The holder's share of what you paid waits in the box as usual, and whoever buys the box collects it. Before buying a sealed box, assume the seller has shaken it; a few sniffs level that."
+    },
+    {
+     "id": "stall-0",
+     "section": "stall",
+     "heading": null,
+     "text": "To sell, press Sell, pick a box, a cat or a rat, and set a price. The page shows what you get once the depot's 2.5% is taken, and buyers may also slip you sealed offers. Your boxes are known only to you, so finding them takes one signature to read your receipts, as Show my boxes does.\nA rat is a plain NFT: it goes to the market and is listed at once. A box is not so simple, since nobody can check who holds it, the market included. So it goes to the market in a maybe transfer, like any gift, and whether it arrived is then decrypted in public. Only if it did does the listing open, so only a box's real holder can sell it, and once the market holds it nobody else can list it. Until then it shows as On its way."
+    },
+    {
+     "id": "stall-1",
+     "section": "stall",
+     "heading": null,
+     "text": "Selling is a public act: selling a box shows everyone that you held it. What is inside stays sealed, for you as for the buyer. The seller of each listing, its asking price, the buyer of each sale, and whether each buyer at the asking price could pay are public. Balances, offer amounts and the price of a sale by offer never are.\nWhile an item is on sale, Retag changes its price (purchases pending at the old price are refunded), and Take it back brings it home. Buyers keep their sealed offers to take back.\nThe flea market is open on Sepolia, with test dollars. In the demo, the night shift keeps a few stalls, slips a secret offer onto whatever you put on sale, and takes any offer worth at least 70% of your asking price."
     },
     {
      "id": "testnet-0",
@@ -513,6 +565,16 @@
     {
      "id": "rats",
      "title": "Les rats",
+     "part": "manual"
+    },
+    {
+     "id": "market",
+     "title": "Acheter d'occasion",
+     "part": "manual"
+    },
+    {
+     "id": "stall",
+     "title": "Monter son étal",
      "part": "manual"
     },
     {
@@ -673,7 +735,7 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Secouer Ouvrir Duel Transfert Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien. Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. Ils sont gardés jusqu'au règlement de l'ouverture, et vous reviennent si la boîte intriquée avec celle-ci l'a ouverte d'abord. Sinon, à partir d'ici, pas de retour en arrière. Détenteur et frais, vérifiés à l'aveugle N'importe qui peut maintenant la demander Les valeurs, signées La preuve part sur la chaîne Vérifiée contre ses propres registres La boîte s'ouvre Lecture Étape suivante Transaction Chiffré Valeur avec preuve Valeur en clair"
+     "text": "Mint Secouer Ouvrir Duel Transfert Acheter Offre secrète Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien. Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. Ils sont gardés jusqu'au règlement de l'ouverture, et vous reviennent si la boîte intriquée avec celle-ci l'a ouverte d'abord. Sinon, à partir d'ici, pas de retour en arrière. Détenteur et frais, vérifiés à l'aveugle N'importe qui peut maintenant la demander Les valeurs, signées La preuve part sur la chaîne Vérifiée contre ses propres registres La boîte s'ouvre Lecture Étape suivante Transaction Chiffré Valeur avec preuve Valeur en clair"
     },
     {
      "id": "flows-2",
@@ -865,7 +927,7 @@
      "id": "rats-2",
      "section": "rats",
      "heading": null,
-     "text": "Gagne | Un sac de 100 cCROQ, puis 0 à 4 par jour, cachés dans la boîte | 3 CROQ classiques par jour, pour son propriétaire\nWallets et marchés | Il faut un marché fait pour l'ERC-721 confidentiel | Un ERC-721 standard : n'importe quel wallet ou marché l'affiche"
+     "text": "Gagne | Un sac de 100 cCROQ, puis 0 à 4 par jour, cachés dans la boîte | 3 CROQ classiques par jour, pour son propriétaire\nWallets et marchés | Il faut un marché fait pour l'ERC-721 confidentiel, comme le marché aux puces | Un ERC-721 standard : n'importe quel wallet ou marché l'affiche"
     },
     {
      "id": "rats-3",
@@ -884,6 +946,48 @@
      "section": "rats",
      "heading": "Renifler les boîtes",
      "text": "Un rat renifle aussi. Depuis « Mes rats », envoyez-le renifler : choisissez une boîte scellée qui n'est pas à vous, et votre rat vous révèle un de ses traits, à vous seul. En coulisse, c'est un secouage payant, 2,5 cUSDC : 70 % attendent dans la boîte son détenteur, 30 % vont à la trésorerie, et tous les autres voient seulement que quelqu'un a payé pour secouer.\nC'est ainsi qu'un rat aide avant un achat : quelques reniflements d'une boîte que vous pensez acheter, et vous en savez autant que le vendeur."
+    },
+    {
+     "id": "market-0",
+     "section": "market",
+     "heading": null,
+     "text": "Le marché aux puces se tient derrière le dépôt, après la fermeture. Les joueurs s'y vendent des boîtes scellées, des chats (des boîtes déjà ouvertes) et des rats, payés en cUSDC. On y entre par le menu : Marché aux puces. Chaque article pend sous un auvent rayé avec son étiquette de prix, et trois gros boutons attendent à l'entrée : Minter une boîte mène à l'étagère pour une boîte neuve, Minter un rat au studio, et Vendre à votre propre étal."
+    },
+    {
+     "id": "market-1",
+     "section": "market",
+     "heading": null,
+     "text": "Il y a deux façons d'acheter. La première est le prix de l'étiquette, qui est public, et elle se fait en deux temps. Acheter prélève le prix sur vos cUSDC, tout ou rien : ce qui arrive au marché est le prix entier ou zéro, chiffré, donc votre solde reste scellé. Puis un seul bit, payé ou non, est déchiffré en public et rapporté sur la chaîne avec sa preuve, et le marché règle la vente. Si vous avez payé et que l'article est toujours tel qu'il a été mis en vente, il est à vous. Si l'achat de quelqu'un d'autre a été réglé avant, ou si le vendeur l'a réétiqueté ou repris, vous récupérez exactement ce qui a quitté votre wallet. Si vos cUSDC ne couvraient pas le prix, rien n'a été pris."
+    },
+    {
+     "id": "market-2",
+     "section": "market",
+     "heading": null,
+     "text": "La seconde est une offre secrète. Écrivez un montant et appuyez sur Sceller : votre navigateur le chiffre, et le marché le garde en séquestre. Seuls vous et le vendeur pourrez jamais le lire ; tous les autres voient seulement qu'une offre a été faite. Le vendeur brise les sceaux, une signature pour toutes les offres de son étal, et peut en accepter une aussitôt : l'article vous revient, le séquestre au vendeur, et ce prix n'est jamais publié. Une offre venue d'un wallet qui ne pouvait pas la couvrir contient zéro, et le vendeur le voit. Tant qu'elle n'est pas acceptée, vous pouvez reprendre votre offre à tout moment, même après la fin de l'annonce. La figure de Comment les choses sortent joue les deux façons, pas à pas.\n| Au prix affiché | Par offre secrète\nLe prix | Public, sur l'étiquette | Scellé : seuls vous et le vendeur le lisez"
+    },
+    {
+     "id": "market-3",
+     "section": "market",
+     "heading": null,
+     "text": "Comment ça se passe | Acheter, puis un bit déchiffré en public | Sceller, puis le vendeur accepte quand il veut\nSi vos cUSDC ne suffisent pas | Rien n'est pris | L'offre contient zéro, et le vendeur le voit\nSi vous changez d'avis, ou perdez la course | Devancé, ou l'annonce a changé : remboursé en entier | La reprendre à tout moment tant qu'elle n'est pas acceptée\nCe que tout le monde voit | Que vous l'avez acheté, et le prix | Qu'une offre a été faite, puis que vous l'avez acheté ; jamais le prix\nQuelle que soit la façon dont un article se vend, 2,5 % du prix va au dépôt et le reste au vendeur. Le contrat ne peut jamais fixer cette part au-dessus de 10 %."
+    },
+    {
+     "id": "market-4",
+     "section": "market",
+     "heading": "Une boîte garde son état sur l'étal",
+     "text": "Une boîte se vend dans l'état public où elle a été mise en vente : scellée ou ouverte, intriquée ou non, passée chez le véto ou non. Si cela change pendant qu'elle est en vente, par exemple si sa partenaire intriquée est ouverte et l'ouvre avec elle, l'acheter ou accepter une offre dessus est refusé, et un achat encore en attente est remboursé.\nUne boîte scellée sur un étal peut toujours être reniflée : un secouage payant vous révèle un de ses traits, à vous seul, comme pour n'importe quelle boîte. La part du détenteur attend dans la boîte comme d'habitude, et celui qui achète la boîte la récupère. Avant d'acheter une boîte scellée, partez du principe que le vendeur l'a secouée ; quelques reniflements rétablissent l'équilibre."
+    },
+    {
+     "id": "stall-0",
+     "section": "stall",
+     "heading": null,
+     "text": "Pour vendre, appuyez sur Vendre, choisissez une boîte, un chat ou un rat, et fixez un prix. La page montre ce que vous touchez une fois les 2,5 % du dépôt retenus, et les acheteurs peuvent aussi vous glisser des offres scellées. Vos boîtes ne sont connues que de vous : les retrouver demande une signature pour lire vos reçus, comme le fait Afficher mes boîtes.\nUn rat est un NFT ordinaire : il part au marché et il est mis en vente aussitôt. Une boîte, c'est moins simple, puisque personne ne peut vérifier qui la détient, le marché compris. Elle part donc au marché par un transfert peut-être, comme n'importe quel cadeau, puis son arrivée est déchiffrée en public. L'annonce ne s'ouvre que si elle est bien arrivée : seul le vrai détenteur d'une boîte peut la vendre, et une fois que le marché la détient, personne d'autre ne peut la mettre en vente. D'ici là, elle s'affiche En route."
+    },
+    {
+     "id": "stall-1",
+     "section": "stall",
+     "heading": null,
+     "text": "Vendre est un acte public : vendre une boîte montre à tous que vous la déteniez. Son contenu reste scellé, pour vous comme pour l'acheteur. Le vendeur de chaque annonce, son prix demandé, l'acheteur de chaque vente, et si chaque acheteur au prix affiché pouvait payer sont publics. Les soldes, les montants des offres et le prix d'une vente sur offre ne le sont jamais.\nPendant qu'un article est en vente, Réétiqueter change son prix (les achats en attente à l'ancien prix sont remboursés), et Le reprendre le ramène chez vous. Les acheteurs gardent leurs offres scellées, à reprendre quand ils veulent.\nLe marché aux puces est ouvert sur Sepolia, avec des dollars de test. Dans la démo, l'équipe de nuit tient quelques étals, glisse une offre secrète sur tout ce que vous mettez en vente, et accepte toute offre d'au moins 70 % de votre prix demandé."
     },
     {
      "id": "testnet-0",
@@ -1010,6 +1114,16 @@
     {
      "id": "rats",
      "title": "Las ratas",
+     "part": "manual"
+    },
+    {
+     "id": "market",
+     "title": "Comprar de segunda mano",
+     "part": "manual"
+    },
+    {
+     "id": "stall",
+     "title": "Montar un puesto",
      "part": "manual"
     },
     {
@@ -1170,7 +1284,7 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mintear Agitar Abrir Duelo Transferir Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás."
+     "text": "Mintear Agitar Abrir Duelo Transferir Comprar Oferta secreta Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás."
     },
     {
      "id": "flows-2",
@@ -1344,7 +1458,7 @@
      "id": "rats-2",
      "section": "rats",
      "heading": null,
-     "text": "Gana | Una bolsa de 100 cCROQ, luego de 0 a 4 al día, ocultas en la caja | 3 CROQ normales al día, para su dueño\nWallets y mercados | Necesita un mercado hecho para el ERC-721 confidencial | Un ERC-721 estándar: cualquier wallet o mercado la muestra"
+     "text": "Gana | Una bolsa de 100 cCROQ, luego de 0 a 4 al día, ocultas en la caja | 3 CROQ normales al día, para su dueño\nWallets y mercados | Necesita un mercado hecho para el ERC-721 confidencial, como el mercadillo | Un ERC-721 estándar: cualquier wallet o mercado la muestra"
     },
     {
      "id": "rats-3",
@@ -1363,6 +1477,48 @@
      "section": "rats",
      "heading": "Olfatear las cajas",
      "text": "Una rata también olfatea. Desde «Mis ratas», mándala a olfatear: elige una caja sellada que no tengas, y tu rata te dice uno de sus rasgos, solo a ti. Por dentro es una agitada de pago, 2,5 cUSDC: el 70 % espera en la caja a quien la tiene, el 30 % va a la tesorería, y los demás solo ven que alguien pagó por agitarla.\nAsí ayuda una rata antes de una compra: unas cuantas olfateadas a una caja que piensas comprar, y sabes tanto de ella como el vendedor."
+    },
+    {
+     "id": "market-0",
+     "section": "market",
+     "heading": null,
+     "text": "El mercadillo está detrás del depósito, fuera de hora. Los jugadores se venden cajas selladas, gatos (cajas ya abiertas) y ratas, pagados en cUSDC. Se entra desde el menú: Mercadillo. Cada artículo cuelga bajo un toldo de rayas con su etiqueta de precio, y tres botones grandes esperan en la entrada: Mintear una caja lleva a la estantería para una nueva, Mintear una rata al estudio, y Vender a tu propio puesto."
+    },
+    {
+     "id": "market-1",
+     "section": "market",
+     "heading": null,
+     "text": "Hay dos formas de comprar. La primera es el precio de la etiqueta, que es público, y va en dos pasos. Comprar retira el precio de tus cUSDC, todo o nada: lo que llega al mercado es el precio entero o cero, cifrado, así que tu saldo sigue sellado. Luego un solo bit, pagado o no, se descifra en público y vuelve a la cadena con su prueba, y el mercado liquida. Si pagaste y el artículo sigue como se puso a la venta, es tuyo. Si la compra de otro se liquidó antes, o el vendedor lo reetiquetó o lo recuperó, recibes exactamente lo que salió de tu wallet. Si tus cUSDC no cubrían el precio, no se tomó nada."
+    },
+    {
+     "id": "market-2",
+     "section": "market",
+     "heading": null,
+     "text": "La segunda es una oferta secreta. Escribe una cantidad y pulsa Sellar: tu navegador la cifra, y el mercado la guarda en custodia. Solo tú y el vendedor podréis leerla; los demás solo ven que se hizo una oferta. El vendedor rompe los sellos, una firma para todas las ofertas de su puesto, y puede aceptar una en el acto: el artículo pasa a ti, lo custodiado al vendedor, y ese precio nunca se publica. Una oferta de un wallet que no podía cubrirla contiene cero, y el vendedor lo ve. Mientras no se acepte, puedes retirar tu oferta cuando quieras, incluso cuando el anuncio ya no esté. La figura de Cómo salen las cosas reproduce las dos formas, paso a paso.\n| Al precio de la etiqueta | Con una oferta secreta\nEl precio | Público, en la etiqueta | Sellado: solo tú y el vendedor lo leéis\nCómo va | Comprar, y luego un bit descifrado en público | Sellar, y luego el vendedor acepta cuando quiera"
+    },
+    {
+     "id": "market-3",
+     "section": "market",
+     "heading": null,
+     "text": "Si tus cUSDC no llegan | No se toma nada | La oferta contiene cero, y el vendedor lo ve\nSi cambias de idea, o pierdes la carrera | Se te adelantaron, o el anuncio cambió: reembolso completo | Retirarla cuando quieras mientras no se acepte\nLo que ven todos | Que lo compraste, y el precio | Que se hizo una oferta, luego que lo compraste; nunca el precio\nSe venda como se venda un artículo, el 2,5 % del precio va al depósito y el resto al vendedor. El contrato nunca puede fijar esa parte por encima del 10 %."
+    },
+    {
+     "id": "market-4",
+     "section": "market",
+     "heading": "Una caja conserva su estado en el puesto",
+     "text": "Una caja se vende en el estado público en que se puso a la venta: sellada o abierta, entrelazada o no, revisada por el veterinario o no. Si eso cambia mientras está a la venta, por ejemplo si su pareja entrelazada se abre y la abre con ella, comprarla o aceptar una oferta por ella se rechaza, y una compra aún pendiente se reembolsa.\nUna caja sellada en un puesto se puede seguir olfateando: una agitada de pago te dice uno de sus rasgos, solo a ti, como con cualquier caja. La parte de quien la tiene espera en la caja como siempre, y quien compre la caja se la lleva. Antes de comprar una caja sellada, da por hecho que el vendedor la ha agitado; unas cuantas olfateadas lo equilibran."
+    },
+    {
+     "id": "stall-0",
+     "section": "stall",
+     "heading": null,
+     "text": "Para vender, pulsa Vender, elige una caja, un gato o una rata, y pon un precio. La página muestra lo que recibes una vez descontado el 2,5 % del depósito, y los compradores también pueden deslizarte ofertas selladas. Tus cajas solo las conoces tú, así que encontrarlas pide una firma para leer tus recibos, como hace Mostrar mis cajas.\nUna rata es un NFT corriente: va al mercado y se pone a la venta en el acto. Una caja no es tan sencilla, porque nadie puede comprobar quién la tiene, ni el mercado. Así que va al mercado en una transferencia quizás, como cualquier regalo, y luego su llegada se descifra en público. Solo si llegó se abre el anuncio, de modo que solo quien tiene de verdad una caja puede venderla, y una vez que el mercado la tiene nadie más puede ponerla a la venta. Hasta entonces aparece como En camino."
+    },
+    {
+     "id": "stall-1",
+     "section": "stall",
+     "heading": null,
+     "text": "Vender es un acto público: vender una caja muestra a todos que la tenías. Lo que hay dentro sigue sellado, para ti y para el comprador. Son públicos el vendedor de cada anuncio, su precio, el comprador de cada venta, y si cada comprador al precio de la etiqueta podía pagar. Los saldos, las cantidades de las ofertas y el precio de una venta por oferta nunca lo son.\nMientras un artículo está a la venta, Reetiquetar cambia su precio (las compras pendientes al precio anterior se reembolsan), y Recuperarlo lo trae de vuelta. Los compradores conservan sus ofertas selladas para retirarlas.\nEl mercadillo está abierto en Sepolia, con dólares de prueba. En la demo, el turno de noche tiene unos cuantos puestos, desliza una oferta secreta en todo lo que pongas a la venta, y acepta cualquier oferta de al menos el 70 % de tu precio."
     },
     {
      "id": "testnet-0",
@@ -1489,6 +1645,16 @@
     {
      "id": "rats",
      "title": "I ratti",
+     "part": "manual"
+    },
+    {
+     "id": "market",
+     "title": "Comprare di seconda mano",
+     "part": "manual"
+    },
+    {
+     "id": "stall",
+     "title": "Montare una bancarella",
      "part": "manual"
     },
     {
@@ -1649,7 +1815,7 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Scuotere Aprire Duello Trasferire Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro"
+     "text": "Mint Scuotere Aprire Duello Trasferire Comprare Offerta segreta Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro"
     },
     {
      "id": "flows-2",
@@ -1835,7 +2001,7 @@
      "id": "rats-2",
      "section": "rats",
      "heading": null,
-     "text": "Guadagna | Un sacchetto di 100 cCROQ, poi da 0 a 4 al giorno, nascoste nella scatola | 3 CROQ normali al giorno, al suo proprietario\nWallet e mercati | Serve un mercato fatto per l'ERC-721 confidenziale | Un ERC-721 standard: qualsiasi wallet o mercato lo mostra"
+     "text": "Guadagna | Un sacchetto di 100 cCROQ, poi da 0 a 4 al giorno, nascoste nella scatola | 3 CROQ normali al giorno, al suo proprietario\nWallet e mercati | Serve un mercato fatto per l'ERC-721 confidenziale, come il mercatino | Un ERC-721 standard: qualsiasi wallet o mercato lo mostra"
     },
     {
      "id": "rats-3",
@@ -1854,6 +2020,48 @@
      "section": "rats",
      "heading": "Annusare le scatole",
      "text": "Un ratto annusa anche. Da «I miei ratti», mandalo ad annusare: scegli una scatola sigillata che non tieni, e il tuo ratto ti rivela uno dei suoi tratti, solo a te. Sotto il cofano è uno scuotimento a pagamento, 2,5 cUSDC: il 70% aspetta nella scatola chi la tiene, il 30% va alla tesoreria, e tutti gli altri vedono solo che qualcuno ha pagato per scuoterla.\nEcco come un ratto aiuta prima di un acquisto: qualche annusata a una scatola che pensi di comprare, e ne sai quanto il venditore."
+    },
+    {
+     "id": "market-0",
+     "section": "market",
+     "heading": null,
+     "text": "Il mercatino sta dietro il deposito, dopo l'orario di chiusura. I giocatori si vendono scatole sigillate, gatti (scatole già aperte) e ratti, pagati in cUSDC. Ci si entra dal menu: Mercatino. Ogni articolo pende sotto un tendone a righe con il suo cartellino del prezzo, e tre grossi pulsanti aspettano all'ingresso: Minta una scatola porta allo scaffale per una nuova, Minta un ratto allo studio, e Vendi alla tua bancarella."
+    },
+    {
+     "id": "market-1",
+     "section": "market",
+     "heading": null,
+     "text": "Ci sono due modi di comprare. Il primo è il prezzo sul cartellino, che è pubblico, e va in due passi. Compra preleva il prezzo dai tuoi cUSDC, tutto o niente: quello che arriva al mercato è il prezzo intero o zero, cifrato, quindi il tuo saldo resta sigillato. Poi un solo bit, pagato o no, viene decifrato in pubblico e riportato sulla catena con la sua prova, e il mercato chiude la vendita. Se hai pagato e l'articolo è ancora com'era quando è stato messo in vendita, è tuo. Se l'acquisto di qualcun altro si è chiuso prima, o il venditore l'ha rietichettato o ripreso, ti torna esattamente quello che era uscito dal tuo wallet. Se i tuoi cUSDC non coprivano il prezzo, non è stato preso niente."
+    },
+    {
+     "id": "market-2",
+     "section": "market",
+     "heading": null,
+     "text": "Il secondo è un'offerta segreta. Scrivi una cifra e premi Sigilla: il tuo browser la cifra, e il mercato la tiene a garanzia. Solo tu e il venditore potrete mai leggerla; tutti gli altri vedono solo che è stata fatta un'offerta. Il venditore rompe i sigilli, una firma per tutte le offerte della bancarella, e può accettarne una subito: l'articolo va a te, la somma a garanzia al venditore, e quel prezzo non viene mai pubblicato. Un'offerta da un wallet che non poteva coprirla contiene zero, e il venditore lo vede. Finché non è accettata puoi ritirare la tua offerta quando vuoi, anche dopo che l'annuncio non c'è più. La figura di Come escono le cose mostra i due modi, passo per passo.\n| Al prezzo del cartellino | Con un'offerta segreta\nIl prezzo | Pubblico, sul cartellino | Sigillato: lo leggete solo tu e il venditore"
+    },
+    {
+     "id": "market-3",
+     "section": "market",
+     "heading": null,
+     "text": "Come va | Compra, poi un bit decifrato in pubblico | Sigilla, poi il venditore accetta quando vuole\nSe i tuoi cUSDC non bastano | Non viene preso niente | L'offerta contiene zero, e il venditore lo vede\nSe cambi idea, o perdi la corsa | Battuto sul tempo, o l'annuncio è cambiato: rimborso completo | Ritirala quando vuoi finché non è accettata\nQuello che vedono tutti | Che l'hai comprato, e il prezzo | Che è stata fatta un'offerta, poi che l'hai comprato; mai il prezzo\nComunque si venda un articolo, il 2,5% del prezzo va al deposito e il resto al venditore. Il contratto non può mai fissare quella quota sopra il 10%."
+    },
+    {
+     "id": "market-4",
+     "section": "market",
+     "heading": "Una scatola mantiene il suo stato sul banco",
+     "text": "Una scatola si vende nello stato pubblico in cui è stata messa in vendita: sigillata o aperta, intrecciata o no, controllata dal veterinario o no. Se questo cambia mentre è in vendita, per esempio se la sua compagna intrecciata viene aperta e apre anche lei, comprarla o accettare un'offerta su di lei viene rifiutato, e un acquisto ancora in sospeso viene rimborsato.\nUna scatola sigillata su un banco si può ancora annusare: uno scuotimento a pagamento ti rivela uno dei suoi tratti, solo a te, come per qualsiasi scatola. La quota di chi la tiene aspetta nella scatola come sempre, e chi compra la scatola la incassa. Prima di comprare una scatola sigillata, dai per scontato che il venditore l'abbia scossa; qualche annusata pareggia i conti."
+    },
+    {
+     "id": "stall-0",
+     "section": "stall",
+     "heading": null,
+     "text": "Per vendere, premi Vendi, scegli una scatola, un gatto o un ratto, e fissa un prezzo. La pagina mostra quanto ricevi tolto il 2,5% del deposito, e chi compra può anche farti scivolare offerte sigillate. Le tue scatole le conosci solo tu, quindi trovarle chiede una firma per leggere le tue ricevute, come fa Mostra le mie scatole.\nUn ratto è un NFT normale: va al mercato ed è in vendita subito. Una scatola non è così semplice, perché nessuno può controllare chi la detiene, nemmeno il mercato. Quindi va al mercato con un trasferimento forse, come qualsiasi regalo, e poi il suo arrivo viene decifrato in pubblico. Solo se è arrivata l'annuncio si apre, così solo chi detiene davvero una scatola può venderla, e una volta che il mercato la detiene nessun altro può metterla in vendita. Fino ad allora appare come In arrivo."
+    },
+    {
+     "id": "stall-1",
+     "section": "stall",
+     "heading": null,
+     "text": "Vendere è un atto pubblico: vendere una scatola mostra a tutti che la detenevi. Quello che c'è dentro resta sigillato, per te come per chi compra. Sono pubblici il venditore di ogni annuncio, il prezzo richiesto, chi compra in ogni vendita, e se ogni compratore al prezzo del cartellino poteva pagare. I saldi, le cifre delle offerte e il prezzo di una vendita su offerta non lo sono mai.\nMentre un articolo è in vendita, Rietichetta cambia il suo prezzo (gli acquisti in sospeso al vecchio prezzo vengono rimborsati), e Riprendilo lo riporta a casa. Chi ha fatto offerte sigillate le tiene, da ritirare quando vuole.\nIl mercatino è aperto su Sepolia, con dollari di prova. Nella demo, il turno di notte tiene qualche bancarella, fa scivolare un'offerta segreta su tutto quello che metti in vendita, e accetta qualsiasi offerta di almeno il 70% del tuo prezzo."
     },
     {
      "id": "testnet-0",
