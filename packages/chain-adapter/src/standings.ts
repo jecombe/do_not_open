@@ -110,3 +110,11 @@ export interface ClaimRank {
 
 /** Claimants ranked: most points first, then the earlier claim. */
 export const byClaimRank = (a: ClaimRank, b: ClaimRank): number => b.points - a.points || a.claimedAt - b.claimedAt || (a.address < b.address ? -1 : 1);
+
+/** What a player signs to link a wallet to their X boarding pass. The first line is what the API checks. */
+export function xPassWalletMessage(account: string, code: string, issuedAt: Date): string {
+  return [`I, ${account.toLowerCase()}, link this wallet to my DO NOT OPEN boarding pass ${code}.`, "It adds my testnet points to the mainnet whitelist.", `Issued at: ${issuedAt.toISOString()}`].join("\n");
+}
+
+/** Points a verified X boarding pass adds to the wallet it links. */
+export const X_PASS_BONUS = 5;

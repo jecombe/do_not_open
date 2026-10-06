@@ -168,6 +168,25 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.allowListClaims()).toHaveLength(1);
     });
 
+    it("keeps X boarding passes, each code, handle, tweet and wallet on one pass only", async () => {
+      const p = { id: "h1", code: "DNO-AAAAAA", handle: null, tweetId: null, tweetUrl: null, followedAt: null, address: null, createdAt: 100, verifiedAt: null, updatedAt: 100 };
+      await store.saveXPass(p);
+      const verified = { ...p, handle: "cat", tweetId: "42", tweetUrl: "https://x.com/cat/status/42", followedAt: 110, address: ALICE, verifiedAt: 120, updatedAt: 120 };
+      await store.saveXPass(verified);
+      expect(await store.xPassById("h1")).toEqual(verified);
+      expect(await store.xPassByCode("DNO-AAAAAA")).toEqual(verified);
+      expect(await store.xPassByHandle("cat")).toEqual(verified);
+      expect(await store.xPassByTweet("42")).toEqual(verified);
+      expect(await store.xPassByAddress(ALICE)).toEqual(verified);
+      expect(await store.xPassByAddress(BOB)).toBeNull();
+      // Two passes without a handle yet are fine; two with the same handle are not.
+      await store.saveXPass({ ...p, id: "h2", code: "DNO-BBBBBB", createdAt: 90 });
+      await expect(store.saveXPass({ ...p, id: "h3", code: "DNO-CCCCCC", handle: "cat" })).rejects.toThrow();
+      expect((await store.xPasses()).map((x) => x.id)).toEqual(["h2", "h1"]);
+      await store.deleteXPass("h1");
+      expect(await store.xPassByHandle("cat")).toBeNull();
+    });
+
     it("stores events with their enrichment, pages them in chain order, and deletes them by key", async () => {
       const contents = { seed: "1", state: 0, traits: [1, 2, 3, 4, 5], score: 9, affection: 4, golden: false };
       const a = ev("Observed", 20, { tokenId: 1, openedBy: ALICE, seed: "1", state: 0, score: 9, golden: false }, { logIndex: 3 });

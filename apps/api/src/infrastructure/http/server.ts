@@ -3,6 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AllowList } from "../../application/allowList";
+import { XPassRefused, type XPassRefusal, type XPasses } from "../../application/xPass";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
 import type { AcceptTerms } from "../../application/terms";
@@ -27,6 +28,8 @@ export interface HttpDeps {
   terms?: AcceptTerms;
   /** The mainnet allow list, with the token that reads the whole list. Absent: no claims. */
   allowList?: { list: AllowList; adminToken: string | null };
+  /** X boarding passes; the admin token (the allow list's) lists them all. */
+  xPasses?: { passes: XPasses; adminToken: string | null };
   /** The relayer proxy. Absent: the app talks to Zama's relayer directly. */
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
@@ -289,6 +292,57 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       reply.header("cache-control", "no-store");
       if (!allowList.adminToken || q.token !== allowList.adminToken) return reply.status(401).send({ error: "unauthorized" });
       return { data: await allowList.list.ranked() };
+    });
+  }
+
+  // --- X boarding passes ---
+
+  const xPasses = deps.xPasses;
+  if (xPasses) {
+    const PASS_STATUS: Record<XPassRefusal, number> = {
+      "no-pass": 401,
+      "bad-tweet-url": 400,
+      "tweet-not-found": 404,
+      "code-missing": 400,
+      "tweet-used": 409,
+      "x-down": 503,
+      "connect-x-first": 409,
+      "address-taken": 409,
+      "bad-message": 400,
+      "bad-signature": 401,
+    };
+    const passToken = (req: FastifyRequest) => {
+      const h = req.headers.authorization;
+      return h?.startsWith("Bearer ") ? h.slice(7) : "";
+    };
+    const passed = async <T>(reply: FastifyReply, run: () => Promise<T>) => {
+      reply.header("cache-control", "private, no-store");
+      try {
+        return { data: await run() };
+      } catch (error) {
+        if (!(error instanceof XPassRefused)) throw error;
+        return reply.status(PASS_STATUS[error.code]).send({ error: error.code, message: error.message });
+      }
+    };
+    const { passes } = xPasses;
+
+    app.post("/v1/xpass", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (_req, reply) => passed(reply, () => passes.start()));
+    app.get("/v1/xpass", async (req, reply) => passed(reply, () => passes.status(passToken(req))));
+    app.post("/v1/xpass/follow", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => passed(reply, () => passes.follow(passToken(req))));
+    app.post("/v1/xpass/tweet", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ url: z.string().min(1).max(300) }).parse(req.body);
+      return passed(reply, () => passes.verifyTweet(passToken(req), body.url));
+    });
+    app.post("/v1/xpass/wallet", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ address, message: z.string().min(1).max(1_000), signature: z.string().regex(/^0x[0-9a-fA-F]+$/) }).parse(req.body);
+      return passed(reply, () => passes.linkWallet(passToken(req), body.address, body.message, body.signature));
+    });
+    // Every pass, handles and linked wallets included: only for whoever holds the token.
+    app.get("/v1/xpass/all", async (req, reply) => {
+      const q = z.object({ token: z.string().optional() }).parse(req.query);
+      reply.header("cache-control", "no-store");
+      if (!xPasses.adminToken || q.token !== xPasses.adminToken) return reply.status(401).send({ error: "unauthorized" });
+      return { data: (await passes.all()).map(({ id: _id, ...p }) => p) };
     });
   }
 

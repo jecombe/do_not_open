@@ -1072,6 +1072,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   // --- decryption credits ---
 
+  async signText(message: string): Promise<string> {
+    try {
+      return await this.signer().signMessage(message);
+    } catch (error) {
+      throw this.toChainError(error);
+    }
+  }
+
   async signTerms(message: string): Promise<SignedTerms> {
     const signer = this.signer();
     const account = (await signer.getAddress()) as Address;

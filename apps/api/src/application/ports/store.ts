@@ -7,6 +7,7 @@ import type { Request } from "../../domain/request";
 import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { AllowListClaim } from "../allowList";
+import type { XPass } from "../xPass";
 import type { TermsAcceptance } from "../terms";
 
 export interface EntangleProposal {
@@ -163,6 +164,18 @@ export interface Store extends ReadStore {
   allowListClaims(): Promise<AllowListClaim[]>;
   /** Files a claim, replacing the address's earlier one. */
   saveAllowListClaim(c: AllowListClaim): Promise<void>;
+  /** X boarding passes. Not a read model either: a replay, or a redeployment, keeps them. Code,
+   *  handle, tweet and address are each unique among the passes that have one. */
+  xPassById(id: string): Promise<XPass | null>;
+  xPassByCode(code: string): Promise<XPass | null>;
+  xPassByHandle(handle: string): Promise<XPass | null>;
+  xPassByTweet(tweetId: string): Promise<XPass | null>;
+  xPassByAddress(address: Address): Promise<XPass | null>;
+  /** Every pass, oldest first. */
+  xPasses(): Promise<XPass[]>;
+  /** Files a pass, replacing the one with the same id. */
+  saveXPass(p: XPass): Promise<void>;
+  deleteXPass(id: string): Promise<void>;
   /**
    * The relayer meter of an account on a UTC day. Not a read model: a replay of the chain keeps
    * it. `apply` sees the meter, locked against concurrent calls, and returns what to add to it,

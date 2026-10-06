@@ -8,6 +8,7 @@ import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { AllowListClaim } from "../../application/allowList";
+import type { XPass } from "../../application/xPass";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 import type { ArchiveStore } from "../../application/ports/archive";
@@ -730,6 +731,44 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
     );
   }
 
+  xPassById(id: string) {
+    return one(this.pool, "select * from x_passes where id = $1", [id], xPassFrom);
+  }
+
+  xPassByCode(code: string) {
+    return one(this.pool, "select * from x_passes where code = $1", [code], xPassFrom);
+  }
+
+  xPassByHandle(handle: string) {
+    return one(this.pool, "select * from x_passes where handle = $1", [handle], xPassFrom);
+  }
+
+  xPassByTweet(tweetId: string) {
+    return one(this.pool, "select * from x_passes where tweet_id = $1", [tweetId], xPassFrom);
+  }
+
+  xPassByAddress(address: Address) {
+    return one(this.pool, "select * from x_passes where address = $1", [address], xPassFrom);
+  }
+
+  async xPasses() {
+    const { rows } = await this.pool.query("select * from x_passes order by created_at, id");
+    return rows.map(xPassFrom);
+  }
+
+  async saveXPass(p: XPass) {
+    await this.pool.query(
+      `insert into x_passes (id, code, handle, tweet_id, tweet_url, followed_at, address, created_at, verified_at, updated_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       on conflict (id) do update set code = excluded.code, handle = excluded.handle, tweet_id = excluded.tweet_id, tweet_url = excluded.tweet_url,
+         followed_at = excluded.followed_at, address = excluded.address, created_at = excluded.created_at, verified_at = excluded.verified_at, updated_at = excluded.updated_at`,
+      [p.id, p.code, p.handle, p.tweetId, p.tweetUrl, p.followedAt, p.address, p.createdAt, p.verifiedAt, p.updatedAt],
+    );
+  }
+
+  async deleteXPass(id: string) {
+    await this.pool.query("delete from x_passes where id = $1", [id]);
+  }
+
   takeNonce(address: Address) {
     return one(this.pool, "delete from auth_nonces where address = $1 returning nonce, expires_at", [address], (r) => ({ nonce: r.nonce as string, expiresAt: r.expires_at as number }));
   }
@@ -850,5 +889,20 @@ const claimFrom = (r: Record<string, unknown>): AllowListClaim => ({
   message: r.message as string,
   signature: r.signature as string,
   claimedAt: Number(r.claimed_at),
+  updatedAt: Number(r.updated_at),
+});
+
+const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
+
+const xPassFrom = (r: Record<string, unknown>): XPass => ({
+  id: r.id as string,
+  code: r.code as string,
+  handle: (r.handle as string | null) ?? null,
+  tweetId: (r.tweet_id as string | null) ?? null,
+  tweetUrl: (r.tweet_url as string | null) ?? null,
+  followedAt: num(r.followed_at),
+  address: (r.address as Address | null) ?? null,
+  createdAt: Number(r.created_at),
+  verifiedAt: num(r.verified_at),
   updatedAt: Number(r.updated_at),
 });

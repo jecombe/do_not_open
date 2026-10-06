@@ -5,6 +5,7 @@ import { AskManual, type AnswerModel } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import { AllowList } from "./application/allowList";
+import { xPassBonuses, XPasses } from "./application/xPass";
 import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
 import type { ArchiveStore } from "./application/ports/archive";
@@ -20,7 +21,8 @@ import type { PostStore, SocialNetwork } from "./application/ports/herald";
 import { Reconciler } from "./application/reconcile";
 import { SyncChain } from "./application/syncChain";
 import { loadConfig } from "./config";
-import { ethersVerifier, HmacSessions, randomNonce } from "./infrastructure/auth/crypto";
+import { ethersVerifier, HmacSessions, passSecrets, randomNonce } from "./infrastructure/auth/crypto";
+import { OEmbedTweets } from "./infrastructure/x/OEmbedTweets";
 import { GeminiModel } from "./infrastructure/chat/GeminiModel";
 import manual from "./infrastructure/chat/manual.json";
 import { AclPublications } from "./infrastructure/chain/AclPublications";
@@ -211,7 +213,8 @@ async function main() {
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
-          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
+          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
+          xPasses: { passes: new XPasses(store, new OEmbedTweets(), passSecrets, ethersVerifier, clock), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           studio: { studio, publicUrl: config.PUBLIC_URL },

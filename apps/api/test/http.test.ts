@@ -10,7 +10,8 @@ import { Metadata, sealedImageOf } from "../src/application/metadata";
 import { silentLogger } from "../src/application/ports/logger";
 import { Queries } from "../src/application/queries";
 import { SyncChain } from "../src/application/syncChain";
-import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
+import { XPasses, type Tweet } from "../src/application/xPass";
+import { ethersVerifier, HmacSessions, passSecrets } from "../src/infrastructure/auth/crypto";
 import { Metrics } from "../src/infrastructure/http/metrics";
 import { buildServer } from "../src/infrastructure/http/server";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
@@ -25,6 +26,10 @@ let chainState: FakeChainState;
 let now = 1_790_000_000;
 let nudges = 0;
 const ADMIN = "admin-token-0123456789";
+
+/** The posts X would show through oEmbed. */
+const posts = new Map<string, Tweet>();
+const xPosts = { tweet: async (_handle: string, id: string) => posts.get(id) ?? null };
 
 beforeAll(async () => {
   store = new MemoryStore();
@@ -63,6 +68,7 @@ beforeAll(async () => {
     signIn,
     terms: new AcceptTerms(store, ethersVerifier, { now: () => now }),
     allowList: { list: new AllowList(store, ethersVerifier, { now: () => now }, 500), adminToken: ADMIN },
+    xPasses: { passes: new XPasses(store, xPosts, passSecrets, ethersVerifier, { now: () => now }), adminToken: ADMIN },
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
     metrics: new Metrics({
       store,
@@ -377,5 +383,30 @@ describe("release form", () => {
     expect((await post({ address: other.address, message, signature: await other.signMessage(message) })).statusCode).toBe(400);
     expect((await post({ address: wallet.address, message: "hello", signature: await wallet.signMessage("hello") })).statusCode).toBe(400);
     expect((await app.inject({ method: "GET", url: `/v1/terms/${other.address}` })).json().data).toEqual([]);
+  });
+});
+
+describe("X boarding passes", () => {
+  const call = (method: "GET" | "POST", url: string, token?: string, payload?: object) =>
+    app.inject({ method, url, payload, headers: token ? { authorization: `Bearer ${token}` } : {} });
+
+  it("starts a pass, proves the account with a post, and keeps the token private", async () => {
+    const start = await call("POST", "/v1/xpass");
+    expect(start.statusCode).toBe(200);
+    expect(start.headers["cache-control"]).toBe("private, no-store");
+    const { token, pass } = start.json().data;
+    expect((await call("GET", "/v1/xpass")).statusCode).toBe(401);
+    expect((await call("GET", "/v1/xpass", token)).json().data).toMatchObject({ code: pass.code, handle: null });
+    expect((await call("POST", "/v1/xpass/tweet", token, { url: "https://x.com/cat/status/77" })).json()).toMatchObject({ error: "tweet-not-found" });
+    posts.set("77", { id: "77", handle: "cat", text: `boarding ${pass.code}` });
+    expect((await call("POST", "/v1/xpass/tweet", token, { url: "https://x.com/cat/status/77" })).json().data).toMatchObject({ handle: "cat" });
+    expect((await call("POST", "/v1/xpass/follow", token)).json().data).toMatchObject({ followed: true });
+  });
+
+  it("lists every pass only for whoever holds the token, without the token hashes", async () => {
+    expect((await get("/v1/xpass/all")).status).toBe(401);
+    const all = (await get(`/v1/xpass/all?token=${ADMIN}`)).body.data as Record<string, unknown>[];
+    expect(all.length).toBeGreaterThan(0);
+    expect(all[0]).not.toHaveProperty("id");
   });
 });

@@ -612,6 +612,8 @@ export interface SignedTerms {
 export interface AllowListStatus {
   /** Its points now, from the duels and openings indexed. */
   live: PlayerPoints;
+  /** Points from an X boarding pass linked to this wallet; absent or 0 without one. */
+  bonus?: number;
   /** The points the ranking counts: the best it had since it claimed (a test network
    *  redeployment forgets the duels, not the claims), or `live` before it claims. */
   points: number;
@@ -790,6 +792,10 @@ export interface ChainAdapter {
   /** Has the connected wallet sign `message` (the terms, naming its address), free and off-chain,
    *  and files the signature with the API where there is one. Throws `rejected` if refused. */
   signTerms(message: string): Promise<SignedTerms>;
+
+  /** Has the connected wallet sign `message` (EIP-191, free, off-chain) and returns the signature,
+   *  filed nowhere: the caller sends it where it belongs. Throws `rejected` if refused. */
+  signText(message: string): Promise<string>;
 
   // --- mainnet allow list ---
   /** Where the connected account stands. Null when nobody is connected or there is no API to
