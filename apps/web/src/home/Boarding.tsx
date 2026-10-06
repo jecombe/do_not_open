@@ -124,7 +124,7 @@ export function Boarding() {
         <p className="boarding-kicker">
           <span className="boarding-live" aria-hidden="true" />
           {t("home.boarding.kicker")}
-          {count && <span className="boarding-count">{t("home.boarding.count", { count: count.claimants, places: count.places })}</span>}
+          {count && <span className="boarding-count">{t("home.boarding.count", { count: count.claimants })}</span>}
         </p>
         <h2 id="boarding-title">{verified ? t("home.boarding.done", { handle: pass!.handle! }) : t("home.boarding.title")}</h2>
 

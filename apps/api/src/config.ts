@@ -109,7 +109,8 @@ const schema = z.object({
   /** The app's page for a box, the id appended: linked from opening posts. Without it, no link. */
   HERALD_BOX_URL: z.string().url().optional(),
   /** How many claimants of the mainnet allow list get a place. */
-  ALLOW_LIST_PLACES: z.coerce.number().int().min(0).default(500),
+  /** A cap on the mainnet list, for the export (`inPlace`). Unset: no cap, every claimant is on it. */
+  ALLOW_LIST_PLACES: z.coerce.number().int().positive().optional(),
   /** Reads the whole allow list (GET /v1/allowlist?token=). Without it, nobody can. */
   ALLOW_LIST_ADMIN_TOKEN: z.string().min(16).optional(),
   /** Required to read GET /v1/herald when set. */
@@ -189,7 +190,8 @@ const schema = z.object({
 export type Config = z.infer<typeof schema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const config = schema.parse(env);
+  // `NAME=` with nothing after it, as .env.example lists them, means unset.
+  const config = schema.parse(Object.fromEntries(Object.entries(env).filter(([, v]) => v !== "")));
   if (config.NODE_ENV === "production" && !config.SESSION_SECRET) throw new Error("SESSION_SECRET is required in production");
   if (config.NODE_ENV === "production" && !config.DATABASE_URL) throw new Error("DATABASE_URL is required in production");
   return config;

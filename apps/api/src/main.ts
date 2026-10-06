@@ -214,7 +214,7 @@ async function main() {
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
-          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
+          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES ?? null, () => xPassBonuses(store)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
           xPasses: {
             passes: new XPasses(
               store,

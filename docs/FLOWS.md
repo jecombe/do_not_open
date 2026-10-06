@@ -443,7 +443,8 @@ sequenceDiagram
 ```
 
 Signing again ("Update my points") keeps the first claim's date and the best points. When the
-list closes, the first `ALLOW_LIST_PLACES` (500) claimants get a place; the operator exports
+list closes, every claimant has a place, ranked by points (no cap unless `ALLOW_LIST_PLACES`
+sets one); the operator exports
 them with `GET /v1/allowlist?token=`.
 
 ## X boarding pass

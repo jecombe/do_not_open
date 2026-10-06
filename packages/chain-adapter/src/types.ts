@@ -623,7 +623,8 @@ export interface AllowListStatus {
   rank: number | null;
   claimants: number;
   /** How many claimants get a place. */
-  places: number;
+  /** The cap on the list, or null: no cap, every claimant is on it. */
+  places: number | null;
 }
 
 /** A wallet the browser offers, as shown in a picker. */
