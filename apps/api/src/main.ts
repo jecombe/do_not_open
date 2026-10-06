@@ -6,6 +6,7 @@ import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import { AllowList } from "./application/allowList";
 import { Seats } from "./application/seats";
+import { Ideas } from "./application/ideas";
 import { X_TASKS, xPassBonuses, XPasses } from "./application/xPass";
 import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
@@ -213,6 +214,21 @@ async function main() {
   const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"]);
   allowList = new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats);
 
+  const xPasses = new XPasses(
+    store,
+    new OEmbedTweets(),
+    passSecrets,
+    ethersVerifier,
+    clock,
+    config.X_CLIENT_ID
+      ? {
+          x: new XOAuth({ clientId: config.X_CLIENT_ID, clientSecret: config.X_CLIENT_SECRET, redirectUri: `${config.PUBLIC_URL.replace(/\/$/, "")}/v1/xpass/x/callback` }),
+          secrets: loginSecrets,
+        }
+      : null,
+    seats,
+  );
+
   const server =
     config.ROLE === "indexer"
       ? null
@@ -222,25 +238,8 @@ async function main() {
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
           allowList: { list: allowList, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, seats },
-          xPasses: {
-            passes: new XPasses(
-              store,
-              new OEmbedTweets(),
-              passSecrets,
-              ethersVerifier,
-              clock,
-              config.X_CLIENT_ID
-                ? {
-                    x: new XOAuth({ clientId: config.X_CLIENT_ID, clientSecret: config.X_CLIENT_SECRET, redirectUri: `${config.PUBLIC_URL.replace(/\/$/, "")}/v1/xpass/x/callback` }),
-                    secrets: loginSecrets,
-                  }
-                : null,
-              seats,
-            ),
-            adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null,
-            returnOrigins: config.X_RETURN_ORIGINS,
-            announcement: config.X_ANNOUNCEMENT_ID ?? null,
-          },
+          xPasses: { passes: xPasses, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, returnOrigins: config.X_RETURN_ORIGINS, announcement: config.X_ANNOUNCEMENT_ID ?? null },
+          ideas: { box: new Ideas(store, clock, (token) => xPasses.handleOf(token)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           studio: { studio, publicUrl: config.PUBLIC_URL },

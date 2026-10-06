@@ -7,6 +7,7 @@ import { DISCORD } from "./links";
 import { useT } from "./i18n/app";
 import { isMenuView, Masthead, type View } from "./Masthead";
 import { TermsGate } from "./terms/TermsGate";
+import { TestnetNotice } from "./terms/TestnetNotice";
 import { Tour } from "./tour/Tour";
 import { BoxView } from "./views/BoxView";
 import { DuelShelfView } from "./views/DuelShelfView";
@@ -158,6 +159,7 @@ export function App() {
         </span>
       </footer>
       <TermsGate />
+      <TestnetNotice />
       <Tour />
     </div>
   );

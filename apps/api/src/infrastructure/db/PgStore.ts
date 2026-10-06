@@ -9,6 +9,7 @@ import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { AllowListClaim } from "../../application/allowList";
 import type { XPass } from "../../application/xPass";
+import type { Idea } from "../../application/ideas";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 import type { ArchiveStore } from "../../application/ports/archive";
@@ -778,6 +779,19 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
 
   async deleteXPass(id: string) {
     await this.pool.query("delete from x_passes where id = $1", [id]);
+  }
+
+  async saveIdea(i: Omit<Idea, "id">) {
+    await this.pool.query("insert into ideas (text, handle, locale, created_at) values ($1, $2, $3, $4) on conflict (text) do nothing", [i.text, i.handle, i.locale, i.createdAt]);
+  }
+
+  async ideas() {
+    const { rows } = await this.pool.query("select * from ideas order by id desc");
+    return rows.map((r): Idea => ({ id: Number(r.id), text: r.text as string, handle: (r.handle as string | null) ?? null, locale: r.locale as string, createdAt: Number(r.created_at) }));
+  }
+
+  async ideaCount() {
+    return (await one(this.pool, "select count(*)::int as n from ideas", [], (r) => r.n as number)) ?? 0;
   }
 
   takeNonce(address: Address) {

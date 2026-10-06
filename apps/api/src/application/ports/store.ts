@@ -8,6 +8,7 @@ import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { AllowListClaim } from "../allowList";
 import type { XPass } from "../xPass";
+import type { Idea } from "../ideas";
 import type { TermsAcceptance } from "../terms";
 
 export interface EntangleProposal {
@@ -179,6 +180,11 @@ export interface Store extends ReadStore {
   /** Files a pass, replacing the one with the same id. */
   saveXPass(p: XPass): Promise<void>;
   deleteXPass(id: string): Promise<void>;
+  /** The suggestion box. Not a read model: a replay or a redeployment keeps it. The same text
+   *  twice is kept once. */
+  saveIdea(i: Omit<Idea, "id">): Promise<void>;
+  ideas(): Promise<Idea[]>;
+  ideaCount(): Promise<number>;
   /**
    * The relayer meter of an account on a UTC day. Not a read model: a replay of the chain keeps
    * it. `apply` sees the meter, locked against concurrent calls, and returns what to add to it,

@@ -35,7 +35,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done**, live on Sepolia |
 | Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
 | Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
-| Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing, filed by the API (`POST /v1/terms`) | **Done** |
+| Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing on mainnet, filed by the API (`POST /v1/terms`); on Sepolia a notice says what a redeployment keeps instead | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
 | Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
 | Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Done** on the mock and in the tests, not yet deployed on Sepolia |

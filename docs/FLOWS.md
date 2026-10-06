@@ -21,7 +21,11 @@ Two things differ from the original brief in every flow:
 
 ## Release form (when a wallet connects)
 
-Before playing with a wallet, every player signs the terms of play: the contracts are experimental and
+On mainnet only (`termsRequired` in `apps/web/src/terms/terms.ts`): on Sepolia nothing is signed,
+and a notice shown once when the game opens (`TestnetNotice`) says what a redeployment resets
+(boxes, cats, croquettes, test tokens) and what it keeps (points, whitelist seats, X passes).
+
+Before playing with a wallet on mainnet, every player signs the terms of play: the contracts are experimental and
 could be exploited, the site is only a window onto assets that live on-chain, nothing is
 custodial or refundable. The form (`apps/web/src/terms`) has one clause per line; the
 player initials each, then the wallet signs a readable EIP-191 message naming the address,

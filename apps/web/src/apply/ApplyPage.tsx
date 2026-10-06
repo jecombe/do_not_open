@@ -6,6 +6,7 @@ import { HomeTop } from "../home/HomeTop";
 import { useT } from "../home/i18n";
 import { Passport, SeatMeter } from "../home/Passport";
 import { GateScene } from "./gateScene";
+import { IdeaBox } from "./IdeaBox";
 
 /**
  * The boarding page: a gate in 3D (boxes on the baggage belt, a cat at the desk, a rat on the
@@ -53,6 +54,8 @@ export function ApplyPage() {
       <Boarding />
 
       <Passport />
+
+      <IdeaBox />
 
       <footer className="home-foot">
         <span>{t("home.foot")}</span>

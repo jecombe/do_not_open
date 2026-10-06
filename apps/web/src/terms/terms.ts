@@ -131,13 +131,25 @@ export function useTermsRecord(): TermsRecord {
   );
 }
 
-// Whether the form is on screen right now: the first-visit tour waits until it is gone.
+// Whether a form is on screen right now (the release form, the testnet notice): the first-visit
+// tour waits until every one of them is gone.
 let gateUp = false;
+const holders = new Set<string>();
 const gateListeners = new Set<() => void>();
-export function setGateUp(up: boolean): void {
-  if (gateUp === up) return;
-  gateUp = up;
+export function setGateUp(up: boolean, who = "terms"): void {
+  if (up) holders.add(who);
+  else holders.delete(who);
+  if (gateUp === holders.size > 0) return;
+  gateUp = holders.size > 0;
   for (const l of gateListeners) l();
+}
+
+/**
+ * The release form is signed on mainnet only. On the test network nothing has value, so a wallet
+ * plays at once; the testnet notice says what a redeployment keeps instead.
+ */
+export function termsRequired(mode: string): boolean {
+  return mode !== "mock" && mode !== "sepolia";
 }
 export function useGateUp(): boolean {
   return useSyncExternalStore(

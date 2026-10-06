@@ -281,6 +281,12 @@ duel against itself counts nothing. The ranking counts, for each claimant, the b
 points and its points now; ties go to the earlier claim. What this tells the backend: that an
 address asked for a place, and when. Nobody is ranked who did not ask.
 
+### The suggestion box
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `ideas` | `id`, `text` (unique), `handle` (from the player's own boarding pass, or null), `locale`, `created_at` | no: kept by a replay and a redeploy (migration 19); read by the team only |
+
 ### X boarding passes
 
 | Table | What | Rebuilt by a replay |
