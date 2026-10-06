@@ -2932,3 +2932,24 @@ p.pass-meter {
     animation: none !important;
   }
 }
+
+/* Whether the player's seat is booked: a red line until it is, a mint stamp once it is. */
+.boarding-seat {
+  width: fit-content;
+  margin: -6px 0 14px;
+  padding: 3px 12px 1px;
+  border: 3px dashed var(--red);
+  border-radius: 10px;
+  color: var(--red);
+  font-family: var(--stencil);
+  font-size: 17px;
+  text-transform: uppercase;
+}
+
+.boarding-seat.is-seated {
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--mint);
+  color: var(--ink);
+  transform: rotate(-1.5deg);
+}

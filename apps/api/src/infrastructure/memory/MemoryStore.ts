@@ -212,6 +212,10 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
     return this.s.milestones.size;
   }
 
+  async minters() {
+    return [...new Set([...this.s.mints.values()].map((m) => m.buyer))];
+  }
+
   async openedBoxes() {
     return [...this.s.boxes.values()].filter((b) => b.status === "revealed").sort((a, b) => a.tokenId - b.tokenId).map(clone);
   }

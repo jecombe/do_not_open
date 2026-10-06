@@ -395,6 +395,11 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
     return (await one(this.pool, "select count(*)::int as n from milestones", [], (r) => r.n as number)) ?? 0;
   }
 
+  async minters() {
+    const { rows } = await this.pool.query("select distinct buyer from mints order by buyer");
+    return rows.map((r) => r.buyer as Address);
+  }
+
   async openedBoxes() {
     const { rows } = await this.pool.query("select * from boxes where status = 'revealed' order by token_id");
     return rows.map(boxFrom);

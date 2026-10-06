@@ -551,6 +551,7 @@ export const es: Record<AppKey, string> = {
   "al.update": "Actualizar mis puntos",
   "al.signing": "Firmando…",
   "al.rules": "Cada rival que vences en un duelo vale 3 puntos, cada uno al que te enfrentas 1, cada caja que abres 2 (10 como máximo). Los duelos entre tus propias wallets no cuentan. Tus puntos salen solo de lo que la cadena ya muestra; reclamar da tu dirección a la lista, nada más. Se guardan tus mejores puntos, aunque la red de pruebas vuelva a empezar.",
+  "al.noSeatYet": "Has reclamado, pero tu lugar aún no está reservado: mintea una caja, abre una o haz un duelo una vez en el testnet, y listo.",
   "xpass.connect": "Conecta tu X en la página de inicio: +{bonus} puntos al vincular esta wallet →",
   "xpass.linked": "✓ Vinculada a X @{handle}: +{bonus} puntos.",
   "xpass.link": "Vincular a mi X @{handle} (+{bonus} puntos)",

@@ -131,6 +131,8 @@ export interface ReadStore {
   tokenCount(): Promise<number>;
   milestonesReached(): Promise<number>;
   openedBoxes(): Promise<Box[]>;
+  /** Every address that minted, once each. */
+  minters(): Promise<Address[]>;
   duel(duelId: number): Promise<Duel | null>;
   duels(q: DuelQuery): Promise<Duel[]>;
   proposal(tokenA: number, tokenB: number): Promise<EntangleProposal | null>;

@@ -272,6 +272,7 @@ function AllowListPanel({ account, connect, ledger }: { account: Address | null;
             {action.busy ? t("al.signing") : status.rank === null ? t("al.claim") : t("al.update")}
           </button>
           {action.error && <ProblemNote problem={action.error} />}
+          {status.seated === false && status.rank !== null && <p className="fine">{t("al.noSeatYet")}</p>}
           <XPassLink account={account} onLinked={() => void adapter.allowList().then((s) => s && setStatus(s), () => undefined)} />
         </>
       )}

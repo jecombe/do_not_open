@@ -177,6 +177,9 @@ const schema = z.object({
    */
   X_CLIENT_ID: z.string().min(1).optional(),
   X_CLIENT_SECRET: z.string().min(1).optional(),
+  /** The announcement post on X (its id, the digits at the end of its link) that boarding players
+   *  like, reply to and repost. Unset: those three tasks are not asked for a seat yet. */
+  X_ANNOUNCEMENT_ID: z.string().regex(/^\d{1,25}$/, "the post's id: digits").optional(),
   /** Pages X may send a player back to after signing in, as origins; `*` matches one DNS label. */
   X_RETURN_ORIGINS: list.default(["https://do-not-open.app", "https://testnet.do-not-open.app", "http://localhost:5173"]),
 

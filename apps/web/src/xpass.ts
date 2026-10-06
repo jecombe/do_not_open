@@ -7,6 +7,8 @@ export type XTask = "follow" | "post" | "like" | "reply" | "repost";
 /** An X boarding pass as the API shows it to its holder (`/v1/xpass`). */
 export interface XPassView {
   code: string;
+  /** Whether the pass holds a seat on the mainnet list: account connected, every required task done. */
+  seated: boolean;
   /** Lower-cased, once a post proved the account. */
   handle: string | null;
   tweetUrl: string | null;
@@ -78,15 +80,17 @@ export const followXPass = () => call("POST", "/follow");
 export const declareXTask = (task: XTask) => call("POST", "/task", { task });
 export const verifyXPassTweet = (url: string) => call("POST", "/tweet", { url });
 export const linkXPassWallet = (address: string, message: string, signature: string) => call("POST", "/wallet", { address, message, signature });
-/** Whether the API offers Sign in with X; without it, a post carrying the pass code proves the account. */
-export async function xSignInEnabled(): Promise<boolean> {
+/** What the API says about X: whether Sign in with X is on (without it, a post carrying the
+ *  pass code proves the account), and the announcement post the tasks are about. */
+export async function xSettings(): Promise<{ signIn: boolean; announcement: string | null }> {
   const api = xPassApi();
-  if (!api) return false;
+  if (!api) return { signIn: false, announcement: null };
   try {
     const res = await fetch(`${api}/v1/xpass/x`);
-    return res.ok && ((await res.json()) as { data?: { signIn?: boolean } }).data?.signIn === true;
+    const data = res.ok ? ((await res.json()) as { data?: { signIn?: boolean; announcement?: string | null } }).data : undefined;
+    return { signIn: data?.signIn === true, announcement: data?.announcement ?? null };
   } catch {
-    return false;
+    return { signIn: false, announcement: null };
   }
 }
 
@@ -114,6 +118,8 @@ export async function signInWithX(returnTo: string): Promise<void> {
 export interface SeatsView {
   taken: number;
   places: number | null;
+  /** The tasks on X a pass needs for a seat. */
+  required: XTask[];
 }
 
 /** The list's seats, read from the API and again every `refreshMs`; null without the API. */

@@ -559,6 +559,7 @@ export const en = {
   "al.update": "Update my points",
   "al.signing": "Signing…",
   "al.rules": "Each opponent you beat in a duel is worth 3 points, each one you faced 1, each box you opened 2 (10 at most). Duels between your own wallets count nothing. Your points come only from what the chain already shows; claiming gives the list your address and nothing else. The best points you ever had are kept, even if the test network starts over.",
+  "al.noSeatYet": "You claimed, but your seat is not booked yet: mint a box, open one or fight a duel on the testnet once, and it is.",
   "xpass.connect": "Connect your X on the home page: +{bonus} points once you link this wallet →",
   "xpass.linked": "✓ Linked to X @{handle}: +{bonus} points.",
   "xpass.link": "Link to my X @{handle} (+{bonus} points)",
