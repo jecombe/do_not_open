@@ -110,6 +110,34 @@ export async function signInWithX(returnTo: string): Promise<void> {
   window.location.assign(json.data.url);
 }
 
+/** Seats on the mainnet list: how many are taken, out of how many (null: no cap). */
+export interface SeatsView {
+  taken: number;
+  places: number | null;
+}
+
+/** The list's seats, read from the API and again every `refreshMs`; null without the API. */
+export function useSeats(refreshMs = 20_000): SeatsView | null {
+  const [seats, setSeats] = useState<SeatsView | null>(null);
+  useEffect(() => {
+    const api = xPassApi();
+    if (!api) return;
+    let on = true;
+    const read = () =>
+      fetch(`${api}/v1/seats`)
+        .then((r) => (r.ok ? (r.json() as Promise<{ data: SeatsView }>) : null))
+        .then((j) => on && j && setSeats(j.data))
+        .catch(() => undefined);
+    void read();
+    const timer = setInterval(read, refreshMs);
+    return () => {
+      on = false;
+      clearInterval(timer);
+    };
+  }, [refreshMs]);
+  return seats;
+}
+
 export const hasXPassToken = () => !!(memoryToken ?? readToken());
 
 /** The pass this browser holds, read once; null when it has none (or lost it). */

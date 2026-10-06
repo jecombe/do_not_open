@@ -113,6 +113,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/allowlist` | Files a claim for a place on the mainnet allow list: `{ address, message, signature }`, the message from `allowListMessage` (`@dno/chain-adapter/standings`) naming that address, signed by it (EIP-191, no gas). Signing again keeps the first claim's date and the best points. Answers the status below; `400` if it is not a claim or names another address, `401` if another account signed it. 10 a minute per IP |
 | `GET /v1/allowlist/:address` | Where an address stands: `live` points (`beaten`, `faced`, `opened`), the `points` the ranking counts, `claimedAt`, `rank` among claimants (null until it claims), `claimants`, `places`. Not cached by HTTP; the public facts behind the points (resolved duels, openers) are reused for 30 s (`FACTS_TTL`), since quest platforms such as Galxe check addresses in bursts, and a claim always reads them afresh. Public: the points come from public facts only |
+| `GET /v1/seats` | `{ taken, places }`: seats taken on the mainnet list, out of how many. Cached 10 s |
 | `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
@@ -195,8 +196,11 @@ beaten in a duel, 1 per distinct opponent faced, 2 per box opened (10 boxes at m
 players of a resolved duel are public (the challenger proved holding box A, the accepter box B);
 a duel between one address and itself counts nothing. The ranking takes, for each claimant, the
 best of the points kept at its last claim and its points now; ties go to the earlier claim.
-Nobody is ranked who did not claim. There is no cap: every claimant is on the list, ranked by points (`ALLOW_LIST_PLACES` can
-set one, which only marks `inPlace` in the export); read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
+Nobody is ranked who did not claim. The list has `ALLOW_LIST_PLACES` seats (3,000 by default), first come, first served
+(`application/seats.ts`): one per person, an X account proved on a boarding pass or a wallet that
+claimed without one (an X account and its linked wallet are one). Once they are taken, a new
+claim or a new X account gets `409 list-full`; those inside keep updating. `GET /v1/seats` says
+`{ taken, places }` (cached 10 s), the boarding page's counter; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
 
 ### X boarding passes
 

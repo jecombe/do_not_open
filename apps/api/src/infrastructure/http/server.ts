@@ -3,6 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AllowList } from "../../application/allowList";
+import { ListFull, type Seats } from "../../application/seats";
 import { X_TASKS, XPassRefused, type XPassRefusal, type XPasses } from "../../application/xPass";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
@@ -27,7 +28,7 @@ export interface HttpDeps {
   /** Signed release forms. Absent: the app keeps its signatures in the browser only. */
   terms?: AcceptTerms;
   /** The mainnet allow list, with the token that reads the whole list. Absent: no claims. */
-  allowList?: { list: AllowList; adminToken: string | null };
+  allowList?: { list: AllowList; adminToken: string | null; seats?: Seats };
   /** X boarding passes; the admin token (the allow list's) lists them all; Sign in with X
    *  sends players back only to `returnOrigins`. */
   xPasses?: { passes: XPasses; adminToken: string | null; returnOrigins: string[] };
@@ -107,6 +108,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     if (error instanceof BadRequest) return reply.status(400).send({ error: "bad-request", message: error.message });
     if (error instanceof NotFound) return reply.status(404).send({ error: "not-found", message: error.message });
     if (error instanceof Unauthorized) return reply.status(401).send({ error: "unauthorized", message: error.message });
+    if (error instanceof ListFull) return reply.status(409).send({ error: "list-full", message: error.message });
     if (error.statusCode && error.statusCode < 500) return reply.status(error.statusCode).send({ error: "request", message: error.message });
     app.log.error(error);
     return reply.status(500).send({ error: "internal", message: "something went wrong" });
@@ -282,6 +284,15 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       return send(reply, await allowList.list.claim(body.address, body.message, body.signature), "no-store");
     });
 
+    const seats = allowList.seats;
+    if (seats) {
+      // How many seats are taken on the mainnet list, out of how many: the boarding page's counter.
+      app.get("/v1/seats", async (_req, reply) => {
+        reply.header("cache-control", "public, max-age=10");
+        return { data: await seats.view() };
+      });
+    }
+
     app.get("/v1/allowlist/:address", async (req, reply) => {
       const p = z.object({ address }).parse(req.params);
       return send(reply, await allowList.list.status(p.address), "private, no-store");
@@ -314,6 +325,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       "sign-in-off": 503,
       "sign-in-expired": 400,
       "sign-in-refused": 400,
+      "list-full": 409,
     };
     const passToken = (req: FastifyRequest) => {
       const h = req.headers.authorization;

@@ -3,11 +3,10 @@ import { X_PASS_BONUS } from "@dno/chain-adapter/standings";
 import { ANNOUNCEMENT_TWEET_ID, announcementLinks, X_FOLLOW, X_HANDLE, xPost } from "../links";
 import { useLocale } from "../i18n/locale";
 import { duelRankingPath, homePath, SITE_URL } from "../site";
-import { declareXTask, signInWithX, startXPass, useXPass, verifyXPassTweet, xPassApi, XPassError, xSignInEnabled, type XPassView, type XTask } from "../xpass";
+import { declareXTask, signInWithX, startXPass, useSeats, useXPass, verifyXPassTweet, xPassApi, XPassError, xSignInEnabled, type XPassView, type XTask } from "../xpass";
 import { useT } from "./i18n";
-import { usePassCount } from "./Passport";
 
-const REFUSALS = ["bad-tweet-url", "tweet-not-found", "code-missing", "tweet-used", "x-down", "no-pass", "sign-in-expired", "sign-in-refused"] as const;
+const REFUSALS = ["bad-tweet-url", "tweet-not-found", "code-missing", "tweet-used", "x-down", "no-pass", "sign-in-expired", "sign-in-refused", "list-full"] as const;
 const TASKS: XTask[] = ["follow", "like", "reply", "repost"];
 /** Seconds between opening X and "mark it done", as on other boarding pages: time to do it. */
 const WAIT = 8;
@@ -22,7 +21,7 @@ const WAIT = 8;
 export function Boarding() {
   const t = useT();
   const locale = useLocale();
-  const [count] = usePassCount();
+  const seats = useSeats();
   const { pass, loading, set } = useXPass();
   const [busy, setBusy] = useState<"code" | "verify" | "x" | null>(null);
   const [signIn, setSignIn] = useState<boolean | null>(null);
@@ -124,7 +123,7 @@ export function Boarding() {
         <p className="boarding-kicker">
           <span className="boarding-live" aria-hidden="true" />
           {t("home.boarding.kicker")}
-          {count && <span className="boarding-count">{t("home.boarding.count", { count: count.claimants })}</span>}
+          {seats && seats.places !== null && <span className="boarding-count">{t("home.boarding.seats", { taken: seats.taken, places: seats.places })}</span>}
         </p>
         <h2 id="boarding-title">{verified ? t("home.boarding.done", { handle: pass!.handle! }) : t("home.boarding.title")}</h2>
 

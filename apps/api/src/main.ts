@@ -5,6 +5,7 @@ import { AskManual, type AnswerModel } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import { AllowList } from "./application/allowList";
+import { Seats } from "./application/seats";
 import { xPassBonuses, XPasses } from "./application/xPass";
 import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
@@ -206,6 +207,8 @@ async function main() {
     info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
   });
 
+  const seats = new Seats(store, config.ALLOW_LIST_PLACES);
+
   const server =
     config.ROLE === "indexer"
       ? null
@@ -214,7 +217,7 @@ async function main() {
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
-          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES ?? null, () => xPassBonuses(store)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
+          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, seats },
           xPasses: {
             passes: new XPasses(
               store,
@@ -228,6 +231,7 @@ async function main() {
                     secrets: loginSecrets,
                   }
                 : null,
+              seats,
             ),
             adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null,
             returnOrigins: config.X_RETURN_ORIGINS,

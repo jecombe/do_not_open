@@ -2827,3 +2827,108 @@ p.pass-meter {
     animation: none;
   }
 }
+
+/* Seats on the mainnet list: a big count, a gauge that fills, how many are left. */
+.seat-meter {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+}
+
+.seat-meter-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  font-family: var(--stencil);
+  line-height: 1;
+}
+
+.seat-meter-count strong {
+  font-size: 34px;
+  font-weight: 400;
+}
+
+.seat-meter-count span {
+  font-size: 22px;
+}
+
+.seat-meter-count small {
+  font-family: var(--label);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.seat-meter-bar {
+  height: 18px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.seat-meter-bar i {
+  display: block;
+  height: 100%;
+  border-right: 3px solid var(--ink);
+  background: repeating-linear-gradient(-45deg, var(--sun) 0 8px, var(--orange) 8px 16px);
+  animation: seat-crawl 1.2s linear infinite;
+  background-size: 22.6px 22.6px;
+}
+
+@keyframes seat-crawl {
+  to {
+    background-position: 22.6px 0;
+  }
+}
+
+.seat-meter-left {
+  margin: 0;
+  color: var(--red);
+  font-family: var(--stencil);
+  font-size: 18px;
+  text-transform: uppercase;
+}
+
+.seat-meter.is-hot .seat-meter-bar i {
+  background: repeating-linear-gradient(-45deg, var(--red) 0 8px, #e2493f 8px 16px);
+  background-size: 22.6px 22.6px;
+}
+
+.seat-meter.is-hot .seat-meter-left,
+.seat-meter.is-full .seat-meter-left {
+  animation: boarding-blink 1s steps(2, jump-none) infinite;
+}
+
+.seat-meter.is-big {
+  max-width: 460px;
+  padding: 14px 16px 12px;
+  border: 4px solid var(--ink);
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: 6px 6px 0 var(--ink);
+  transform: rotate(-1deg);
+}
+
+.seat-meter.is-big .seat-meter-count strong {
+  font-size: 48px;
+  color: var(--red);
+}
+
+.seat-meter.is-big .seat-meter-count span {
+  font-size: 28px;
+}
+
+.pass-cover .seat-meter-left {
+  color: var(--sun);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat-meter-bar i,
+  .seat-meter-left {
+    animation: none !important;
+  }
+}

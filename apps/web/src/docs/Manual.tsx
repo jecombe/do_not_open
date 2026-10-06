@@ -1,3 +1,4 @@
+import { DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { spec, studio } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
@@ -567,7 +568,7 @@ export function Manual() {
             <p className="testnet-note">{t("docs.testnet.note")}</p>
             <div className="prose">
               <p>{t("docs.testnet.p1")}</p>
-              <p>{t("docs.testnet.allowList")}</p>
+              <p>{t("docs.testnet.allowList", { places: DEFAULT_ALLOW_LIST_PLACES ?? 0 })}</p>
               <p>{t("docs.testnet.contracts")}</p>
             </div>
             <ul className="addresses">

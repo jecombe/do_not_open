@@ -1,9 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { ALLOW_LIST_POINTS } from "@dno/chain-adapter/standings";
+import { useState, type FormEvent } from "react";
+import { ALLOW_LIST_POINTS, DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { chainMode } from "../chain/mode";
 import { useLocale } from "../i18n/locale";
 import { appPath, duelRankingPath } from "../site";
-import { useXPass } from "../xpass";
+import { useSeats, useXPass } from "../xpass";
 import { useT } from "./i18n";
 
 /** What the API says about one address on the mainnet allow list (`GET /v1/allowlist/:address`). */
@@ -16,8 +16,6 @@ interface PassStatus {
   places: number | null;
 }
 
-// Any address answers with the list's size: this one has never played.
-const PROBE = "0x0000000000000000000000000000000000000000";
 const REMEMBER = "dno:pass:address";
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
@@ -43,33 +41,14 @@ type Check = { state: "idle" } | { state: "busy" } | { state: "bad" } | { state:
  * The mainnet allow list as a customs laissez-passer: three stamps (the X quest, play, sign),
  * an address to check, and how many passes are signed. The forms open in a new tab.
  */
-type Count = { claimants: number; places: number | null };
-
-/** How many passes are signed, out of how many places. Null without the API, or until it answers. */
-export function usePassCount(): [Count | null, (c: Count) => void] {
-  const [count, setCount] = useState<Count | null>(null);
-  useEffect(() => {
-    if (api() === null) return;
-    let on = true;
-    readPass(PROBE).then(
-      (p) => on && setCount({ claimants: p.claimants, places: p.places }),
-      () => undefined,
-    );
-    return () => {
-      on = false;
-    };
-  }, []);
-  return [count, setCount];
-}
-
 export function Passport() {
   const t = useT();
   const locale = useLocale();
   const [address, setAddress] = useState(recall);
   const [check, setCheck] = useState<Check>({ state: "idle" });
-  const [count, setCount] = usePassCount();
   const live = api() !== null;
   const { pass: xPass } = useXPass();
+  const seats = useSeats();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -79,7 +58,6 @@ export function Passport() {
     try {
       const pass = await readPass(a);
       setCheck({ state: "done", pass });
-      setCount({ claimants: pass.claimants, places: pass.places });
       try {
         localStorage.setItem(REMEMBER, a);
       } catch {
@@ -109,17 +87,12 @@ export function Passport() {
         <header className="pass-cover">
           <p className="kicker">{t("home.pass.kicker")}</p>
           <h2>{t("home.pass.title")}</h2>
-          <p className="section-lede">{t("home.pass.lede")}</p>
+          <p className="section-lede">{t("home.pass.lede", { places: seats?.places ?? DEFAULT_ALLOW_LIST_PLACES ?? 0 })}</p>
           <div className="pass-photo" aria-hidden="true">
             <PassPhoto />
             <span className="speech">{t("home.pass.bubble")}</span>
           </div>
-          {count && (
-            <p className="pass-meter">
-              <span className="pass-meter-stamp" aria-hidden="true">✓</span>
-              {t("home.pass.meter", { count: count.claimants })}
-            </p>
-          )}
+          {seats && seats.places !== null && <SeatMeter taken={seats.taken} places={seats.places} />}
         </header>
 
         <ol className="pass-stamps">
@@ -202,5 +175,27 @@ function PassPhoto() {
         ???
       </text>
     </svg>
+  );
+}
+
+/** Seats taken out of the places, as a gauge that fills: red once few are left, stamped when full. */
+export function SeatMeter({ taken, places, big = false }: { taken: number; places: number; big?: boolean }) {
+  const t = useT();
+  const locale = useLocale();
+  const left = Math.max(0, places - taken);
+  const share = Math.min(1, taken / Math.max(1, places));
+  const state = left === 0 ? " is-full" : share >= 0.9 ? " is-hot" : "";
+  return (
+    <div className={`seat-meter${big ? " is-big" : ""}${state}`}>
+      <p className="seat-meter-count">
+        <strong>{taken.toLocaleString(locale)}</strong>
+        <span> / {places.toLocaleString(locale)}</span>
+        <small>{t("home.seats.taken")}</small>
+      </p>
+      <span className="seat-meter-bar" aria-hidden="true">
+        <i style={{ width: `${Math.max(1.5, share * 100)}%` }} />
+      </span>
+      <p className="seat-meter-left">{left === 0 ? t("home.seats.full") : t("home.seats.left", { count: left })}</p>
+    </div>
   );
 }

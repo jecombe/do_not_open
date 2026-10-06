@@ -1,3 +1,4 @@
+import { DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { useEffect, useId, useRef, useState } from "react";
 import { spec, studio } from "@dno/game-spec";
 import type { CatSpec } from "@dno/generator";
@@ -98,7 +99,7 @@ export function Home() {
           </p>
           {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
           <a className="hero-allow" href={applyPath(locale)}>
-            {t("home.hero.allowList")}&nbsp;→
+            {t("home.hero.allowList", { places: (DEFAULT_ALLOW_LIST_PLACES ?? 0).toLocaleString(locale) })}&nbsp;→
           </a>
         </div>
         <Departures />
