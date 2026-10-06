@@ -3,7 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AllowList } from "../../application/allowList";
-import { XPassRefused, type XPassRefusal, type XPasses } from "../../application/xPass";
+import { X_TASKS, XPassRefused, type XPassRefusal, type XPasses } from "../../application/xPass";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
 import type { AcceptTerms } from "../../application/terms";
@@ -329,6 +329,10 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     app.post("/v1/xpass", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (_req, reply) => passed(reply, () => passes.start()));
     app.get("/v1/xpass", async (req, reply) => passed(reply, () => passes.status(passToken(req))));
     app.post("/v1/xpass/follow", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => passed(reply, () => passes.follow(passToken(req))));
+    app.post("/v1/xpass/task", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ task: z.enum(X_TASKS) }).parse(req.body);
+      return passed(reply, () => passes.declare(passToken(req), body.task));
+    });
     app.post("/v1/xpass/tweet", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
       const body = z.object({ url: z.string().min(1).max(300) }).parse(req.body);
       return passed(reply, () => passes.verifyTweet(passToken(req), body.url));

@@ -401,6 +401,8 @@ describe("X boarding passes", () => {
     posts.set("77", { id: "77", handle: "cat", text: `boarding ${pass.code}` });
     expect((await call("POST", "/v1/xpass/tweet", token, { url: "https://x.com/cat/status/77" })).json().data).toMatchObject({ handle: "cat" });
     expect((await call("POST", "/v1/xpass/follow", token)).json().data).toMatchObject({ followed: true });
+    expect((await call("POST", "/v1/xpass/task", token, { task: "reply" })).json().data.tasks).toEqual({ follow: true, like: false, reply: true, repost: false });
+    expect((await call("POST", "/v1/xpass/task", token, { task: "dance" })).statusCode).toBe(400);
   });
 
   it("lists every pass only for whoever holds the token, without the token hashes", async () => {

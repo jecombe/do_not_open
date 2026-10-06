@@ -2248,7 +2248,7 @@ h2 {
 .boarding {
   position: relative;
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) minmax(220px, 300px);
+  grid-template-columns: 112px minmax(0, 1fr);
   margin: 4px 0 8px;
   border: 4px solid var(--ink);
   border-radius: 22px;
@@ -2398,11 +2398,12 @@ h2 {
 }
 
 .boarding-bonus {
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  margin: 12px 12px 12px 0;
-  padding: 14px 16px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 14px 0 0;
+  padding: 10px 16px 8px;
   border: 3px solid var(--ink);
   border-radius: 16px;
   background: var(--mint);
@@ -2411,7 +2412,7 @@ h2 {
   font-weight: 500;
   line-height: 1.3;
   text-decoration: none;
-  transform: rotate(1.5deg);
+  transform: rotate(0.4deg);
   transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 
@@ -2448,12 +2449,6 @@ h2 {
 @media (max-width: 1000px) {
   .boarding {
     grid-template-columns: 96px minmax(0, 1fr);
-  }
-
-  .boarding-bonus {
-    grid-column: 1 / -1;
-    margin: 0 14px 14px;
-    transform: none;
   }
 }
 
@@ -2591,5 +2586,123 @@ h2 {
 @media (max-width: 620px) {
   .boarding-verify form {
     flex-direction: column;
+  }
+}
+
+/* Two halves: the X account on the left, the four tasks on the right. */
+.boarding-body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px 28px;
+}
+
+.boarding-part h3 {
+  margin: 0 0 10px;
+  font-family: var(--stencil);
+  font-size: 20px;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.boarding-part-n {
+  color: var(--red);
+}
+
+.boarding-steps {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+.btn.is-waiting {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.boarding-tasks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boarding-task {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 3px dashed rgb(28 24 20 / 0.5);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.6);
+}
+
+.boarding-task.is-done {
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--mint);
+}
+
+.boarding-task strong {
+  font-family: var(--stencil);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.boarding-task-why {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.boarding-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 4px;
+}
+
+.boarding-task .btn-small {
+  padding: 7px 12px 5px;
+  font-size: 15px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.boarding-task-open {
+  font-size: 15px;
+}
+
+.boarding-task-mark {
+  padding: 4px 10px 2px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--sun);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.boarding-task-mark:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.boarding-fine {
+  margin: 8px 0 0;
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+@media (max-width: 1000px) {
+  .boarding-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .boarding-tasks {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

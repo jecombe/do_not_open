@@ -208,8 +208,9 @@ bearer (`private, no-store`):
 | Route | What |
 | --- | --- |
 | `POST /v1/xpass` | A new pass: `{ token, pass }`. The token is shown once; the store keeps its sha256. 5 a minute per IP |
-| `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `address`, `bonus`. `401 no-pass` for an unknown token |
+| `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `tasks`, `address`, `bonus`. `401 no-pass` for an unknown token |
 | `POST /v1/xpass/follow` | Notes the declared follow (X's follows cannot be read for free) |
+| `POST /v1/xpass/task` | `{ task: "follow" \| "like" \| "reply" \| "repost" }`: notes a declared task (migration 17); the pass shows them in `tasks`. 20 a minute per IP |
 | `POST /v1/xpass/tweet` | `{ url }`: `400 bad-tweet-url`, `404 tweet-not-found`, `400 code-missing`, `409 tweet-used`, `503 x-down`. An X account already on an older pass moves to this one, with its wallet and follow |
 | `POST /v1/xpass/wallet` | `{ address, message, signature }`, the message from `xPassWalletMessage` (`@dno/chain-adapter/standings`) naming the wallet and the code, signed by it: `409 connect-x-first`, `400 bad-message`, `401 bad-signature`, `409 address-taken` |
 | `GET /v1/xpass/all?token=` | Every pass (no token hash), for the checks before mainnet. `ALLOW_LIST_ADMIN_TOKEN` |

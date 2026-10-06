@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { chainMode } from "./chain/mode";
 
+/** The tasks on X a pass asks for, declared by the player (X's likes and reposts cannot be read for free). */
+export type XTask = "follow" | "like" | "reply" | "repost";
+
 /** An X boarding pass as the API shows it to its holder (`/v1/xpass`). */
 export interface XPassView {
   code: string;
@@ -8,6 +11,7 @@ export interface XPassView {
   handle: string | null;
   tweetUrl: string | null;
   followed: boolean;
+  tasks: Record<XTask, boolean>;
   address: string | null;
   bonus: number;
 }
@@ -71,6 +75,7 @@ async function call(method: "GET" | "POST", path: string, body?: object): Promis
 export const startXPass = () => call("POST", "");
 export const xPassStatus = () => call("GET", "");
 export const followXPass = () => call("POST", "/follow");
+export const declareXTask = (task: XTask) => call("POST", "/task", { task });
 export const verifyXPassTweet = (url: string) => call("POST", "/tweet", { url });
 export const linkXPassWallet = (address: string, message: string, signature: string) => call("POST", "/wallet", { address, message, signature });
 export const hasXPassToken = () => !!(memoryToken ?? readToken());

@@ -758,10 +758,12 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
 
   async saveXPass(p: XPass) {
     await this.pool.query(
-      `insert into x_passes (id, code, handle, tweet_id, tweet_url, followed_at, address, created_at, verified_at, updated_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `insert into x_passes (id, code, handle, tweet_id, tweet_url, followed_at, liked_at, replied_at, reposted_at, address, created_at, verified_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        on conflict (id) do update set code = excluded.code, handle = excluded.handle, tweet_id = excluded.tweet_id, tweet_url = excluded.tweet_url,
-         followed_at = excluded.followed_at, address = excluded.address, created_at = excluded.created_at, verified_at = excluded.verified_at, updated_at = excluded.updated_at`,
-      [p.id, p.code, p.handle, p.tweetId, p.tweetUrl, p.followedAt, p.address, p.createdAt, p.verifiedAt, p.updatedAt],
+         followed_at = excluded.followed_at, liked_at = excluded.liked_at, replied_at = excluded.replied_at, reposted_at = excluded.reposted_at,
+         address = excluded.address, created_at = excluded.created_at, verified_at = excluded.verified_at, updated_at = excluded.updated_at`,
+      [p.id, p.code, p.handle, p.tweetId, p.tweetUrl, p.followedAt, p.likedAt, p.repliedAt, p.repostedAt, p.address, p.createdAt, p.verifiedAt, p.updatedAt],
     );
   }
 
@@ -901,6 +903,9 @@ const xPassFrom = (r: Record<string, unknown>): XPass => ({
   tweetId: (r.tweet_id as string | null) ?? null,
   tweetUrl: (r.tweet_url as string | null) ?? null,
   followedAt: num(r.followed_at),
+  likedAt: num(r.liked_at),
+  repliedAt: num(r.replied_at),
+  repostedAt: num(r.reposted_at),
   address: (r.address as Address | null) ?? null,
   createdAt: Number(r.created_at),
   verifiedAt: num(r.verified_at),
