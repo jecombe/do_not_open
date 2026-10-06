@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { chainMode } from "./chain/mode";
 
 /** The tasks on X a pass asks for, declared by the player (X's likes and reposts cannot be read for free). */
-export type XTask = "follow" | "like" | "reply" | "repost";
+export type XTask = "follow" | "post" | "like" | "reply" | "repost";
 
 /** An X boarding pass as the API shows it to its holder (`/v1/xpass`). */
 export interface XPassView {
@@ -78,6 +78,38 @@ export const followXPass = () => call("POST", "/follow");
 export const declareXTask = (task: XTask) => call("POST", "/task", { task });
 export const verifyXPassTweet = (url: string) => call("POST", "/tweet", { url });
 export const linkXPassWallet = (address: string, message: string, signature: string) => call("POST", "/wallet", { address, message, signature });
+/** Whether the API offers Sign in with X; without it, a post carrying the pass code proves the account. */
+export async function xSignInEnabled(): Promise<boolean> {
+  const api = xPassApi();
+  if (!api) return false;
+  try {
+    const res = await fetch(`${api}/v1/xpass/x`);
+    return res.ok && ((await res.json()) as { data?: { signIn?: boolean } }).data?.signIn === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Sends the browser to X to sign in; X sends it back to `returnTo` with `?x=<outcome>#boarding`. */
+export async function signInWithX(returnTo: string): Promise<void> {
+  const api = xPassApi();
+  if (!api) throw new XPassError("network");
+  const token = memoryToken ?? readToken();
+  let res: Response;
+  try {
+    res = await fetch(`${api}/v1/xpass/x/start`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ returnTo }),
+    });
+  } catch {
+    throw new XPassError("network");
+  }
+  const json = (await res.json().catch(() => ({}))) as { data?: { url?: string }; error?: string };
+  if (!res.ok || !json.data?.url) throw new XPassError(json.error ?? "network");
+  window.location.assign(json.data.url);
+}
+
 export const hasXPassToken = () => !!(memoryToken ?? readToken());
 
 /** The pass this browser holds, read once; null when it has none (or lost it). */

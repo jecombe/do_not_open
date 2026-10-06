@@ -1,8 +1,8 @@
 import { Wallet } from "ethers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AllowList } from "../src/application/allowList";
-import { parseTweetUrl, X_PASS_BONUS, xPassBonuses, XPasses, xPassWalletMessage, type Tweet, type TweetLookup } from "../src/application/xPass";
-import { ethersVerifier, passSecrets } from "../src/infrastructure/auth/crypto";
+import { parseTweetUrl, SIGN_IN_TTL, X_PASS_BONUS, xPassBonuses, XPasses, xPassWalletMessage, type Tweet, type TweetLookup, type XSignIn } from "../src/application/xPass";
+import { ethersVerifier, loginSecrets, passSecrets } from "../src/infrastructure/auth/crypto";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { OEmbedTweets, oEmbedText } from "../src/infrastructure/x/OEmbedTweets";
 
@@ -38,7 +38,7 @@ describe("X boarding passes", () => {
 
   it("hands out a token once, and keeps only its hash", async () => {
     const { token, pass } = await passes.start();
-    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), handle: null, tweetUrl: null, followed: false, tasks: { follow: false, like: false, reply: false, repost: false }, address: null, bonus: 0 });
+    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), handle: null, tweetUrl: null, followed: false, tasks: { follow: false, post: false, like: false, reply: false, repost: false }, address: null, bonus: 0 });
     const [stored] = await store.xPasses();
     expect(stored!.id).toBe(passSecrets.hash(token));
     expect(JSON.stringify(stored)).not.toContain(token);
@@ -86,7 +86,7 @@ describe("X boarding passes", () => {
     // A new browser: a new pass, the same account.
     const next = await passes.start();
     const moved = await passes.verifyTweet(next.token, tweets.post("cat", "6", next.pass.code));
-    expect(moved).toMatchObject({ code: next.pass.code, handle: "cat", followed: true, tasks: { follow: true, like: false, reply: false, repost: true }, address: wallet.address.toLowerCase(), bonus: X_PASS_BONUS });
+    expect(moved).toMatchObject({ code: next.pass.code, handle: "cat", followed: true, tasks: { follow: true, post: false, like: false, reply: false, repost: true }, address: wallet.address.toLowerCase(), bonus: X_PASS_BONUS });
     expect(await store.xPasses()).toHaveLength(1);
     await expect(passes.status(old.token)).rejects.toMatchObject({ code: "no-pass" });
   });
@@ -116,6 +116,81 @@ describe("X boarding passes", () => {
     const message = linkMessage(wallet.address, pass.code);
     await passes.linkWallet(token, wallet.address, message, await wallet.signMessage(message));
     expect(await list.status(wallet.address)).toMatchObject({ bonus: X_PASS_BONUS, points: X_PASS_BONUS, rank: null });
+  });
+});
+
+/** X's OAuth as the tests see it: codes it knows, the account behind each. */
+class FakeX implements XSignIn {
+  accounts = new Map<string, { id: string; username: string }>();
+  verifiers: string[] = [];
+  authorizeUrl(state: string, challenge: string) {
+    return `https://x.test/authorize?state=${state}&challenge=${challenge}`;
+  }
+  async account(code: string, verifier: string) {
+    this.verifiers.push(verifier);
+    const a = this.accounts.get(code);
+    if (!a) throw new Error("bad code");
+    return a;
+  }
+}
+
+describe("Sign in with X", () => {
+  let store: MemoryStore;
+  let x: FakeX;
+  let passes: XPasses;
+  let now: number;
+  const stateOf = (url: string) => new URL(url).searchParams.get("state")!;
+
+  beforeEach(() => {
+    store = new MemoryStore();
+    x = new FakeX();
+    now = 1_000;
+    passes = new XPasses(store, new FakeTweets(), passSecrets, ethersVerifier, { now: () => now }, { x, secrets: loginSecrets });
+  });
+
+  it("is off without an X app", async () => {
+    const off = new XPasses(store, new FakeTweets(), passSecrets, ethersVerifier, { now: () => now });
+    expect(off.signInEnabled).toBe(false);
+    const { token } = await off.start();
+    await expect(off.startSignIn(token, "https://site.test/")).rejects.toMatchObject({ code: "sign-in-off" });
+  });
+
+  it("puts the account X names on the pass the sign-in started from, once per state", async () => {
+    const { token } = await passes.start();
+    const { url } = await passes.startSignIn(token, "https://site.test/fr/");
+    x.accounts.set("good", { id: "42", username: "Herald_DNO" });
+    const state = stateOf(url);
+    expect(await passes.finishSignIn(state, "good")).toEqual({ returnTo: "https://site.test/fr/", outcome: "ok" });
+    expect(await passes.status(token)).toMatchObject({ handle: "herald_dno" });
+    expect((await store.xPasses())[0]!.xUserId).toBe("42");
+    // The PKCE verifier went to X, and the state cannot be used twice.
+    expect(x.verifiers).toHaveLength(1);
+    expect(await passes.finishSignIn(state, "good")).toEqual({ returnTo: null, outcome: "sign-in-expired" });
+  });
+
+  it("sends the player back with what went wrong", async () => {
+    const { token } = await passes.start();
+    const refused = stateOf((await passes.startSignIn(token, "https://site.test/")).url);
+    expect(await passes.finishSignIn(refused, null)).toEqual({ returnTo: "https://site.test/", outcome: "sign-in-refused" });
+    const bad = stateOf((await passes.startSignIn(token, "https://site.test/")).url);
+    expect((await passes.finishSignIn(bad, "unknown")).outcome).toBe("x-down");
+    const late = stateOf((await passes.startSignIn(token, "https://site.test/")).url);
+    now += SIGN_IN_TTL;
+    expect((await passes.finishSignIn(late, "good")).outcome).toBe("sign-in-expired");
+    expect(await passes.status(token)).toMatchObject({ handle: null });
+  });
+
+  it("moves an account to a new pass, tasks and wallet included, even under a new handle", async () => {
+    const old = await passes.start();
+    await passes.declare(old.token, "follow");
+    x.accounts.set("a", { id: "42", username: "cat" });
+    await passes.finishSignIn(stateOf((await passes.startSignIn(old.token, "https://site.test/")).url), "a");
+    const next = await passes.start();
+    await passes.declare(next.token, "post");
+    x.accounts.set("b", { id: "42", username: "cat_renamed" });
+    await passes.finishSignIn(stateOf((await passes.startSignIn(next.token, "https://site.test/")).url), "b");
+    expect(await passes.status(next.token)).toMatchObject({ handle: "cat_renamed", tasks: { follow: true, post: true } });
+    expect(await store.xPasses()).toHaveLength(1);
   });
 });
 

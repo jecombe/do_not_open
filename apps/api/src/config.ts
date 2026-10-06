@@ -168,6 +168,17 @@ const schema = z.object({
   /** The site, e.g. https://do-not-open.app: rats' metadata links its studio. */
   SITE_URL: z.string().url().optional(),
 
+  /**
+   * Sign in with X for the home page's boarding pass: the OAuth 2.0 client of an app on
+   * developer.x.com (User authentication settings: OAuth 2.0, Web App, callback
+   * `${PUBLIC_URL}/v1/xpass/x/callback`). Without X_CLIENT_ID, players prove their account with a
+   * post carrying their pass code instead.
+   */
+  X_CLIENT_ID: z.string().min(1).optional(),
+  X_CLIENT_SECRET: z.string().min(1).optional(),
+  /** Pages X may send a player back to after signing in, as origins; `*` matches one DNS label. */
+  X_RETURN_ORIGINS: list.default(["https://do-not-open.app", "https://testnet.do-not-open.app", "http://localhost:5173"]),
+
   /** The Discord application behind `/ask` (Developer Portal → General Information): its id and public key. Both set: the command is served. */
   DISCORD_APPLICATION_ID: z.string().optional(),
   DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "64 hex characters").optional(),

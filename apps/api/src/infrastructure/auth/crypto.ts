@@ -49,3 +49,12 @@ export const passSecrets = {
     return `DNO-${[...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("")}`;
   },
 };
+
+/** Sign in with X: a random OAuth state, and a PKCE verifier with its S256 challenge. */
+export const loginSecrets = {
+  state: () => randomBytes(24).toString("base64url"),
+  pkce() {
+    const verifier = randomBytes(48).toString("base64url");
+    return { verifier, challenge: createHash("sha256").update(verifier).digest("base64url") };
+  },
+};

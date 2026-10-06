@@ -200,17 +200,26 @@ place; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN
 
 ### X boarding passes
 
-The home page's boarding pass (`src/application/xPass.ts`, `infrastructure/x/OEmbedTweets.ts`,
-migration 16). An X account is proved by a post carrying the pass code, read through X's public
-oEmbed (`publish.x.com/oembed`): no key, nothing to configure. Routes, the pass token as a
-bearer (`private, no-store`):
+The home page's boarding pass (`src/application/xPass.ts`, `infrastructure/x/XOAuth.ts`,
+`infrastructure/x/OEmbedTweets.ts`, migrations 16 to 18). The player connects their X account
+with **Sign in with X** (OAuth 2.0, authorization code with PKCE, scopes `tweet.read users.read`:
+the API reads `users/me` once and keeps no X token). It needs `X_CLIENT_ID` and
+`X_CLIENT_SECRET` from an app on developer.x.com, whose callback is
+`${PUBLIC_URL}/v1/xpass/x/callback`; X sends the player back only to `X_RETURN_ORIGINS`.
+Without them, a post carrying the pass code, read through X's public oEmbed
+(`publish.x.com/oembed`, no key), proves the account instead. Sign-ins under way live in the
+API process for 10 minutes; a restart only makes the player click again. Routes, the pass token
+as a bearer (`private, no-store`):
 
 | Route | What |
 | --- | --- |
 | `POST /v1/xpass` | A new pass: `{ token, pass }`. The token is shown once; the store keeps its sha256. 5 a minute per IP |
 | `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `tasks`, `address`, `bonus`. `401 no-pass` for an unknown token |
+| `GET /v1/xpass/x` | `{ signIn }`: whether Sign in with X is configured |
+| `POST /v1/xpass/x/start` | `{ returnTo }` (one of `X_RETURN_ORIGINS`): `{ url }`, X's authorize page for this pass. `503 sign-in-off` without an X app |
+| `GET /v1/xpass/x/callback` | Where X sends the player: puts the account (handle and X user id) on the pass, then `303` to `returnTo?x=<ok\|sign-in-refused\|sign-in-expired\|x-down\|no-pass>#boarding`. An account already on an older pass moves to this one |
 | `POST /v1/xpass/follow` | Notes the declared follow (X's follows cannot be read for free) |
-| `POST /v1/xpass/task` | `{ task: "follow" \| "like" \| "reply" \| "repost" }`: notes a declared task (migration 17); the pass shows them in `tasks`. 20 a minute per IP |
+| `POST /v1/xpass/task` | `{ task: "follow" \| "post" \| "like" \| "reply" \| "repost" }`: notes a declared task (migration 17); the pass shows them in `tasks`. 20 a minute per IP |
 | `POST /v1/xpass/tweet` | `{ url }`: `400 bad-tweet-url`, `404 tweet-not-found`, `400 code-missing`, `409 tweet-used`, `503 x-down`. An X account already on an older pass moves to this one, with its wallet and follow |
 | `POST /v1/xpass/wallet` | `{ address, message, signature }`, the message from `xPassWalletMessage` (`@dno/chain-adapter/standings`) naming the wallet and the code, signed by it: `409 connect-x-first`, `400 bad-message`, `401 bad-signature`, `409 address-taken` |
 | `GET /v1/xpass/all?token=` | Every pass (no token hash), for the checks before mainnet. `ALLOW_LIST_ADMIN_TOKEN` |
@@ -503,5 +512,5 @@ Configuration is environment variables, all optional in development: see `src/co
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
-`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

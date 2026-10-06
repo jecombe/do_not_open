@@ -3,31 +3,41 @@ import { X_PASS_BONUS } from "@dno/chain-adapter/standings";
 import { ANNOUNCEMENT_TWEET_ID, announcementLinks, X_FOLLOW, X_HANDLE, xPost } from "../links";
 import { useLocale } from "../i18n/locale";
 import { duelRankingPath, homePath, SITE_URL } from "../site";
-import { declareXTask, startXPass, useXPass, verifyXPassTweet, xPassApi, XPassError, type XPassView, type XTask } from "../xpass";
+import { declareXTask, signInWithX, startXPass, useXPass, verifyXPassTweet, xPassApi, XPassError, xSignInEnabled, type XPassView, type XTask } from "../xpass";
 import { useT } from "./i18n";
 import { usePassCount } from "./Passport";
 
-const REFUSALS = ["bad-tweet-url", "tweet-not-found", "code-missing", "tweet-used", "x-down", "no-pass"] as const;
+const REFUSALS = ["bad-tweet-url", "tweet-not-found", "code-missing", "tweet-used", "x-down", "no-pass", "sign-in-expired", "sign-in-refused"] as const;
 const TASKS: XTask[] = ["follow", "like", "reply", "repost"];
 /** Seconds between opening X and "mark it done", as on other boarding pages: time to do it. */
 const WAIT = 8;
 
 /**
  * The first thing on the home page: a boarding pass for the mainnet list, X first. On the left,
- * the X account, proved by a post carrying the boarding code (read by the API through X's
- * public oEmbed). On the right, four quick tasks on X, declared by the player and checked by
- * hand before mainnet. Below, the bonus: a wallet and testnet play.
+ * the X account: Sign in with X, then the boarding tweet (where the API has no X app, a post
+ * carrying the boarding code proves the account instead). On the right, four quick tasks on X,
+ * declared by the player and checked by hand before mainnet. Below, the bonus: a wallet and
+ * testnet play.
  */
 export function Boarding() {
   const t = useT();
   const locale = useLocale();
   const [count] = usePassCount();
   const { pass, loading, set } = useXPass();
-  const [busy, setBusy] = useState<"code" | "verify" | null>(null);
+  const [busy, setBusy] = useState<"code" | "verify" | "x" | null>(null);
+  const [signIn, setSignIn] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState("");
   const live = xPassApi() !== null;
   const url = `${SITE_URL}${homePath(locale)}`;
+
+  useEffect(() => {
+    let on = true;
+    void xSignInEnabled().then((v) => on && setSignIn(v));
+    return () => {
+      on = false;
+    };
+  }, []);
 
   const fail = (e: unknown, code = pass?.code ?? "") => {
     const c = e instanceof XPassError ? e.code : "network";
@@ -35,6 +45,31 @@ export function Boarding() {
   };
 
   const ensurePass = async (): Promise<XPassView> => pass ?? (await startXPass().then((p) => (set(p), p)));
+
+  // Back from X: `?x=ok` or what went wrong. The pass itself reloads with the page.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("x");
+    if (!outcome) return;
+    if (outcome !== "ok") fail(new XPassError(outcome));
+    params.delete("x");
+    const q = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const connectX = async () => {
+    setBusy("x");
+    setError(null);
+    try {
+      await ensurePass();
+      const here = new URL(window.location.href);
+      await signInWithX(`${here.origin}${here.pathname}${here.search}`);
+    } catch (e) {
+      fail(e);
+      setBusy(null);
+    }
+  };
 
   const getCode = async () => {
     setBusy("code");
@@ -98,62 +133,88 @@ export function Boarding() {
             <h3>
               <span className="boarding-part-n">01</span> {t("home.boarding.connect")}
             </h3>
-            <ol className="boarding-steps">
-              <li className={pass ? "is-done" : undefined}>
-                <span className="boarding-n" aria-hidden="true">
-                  {pass ? "✓" : 1}
-                </span>
-                {live && !pass ? (
-                  <button type="button" className="btn btn-small" onClick={() => void getCode()} disabled={busy === "code" || loading} aria-busy={busy === "code"}>
-                    {busy === "code" ? t("home.boarding.gettingCode") : t("home.boarding.getCode")}
-                  </button>
-                ) : pass ? (
-                  <span className="boarding-code" title={t("home.boarding.codeHint")}>
-                    {pass.code}
-                  </span>
-                ) : null}
-              </li>
-              <li className={verified ? "is-done" : undefined}>
-                <span className="boarding-n" aria-hidden="true">
-                  {verified ? "✓" : 2}
-                </span>
-                <a className={`btn btn-small${live && !pass ? " is-waiting" : ""}`} href={xPost(tweet, url)} target="_blank" rel="noreferrer" aria-disabled={live && !pass}>
-                  <XLogo />
-                  {t("home.boarding.post")}&nbsp;↗
-                </a>
-              </li>
-              {live && (
-                <li className={`boarding-verify${verified ? " is-done" : ""}`}>
+            {signIn ? (
+              <ol className="boarding-steps">
+                <li className={verified ? "is-done" : undefined}>
                   <span className="boarding-n" aria-hidden="true">
-                    {verified ? "✓" : 3}
+                    {verified ? "✓" : 1}
                   </span>
                   {verified ? (
-                    <a className="boarding-proof" href={pass!.tweetUrl ?? undefined} target="_blank" rel="noreferrer">
-                      {t("home.boarding.verified", { handle: pass!.handle! })}&nbsp;↗
-                    </a>
+                    <span className="boarding-proof">{t("home.boarding.connected", { handle: pass!.handle! })}</span>
                   ) : (
-                    <form onSubmit={(e) => void verify(e)}>
-                      <label className="sr-only" htmlFor="boarding-link">
-                        {t("home.boarding.paste")}
-                      </label>
-                      <input
-                        id="boarding-link"
-                        value={link}
-                        onChange={(e) => setLink(e.target.value)}
-                        placeholder={pass ? t("home.boarding.paste") : t("home.boarding.pasteFirst")}
-                        disabled={!pass}
-                        inputMode="url"
-                        spellCheck={false}
-                        autoComplete="off"
-                      />
-                      <button type="submit" className="btn btn-small btn-paper" disabled={!pass || !link.trim() || busy === "verify"} aria-busy={busy === "verify"}>
-                        {busy === "verify" ? t("home.boarding.verifying") : t("home.boarding.verify")}
-                      </button>
-                    </form>
+                    <button type="button" className="btn btn-x boarding-signin" onClick={() => void connectX()} disabled={busy === "x" || loading} aria-busy={busy === "x"}>
+                      <XLogo />
+                      {busy === "x" ? t("home.boarding.signingIn") : t("home.boarding.signIn")}
+                    </button>
                   )}
                 </li>
-              )}
-            </ol>
+                <li className="boarding-post">
+                  <span className="boarding-n" aria-hidden="true">
+                    {pass?.tasks?.post ? "✓" : 2}
+                  </span>
+                  <ul className="boarding-tasks boarding-tasks-one">
+                    <Task task="post" href={xPost(t("home.boarding.tweetNoCode", { handle: X_HANDLE }), url)} done={!!pass?.tasks?.post} live={live} onDone={() => declare("post")} />
+                  </ul>
+                </li>
+              </ol>
+            ) : signIn === false ? (
+              <ol className="boarding-steps">
+                <li className={pass ? "is-done" : undefined}>
+                  <span className="boarding-n" aria-hidden="true">
+                    {pass ? "✓" : 1}
+                  </span>
+                  {live && !pass ? (
+                    <button type="button" className="btn btn-small" onClick={() => void getCode()} disabled={busy === "code" || loading} aria-busy={busy === "code"}>
+                      {busy === "code" ? t("home.boarding.gettingCode") : t("home.boarding.getCode")}
+                    </button>
+                  ) : pass ? (
+                    <span className="boarding-code" title={t("home.boarding.codeHint")}>
+                      {pass.code}
+                    </span>
+                  ) : null}
+                </li>
+                <li className={verified ? "is-done" : undefined}>
+                  <span className="boarding-n" aria-hidden="true">
+                    {verified ? "✓" : 2}
+                  </span>
+                  <a className={`btn btn-small${live && !pass ? " is-waiting" : ""}`} href={xPost(tweet, url)} target="_blank" rel="noreferrer" aria-disabled={live && !pass}>
+                    <XLogo />
+                    {t("home.boarding.post")}&nbsp;↗
+                  </a>
+                </li>
+                {live && (
+                  <li className={`boarding-verify${verified ? " is-done" : ""}`}>
+                    <span className="boarding-n" aria-hidden="true">
+                      {verified ? "✓" : 3}
+                    </span>
+                    {verified ? (
+                      <a className="boarding-proof" href={pass!.tweetUrl ?? undefined} target="_blank" rel="noreferrer">
+                        {t("home.boarding.verified", { handle: pass!.handle! })}&nbsp;↗
+                      </a>
+                    ) : (
+                      <form onSubmit={(e) => void verify(e)}>
+                        <label className="sr-only" htmlFor="boarding-link">
+                          {t("home.boarding.paste")}
+                        </label>
+                        <input
+                          id="boarding-link"
+                          value={link}
+                          onChange={(e) => setLink(e.target.value)}
+                          placeholder={pass ? t("home.boarding.paste") : t("home.boarding.pasteFirst")}
+                          disabled={!pass}
+                          inputMode="url"
+                          spellCheck={false}
+                          autoComplete="off"
+                        />
+                        <button type="submit" className="btn btn-small btn-paper" disabled={!pass || !link.trim() || busy === "verify"} aria-busy={busy === "verify"}>
+                          {busy === "verify" ? t("home.boarding.verifying") : t("home.boarding.verify")}
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                )}
+              </ol>
+            ) : null}
           </div>
 
           <div className="boarding-part">
@@ -204,12 +265,12 @@ export function Boarding() {
  * One task on X: open it, do it, and after a few seconds mark it done. Like, reply and repost
  * wait for the announcement post.
  */
-function Task({ task, done, live, onDone }: { task: XTask; done: boolean; live: boolean; onDone: () => Promise<void> }) {
+function Task({ task, done, live, onDone, href: given }: { task: XTask; done: boolean; live: boolean; onDone: () => Promise<void>; href?: string }) {
   const t = useT();
   const [left, setLeft] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const post = ANNOUNCEMENT_TWEET_ID ? announcementLinks(ANNOUNCEMENT_TWEET_ID) : null;
-  const href = task === "follow" ? X_FOLLOW : post?.[task];
+  const href = given ?? (task === "follow" ? X_FOLLOW : task === "post" ? undefined : post?.[task]);
 
   useEffect(() => {
     if (left === null || left <= 0) return;
@@ -241,7 +302,7 @@ function Task({ task, done, live, onDone }: { task: XTask; done: boolean; live: 
             {t("home.pass.soon")}
           </span>
         )}
-        {post && task !== "follow" && (
+        {post && task !== "follow" && task !== "post" && (
           <a className="boarding-task-open" href={post.post} target="_blank" rel="noreferrer">
             {t("home.boarding.task.open")}
           </a>

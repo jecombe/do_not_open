@@ -2706,3 +2706,24 @@ h2 {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Sign in with X: the one big button of the left half. */
+.btn.boarding-signin {
+  font-size: 22px;
+  padding: 13px 22px 10px;
+}
+
+.boarding-post {
+  align-items: flex-start;
+}
+
+.boarding-tasks-one {
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.boarding-steps li.boarding-task {
+  display: grid;
+  align-items: initial;
+  gap: 4px;
+}

@@ -21,8 +21,9 @@ import type { PostStore, SocialNetwork } from "./application/ports/herald";
 import { Reconciler } from "./application/reconcile";
 import { SyncChain } from "./application/syncChain";
 import { loadConfig } from "./config";
-import { ethersVerifier, HmacSessions, passSecrets, randomNonce } from "./infrastructure/auth/crypto";
+import { ethersVerifier, HmacSessions, loginSecrets, passSecrets, randomNonce } from "./infrastructure/auth/crypto";
 import { OEmbedTweets } from "./infrastructure/x/OEmbedTweets";
+import { XOAuth } from "./infrastructure/x/XOAuth";
 import { GeminiModel } from "./infrastructure/chat/GeminiModel";
 import manual from "./infrastructure/chat/manual.json";
 import { AclPublications } from "./infrastructure/chain/AclPublications";
@@ -214,7 +215,23 @@ async function main() {
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
           allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
-          xPasses: { passes: new XPasses(store, new OEmbedTweets(), passSecrets, ethersVerifier, clock), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
+          xPasses: {
+            passes: new XPasses(
+              store,
+              new OEmbedTweets(),
+              passSecrets,
+              ethersVerifier,
+              clock,
+              config.X_CLIENT_ID
+                ? {
+                    x: new XOAuth({ clientId: config.X_CLIENT_ID, clientSecret: config.X_CLIENT_SECRET, redirectUri: `${config.PUBLIC_URL.replace(/\/$/, "")}/v1/xpass/x/callback` }),
+                    secrets: loginSecrets,
+                  }
+                : null,
+            ),
+            adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null,
+            returnOrigins: config.X_RETURN_ORIGINS,
+          },
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           studio: { studio, publicUrl: config.PUBLIC_URL },

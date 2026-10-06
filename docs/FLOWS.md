@@ -448,34 +448,35 @@ them with `GET /v1/allowlist?token=`.
 
 ## X boarding pass
 
-The home page opens on a boarding pass: X first, the wallet as a bonus. An X account is proved
-by a post that carries the player's boarding code, read through X's public oEmbed: no X API
-key, no OAuth, nothing paid. Four quick tasks follow, as on other boarding pages: follow the
-account, like, reply to and repost the announcement (`ANNOUNCEMENT_TWEET_ID` in
-`apps/web/src/links.ts`). X's follows, likes and reposts cannot be read for free, so the player
-declares each one a few seconds after opening it, and the team checks the list by hand before
-mainnet. A testnet player who never connects X keeps the points
-of the allow list above.
+The home page opens on a boarding pass: X first, the wallet as a bonus. The player signs in
+with X (OAuth 2.0 with PKCE, read-only: the API reads who they are once and keeps no X token),
+then does five quick tasks on X: post a boarding tweet, follow the account, like, reply to and
+repost the announcement (`ANNOUNCEMENT_TWEET_ID` in `apps/web/src/links.ts`). X's posts,
+follows, likes and reposts cannot be read without a paid API, so the player declares each one a
+few seconds after opening it, and the team checks the list by hand before mainnet. Where the API
+has no X app (`X_CLIENT_ID` unset), a post carrying the pass code, read through X's public oEmbed,
+proves the account instead. A testnet player who never connects X keeps the points of the allow
+list above.
 
 ```mermaid
 sequenceDiagram
   participant U as Player
   participant Home as Home page
-  participant X
   participant API
+  participant X
   participant App as Game (Duels tab)
-  U->>Home: Get my boarding code
-  Home->>API: POST /v1/xpass
-  API-->>Home: token (kept in this browser, only its sha256 is stored), code DNO-XXXXXX
-  U->>X: Follow, like, reply to, repost the announcement (intent links)
-  Home->>API: POST /v1/xpass/task {follow|like|reply|repost} (declared, after a short wait)
-  U->>X: Post the prefilled tweet, code included
-  U->>Home: Paste the post's link
-  Home->>API: POST /v1/xpass/tweet {url}
-  API->>X: GET publish.x.com/oembed?url=…
-  X-->>API: author, text
-  API->>API: the text carries the code; the post verified no other pass
-  API-->>Home: handle (an account on an older pass moves to this one)
+  U->>Home: Sign in with X
+  Home->>API: POST /v1/xpass (first time: a token this browser keeps, only its sha256 is stored)
+  Home->>API: POST /v1/xpass/x/start {returnTo}
+  API-->>Home: X's authorize URL (state, PKCE challenge)
+  Home->>X: the player authorises the site (read-only)
+  X->>API: GET /v1/xpass/x/callback?code&state
+  API->>X: token for code + verifier, then GET /2/users/me
+  X-->>API: id, username
+  API->>API: account on the pass (an older pass of that account moves here)
+  API-->>Home: 303 back to the page, ?x=ok#boarding
+  U->>X: post, follow, like, reply, repost (intent links)
+  Home->>API: POST /v1/xpass/task {post|follow|like|reply|repost} (declared, after a short wait)
   opt the bonus
     U->>App: Link to my X @handle
     App->>U: personal_sign("I, <address>, link this wallet to my DO NOT OPEN boarding pass <code>…")
@@ -484,8 +485,8 @@ sequenceDiagram
   end
 ```
 
-Each code, handle, post and wallet sits on one pass at most. The handle-to-wallet link stays in
-the API: no route shows it but the token holder's own `GET /v1/xpass` and the operator's
+Each code, X account, post and wallet sits on one pass at most. The handle-to-wallet link stays
+in the API: no route shows it but the token holder's own `GET /v1/xpass` and the operator's
 `GET /v1/xpass/all?token=`.
 
 ## Give a box away

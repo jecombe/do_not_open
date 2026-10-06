@@ -165,10 +165,11 @@ export interface Store extends ReadStore {
   /** Files a claim, replacing the address's earlier one. */
   saveAllowListClaim(c: AllowListClaim): Promise<void>;
   /** X boarding passes. Not a read model either: a replay, or a redeployment, keeps them. Code,
-   *  handle, tweet and address are each unique among the passes that have one. */
+   *  handle, X user id, tweet and address are each unique among the passes that have one. */
   xPassById(id: string): Promise<XPass | null>;
   xPassByCode(code: string): Promise<XPass | null>;
   xPassByHandle(handle: string): Promise<XPass | null>;
+  xPassByXUser(xUserId: string): Promise<XPass | null>;
   xPassByTweet(tweetId: string): Promise<XPass | null>;
   xPassByAddress(address: Address): Promise<XPass | null>;
   /** Every pass, oldest first. */

@@ -485,4 +485,13 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       alter table x_passes add column liked_at bigint, add column replied_at bigint, add column reposted_at bigint;
     `,
   },
+  {
+    version: 18,
+    name: "sign in with x",
+    sql: /* sql */ `
+      -- Sign in with X gives the account's id, which outlives a change of handle; the boarding
+      -- tweet becomes a declared task like the others.
+      alter table x_passes add column x_user_id text unique, add column posted_at bigint;
+    `,
+  },
 ];
