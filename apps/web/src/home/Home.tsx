@@ -5,82 +5,17 @@ import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD, REPO } from "../links";
 import { useLocale } from "../i18n/locale";
-import { appPath, docsPath, homePath, marketPath, studioPath } from "../site";
+import { applyPath, appPath, docsPath, homePath, marketPath, studioPath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
-import { Boarding } from "./Boarding";
+import { HomeTop } from "./HomeTop";
 import { useT } from "./i18n";
-import { Passport } from "./Passport";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { RatsLeft } from "./RatsLeft";
 import { RatToy } from "./ratToy";
 import { Shipped } from "./Shipped";
 import { boxComplaint, pageSound, setMuted } from "./sound";
-
-/**
- * The stamp, the site's links and languages, and the way into the game. On a phone the links
- * and languages fold into a menu, so the stamp, "Play" and the menu button share one line.
- */
-function HomeTop() {
-  const t = useT();
-  const locale = useLocale();
-  const APP = appPath(locale);
-  const DOCS = docsPath(locale);
-  const [open, setOpen] = useState(false);
-  const navId = useId();
-  const root = useRef<HTMLElement>(null);
-  const toggle = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      toggle.current?.focus();
-    };
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  // A link followed from the menu folds it away.
-  const close = () => setOpen(false);
-  return (
-    <header className="home-top" ref={root}>
-      <a className="home-stamp" href={homePath(locale)}>
-        Do not open
-      </a>
-      <nav id={navId} className={open ? "is-open" : undefined} aria-label={t("home.nav")}>
-        <a href="#how" onClick={close}>
-          {t("home.nav.how")}
-        </a>
-        <a href="#croquettes" onClick={close}>
-          {t("home.nav.croq")}
-        </a>
-        <a href={studioPath(locale)}>{t("home.nav.studio")}</a>
-        <a href={marketPath(locale)}>{t("home.nav.market")}</a>
-        <a href={DOCS}>{t("home.nav.docs")}</a>
-        <LangSwitch label={t("home.nav")} />
-      </nav>
-      <div className="home-top-actions">
-        <a className="btn btn-small" href={APP}>
-          {t("home.nav.play")}
-        </a>
-        <button type="button" ref={toggle} className="btn btn-small btn-paper home-menu" aria-expanded={open} aria-controls={navId} onClick={() => setOpen((o) => !o)}>
-          <span className="home-menu-bars" aria-hidden="true" />
-          <span className="home-menu-label">{t("home.nav.menu")}</span>
-        </button>
-      </div>
-    </header>
-  );
-}
 
 /** One of the studio's free rats, sniffing about beside the studio's pitch. Click it for another. */
 function StudioRat() {
@@ -142,8 +77,6 @@ export function Home() {
     <div className="home">
       <HomeTop />
 
-      <Boarding />
-
       <section className="home-hero">
         <div className="hero-text">
           <p className="kicker">{t("home.hero.kicker", { supply })}</p>
@@ -156,9 +89,15 @@ export function Home() {
             <a className="btn btn-paper" href={`${DOCS}#box`}>
               {t("home.hero.docs")}
             </a>
+            <a className="btn btn-x btn-apply" href={applyPath(locale)}>
+              <svg className="x-logo" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.8-6.3L6.4 22H3.3l7.3-8.3L1 2h6.3l4.4 5.8L18.9 2Zm-1.1 18h1.7L6.3 3.9H4.5L17.8 20Z" />
+              </svg>
+              {t("home.hero.apply")}
+            </a>
           </p>
           {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
-          <a className="hero-allow" href="#pass">
+          <a className="hero-allow" href={applyPath(locale)}>
             {t("home.hero.allowList")}&nbsp;→
           </a>
         </div>
@@ -175,7 +114,6 @@ export function Home() {
 
       <Shipped />
 
-      <Passport />
 
       <section id="how" className="home-section">
         <h2>{t("home.how.title")}</h2>

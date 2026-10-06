@@ -64,4 +64,36 @@
     <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/docs"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/docs"/>
   </url>
+  <url>
+    <loc>https://do-not-open.app/apply</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/apply"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/apply"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/apply"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/apply"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/apply"/>
+  </url>
+  <url>
+    <loc>https://do-not-open.app/fr/apply</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/apply"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/apply"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/apply"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/apply"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/apply"/>
+  </url>
+  <url>
+    <loc>https://do-not-open.app/es/apply</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/apply"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/apply"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/apply"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/apply"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/apply"/>
+  </url>
+  <url>
+    <loc>https://do-not-open.app/it/apply</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/apply"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/apply"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/apply"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/apply"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/apply"/>
+  </url>
 </urlset>
