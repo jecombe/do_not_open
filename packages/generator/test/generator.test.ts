@@ -7,6 +7,7 @@ import {
   buildForWeight,
   decodeSeed,
   encodeSeed,
+  estimateScore,
   FIXTURE_SEEDS,
   minScoreForTopPercent,
   mulberry32,
@@ -116,6 +117,28 @@ describe("rarity", () => {
     expect(tierForScore(1077).key).toBe("common");
     expect(tierForScore(1078).key).toBe("uncommon");
     expect(tierForScore(spec.rarity.maxScore).key).toBe("legendary");
+  });
+
+  it("estimates a box nobody felt like the whole collection", () => {
+    const est = estimateScore([null, null, null, null, null]);
+    expect(est.min).toBe(0);
+    expect(est.max).toBe(spec.rarity.maxScore);
+    const { counts, total } = scoreDistribution();
+    for (const [i, tier] of spec.rarity.tiers.entries()) {
+      const next = spec.rarity.tiers[i + 1]?.minScore ?? counts.length;
+      const exact = counts.slice(tier.minScore, next).reduce((a, b) => a + b, 0n);
+      expect(est.tiers[i]!.chance).toBeCloseTo(Number((exact * 1_000_000n) / total) / 1_000_000, 5);
+    }
+  });
+
+  it("leaves only the state to chance once every trait is felt", () => {
+    const rolls = [200, 10, 150, 90, 255];
+    const base = rolls.reduce((sum, r, i) => sum + spec.traits[i]!.weight * r, 0);
+    const est = estimateScore(rolls);
+    expect(est.min).toBe(base);
+    expect(est.max).toBe(base + 1000);
+    expect(est.tiers.reduce((sum, t) => sum + t.chance, 0)).toBeCloseTo(1, 9);
+    expect(est.tiers.find((t) => t.key === tierForScore(base).key)!.chance).toBeGreaterThanOrEqual(spec.states[0]!.rollBelow / 65536);
   });
 });
 

@@ -282,7 +282,7 @@ export const docsEn = {
   "flow.shake.s6": "The answer comes back wrapped",
   "flow.shake.s6.v": "Re-encrypted for your session key. The relayer that carried it cannot read it.",
   "flow.shake.s7": "Your browser unwraps it",
-  "flow.shake.s7.v": "Mood: Judging. Someone who does not hold the box would read \"not yours\" here. The event on-chain only says that someone shook. The page prints the trait on the box's shake ticket, kept in this browser for good: a trait never changes.",
+  "flow.shake.s7.v": "Mood: Judging. Someone who does not hold the box would read \"not yours\" here. The event on-chain only says that someone shook. The page prints the trait on the box's shake ticket, kept in this browser for good: a trait never changes. Under the traits, the ticket estimates the score: its range, and the odds of each rarity tier given what is still unknown (the traits not felt yet, and the state).",
 
   "flow.open.name": "Open",
   "flow.open.summary": "A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing.",

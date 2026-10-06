@@ -281,7 +281,7 @@ export const docsFr: Record<DocsKey, string> = {
   "flow.shake.s6": "La réponse revient emballée",
   "flow.shake.s6.v": "Rechiffrée pour votre clé de session. Le relayer qui l'a transportée ne peut pas la lire.",
   "flow.shake.s7": "Votre navigateur la déballe",
-  "flow.shake.s7.v": "Humeur : Jugeur. Quelqu'un qui ne détient pas la boîte lirait « pas à toi » ici. L'événement sur la chaîne dit seulement que quelqu'un a secoué. La page imprime le trait sur le ticket de secouage de la boîte, gardé dans ce navigateur pour de bon : un trait ne change jamais.",
+  "flow.shake.s7.v": "Humeur : Jugeur. Quelqu'un qui ne détient pas la boîte lirait « pas à toi » ici. L'événement sur la chaîne dit seulement que quelqu'un a secoué. La page imprime le trait sur le ticket de secouage de la boîte, gardé dans ce navigateur pour de bon : un trait ne change jamais. Sous les traits, le ticket estime le score : sa fourchette, et les chances de chaque rareté selon ce qui reste inconnu (les traits pas encore sentis, et l'état).",
 
   "flow.open.name": "Ouvrir",
   "flow.open.summary": "Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien.",

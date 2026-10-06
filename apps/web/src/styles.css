@@ -1842,6 +1842,43 @@ button {
   opacity: 0.65;
 }
 
+/* What the felt traits say about the score: a range, then the odds of each tier. */
+.ticket-estimate {
+  padding-top: 6px;
+  border-top: 1.5px dashed rgb(28 24 20 / 0.5);
+}
+
+.ticket-sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ticket-estimate ul {
+  margin: 4px 0 2px;
+}
+
+.ticket-estimate li span:first-child {
+  flex: none;
+  min-width: 8.5ch;
+}
+
+.ticket-bar {
+  flex: 1;
+  align-self: center;
+  height: 6px;
+  background: linear-gradient(90deg, var(--ink) calc(var(--chance) * 100%), rgb(28 24 20 / 0.12) 0);
+}
+
+.ticket-estimate .ticket-fine {
+  margin-bottom: 6px;
+}
+
 /* Once the box is open, the ticket is stamped and kept as a souvenir. */
 .ticket.is-void::after {
   content: attr(data-stamp);

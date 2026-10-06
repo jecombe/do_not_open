@@ -54,3 +54,51 @@ export function minScoreForTopPercent(topPercent: number): number {
   }
   return Math.min(min, counts.length - 1);
 }
+
+/** What a box's score can still be, given the traits one holder has felt so far. */
+export interface ScoreEstimate {
+  min: number;
+  max: number;
+  /** Chance of each tier, in `spec.rarity.tiers` order, summing to 1. */
+  tiers: { key: TierDef["key"]; chance: number }[];
+}
+
+/**
+ * Score range and tier odds of a sealed box when only some trait rolls are known. `known` is
+ * indexed like `spec.traits`; null is a trait not felt yet, taken as a uniform byte. The state
+ * stays hidden until the box is opened, so it is always weighed by its odds.
+ */
+export function estimateScore(known: readonly (number | null)[]): ScoreEstimate {
+  let dist = [1];
+  let base = 0;
+  spec.traits.forEach((trait, i) => {
+    const roll = known[i];
+    if (roll !== null && roll !== undefined) {
+      base += trait.weight * roll;
+      return;
+    }
+    const next = new Array<number>(dist.length + 255 * trait.weight).fill(0);
+    for (let s = 0; s < dist.length; s++) {
+      const p = dist[s]! / 256;
+      if (p === 0) continue;
+      for (let r = 0; r < 256; r++) next[s + r * trait.weight]! += p;
+    }
+    dist = next;
+  });
+  const chances = spec.rarity.tiers.map(() => 0);
+  let lower = 0;
+  for (const state of spec.states) {
+    const p = (state.rollBelow - lower) / 65536;
+    lower = state.rollBelow;
+    for (let s = 0; s < dist.length; s++) {
+      const score = base + s + state.scoreBonus;
+      chances[spec.rarity.tiers.indexOf(tierForScore(score))]! += dist[s]! * p;
+    }
+  }
+  const bonuses = spec.states.map((s) => s.scoreBonus);
+  return {
+    min: base + Math.min(...bonuses),
+    max: base + dist.length - 1 + Math.max(...bonuses),
+    tiers: spec.rarity.tiers.map((t, i) => ({ key: t.key, chance: chances[i]! })),
+  };
+}
