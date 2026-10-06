@@ -407,3 +407,93 @@
     font-size: 22px;
   }
 }
+
+/* --- The testnet notice: what a redeployment takes away, and what it keeps --- */
+.testnet-notice {
+  width: min(680px, 100%);
+}
+
+.testnet-stamp {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  padding: 4px 12px 2px;
+  border: 3px solid var(--ink-red);
+  color: var(--ink-red);
+  font-family: var(--stencil);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(6deg);
+}
+
+.testnet-body {
+  padding: 16px 22px 20px;
+  overflow-y: auto;
+}
+
+.testnet-lede {
+  margin: 0 0 14px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.testnet-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.testnet-col {
+  padding: 12px 14px;
+  border: 2px dashed var(--ink);
+}
+
+.testnet-col.is-kept {
+  border-style: solid;
+  background: rgb(125 227 208 / 0.35);
+}
+
+.testnet-col h3 {
+  margin: 0 0 6px;
+  font-family: var(--stencil);
+  font-size: 18px;
+  text-transform: uppercase;
+}
+
+.testnet-col p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.testnet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .testnet-cols {
+    grid-template-columns: 1fr;
+  }
+
+  .testnet-stamp {
+    position: static;
+    display: inline-block;
+    margin-top: 8px;
+  }
+}
+
+.testnet-notice .terms-head {
+  padding-right: 170px;
+}
+
+@media (max-width: 560px) {
+  .testnet-notice .terms-head {
+    padding-right: 22px;
+  }
+}

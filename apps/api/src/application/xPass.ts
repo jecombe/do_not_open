@@ -316,6 +316,12 @@ export class XPasses {
     return this.view(next);
   }
 
+  /** The X handle on the pass a token opens, or null. */
+  async handleOf(token: string): Promise<string | null> {
+    const pass = token ? await this.store.xPassById(this.secrets.hash(token)) : null;
+    return pass?.handle ?? null;
+  }
+
   /** Every pass, for the team's checks before mainnet. */
   all(): Promise<XPass[]> {
     return this.store.xPasses();

@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { z } from "zod";
 import type { AllowList } from "../../application/allowList";
 import { ListFull, type Seats } from "../../application/seats";
+import { IDEA_MAX, type Ideas } from "../../application/ideas";
 import { X_TASKS, XPassRefused, type XPassRefusal, type XPasses } from "../../application/xPass";
 import { askInput, type AskManual } from "../../application/askManual";
 import { Unauthorized, type SignIn } from "../../application/auth";
@@ -29,6 +30,8 @@ export interface HttpDeps {
   terms?: AcceptTerms;
   /** The mainnet allow list, with the token that reads the whole list. Absent: no claims. */
   allowList?: { list: AllowList; adminToken: string | null; seats?: Seats };
+  /** The boarding page's suggestion box; the allow list's admin token reads it. */
+  ideas?: { box: Ideas; adminToken: string | null };
   /** X boarding passes; the admin token (the allow list's) lists them all; Sign in with X
    *  sends players back only to `returnOrigins`. */
   xPasses?: { passes: XPasses; adminToken: string | null; returnOrigins: string[]; announcement?: string | null };
@@ -397,6 +400,25 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       reply.header("cache-control", "no-store");
       if (!xPasses.adminToken || q.token !== xPasses.adminToken) return reply.status(401).send({ error: "unauthorized" });
       return { data: (await passes.all()).map(({ id: _id, ...p }) => p) };
+    });
+  }
+
+  // --- the suggestion box ---
+
+  const ideas = deps.ideas;
+  if (ideas) {
+    app.post("/v1/ideas", { config: { rateLimit: { max: 3, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ text: z.string().min(1).max(IDEA_MAX * 2), locale: z.string().max(8).default("en") }).parse(req.body);
+      const h = req.headers.authorization;
+      return send(reply, await ideas.box.submit(body.text, body.locale, h?.startsWith("Bearer ") ? h.slice(7) : ""), "no-store");
+    });
+    app.get("/v1/ideas/count", async (_req, reply) => send(reply, { received: await ideas.box.count() }, "public, max-age=30"));
+    // Every idea: only for whoever holds the token.
+    app.get("/v1/ideas", async (req, reply) => {
+      const q = z.object({ token: z.string().optional() }).parse(req.query);
+      reply.header("cache-control", "no-store");
+      if (!ideas.adminToken || q.token !== ideas.adminToken) return reply.status(401).send({ error: "unauthorized" });
+      return { data: await ideas.box.all() };
     });
   }
 

@@ -205,6 +205,14 @@ claimant who plays only after claiming sits down then, unchecked. Once they are 
 claim or a new X account gets `409 list-full`; those inside keep updating. `GET /v1/seats` says
 `{ taken, places }` (cached 10 s), the boarding page's counter; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
 
+### The suggestion box
+
+The boarding page's suggestion box (`src/application/ideas.ts`, migration 19). `POST /v1/ideas`
+`{ text, locale }` keeps an idea of 10 to 600 characters, whitespace tidied, the same text once
+(3 a minute per IP); a boarding pass token as a bearer attaches that pass's X handle, never a
+typed name. `GET /v1/ideas/count` says how many (cached 30 s); `GET /v1/ideas?token=` lists them,
+newest first, with `ALLOW_LIST_ADMIN_TOKEN` only.
+
 ### X boarding passes
 
 The home page's boarding pass (`src/application/xPass.ts`, `infrastructure/x/XOAuth.ts`,

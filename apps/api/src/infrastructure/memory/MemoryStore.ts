@@ -8,6 +8,7 @@ import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { AllowListClaim } from "../../application/allowList";
 import type { XPass } from "../../application/xPass";
+import type { Idea } from "../../application/ideas";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 import type { ArchiveStore } from "../../application/ports/archive";
@@ -42,6 +43,7 @@ interface State {
   terms: Map<string, TermsAcceptance>;
   allowList: Map<Address, AllowListClaim>;
   xPasses: Map<string, XPass>;
+  ideas: Idea[];
   /** The herald's queues, by id, and where each network read up to. Kept across replays. */
   posts: Map<number, Post>;
   heraldCursors: Map<string, EventPosition>;
@@ -79,6 +81,7 @@ const emptyState = (): State => ({
   terms: new Map(),
   allowList: new Map(),
   xPasses: new Map(),
+  ideas: [],
   posts: new Map(),
   heraldCursors: new Map(),
   archived: new Map(),
@@ -418,6 +421,19 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
 
   async deleteXPass(id: string) {
     this.s.xPasses.delete(id);
+  }
+
+  async saveIdea(i: Omit<Idea, "id">) {
+    if (this.s.ideas.some((o) => o.text === i.text)) return;
+    this.s.ideas.push({ ...i, id: this.s.ideas.length + 1 });
+  }
+
+  async ideas() {
+    return clone([...this.s.ideas].reverse());
+  }
+
+  async ideaCount() {
+    return this.s.ideas.length;
   }
 
   async takeNonce(address: Address) {

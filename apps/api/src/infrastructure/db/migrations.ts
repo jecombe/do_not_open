@@ -494,4 +494,19 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       alter table x_passes add column x_user_id text unique, add column posted_at bigint;
     `,
   },
+  {
+    version: 19,
+    name: "suggestion box",
+    sql: /* sql */ `
+      -- Ideas left in the boarding page's suggestion box, read by the team only. The handle comes
+      -- from the player's own boarding pass. Not on the chain's index: a replay keeps them.
+      create table ideas (
+        id serial primary key,
+        text text not null unique,
+        handle text,
+        locale text not null,
+        created_at bigint not null
+      );
+    `,
+  },
 ];

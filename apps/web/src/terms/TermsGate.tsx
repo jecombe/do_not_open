@@ -3,7 +3,7 @@ import { shortAddress, type SignedTerms } from "@dno/chain-adapter";
 import { useChain } from "../chain/ChainProvider";
 import { problemOf } from "../chain/copy";
 import { useT, type AppKey } from "../i18n/app";
-import { CLAUSES, keepSignature, onOpenTerms, onRequireTerms, setGateUp, termsHash, termsMessage, TERMS_VERSION, useTermsRecord } from "./terms";
+import { CLAUSES, keepSignature, onOpenTerms, onRequireTerms, setGateUp, termsHash, termsMessage, termsRequired, TERMS_VERSION, useTermsRecord } from "./terms";
 import "./terms.css";
 
 /**
@@ -26,7 +26,7 @@ export function TermsGate() {
   const mine = account ? record.signed[account.toLowerCase()] : undefined;
   // Nothing is asked of a visitor without a wallet: the form comes up when a wallet connects
   // that has not signed it.
-  const required = !!account && !mine;
+  const required = !!account && !mine && termsRequired(mode);
   const shown = (required && dismissed !== account) || !!sealed || viewing;
   useEffect(() => setGateUp(shown), [shown]);
   useEffect(() => () => setGateUp(false), []);

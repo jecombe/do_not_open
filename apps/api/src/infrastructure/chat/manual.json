@@ -150,7 +150,7 @@
      "id": "terms-2",
      "section": "terms",
      "heading": null,
-     "text": "Each new wallet signs once, and a new version of the terms is signed again before playing on. To read the form again and see your signature, open the menu and choose Terms of play."
+     "text": "Each new wallet signs once, and a new version of the terms is signed again before playing on. To read the form again and see your signature, open the menu and choose Terms of play. On the test network nothing is signed: the form waits for mainnet, and a notice says instead what an update of the contracts keeps (your points, your whitelist seat, your X pass)."
     },
     {
      "id": "seed-0",
@@ -663,7 +663,7 @@
      "id": "terms-2",
      "section": "terms",
      "heading": null,
-     "text": "Chaque nouveau wallet signe une fois, et une nouvelle version des conditions se signe à nouveau avant de continuer à jouer. Pour relire le formulaire et voir votre signature, ouvrez le menu et choisissez Conditions de jeu."
+     "text": "Chaque nouveau wallet signe une fois, et une nouvelle version des conditions se signe à nouveau avant de continuer à jouer. Pour relire le formulaire et voir votre signature, ouvrez le menu et choisissez Conditions de jeu. Sur le réseau de test, rien n'est signé : la décharge attend le mainnet, et un avis dit à la place ce qu'une mise à jour des contrats garde (tes points, ta place sur la whitelist, ton passe X)."
     },
     {
      "id": "seed-0",
@@ -1230,7 +1230,7 @@
      "id": "terms-2",
      "section": "terms",
      "heading": null,
-     "text": "Cada wallet nuevo firma una vez, y una nueva versión de las condiciones se vuelve a firmar antes de seguir jugando. Para releer el formulario y ver tu firma, abre el menú y elige Condiciones de juego."
+     "text": "Cada wallet nuevo firma una vez, y una nueva versión de las condiciones se vuelve a firmar antes de seguir jugando. Para releer el formulario y ver tu firma, abre el menú y elige Condiciones de juego. En la red de pruebas no se firma nada: el formulario espera a mainnet, y un aviso dice en su lugar lo que conserva una actualización de los contratos (tus puntos, tu lugar en la whitelist, tu pase de X)."
     },
     {
      "id": "seed-0",
@@ -1779,7 +1779,7 @@
      "id": "terms-2",
      "section": "terms",
      "heading": null,
-     "text": "Ogni nuovo wallet firma una volta, e una nuova versione delle condizioni si firma di nuovo prima di continuare a giocare. Per rileggere il modulo e vedere la tua firma, apri il menu e scegli Condizioni di gioco."
+     "text": "Ogni nuovo wallet firma una volta, e una nuova versione delle condizioni si firma di nuovo prima di continuare a giocare. Per rileggere il modulo e vedere la tua firma, apri il menu e scegli Condizioni di gioco. Sulla rete di prova non si firma niente: il modulo aspetta la mainnet, e un avviso dice invece cosa resta dopo un aggiornamento dei contratti (i tuoi punti, il tuo posto in whitelist, il tuo pass X)."
     },
     {
      "id": "seed-0",

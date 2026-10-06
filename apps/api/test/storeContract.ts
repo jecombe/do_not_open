@@ -188,6 +188,14 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.xPassByHandle("cat")).toBeNull();
     });
 
+    it("keeps the suggestion box, the same text once, newest first", async () => {
+      await store.saveIdea({ text: "a duel league", handle: "cat", locale: "fr", createdAt: 100 });
+      await store.saveIdea({ text: "a duel league", handle: null, locale: "en", createdAt: 200 });
+      await store.saveIdea({ text: "rats that sniff", handle: null, locale: "en", createdAt: 300 });
+      expect((await store.ideas()).map((i) => [i.text, i.handle])).toEqual([["rats that sniff", null], ["a duel league", "cat"]]);
+      expect(await store.ideaCount()).toBe(2);
+    });
+
     it("stores events with their enrichment, pages them in chain order, and deletes them by key", async () => {
       const contents = { seed: "1", state: 0, traits: [1, 2, 3, 4, 5], score: 9, affection: 4, golden: false };
       const a = ev("Observed", 20, { tokenId: 1, openedBy: ALICE, seed: "1", state: 0, score: 9, golden: false }, { logIndex: 3 });

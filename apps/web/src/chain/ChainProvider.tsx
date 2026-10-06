@@ -3,7 +3,7 @@ import { createAdapter, type ActionOptions, type Address, type ChainAdapter, typ
 import { errorCopy, problemOf, type Problem, type ProblemContext } from "./copy";
 import { chainMode } from "./mode";
 import { useLive } from "./useLive";
-import { hasSigned, requireTerms } from "../terms/terms";
+import { hasSigned, requireTerms, termsRequired } from "../terms/terms";
 
 /** The demo's rats outlive a page: adopted in the studio, they are still there in the game. */
 const MOCK_RAT_STORE = {
@@ -228,11 +228,12 @@ export function useLedger(): number {
  */
 export function useAction() {
   const [state, setState] = useState<ActionState>(IDLE);
-  const { collection, account } = useChain();
+  const { collection, account, mode } = useChain();
 
   const run = useCallback(async <T,>(name: string, action: (opts: ActionOptions) => Promise<T>, context?: Omit<ProblemContext, "collection">): Promise<T | undefined> => {
-    // A wallet plays once it has signed the release form: until then, asking brings the form back.
-    if (account && !hasSigned(account)) {
+    // On mainnet a wallet plays once it has signed the release form: until then, asking brings
+    // the form back. The test network asks for nothing.
+    if (account && termsRequired(mode) && !hasSigned(account)) {
       requireTerms();
       return undefined;
     }
@@ -248,7 +249,7 @@ export function useAction() {
     } finally {
       bumpLedger();
     }
-  }, [collection, account]);
+  }, [collection, account, mode]);
 
   const reset = useCallback(() => setState(IDLE), []);
   return { ...state, run, reset };
