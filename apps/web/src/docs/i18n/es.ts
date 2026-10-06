@@ -279,7 +279,7 @@ export const docsEs: Record<DocsKey, string> = {
   "flow.shake.s6": "La respuesta vuelve envuelta",
   "flow.shake.s6.v": "Cifrada de nuevo para tu clave de sesión. El relayer que la transportó no puede leerla.",
   "flow.shake.s7": "Tu navegador la desenvuelve",
-  "flow.shake.s7.v": "Humor: Juzgón. Alguien que no tiene la caja leería «no es tuya» aquí. El evento en la cadena solo dice que alguien agitó. La página imprime el rasgo en el ticket de agitadas de la caja, guardado en este navegador para siempre: un rasgo nunca cambia.",
+  "flow.shake.s7.v": "Humor: Juzgón. Alguien que no tiene la caja leería «no es tuya» aquí. El evento en la cadena solo dice que alguien agitó. La página imprime el rasgo en el ticket de agitadas de la caja, guardado en este navegador para siempre: un rasgo nunca cambia. Bajo los rasgos, el ticket estima la puntuación: su rango y la probabilidad de cada rareza según lo que sigue sin conocerse (los rasgos aún no sentidos y el estado).",
 
   "flow.open.name": "Abrir",
   "flow.open.summary": "Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada.",
