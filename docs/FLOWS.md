@@ -450,8 +450,11 @@ them with `GET /v1/allowlist?token=`.
 
 The home page opens on a boarding pass: X first, the wallet as a bonus. An X account is proved
 by a post that carries the player's boarding code, read through X's public oEmbed: no X API
-key, no OAuth, nothing paid. The follow cannot be read for free, so it is declared and the team
-checks the list by hand before mainnet. A testnet player who never connects X keeps the points
+key, no OAuth, nothing paid. Four quick tasks follow, as on other boarding pages: follow the
+account, like, reply to and repost the announcement (`ANNOUNCEMENT_TWEET_ID` in
+`apps/web/src/links.ts`). X's follows, likes and reposts cannot be read for free, so the player
+declares each one a few seconds after opening it, and the team checks the list by hand before
+mainnet. A testnet player who never connects X keeps the points
 of the allow list above.
 
 ```mermaid
@@ -464,8 +467,8 @@ sequenceDiagram
   U->>Home: Get my boarding code
   Home->>API: POST /v1/xpass
   API-->>Home: token (kept in this browser, only its sha256 is stored), code DNO-XXXXXX
-  U->>X: Follow @do_not_open_box (intent link)
-  Home->>API: POST /v1/xpass/follow (declared)
+  U->>X: Follow, like, reply to, repost the announcement (intent links)
+  Home->>API: POST /v1/xpass/task {follow|like|reply|repost} (declared, after a short wait)
   U->>X: Post the prefilled tweet, code included
   U->>Home: Paste the post's link
   Home->>API: POST /v1/xpass/tweet {url}

@@ -476,4 +476,13 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 17,
+    name: "x boarding pass tasks",
+    sql: /* sql */ `
+      -- The tasks on X a pass asks for besides the follow: like, reply to and repost the
+      -- announcement. Declared by the player, checked by hand before mainnet.
+      alter table x_passes add column liked_at bigint, add column replied_at bigint, add column reposted_at bigint;
+    `,
+  },
 ];

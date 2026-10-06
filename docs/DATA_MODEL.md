@@ -285,7 +285,7 @@ address asked for a place, and when. Nobody is ranked who did not ask.
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |
-| `x_passes` | `id` (sha256 of the token the browser keeps), `code` (`DNO-` and six characters, in the post), `handle` and `tweet_id` once a post proved the account, `tweet_url`, `followed_at` (declared), `address` (the wallet the player linked by signing), `created_at`, `verified_at`, `updated_at`; code, handle, tweet and address each unique | no: not on the chain, kept by a redeploy like `allow_list_claims` (migration 16) |
+| `x_passes` | `id` (sha256 of the token the browser keeps), `code` (`DNO-` and six characters, in the post), `handle` and `tweet_id` once a post proved the account, `tweet_url`, `followed_at`, `liked_at`, `replied_at`, `reposted_at` (the tasks, declared; migration 17), `address` (the wallet the player linked by signing), `created_at`, `verified_at`, `updated_at`; code, handle, tweet and address each unique | no: not on the chain, kept by a redeploy like `allow_list_claims` (migration 16) |
 
 A wallet linked to a verified pass gets `X_PASS_BONUS` (5) on top of its allow list points
 (`bonus` in `GET /v1/allowlist/:address`). The link X account ↔ wallet is private to the API.

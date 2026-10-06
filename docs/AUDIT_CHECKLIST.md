@@ -54,7 +54,7 @@ mainnet), **Not done** (a check nobody has run).
 | O27 | AI rats are minted on the API's signature (the attester): a stolen attester key could mint AI rats for any job, paid at the normal price; the owner can rotate it with `setAttester` | Low (trust) | `Rats.mintModel` |
 | O28 | The `RatPantry` has no owner and no refill but a transfer: once its 500,000 CROQ are paid out (about 167 days with all 1,000 rats claiming 3 a day), rats earn nothing (`claim` reverts `PantryEmpty` while it is empty, so earned days wait; it pays what is left when low) | Low (UX) | `RatPantry.claim` |
 | O29 | A box with a pending opening can be listed and sold on the flea market as sealed, its seed already public (extends O24) | Low | `FleaMarket.list`, `DoNotOpenHooks` |
-| O30 | X boarding passes: the follow is declared, not checked, and anyone can make many X accounts; the pass token is a bearer kept in the browser (lost with it, moved by a new post) | Low (fairness) | `apps/api` `XPasses` |
+| O30 | X boarding passes: the follow, like, reply and repost are declared, not checked, and anyone can make many X accounts; the pass token is a bearer kept in the browser (lost with it, moved by a new post) | Low (fairness) | `apps/api` `XPasses` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry

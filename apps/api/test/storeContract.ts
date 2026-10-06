@@ -169,9 +169,9 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
     });
 
     it("keeps X boarding passes, each code, handle, tweet and wallet on one pass only", async () => {
-      const p = { id: "h1", code: "DNO-AAAAAA", handle: null, tweetId: null, tweetUrl: null, followedAt: null, address: null, createdAt: 100, verifiedAt: null, updatedAt: 100 };
+      const p = { id: "h1", code: "DNO-AAAAAA", handle: null, tweetId: null, tweetUrl: null, followedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, createdAt: 100, verifiedAt: null, updatedAt: 100 };
       await store.saveXPass(p);
-      const verified = { ...p, handle: "cat", tweetId: "42", tweetUrl: "https://x.com/cat/status/42", followedAt: 110, address: ALICE, verifiedAt: 120, updatedAt: 120 };
+      const verified = { ...p, handle: "cat", tweetId: "42", tweetUrl: "https://x.com/cat/status/42", followedAt: 110, likedAt: 111, repliedAt: 112, repostedAt: 113, address: ALICE, verifiedAt: 120, updatedAt: 120 };
       await store.saveXPass(verified);
       expect(await store.xPassById("h1")).toEqual(verified);
       expect(await store.xPassByCode("DNO-AAAAAA")).toEqual(verified);

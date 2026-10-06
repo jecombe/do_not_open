@@ -18,8 +18,12 @@ export interface XPass {
   handle: string | null;
   tweetId: string | null;
   tweetUrl: string | null;
-  /** When the player said they follow the account (declared, not checked). */
+  /** When the player said they did each task on X (declared, not checked: X's follows, likes
+   *  and reposts cannot be read without a paid API). */
   followedAt: number | null;
+  likedAt: number | null;
+  repliedAt: number | null;
+  repostedAt: number | null;
   /** The wallet the player linked by signing, for the testnet points. Private. */
   address: Address | null;
   createdAt: number;
@@ -32,10 +36,17 @@ export interface XPassView {
   handle: string | null;
   tweetUrl: string | null;
   followed: boolean;
+  /** Each task the player declared done. */
+  tasks: Record<XTask, boolean>;
   address: Address | null;
   /** Bonus points the pass adds to its wallet on the allow list. */
   bonus: number;
 }
+
+/** The tasks on X a pass asks for: follow the account, like, reply to and repost the announcement. */
+export const X_TASKS = ["follow", "like", "reply", "repost"] as const;
+export type XTask = (typeof X_TASKS)[number];
+const TASK_FIELD = { follow: "followedAt", like: "likedAt", reply: "repliedAt", repost: "repostedAt" } as const satisfies Record<XTask, keyof XPass>;
 
 /** What X's public oEmbed says about a tweet. */
 export interface Tweet {
@@ -93,7 +104,7 @@ export class XPasses {
     // Codes are short: draw again on the rare clash.
     for (let i = 0; i < 5 && (await this.store.xPassByCode(code)); i++) code = this.secrets.code();
     const now = this.clock.now();
-    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, followedAt: null, address: null, createdAt: now, verifiedAt: null, updatedAt: now };
+    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, followedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, createdAt: now, verifiedAt: null, updatedAt: now };
     await this.store.saveXPass(pass);
     return { token, pass: view(pass) };
   }
@@ -102,13 +113,19 @@ export class XPasses {
     return view(await this.find(token));
   }
 
-  async follow(token: string): Promise<XPassView> {
+  /** Notes a task the player says they did on X. The first time counts; again is a no-op. */
+  async declare(token: string, task: XTask): Promise<XPassView> {
     const pass = await this.find(token);
-    if (pass.followedAt) return view(pass);
+    const field = TASK_FIELD[task];
+    if (pass[field] !== null) return view(pass);
     const now = this.clock.now();
-    const next = { ...pass, followedAt: now, updatedAt: now };
+    const next = { ...pass, [field]: now, updatedAt: now };
     await this.store.saveXPass(next);
     return view(next);
+  }
+
+  follow(token: string): Promise<XPassView> {
+    return this.declare(token, "follow");
   }
 
   /**
@@ -135,7 +152,15 @@ export class XPasses {
     const older = await this.store.xPassByHandle(tweet.handle);
     let next: XPass = { ...pass, handle: tweet.handle, tweetId: tweet.id, tweetUrl: `https://x.com/${tweet.handle}/status/${tweet.id}`, verifiedAt: pass.verifiedAt ?? now, updatedAt: now };
     if (older && older.id !== pass.id) {
-      next = { ...next, followedAt: next.followedAt ?? older.followedAt, address: next.address ?? older.address, createdAt: Math.min(older.createdAt, pass.createdAt) };
+      next = {
+        ...next,
+        followedAt: next.followedAt ?? older.followedAt,
+        likedAt: next.likedAt ?? older.likedAt,
+        repliedAt: next.repliedAt ?? older.repliedAt,
+        repostedAt: next.repostedAt ?? older.repostedAt,
+        address: next.address ?? older.address,
+        createdAt: Math.min(older.createdAt, pass.createdAt),
+      };
       await this.store.deleteXPass(older.id);
     }
     await this.store.saveXPass(next);
@@ -185,5 +210,6 @@ export async function xPassBonuses(store: Store): Promise<Map<Address, number>> 
 }
 
 function view(p: XPass): XPassView {
-  return { code: p.code, handle: p.handle, tweetUrl: p.tweetUrl, followed: p.followedAt !== null, address: p.address, bonus: p.handle && p.address ? X_PASS_BONUS : 0 };
+  const tasks = Object.fromEntries(X_TASKS.map((t) => [t, p[TASK_FIELD[t]] !== null])) as Record<XTask, boolean>;
+  return { code: p.code, handle: p.handle, tweetUrl: p.tweetUrl, followed: tasks.follow, tasks, address: p.address, bonus: p.handle && p.address ? X_PASS_BONUS : 0 };
 }
