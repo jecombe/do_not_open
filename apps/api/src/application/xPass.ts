@@ -4,23 +4,27 @@ import type { Clock, SignatureVerifier } from "./auth";
 import type { Store } from "./ports/store";
 
 /**
- * The X boarding pass: a player proves an X account by posting a tweet that carries their pass
- * code, declares they follow the collection's account, and may link a wallet for the testnet
- * points. No X API key: the tweet is read through X's public oEmbed. The follow cannot be read
- * for free, so it is declared, and the team checks the list by hand before mainnet.
+ * The X boarding pass: a player connects their X account (Sign in with X, OAuth 2.0 with PKCE;
+ * or, where no X app is configured, a post carrying their pass code, read through X's public
+ * oEmbed), declares the tasks they did on X, and may link a wallet for the testnet points. X's
+ * follows, likes and reposts cannot be read without a paid API, so the tasks are declared and
+ * the team checks the list by hand before mainnet.
  */
 export interface XPass {
   /** sha256 of the secret token the browser keeps: the token itself is never stored. */
   id: string;
   /** Public, goes in the tweet: `DNO-` and six letters or digits. */
   code: string;
-  /** Lower-cased, without the @, once a tweet proved it. */
+  /** Lower-cased, without the @, once a sign-in or a tweet proved it. */
   handle: string | null;
+  /** X's id of the account, from a sign-in: it outlives a change of handle. */
+  xUserId: string | null;
   tweetId: string | null;
   tweetUrl: string | null;
   /** When the player said they did each task on X (declared, not checked: X's follows, likes
    *  and reposts cannot be read without a paid API). */
   followedAt: number | null;
+  postedAt: number | null;
   likedAt: number | null;
   repliedAt: number | null;
   repostedAt: number | null;
@@ -43,10 +47,27 @@ export interface XPassView {
   bonus: number;
 }
 
-/** The tasks on X a pass asks for: follow the account, like, reply to and repost the announcement. */
-export const X_TASKS = ["follow", "like", "reply", "repost"] as const;
+/** The tasks on X a pass asks for: follow the account, post a boarding tweet, like, reply to and
+ *  repost the announcement. */
+export const X_TASKS = ["follow", "post", "like", "reply", "repost"] as const;
 export type XTask = (typeof X_TASKS)[number];
-const TASK_FIELD = { follow: "followedAt", like: "likedAt", reply: "repliedAt", repost: "repostedAt" } as const satisfies Record<XTask, keyof XPass>;
+const TASK_FIELD = { follow: "followedAt", post: "postedAt", like: "likedAt", reply: "repliedAt", repost: "repostedAt" } as const satisfies Record<XTask, keyof XPass>;
+
+/** Sign in with X: OAuth 2.0, authorization code with PKCE, read-only scopes. */
+export interface XSignIn {
+  authorizeUrl(state: string, challenge: string): string;
+  /** The account behind an authorization code. Throws when X refuses it or cannot be reached. */
+  account(code: string, verifier: string): Promise<{ id: string; username: string }>;
+}
+
+export interface LoginSecrets {
+  /** A random OAuth state, and a PKCE verifier with its S256 challenge. */
+  state(): string;
+  pkce(): { verifier: string; challenge: string };
+}
+
+/** How long a sign-in started on the site may take on X. */
+export const SIGN_IN_TTL = 10 * 60;
 
 /** What X's public oEmbed says about a tweet. */
 export interface Tweet {
@@ -67,7 +88,20 @@ export interface PassSecrets {
   code(): string;
 }
 
-export type XPassRefusal = "no-pass" | "bad-tweet-url" | "tweet-not-found" | "code-missing" | "tweet-used" | "x-down" | "connect-x-first" | "address-taken" | "bad-message" | "bad-signature";
+export type XPassRefusal =
+  | "no-pass"
+  | "bad-tweet-url"
+  | "tweet-not-found"
+  | "code-missing"
+  | "tweet-used"
+  | "x-down"
+  | "connect-x-first"
+  | "address-taken"
+  | "bad-message"
+  | "bad-signature"
+  | "sign-in-off"
+  | "sign-in-expired"
+  | "sign-in-refused";
 
 export class XPassRefused extends Error {
   constructor(
@@ -89,13 +123,57 @@ export function parseTweetUrl(url: string): { handle: string; id: string } | nul
 }
 
 export class XPasses {
+  /** Sign-ins under way, by OAuth state: one API process serves them, and a lost one is just retried. */
+  private readonly pending = new Map<string, { passId: string; verifier: string; returnTo: string; expiresAt: number }>();
+
   constructor(
     private readonly store: Store,
     private readonly tweets: TweetLookup,
     private readonly secrets: PassSecrets,
     private readonly verifier: SignatureVerifier,
     private readonly clock: Clock,
+    private readonly signIn: { x: XSignIn; secrets: LoginSecrets } | null = null,
   ) {}
+
+  /** Whether Sign in with X is configured; without it, the code-in-a-post proof stands in. */
+  get signInEnabled(): boolean {
+    return this.signIn !== null;
+  }
+
+  /** Starts Sign in with X for a pass: the browser goes to the URL returned. */
+  async startSignIn(token: string, returnTo: string): Promise<{ url: string }> {
+    if (!this.signIn) throw new XPassRefused("sign-in-off", "Sign in with X is not configured here");
+    const pass = await this.find(token);
+    const now = this.clock.now();
+    for (const [k, v] of this.pending) if (v.expiresAt <= now) this.pending.delete(k);
+    const state = this.signIn.secrets.state();
+    const { verifier, challenge } = this.signIn.secrets.pkce();
+    this.pending.set(state, { passId: pass.id, verifier, returnTo, expiresAt: now + SIGN_IN_TTL });
+    return { url: this.signIn.x.authorizeUrl(state, challenge) };
+  }
+
+  /**
+   * X sent the player back. Returns where to send them, and how it went. The account lands on
+   * the pass the sign-in started from; an account already on an older pass moves to this one.
+   */
+  async finishSignIn(state: string, code: string | null): Promise<{ returnTo: string | null; outcome: "ok" | XPassRefusal }> {
+    const started = this.pending.get(state);
+    this.pending.delete(state);
+    if (!this.signIn || !started) return { returnTo: null, outcome: "sign-in-expired" };
+    const { returnTo } = started;
+    if (started.expiresAt <= this.clock.now()) return { returnTo, outcome: "sign-in-expired" };
+    if (!code) return { returnTo, outcome: "sign-in-refused" };
+    let account: { id: string; username: string };
+    try {
+      account = await this.signIn.x.account(code, started.verifier);
+    } catch {
+      return { returnTo, outcome: "x-down" };
+    }
+    const pass = await this.store.xPassById(started.passId);
+    if (!pass) return { returnTo, outcome: "no-pass" };
+    await this.attach(pass, { handle: account.username.toLowerCase(), xUserId: account.id });
+    return { returnTo, outcome: "ok" };
+  }
 
   /** A new, empty pass: the token goes to the browser, once. */
   async start(): Promise<{ token: string; pass: XPassView }> {
@@ -104,7 +182,7 @@ export class XPasses {
     // Codes are short: draw again on the rare clash.
     for (let i = 0; i < 5 && (await this.store.xPassByCode(code)); i++) code = this.secrets.code();
     const now = this.clock.now();
-    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, followedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, createdAt: now, verifiedAt: null, updatedAt: now };
+    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, xUserId: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, createdAt: now, verifiedAt: null, updatedAt: now };
     await this.store.saveXPass(pass);
     return { token, pass: view(pass) };
   }
@@ -148,29 +226,47 @@ export class XPasses {
     const used = await this.store.xPassByTweet(tweet.id);
     if (used && used.id !== pass.id) throw new XPassRefused("tweet-used", "this post already verified another pass");
 
+    return view(await this.attach(pass, { handle: tweet.handle, tweetId: tweet.id, tweetUrl: `https://x.com/${tweet.handle}/status/${tweet.id}` }));
+  }
+
+  /**
+   * Puts a proved X account on a pass. An account already on an older pass (a lost token,
+   * another browser) moves to this one with its tasks and wallet: only its owner could prove it.
+   */
+  private async attach(pass: XPass, proof: { handle: string; xUserId?: string; tweetId?: string; tweetUrl?: string }): Promise<XPass> {
     const now = this.clock.now();
-    const older = await this.store.xPassByHandle(tweet.handle);
-    let next: XPass = { ...pass, handle: tweet.handle, tweetId: tweet.id, tweetUrl: `https://x.com/${tweet.handle}/status/${tweet.id}`, verifiedAt: pass.verifiedAt ?? now, updatedAt: now };
-    if (older && older.id !== pass.id) {
+    const byId = proof.xUserId ? await this.store.xPassByXUser(proof.xUserId) : null;
+    const byHandle = await this.store.xPassByHandle(proof.handle);
+    let next: XPass = {
+      ...pass,
+      handle: proof.handle,
+      xUserId: proof.xUserId ?? pass.xUserId,
+      tweetId: proof.tweetId ?? pass.tweetId,
+      tweetUrl: proof.tweetUrl ?? pass.tweetUrl,
+      verifiedAt: pass.verifiedAt ?? now,
+      updatedAt: now,
+    };
+    for (const older of [byId, byHandle]) {
+      if (!older || older.id === pass.id) continue;
       next = {
         ...next,
-        followedAt: next.followedAt ?? older.followedAt,
-        likedAt: next.likedAt ?? older.likedAt,
-        repliedAt: next.repliedAt ?? older.repliedAt,
-        repostedAt: next.repostedAt ?? older.repostedAt,
+        xUserId: next.xUserId ?? older.xUserId,
+        tweetId: next.tweetId ?? older.tweetId,
+        tweetUrl: next.tweetUrl ?? older.tweetUrl,
+        ...Object.fromEntries(X_TASKS.map((t) => [TASK_FIELD[t], next[TASK_FIELD[t]] ?? older[TASK_FIELD[t]]])),
         address: next.address ?? older.address,
-        createdAt: Math.min(older.createdAt, pass.createdAt),
+        createdAt: Math.min(older.createdAt, next.createdAt),
       };
       await this.store.deleteXPass(older.id);
     }
     await this.store.saveXPass(next);
-    return view(next);
+    return next;
   }
 
   /** Links a wallet, signed by it. The pass needs its X account first. */
   async linkWallet(token: string, rawAddress: string, message: string, signature: string): Promise<XPassView> {
     const pass = await this.find(token);
-    if (!pass.handle) throw new XPassRefused("connect-x-first", "verify your X post first");
+    if (!pass.handle) throw new XPassRefused("connect-x-first", "connect your X account first");
     const address = normalizeAddress(rawAddress);
     const lines = message.split("\n");
     if (message.length > 1_000 || !lines[0]?.startsWith(`I, ${address}, link this wallet to my DO NOT OPEN boarding pass ${pass.code}.`)) {

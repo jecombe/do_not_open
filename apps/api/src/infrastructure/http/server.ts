@@ -28,8 +28,9 @@ export interface HttpDeps {
   terms?: AcceptTerms;
   /** The mainnet allow list, with the token that reads the whole list. Absent: no claims. */
   allowList?: { list: AllowList; adminToken: string | null };
-  /** X boarding passes; the admin token (the allow list's) lists them all. */
-  xPasses?: { passes: XPasses; adminToken: string | null };
+  /** X boarding passes; the admin token (the allow list's) lists them all; Sign in with X
+   *  sends players back only to `returnOrigins`. */
+  xPasses?: { passes: XPasses; adminToken: string | null; returnOrigins: string[] };
   /** The relayer proxy. Absent: the app talks to Zama's relayer directly. */
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
@@ -310,6 +311,9 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       "address-taken": 409,
       "bad-message": 400,
       "bad-signature": 401,
+      "sign-in-off": 503,
+      "sign-in-expired": 400,
+      "sign-in-refused": 400,
     };
     const passToken = (req: FastifyRequest) => {
       const h = req.headers.authorization;
@@ -328,6 +332,40 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
 
     app.post("/v1/xpass", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (_req, reply) => passed(reply, () => passes.start()));
     app.get("/v1/xpass", async (req, reply) => passed(reply, () => passes.status(passToken(req))));
+    // Sign in with X: the site asks for the URL (the pass token stays out of any address bar),
+    // X sends the player back to the callback, which sends them back to the site.
+    const returnOk = (url: string) => {
+      let origin: string;
+      try {
+        origin = new URL(url).origin;
+      } catch {
+        return false;
+      }
+      return xPasses.returnOrigins.some((o) => {
+        const p = originPattern(o);
+        return typeof p === "string" ? p === origin : p.test(origin);
+      });
+    };
+    app.get("/v1/xpass/x", async (_req, reply) => {
+      reply.header("cache-control", "public, max-age=60");
+      return { data: { signIn: passes.signInEnabled } };
+    });
+    app.post("/v1/xpass/x/start", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ returnTo: z.string().url().max(500) }).parse(req.body);
+      if (!returnOk(body.returnTo)) return reply.status(400).send({ error: "bad-request", message: "returnTo is not one of the site's pages" });
+      return passed(reply, () => passes.startSignIn(passToken(req), body.returnTo));
+    });
+    app.get("/v1/xpass/x/callback", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const q = z.object({ state: z.string().max(200).default(""), code: z.string().max(2_000).optional(), error: z.string().max(200).optional() }).parse(req.query);
+      const { returnTo, outcome } = await passes.finishSignIn(q.state, q.error ? null : (q.code ?? null));
+      reply.header("cache-control", "no-store");
+      if (!returnTo) return reply.status(400).type("text/plain; charset=utf-8").send("This sign-in expired. Go back to the site and connect X again.");
+      const back = new URL(returnTo);
+      back.searchParams.set("x", outcome);
+      back.hash = "boarding";
+      return reply.redirect(back.toString(), 303);
+    });
+
     app.post("/v1/xpass/follow", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => passed(reply, () => passes.follow(passToken(req))));
     app.post("/v1/xpass/task", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
       const body = z.object({ task: z.enum(X_TASKS) }).parse(req.body);

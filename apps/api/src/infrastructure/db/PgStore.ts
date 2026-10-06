@@ -743,6 +743,10 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
     return one(this.pool, "select * from x_passes where handle = $1", [handle], xPassFrom);
   }
 
+  xPassByXUser(xUserId: string) {
+    return one(this.pool, "select * from x_passes where x_user_id = $1", [xUserId], xPassFrom);
+  }
+
   xPassByTweet(tweetId: string) {
     return one(this.pool, "select * from x_passes where tweet_id = $1", [tweetId], xPassFrom);
   }
@@ -758,12 +762,12 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
 
   async saveXPass(p: XPass) {
     await this.pool.query(
-      `insert into x_passes (id, code, handle, tweet_id, tweet_url, followed_at, liked_at, replied_at, reposted_at, address, created_at, verified_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-       on conflict (id) do update set code = excluded.code, handle = excluded.handle, tweet_id = excluded.tweet_id, tweet_url = excluded.tweet_url,
-         followed_at = excluded.followed_at, liked_at = excluded.liked_at, replied_at = excluded.replied_at, reposted_at = excluded.reposted_at,
+      `insert into x_passes (id, code, handle, x_user_id, tweet_id, tweet_url, followed_at, posted_at, liked_at, replied_at, reposted_at, address, created_at, verified_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       on conflict (id) do update set code = excluded.code, handle = excluded.handle, x_user_id = excluded.x_user_id, tweet_id = excluded.tweet_id, tweet_url = excluded.tweet_url,
+         followed_at = excluded.followed_at, posted_at = excluded.posted_at, liked_at = excluded.liked_at, replied_at = excluded.replied_at, reposted_at = excluded.reposted_at,
          address = excluded.address, created_at = excluded.created_at, verified_at = excluded.verified_at, updated_at = excluded.updated_at`,
-      [p.id, p.code, p.handle, p.tweetId, p.tweetUrl, p.followedAt, p.likedAt, p.repliedAt, p.repostedAt, p.address, p.createdAt, p.verifiedAt, p.updatedAt],
+      [p.id, p.code, p.handle, p.xUserId, p.tweetId, p.tweetUrl, p.followedAt, p.postedAt, p.likedAt, p.repliedAt, p.repostedAt, p.address, p.createdAt, p.verifiedAt, p.updatedAt],
     );
   }
 
@@ -900,9 +904,11 @@ const xPassFrom = (r: Record<string, unknown>): XPass => ({
   id: r.id as string,
   code: r.code as string,
   handle: (r.handle as string | null) ?? null,
+  xUserId: (r.x_user_id as string | null) ?? null,
   tweetId: (r.tweet_id as string | null) ?? null,
   tweetUrl: (r.tweet_url as string | null) ?? null,
   followedAt: num(r.followed_at),
+  postedAt: num(r.posted_at),
   likedAt: num(r.liked_at),
   repliedAt: num(r.replied_at),
   repostedAt: num(r.reposted_at),

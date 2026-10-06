@@ -68,7 +68,7 @@ beforeAll(async () => {
     signIn,
     terms: new AcceptTerms(store, ethersVerifier, { now: () => now }),
     allowList: { list: new AllowList(store, ethersVerifier, { now: () => now }, 500), adminToken: ADMIN },
-    xPasses: { passes: new XPasses(store, xPosts, passSecrets, ethersVerifier, { now: () => now }), adminToken: ADMIN },
+    xPasses: { passes: new XPasses(store, xPosts, passSecrets, ethersVerifier, { now: () => now }), adminToken: ADMIN, returnOrigins: ["https://donotopen.test"] },
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
     metrics: new Metrics({
       store,
@@ -401,7 +401,7 @@ describe("X boarding passes", () => {
     posts.set("77", { id: "77", handle: "cat", text: `boarding ${pass.code}` });
     expect((await call("POST", "/v1/xpass/tweet", token, { url: "https://x.com/cat/status/77" })).json().data).toMatchObject({ handle: "cat" });
     expect((await call("POST", "/v1/xpass/follow", token)).json().data).toMatchObject({ followed: true });
-    expect((await call("POST", "/v1/xpass/task", token, { task: "reply" })).json().data.tasks).toEqual({ follow: true, like: false, reply: true, repost: false });
+    expect((await call("POST", "/v1/xpass/task", token, { task: "reply" })).json().data.tasks).toEqual({ follow: true, post: false, like: false, reply: true, repost: false });
     expect((await call("POST", "/v1/xpass/task", token, { task: "dance" })).statusCode).toBe(400);
   });
 
@@ -410,5 +410,18 @@ describe("X boarding passes", () => {
     const all = (await get(`/v1/xpass/all?token=${ADMIN}`)).body.data as Record<string, unknown>[];
     expect(all.length).toBeGreaterThan(0);
     expect(all[0]).not.toHaveProperty("id");
+  });
+});
+
+describe("Sign in with X routes", () => {
+  it("says whether Sign in with X is on, and refuses to send players anywhere but the site", async () => {
+    expect((await get("/v1/xpass/x")).body.data).toEqual({ signIn: false });
+    const { token } = (await app.inject({ method: "POST", url: "/v1/xpass" })).json().data;
+    const start = (returnTo: string) => app.inject({ method: "POST", url: "/v1/xpass/x/start", payload: { returnTo }, headers: { authorization: `Bearer ${token}` } });
+    expect((await start("https://evil.test/")).statusCode).toBe(400);
+    expect((await start("https://donotopen.test/fr/")).json()).toMatchObject({ error: "sign-in-off" });
+    // An unknown state is not sent anywhere.
+    const cb = await app.inject({ method: "GET", url: "/v1/xpass/x/callback?state=nope&code=x" });
+    expect(cb.statusCode).toBe(400);
   });
 });

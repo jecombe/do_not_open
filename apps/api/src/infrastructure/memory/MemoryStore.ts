@@ -388,6 +388,10 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
     return this.xPassWhere((p) => p.handle === handle);
   }
 
+  async xPassByXUser(xUserId: string) {
+    return this.xPassWhere((p) => p.xUserId === xUserId);
+  }
+
   async xPassByTweet(tweetId: string) {
     return this.xPassWhere((p) => p.tweetId === tweetId);
   }
@@ -403,7 +407,7 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
   async saveXPass(p: XPass) {
     for (const o of this.s.xPasses.values()) {
       if (o.id === p.id) continue;
-      if (o.code === p.code || (p.handle && o.handle === p.handle) || (p.tweetId && o.tweetId === p.tweetId) || (p.address && o.address === p.address)) throw new Error("x pass conflicts with another");
+      if (o.code === p.code || (p.handle && o.handle === p.handle) || (p.xUserId && o.xUserId === p.xUserId) || (p.tweetId && o.tweetId === p.tweetId) || (p.address && o.address === p.address)) throw new Error("x pass conflicts with another");
     }
     this.s.xPasses.set(p.id, clone(p));
   }
