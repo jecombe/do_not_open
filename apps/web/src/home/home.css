@@ -2745,3 +2745,85 @@ p.pass-meter {
   align-items: center;
   margin: 0;
 }
+
+/* The home page's way to the boarding page: it blinks and wiggles now and then, like a gate
+   sign calling the flight. Hover or focus holds it still. */
+.btn-apply {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  animation: apply-call 3.2s ease-in-out infinite;
+}
+
+.btn-apply::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border: 3px solid var(--red);
+  border-radius: 20px;
+  opacity: 0;
+  animation: apply-ring 1.6s ease-out infinite;
+  pointer-events: none;
+}
+
+.btn-apply:hover,
+.btn-apply:focus-visible {
+  animation: none;
+}
+
+.btn-apply:hover::after,
+.btn-apply:focus-visible::after {
+  animation: none;
+}
+
+@keyframes apply-call {
+  0%,
+  70%,
+  100% {
+    background: var(--ink);
+    transform: none;
+  }
+  74%,
+  86% {
+    background: var(--red);
+    transform: rotate(-3deg) scale(1.06);
+  }
+  80%,
+  92% {
+    background: var(--ink);
+    transform: rotate(3deg) scale(1.06);
+  }
+}
+
+@keyframes apply-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+/* The menu's link to it carries a blinking dot. */
+.home-nav-apply::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--red);
+  vertical-align: 0.1em;
+  animation: boarding-blink 1.2s steps(2, jump-none) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-apply,
+  .btn-apply::after,
+  .home-nav-apply::before {
+    animation: none;
+  }
+}

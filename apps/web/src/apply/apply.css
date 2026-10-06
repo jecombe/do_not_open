@@ -107,10 +107,6 @@
   text-decoration: underline wavy 2px;
 }
 
-.btn-apply {
-  display: inline-flex;
-  align-items: center;
-}
 
 @media (max-width: 860px) {
   .apply-hero {
