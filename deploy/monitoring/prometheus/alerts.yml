@@ -145,6 +145,45 @@ groups:
         annotations:
           summary: "The studio's AI services cost more than its packs brought in: check fal's prices against studio.json, or STUDIO_ALLOWLIST on a test network."
 
+  - name: whitelist
+    rules:
+      - alert: WhitelistNearlyFull
+        expr: dno_whitelist_seats_places > 0 and dno_whitelist_seats_taken / dno_whitelist_seats_places >= 0.9 and dno_whitelist_seats_taken < dno_whitelist_seats_places
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of the whitelist's seats are taken: raise ALLOW_LIST_PLACES or announce the last seats."
+
+      - alert: WhitelistFull
+        expr: dno_whitelist_seats_places > 0 and dno_whitelist_seats_taken >= dno_whitelist_seats_places
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Every seat on the whitelist is taken: new players are refused (list-full) until ALLOW_LIST_PLACES is raised."
+
+      - alert: XSignInFailing
+        expr: |
+          sum by (network) (increase(dno_xpass_sign_ins_total{outcome="x-down"}[30m])) > 3
+          and sum by (network) (increase(dno_xpass_sign_ins_total{outcome="x-down"}[30m]))
+            / clamp_min(sum by (network) (increase(dno_xpass_sign_ins_total[30m])), 1) > 0.3
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Most Sign in with X attempts fail on X's side: a wrong X_CLIENT_SECRET, a callback URL changed on developer.x.com, or X down."
+
+      - alert: XSignInTurnedOff
+        expr: dno_xpass_signin_enabled == 0 and max_over_time(dno_xpass_signin_enabled[1d]) == 1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Sign in with X was on and is now off: X_CLIENT_ID is missing from the API's .env after a restart."
+
+      - alert: IdeasPouringIn
+        expr: increase(dno_ideas_received[1h]) > 50
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value }} ideas in the suggestion box in an hour: someone may be spamming it."
+
   - name: server
     rules:
       - alert: DiskAlmostFull

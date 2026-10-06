@@ -373,6 +373,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     app.get("/v1/xpass/x/callback", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
       const q = z.object({ state: z.string().max(200).default(""), code: z.string().max(2_000).optional(), error: z.string().max(200).optional() }).parse(req.query);
       const { returnTo, outcome } = await passes.finishSignIn(q.state, q.error ? null : (q.code ?? null));
+      deps.metrics?.signIn(outcome);
       reply.header("cache-control", "no-store");
       if (!returnTo) return reply.status(400).type("text/plain; charset=utf-8").send("This sign-in expired. Go back to the site and connect X again.");
       const back = new URL(returnTo);
