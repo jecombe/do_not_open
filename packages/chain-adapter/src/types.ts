@@ -4,6 +4,8 @@
  * future Solana adapter all implement this one interface.
  */
 
+import type { DuelStanding, PlayerPoints } from "./standings";
+
 export type Address = string;
 
 export type BoxStatus = "sealed" | "opening" | "revealed";
@@ -606,6 +608,22 @@ export interface SignedTerms {
   recorded: boolean;
 }
 
+/** Where the connected account stands on the mainnet allow list. */
+export interface AllowListStatus {
+  /** Its points now, from the duels and openings indexed. */
+  live: PlayerPoints;
+  /** The points the ranking counts: the best it had since it claimed (a test network
+   *  redeployment forgets the duels, not the claims), or `live` before it claims. */
+  points: number;
+  /** Unix seconds, null until it claims. */
+  claimedAt: number | null;
+  /** 1-based, among claimants; null until it claims. */
+  rank: number | null;
+  claimants: number;
+  /** How many claimants get a place. */
+  places: number;
+}
+
 /** A wallet the browser offers, as shown in a picker. */
 export interface WalletOption {
   id: string;
@@ -646,6 +664,8 @@ export interface ChainAdapter {
   entangleProposals(tokenIds: number[]): Promise<EntangleProposal[]>;
   /** Every opened box, with who opened it. */
   openedCats(): Promise<OpenedCat[]>;
+  /** Every box that settled a duel, ranked (see `duelStandings`): the first three wear a rosette. */
+  duelStandings(): Promise<DuelStanding[]>;
   /** Duels `account` posted or took up, and those that involve any of `tokenIds` (the
    *  account's boxes, as `boxesOf` found them), newest first. With `open`, only those still
    *  waiting for someone. The same list from any device. */
@@ -770,6 +790,14 @@ export interface ChainAdapter {
   /** Has the connected wallet sign `message` (the terms, naming its address), free and off-chain,
    *  and files the signature with the API where there is one. Throws `rejected` if refused. */
   signTerms(message: string): Promise<SignedTerms>;
+
+  // --- mainnet allow list ---
+  /** Where the connected account stands. Null when nobody is connected or there is no API to
+   *  keep the claims. */
+  allowList(): Promise<AllowListStatus | null>;
+  /** Has the connected wallet sign a claim (free, off-chain) and files it. Signing again later
+   *  keeps the best points. Throws `rejected` if refused, `network` without an API. */
+  claimAllowList(): Promise<AllowListStatus>;
 
   // --- decryption credits ---
   /** The connected account's decryptions left. Null where nobody counts them (the mock, a free relayer). */

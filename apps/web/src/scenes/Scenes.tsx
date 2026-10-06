@@ -28,6 +28,8 @@ import {
   type ShakeSound,
   Unboxing,
   VetMark,
+  Rosette,
+  type RosetteSpec,
   type WaitKind,
   type WaitStage,
 } from "@dno/scene";
@@ -148,6 +150,8 @@ interface BoxSceneProps {
   vet: "alive" | "notAlive" | null;
   /** Paper tags on the box: up for a duel, entangled. */
   tags?: BoxTagSpec[];
+  /** One of the duel ranking's top three: a rosette pinned to the front. */
+  rosette?: RosetteSpec | null;
   quality: QualitySettings;
   sound: ShakeSound;
   onShakeDone: () => void;
@@ -164,10 +168,11 @@ const ANGLES: Record<InspectAngle, [azimuth: number, polar: number]> = {
 };
 
 /** The mail room with one box on the bench: shake it, pet it, feed it, open it, take the cat out. */
-export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
+export function BoxScene({ ref, tokenId, opened, vet, tags, rosette = null, quality, sound, onShakeDone, onFed, onOpened }: BoxSceneProps) {
   const controls = useRef<CameraControls>(null);
   const opening = useRef<Opening | null>(null);
   const vetMark = useRef<VetMark | null>(null);
+  const pinned = useRef<Rosette | null>(null);
   /** Looking closely at the cat, once it is out. */
   const inspecting = useRef(false);
 
@@ -203,6 +208,19 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
       rig.box.dispose();
     };
   }, [depot, rig]);
+
+  // The rosette follows the ranking: pinned, swapped for another place, or taken off.
+  const place = rosette?.place ?? 0;
+  const wins = rosette?.wins ?? 0;
+  useEffect(() => {
+    if (!place) return;
+    const r = new Rosette(rig.box, { place, wins }, { reducedMotion: reducedMotion() });
+    pinned.current = r;
+    return () => {
+      r.dispose();
+      if (pinned.current === r) pinned.current = null;
+    };
+  }, [rig, place, wins]);
 
   // A box certified earlier simply carries the stamp.
   useEffect(() => {
@@ -342,6 +360,7 @@ export function BoxScene({ ref, tokenId, opened, vet, tags, quality, sound, onSh
     rig.petter.update(step);
     rig.waiter.update(step);
     vetMark.current?.update(step);
+    pinned.current?.update(state.clock.elapsedTime);
     rig.tags.update(state.clock.elapsedTime);
     if (opening.current) updateOpening(opening.current, step, state.clock.elapsedTime);
   });
@@ -509,6 +528,8 @@ export interface ShelfBox {
   tags?: BoxTagSpec[];
   /** Croquettes wait for the holder in the Pantry: once the box is open, a heap of them sits beside the cat. */
   croquettes?: boolean;
+  /** One of the duel ranking's top three. */
+  rosette?: RosetteSpec | null;
 }
 
 interface ShelfSceneProps {
@@ -542,7 +563,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
   const depot = useMemo(() => createDepot(quality), [quality]);
   useEffect(() => () => depot.dispose(), [depot]);
 
-  const key = boxes.map((b) => `${b.tokenId}${b.cat ? "o" : "s"}${b.vet ?? ""}`).join(",");
+  const key = boxes.map((b) => `${b.tokenId}${b.cat ? "o" : "s"}${b.vet ?? ""}${b.rosette ? `r${b.rosette.place}:${b.rosette.wins}` : ""}`).join(",");
   const items = useMemo(
     () =>
       boxes.slice(0, SHELF_CAPACITY).map((b) => {
@@ -551,10 +572,11 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
         if (opening) showOpened(opening);
         const vet = b.vet ? new VetMark(box, b.vet === "alive") : null;
         vet?.showInstant();
+        const rosette = b.rosette ? new Rosette(box, b.rosette, { reducedMotion: reducedMotion() }) : null;
         // Only beside a cat: a sealed box keeps the banner in the slip.
         const pile = opening ? new KibblePile(b.tokenId, reducedMotion()) : null;
         pile?.group.position.set(...PILE_SPOT);
-        return { tokenId: b.tokenId, box, opening, vet, pile, tags: new BoxTags(box, { reducedMotion: reducedMotion(), scale: 1.5 }) };
+        return { tokenId: b.tokenId, box, opening, vet, rosette, pile, tags: new BoxTags(box, { reducedMotion: reducedMotion(), scale: 1.5 }) };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key, sound],
@@ -564,6 +586,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
       for (const item of items) {
         if (item.opening) disposeOpening(item.opening);
         item.vet?.dispose();
+        item.rosette?.dispose();
         item.pile?.dispose();
         item.tags.dispose();
         item.box.dispose();
@@ -618,6 +641,7 @@ export function ShelfScene({ boxes, arrivals = [], quality, sound, highlight = n
     for (const item of items) {
       if (item.opening) updateOpening(item.opening, Math.min(dt, 0.1), t);
       item.pile?.update(dt);
+      item.rosette?.update(t);
       item.tags.update(t);
     }
 

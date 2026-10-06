@@ -93,12 +93,12 @@ export class EvmChainState implements ChainState {
 
   /**
    * The contracts the relayer proxy decrypts for and makes inputs for, lowercase: the
-   * collection and the cUSDC it is paid in, the Pantry and cCROQ. Read once.
+   * collection and the cUSDC it is paid in, the Pantry, cCROQ and the flea market. Read once.
    */
   decryptable(): Promise<string[]> {
     this.contracts ??= multicall(this.rpc, [{ target: this.d.collection.address, iface: this.collectionIface, fn: "confidentialUsdc", args: [] }]).then((r) => {
       if (!r[0]) throw new Error("the collection's cUSDC is unreadable");
-      return [this.d.collection.address, String(r[0][0]), this.d.pantry?.address, this.d.cCroq?.address].filter((a): a is string => !!a).map(normalizeAddress);
+      return [this.d.collection.address, String(r[0][0]), this.d.pantry?.address, this.d.cCroq?.address, this.d.fleaMarket?.address].filter((a): a is string => !!a).map(normalizeAddress);
     });
     this.contracts.catch(() => (this.contracts = null));
     return this.contracts;

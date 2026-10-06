@@ -170,6 +170,8 @@ Rats have public owners anyway; selling one shows nothing new.
 | A flea market listing or sale (`FleaMarket`) | the seller of an active listing (so it held the box), the asking price, the buyer of a sale (now a proven holder), and for each purchase at the asking price whether the buyer could pay. Not the amount of a secret offer, nor the price of a sale by offer |
 | An adopted rat (`Rats`, plain ERC-721) | who owns it and every transfer, as for any NFT, and the CROQ its owner claims from the `RatPantry`. A rat says nothing about boxes, but an owner who also sniffs boxes ties those paid shakes to the address that owns the rat (the paid shake already names its caller) |
 | A studio pack (`StudioPacks.buy`, plain USDC) | the payer, the account and the pack. The studio never touches the boxes, so it says nothing about holdings; the API also sees the prompts and pictures of the account that signed in, and sends the prompts to the AI services |
+| The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
+| Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
 transfers naming it), never know them.

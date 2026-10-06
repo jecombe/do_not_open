@@ -20,10 +20,12 @@ import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import { traitIndexAtOffset } from "../layout";
 import { ratJob } from "../rats";
+import { allowListMessage, duelStandings, type DuelStanding } from "../standings";
 import {
   ChainError,
   sameAddress,
   type ActionOptions,
+  type AllowListStatus,
   type SwapOptions,
   type SignedTerms,
   type Address,
@@ -672,6 +674,48 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async openedCats(): Promise<OpenedCat[]> {
     return this.indexed((ix) => ix.openedCats(), () => this.openedFromChain());
+  }
+
+  async duelStandings(): Promise<DuelStanding[]> {
+    return this.indexed((ix) => ix.duelStandings(), () => this.standingsFromChain());
+  }
+
+  /** Winner and loser are all the ranking needs: the parties stay out of it. */
+  private async standingsFromChain(): Promise<DuelStanding[]> {
+    const latest = await this.reading(this.opts.readProvider.getBlockNumber());
+    const logs = await this.logs(this.contract.filters.DuelResolved!(), this.opts.deployBlock ?? 0, latest);
+    const settled = logs.map((l) => (l as unknown as { args: { winner: bigint; loser: bigint } }).args);
+    return duelStandings(settled.map((r) => ({ tokenA: 0, tokenB: 0, challenger: "", accepter: "", winner: Number(r.winner), loser: Number(r.loser) })));
+  }
+
+  async allowList(): Promise<AllowListStatus | null> {
+    const account = this.address_;
+    const ix = this.opts.indexer;
+    if (!account || !ix?.available() || !(await ix.matches())) return null;
+    try {
+      return (await ix.allowList(account)).data;
+    } catch {
+      return null;
+    }
+  }
+
+  async claimAllowList(): Promise<AllowListStatus> {
+    const ix = this.opts.indexer;
+    if (!ix) throw new ChainError("network", "No API keeps the allow list on this network.");
+    const signer = this.signer();
+    const account = (await signer.getAddress()) as Address;
+    const message = allowListMessage(account, new Date());
+    let signature: string;
+    try {
+      signature = await signer.signMessage(message);
+    } catch (error) {
+      throw this.toChainError(error);
+    }
+    try {
+      return await ix.claimAllowList(account, message, signature);
+    } catch (error) {
+      throw new ChainError("network", `The API did not file the claim: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private async openedFromChain(): Promise<OpenedCat[]> {

@@ -1,5 +1,7 @@
+import type { DuelStanding } from "../standings";
 import type {
   Address,
+  AllowListStatus,
   BoxPantry,
   BoxStatus,
   BoxSummary,
@@ -211,6 +213,32 @@ export class IndexerClient {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Files a signed allow list claim; the API checks the signature and answers where it stands. */
+  async claimAllowList(address: Address, message: string, signature: string): Promise<AllowListStatus> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 6000);
+    try {
+      const res = await (this.opts.fetch ?? fetch)(`${this.baseUrl}/v1/allowlist`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address, message, signature }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`API ${res.status} on /v1/allowlist`);
+      return ((await res.json()) as Indexed<AllowListStatus>).data;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  allowList(address: Address): Promise<Indexed<AllowListStatus>> {
+    return this.get(`/v1/allowlist/${address}`, (a: AllowListStatus) => a);
+  }
+
+  duelStandings(): Promise<Indexed<DuelStanding[]>> {
+    return this.get("/v1/leaderboard/duels", (list: DuelStanding[]) => list.map((s) => ({ tokenId: s.tokenId, wins: s.wins, losses: s.losses })));
   }
 
   /** Tells the indexer a transaction just went through, so it looks sooner. Never fails, at most once every few seconds. */

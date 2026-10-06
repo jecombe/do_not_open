@@ -1,6 +1,8 @@
+import { duelStandings, type DuelStanding } from "@dno/chain-adapter/standings";
 import { minted, type Box } from "../domain/box";
 import { OPEN_DUEL, settles, shelfBoxes, type Duel } from "../domain/duel";
 import type { ProtocolEvent } from "../domain/events";
+import { ALL_DUELS, settledDuels } from "../domain/standings";
 import type { Address, DuelStatus } from "../domain/types";
 import type { User } from "../domain/user";
 import type { ChainState, CollectionConstants, EconomyState } from "./ports/chain";
@@ -194,6 +196,11 @@ export class Queries {
     return opened
       .filter((b): b is Box & { revealed: NonNullable<Box["revealed"]>; openedBy: Address } => !!b.revealed && !!b.openedBy)
       .map((b) => ({ tokenId: b.tokenId, openedBy: b.openedBy, openedBlock: b.openedBlock, revealed: b.revealed }));
+  }
+
+  /** Boxes ranked by their duels: the first three wear a rosette. */
+  async duelStandings(): Promise<DuelStanding[]> {
+    return duelStandings(settledDuels(await this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS })));
   }
 
   async pendingRequests(account: Address): Promise<PendingRequestView[]> {

@@ -5,7 +5,7 @@ import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD, REPO } from "../links";
 import { useLocale } from "../i18n/locale";
-import { appPath, docsPath, homePath, studioPath } from "../site";
+import { appPath, docsPath, duelRankingPath, homePath, marketPath, studioPath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
@@ -56,9 +56,6 @@ function HomeTop() {
         Do not open
       </a>
       <nav id={navId} className={open ? "is-open" : undefined} aria-label={t("home.nav")}>
-        <a href="#cats" onClick={close}>
-          {t("home.nav.cats")}
-        </a>
         <a href="#how" onClick={close}>
           {t("home.nav.how")}
         </a>
@@ -66,6 +63,7 @@ function HomeTop() {
           {t("home.nav.croq")}
         </a>
         <a href={studioPath(locale)}>{t("home.nav.studio")}</a>
+        <a href={marketPath(locale)}>{t("home.nav.market")}</a>
         <a href={DOCS}>{t("home.nav.docs")}</a>
         <LangSwitch label={t("home.nav")} />
       </nav>
@@ -155,6 +153,10 @@ export function Home() {
               {t("home.hero.docs")}
             </a>
           </p>
+          {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
+          <a className="hero-allow" href={duelRankingPath(locale)}>
+            {t("home.hero.allowList")}&nbsp;→
+          </a>
         </div>
         <Departures />
         <Toy />

@@ -3,6 +3,8 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SignIn } from "../src/application/auth";
 import { AcceptTerms } from "../src/application/terms";
+import { AllowList } from "../src/application/allowList";
+import { allowListMessage } from "@dno/chain-adapter/standings";
 import { ImageArchive, sha256Hex } from "../src/application/archive";
 import { Metadata, sealedImageOf } from "../src/application/metadata";
 import { silentLogger } from "../src/application/ports/logger";
@@ -22,6 +24,7 @@ let store: MemoryStore;
 let chainState: FakeChainState;
 let now = 1_790_000_000;
 let nudges = 0;
+const ADMIN = "admin-token-0123456789";
 
 beforeAll(async () => {
   store = new MemoryStore();
@@ -59,6 +62,7 @@ beforeAll(async () => {
     metadata: new Metadata(queries, "https://api.test", new ImageArchive(store, "https://arweave.net")),
     signIn,
     terms: new AcceptTerms(store, ethersVerifier, { now: () => now }),
+    allowList: { list: new AllowList(store, ethersVerifier, { now: () => now }, 500), adminToken: ADMIN },
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
     metrics: new Metrics({
       store,
@@ -303,6 +307,41 @@ describe("indexer hooks", () => {
     expect(res.statusCode).toBe(202);
     expect(nudges).toBe(1);
     expect((await get("/health")).body).toMatchObject({ ok: true, block: 108, indexer: { running: true } });
+  });
+});
+
+describe("duel ranking and allow list", () => {
+  it("ranks the boxes by their duels", async () => {
+    expect((await get("/v1/leaderboard/duels")).body.data).toEqual([
+      { tokenId: 0, wins: 1, losses: 0 },
+      { tokenId: 1, wins: 0, losses: 1 },
+    ]);
+  });
+
+  it("files a claim signed by the address it names, and ranks it", async () => {
+    const message = allowListMessage(wallet.address, new Date(now * 1000));
+    const signature = await wallet.signMessage(message);
+    const res = await app.inject({ method: "POST", url: "/v1/allowlist", payload: { address: wallet.address, message, signature } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toMatchObject({ points: 0, claimedAt: now, rank: 1, claimants: 1, places: 500 });
+    expect((await get(`/v1/allowlist/${wallet.address}`)).body.data).toMatchObject({ rank: 1 });
+    // Someone who never claimed sees their points, unranked.
+    expect((await get(`/v1/allowlist/${ALICE}`)).body.data).toMatchObject({ points: 6, live: { beaten: 1, faced: 1, opened: 1 }, rank: null, claimants: 1 });
+  });
+
+  it("refuses a claim signed by someone else or naming someone else", async () => {
+    const other = Wallet.createRandom();
+    const message = allowListMessage(wallet.address, new Date());
+    const post = (payload: object) => app.inject({ method: "POST", url: "/v1/allowlist", payload });
+    expect((await post({ address: wallet.address, message, signature: await other.signMessage(message) })).statusCode).toBe(401);
+    expect((await post({ address: other.address, message, signature: await other.signMessage(message) })).statusCode).toBe(400);
+    expect((await post({ address: wallet.address, message: "hello", signature: await wallet.signMessage("hello") })).statusCode).toBe(400);
+  });
+
+  it("lists every claimant only for whoever holds the token", async () => {
+    expect((await get("/v1/allowlist")).status).toBe(401);
+    expect((await get("/v1/allowlist?token=wrong")).status).toBe(401);
+    expect((await get(`/v1/allowlist?token=${ADMIN}`)).body.data).toMatchObject([{ rank: 1, address: WALLET, inPlace: true }]);
   });
 });
 

@@ -408,6 +408,44 @@ duel voided by its challenger publishes `aHolds = false` and four zeros: it says
 about the accepter. A duel whose accepter did not hold B publishes only that, and goes
 back on the shelf, so nobody can clear the shelf with boxes they do not have.
 
+### Duel ranking
+
+Every `DuelResolved` names a winner and a loser. The leaderboard's Duels tab ranks the boxes by
+wins, then fewest losses, then the lower serial (`duelStandings`); the first three with a win
+wear a gold, silver or bronze rosette, pinned on the box in 3D. A box keeps its rosette sealed:
+the ranking is by box, never by holder, and shows nothing the duels did not.
+
+## Mainnet allow list claim
+
+The best players of the test network get a place on the mainnet allow list. Points come only
+from facts the chain already made public about the address: 3 per distinct opponent beaten in
+a duel, 1 per distinct opponent faced, 2 per box opened (10 at most). A duel against yourself
+counts nothing. Nothing is on-chain and nobody is ranked who did not claim.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant App
+  participant W as Wallet
+  participant API
+  U->>App: Leaderboard, Duels tab
+  App->>API: GET /v1/allowlist/:address
+  API-->>App: live points, rank (null until claimed), claimants, places
+  U->>App: Claim my place
+  App->>W: personal_sign("I, <address>, claim a place on the DO NOT OPEN mainnet allow list…")
+  W-->>App: signature (no gas)
+  App->>API: POST /v1/allowlist {address, message, signature}
+  API->>API: message names the address; signer = address
+  API->>API: points from resolved duels and openers (playerPoints)
+  API->>API: keep max(kept points, points now), first claim date
+  API-->>App: points, rank among claimants, places
+  Note over API: A test network redeploy empties the index, not allow_list_claims
+```
+
+Signing again ("Update my points") keeps the first claim's date and the best points. When the
+list closes, the first `ALLOW_LIST_PLACES` (500) claimants get a place; the operator exports
+them with `GET /v1/allowlist?token=`.
+
 ## Give a box away
 
 ```mermaid

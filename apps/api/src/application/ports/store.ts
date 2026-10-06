@@ -6,6 +6,7 @@ import type { Rat } from "../../domain/rats";
 import type { Request } from "../../domain/request";
 import type { Address, ChainRef, DuelStatus } from "../../domain/types";
 import type { User } from "../../domain/user";
+import type { AllowListClaim } from "../allowList";
 import type { TermsAcceptance } from "../terms";
 
 export interface EntangleProposal {
@@ -157,6 +158,11 @@ export interface Store extends ReadStore {
   saveTermsAcceptance(a: TermsAcceptance): Promise<TermsAcceptance | null>;
   /** Every version of the terms the address signed, oldest first. */
   termsAcceptances(address: Address): Promise<TermsAcceptance[]>;
+  /** Allow list claims. Not a read model: a replay, or a test network redeployment, keeps them. */
+  allowListClaim(address: Address): Promise<AllowListClaim | null>;
+  allowListClaims(): Promise<AllowListClaim[]>;
+  /** Files a claim, replacing the address's earlier one. */
+  saveAllowListClaim(c: AllowListClaim): Promise<void>;
   /**
    * The relayer meter of an account on a UTC day. Not a read model: a replay of the chain keeps
    * it. `apply` sees the meter, locked against concurrent calls, and returns what to add to it,

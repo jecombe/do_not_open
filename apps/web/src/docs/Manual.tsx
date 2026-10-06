@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { spec, studio } from "@dno/game-spec";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
@@ -49,18 +50,26 @@ const CONTRACTS = [
   { key: "ratPantry", address: "0x1334d72fC60cBedcF409d6583F0Ec009c285E75B" },
 ] as const;
 
+/** `part-boxes` reads as that part's first chapter; a chapter as itself. */
+const firstOf = (id: string): string => PARTS.find((p) => `part-${p.key}` === id)?.sections[0] ?? id;
+
 /** Highlights the section being read in the routing slip. */
 function useCurrentSection(): string {
   const [current, setCurrent] = useState<string>(SECTIONS[0]!);
   useEffect(() => {
     const seen = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (e.isIntersecting) setCurrent(e.target.id);
+        for (const e of entries) if (e.isIntersecting) setCurrent(firstOf(e.target.id));
       },
       { rootMargin: "-30% 0px -60% 0px" },
     );
     for (const id of SECTIONS) {
       const el = document.getElementById(id);
+      if (el) seen.observe(el);
+    }
+    // A part's title page counts as its first chapter: the slip opens that part as soon as it shows.
+    for (const part of PARTS) {
+      const el = document.getElementById(`part-${part.key}`);
       if (el) seen.observe(el);
     }
     return () => seen.disconnect();
@@ -133,6 +142,62 @@ function PartHead({ part }: { part: PartKey }) {
   );
 }
 
+/**
+ * The routing slip. On a wide screen, the seven parts stay listed and only the one being read
+ * shows its chapters, so the slip never needs scrolling. On a phone, one bar names the chapter
+ * being read and unfolds the whole list.
+ */
+function Contents({ current }: { current: string }) {
+  const t = useT();
+  const fold = useRef<HTMLDetailsElement>(null);
+  // A link followed from the unfolded list folds it back. Folding it hides the link before the
+  // browser scrolls, which then stays put: the scroll is done here instead.
+  const follow = (e: MouseEvent<HTMLDetailsElement>) => {
+    const id = (e.target as HTMLElement).closest("a")?.getAttribute("href")?.slice(1);
+    if (!id) return;
+    e.preventDefault();
+    fold.current?.removeAttribute("open");
+    document.getElementById(id)?.scrollIntoView();
+    history.replaceState(history.state, "", `#${id}`);
+  };
+  const reading = PARTS.find((p) => (p.sections as readonly string[]).includes(current)) ?? PARTS[0];
+  const list = (
+    <ol className="toc-parts">
+      {PARTS.map((part) => {
+        const open = part.key === reading.key;
+        return (
+          <li key={part.key} className={open ? "is-open" : undefined}>
+            <a className="toc-group" href={`#part-${part.key}`} aria-current={open ? "true" : undefined}>
+              {t(`docs.group.${part.key}`)}
+            </a>
+            <ol>
+              {part.sections.map((id) => (
+                <li key={id}>
+                  <a href={`#${id}`} aria-current={current === id ? "true" : undefined}>
+                    {t(`docs.section.${id}`)}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </li>
+        );
+      })}
+    </ol>
+  );
+  return (
+    <nav className="toc" aria-label={t("docs.contents")}>
+      <div className="toc-wide">{list}</div>
+      <details className="toc-narrow" ref={fold} onClick={follow}>
+        <summary>
+          <span className="toc-label">{t("docs.contents")}</span>
+          <span className="toc-now">{t(`docs.section.${current as (typeof SECTIONS)[number]}`)}</span>
+        </summary>
+        {list}
+      </details>
+    </nav>
+  );
+}
+
 export function Manual() {
   const t = useT();
   const locale = useLocale();
@@ -179,22 +244,7 @@ export function Manual() {
       </section>
 
       <div className="layout">
-        <nav className="toc" aria-label={t("docs.contents")}>
-          {PARTS.map((part) => (
-            <div key={part.key}>
-              <p className="toc-group">{t(`docs.group.${part.key}`)}</p>
-              <ol>
-                {part.sections.map((id) => (
-                  <li key={id}>
-                    <a href={`#${id}`} aria-current={current === id ? "true" : undefined}>
-                      {t(`docs.section.${id}`)}
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
-        </nav>
+        <Contents current={current} />
 
         <main>
           <PartHead part="start" />
@@ -326,6 +376,7 @@ export function Manual() {
             <div className="prose">
               <p>{t("docs.mech.p1", { min: spec.affection.perFeedMin, max: spec.affection.perFeedMax, threshold: spec.affection.goldenThreshold })}</p>
               <p>{t("docs.mech.p2")}</p>
+              <p>{t("docs.mech.p3")}</p>
             </div>
           </section>
 
@@ -517,6 +568,7 @@ export function Manual() {
             <p className="testnet-note">{t("docs.testnet.note")}</p>
             <div className="prose">
               <p>{t("docs.testnet.p1")}</p>
+              <p>{t("docs.testnet.allowList", { places: DEFAULT_ALLOW_LIST_PLACES })}</p>
               <p>{t("docs.testnet.contracts")}</p>
             </div>
             <ul className="addresses">

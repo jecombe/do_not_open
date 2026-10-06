@@ -4,6 +4,7 @@ import pino from "pino";
 import { AskManual, type AnswerModel } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
+import { AllowList } from "./application/allowList";
 import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
 import type { ArchiveStore } from "./application/ports/archive";
@@ -210,6 +211,7 @@ async function main() {
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
+          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           studio: { studio, publicUrl: config.PUBLIC_URL },
