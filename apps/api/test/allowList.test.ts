@@ -1,6 +1,6 @@
 import { allowListMessage } from "@dno/chain-adapter/standings";
 import { beforeEach, describe, expect, it } from "vitest";
-import { AllowList } from "../src/application/allowList";
+import { AllowList, FACTS_TTL } from "../src/application/allowList";
 import { silentLogger } from "../src/application/ports/logger";
 import { SyncChain } from "../src/application/syncChain";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
@@ -84,5 +84,18 @@ describe("allow list", () => {
     await fresh.saveAllowListClaim((await store.allowListClaim(ALICE))!);
     const list = new AllowList(fresh, verifier, { now: () => now }, 2);
     expect(await list.status(ALICE)).toMatchObject({ points: 8, live: { points: 0 }, rank: 1 });
+  });
+
+  it("reuses the public facts for a while, but a claim reads them afresh", async () => {
+    const list = new AllowList(store, verifier, { now: () => now }, 2);
+    expect((await list.status(CAROL)).live.points).toBe(1);
+    // Carol beats Bob (+3 beaten, +1 faced): a quest platform checking her within the window still sees the old points.
+    const later = new FakeChain();
+    later.add(...duel(4, 200, { token: 2, who: CAROL }, { token: 1, who: BOB }, 2));
+    await new SyncChain(later, store, { startBlock: 200, confirmations: 0, rescan: 0, maxBlocksPerPass: 1000 }, silentLogger).pass();
+    expect((await list.status(CAROL)).live.points).toBe(1);
+    expect((await claim(list, CAROL)).live.points).toBe(5);
+    now += FACTS_TTL;
+    expect((await list.status(CAROL)).live.points).toBe(5);
   });
 });
