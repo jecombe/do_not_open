@@ -38,7 +38,7 @@ describe("X boarding passes", () => {
 
   it("hands out a token once, and keeps only its hash", async () => {
     const { token, pass } = await passes.start();
-    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), handle: null, tweetUrl: null, followed: false, tasks: { follow: false, post: false, like: false, reply: false, repost: false }, address: null, bonus: 0 });
+    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), seated: false, handle: null, tweetUrl: null, followed: false, tasks: { follow: false, post: false, like: false, reply: false, repost: false }, address: null, bonus: 0 });
     const [stored] = await store.xPasses();
     expect(stored!.id).toBe(passSecrets.hash(token));
     expect(JSON.stringify(stored)).not.toContain(token);
@@ -86,7 +86,7 @@ describe("X boarding passes", () => {
     // A new browser: a new pass, the same account.
     const next = await passes.start();
     const moved = await passes.verifyTweet(next.token, tweets.post("cat", "6", next.pass.code));
-    expect(moved).toMatchObject({ code: next.pass.code, handle: "cat", followed: true, tasks: { follow: true, post: false, like: false, reply: false, repost: true }, address: wallet.address.toLowerCase(), bonus: X_PASS_BONUS });
+    expect(moved).toMatchObject({ code: next.pass.code, handle: "cat", followed: true, tasks: { follow: true, post: true, like: false, reply: false, repost: true }, address: wallet.address.toLowerCase(), bonus: X_PASS_BONUS });
     expect(await store.xPasses()).toHaveLength(1);
     await expect(passes.status(old.token)).rejects.toMatchObject({ code: "no-pass" });
   });

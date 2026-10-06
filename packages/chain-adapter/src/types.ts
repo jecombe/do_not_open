@@ -614,6 +614,9 @@ export interface AllowListStatus {
   live: PlayerPoints;
   /** Points from an X boarding pass linked to this wallet; absent or 0 without one. */
   bonus?: number;
+  /** Whether this address holds a seat on the list: claimed and tried the testnet (minted,
+   *  opened or dueled), or its X account did every task. Absent where nobody counts seats. */
+  seated?: boolean;
   /** The points the ranking counts: the best it had since it claimed (a test network
    *  redeployment forgets the duels, not the claims), or `live` before it claims. */
   points: number;

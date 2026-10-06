@@ -31,7 +31,7 @@ export interface HttpDeps {
   allowList?: { list: AllowList; adminToken: string | null; seats?: Seats };
   /** X boarding passes; the admin token (the allow list's) lists them all; Sign in with X
    *  sends players back only to `returnOrigins`. */
-  xPasses?: { passes: XPasses; adminToken: string | null; returnOrigins: string[] };
+  xPasses?: { passes: XPasses; adminToken: string | null; returnOrigins: string[]; announcement?: string | null };
   /** The relayer proxy. Absent: the app talks to Zama's relayer directly. */
   relayer?: RelayerGate;
   /** Relayer submissions per minute per IP. */
@@ -360,7 +360,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     };
     app.get("/v1/xpass/x", async (_req, reply) => {
       reply.header("cache-control", "public, max-age=60");
-      return { data: { signIn: passes.signInEnabled } };
+      return { data: { signIn: passes.signInEnabled, announcement: xPasses.announcement ?? null } };
     });
     app.post("/v1/xpass/x/start", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
       const body = z.object({ returnTo: z.string().url().max(500) }).parse(req.body);

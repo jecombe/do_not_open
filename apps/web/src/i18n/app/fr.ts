@@ -551,6 +551,7 @@ export const fr: Record<AppKey, string> = {
   "al.update": "Mettre à jour mes points",
   "al.signing": "Signature…",
   "al.rules": "Chaque adversaire battu en duel vaut 3 points, chaque adversaire affronté 1, chaque boîte ouverte 2 (10 au plus). Les duels entre vos propres wallets ne comptent pas. Vos points viennent seulement de ce que la chaîne montre déjà ; réclamer donne votre adresse à la liste, rien d'autre. Vos meilleurs points sont gardés, même si le réseau de test repart de zéro.",
+  "al.noSeatYet": "Tu as réclamé, mais ta place n'est pas encore réservée : minte une boîte, ouvre-en une ou fais un duel une fois sur le testnet, et c'est fait.",
   "xpass.connect": "Connecte ton X sur la page d'accueil : +{bonus} points une fois ce wallet relié →",
   "xpass.linked": "✓ Relié à X @{handle} : +{bonus} points.",
   "xpass.link": "Relier à mon X @{handle} (+{bonus} points)",

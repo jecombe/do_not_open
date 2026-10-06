@@ -3,7 +3,7 @@ import { X_PASS_BONUS } from "@dno/chain-adapter/standings";
 import { ANNOUNCEMENT_TWEET_ID, announcementLinks, X_FOLLOW, X_HANDLE, xPost } from "../links";
 import { useLocale } from "../i18n/locale";
 import { duelRankingPath, homePath, SITE_URL } from "../site";
-import { declareXTask, signInWithX, startXPass, useSeats, useXPass, verifyXPassTweet, xPassApi, XPassError, xSignInEnabled, type XPassView, type XTask } from "../xpass";
+import { declareXTask, signInWithX, startXPass, useSeats, useXPass, verifyXPassTweet, xPassApi, XPassError, xSettings, type XPassView, type XTask } from "../xpass";
 import { useT } from "./i18n";
 
 const REFUSALS = ["bad-tweet-url", "tweet-not-found", "code-missing", "tweet-used", "x-down", "no-pass", "sign-in-expired", "sign-in-refused", "list-full"] as const;
@@ -25,6 +25,7 @@ export function Boarding() {
   const { pass, loading, set } = useXPass();
   const [busy, setBusy] = useState<"code" | "verify" | "x" | null>(null);
   const [signIn, setSignIn] = useState<boolean | null>(null);
+  const [announcement, setAnnouncement] = useState<string | null>(ANNOUNCEMENT_TWEET_ID || null);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState("");
   const live = xPassApi() !== null;
@@ -32,7 +33,11 @@ export function Boarding() {
 
   useEffect(() => {
     let on = true;
-    void xSignInEnabled().then((v) => on && setSignIn(v));
+    void xSettings().then((x) => {
+      if (!on) return;
+      setSignIn(x.signIn);
+      if (x.announcement) setAnnouncement(x.announcement);
+    });
     return () => {
       on = false;
     };
@@ -108,6 +113,9 @@ export function Boarding() {
   };
 
   const verified = !!pass?.handle;
+  const seated = !!pass?.seated;
+  const required: XTask[] = seats?.required ?? ["follow", "post"];
+  const missing = required.filter((k) => !pass?.tasks?.[k]).length;
   const done = TASKS.filter((k) => pass?.tasks?.[k]).length;
   const tweet = t(pass ? "home.boarding.tweet" : "home.boarding.tweetNoCode", { handle: X_HANDLE, code: pass?.code ?? "" });
 
@@ -125,7 +133,12 @@ export function Boarding() {
           {t("home.boarding.kicker")}
           {seats && seats.places !== null && <span className="boarding-count">{t("home.boarding.seats", { taken: seats.taken, places: seats.places })}</span>}
         </p>
-        <h2 id="boarding-title">{verified ? t("home.boarding.done", { handle: pass!.handle! }) : t("home.boarding.title")}</h2>
+        <h2 id="boarding-title">
+          {seated ? t("home.boarding.done", { handle: pass!.handle! }) : verified ? t("home.boarding.almost", { handle: pass!.handle! }) : t("home.boarding.title")}
+        </h2>
+        <p className={`boarding-seat${seated ? " is-seated" : ""}`}>
+          {seated ? t("home.boarding.seated") : t("home.boarding.toSeat", { count: (verified ? 0 : 1) + missing })}
+        </p>
 
         <div className="boarding-body">
           <div className="boarding-part">
@@ -152,7 +165,7 @@ export function Boarding() {
                     {pass?.tasks?.post ? "✓" : 2}
                   </span>
                   <ul className="boarding-tasks boarding-tasks-one">
-                    <Task task="post" href={xPost(t("home.boarding.tweetNoCode", { handle: X_HANDLE }), url)} done={!!pass?.tasks?.post} live={live} onDone={() => declare("post")} />
+                    <Task task="post" announcement={announcement} href={xPost(t("home.boarding.tweetNoCode", { handle: X_HANDLE }), url)} done={!!pass?.tasks?.post} live={live} onDone={() => declare("post")} />
                   </ul>
                 </li>
               </ol>
@@ -222,7 +235,7 @@ export function Boarding() {
             </h3>
             <ul className="boarding-tasks">
               {TASKS.map((task) => (
-                <Task key={task} task={task} done={!!pass?.tasks?.[task]} live={live} onDone={() => declare(task)} />
+                <Task key={task} task={task} announcement={announcement} done={!!pass?.tasks?.[task]} live={live} onDone={() => declare(task)} />
               ))}
             </ul>
             <p className="boarding-fine">{t("home.boarding.tasksFine")}</p>
@@ -264,11 +277,11 @@ export function Boarding() {
  * One task on X: open it, do it, and after a few seconds mark it done. Like, reply and repost
  * wait for the announcement post.
  */
-function Task({ task, done, live, onDone, href: given }: { task: XTask; done: boolean; live: boolean; onDone: () => Promise<void>; href?: string }) {
+function Task({ task, done, live, onDone, href: given, announcement }: { task: XTask; done: boolean; live: boolean; onDone: () => Promise<void>; href?: string; announcement: string | null }) {
   const t = useT();
   const [left, setLeft] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const post = ANNOUNCEMENT_TWEET_ID ? announcementLinks(ANNOUNCEMENT_TWEET_ID) : null;
+  const post = announcement ? announcementLinks(announcement) : null;
   const href = given ?? (task === "follow" ? X_FOLLOW : task === "post" ? undefined : post?.[task]);
 
   useEffect(() => {

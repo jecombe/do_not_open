@@ -113,7 +113,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/allowlist` | Files a claim for a place on the mainnet allow list: `{ address, message, signature }`, the message from `allowListMessage` (`@dno/chain-adapter/standings`) naming that address, signed by it (EIP-191, no gas). Signing again keeps the first claim's date and the best points. Answers the status below; `400` if it is not a claim or names another address, `401` if another account signed it. 10 a minute per IP |
 | `GET /v1/allowlist/:address` | Where an address stands: `live` points (`beaten`, `faced`, `opened`), the `points` the ranking counts, `claimedAt`, `rank` among claimants (null until it claims), `claimants`, `places`. Not cached by HTTP; the public facts behind the points (resolved duels, openers) are reused for 30 s (`FACTS_TTL`), since quest platforms such as Galxe check addresses in bursts, and a claim always reads them afresh. Public: the points come from public facts only |
-| `GET /v1/seats` | `{ taken, places }`: seats taken on the mainnet list, out of how many. Cached 10 s |
+| `GET /v1/seats` | `{ taken, places, required }` (`required`: the tasks on X a pass needs): seats taken on the mainnet list, out of how many. Cached 10 s |
 | `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
@@ -197,8 +197,11 @@ players of a resolved duel are public (the challenger proved holding box A, the 
 a duel between one address and itself counts nothing. The ranking takes, for each claimant, the
 best of the points kept at its last claim and its points now; ties go to the earlier claim.
 Nobody is ranked who did not claim. The list has `ALLOW_LIST_PLACES` seats (3,000 by default), first come, first served
-(`application/seats.ts`): one per person, an X account proved on a boarding pass or a wallet that
-claimed without one (an X account and its linked wallet are one). Once they are taken, a new
+(`application/seats.ts`): one per person, taken either way: an X account connected on a boarding
+pass with every required task done (follow and post; like, reply and repost too once
+`X_ANNOUNCEMENT_ID` names the announcement), or a wallet that claimed and tried the testnet (a mint,
+an opening or a duel, all public facts). An X account and its linked wallet are one person; a
+claimant who plays only after claiming sits down then, unchecked. Once they are taken, a new
 claim or a new X account gets `409 list-full`; those inside keep updating. `GET /v1/seats` says
 `{ taken, places }` (cached 10 s), the boarding page's counter; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
 
@@ -219,7 +222,7 @@ as a bearer (`private, no-store`):
 | --- | --- |
 | `POST /v1/xpass` | A new pass: `{ token, pass }`. The token is shown once; the store keeps its sha256. 5 a minute per IP |
 | `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `tasks`, `address`, `bonus`. `401 no-pass` for an unknown token |
-| `GET /v1/xpass/x` | `{ signIn }`: whether Sign in with X is configured |
+| `GET /v1/xpass/x` | `{ signIn, announcement }`: whether Sign in with X is configured, and the announcement post's id (`X_ANNOUNCEMENT_ID`) |
 | `POST /v1/xpass/x/start` | `{ returnTo }` (one of `X_RETURN_ORIGINS`): `{ url }`, X's authorize page for this pass. `503 sign-in-off` without an X app |
 | `GET /v1/xpass/x/callback` | Where X sends the player: puts the account (handle and X user id) on the pass, then `303` to `returnTo?x=<ok\|sign-in-refused\|sign-in-expired\|x-down\|no-pass>#boarding`. An account already on an older pass moves to this one |
 | `POST /v1/xpass/follow` | Notes the declared follow (X's follows cannot be read for free) |
@@ -516,5 +519,5 @@ Configuration is environment variables, all optional in development: see `src/co
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
-`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

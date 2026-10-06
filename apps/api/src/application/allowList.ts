@@ -20,6 +20,8 @@ export interface AllowListClaim {
 
 export interface AllowListView {
   live: PlayerPoints;
+  /** Whether this address holds a seat: it claimed and tried the testnet, or its X account did every task. */
+  seated: boolean;
   /** Points from an X boarding pass linked to this wallet (0 without one). */
   bonus: number;
   points: number;
@@ -45,7 +47,7 @@ const MAX_MESSAGE = 1_000;
  *  addresses in bursts, and each read would otherwise load every duel and every opening. */
 export const FACTS_TTL = 30;
 
-type PublicFacts = { duels: SettledDuel[]; openers: Address[] };
+type PublicFacts = { duels: SettledDuel[]; openers: Address[]; minters: Address[] };
 
 /**
  * The mainnet allow list. A player claims a place by signing a message, free and off-chain; the
@@ -62,8 +64,8 @@ export class AllowList {
     private readonly places: number | null,
     /** Extra points per wallet, from X boarding passes. None by default. */
     private readonly bonuses: () => Promise<Map<Address, number>> = async () => new Map(),
-    /** The list's seats: a new claimant needs one. No cap by default. */
-    private readonly seats: { admit(): Promise<void> } | null = null,
+    /** The list's seats: a claimant who tried the testnet takes one. No cap by default. */
+    private readonly seats: { admit(): Promise<void>; seatedPassOf(address: Address): Promise<boolean> } | null = null,
   ) {}
 
   async claim(rawAddress: string, message: string, signature: string): Promise<AllowListView> {
@@ -82,8 +84,9 @@ export class AllowList {
     // A claim reads the chain's facts afresh, so a duel won a moment ago counts.
     const { live } = await this.facts(address, true);
     const kept = await this.store.allowListClaim(address);
-    // Someone new needs a seat; a wallet already linked to a boarded X account has one.
-    if (!kept && this.seats && !(await this.store.xPassByAddress(address))?.handle) await this.seats.admit();
+    // Someone new who tried the testnet takes a seat, unless the X account their wallet is linked
+    // to already has one. Someone who has not played yet claims without one, until they do.
+    if (!kept && this.seats && (await this.players(true)).has(address) && !(await this.seats.seatedPassOf(address))) await this.seats.admit();
     const now = this.clock.now();
     await this.store.saveAllowListClaim({
       address,
@@ -103,7 +106,8 @@ export class AllowList {
     const mine = i >= 0 ? ranked[i]! : null;
     const live = mine ? mine.live : (await this.facts(address)).live;
     const bonus = mine ? mine.bonus : ((await this.bonuses()).get(address) ?? 0);
-    return { live, bonus, points: mine?.points ?? live.points + bonus, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: this.places };
+    const seated = (!!mine && (await this.players()).has(address)) || (!!this.seats && (await this.seats.seatedPassOf(address)));
+    return { live, seated, bonus, points: mine?.points ?? live.points + bonus, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: this.places };
   }
 
   /** Every claimant, best first: the list to export when it closes. */
@@ -117,6 +121,18 @@ export class AllowList {
       })
       .sort(byClaimRank)
       .map((e, i) => ({ rank: i + 1, ...e, inPlace: this.places === null || i < this.places }));
+  }
+
+  /** Addresses that tried the testnet: minted, opened a box, or fought a duel. Public facts only. */
+  async players(fresh = false): Promise<Set<Address>> {
+    const f = await this.publicFacts(fresh);
+    const out = new Set<Address>([...f.minters, ...f.openers].map(normalizeAddress));
+    for (const d of f.duels) {
+      if (d.challenger.toLowerCase() === d.accepter.toLowerCase()) continue;
+      out.add(normalizeAddress(d.challenger));
+      out.add(normalizeAddress(d.accepter));
+    }
+    return out;
   }
 
   private async facts(address: Address, fresh = false): Promise<{ live: PlayerPoints }> {
@@ -137,7 +153,7 @@ export class AllowList {
   }
 
   private async loadFacts(): Promise<PublicFacts> {
-    const [duels, opened] = await Promise.all([this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS }), this.store.openedBoxes()]);
-    return { duels: settledDuels(duels), openers: opened.flatMap((b) => (b.openedBy ? [b.openedBy] : [])) };
+    const [duels, opened, minters] = await Promise.all([this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS }), this.store.openedBoxes(), this.store.minters()]);
+    return { duels: settledDuels(duels), openers: opened.flatMap((b) => (b.openedBy ? [b.openedBy] : [])), minters };
   }
 }

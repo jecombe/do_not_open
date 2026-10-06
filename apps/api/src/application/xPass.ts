@@ -37,6 +37,8 @@ export interface XPass {
 
 export interface XPassView {
   code: string;
+  /** Whether the pass holds a seat on the mainnet list: account connected, every required task done. */
+  seated: boolean;
   handle: string | null;
   tweetUrl: string | null;
   followed: boolean;
@@ -51,7 +53,7 @@ export interface XPassView {
  *  repost the announcement. */
 export const X_TASKS = ["follow", "post", "like", "reply", "repost"] as const;
 export type XTask = (typeof X_TASKS)[number];
-const TASK_FIELD = { follow: "followedAt", post: "postedAt", like: "likedAt", reply: "repliedAt", repost: "repostedAt" } as const satisfies Record<XTask, keyof XPass>;
+export const TASK_FIELD = { follow: "followedAt", post: "postedAt", like: "likedAt", reply: "repliedAt", repost: "repostedAt" } as const satisfies Record<XTask, keyof XPass>;
 
 /** Sign in with X: OAuth 2.0, authorization code with PKCE, read-only scopes. */
 export interface XSignIn {
@@ -134,8 +136,8 @@ export class XPasses {
     private readonly verifier: SignatureVerifier,
     private readonly clock: Clock,
     private readonly signIn: { x: XSignIn; secrets: LoginSecrets } | null = null,
-    /** The list's seats: a new X account needs one. No cap by default. */
-    private readonly seats: { admit(): Promise<void> } | null = null,
+    /** The list's seats: a pass takes one once its account is connected and its tasks done. */
+    private readonly seats: { admit(): Promise<void>; passSeated(p: XPass): boolean } | null = null,
   ) {}
 
   /** Whether Sign in with X is configured; without it, the code-in-a-post proof stands in. */
@@ -192,22 +194,23 @@ export class XPasses {
     const now = this.clock.now();
     const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, xUserId: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, createdAt: now, verifiedAt: null, updatedAt: now };
     await this.store.saveXPass(pass);
-    return { token, pass: view(pass) };
+    return { token, pass: this.view(pass) };
   }
 
   async status(token: string): Promise<XPassView> {
-    return view(await this.find(token));
+    return this.view(await this.find(token));
   }
 
   /** Notes a task the player says they did on X. The first time counts; again is a no-op. */
   async declare(token: string, task: XTask): Promise<XPassView> {
     const pass = await this.find(token);
     const field = TASK_FIELD[task];
-    if (pass[field] !== null) return view(pass);
+    if (pass[field] !== null) return this.view(pass);
     const now = this.clock.now();
     const next = { ...pass, [field]: now, updatedAt: now };
+    await this.sitDown(pass, next);
     await this.store.saveXPass(next);
-    return view(next);
+    return this.view(next);
   }
 
   follow(token: string): Promise<XPassView> {
@@ -234,7 +237,9 @@ export class XPasses {
     const used = await this.store.xPassByTweet(tweet.id);
     if (used && used.id !== pass.id) throw new XPassRefused("tweet-used", "this post already verified another pass");
 
-    return view(await this.attach(pass, { handle: tweet.handle, tweetId: tweet.id, tweetUrl: `https://x.com/${tweet.handle}/status/${tweet.id}` }));
+    // That post carried the code: it is the boarding tweet, the "post" task done and proved.
+    const posted = pass.postedAt === null ? { ...pass, postedAt: this.clock.now() } : pass;
+    return this.view(await this.attach(posted, { handle: tweet.handle, tweetId: tweet.id, tweetUrl: `https://x.com/${tweet.handle}/status/${tweet.id}` }));
   }
 
   /**
@@ -245,14 +250,6 @@ export class XPasses {
     const now = this.clock.now();
     const byId = proof.xUserId ? await this.store.xPassByXUser(proof.xUserId) : null;
     const byHandle = await this.store.xPassByHandle(proof.handle);
-    // A new X account takes a seat; one already on a pass, or this pass's own, has one.
-    if (!pass.handle && !byId && !byHandle && this.seats) {
-      try {
-        await this.seats.admit();
-      } catch {
-        throw new XPassRefused("list-full", "every seat on the mainnet list is taken");
-      }
-    }
     let next: XPass = {
       ...pass,
       handle: proof.handle,
@@ -273,10 +270,27 @@ export class XPasses {
         address: next.address ?? older.address,
         createdAt: Math.min(older.createdAt, next.createdAt),
       };
-      await this.store.deleteXPass(older.id);
     }
+    // Someone who had no seat, on this pass or an older one of the same account, sits down now.
+    await this.sitDown(pass, next, [byId, byHandle]);
+    for (const older of [byId, byHandle]) if (older && older.id !== pass.id) await this.store.deleteXPass(older.id);
     await this.store.saveXPass(next);
     return next;
+  }
+
+  /** Checks for a free seat when a pass is about to take one it did not have. */
+  private async sitDown(before: XPass, after: XPass, older: (XPass | null)[] = []): Promise<void> {
+    if (!this.seats || !this.seats.passSeated(after)) return;
+    if (this.seats.passSeated(before) || older.some((o) => o && this.seats!.passSeated(o))) return;
+    try {
+      await this.seats.admit();
+    } catch {
+      throw new XPassRefused("list-full", "every seat on the mainnet list is taken");
+    }
+  }
+
+  private view(p: XPass): XPassView {
+    return view(p, this.seats ? this.seats.passSeated(p) : !!p.handle);
   }
 
   /** Links a wallet, signed by it. The pass needs its X account first. */
@@ -299,7 +313,7 @@ export class XPasses {
     if (other && other.id !== pass.id) throw new XPassRefused("address-taken", "this wallet is already linked to another X account");
     const next = { ...pass, address, updatedAt: this.clock.now() };
     await this.store.saveXPass(next);
-    return view(next);
+    return this.view(next);
   }
 
   /** Every pass, for the team's checks before mainnet. */
@@ -321,7 +335,7 @@ export async function xPassBonuses(store: Store): Promise<Map<Address, number>> 
   return bonus;
 }
 
-function view(p: XPass): XPassView {
+function view(p: XPass, seated: boolean): XPassView {
   const tasks = Object.fromEntries(X_TASKS.map((t) => [t, p[TASK_FIELD[t]] !== null])) as Record<XTask, boolean>;
-  return { code: p.code, handle: p.handle, tweetUrl: p.tweetUrl, followed: tasks.follow, tasks, address: p.address, bonus: p.handle && p.address ? X_PASS_BONUS : 0 };
+  return { code: p.code, seated, handle: p.handle, tweetUrl: p.tweetUrl, followed: tasks.follow, tasks, address: p.address, bonus: p.handle && p.address ? X_PASS_BONUS : 0 };
 }

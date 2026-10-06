@@ -401,7 +401,7 @@ describe("X boarding passes", () => {
     posts.set("77", { id: "77", handle: "cat", text: `boarding ${pass.code}` });
     expect((await call("POST", "/v1/xpass/tweet", token, { url: "https://x.com/cat/status/77" })).json().data).toMatchObject({ handle: "cat" });
     expect((await call("POST", "/v1/xpass/follow", token)).json().data).toMatchObject({ followed: true });
-    expect((await call("POST", "/v1/xpass/task", token, { task: "reply" })).json().data.tasks).toEqual({ follow: true, post: false, like: false, reply: true, repost: false });
+    expect((await call("POST", "/v1/xpass/task", token, { task: "reply" })).json().data.tasks).toEqual({ follow: true, post: true, like: false, reply: true, repost: false });
     expect((await call("POST", "/v1/xpass/task", token, { task: "dance" })).statusCode).toBe(400);
   });
 
@@ -415,7 +415,7 @@ describe("X boarding passes", () => {
 
 describe("Sign in with X routes", () => {
   it("says whether Sign in with X is on, and refuses to send players anywhere but the site", async () => {
-    expect((await get("/v1/xpass/x")).body.data).toEqual({ signIn: false });
+    expect((await get("/v1/xpass/x")).body.data).toEqual({ signIn: false, announcement: null });
     const { token } = (await app.inject({ method: "POST", url: "/v1/xpass" })).json().data;
     const start = (returnTo: string) => app.inject({ method: "POST", url: "/v1/xpass/x/start", payload: { returnTo }, headers: { authorization: `Bearer ${token}` } });
     expect((await start("https://evil.test/")).statusCode).toBe(400);

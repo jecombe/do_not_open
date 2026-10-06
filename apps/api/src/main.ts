@@ -6,7 +6,7 @@ import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import { AllowList } from "./application/allowList";
 import { Seats } from "./application/seats";
-import { xPassBonuses, XPasses } from "./application/xPass";
+import { X_TASKS, xPassBonuses, XPasses } from "./application/xPass";
 import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
 import type { ArchiveStore } from "./application/ports/archive";
@@ -207,7 +207,11 @@ async function main() {
     info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
   });
 
-  const seats = new Seats(store, config.ALLOW_LIST_PLACES);
+  // The list and its seats read each other: the seats count who tried the testnet, the list
+  // admits a new claimant to a seat.
+  let allowList: AllowList | null = null;
+  const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"]);
+  allowList = new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats);
 
   const server =
     config.ROLE === "indexer"
@@ -217,7 +221,7 @@ async function main() {
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
-          allowList: { list: new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, seats },
+          allowList: { list: allowList, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, seats },
           xPasses: {
             passes: new XPasses(
               store,
@@ -235,6 +239,7 @@ async function main() {
             ),
             adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null,
             returnOrigins: config.X_RETURN_ORIGINS,
+            announcement: config.X_ANNOUNCEMENT_ID ?? null,
           },
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
