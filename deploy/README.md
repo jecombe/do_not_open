@@ -102,7 +102,8 @@ over the `edge` network (one file per network in `prometheus/targets/`: `sepolia
 (cAdvisor) and the public URLs (blackbox, one file per network in `prometheus/probes/`).
 Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they share).
 Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
-indexer, RPC pool, API traffic, Zama relayer calls, Arweave, Gemini, herald, the studio) and "Server and
+indexer, RPC pool, API traffic, Zama relayer calls, Arweave, Gemini, herald, the mainnet whitelist
+(seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the studio) and "Server and
 URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
 each titled with its network. Only Grafana is public, behind its own login; the edge proxy
 answers `404` to `/metrics` from outside. About 1.2 GB of memory at most (limits in the compose

@@ -63,6 +63,17 @@ protocol=mk("DO NOT OPEN · Protocol","dno-protocol",[
  [{"title":"Token images on Arweave","exprs":[[f"dno_images_archived{{{N}}}","stored"]],"w":8},
   {"title":"Gemini questions today","exprs":[[f"dno_chat_model_questions_today{{{N}}}","asked"],[f"dno_chat_model_questions_limit{{{N}}}","limit"]],"w":8},
   {"title":"Herald posts by account and status","exprs":[[f"dno_herald_posts{{{N}}}","{{network_account}} {{status}}"]],"w":8}],
+ "The mainnet whitelist",
+ [{"title":"Seats taken","type":"stat","exprs":[[f"dno_whitelist_seats_taken{{{N}}}"]],"w":4,"h":4,"desc":"X accounts with every boarding task done, and wallets that claimed and played the testnet; an X account and its linked wallet count once."},
+  {"title":"Seats filled","type":"stat","exprs":[[f"dno_whitelist_seats_taken{{{N}}} / dno_whitelist_seats_places{{{N}}}"]],"unit":"percentunit","w":4,"h":4,"thresholds":G+[{"color":"orange","value":0.9},{"color":"red","value":1}],"desc":"Out of ALLOW_LIST_PLACES. Full: nobody new gets a seat."},
+  {"title":"X accounts connected","type":"stat","exprs":[[f'dno_xpass_passes{{{N},stage="connected"}}']],"w":4,"h":4},
+  {"title":"Wallet claims","type":"stat","exprs":[[f"dno_whitelist_claims{{{N}}}"]],"w":4,"h":4,"desc":"Wallets that signed a claim; they sit down once they minted, opened or dueled."},
+  {"title":"Sign in with X","type":"stat","exprs":[[f"dno_xpass_signin_enabled{{{N}}}"]],"w":4,"h":4,"mappings":[{"type":"value","options":{"0":{"text":"OFF"},"1":{"text":"ON"}}}],"thresholds":[{"color":"orange","value":None},{"color":"green","value":1}],"desc":"ON: X_CLIENT_ID is set. OFF: players prove their account with a post carrying their code."},
+  {"title":"Ideas in the box","type":"stat","exprs":[[f"dno_ideas_received{{{N}}}"]],"w":4,"h":4,"desc":"Read them with GET /v1/ideas?token=ALLOW_LIST_ADMIN_TOKEN."}],
+ [{"title":"Seats taken against the places","exprs":[[f"dno_whitelist_seats_taken{{{N}}}","taken"],[f"dno_whitelist_seats_places{{{N}}}","places"]]},
+  {"title":"Boarding funnel","exprs":[[f"dno_xpass_passes{{{N}}}","{{stage}}"]],"desc":"started: a pass handed out; connected: an X account proved; seated: every required task done; wallet: a wallet linked."}],
+ [{"title":"Tasks on X declared, by task","exprs":[[f"dno_xpass_tasks{{{N}}}","{{task}}"]],"desc":"Declared by the players, checked by hand before mainnet."},
+  {"title":"Sign in with X per hour, by outcome","exprs":[[f"sum by (outcome) (increase(dno_xpass_sign_ins_total{{{N}}}[1h]))","{{outcome}}"]],"desc":"x-down: X refused the code or did not answer; sign-in-refused: the player cancelled on X; list-full: no seat left."}],
  "The studio",
  [{"title":"Open","type":"stat","exprs":[[f"dno_studio_open{{{N}}}"]],"w":4,"h":4,"mappings":[{"type":"value","options":{"0":{"text":"OFF"},"1":{"text":"OPEN"}}}],"thresholds":[{"color":"red","value":None},{"color":"green","value":1}],"desc":"Open: the fal key and the StudioPacks contract are there, and STUDIO_PAUSED is not set."},
   {"title":"Packs sold","type":"stat","exprs":[[f"dno_studio_packs_sold{{{N}}}"]],"w":4,"h":4},
@@ -72,7 +83,7 @@ protocol=mk("DO NOT OPEN · Protocol","dno-protocol",[
   {"title":"Today's AI budget used","type":"stat","exprs":[[f"dno_studio_spent_today_usd{{{N}}} / dno_studio_daily_budget_usd{{{N}}}"]],"unit":"percentunit","w":4,"h":4,"thresholds":G+[{"color":"orange","value":0.8},{"color":"red","value":0.98}],"desc":"Past it, generation waits for midnight UTC (STUDIO_DAILY_BUDGET_USD)."}],
  [{"title":"Generations by kind and status","exprs":[[f"dno_studio_jobs{{{N}}}","{{kind}} {{status}}"]],"desc":"failed: unit given back; rejected: refused by the safety checker or past the day's refunds, unit kept."},
   {"title":"AI spend today against the budget","exprs":[[f"dno_studio_spent_today_usd{{{N}}}","spent today"],[f"dno_studio_daily_budget_usd{{{N}}}","daily budget"]],"unit":"currencyUSD"}],
-],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services, the studio. Public facts only.")
+],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.")
 
 srv=mk("DO NOT OPEN · Server and URLs","dno-server",[
  "Public URLs",

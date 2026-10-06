@@ -7,6 +7,9 @@ import type { StudioStore } from "../../application/ports/studio";
 import type { RatStore } from "../../application/ports/rats";
 import type { EndpointStatus } from "../chain/RpcPool";
 import type { IndexerStatus } from "../Indexer";
+import type { SeatsView } from "../../application/seats";
+import type { XPass } from "../../application/xPass";
+import type { AllowListClaim } from "../../application/allowList";
 
 export interface MetricsSources {
   store: Pick<ReadStore, "stats" | "cursor" | "finalizedCursor" | "milestonesReached" | "allPendingRequests">;
@@ -19,6 +22,12 @@ export interface MetricsSources {
   studio?: { store: Pick<StudioStore, "studioJobCounts" | "studioSales">; spentToday(): Promise<number>; spentTotal(): Promise<number>; dailyBudgetUsd: number; open: boolean };
   /** The rats adopted, by kind. */
   rats?: Pick<RatStore, "ratCounts">;
+  /** The mainnet whitelist: its seats, the X boarding passes, the wallet claims, the suggestion box. */
+  whitelist?: {
+    seats: { view(): Promise<SeatsView>; passSeated(p: XPass): boolean };
+    store: { xPasses(): Promise<XPass[]>; allowListClaims(): Promise<AllowListClaim[]>; ideaCount(): Promise<number> };
+    signInEnabled: boolean;
+  };
   /** Shown on `dno_info`; Prometheus adds the `network` label to every series from its target. */
   info: { chain: string; collection: string; version: string };
 }
@@ -32,6 +41,7 @@ export class Metrics {
   readonly registry = new Registry();
   readonly contentType = this.registry.contentType;
   private readonly http: Histogram<"method" | "route" | "status">;
+  private readonly signIns: Counter<"outcome">;
 
   constructor(s: MetricsSources) {
     const r = this.registry;
@@ -167,6 +177,37 @@ export class Metrics {
       gauge("dno_studio_packs_sold", "Studio packs sold since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).packs));
       gauge("dno_studio_revenue_usdc", "USDC the studio's packs brought in since the contract was deployed", async (g) => g.set((await studio.store.studioSales()).paidUsdc));
     }
+    this.signIns = new Counter({ name: "dno_xpass_sign_ins_total", help: "Sign in with X attempts back from X, by outcome (ok, sign-in-refused, sign-in-expired, x-down, list-full, no-pass)", labelNames: ["outcome"], registers: [r] });
+    if (s.whitelist) {
+      const w = s.whitelist;
+      gauge("dno_whitelist_seats_taken", "Seats taken on the mainnet whitelist: X accounts with every task done, and wallets that claimed and played", async (g) => g.set((await w.seats.view()).taken));
+      gauge("dno_whitelist_seats_places", "Seats on the mainnet whitelist (ALLOW_LIST_PLACES); 0 for no cap", async (g) => g.set((await w.seats.view()).places ?? 0));
+      gauge("dno_whitelist_claims", "Wallets that claimed a place on the whitelist by signing", async (g) => g.set((await w.store.allowListClaims()).length));
+      gauge("dno_xpass_signin_enabled", "1 when Sign in with X is configured (X_CLIENT_ID)", (g) => g.set(w.signInEnabled ? 1 : 0));
+      gauge(
+        "dno_xpass_passes",
+        "X boarding passes, by stage: started (a token handed out), connected (an X account proved), seated (every required task done), wallet (a wallet linked)",
+        async (g) => {
+          const passes = await w.store.xPasses();
+          g.set({ stage: "started" }, passes.length);
+          g.set({ stage: "connected" }, passes.filter((p) => p.handle).length);
+          g.set({ stage: "seated" }, passes.filter((p) => w.seats.passSeated(p)).length);
+          g.set({ stage: "wallet" }, passes.filter((p) => p.handle && p.address).length);
+        },
+        ["stage"],
+      );
+      gauge(
+        "dno_xpass_tasks",
+        "Tasks on X declared done on connected passes, by task",
+        async (g) => {
+          const connected = (await w.store.xPasses()).filter((p) => p.handle);
+          const at = { follow: "followedAt", post: "postedAt", like: "likedAt", reply: "repliedAt", repost: "repostedAt" } as const;
+          for (const [task, field] of Object.entries(at)) g.set({ task }, connected.filter((p) => p[field] !== null).length);
+        },
+        ["task"],
+      );
+      gauge("dno_ideas_received", "Ideas left in the boarding page's suggestion box", async (g) => g.set(await w.store.ideaCount()));
+    }
     if (s.rats) {
       const rats = s.rats;
       gauge(
@@ -179,6 +220,11 @@ export class Metrics {
         ["kind"],
       );
     }
+  }
+
+  /** One Sign in with X back from X, and how it went. */
+  signIn(outcome: string) {
+    this.signIns.inc({ outcome });
   }
 
   observe(method: string, route: string, status: number, seconds: number) {

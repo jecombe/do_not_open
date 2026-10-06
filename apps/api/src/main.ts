@@ -190,24 +190,6 @@ async function main() {
   if (!deployment.rats) log.info("no Rats contract on this network: no rat to show, none to adopt");
   else if (!config.RATS_ATTESTER_KEY) log.info("RATS_ATTESTER_KEY is not set: only seed rats can be adopted");
 
-  const metrics = new Metrics({
-    store,
-    archive: store,
-    posts: store,
-    indexer,
-    rpcStatus: () => rpc.status(),
-    chat,
-    studio: {
-      store,
-      spentToday: () => studio.spentToday(),
-      spentTotal: () => studio.spentTotal(),
-      dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
-      open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
-    },
-    rats: store,
-    info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
-  });
-
   // The list and its seats read each other: the seats count who tried the testnet, the list
   // admits a new claimant to a seat.
   let allowList: AllowList | null = null;
@@ -228,6 +210,26 @@ async function main() {
       : null,
     seats,
   );
+
+  const metrics = new Metrics({
+    store,
+    whitelist: { seats, store, signInEnabled: xPasses.signInEnabled },
+    archive: store,
+    posts: store,
+    indexer,
+    rpcStatus: () => rpc.status(),
+    chat,
+    studio: {
+      store,
+      spentToday: () => studio.spentToday(),
+      spentTotal: () => studio.spentTotal(),
+      dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
+      open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
+    },
+    rats: store,
+    info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
+  });
+
 
   const server =
     config.ROLE === "indexer"

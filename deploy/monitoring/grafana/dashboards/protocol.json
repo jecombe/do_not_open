@@ -1,7 +1,7 @@
 {
   "uid": "dno-protocol",
   "title": "DO NOT OPEN \u00b7 Protocol",
-  "description": "The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services, the studio. Public facts only.",
+  "description": "The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.",
   "tags": [
     "dno"
   ],
@@ -1590,7 +1590,7 @@
     },
     {
       "type": "row",
-      "title": "The studio",
+      "title": "The mainnet whitelist",
       "id": 31,
       "gridPos": {
         "h": 1,
@@ -1603,7 +1603,7 @@
     },
     {
       "id": 32,
-      "title": "Open",
+      "title": "Seats taken",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -1614,6 +1614,610 @@
         "w": 4,
         "x": 0,
         "y": 76
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_whitelist_seats_taken{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "X accounts with every boarding task done, and wallets that claimed and played the testnet; an X account and its linked wallet count once."
+    },
+    {
+      "id": 33,
+      "title": "Seats filled",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 76
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_whitelist_seats_taken{network=\"$network\"} / dno_whitelist_seats_places{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Out of ALLOW_LIST_PLACES. Full: nobody new gets a seat."
+    },
+    {
+      "id": 34,
+      "title": "X accounts connected",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 76
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_xpass_passes{network=\"$network\",stage=\"connected\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 35,
+      "title": "Wallet claims",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 76
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_whitelist_claims{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Wallets that signed a claim; they sit down once they minted, opened or dueled."
+    },
+    {
+      "id": 36,
+      "title": "Sign in with X",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 76
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_xpass_signin_enabled{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {},
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "OFF"
+                },
+                "1": {
+                  "text": "ON"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "ON: X_CLIENT_ID is set. OFF: players prove their account with a post carrying their code."
+    },
+    {
+      "id": 37,
+      "title": "Ideas in the box",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 76
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_ideas_received{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Read them with GET /v1/ideas?token=ALLOW_LIST_ADMIN_TOKEN."
+    },
+    {
+      "id": 38,
+      "title": "Seats taken against the places",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 80
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_whitelist_seats_taken{network=\"$network\"}",
+          "legendFormat": "taken",
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_whitelist_seats_places{network=\"$network\"}",
+          "legendFormat": "places",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 39,
+      "title": "Boarding funnel",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 80
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_xpass_passes{network=\"$network\"}",
+          "legendFormat": "{{stage}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "started: a pass handed out; connected: an X account proved; seated: every required task done; wallet: a wallet linked."
+    },
+    {
+      "id": 40,
+      "title": "Tasks on X declared, by task",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 88
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_xpass_tasks{network=\"$network\"}",
+          "legendFormat": "{{task}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Declared by the players, checked by hand before mainnet."
+    },
+    {
+      "id": 41,
+      "title": "Sign in with X per hour, by outcome",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 88
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (outcome) (increase(dno_xpass_sign_ins_total{network=\"$network\"}[1h]))",
+          "legendFormat": "{{outcome}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "x-down: X refused the code or did not answer; sign-in-refused: the player cancelled on X; list-full: no seat left."
+    },
+    {
+      "type": "row",
+      "title": "The studio",
+      "id": 42,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 96
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 43,
+      "title": "Open",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 97
       },
       "targets": [
         {
@@ -1678,7 +2282,7 @@
       "description": "Open: the fal key and the StudioPacks contract are there, and STUDIO_PAUSED is not set."
     },
     {
-      "id": 33,
+      "id": 44,
       "title": "Packs sold",
       "type": "stat",
       "datasource": {
@@ -1689,7 +2293,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1736,7 +2340,7 @@
       }
     },
     {
-      "id": 34,
+      "id": 45,
       "title": "USDC brought in",
       "type": "stat",
       "datasource": {
@@ -1747,7 +2351,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1795,7 +2399,7 @@
       "description": "Paid for packs, straight to the treasury. Test USDC on Sepolia."
     },
     {
-      "id": 35,
+      "id": 46,
       "title": "AI cost, all time",
       "type": "stat",
       "datasource": {
@@ -1806,7 +2410,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1854,7 +2458,7 @@
       "description": "Estimated from studio.json's estimatedCostUsd, failed jobs included: check it against fal's bill."
     },
     {
-      "id": 36,
+      "id": 47,
       "title": "Margin",
       "type": "stat",
       "datasource": {
@@ -1865,7 +2469,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1917,7 +2521,7 @@
       "description": "USDC brought in minus the estimated AI cost. The StudioLosingMoney alert fires when it stays negative."
     },
     {
-      "id": 37,
+      "id": 48,
       "title": "Today's AI budget used",
       "type": "stat",
       "datasource": {
@@ -1928,7 +2532,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1984,7 +2588,7 @@
       "description": "Past it, generation waits for midnight UTC (STUDIO_DAILY_BUDGET_USD)."
     },
     {
-      "id": 38,
+      "id": 49,
       "title": "Generations by kind and status",
       "type": "timeseries",
       "datasource": {
@@ -1995,7 +2599,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 80
+        "y": 101
       },
       "targets": [
         {
@@ -2035,7 +2639,7 @@
       "description": "failed: unit given back; rejected: refused by the safety checker or past the day's refunds, unit kept."
     },
     {
-      "id": 39,
+      "id": 50,
       "title": "AI spend today against the budget",
       "type": "timeseries",
       "datasource": {
@@ -2046,7 +2650,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 80
+        "y": 101
       },
       "targets": [
         {

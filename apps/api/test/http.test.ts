@@ -11,6 +11,7 @@ import { silentLogger } from "../src/application/ports/logger";
 import { Queries } from "../src/application/queries";
 import { SyncChain } from "../src/application/syncChain";
 import { XPasses, type Tweet } from "../src/application/xPass";
+import { Seats } from "../src/application/seats";
 import { ethersVerifier, HmacSessions, passSecrets } from "../src/infrastructure/auth/crypto";
 import { Metrics } from "../src/infrastructure/http/metrics";
 import { buildServer } from "../src/infrastructure/http/server";
@@ -72,6 +73,7 @@ beforeAll(async () => {
     indexer: { status: () => ({ running: true, lastPass: null, lastPassAt: null, lastError: null, failures: 0, tasks: {} }), nudge: () => void nudges++ },
     metrics: new Metrics({
       store,
+      whitelist: { seats: new Seats(store, 3000, async () => new Set(), ["follow", "post"]), store, signInEnabled: false },
       archive: store,
       posts: store,
       indexer: { status: () => ({ running: true, lastPass: { from: 100, to: 108, applied: 0, target: 110 }, lastPassAt: 1_790_000_000_000, lastError: null, failures: 0, tasks: { reconcile: { lastRunAt: 1_790_000_000_000, lastResult: null, lastError: "boom" } } }) },
@@ -228,9 +230,13 @@ describe("metrics", () => {
       "dno_studio_revenue_usdc 10",
       'dno_rats_minted{kind="seed"} 2',
       'dno_rats_minted{kind="model"} 1',
+      "dno_whitelist_seats_places 3000",
+      "dno_xpass_signin_enabled 0",
+      "dno_ideas_received 0",
     ])
       expect(text).toContain(line);
     expect(text).toMatch(/dno_http_request_duration_seconds_count\{method="GET",route="\/v1\/stats",status="200"\} \d+/);
+    for (const series of ["dno_whitelist_seats_taken", "dno_whitelist_claims", 'dno_xpass_passes{stage="seated"}', 'dno_xpass_tasks{task="follow"}']) expect(text).toMatch(new RegExp(`^${series.replace(/[{}]/g, "\\$&")} \\d+$`, "m"));
     expect(text).not.toMatch(/0x[0-9a-f]{40}/); // no address of any player
   });
 });
