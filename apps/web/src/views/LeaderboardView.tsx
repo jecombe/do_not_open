@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { ROSETTES, sameAddress, shortAddress, type Address, type AllowListStatus, type OpenedCat } from "@dno/chain-adapter";
+import { X_PASS_BONUS, xPassWalletMessage } from "@dno/chain-adapter/standings";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
 import { useAction, useChain, useLedger } from "../chain/ChainProvider";
 import { useDuelStandings } from "../chain/standings";
 import { catFromRevealed } from "../chain/copy";
 import { useT } from "../i18n/app";
+import { useLocale } from "../i18n/locale";
+import { homePath } from "../site";
+import { linkXPassWallet, useXPass, XPassError } from "../xpass";
 import { catNames } from "../i18n/names";
 import { ShelfScene, SpecimenScene, type ShelfBox } from "../scenes/Scenes";
 import { ProblemNote } from "./ProblemNote";
@@ -268,9 +272,59 @@ function AllowListPanel({ account, connect, ledger }: { account: Address | null;
             {action.busy ? t("al.signing") : status.rank === null ? t("al.claim") : t("al.update")}
           </button>
           {action.error && <ProblemNote problem={action.error} />}
+          <XPassLink account={account} onLinked={() => void adapter.allowList().then((s) => s && setStatus(s), () => undefined)} />
         </>
       )}
       <p className="fine">{t("al.rules")}</p>
+    </div>
+  );
+}
+
+/**
+ * The X boarding pass this browser holds (from the home page), and linking it to the connected
+ * wallet: a free signature adds its bonus to the wallet's points. The link stays private.
+ */
+function XPassLink({ account, onLinked }: { account: Address; onLinked: () => void }) {
+  const { adapter } = useChain();
+  const t = useT();
+  const locale = useLocale();
+  const action = useAction();
+  const { pass, set } = useXPass();
+  const [refused, setRefused] = useState<string | null>(null);
+
+  if (!pass?.handle) {
+    return (
+      <p className="fine xpass-line">
+        <a href={`${homePath(locale)}#boarding`}>{t("xpass.connect", { bonus: X_PASS_BONUS })}</a>
+      </p>
+    );
+  }
+  if (pass.address && sameAddress(pass.address, account)) {
+    return <p className="fine mark-good xpass-line">{t("xpass.linked", { handle: pass.handle, bonus: X_PASS_BONUS })}</p>;
+  }
+
+  const link = async () => {
+    setRefused(null);
+    const message = xPassWalletMessage(account, pass.code, new Date());
+    const signature = await action.run("xpass", () => adapter.signText(message));
+    if (!signature) return;
+    try {
+      set(await linkXPassWallet(account, message, signature));
+      onLinked();
+    } catch (e) {
+      setRefused(e instanceof XPassError && e.code === "address-taken" ? t("xpass.taken") : t("xpass.failed"));
+    }
+  };
+
+  return (
+    <div className="xpass-line">
+      {pass.address && <p className="fine">{t("xpass.other", { handle: pass.handle })}</p>}
+      <button type="button" className="stamp-button" onClick={() => void link()} disabled={!!action.busy}>
+        {action.busy === "xpass" ? t("al.signing") : t("xpass.link", { handle: pass.handle, bonus: X_PASS_BONUS })}
+      </button>
+      {action.error && <ProblemNote problem={action.error} />}
+      {refused && <p className="fine">{refused}</p>}
+      <p className="fine">{t("xpass.private")}</p>
     </div>
   );
 }

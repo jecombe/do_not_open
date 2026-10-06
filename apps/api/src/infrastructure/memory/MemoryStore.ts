@@ -7,6 +7,7 @@ import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
 import type { User } from "../../domain/user";
 import type { AllowListClaim } from "../../application/allowList";
+import type { XPass } from "../../application/xPass";
 import type { TermsAcceptance } from "../../application/terms";
 import type { EventPosition, Post, PostStore, QueuedDraft } from "../../application/ports/herald";
 import type { ArchiveStore } from "../../application/ports/archive";
@@ -40,6 +41,7 @@ interface State {
   /** Signed release forms, by `address:version`. Kept across replays. */
   terms: Map<string, TermsAcceptance>;
   allowList: Map<Address, AllowListClaim>;
+  xPasses: Map<string, XPass>;
   /** The herald's queues, by id, and where each network read up to. Kept across replays. */
   posts: Map<number, Post>;
   heraldCursors: Map<string, EventPosition>;
@@ -76,6 +78,7 @@ const emptyState = (): State => ({
   publicUses: new Map(),
   terms: new Map(),
   allowList: new Map(),
+  xPasses: new Map(),
   posts: new Map(),
   heraldCursors: new Map(),
   archived: new Map(),
@@ -367,6 +370,46 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
 
   async saveAllowListClaim(c: AllowListClaim) {
     this.s.allowList.set(c.address, clone(c));
+  }
+
+  private xPassWhere(match: (p: XPass) => boolean) {
+    return clone([...this.s.xPasses.values()].find(match) ?? null);
+  }
+
+  async xPassById(id: string) {
+    return clone(this.s.xPasses.get(id) ?? null);
+  }
+
+  async xPassByCode(code: string) {
+    return this.xPassWhere((p) => p.code === code);
+  }
+
+  async xPassByHandle(handle: string) {
+    return this.xPassWhere((p) => p.handle === handle);
+  }
+
+  async xPassByTweet(tweetId: string) {
+    return this.xPassWhere((p) => p.tweetId === tweetId);
+  }
+
+  async xPassByAddress(address: Address) {
+    return this.xPassWhere((p) => p.address === address);
+  }
+
+  async xPasses() {
+    return [...this.s.xPasses.values()].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).map(clone);
+  }
+
+  async saveXPass(p: XPass) {
+    for (const o of this.s.xPasses.values()) {
+      if (o.id === p.id) continue;
+      if (o.code === p.code || (p.handle && o.handle === p.handle) || (p.tweetId && o.tweetId === p.tweetId) || (p.address && o.address === p.address)) throw new Error("x pass conflicts with another");
+    }
+    this.s.xPasses.set(p.id, clone(p));
+  }
+
+  async deleteXPass(id: string) {
+    this.s.xPasses.delete(id);
   }
 
   async takeNonce(address: Address) {

@@ -455,4 +455,25 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 16,
+    name: "x boarding passes",
+    sql: /* sql */ `
+      -- X boarding passes: an X account proved by a post carrying the pass code, a declared follow,
+      -- and the wallet the player chose to link (private). Not on the chain's index: a replay or a
+      -- test network redeployment keeps them.
+      create table x_passes (
+        id text primary key,
+        code text not null unique,
+        handle text unique,
+        tweet_id text unique,
+        tweet_url text,
+        followed_at bigint,
+        address text unique,
+        created_at bigint not null,
+        verified_at bigint,
+        updated_at bigint not null
+      );
+    `,
+  },
 ];

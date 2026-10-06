@@ -20,6 +20,8 @@ export interface AllowListClaim {
 
 export interface AllowListView {
   live: PlayerPoints;
+  /** Points from an X boarding pass linked to this wallet (0 without one). */
+  bonus: number;
   points: number;
   claimedAt: number | null;
   rank: number | null;
@@ -30,6 +32,7 @@ export interface AllowListView {
 export interface AllowListEntry {
   rank: number;
   address: Address;
+  bonus: number;
   points: number;
   live: PlayerPoints;
   claimedAt: number;
@@ -56,6 +59,8 @@ export class AllowList {
     private readonly verifier: SignatureVerifier,
     private readonly clock: Clock,
     private readonly places: number,
+    /** Extra points per wallet, from X boarding passes. None by default. */
+    private readonly bonuses: () => Promise<Map<Address, number>> = async () => new Map(),
   ) {}
 
   async claim(rawAddress: string, message: string, signature: string): Promise<AllowListView> {
@@ -90,18 +95,20 @@ export class AllowList {
     const address = normalizeAddress(rawAddress);
     const ranked = await this.ranked();
     const i = ranked.findIndex((e) => e.address === address);
-    const live = i >= 0 ? ranked[i]!.live : (await this.facts(address)).live;
     const mine = i >= 0 ? ranked[i]! : null;
-    return { live, points: mine?.points ?? live.points, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: this.places };
+    const live = mine ? mine.live : (await this.facts(address)).live;
+    const bonus = mine ? mine.bonus : ((await this.bonuses()).get(address) ?? 0);
+    return { live, bonus, points: mine?.points ?? live.points + bonus, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: this.places };
   }
 
   /** Every claimant, best first: the list to export when it closes. */
   async ranked(): Promise<AllowListEntry[]> {
-    const [claims, facts] = await Promise.all([this.store.allowListClaims(), this.publicFacts()]);
+    const [claims, facts, bonuses] = await Promise.all([this.store.allowListClaims(), this.publicFacts(), this.bonuses()]);
     return claims
       .map((c) => {
         const live = playerPoints(c.address, facts.duels, facts.openers);
-        return { address: c.address, points: Math.max(c.points, live.points), claimedAt: c.claimedAt, live };
+        const bonus = bonuses.get(c.address) ?? 0;
+        return { address: c.address, bonus, points: Math.max(c.points, live.points) + bonus, claimedAt: c.claimedAt, live };
       })
       .sort(byClaimRank)
       .map((e, i) => ({ rank: i + 1, ...e, inPlace: i < this.places }));

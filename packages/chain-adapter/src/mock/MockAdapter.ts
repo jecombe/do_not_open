@@ -992,6 +992,10 @@ export class MockAdapter implements ChainAdapter {
     return { account, message, signature, recorded: false };
   }
 
+  async signText(message: string): Promise<string> {
+    return (await this.signTerms(message)).signature;
+  }
+
   /** The demo has no relayer, so nobody counts its decryptions. */
   async decryptionAllowance(): Promise<DecryptionAllowance | null> {
     return null;

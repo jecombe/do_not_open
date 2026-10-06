@@ -245,6 +245,11 @@ duels, not the claims), `claimedAt`, `rank` among claimants (null until it claim
 null and `claimAllowList` throws `network`. The mock keeps its claims in memory, with the
 same rules (`playerPoints`).
 
+`signText(message)` has the connected wallet sign any text (EIP-191, free) and returns the
+signature, filed nowhere: the app sends it where it belongs, such as linking a wallet to an X
+boarding pass (`xPassWalletMessage` in `@dno/chain-adapter/standings`). The mock returns a
+stand-in signature.
+
 ## What happens in a shake
 
 ```mermaid
