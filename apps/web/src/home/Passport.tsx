@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ALLOW_LIST_POINTS, DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { chainMode } from "../chain/mode";
 import { useLocale } from "../i18n/locale";
-import { GALXE_QUEST } from "../links";
+import { GALXE_QUEST, X_FOLLOW, X_HANDLE } from "../links";
 import { appPath, duelRankingPath } from "../site";
 import { useT } from "./i18n";
 
@@ -40,19 +40,16 @@ const recall = (): string => {
 type Check = { state: "idle" } | { state: "busy" } | { state: "bad" } | { state: "down" } | { state: "done"; pass: PassStatus };
 
 /**
- * The mainnet allow list as a customs laissez-passer: three stamps (play, sign, the Galxe quest),
+ * The mainnet allow list as a customs laissez-passer: three stamps (the X quest, play, sign),
  * an address to check, and how many passes are signed. The forms open in a new tab.
  */
-export function Passport() {
-  const t = useT();
-  const locale = useLocale();
-  const [address, setAddress] = useState(recall);
-  const [check, setCheck] = useState<Check>({ state: "idle" });
-  const [count, setCount] = useState<{ claimants: number; places: number } | null>(null);
-  const live = api() !== null;
+type Count = { claimants: number; places: number };
 
+/** How many passes are signed, out of how many places. Null without the API, or until it answers. */
+export function usePassCount(): [Count | null, (c: Count) => void] {
+  const [count, setCount] = useState<Count | null>(null);
   useEffect(() => {
-    if (!live) return;
+    if (api() === null) return;
     let on = true;
     readPass(PROBE).then(
       (p) => on && setCount({ claimants: p.claimants, places: p.places }),
@@ -61,7 +58,17 @@ export function Passport() {
     return () => {
       on = false;
     };
-  }, [live]);
+  }, []);
+  return [count, setCount];
+}
+
+export function Passport() {
+  const t = useT();
+  const locale = useLocale();
+  const [address, setAddress] = useState(recall);
+  const [check, setCheck] = useState<Check>({ state: "idle" });
+  const [count, setCount] = usePassCount();
+  const live = api() !== null;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -85,6 +92,7 @@ export function Passport() {
   const pass = check.state === "done" ? check.pass : null;
   const places = count?.places ?? DEFAULT_ALLOW_LIST_PLACES;
   const stamps = [
+    { key: "quest", done: false, href: GALXE_QUEST || X_FOLLOW, newTab: true, chips: [] },
     {
       key: "play",
       done: pass ? pass.live.points > 0 : false,
@@ -93,7 +101,6 @@ export function Passport() {
       chips: [t("home.pass.play.beaten", { n: ALLOW_LIST_POINTS.beaten }), t("home.pass.play.faced", { n: ALLOW_LIST_POINTS.faced }), t("home.pass.play.opened", { n: ALLOW_LIST_POINTS.opened, max: ALLOW_LIST_POINTS.maxOpened })],
     },
     { key: "sign", done: pass ? pass.claimedAt !== null : false, href: duelRankingPath(locale), newTab: true, chips: [] },
-    { key: "quest", done: false, href: GALXE_QUEST, newTab: true, chips: [] },
   ] as const;
 
   return (
@@ -132,7 +139,7 @@ export function Passport() {
               )}
               {s.href ? (
                 <a className="btn btn-small" href={s.href} {...(s.newTab ? { target: "_blank", rel: "noreferrer" } : {})}>
-                  {t(`home.pass.${s.key}.cta`)}
+                  {s.key === "quest" && !GALXE_QUEST ? t("home.pass.quest.follow", { handle: X_HANDLE }) : t(`home.pass.${s.key}.cta`)}
                   {s.newTab ? " ↗" : " →"}
                 </a>
               ) : (
