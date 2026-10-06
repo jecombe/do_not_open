@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ALLOW_LIST_POINTS, DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { chainMode } from "../chain/mode";
 import { useLocale } from "../i18n/locale";
-import { GALXE_QUEST, X_FOLLOW, X_HANDLE } from "../links";
 import { appPath, duelRankingPath } from "../site";
+import { useXPass } from "../xpass";
 import { useT } from "./i18n";
 
 /** What the API says about one address on the mainnet allow list (`GET /v1/allowlist/:address`). */
@@ -69,6 +69,7 @@ export function Passport() {
   const [check, setCheck] = useState<Check>({ state: "idle" });
   const [count, setCount] = usePassCount();
   const live = api() !== null;
+  const { pass: xPass } = useXPass();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -92,7 +93,7 @@ export function Passport() {
   const pass = check.state === "done" ? check.pass : null;
   const places = count?.places ?? DEFAULT_ALLOW_LIST_PLACES;
   const stamps = [
-    { key: "quest", done: false, href: GALXE_QUEST || X_FOLLOW, newTab: true, chips: [] },
+    { key: "quest", done: !!xPass?.handle, href: "#boarding", newTab: false, chips: [] },
     {
       key: "play",
       done: pass ? pass.live.points > 0 : false,
@@ -139,8 +140,8 @@ export function Passport() {
               )}
               {s.href ? (
                 <a className="btn btn-small" href={s.href} {...(s.newTab ? { target: "_blank", rel: "noreferrer" } : {})}>
-                  {s.key === "quest" && !GALXE_QUEST ? t("home.pass.quest.follow", { handle: X_HANDLE }) : t(`home.pass.${s.key}.cta`)}
-                  {s.newTab ? " ↗" : " →"}
+                  {t(`home.pass.${s.key}.cta`)}
+                  {s.newTab ? " ↗" : s.key === "quest" ? " ↑" : " →"}
                 </a>
               ) : (
                 <span className="btn btn-small btn-paper is-soon" aria-disabled="true">

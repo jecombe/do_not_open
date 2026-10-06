@@ -172,6 +172,7 @@ Rats have public owners anyway; selling one shows nothing new.
 | A studio pack (`StudioPacks.buy`, plain USDC) | the payer, the account and the pack. The studio never touches the boxes, so it says nothing about holdings; the API also sees the prompts and pictures of the account that signed in, and sends the prompts to the AI services |
 | The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
 | Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
+| An X boarding pass (off-chain, filed by the API) | the boarding tweet itself, public on X: that this X account wants a place. The wallet a player chooses to link to it stays in the API, never shown; that link ties an X identity to the wallet's public facts (duels, openings), so the page says a game-only wallet keeps a player anonymous |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
 transfers naming it), never know them.

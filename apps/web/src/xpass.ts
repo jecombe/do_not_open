@@ -1,0 +1,98 @@
+import { useCallback, useEffect, useState } from "react";
+import { chainMode } from "./chain/mode";
+
+/** An X boarding pass as the API shows it to its holder (`/v1/xpass`). */
+export interface XPassView {
+  code: string;
+  /** Lower-cased, once a post proved the account. */
+  handle: string | null;
+  tweetUrl: string | null;
+  followed: boolean;
+  address: string | null;
+  bonus: number;
+}
+
+/** Why the API refused, as its `error` code (`no-pass`, `code-missing`…), or `network`. */
+export class XPassError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
+
+// The token is the pass: kept in this browser only, sent as a bearer to the API.
+const TOKEN = "dno:xpass:token";
+
+const readToken = (): string | null => {
+  try {
+    return localStorage.getItem(TOKEN);
+  } catch {
+    return null;
+  }
+};
+
+const writeToken = (token: string | null) => {
+  try {
+    if (token) localStorage.setItem(TOKEN, token);
+    else localStorage.removeItem(TOKEN);
+  } catch {
+    // A private window keeps nothing: the pass lives as long as the page.
+  }
+};
+
+/** The API's base, or null in the demo and where none is set: then there is no pass to keep. */
+export const xPassApi = (): string | null => (chainMode().mode === "mock" ? null : import.meta.env.VITE_API_URL?.replace(/\/$/, "") || null);
+
+let memoryToken: string | null = null;
+
+async function call(method: "GET" | "POST", path: string, body?: object): Promise<XPassView> {
+  const api = xPassApi();
+  if (!api) throw new XPassError("network");
+  const token = memoryToken ?? readToken();
+  let res: Response;
+  try {
+    res = await fetch(`${api}/v1/xpass${path}`, {
+      method,
+      headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body ? { "content-type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new XPassError("network");
+  }
+  const json = (await res.json().catch(() => ({}))) as { data?: XPassView | { token: string; pass: XPassView }; error?: string };
+  if (!res.ok || !json.data) throw new XPassError(json.error ?? "network");
+  if ("token" in json.data) {
+    memoryToken = json.data.token;
+    writeToken(json.data.token);
+    return json.data.pass;
+  }
+  return json.data;
+}
+
+export const startXPass = () => call("POST", "");
+export const xPassStatus = () => call("GET", "");
+export const followXPass = () => call("POST", "/follow");
+export const verifyXPassTweet = (url: string) => call("POST", "/tweet", { url });
+export const linkXPassWallet = (address: string, message: string, signature: string) => call("POST", "/wallet", { address, message, signature });
+export const hasXPassToken = () => !!(memoryToken ?? readToken());
+
+/** The pass this browser holds, read once; null when it has none (or lost it). */
+export function useXPass(): { pass: XPassView | null; loading: boolean; set: (p: XPassView | null) => void } {
+  const [pass, setPass] = useState<XPassView | null>(null);
+  const [loading, setLoading] = useState(() => hasXPassToken() && !!xPassApi());
+  useEffect(() => {
+    if (!hasXPassToken() || !xPassApi()) return;
+    let on = true;
+    xPassStatus().then(
+      (p) => on && setPass(p),
+      (e: unknown) => {
+        // A token the API does not know any more is dropped; a network error keeps it for later.
+        if (e instanceof XPassError && e.code === "no-pass") writeToken(null);
+      },
+    ).finally(() => on && setLoading(false));
+    return () => {
+      on = false;
+    };
+  }, []);
+  const set = useCallback((p: XPassView | null) => setPass(p), []);
+  return { pass, loading, set };
+}

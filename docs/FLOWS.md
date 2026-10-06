@@ -446,6 +446,45 @@ Signing again ("Update my points") keeps the first claim's date and the best poi
 list closes, the first `ALLOW_LIST_PLACES` (500) claimants get a place; the operator exports
 them with `GET /v1/allowlist?token=`.
 
+## X boarding pass
+
+The home page opens on a boarding pass: X first, the wallet as a bonus. An X account is proved
+by a post that carries the player's boarding code, read through X's public oEmbed: no X API
+key, no OAuth, nothing paid. The follow cannot be read for free, so it is declared and the team
+checks the list by hand before mainnet. A testnet player who never connects X keeps the points
+of the allow list above.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant Home as Home page
+  participant X
+  participant API
+  participant App as Game (Duels tab)
+  U->>Home: Get my boarding code
+  Home->>API: POST /v1/xpass
+  API-->>Home: token (kept in this browser, only its sha256 is stored), code DNO-XXXXXX
+  U->>X: Follow @do_not_open_box (intent link)
+  Home->>API: POST /v1/xpass/follow (declared)
+  U->>X: Post the prefilled tweet, code included
+  U->>Home: Paste the post's link
+  Home->>API: POST /v1/xpass/tweet {url}
+  API->>X: GET publish.x.com/oembed?url=…
+  X-->>API: author, text
+  API->>API: the text carries the code; the post verified no other pass
+  API-->>Home: handle (an account on an older pass moves to this one)
+  opt the bonus
+    U->>App: Link to my X @handle
+    App->>U: personal_sign("I, <address>, link this wallet to my DO NOT OPEN boarding pass <code>…")
+    App->>API: POST /v1/xpass/wallet {address, message, signature}
+    API-->>App: linked: the wallet's allow list points get +5
+  end
+```
+
+Each code, handle, post and wallet sits on one pass at most. The handle-to-wallet link stays in
+the API: no route shows it but the token holder's own `GET /v1/xpass` and the operator's
+`GET /v1/xpass/all?token=`.
+
 ## Give a box away
 
 ```mermaid
