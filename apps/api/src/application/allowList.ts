@@ -62,6 +62,8 @@ export class AllowList {
     private readonly places: number | null,
     /** Extra points per wallet, from X boarding passes. None by default. */
     private readonly bonuses: () => Promise<Map<Address, number>> = async () => new Map(),
+    /** The list's seats: a new claimant needs one. No cap by default. */
+    private readonly seats: { admit(): Promise<void> } | null = null,
   ) {}
 
   async claim(rawAddress: string, message: string, signature: string): Promise<AllowListView> {
@@ -80,6 +82,8 @@ export class AllowList {
     // A claim reads the chain's facts afresh, so a duel won a moment ago counts.
     const { live } = await this.facts(address, true);
     const kept = await this.store.allowListClaim(address);
+    // Someone new needs a seat; a wallet already linked to a boarded X account has one.
+    if (!kept && this.seats && !(await this.store.xPassByAddress(address))?.handle) await this.seats.admit();
     const now = this.clock.now();
     await this.store.saveAllowListClaim({
       address,

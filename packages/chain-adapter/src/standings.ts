@@ -84,9 +84,9 @@ export function playerPoints(account: string, duels: readonly SettledDuel[], ope
   };
 }
 
-/** No cap on the mainnet list: every claimant is on it, ranked by points. The API can still be
- *  given one (`ALLOW_LIST_PLACES`). */
-export const DEFAULT_ALLOW_LIST_PLACES: number | null = null;
+/** Seats on the mainnet list, first come, first served, unless the API is told otherwise
+ *  (`ALLOW_LIST_PLACES`). Inside, points set the rank. */
+export const DEFAULT_ALLOW_LIST_PLACES: number | null = 3000;
 
 /** What a player signs to claim a place. The address line is what the API checks. */
 export function allowListMessage(account: string, issuedAt: Date): string {

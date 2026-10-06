@@ -266,7 +266,7 @@ function AllowListPanel({ account, connect, ledger }: { account: Address | null;
               {t(status.places === null || status.rank <= status.places ? "al.inPlace" : "al.outOfPlace", { rank: status.rank, claimants: status.claimants, places: status.places ?? 0 })}
             </p>
           ) : (
-            <p className="fine">{t("al.notClaimed", { claimants: status.claimants })}</p>
+            <p className="fine">{t("al.notClaimed", { claimants: status.claimants, places: status.places ?? 0 })}</p>
           )}
           <button type="button" className="stamp-button" onClick={() => void claim()} disabled={!!action.busy}>
             {action.busy ? t("al.signing") : status.rank === null ? t("al.claim") : t("al.update")}

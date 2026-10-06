@@ -443,8 +443,9 @@ sequenceDiagram
 ```
 
 Signing again ("Update my points") keeps the first claim's date and the best points. When the
-list closes, every claimant has a place, ranked by points (no cap unless `ALLOW_LIST_PLACES`
-sets one); the operator exports
+list closes, every claimant has a place, ranked by points. Seats are capped, first come, first
+served (`ALLOW_LIST_PLACES`, 3,000): an X account or a wallet takes one, and once they are gone
+nobody new gets in (`409 list-full`). The operator exports
 them with `GET /v1/allowlist?token=`.
 
 ## X boarding pass

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { DISCORD, REPO } from "../links";
-import { useXPass } from "../xpass";
+import { useSeats, useXPass } from "../xpass";
 import { Boarding } from "../home/Boarding";
 import { HomeTop } from "../home/HomeTop";
 import { useT } from "../home/i18n";
-import { Passport } from "../home/Passport";
+import { Passport, SeatMeter } from "../home/Passport";
 import { GateScene } from "./gateScene";
 
 /**
@@ -13,6 +13,7 @@ import { GateScene } from "./gateScene";
  */
 export function ApplyPage() {
   const t = useT();
+  const seats = useSeats();
 
   useEffect(() => {
     document.title = t("apply.title");
@@ -28,6 +29,7 @@ export function ApplyPage() {
           <p className="kicker">{t("apply.kicker")}</p>
           <h1>{t("apply.h1")}</h1>
           <p className="hero-lede">{t("apply.lede")}</p>
+          {seats && seats.places !== null && <SeatMeter taken={seats.taken} places={seats.places} big />}
           <ol className="apply-why">
             <li>
               <strong>{t("apply.why1.title")}</strong> {t("apply.why1.body")}

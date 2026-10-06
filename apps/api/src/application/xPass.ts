@@ -101,7 +101,8 @@ export type XPassRefusal =
   | "bad-signature"
   | "sign-in-off"
   | "sign-in-expired"
-  | "sign-in-refused";
+  | "sign-in-refused"
+  | "list-full";
 
 export class XPassRefused extends Error {
   constructor(
@@ -133,6 +134,8 @@ export class XPasses {
     private readonly verifier: SignatureVerifier,
     private readonly clock: Clock,
     private readonly signIn: { x: XSignIn; secrets: LoginSecrets } | null = null,
+    /** The list's seats: a new X account needs one. No cap by default. */
+    private readonly seats: { admit(): Promise<void> } | null = null,
   ) {}
 
   /** Whether Sign in with X is configured; without it, the code-in-a-post proof stands in. */
@@ -171,7 +174,12 @@ export class XPasses {
     }
     const pass = await this.store.xPassById(started.passId);
     if (!pass) return { returnTo, outcome: "no-pass" };
-    await this.attach(pass, { handle: account.username.toLowerCase(), xUserId: account.id });
+    try {
+      await this.attach(pass, { handle: account.username.toLowerCase(), xUserId: account.id });
+    } catch (e) {
+      if (e instanceof XPassRefused) return { returnTo, outcome: e.code };
+      throw e;
+    }
     return { returnTo, outcome: "ok" };
   }
 
@@ -237,6 +245,14 @@ export class XPasses {
     const now = this.clock.now();
     const byId = proof.xUserId ? await this.store.xPassByXUser(proof.xUserId) : null;
     const byHandle = await this.store.xPassByHandle(proof.handle);
+    // A new X account takes a seat; one already on a pass, or this pass's own, has one.
+    if (!pass.handle && !byId && !byHandle && this.seats) {
+      try {
+        await this.seats.admit();
+      } catch {
+        throw new XPassRefused("list-full", "every seat on the mainnet list is taken");
+      }
+    }
     let next: XPass = {
       ...pass,
       handle: proof.handle,

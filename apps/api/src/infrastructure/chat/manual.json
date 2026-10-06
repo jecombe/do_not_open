@@ -462,13 +462,13 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "Every player of the test network who claims gets a place on the mainnet allow list: there is no limit, and points set the rank. Your points: 3 for each opponent you beat in a duel, 1 for each opponent you faced, 2 for each box you opened, up to 10 boxes. Each opponent counts once, however many times you meet, and duels between your own wallets count nothing. Claim your place from the leaderboard's Duels tab by signing with your wallet: it is free and sends no transaction, and it tells the game only that your address is asking. Sign again later to update your points; the best you ever had are kept, even if the test network starts over. Claimants are ranked by points; between equal points, the earlier claim goes first.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308"
+     "text": "The mainnet allow list has 3,000 seats, first come, first served: a seat goes to each player who claims one, or who connects an X account on the boarding page, until none is left. Your points: 3 for each opponent you beat in a duel, 1 for each opponent you faced, 2 for each box you opened, up to 10 boxes. Each opponent counts once, however many times you meet, and duels between your own wallets count nothing. Claim your place from the leaderboard's Duels tab by signing with your wallet: it is free and sends no transaction, and it tells the game only that your address is asking. Sign again later to update your points; the best you ever had are kept, even if the test network starts over. Claimants are ranked by points; between equal points, the earlier claim goes first.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d"
     },
     {
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "cCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0x138f…1264\nThe rats' pantry (RatPantry) 0x1334…E75B"
+     "text": "CROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0x138f…1264\nThe rats' pantry (RatPantry) 0x1334…E75B"
     },
     {
      "id": "testnet-3",
@@ -1023,13 +1023,13 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "Chaque joueur du réseau de test qui réclame obtient une place sur la liste blanche du mainnet : il n'y a pas de limite, et les points fixent le rang. Vos points : 3 par adversaire battu en duel, 1 par adversaire affronté, 2 par boîte ouverte, jusqu'à 10 boîtes. Chaque adversaire compte une fois, peu importe combien de fois vous l'affrontez, et les duels entre vos propres wallets ne comptent pas. Réclamez votre place depuis l'onglet Duels du classement en signant avec votre wallet : c'est gratuit, aucune transaction n'est envoyée, et le jeu apprend seulement que votre adresse le demande. Signez à nouveau plus tard pour mettre vos points à jour ; vos meilleurs points sont gardés, même si le réseau de test repart de zéro. Les joueurs sont classés par points ; à points égaux, la réclamation la plus ancienne passe devant.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37"
+     "text": "La liste blanche du mainnet a 3 000 places, premiers arrivés, premiers servis : une place va à chaque joueur qui la réclame, ou qui connecte un compte X sur la page d'embarquement, jusqu'à ce qu'il n'en reste plus. Vos points : 3 par adversaire battu en duel, 1 par adversaire affronté, 2 par boîte ouverte, jusqu'à 10 boîtes. Chaque adversaire compte une fois, peu importe combien de fois vous l'affrontez, et les duels entre vos propres wallets ne comptent pas. Réclamez votre place depuis l'onglet Duels du classement en signant avec votre wallet : c'est gratuit, aucune transaction n'est envoyée, et le jeu apprend seulement que votre adresse le demande. Signez à nouveau plus tard pour mettre vos points à jour ; vos meilleurs points sont gardés, même si le réseau de test repart de zéro. Les joueurs sont classés par points ; à points égaux, la réclamation la plus ancienne passe devant."
     },
     {
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Le Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0x138f…1264\nLe garde-manger des rats (RatPantry) 0x1334…E75B"
+     "text": "Les contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0x138f…1264\nLe garde-manger des rats (RatPantry) 0x1334…E75B"
     },
     {
      "id": "testnet-3",
@@ -1572,13 +1572,13 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "Cada jugador de la red de pruebas que reclama obtiene un lugar en la lista blanca de mainnet: no hay límite, y los puntos fijan el puesto. Tus puntos: 3 por cada rival que vences en un duelo, 1 por cada rival al que te enfrentas, 2 por cada caja que abres, hasta 10 cajas. Cada rival cuenta una vez, por muchas veces que os enfrentéis, y los duelos entre tus propias wallets no cuentan. Reclama tu lugar desde la pestaña Duelos de la clasificación firmando con tu wallet: es gratis, no envía ninguna transacción, y el juego solo sabe que tu dirección lo pide. Vuelve a firmar más tarde para actualizar tus puntos; se guardan los mejores que hayas tenido, aunque la red de pruebas vuelva a empezar. Los jugadores se ordenan por puntos; a igualdad de puntos, pasa primero quien reclamó antes.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37"
+     "text": "La lista blanca de mainnet tiene 3000 lugares, por orden de llegada: un lugar para cada jugador que lo reclama, o que conecta una cuenta de X en la página de embarque, hasta que no quede ninguno. Tus puntos: 3 por cada rival que vences en un duelo, 1 por cada rival al que te enfrentas, 2 por cada caja que abres, hasta 10 cajas. Cada rival cuenta una vez, por muchas veces que os enfrentéis, y los duelos entre tus propias wallets no cuentan. Reclama tu lugar desde la pestaña Duelos de la clasificación firmando con tu wallet: es gratis, no envía ninguna transacción, y el juego solo sabe que tu dirección lo pide. Vuelve a firmar más tarde para actualizar tus puntos; se guardan los mejores que hayas tenido, aunque la red de pruebas vuelva a empezar. Los jugadores se ordenan por puntos; a igualdad de puntos, pasa primero quien reclamó antes.\nLos contratos en Sepolia:"
     },
     {
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "La Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0x138f…1264\nLa despensa de las ratas (RatPantry) 0x1334…E75B"
+     "text": "Las cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0x138f…1264\nLa despensa de las ratas (RatPantry) 0x1334…E75B"
     },
     {
      "id": "testnet-3",
@@ -2133,7 +2133,7 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "Ogni giocatore della rete di prova che reclama ottiene un posto nella lista bianca della mainnet: non c'è limite, e i punti fissano la posizione. I tuoi punti: 3 per ogni avversario battuto in duello, 1 per ogni avversario affrontato, 2 per ogni scatola aperta, fino a 10 scatole. Ogni avversario conta una volta, per quante volte vi affrontiate, e i duelli tra i tuoi stessi wallet non contano. Reclama il tuo posto dalla scheda Duelli della classifica firmando con il tuo wallet: è gratis, non invia nessuna transazione, e il gioco sa solo che il tuo indirizzo lo chiede. Firma di nuovo più tardi per aggiornare i punti; restano i migliori che hai avuto, anche se la rete di prova riparte da zero. I giocatori sono in ordine di punti; a parità di punti, passa prima chi ha reclamato prima.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37"
+     "text": "La lista bianca della mainnet ha 3000 posti, chi prima arriva meglio alloggia: un posto a ogni giocatore che lo reclama, o che collega un account X nella pagina d'imbarco, finché ce ne sono. I tuoi punti: 3 per ogni avversario battuto in duello, 1 per ogni avversario affrontato, 2 per ogni scatola aperta, fino a 10 scatole. Ogni avversario conta una volta, per quante volte vi affrontiate, e i duelli tra i tuoi stessi wallet non contano. Reclama il tuo posto dalla scheda Duelli della classifica firmando con il tuo wallet: è gratis, non invia nessuna transazione, e il gioco sa solo che il tuo indirizzo lo chiede. Firma di nuovo più tardi per aggiornare i punti; restano i migliori che hai avuto, anche se la rete di prova riparte da zero. I giocatori sono in ordine di punti; a parità di punti, passa prima chi ha reclamato prima.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37"
     },
     {
      "id": "testnet-2",
