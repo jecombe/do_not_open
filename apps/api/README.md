@@ -112,7 +112,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `POST /v1/terms` | Files a signed release form (terms of play): `{ address, message, signature }`. The message must name the address, a version and the SHA-256 of the text, and be signed by that address (EIP-191, no gas). The first signature per address and version is kept. Answers `address`, `version`, `hash`, `receivedAt`; `400` if it is not a form or names another address, `401` if another account signed it. 10 a minute per IP |
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/allowlist` | Files a claim for a place on the mainnet allow list: `{ address, message, signature }`, the message from `allowListMessage` (`@dno/chain-adapter/standings`) naming that address, signed by it (EIP-191, no gas). Signing again keeps the first claim's date and the best points. Answers the status below; `400` if it is not a claim or names another address, `401` if another account signed it. 10 a minute per IP |
-| `GET /v1/allowlist/:address` | Where an address stands: `live` points (`beaten`, `faced`, `opened`), the `points` the ranking counts, `claimedAt`, `rank` among claimants (null until it claims), `claimants`, `places`. Not cached |
+| `GET /v1/allowlist/:address` | Where an address stands: `live` points (`beaten`, `faced`, `opened`), the `points` the ranking counts, `claimedAt`, `rank` among claimants (null until it claims), `claimants`, `places`. Not cached by HTTP; the public facts behind the points (resolved duels, openers) are reused for 30 s (`FACTS_TTL`), since quest platforms such as Galxe check addresses in bursts, and a claim always reads them afresh. Public: the points come from public facts only |
 | `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
@@ -197,6 +197,18 @@ a duel between one address and itself counts nothing. The ranking takes, for eac
 best of the points kept at its last claim and its points now; ties go to the earlier claim.
 Nobody is ranked who did not claim. `ALLOW_LIST_PLACES` (500 by default) is how many get a
 place; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
+
+**On Galxe.** A Galxe quest checks a player's testnet play with a REST credential on this
+route, nothing to add on our side:
+
+- Endpoint: `GET https://api.do-not-open.app/v1/allowlist/$address` (Galxe fills `$address`
+  with the wallet the player linked).
+- Expression, for "claimed a place with at least 5 points":
+  `function (resp) { const d = resp && resp.data; return d && d.claimedAt !== null && d.points >= 5 ? 1 : 0; }`
+  (or `d.live.beaten >= 1` for "won a duel", `d.live.opened >= 1` for "opened a box").
+- Galxe calls from its own servers, so the global limit of `RATE_LIMIT_PER_MINUTE` per IP
+  (300) applies to all its checks together. Watch the `429`s during a big campaign.
+- Galxe sees the wallet each player links to their account there: say so on the quest page.
 
 ## Token images on Arweave
 

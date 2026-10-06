@@ -37,6 +37,11 @@ export interface AllowListEntry {
 }
 
 const MAX_MESSAGE = 1_000;
+/** How long the public facts behind the points are reused, in seconds: quest platforms check
+ *  addresses in bursts, and each read would otherwise load every duel and every opening. */
+export const FACTS_TTL = 30;
+
+type PublicFacts = { duels: SettledDuel[]; openers: Address[] };
 
 /**
  * The mainnet allow list. A player claims a place by signing a message, free and off-chain; the
@@ -44,6 +49,8 @@ const MAX_MESSAGE = 1_000;
  * fought, the boxes it opened). Nobody is ranked who did not ask to be.
  */
 export class AllowList {
+  private cached: { at: number; facts: Promise<PublicFacts> } | null = null;
+
   constructor(
     private readonly store: Store,
     private readonly verifier: SignatureVerifier,
@@ -64,7 +71,8 @@ export class AllowList {
       throw new Unauthorized("unreadable signature");
     }
     if (signer !== address) throw new Unauthorized("signed by another account");
-    const { live } = await this.facts(address);
+    // A claim reads the chain's facts afresh, so a duel won a moment ago counts.
+    const { live } = await this.facts(address, true);
     const kept = await this.store.allowListClaim(address);
     const now = this.clock.now();
     await this.store.saveAllowListClaim({
@@ -99,12 +107,24 @@ export class AllowList {
       .map((e, i) => ({ rank: i + 1, ...e, inPlace: i < this.places }));
   }
 
-  private async facts(address: Address): Promise<{ live: PlayerPoints }> {
-    const f = await this.publicFacts();
+  private async facts(address: Address, fresh = false): Promise<{ live: PlayerPoints }> {
+    const f = await this.publicFacts(fresh);
     return { live: playerPoints(address, f.duels, f.openers) };
   }
 
-  private async publicFacts(): Promise<{ duels: SettledDuel[]; openers: Address[] }> {
+  private publicFacts(fresh = false): Promise<PublicFacts> {
+    const now = this.clock.now();
+    if (!fresh && this.cached && now - this.cached.at < FACTS_TTL) return this.cached.facts;
+    const facts = this.loadFacts();
+    this.cached = { at: now, facts };
+    // A failed read is not kept: the next call tries again.
+    facts.catch(() => {
+      if (this.cached?.facts === facts) this.cached = null;
+    });
+    return facts;
+  }
+
+  private async loadFacts(): Promise<PublicFacts> {
     const [duels, opened] = await Promise.all([this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS }), this.store.openedBoxes()]);
     return { duels: settledDuels(duels), openers: opened.flatMap((b) => (b.openedBy ? [b.openedBy] : [])) };
   }
