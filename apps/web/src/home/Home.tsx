@@ -9,6 +9,7 @@ import { appPath, docsPath, homePath, marketPath, studioPath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
+import { Boarding } from "./Boarding";
 import { useT } from "./i18n";
 import { Passport } from "./Passport";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
@@ -140,6 +141,8 @@ export function Home() {
   return (
     <div className="home">
       <HomeTop />
+
+      <Boarding />
 
       <section className="home-hero">
         <div className="hero-text">
