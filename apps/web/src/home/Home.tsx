@@ -5,11 +5,12 @@ import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD, REPO } from "../links";
 import { useLocale } from "../i18n/locale";
-import { appPath, docsPath, duelRankingPath, homePath, marketPath, studioPath } from "../site";
+import { appPath, docsPath, homePath, marketPath, studioPath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
 import { useT } from "./i18n";
+import { Passport } from "./Passport";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { RatsLeft } from "./RatsLeft";
 import { RatToy } from "./ratToy";
@@ -154,7 +155,7 @@ export function Home() {
             </a>
           </p>
           {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
-          <a className="hero-allow" href={duelRankingPath(locale)}>
+          <a className="hero-allow" href="#pass">
             {t("home.hero.allowList")}&nbsp;→
           </a>
         </div>
@@ -170,6 +171,8 @@ export function Home() {
       </div>
 
       <Shipped />
+
+      <Passport />
 
       <section id="how" className="home-section">
         <h2>{t("home.how.title")}</h2>
