@@ -26,7 +26,8 @@ export interface AllowListView {
   claimedAt: number | null;
   rank: number | null;
   claimants: number;
-  places: number;
+  /** The cap on the list, or null: no cap, every claimant is on it. */
+  places: number | null;
 }
 
 export interface AllowListEntry {
@@ -58,7 +59,7 @@ export class AllowList {
     private readonly store: Store,
     private readonly verifier: SignatureVerifier,
     private readonly clock: Clock,
-    private readonly places: number,
+    private readonly places: number | null,
     /** Extra points per wallet, from X boarding passes. None by default. */
     private readonly bonuses: () => Promise<Map<Address, number>> = async () => new Map(),
   ) {}
@@ -111,7 +112,7 @@ export class AllowList {
         return { address: c.address, bonus, points: Math.max(c.points, live.points) + bonus, claimedAt: c.claimedAt, live };
       })
       .sort(byClaimRank)
-      .map((e, i) => ({ rank: i + 1, ...e, inPlace: i < this.places }));
+      .map((e, i) => ({ rank: i + 1, ...e, inPlace: this.places === null || i < this.places }));
   }
 
   private async facts(address: Address, fresh = false): Promise<{ live: PlayerPoints }> {

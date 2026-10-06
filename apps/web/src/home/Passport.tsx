@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ALLOW_LIST_POINTS, DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
+import { ALLOW_LIST_POINTS } from "@dno/chain-adapter/standings";
 import { chainMode } from "../chain/mode";
 import { useLocale } from "../i18n/locale";
 import { appPath, duelRankingPath } from "../site";
@@ -13,7 +13,7 @@ interface PassStatus {
   claimedAt: number | null;
   rank: number | null;
   claimants: number;
-  places: number;
+  places: number | null;
 }
 
 // Any address answers with the list's size: this one has never played.
@@ -43,7 +43,7 @@ type Check = { state: "idle" } | { state: "busy" } | { state: "bad" } | { state:
  * The mainnet allow list as a customs laissez-passer: three stamps (the X quest, play, sign),
  * an address to check, and how many passes are signed. The forms open in a new tab.
  */
-type Count = { claimants: number; places: number };
+type Count = { claimants: number; places: number | null };
 
 /** How many passes are signed, out of how many places. Null without the API, or until it answers. */
 export function usePassCount(): [Count | null, (c: Count) => void] {
@@ -91,7 +91,6 @@ export function Passport() {
   };
 
   const pass = check.state === "done" ? check.pass : null;
-  const places = count?.places ?? DEFAULT_ALLOW_LIST_PLACES;
   const stamps = [
     { key: "quest", done: !!xPass?.handle, href: "#boarding", newTab: false, chips: [] },
     {
@@ -110,18 +109,16 @@ export function Passport() {
         <header className="pass-cover">
           <p className="kicker">{t("home.pass.kicker")}</p>
           <h2>{t("home.pass.title")}</h2>
-          <p className="section-lede">{t("home.pass.lede", { places })}</p>
+          <p className="section-lede">{t("home.pass.lede")}</p>
           <div className="pass-photo" aria-hidden="true">
             <PassPhoto />
             <span className="speech">{t("home.pass.bubble")}</span>
           </div>
           {count && (
-            <div className="pass-meter" role="img" aria-label={t("home.pass.meter", { count: count.claimants, places: count.places })}>
-              <span className="pass-meter-bar" aria-hidden="true">
-                <i style={{ width: `${Math.min(100, (count.claimants / Math.max(1, count.places)) * 100)}%` }} />
-              </span>
-              <span>{t("home.pass.meter", { count: count.claimants, places: count.places })}</span>
-            </div>
+            <p className="pass-meter">
+              <span className="pass-meter-stamp" aria-hidden="true">✓</span>
+              {t("home.pass.meter", { count: count.claimants })}
+            </p>
           )}
         </header>
 
@@ -177,7 +174,7 @@ export function Passport() {
               {check.state === "down" && t("home.pass.check.down")}
               {pass &&
                 (pass.rank !== null
-                  ? t(pass.rank <= pass.places ? "home.pass.check.in" : "home.pass.check.queue", { points: pass.points, rank: pass.rank, places: pass.places })
+                  ? t("home.pass.check.in", { points: pass.points, rank: pass.rank, claimants: pass.claimants })
                   : pass.live.points > 0
                     ? t("home.pass.check.unsigned", { points: pass.points })
                     : t("home.pass.check.none"))}

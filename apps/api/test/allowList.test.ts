@@ -86,6 +86,15 @@ describe("allow list", () => {
     expect(await list.status(ALICE)).toMatchObject({ points: 8, live: { points: 0 }, rank: 1 });
   });
 
+  it("puts every claimant on the list when there is no cap", async () => {
+    const list = new AllowList(store, verifier, { now: () => now }, null);
+    await claim(list, ALICE);
+    await claim(list, BOB);
+    await claim(list, CAROL);
+    expect((await list.ranked()).map((e) => e.inPlace)).toEqual([true, true, true]);
+    expect(await list.status(CAROL)).toMatchObject({ places: null, claimants: 3 });
+  });
+
   it("reuses the public facts for a while, but a claim reads them afresh", async () => {
     const list = new AllowList(store, verifier, { now: () => now }, 2);
     expect((await list.status(CAROL)).live.points).toBe(1);

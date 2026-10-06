@@ -195,8 +195,8 @@ beaten in a duel, 1 per distinct opponent faced, 2 per box opened (10 boxes at m
 players of a resolved duel are public (the challenger proved holding box A, the accepter box B);
 a duel between one address and itself counts nothing. The ranking takes, for each claimant, the
 best of the points kept at its last claim and its points now; ties go to the earlier claim.
-Nobody is ranked who did not claim. `ALLOW_LIST_PLACES` (500 by default) is how many get a
-place; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
+Nobody is ranked who did not claim. There is no cap: every claimant is on the list, ranked by points (`ALLOW_LIST_PLACES` can
+set one, which only marks `inPlace` in the export); read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
 
 ### X boarding passes
 
