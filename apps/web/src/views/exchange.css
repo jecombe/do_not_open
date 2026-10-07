@@ -942,6 +942,34 @@ input.crate-amount[aria-invalid="true"] {
   color: var(--tape);
 }
 
+.faucet-card {
+  margin: 0 0 12px;
+  padding: 10px 12px 12px;
+  border: 2px dashed var(--sodium);
+  background: rgb(255 180 84 / 0.08);
+}
+
+.faucet-card h4 {
+  margin: 0 0 4px;
+  font-family: var(--stencil);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sodium);
+}
+
+.faucet-card .fine {
+  margin: 0 0 8px;
+}
+
+.faucet-card a.link {
+  color: var(--manifest);
+}
+
+.faucet-card .plain-button {
+  margin-bottom: 4px;
+}
+
 .ledger ul {
   margin: 0 0 10px;
   padding: 0;
