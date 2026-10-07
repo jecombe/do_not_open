@@ -130,6 +130,19 @@ const schema = z.object({
   /** Also post what happens under encryption (🔒 mints, shakes, pets, meals), beside the reveals (🔓). */
   HERALD_DISCORD_SEALED: z.stringbool().default(true),
   /**
+   * A webhook of the team's private channel (the monitoring one will do): each step a player takes
+   * on the boarding page and the whitelist is told there as it happens, with their X handle.
+   * Private, unlike the herald's channel. Without it, nothing is told.
+   */
+  ACTIVITY_DISCORD_WEBHOOK_URL: z.string().url().optional(),
+  /**
+   * The team's admin site (ADMIN_DOMAIN, routed to /admin by the edge proxy): one password for
+   * the whole team, 16 characters or more. Without it, /admin serves nothing.
+   */
+  ADMIN_PASSWORD: z.string().min(16).optional(),
+  /** The built admin app. Next to main.js in the image. */
+  ADMIN_DIR: z.string().optional(),
+  /**
    * Signs the token images stored on Arweave through Turbo. Any fresh Ethereum key: it needs no
    * funds (small files are free) and only shows who uploaded. Without it, images stay on the API.
    */

@@ -105,6 +105,13 @@ export interface ActivityQuery {
   limit: number;
 }
 
+export interface EventBucket {
+  /** Unix seconds: the bucket's first second. */
+  start: number;
+  name: string;
+  count: number;
+}
+
 export interface Stats {
   users: number;
   registered: number;
@@ -147,6 +154,11 @@ export interface ReadStore {
   user(address: Address): Promise<User | null>;
   activity(q: ActivityQuery): Promise<ProtocolEvent[]>;
   stats(): Promise<Stats>;
+  /** Events with a timestamp at or after `since`, counted by name in buckets of `seconds` (UTC,
+   *  from the epoch). Bookkeeping events are left out. For the team's dashboard. */
+  eventBuckets(since: number, seconds: number): Promise<EventBucket[]>;
+  /** Distinct addresses named as actors by those events, per bucket. */
+  activeAccounts(since: number, seconds: number): Promise<{ start: number; accounts: number }[]>;
   /** Which of these handles one of the protocol's contracts made publicly decryptable. Lowercase. */
   publishedAmong(handles: string[]): Promise<string[]>;
   /** Credits ever bought for this account. */

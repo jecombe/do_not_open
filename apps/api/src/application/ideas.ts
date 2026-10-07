@@ -1,3 +1,4 @@
+import { noActivityFeed, type ActivityFeed } from "./activity";
 import type { Clock } from "./auth";
 import { BadRequest } from "./queries";
 import type { Store } from "./ports/store";
@@ -28,6 +29,8 @@ export class Ideas {
     private readonly clock: Clock,
     /** The X handle behind a boarding pass token, or null. */
     private readonly handleOf: (passToken: string) => Promise<string | null> = async () => null,
+    /** The team's private channel, told of each new idea. */
+    private readonly feed: ActivityFeed = noActivityFeed,
   ) {}
 
   async submit(rawText: string, locale: string, passToken: string): Promise<{ received: number }> {
@@ -35,8 +38,12 @@ export class Ideas {
     if (text.length < IDEA_MIN) throw new BadRequest(`an idea needs at least ${IDEA_MIN} characters`);
     if (text.length > IDEA_MAX) throw new BadRequest(`an idea fits in ${IDEA_MAX} characters`);
     const handle = passToken ? await this.handleOf(passToken).catch(() => null) : null;
+    const before = await this.store.ideaCount();
     await this.store.saveIdea({ text, handle, locale: locale.slice(0, 8), createdAt: this.clock.now() });
-    return { received: await this.store.ideaCount() };
+    const received = await this.store.ideaCount();
+    // The same text twice is kept once: only a new idea is told.
+    if (received > before) this.feed.tell({ kind: "idea", handle, text, locale: locale.slice(0, 8) });
+    return { received };
   }
 
   count(): Promise<number> {

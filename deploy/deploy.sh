@@ -34,6 +34,13 @@ API_DOMAIN="$(grep '^API_DOMAIN=' .env | cut -d= -f2-)"
 API_ALIASES="$(grep '^API_ALIASES=' .env | cut -d= -f2- || true)"
 API_HOSTS="$(echo "$API_DOMAIN $API_ALIASES" | tr ',' ' ' | xargs | sed 's/ /, /g')"
 sed "s|__API_HOSTS__|$API_HOSTS|" dno.caddy.template > /opt/edge/sites/dno.caddy
+# The team's admin site, once ADMIN_DOMAIN is set (and ADMIN_PASSWORD, or it answers nothing).
+ADMIN_DOMAIN="$(grep '^ADMIN_DOMAIN=' .env | cut -d= -f2- || true)"
+if [ -n "$ADMIN_DOMAIN" ] && [ -f dno-admin.caddy.template ]; then
+  sed "s|__ADMIN_HOST__|$ADMIN_DOMAIN|" dno-admin.caddy.template > /opt/edge/sites/dno-admin.caddy
+else
+  rm -f /opt/edge/sites/dno-admin.caddy
+fi
 
 answers() { docker exec "$1" wget -qO- http://127.0.0.1:8080/health 2>/dev/null | grep -q '"ok":true'; }
 

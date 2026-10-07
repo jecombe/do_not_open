@@ -1,5 +1,5 @@
 import pg, { type Pool, type PoolClient } from "pg";
-import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, Store, StoredEvent, Ticket, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, DuelQuery, EventBucket, EntangleProposal, ProjectionTx, Stats, Store, StoredEvent, Ticket, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
 import { actorsOf, QUIET_EVENTS, tokensOf, type ProtocolEvent } from "../../domain/events";
@@ -499,6 +499,24 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
         (select count(*)::int from events) as events`);
     const r = rows[0]!;
     return { users: r.users, registered: r.registered, minted: r.minted, opened: r.opened, duels: r.duels, openDuels: r.open_duels, events: r.events };
+  }
+
+  async eventBuckets(since: number, seconds: number): Promise<EventBucket[]> {
+    const { rows } = await this.pool.query(
+      `select (timestamp / $2) * $2 as start, name, count(*)::int as n from events
+       where timestamp >= $1 and name <> all($3::text[]) group by 1, 2 order by 1, 2`,
+      [since, seconds, QUIET_EVENTS],
+    );
+    return rows.map((r) => ({ start: Number(r.start), name: r.name as string, count: r.n as number }));
+  }
+
+  async activeAccounts(since: number, seconds: number) {
+    const { rows } = await this.pool.query(
+      `select (timestamp / $2) * $2 as start, count(distinct a)::int as n from events, unnest(actors) a
+       where timestamp >= $1 and name <> all($3::text[]) group by 1 order by 1`,
+      [since, seconds, QUIET_EVENTS],
+    );
+    return rows.map((r) => ({ start: Number(r.start), accounts: r.n as number }));
   }
 
   saveUser(user: User) {

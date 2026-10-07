@@ -2,6 +2,7 @@ import { whitelistTierOf } from "@dno/game-spec";
 import { allowListAddress, byClaimRank, playerPoints, type PlayerPoints, type SettledDuel } from "@dno/chain-adapter/standings";
 import { ALL_DUELS, settledDuels } from "../domain/standings";
 import { normalizeAddress, type Address } from "../domain/types";
+import { noActivityFeed, type ActivityFeed } from "./activity";
 import { Unauthorized, type Clock, type SignatureVerifier } from "./auth";
 import { BadRequest } from "./queries";
 import type { Store } from "./ports/store";
@@ -74,6 +75,8 @@ export class AllowList {
     private readonly bonuses: () => Promise<Map<Address, number>> = async () => new Map(),
     /** The list's seats: a claimant who tried the testnet takes one. No cap by default. */
     private readonly seats: { admit(): Promise<void>; seatedPassOf(address: Address): Promise<boolean>; seatedPassWallets(): Promise<Set<Address>> } | null = null,
+    /** The team's private channel, told of each first claim. */
+    private readonly feed: ActivityFeed = noActivityFeed,
   ) {}
 
   async claim(rawAddress: string, message: string, signature: string): Promise<AllowListView> {
@@ -104,6 +107,7 @@ export class AllowList {
       claimedAt: kept?.claimedAt ?? now,
       updatedAt: now,
     });
+    if (!kept) this.feed.tell({ kind: "claim", handle: (await this.store.xPassByAddress(address))?.handle ?? null, address });
     return this.status(address);
   }
 

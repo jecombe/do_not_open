@@ -211,6 +211,121 @@ groups:
         annotations:
           summary: "{{ $value }} ideas in the suggestion box in an hour: someone may be spamming it."
 
+  # What players do, not what breaks: severity "activity" goes to Discord without a "resolved"
+  # message (alertmanager.yml). Each compares a count the indexer reports with 15 minutes ago,
+  # through max by (network) so a redeployed indexer (a new instance label) does not count twice.
+  # A burst posts once; still going after 30 minutes, it posts again with the new count.
+  - name: activity
+    rules:
+      - alert: BoardingPasses
+        expr: max by (network) (dno_xpass_passes{stage="started"}) - max by (network) (dno_xpass_passes{stage="started"} offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: |-
+            🎫 {{ $value | printf "%.0f" }} new boarding pass(es) in 15 minutes. All passes: {{ with printf `max(dno_xpass_passes{network="%s",stage="started"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} started, {{ with printf `max(dno_xpass_passes{network="%s",stage="connected"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} with X, {{ with printf `max(dno_xpass_passes{network="%s",stage="seated"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} seated, {{ with printf `max(dno_xpass_passes{network="%s",stage="wallet"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} with a wallet.
+
+      - alert: BoardingConnectedX
+        expr: max by (network) (dno_xpass_passes{stage="connected"}) - max by (network) (dno_xpass_passes{stage="connected"} offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "𝕏 {{ $value | printf \"%.0f\" }} boarding pass(es) connected an X account in 15 minutes."
+
+      - alert: BoardingSeated
+        expr: max by (network) (dno_xpass_passes{stage="seated"}) - max by (network) (dno_xpass_passes{stage="seated"} offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: |-
+            💺 {{ $value | printf "%.0f" }} boarding pass(es) did every task and took a seat in 15 minutes. Seats: {{ with printf `max(dno_whitelist_seats_taken{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} taken{{ with printf `max(dno_whitelist_seats_places{network="%s"}) > 0` $labels.network | query }} of {{ . | first | value | printf "%.0f" }}{{ end }}.
+
+      - alert: WhitelistClaims
+        expr: max by (network) (dno_whitelist_claims) - max by (network) (dno_whitelist_claims offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "✍️ {{ $value | printf \"%.0f\" }} wallet(s) signed for a place on the whitelist in 15 minutes."
+
+      - alert: IdeasReceived
+        expr: max by (network) (dno_ideas_received) - max by (network) (dno_ideas_received offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "💡 {{ $value | printf \"%.0f\" }} new idea(s) in the suggestion box in 15 minutes (/v1/ideas with the admin token)."
+
+      - alert: NewPlayers
+        expr: max by (network) (dno_users) - max by (network) (dno_users offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "👋 {{ $value | printf \"%.0f\" }} new address(es) acted on-chain or signed in for the first time in 15 minutes."
+
+      - alert: BoxesSold
+        expr: max by (network) (dno_boxes_minted) - max by (network) (dno_boxes_minted offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: |-
+            📦 {{ $value | printf "%.0f" }} box(es) left the depot in 15 minutes ({{ with printf `max(dno_boxes_minted{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} in all).
+
+      - alert: BoxesOpened
+        expr: max by (network) (dno_boxes_opened) - max by (network) (dno_boxes_opened offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: |-
+            🐈 {{ $value | printf "%.0f" }} box(es) opened in 15 minutes ({{ with printf `max(dno_boxes_opened{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} in all).
+
+      - alert: DuelsPosted
+        expr: max by (network) (dno_duels) - max by (network) (dno_duels offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "⚔️ {{ $value | printf \"%.0f\" }} duel(s) posted on the shelf in 15 minutes."
+
+      - alert: MilestoneReached
+        expr: max by (network) (dno_milestones_reached) - max by (network) (dno_milestones_reached offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "🏁 A sale milestone was reached ({{ with printf `max(dno_milestones_reached{network=\"%s\"})` $labels.network | query }}{{ . | first | value | printf \"%.0f\" }}{{ end }} so far)."
+
+      - alert: RatsAdopted
+        expr: sum by (network) (max by (network, kind) (dno_rats_minted)) - sum by (network) (max by (network, kind) (dno_rats_minted offset 15m)) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "🐀 {{ $value | printf \"%.0f\" }} rat(s) adopted in 15 minutes."
+
+      - alert: StudioPacksSold
+        expr: max by (network) (dno_studio_packs_sold) - max by (network) (dno_studio_packs_sold offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: |-
+            🎨 {{ $value | printf "%.0f" }} studio pack(s) sold in 15 minutes ({{ with printf `max(dno_studio_revenue_usdc{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.2f" }}{{ end }} USDC in all).
+
+      - alert: TrafficSpike
+        expr: |
+          sum by (network) (rate(dno_http_request_duration_seconds_count{route!~"/metrics|/health"}[15m])) > 0.5
+          and sum by (network) (rate(dno_http_request_duration_seconds_count{route!~"/metrics|/health"}[15m]))
+            > 3 * sum by (network) (rate(dno_http_request_duration_seconds_count{route!~"/metrics|/health"}[1d] offset 15m))
+        for: 5m
+        labels: { severity: activity }
+        annotations:
+          summary: "📈 The API serves {{ $value | printf \"%.1f\" }} requests a second, over three times its usual rate: people are on the site (or a bot)."
+
+      # A recap at 08:00 UTC: what the last 24 hours brought. It also proves, once a day, that
+      # Alertmanager still reaches Discord.
+      - alert: DailyRecap
+        expr: max by (network) (dno_info{role="indexer"}) and on () (hour() == 8 and on () minute() < 10)
+        labels: { severity: digest }
+        annotations:
+          summary: |-
+            Last 24 hours (all-time in brackets):
+            🎫 boarding passes +{{ with printf `max(dno_xpass_passes{network="%[1]s",stage="started"}) - max(dno_xpass_passes{network="%[1]s",stage="started"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} ({{ with printf `max(dno_xpass_passes{network="%s",stage="started"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}–{{ end }}), seated +{{ with printf `max(dno_xpass_passes{network="%[1]s",stage="seated"}) - max(dno_xpass_passes{network="%[1]s",stage="seated"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} ({{ with printf `max(dno_whitelist_seats_taken{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}–{{ end }} seats taken)
+            ✍️ whitelist claims +{{ with printf `max(dno_whitelist_claims{network="%[1]s"}) - max(dno_whitelist_claims{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · 💡 ideas +{{ with printf `max(dno_ideas_received{network="%[1]s"}) - max(dno_ideas_received{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }}
+            👋 new addresses +{{ with printf `max(dno_users{network="%[1]s"}) - max(dno_users{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} ({{ with printf `max(dno_users{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}–{{ end }})
+            📦 boxes sold +{{ with printf `max(dno_boxes_minted{network="%[1]s"}) - max(dno_boxes_minted{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} ({{ with printf `max(dno_boxes_minted{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}–{{ end }}) · 🐈 opened +{{ with printf `max(dno_boxes_opened{network="%[1]s"}) - max(dno_boxes_opened{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · ⚔️ duels +{{ with printf `max(dno_duels{network="%[1]s"}) - max(dno_duels{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }}
+            🐀 rats +{{ with printf `sum(max by (kind) (dno_rats_minted{network="%[1]s"})) - sum(max by (kind) (dno_rats_minted{network="%[1]s"} offset 1d))` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · 🎨 studio packs +{{ with printf `max(dno_studio_packs_sold{network="%[1]s"}) - max(dno_studio_packs_sold{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }}
+            📡 API requests {{ with printf `sum(increase(dno_http_request_duration_seconds_count{network="%s",route!~"/metrics|/health"}[1d]))` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }}
+
+      - alert: SiteQuiet
+        expr: sum by (network) (increase(dno_http_request_duration_seconds_count{role="api",route!~"/metrics|/health"}[6h])) < 1
+        for: 10m
+        labels: { severity: info }
+        annotations:
+          summary: "Nobody has used the API for 6 hours: no visitor, or the site no longer reaches it (VITE_API_URL)."
+
   - name: server
     rules:
       - alert: DiskAlmostFull

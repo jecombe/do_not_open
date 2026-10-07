@@ -137,6 +137,29 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(shaken).toEqual(expect.objectContaining({ name: "Shaken", tokenId: 1, viewer: BOB, paid: true, block: 2, source: "collection" }));
     });
 
+    it("counts events and distinct actors by time bucket, for the dashboard", async () => {
+      const day = 86_400;
+      const t0 = 20_000 * day;
+      await store.transaction(async (tx) => {
+        await tx.insertEvent(ev("MintPlaced", 1, { firstTokenId: 0, buyer: ALICE, count: 3 }, { timestamp: t0 + 10 }), null);
+        await tx.insertEvent(ev("Shaken", 2, { tokenId: 1, viewer: ALICE, paid: true }, { timestamp: t0 + 20 }), null);
+        await tx.insertEvent(ev("Shaken", 3, { tokenId: 1, viewer: BOB, paid: true }, { timestamp: t0 + day + 5 }), null);
+        // Bookkeeping and undated events are left out; so is what came before `since`.
+        await tx.insertEvent(ev("PubliclyDecryptable", 4, { caller: ALICE, handles: ["0x01"] }, { timestamp: t0 + day + 6 }), null);
+        await tx.insertEvent(ev("Shaken", 5, { tokenId: 2, viewer: CAROL, paid: false }, { timestamp: null }), null);
+        await tx.insertEvent(ev("Shaken", 6, { tokenId: 2, viewer: CAROL, paid: false }, { timestamp: t0 - 1 }), null);
+      });
+      expect(await store.eventBuckets(t0, day)).toEqual([
+        { start: t0, name: "MintPlaced", count: 1 },
+        { start: t0, name: "Shaken", count: 1 },
+        { start: t0 + day, name: "Shaken", count: 1 },
+      ]);
+      expect(await store.activeAccounts(t0, day)).toEqual([
+        { start: t0, accounts: 1 },
+        { start: t0 + day, accounts: 1 },
+      ]);
+    });
+
     it("keeps users, and hands each sign-in nonce out once", async () => {
       const u = { address: ALICE, firstBlock: 1, lastBlock: 9, firstSeenAt: 100, lastSeenAt: 900, actions: 4, registeredAt: null, lastLoginAt: null };
       await store.transaction((tx) => tx.saveUser(u));
