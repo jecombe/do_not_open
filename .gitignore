@@ -17,3 +17,5 @@ deployments/hardhat/
 out/
 __pycache__/
 loadtest-results/
+# Throwaway Sepolia test wallets and their keys (packages/chain-adapter/scripts/testWallets.ts): never committed.
+.test-wallets.json

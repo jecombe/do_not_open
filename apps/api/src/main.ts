@@ -72,8 +72,12 @@ async function main() {
     // The testnet site's API reads its own lists first, then the shared index.
     const searchPath = config.LISTS_SCHEMA ? { options: `-c search_path=${config.LISTS_SCHEMA},public` } : {};
     pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE, ...searchPath });
-    if (config.LISTS_SCHEMA) log.info({ schema: config.LISTS_SCHEMA }, "own lists in their schema, the index shared; migrations are the live stack's");
-    else await migrate(pool, log);
+    if (config.LISTS_SCHEMA) {
+      // Without its own tables, the search path would fall through to the live lists: refuse to start.
+      const { rows } = await pool.query("select to_regclass($1) as passes, to_regclass($2) as claims, to_regclass($3) as ideas", [`${config.LISTS_SCHEMA}.x_passes`, `${config.LISTS_SCHEMA}.allow_list_claims`, `${config.LISTS_SCHEMA}.ideas`]);
+      if (!rows[0].passes || !rows[0].claims || !rows[0].ideas) throw new Error(`schema ${config.LISTS_SCHEMA} lacks its list tables: deploy the live stack first (migration 24)`);
+      log.info({ schema: config.LISTS_SCHEMA }, "own lists in their schema, the index shared; migrations are the live stack's");
+    } else await migrate(pool, log);
     store = new PgStore(pool);
   } else {
     log.warn("DATABASE_URL is not set: the index lives in memory and is rebuilt at each start");
