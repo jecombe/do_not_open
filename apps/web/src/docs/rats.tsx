@@ -7,7 +7,8 @@ import { useT } from "./i18n";
 
 /**
  * The studio and rats chapter's figures: the studio's road from a prompt to a rat of your own,
- * a rat to click, a box and a rat side by side, and where a rat's croquettes come from.
+ * a rat to click, a box and a rat side by side, where a rat's croquettes come from, its three
+ * secret powers, and what a rat set on a box does.
  */
 
 const { packs, rats } = studio;
@@ -92,7 +93,7 @@ export function RatFigure() {
   );
 }
 
-const VERSUS = ["what", "holder", "inside", "price", "supply", "earns", "markets"] as const;
+const VERSUS = ["what", "holder", "inside", "secret", "price", "supply", "earns", "markets"] as const;
 
 /** A box and a rat, line by line: everything one hides, the other shows. */
 export function BoxVsRatTable() {
@@ -176,6 +177,75 @@ export function RatCroquettesFigure() {
         arrows={[t("fig.ratcroq.fund"), t("fig.ratcroq.collect", { days: croquettes.maxDays }), t("fig.ratcroq.seal")]}
       />
       <figcaption>{t("fig.ratcroq.caption")}</figcaption>
+    </figure>
+  );
+}
+
+const POWERS = [1, 2, 3] as const;
+
+/** The three powers: how often each comes, what it does to a sniff and on a box. */
+export function PowersTable() {
+  const t = useT();
+  return (
+    <figure className="diagram">
+      <div className="form versus" role="group" aria-label={t("fig.powers.aria")}>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">{t("fig.powers.col.power")}</th>
+              <th scope="col">{t("fig.powers.col.sniff")}</th>
+              <th scope="col">{t("fig.powers.col.trick")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {POWERS.map((p) => (
+              <tr key={p}>
+                <th scope="row">
+                  {t(`fig.powers.${p}.name`)}
+                  <br />
+                  <small>{t("fig.powers.odds", { n: rats.powers.odds[p - 1]! / 100 })}</small>
+                </th>
+                <td>{t(`fig.powers.${p}.sniff`)}</td>
+                <td>{t(`fig.powers.${p}.trick`)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <figcaption>{t("fig.powers.caption")}</figcaption>
+    </figure>
+  );
+}
+
+const TRICKS = ["own", "other", "bluff"] as const;
+
+/** A rat set on a box: on your own it protects, on someone else's it attacks, power 1 bluffs. */
+export function TricksTable() {
+  const t = useT();
+  const days = rats.powers.trickDays;
+  return (
+    <figure className="diagram">
+      <div className="form versus" role="group" aria-label={t("fig.tricks.aria")}>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">{t("fig.tricks.col.where")}</th>
+              <th scope="col">{t("fig.tricks.col.does", { days })}</th>
+              <th scope="col">{t("fig.tricks.col.sees")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {TRICKS.map((k) => (
+              <tr key={k}>
+                <th scope="row">{t(`fig.tricks.${k}.where`)}</th>
+                <td>{t(`fig.tricks.${k}.does`)}</td>
+                <td>{t(`fig.tricks.${k}.sees`)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <figcaption>{t("fig.tricks.caption")}</figcaption>
     </figure>
   );
 }

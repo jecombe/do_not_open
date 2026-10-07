@@ -108,6 +108,31 @@ script reads `feeBps` through `marketParamsFromSpec()` (`packages/contracts-evm/
 which refuses a fee above `maxFeeBps`; `FleaMarket` hardcodes `MAX_FEE_BPS` and `MAX_PRICE`
 and a test checks them against the spec. The mock adapter reads the same numbers.
 
+## Whitelist
+
+The `whitelist` section holds the mainnet whitelist and its gifts: `places` (1,500, the API's
+default `ALLOW_LIST_PLACES`), `claimDays` (30) and three `tiers`, each with its ranks
+(`fromRank`, `toRank`), the cCROQ range drawn under encryption (`croqMin`, `croqMax`) and
+whether it gets a box and a rat: First class 1 to 500 (100 to 500, box and rat), Business 501
+to 1,000 (50 to 250, box), Economy 1,001 to 1,500 (20 to 100, rat). `whitelistTierOf(rank)`
+maps a rank to its tier. The deploy script reads it through `whitelistParamsFromSpec()`
+(`packages/contracts-evm/lib/specParams.ts`), which checks the tiers cover ranks 1 to `places`
+in order and that each range fits the contract's 16-bit draw; the API, the mock adapter and the
+web pages read the same numbers. The gift rats' cap is `rats.mint.maxGiftRats` in `studio.json`.
+
+## Rats (studio.json)
+
+`studio.json` holds the studio and its rats, kept out of `spec.json` because the deployed
+`DoNotOpenConfig` stores `spec.json`'s hash. `rats.mint` caps the supply and sets the prices,
+`rats.croquettes` the `RatPantry`'s daily CROQ, and `rats.powers` the rats' secret powers:
+`odds` (basis points for powers 1, 2 and 3: 5,500, 3,000, 1,500), `sniffRebateBps` (3,000: what
+a power-1 rat gets back of a sniff's price), `trickDays` (3: how long a shield or a jam lasts)
+and `rechargeDays` (7: how long the rat rests afterwards). `ratParamsFromSpec()`
+(`packages/contracts-evm/lib/ratParams.ts`) turns the odds into the bounds on a 16-bit draw that
+`Rats` takes (`powerBounds`, checking they are three positive numbers summing to 10,000); the
+mock adapter and the web app read the same numbers. `rats.events` lists `RatMinted`,
+`Transfer`, `Sniffed`, `TrickPlayed` and `RatsFed`.
+
 ## Mechanics and events
 
 See `mechanics` and `events` in `spec.json` (the flea market's events, `Listed` to `Sold`,
@@ -116,4 +141,4 @@ implemented by any program that can compute on encrypted integers and publish a
 verified decryption.
 
 `mechanics.duel.lifetimeDays` (7) is how long a proven duel stays on the duel shelf. The
-contract's `DUEL_LIFETIME` matches it, and the mock adapter reads it.
+contract's private `DUEL_LIFETIME` matches it (the tests check it from the spec), and the mock adapter reads it.

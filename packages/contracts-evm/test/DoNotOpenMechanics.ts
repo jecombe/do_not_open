@@ -31,6 +31,9 @@ import {
   withdrawAll,
 } from "./helpers";
 
+/** DoNotOpen.DUEL_LIFETIME, from the spec. */
+const DUEL_LIFETIME = Number(spec.mechanics.duel!.lifetimeDays) * 86_400;
+
 describe("DoNotOpen mechanics", function () {
   let deployer: HardhatEthersSigner;
   let alice: HardhatEthersSigner;
@@ -180,8 +183,8 @@ describe("DoNotOpen mechanics", function () {
       expect((await dno.contentsOf(B[0]!)).affection).to.eq(0n);
       const fedCat = await dno.contentsOf(A[0]!);
       expect(buildCatSpec({ seed: fedCat.seed, affection: Number(fedCat.affection) }).rarity.score).to.eq(Number(fedCat.score));
-      expect(await dno.revealed(A[0]!)).to.eq(true);
-      expect(await dno.revealed(B[0]!)).to.eq(true);
+      expect(await dno.status(A[0]!)).to.eq(1n);
+      expect(await dno.status(B[0]!)).to.eq(1n);
       expect((await dno.contentsOf(A[0]!)).seed).to.eq(await peekSeed(dno, A[0]!));
     });
 
@@ -210,7 +213,7 @@ describe("DoNotOpen mechanics", function () {
       expect(await accept(A[0]!, A[1]!, alice)).to.eq(REQUEST.Done);
       await (await dno.connect(alice).confidentialTransfer(carol.address, A[1]!)).wait();
       expect(await open(dno, A[1]!, carol, bob)).to.eq(REQUEST.Done);
-      expect(await dno.revealed(A[0]!)).to.eq(true);
+      expect(await dno.status(A[0]!)).to.eq(1n);
     });
   });
 
@@ -263,8 +266,7 @@ describe("DoNotOpen mechanics", function () {
       await expect(finalizeDuel(dno, 1, bob)).to.emit(dno, "DuelOpened");
       const info = await dno.duelInfo(1);
       expect(info.duelStatus).to.eq(DUEL.Open);
-      expect(info.openUntil).to.eq(BigInt(await time.latest()) + (await dno.DUEL_LIFETIME()));
-      expect(await dno.DUEL_LIFETIME()).to.eq(BigInt(Number(spec.mechanics.duel!.lifetimeDays) * 86_400));
+      expect(info.openUntil).to.eq(BigInt(await time.latest()) + BigInt(DUEL_LIFETIME));
     });
 
     it("goes back on the shelf when the accepter brought a box they do not hold, showing nothing", async function () {
@@ -311,7 +313,7 @@ describe("DoNotOpen mechanics", function () {
       await expect(finalizeDuel(dno, second, carol)).to.emit(dno, "DuelCancelled").withArgs(first);
       expect((await dno.duelInfo(first)).duelStatus).to.eq(DUEL.Cancelled);
 
-      await time.increase(Number(await dno.DUEL_LIFETIME()) + 1);
+      await time.increase(DUEL_LIFETIME + 1);
       await expect(dno.connect(bob).acceptDuel(second, B[0]!)).to.be.revertedWithCustomError(dno, "DuelExpired");
 
       const third = await postDuel(dno, A[1]!, alice, carol);

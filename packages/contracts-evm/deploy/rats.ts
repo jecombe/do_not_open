@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (!croqDeployment) throw new Error("no Croq deployment on this network: deploy the economy first");
   const p = ratParamsFromSpec();
 
-  const rats = await deploy("Rats", { from: deployer, args: [usdc, treasury, owner, attester, p.seedPrice, p.modelPrice, baseURI, p.maxSeedRats, p.maxModelRats, p.maxPerWallet], log: true });
+  const rats = await deploy("Rats", { from: deployer, args: [usdc, treasury, owner, attester, p.seedPrice, p.modelPrice, baseURI, [p.maxSeedRats, p.maxModelRats, p.maxPerWallet, p.maxGiftRats], p.powerBelow], log: true });
   const pantry = await deploy("RatPantry", { from: deployer, args: [croqDeployment.address, rats.address, p.perDay, p.maxDays], log: true });
 
   // Fund the pantry up to the spec's amount, from the deployer or the treasury's key.
@@ -51,7 +51,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       console.warn(`RatPantry ${pantry.address} is EMPTY: send it ${missing} CROQ with a plain transfer from the treasury's wallet`);
     }
   }
-  console.log(`Rats: ${rats.address} (seed rat ${hre.ethers.formatUnits(p.seedPrice, 6)} USDC, AI rat ${hre.ethers.formatUnits(p.modelPrice, 6)} USDC, at most ${p.maxSeedRats} + ${p.maxModelRats} rats and ${p.maxPerWallet} a wallet, attester ${attester})`);
+  console.log(`Rats: ${rats.address} (seed rat ${hre.ethers.formatUnits(p.seedPrice, 6)} USDC, AI rat ${hre.ethers.formatUnits(p.modelPrice, 6)} USDC, at most ${p.maxSeedRats} + ${p.maxModelRats} rats and ${p.maxPerWallet} a wallet, ${p.maxGiftRats} gift rats, attester ${attester})`);
   console.log(`RatPantry: ${pantry.address} (${p.perDay} CROQ a rat a day, ${p.maxDays} days kept)`);
 };
 export default func;

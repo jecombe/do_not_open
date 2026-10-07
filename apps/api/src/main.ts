@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import pg from "pg";
 import pino from "pino";
 import { AskManual, type AnswerModel } from "./application/askManual";
@@ -6,6 +7,7 @@ import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import { AllowList } from "./application/allowList";
 import { Seats } from "./application/seats";
+import { GiftProofs } from "./application/whitelistGifts";
 import { Ideas } from "./application/ideas";
 import { X_TASKS, xPassBonuses, XPasses } from "./application/xPass";
 import type { Store } from "./application/ports/store";
@@ -195,6 +197,9 @@ async function main() {
   let allowList: AllowList | null = null;
   const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"]);
   allowList = new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats);
+  // The frozen list, once it closed: each wallet's proof for WhitelistGifts.
+  const gifts = new GiftProofs(config.WHITELIST_GIFTS_TREE ? JSON.parse(readFileSync(config.WHITELIST_GIFTS_TREE, "utf8")) : null);
+  if (gifts.frozen) log.info({ root: gifts.root, wallets: gifts.count }, "whitelist gifts: tree loaded");
 
   const xPasses = new XPasses(
     store,
@@ -239,7 +244,7 @@ async function main() {
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
           signIn,
           terms: new AcceptTerms(store, ethersVerifier, clock),
-          allowList: { list: allowList, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, seats },
+          allowList: { list: allowList, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, seats, gifts },
           xPasses: { passes: xPasses, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, returnOrigins: config.X_RETURN_ORIGINS, announcement: config.X_ANNOUNCEMENT_ID ?? null },
           ideas: { box: new Ideas(store, clock, (token) => xPasses.handleOf(token)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
           relayer,

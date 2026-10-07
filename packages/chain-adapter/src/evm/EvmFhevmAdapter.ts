@@ -1,8 +1,10 @@
 import {
   Contract,
+  hexlify,
   Interface,
   isError,
   keccak256,
+  randomBytes,
   toUtf8Bytes,
   VoidSigner,
   type ContractTransactionReceipt,
@@ -15,7 +17,7 @@ import {
   type TransactionResponse,
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
-import { studio as studioSpec } from "@dno/game-spec";
+import { spec, studio as studioSpec } from "@dno/game-spec";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import { traitIndexAtOffset } from "../layout";
@@ -26,6 +28,7 @@ import {
   sameAddress,
   type ActionOptions,
   type AllowListStatus,
+  type WhitelistGift,
   type SwapOptions,
   type SignedTerms,
   type Address,
@@ -68,7 +71,10 @@ import {
   type RatAdoption,
   type RatInfo,
   type RatPantryInfo,
+  type RatPower,
   type RatPrices,
+  type RatTrickPlayed,
+  type RatTricksInfo,
   type RatRef,
   type RatSupply,
   type RatTaken,
@@ -165,6 +171,10 @@ export interface EvmAdapterOptions {
   ratPantry?: Deployed;
   /** The FleaMarket, where players sell each other boxes, cats and rats. Without it, nothing can be listed. */
   market?: Deployed & { deployBlock?: number | null };
+  /** The whitelist's gifts. Without it, there is none to collect on this network. */
+  whitelistGifts?: Deployed;
+  /** The rats' tricks: sniffs, shields and jams. Without it, rats only earn croquettes. */
+  ratTricks?: Deployed;
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -208,6 +218,8 @@ const REQUEST_PENDING = 1;
 const REQUEST_REFUSED = 3;
 /** DoNotOpen.NOT_YOURS: the pick a shake returns to someone who did not hold the box or pay. */
 const NOT_YOURS = 255;
+/** RatTricks.SCRAMBLED: the pick of a holder's shake a rat jams. */
+const SCRAMBLED = 254;
 /** Events are read in slices of this many blocks: public endpoints refuse wider ranges. */
 const LOG_SPAN = 40_000;
 /** How many handles one user decryption asks for. */
@@ -366,7 +378,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : []), ...(opts.whitelistGifts ? [opts.whitelistGifts.abi] : []), ...(opts.ratTricks ? [opts.ratTricks.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -699,6 +711,66 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }
   }
 
+  async whitelistGift(): Promise<WhitelistGift | null> {
+    const deployed = this.opts.whitelistGifts;
+    const account = this.address_;
+    if (!deployed || !account) return null;
+    const gifts = this.at(deployed);
+    const [root, closesAt, g] = await Promise.all([this.reading(gifts.root!()), this.reading(gifts.closesAt!()), this.reading(gifts.giftOf!(account))]);
+    const frozen = root !== ZERO_HANDLE;
+    const closes = frozen ? Number(closesAt) : null;
+    if (g.claimed) return { status: "claimed", tier: Number(g.tier), closesAt: closes, box: g.hasBox ? Number(g.box) : null, rat: g.hasRat ? Number(g.rat) : null };
+    if (!frozen) return { status: "waiting", tier: null, closesAt: null, box: null, rat: null };
+    const proof = await this.giftProof(account);
+    const status = !proof ? "none" : Date.now() / 1000 >= closes! ? "closed" : "ready";
+    return { status, tier: proof?.tier ?? null, closesAt: closes, box: null, rat: null };
+  }
+
+  async claimWhitelistGift(opts?: ActionOptions): Promise<WhitelistGift> {
+    const deployed = this.opts.whitelistGifts;
+    if (!deployed) throw new ChainError("unknown", "There are no whitelist gifts on this network.");
+    const account = (await this.signer().getAddress()) as Address;
+    const proof = await this.giftProof(account);
+    if (!proof) throw new ChainError("reverted", "This wallet is not on the frozen whitelist.", "NotOnTheList");
+    const tier = spec.whitelist.tiers[proof.tier];
+    // The box is bought by the gifts contract: its quantity (1) is encrypted for it, not for the wallet.
+    const input = tier?.box
+      ? await this.encrypt(this.opts.address, account, (b) => b.add8(1), "the box", opts, deployed.address)
+      : { handles: [ZERO_HANDLE], inputProof: "0x" };
+    const seed = await this.freeRatSeed(!!tier?.rat);
+    await this.send(opts, () => this.writer(deployed).claim!(proof.tier, proof.proof, input.handles[0], input.inputProof, seed));
+    return (await this.whitelistGift())!;
+  }
+
+  async whitelistGiftCroq(opts?: ActionOptions): Promise<bigint | null> {
+    const deployed = this.opts.whitelistGifts;
+    const account = this.address_;
+    if (!deployed || !account) return null;
+    const g = await this.reading(this.at(deployed).giftOf!(account));
+    if (!g.claimed) return null;
+    return this.userDecrypt64(String(g.croq), this.eco().cCroq.address, opts);
+  }
+
+  /** The wallet's proof from the API, or null: not frozen, or not on the list. */
+  private async giftProof(account: Address): Promise<{ tier: number; proof: string[] } | null> {
+    const ix = this.opts.indexer;
+    if (!ix) throw new ChainError("network", "No API serves the whitelist's proofs on this network.");
+    try {
+      return await ix.giftProof(account);
+    } catch (error) {
+      throw new ChainError("network", `The API did not answer: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /** A seed no rat was adopted from yet; 0 when the tier has no rat (the contract ignores it). */
+  private async freeRatSeed(wanted: boolean): Promise<bigint> {
+    if (!wanted) return 0n;
+    for (;;) {
+      const seed = BigInt.asUintN(64, BigInt(hexlify(randomBytes(8))));
+      if (!this.opts.rats || !(await this.ratTaken({ seed }))) return seed;
+    }
+  }
+
   async claimAllowList(): Promise<AllowListStatus> {
     const ix = this.opts.indexer;
     if (!ix) throw new ChainError("network", "No API keeps the allow list on this network.");
@@ -948,6 +1020,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, (c) => c.shake!(tokenId));
     const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
     if (!roll) throw new ChainError("not-yours", "This box is not yours: shaking it showed nothing.");
+    if (roll === "scrambled") throw new ChainError("scrambled", "A rat jams this trait of the box for now: the shake came back scrambled.");
     return roll;
   }
 
@@ -957,7 +1030,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.prepay(opts, fees.paidShake);
     await this.send(opts, (c) => c.paidShake!(tokenId));
     const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
-    if (!roll) throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
+    if (!roll || roll === "scrambled") throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
     return roll;
   }
 
@@ -1379,6 +1452,76 @@ export class EvmFhevmAdapter implements ChainAdapter {
       modelUrl: null,
       sniffs: 0,
     };
+  }
+
+  // --- rats' tricks ---
+
+  private tricks(): Deployed {
+    const deployed = this.opts.ratTricks;
+    if (!deployed) throw new ChainError("unknown", "Rats cannot play tricks on this network yet.");
+    return deployed;
+  }
+
+  async ratTricks(): Promise<RatTricksInfo | null> {
+    const deployed = this.opts.ratTricks;
+    if (!deployed) return null;
+    const t = this.at(deployed);
+    const [sniffFee, sniffRebate, trick, recharge] = await this.reading(Promise.all([t.sniffFee!(), t.sniffRebate!(), t.trickDuration!(), t.recharge!()]));
+    return { sniffFee: BigInt(sniffFee), sniffRebate: BigInt(sniffRebate), trickSeconds: Number(trick), rechargeSeconds: Number(recharge) };
+  }
+
+  async ratPower(id: number, opts?: ActionOptions): Promise<RatPower> {
+    const deployed = this.rats();
+    const account = await this.signer().getAddress();
+    const rats = this.at(deployed);
+    const owner: string = await this.reading(rats.ownerOf!(id));
+    if (!sameAddress(owner, account)) throw new ChainError("reverted", "This rat is not yours.", "NotYourRat");
+    const [handle, readable] = await this.reading(Promise.all([rats.powerOf!(id), rats.powerReadableBy!(id, account)]));
+    // A rat bought from someone: the wallet asks once for the right to read it.
+    if (!readable) await this.send(opts, () => this.writer(deployed).allowPower!(id));
+    const read = () => this.userDecrypt([String(handle)], deployed.address, opts);
+    const clear = readable ? await read() : await this.afterSent("landed", read);
+    return Number(clear[String(handle)]) as RatPower;
+  }
+
+  async ratReadyAt(ids: number[]): Promise<number[]> {
+    const deployed = this.opts.ratTricks;
+    if (!deployed || ids.length === 0) return ids.map(() => 0);
+    const t = this.at(deployed);
+    const now = Math.floor(Date.now() / 1000);
+    const at = await this.reading(Promise.all(ids.map((id) => t.readyAt!(id))));
+    return at.map((v: bigint) => (Number(v) > now ? Number(v) : 0));
+  }
+
+  async sniffWithRat(ratId: number, tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
+    const deployed = this.tricks();
+    const account = await this.signer().getAddress();
+    const fee = BigInt(await this.reading(this.at(deployed).sniffFee!()));
+    await this.ensureDecryptions(2);
+    await this.prepay(opts, fee, deployed.address);
+    await this.send(opts, () => this.writer(deployed).sniff!(ratId, tokenId));
+    const roll = await this.afterSent("landed", async () => {
+      const [pick, value]: [string, string] = await this.reading(this.at(deployed).lastSniff!(tokenId, account));
+      return this.readPick(String(pick), String(value), opts);
+    });
+    if (!roll || roll === "scrambled") throw new ChainError("unpaid", "The fee did not go through: the sniff showed nothing.");
+    return roll;
+  }
+
+  async playTrick(ratId: number, tokenId: number, traitIndex: number, opts?: ActionOptions): Promise<RatTrickPlayed> {
+    const deployed = this.tricks();
+    const account = (await this.signer().getAddress()) as Address;
+    if (!Number.isInteger(traitIndex) || traitIndex < 0 || traitIndex >= spec.traits.length) throw new ChainError("unknown", "Pick one of the five traits.");
+    // The trait stays secret: encrypted for RatTricks and the wallet.
+    const input = await this.encrypt(deployed.address, account, (b) => b.add8(traitIndex), "the trait", opts);
+    const receipt = await this.send(opts, () => this.writer(deployed).trick!(ratId, tokenId, input.handles[0], input.inputProof));
+    const iface = new Interface(deployed.abi);
+    for (const log of receipt.logs) {
+      if (!sameAddress(log.address, deployed.address)) continue;
+      const parsed = iface.parseLog(log);
+      if (parsed?.name === "TrickPlayed") return { until: Number(parsed.args.until), readyAt: Number(parsed.args.readyAt) };
+    }
+    throw new ChainError("unknown", "The trick was played, but its receipt could not be read.");
   }
 
   // --- flea market ---
@@ -1936,7 +2079,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * them. Through the API's proxy an input is charged to the wallet, which proves it is itself
    * with its decryption permit, sent as a bearer token: signed once a session, not per input.
    */
-  private async encrypt(contract: string, account: Address, fill: (b: InputBuilder) => InputBuilder, what: string, opts?: ActionOptions) {
+  private async encrypt(contract: string, account: Address, fill: (b: InputBuilder) => InputBuilder, what: string, opts?: ActionOptions, inputUser: string = account) {
     for (let attempt = 0; ; attempt++) {
       try {
         const relayer = await this.loadRelayer();
@@ -1946,7 +2089,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
           auth = { auth: { __type: "BearerToken", token: permitToken(permit) } };
         }
         opts?.onStep?.("encrypting");
-        return await fill(relayer.createEncryptedInput(contract, account)).encrypt(auth);
+        // `inputUser` calls `contract`: the wallet itself, or a contract acting for it.
+        return await fill(relayer.createEncryptedInput(contract, inputUser)).encrypt(auth);
       } catch (error) {
         if (error instanceof ChainError || isError(error, "ACTION_REJECTED")) throw this.toChainError(error);
         const refusal = gateRefusal(error);
@@ -1969,7 +2113,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private async permitContracts(): Promise<string[]> {
     const e = this.opts.economy;
     const { cUsdc } = await this.payment();
-    return [this.opts.address, cUsdc.address, ...(e ? [e.cCroq.address, e.pantry.address] : []), ...(this.opts.market ? [this.opts.market.address] : [])];
+    return [
+      this.opts.address,
+      cUsdc.address,
+      ...(e ? [e.cCroq.address, e.pantry.address] : []),
+      ...(this.opts.market ? [this.opts.market.address] : []),
+      // A rat's power is the Rats contract's handle.
+      ...(this.opts.ratTricks && this.opts.rats ? [this.opts.rats.address] : []),
+    ];
   }
 
   // --- internals ---
@@ -2140,13 +2291,20 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   /** Decrypts the caller's latest shake of a box: the picked trait and its roll. Null when the
-   *  shake showed nothing (not the holder, or an unpaid paid shake). */
-  private async readShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll | null> {
+   *  shake showed nothing (not the holder, or an unpaid paid shake); "scrambled" when a rat jams it. */
+  private async readShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll | "scrambled" | null> {
     const account = await this.signer().getAddress();
     const [pick, roll]: [string, string] = await this.reading(this.contract.lastShake!(tokenId, account));
+    return this.readPick(pick, roll, opts);
+  }
+
+  /** Decrypts a pick and its roll, both computed and kept allowed by the collection. */
+  private async readPick(pick: string, roll: string, opts?: ActionOptions): Promise<TraitRoll | "scrambled" | null> {
     const clear = await this.userDecrypt([pick, roll], this.opts.address, opts);
-    if (Number(clear[pick]) === NOT_YOURS) return null;
-    return { traitIndex: traitIndexAtOffset(Number(clear[pick])), roll: Number(clear[roll]) };
+    const at = Number(clear[pick]);
+    if (at === NOT_YOURS) return null;
+    if (at === SCRAMBLED) return "scrambled";
+    return { traitIndex: traitIndexAtOffset(at), roll: Number(clear[roll]) };
   }
 
   /**

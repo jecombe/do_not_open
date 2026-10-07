@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
+import { giftTree, type GiftProofs } from "../../application/whitelistGifts";
 import type { AllowList } from "../../application/allowList";
 import { ListFull, type Seats } from "../../application/seats";
 import { IDEA_MAX, type Ideas } from "../../application/ideas";
@@ -29,7 +30,7 @@ export interface HttpDeps {
   /** Signed release forms. Absent: the app keeps its signatures in the browser only. */
   terms?: AcceptTerms;
   /** The mainnet allow list, with the token that reads the whole list. Absent: no claims. */
-  allowList?: { list: AllowList; adminToken: string | null; seats?: Seats };
+  allowList?: { list: AllowList; adminToken: string | null; seats?: Seats; gifts?: GiftProofs };
   /** The boarding page's suggestion box; the allow list's admin token reads it. */
   ideas?: { box: Ideas; adminToken: string | null };
   /** X boarding passes; the admin token (the allow list's) lists them all; Sign in with X
@@ -307,6 +308,27 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       reply.header("cache-control", "no-store");
       if (!allowList.adminToken || q.token !== allowList.adminToken) return reply.status(401).send({ error: "unauthorized" });
       return { data: await allowList.list.ranked() };
+    });
+
+    // The list as it stands, frozen into the gifts' Merkle tree: what to keep (WHITELIST_GIFTS_TREE)
+    // and whose root to set on WhitelistGifts when the list closes.
+    app.get("/v1/allowlist/gifts", async (req, reply) => {
+      const q = z.object({ token: z.string().optional() }).parse(req.query);
+      reply.header("cache-control", "no-store");
+      if (!allowList.adminToken || q.token !== allowList.adminToken) return reply.status(401).send({ error: "unauthorized" });
+      const tree = giftTree(await allowList.list.ranked());
+      return { data: tree ? { root: tree.root, count: tree.length, tree: tree.dump() } : { root: null, count: 0, tree: null } };
+    });
+
+    // A wallet's gift proof, once the list is frozen. Public: the claim on-chain shows it anyway.
+    const gifts = allowList.gifts;
+    app.get("/v1/gifts/:address", async (req, reply) => {
+      const p = z.object({ address }).parse(req.params);
+      reply.header("cache-control", "public, max-age=60");
+      if (!gifts?.frozen) return reply.status(404).send({ error: "not-frozen", message: "the whitelist is not frozen yet" });
+      const proof = gifts.proofOf(p.address);
+      if (!proof) return reply.status(404).send({ error: "not-on-list", message: "this wallet has no gift" });
+      return { data: proof };
     });
   }
 

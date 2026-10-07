@@ -26,8 +26,10 @@ export interface StudioSpec {
   rats: {
     name: string;
     rule: string;
-    mint: { seedPriceUsdc: string; modelPriceUsdc: string; maxPriceUsdc: string; maxSeedRats: number; maxModelRats: number; maxPerWallet: number; rule: string };
+    mint: { seedPriceUsdc: string; modelPriceUsdc: string; maxPriceUsdc: string; maxSeedRats: number; maxModelRats: number; maxPerWallet: number; maxGiftRats: number; rule: string };
     croquettes: { perDay: number; maxDays: number; fund: number; rule: string };
+    /** The encrypted power each rat draws at its mint (1, 2, 3), and the tricks it plays. */
+    powers: { odds: number[]; sniffRebateBps: number; trickDays: number; rechargeDays: number; rule: string };
     events: Record<string, { fields: string[]; note: string }>;
   };
 }

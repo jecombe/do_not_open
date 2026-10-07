@@ -1,4 +1,4 @@
-import type { ActivityQuery, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, CarriedFacts, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
 import { actorsOf, byChainOrder, QUIET_EVENTS, tokensOf } from "../../domain/events";
@@ -217,6 +217,13 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
 
   async minters() {
     return [...new Set([...this.s.mints.values()].map((m) => m.buyer))];
+  }
+
+  /** Seeded by tests: what an earlier deployment made public. */
+  carried: CarriedFacts = { duels: [], openers: [], minters: [] };
+
+  async carriedFacts() {
+    return this.carried;
   }
 
   async openedBoxes() {
@@ -607,12 +614,12 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
 
   async ratCounts() {
     const counts = new Map<RatKind, number>();
-    for (const r of this.s.rats.values()) counts.set(r.kind, (counts.get(r.kind) ?? 0) + 1);
+    for (const r of this.s.rats.values()) if (!r.gift) counts.set(r.kind, (counts.get(r.kind) ?? 0) + 1);
     return [...counts.entries()].map(([kind, count]) => ({ kind, count }));
   }
 
   async ratsMintedBy(minter: Address) {
-    return [...this.s.rats.values()].filter((r) => r.minter === minter).length;
+    return [...this.s.rats.values()].filter((r) => r.minter === minter && !r.gift).length;
   }
 
   async adoption(jobId: string) {

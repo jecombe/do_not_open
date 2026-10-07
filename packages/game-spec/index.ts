@@ -63,6 +63,7 @@ export interface GameSpec {
   mechanics: Record<string, { paid: boolean; rule: string; [k: string]: unknown }>;
   economy: EconomySpec;
   market: MarketSpec;
+  whitelist: WhitelistSpec;
   events: Record<string, { fields: string[]; note?: string }>;
 }
 
@@ -78,6 +79,36 @@ export interface MarketSpec {
   rule: string;
   stateRule: string;
   leaks: string;
+}
+
+/** The mainnet whitelist and the gift each seated wallet collects, by rank. */
+export interface WhitelistSpec {
+  places: number;
+  rule: string;
+  claimDays: number;
+  tiers: WhitelistTierDef[];
+  leaks: string;
+}
+
+export type WhitelistTierKey = "first" | "business" | "economy";
+
+export interface WhitelistTierDef {
+  key: WhitelistTierKey;
+  name: string;
+  /** Ranks on the list, 1-based, both included. */
+  fromRank: number;
+  toRank: number;
+  /** cCROQ drawn at random, encrypted, both included. */
+  croqMin: number;
+  croqMax: number;
+  box: boolean;
+  rat: boolean;
+}
+
+/** The tier of a 1-based rank on the whitelist, or null past the last one. */
+export function whitelistTierOf(rank: number, tiers: readonly WhitelistTierDef[] = spec.whitelist.tiers): number | null {
+  const i = tiers.findIndex((t) => rank >= t.fromRank && rank <= t.toRank);
+  return i < 0 ? null : i;
 }
 
 export type BuildKey = "thin" | "normal" | "chubby" | "fat" | "huge";

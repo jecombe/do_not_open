@@ -12,6 +12,7 @@ import { studioPath } from "../site";
 import { DEMO_RAT_URI } from "../studio/service";
 import { loadToonModel, type StageObject } from "../studio/toonModel";
 import { ProblemNote } from "./ProblemNote";
+import { RatTricksPanel } from "./RatTricksPanel";
 import { Stage } from "./Stage";
 import { TxPending } from "./TxPending";
 import { useFold } from "./useFold";
@@ -81,8 +82,9 @@ function RatScene({ rat }: { rat: RatInfo | null }) {
 
 /**
  * The account's rats: one on the floor, the others as thumbnails. Each earns plain CROQ a day
- * from the RatPantry, collected here for all of them at once; and a paid shake of a sealed box
- * is a rat sniffing it.
+ * from the RatPantry, collected here for all of them at once. The one on the floor shows its
+ * secret power and plays its tricks (`RatTricksPanel`); where no tricks are deployed, a paid
+ * shake from the warehouse is a rat sniffing.
  */
 export function RatsView({ quality, onSniff }: { quality: QualitySettings; onSniff: () => void }) {
   const t = useT();
@@ -97,12 +99,17 @@ export function RatsView({ quality, onSniff }: { quality: QualitySettings; onSni
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState(0);
   const [paid, setPaid] = useState<bigint | null>(null);
+  const [tricks, setTricks] = useState(false);
 
   useEffect(() => {
     let live = true;
     adapter.ratPantry().then(
       (p) => live && setPantry(p),
       () => live && setPantry(null),
+    );
+    adapter.ratTricks().then(
+      (x) => live && setTricks(x !== null),
+      () => live && setTricks(false),
     );
     if (!account) {
       setRats(null);
@@ -145,7 +152,12 @@ export function RatsView({ quality, onSniff }: { quality: QualitySettings; onSni
         <div className="slip-head">
           <span>{t("rats.title")}</span>
         </div>
-        <TxPending busy={action.busy} step={action.step} title={t("rats.collecting")}>
+        <TxPending
+          busy={action.busy}
+          step={action.step}
+          secret={action.busy === "rat-sniff" || action.busy === "rat-power"}
+          title={t(action.busy === "rat-sniff" ? "rats.sniffing" : action.busy === "rat-trick" ? "rats.tricks.playing" : action.busy === "rat-power" ? "rats.power.reading" : "rats.collecting")}
+        >
           {pantry === null ? (
             <p className="state-note">{t("rats.closed")}</p>
           ) : !account ? (
@@ -206,9 +218,11 @@ export function RatsView({ quality, onSniff }: { quality: QualitySettings; onSni
                 <button type="button" className="stamp-button" onClick={() => void collect()} disabled={!!action.busy || total === 0n || pantryEmpty}>
                   {t("rats.collect")}
                 </button>
-                <button type="button" className="plain-button" onClick={onSniff} disabled={!!action.busy}>
-                  {t("rats.sniff")}
-                </button>
+                {!tricks && (
+                  <button type="button" className="plain-button" onClick={onSniff} disabled={!!action.busy}>
+                    {t("rats.sniff")}
+                  </button>
+                )}
               </div>
               {pantryEmpty && total > 0n && <p className="fine" role="status">{t("rats.pantryEmpty")}</p>}
               {paid !== null && (
@@ -216,7 +230,7 @@ export function RatsView({ quality, onSniff }: { quality: QualitySettings; onSni
                   {t("rats.paid", { n: paid.toString() })}
                 </p>
               )}
-              <p className="fine">{t("rats.sniffHint")}</p>
+              {tricks && rat ? <RatTricksPanel rat={rat} action={action} /> : <p className="fine">{t("rats.sniffHint")}</p>}
               {action.error && <ProblemNote problem={action.error} />}
             </>
           )}

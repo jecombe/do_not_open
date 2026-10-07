@@ -50,6 +50,13 @@ export class Seats {
     return !!p && this.passSeated(p);
   }
 
+  /** Wallets linked to an X account that holds a seat. */
+  async seatedPassWallets(): Promise<Set<Address>> {
+    const out = new Set<Address>();
+    for (const p of await this.store.xPasses()) if (p.address && this.passSeated(p)) out.add(p.address);
+    return out;
+  }
+
   async taken(): Promise<number> {
     const [passes, claims, players] = await Promise.all([this.store.xPasses(), this.store.allowListClaims(), this.players()]);
     const linked = new Set<Address>();

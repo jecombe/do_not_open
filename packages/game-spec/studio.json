@@ -55,7 +55,7 @@
   },
   "rats": {
     "name": "The depot's rats",
-    "rule": "A rat drawn in the studio can be adopted: minted as an ERC-721 in the Rats contract, paid in plain USDC straight to the treasury. A free rat is minted by its seed (each seed once; its look is recomputed from the seed, nothing to store). An AI rat is minted with its job: the API stores its picture on Arweave (shrunk to a free upload, like the cats' pictures), keeps its 3D model itself, and signs the adoption, and each job is minted once. Nothing about a rat is secret: owners are public, unlike the boxes.",
+    "rule": "A rat drawn in the studio can be adopted: minted as an ERC-721 in the Rats contract, paid in plain USDC straight to the treasury. A free rat is minted by its seed (each seed once; its look is recomputed from the seed, nothing to store). An AI rat is minted with its job: the API stores its picture on Arweave (shrunk to a free upload, like the cats' pictures), keeps its 3D model itself, and signs the adoption, and each job is minted once. Owners are public, unlike the boxes; the one secret is each rat's power (see powers).",
     "mint": {
       "seedPriceUsdc": "1",
       "modelPriceUsdc": "3",
@@ -63,13 +63,21 @@
       "maxSeedRats": 700,
       "maxModelRats": 300,
       "maxPerWallet": 5,
-      "rule": "The supply is capped for good when the contract is deployed: maxSeedRats free rats and maxModelRats AI rats, never more. One address mints at most maxPerWallet rats, both kinds together; buying a rat from someone is not limited. Every rat earns croquettes from a fixed fund, so an unlimited mint would empty it."
+      "maxGiftRats": 1000,
+      "rule": "The supply is capped for good when the contract is deployed: maxSeedRats free rats and maxModelRats AI rats, never more. One address mints at most maxPerWallet rats, both kinds together; buying a rat from someone is not limited. Every rat earns croquettes from a fixed fund, so an unlimited mint would empty it. The whitelist's gifts adopt up to maxGiftRats more free rats for the wallets on the list, outside both caps and the wallet limit."
     },
     "croquettes": {
       "perDay": 3,
       "maxDays": 7,
       "fund": 500000,
       "rule": "Each rat earns perDay plain CROQ a day, from its mint, claimed by its owner from the RatPantry. At most maxDays are kept between two claims: a rat left alone longer earns nothing more. The RatPantry is funded with `fund` CROQ by a plain transfer from the treasury (the deploy script sends them when its key holds them). While it is empty a claim reverts, so the days earned wait; when it runs low, claims pay what is left."
+    },
+    "powers": {
+      "odds": [5500, 3000, 1500],
+      "sniffRebateBps": 3000,
+      "trickDays": 3,
+      "rechargeDays": 7,
+      "rule": "Each rat gets a secret power when it is minted, 1, 2 or 3, drawn under encryption with `odds` (in basis points). Only its holder can read it. Power 1 sniffs cheaper: every rat sniffs a box at the paid shake's price, and a power-1 rat gets sniffRebateBps of it back from the treasury, under encryption. Powers 2 and 3 play tricks: a rat set on a box acts for trickDays, then rests rechargeDays. Set on a box its holder holds, it shields it: strangers' paid shakes and rats' sniffs read a fake value for the blocked traits, the same every time. Set on someone else's box, it jams it: the holder's own shakes of the blocked traits come back scrambled. Power 2 blocks the one trait its holder picks, power 3 all five, power 1 nothing (a bluff). A box fully shielded resists jams. Every rat has the same button, duration and rest, and the contract decides under encryption, so nobody can tell a shield from a jam, a rat's power, or the trait."
     },
     "events": {
       "RatMinted": {
@@ -90,6 +98,24 @@
           "tokenId"
         ],
         "note": "Rats. The standard ERC-721 transfer: owners are public."
+      },
+      "Sniffed": {
+        "fields": [
+          "ratId",
+          "tokenId",
+          "sniffer"
+        ],
+        "note": "RatTricks. A rat sniffed a box for its holder: a paid shake whose result only the sniffer reads."
+      },
+      "TrickPlayed": {
+        "fields": [
+          "ratId",
+          "tokenId",
+          "player",
+          "until",
+          "readyAt"
+        ],
+        "note": "RatTricks. A rat was set on a sealed box until `until`; it rests until `readyAt`. Shield, jam or bluff stays encrypted."
       },
       "RatsFed": {
         "fields": [

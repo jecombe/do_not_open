@@ -15,7 +15,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "smoke:sepolia": "tsx scripts/smoke.ts",
-    "smoke:croq": "tsx scripts/smoke-croq.ts"
+    "smoke:croq": "tsx scripts/smoke-croq.ts",
+    "smoke:rats": "tsx scripts/smoke-rats.ts"
   },
   "dependencies": {
     "@dno/game-spec": "workspace:*",

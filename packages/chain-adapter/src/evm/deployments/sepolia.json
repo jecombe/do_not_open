@@ -1,7 +1,7 @@
 {
   "chainId": 11155111,
-  "address": "0x816a39b04e0672B4746A5B696E14145F4F852d37",
-  "deployBlock": 11836238,
+  "address": "0x7b246695614Cc49A500bC8057345181689c82d52",
+  "deployBlock": 11862305,
   "abi": [
     {
       "inputs": [
@@ -735,45 +735,6 @@
       "type": "event"
     },
     {
-      "inputs": [],
-      "name": "DUEL_LIFETIME",
-      "outputs": [
-        {
-          "internalType": "uint64",
-          "name": "",
-          "type": "uint64"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "MAX_CLAIM",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "NOT_YOURS",
-      "outputs": [
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint256",
@@ -1252,6 +1213,19 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "guard",
+      "outputs": [
+        {
+          "internalType": "contract IShakeGuard",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -1716,25 +1690,6 @@
           "type": "uint256"
         }
       ],
-      "name": "revealed",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
       "name": "seedHandle",
       "outputs": [
         {
@@ -1755,6 +1710,19 @@
         }
       ],
       "name": "setBaseURI",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IShakeGuard",
+          "name": "guard_",
+          "type": "address"
+        }
+      ],
+      "name": "setGuard",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1955,25 +1923,6 @@
           "type": "uint256"
         }
       ],
-      "name": "vetCertified",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "tokenId",
-          "type": "uint256"
-        }
-      ],
       "name": "wins",
       "outputs": [
         {
@@ -2000,7 +1949,7 @@
     }
   ],
   "ramp": {
-    "address": "0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1",
+    "address": "0x02382AC8a24462FD830753Ca7e49E12486A65638",
     "abi": [
       {
         "inputs": [
@@ -2317,7 +2266,7 @@
     ]
   },
   "credits": {
-    "address": "0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e",
+    "address": "0x1d1848a72Ffd06e71161537472BFD6D903616511",
     "abi": [
       {
         "inputs": [
@@ -2639,10 +2588,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11836240
+    "deployBlock": 11862307
   },
   "studio": {
-    "address": "0x672cf76a68d4f181387B59caA1813eC425c1354C",
+    "address": "0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6",
     "abi": [
       {
         "inputs": [
@@ -3068,10 +3017,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11842636
+    "deployBlock": 11862334
   },
   "rats": {
-    "address": "0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264",
+    "address": "0x441F9fe3B8333515Bc7B295E06C14948057b2cF6",
     "abi": [
       {
         "inputs": [
@@ -3111,19 +3060,14 @@
             "type": "string"
           },
           {
-            "internalType": "uint256",
-            "name": "maxSeedRats_",
-            "type": "uint256"
+            "internalType": "uint256[4]",
+            "name": "caps_",
+            "type": "uint256[4]"
           },
           {
-            "internalType": "uint256",
-            "name": "maxModelRats_",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "maxPerWallet_",
-            "type": "uint256"
+            "internalType": "uint16[2]",
+            "name": "powerBelow_",
+            "type": "uint16[2]"
           }
         ],
         "stateMutability": "nonpayable",
@@ -3132,6 +3076,11 @@
       {
         "inputs": [],
         "name": "AlreadyAdopted",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "BadOdds",
         "type": "error"
       },
       {
@@ -3280,6 +3229,21 @@
         "type": "error"
       },
       {
+        "inputs": [],
+        "name": "NotGiver",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotTricks",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotYourRat",
+        "type": "error"
+      },
+      {
         "inputs": [
           {
             "internalType": "address",
@@ -3341,6 +3305,11 @@
       {
         "inputs": [],
         "name": "WalletLimit",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZamaProtocolUnsupported",
         "type": "error"
       },
       {
@@ -3438,6 +3407,19 @@
         "anonymous": false,
         "inputs": [],
         "name": "EIP712DomainChanged",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "giver",
+            "type": "address"
+          }
+        ],
+        "name": "GiverSet",
         "type": "event"
       },
       {
@@ -3560,6 +3542,19 @@
         "type": "event"
       },
       {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "tricks",
+            "type": "address"
+          }
+        ],
+        "name": "TricksSet",
+        "type": "event"
+      },
+      {
         "inputs": [],
         "name": "MAX_PRICE",
         "outputs": [
@@ -3570,6 +3565,19 @@
           }
         ],
         "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "allowPower",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
@@ -3612,6 +3620,19 @@
           }
         ],
         "name": "balanceOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "confidentialProtocolId",
         "outputs": [
           {
             "internalType": "uint256",
@@ -3688,6 +3709,56 @@
         "inputs": [
           {
             "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint64",
+            "name": "seed",
+            "type": "uint64"
+          }
+        ],
+        "name": "gift",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "giftMinted",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "giver",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
             "name": "owner",
             "type": "address"
           },
@@ -3703,6 +3774,19 @@
             "internalType": "bool",
             "name": "",
             "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "maxGiftRats",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
           }
         ],
         "stateMutability": "view",
@@ -3927,6 +4011,68 @@
             "type": "uint256"
           }
         ],
+        "name": "powerFor",
+        "outputs": [
+          {
+            "internalType": "euint8",
+            "name": "power",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "powerOf",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "powerReadableBy",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
         "name": "ratOf",
         "outputs": [
           {
@@ -4086,6 +4232,19 @@
       {
         "inputs": [
           {
+            "internalType": "address",
+            "name": "giver_",
+            "type": "address"
+          }
+        ],
+        "name": "setGiver",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
             "internalType": "uint256",
             "name": "seedPrice_",
             "type": "uint256"
@@ -4110,6 +4269,19 @@
           }
         ],
         "name": "setTreasury",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "tricks_",
+            "type": "address"
+          }
+        ],
+        "name": "setTricks",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -4267,6 +4439,19 @@
       },
       {
         "inputs": [],
+        "name": "tricks",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "usdc",
         "outputs": [
           {
@@ -4279,10 +4464,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11845258
+    "deployBlock": 11862331
   },
   "ratPantry": {
-    "address": "0x1334d72fC60cBedcF409d6583F0Ec009c285E75B",
+    "address": "0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450",
     "abi": [
       {
         "inputs": [
@@ -4490,10 +4675,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11845259
+    "deployBlock": 11862332
   },
   "market": {
-    "address": "0xb5c799bF626e70DcE6804BDef06199661cDc8665",
+    "address": "0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1",
     "abi": [
       {
         "inputs": [
@@ -5555,6 +5740,1060 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11849253
+    "deployBlock": 11862351
+  },
+  "ratTricks": {
+    "address": "0x44B2006E63Af469e5470eD5Fc2A6307117d22d0D",
+    "abi": [
+      {
+        "inputs": [
+          {
+            "internalType": "contract ITrickBoxes",
+            "name": "boxes_",
+            "type": "address"
+          },
+          {
+            "internalType": "contract ITrickRats",
+            "name": "rats_",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC7984",
+            "name": "cUsdc_",
+            "type": "address"
+          },
+          {
+            "internalType": "contract ITrickConfig",
+            "name": "config_",
+            "type": "address"
+          },
+          {
+            "internalType": "uint64",
+            "name": "sniffRebate_",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "trickDuration_",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "recharge_",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "rebater_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "owner_",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "BadParams",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotSealed",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotYourRat",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "OnlyBoxes",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableInvalidOwner",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableUnauthorizedAccount",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "readyAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "Recharging",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "handle",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "sender",
+            "type": "address"
+          }
+        ],
+        "name": "SenderNotAllowedToUseHandle",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZamaProtocolUnsupported",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroAddress",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "previousOwner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnershipTransferred",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "rebater",
+            "type": "address"
+          }
+        ],
+        "name": "RebaterSet",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "ratId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "sniffer",
+            "type": "address"
+          }
+        ],
+        "name": "Sniffed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "ratId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "player",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "until",
+            "type": "uint64"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "readyAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "TrickPlayed",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "SCRAMBLED",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "boxes",
+        "outputs": [
+          {
+            "internalType": "contract ITrickBoxes",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "cUsdc",
+        "outputs": [
+          {
+            "internalType": "contract IERC7984",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "confidentialProtocolId",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "paid",
+            "type": "bool"
+          },
+          {
+            "internalType": "euint8",
+            "name": "pick",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "euint8",
+            "name": "roll",
+            "type": "bytes32"
+          }
+        ],
+        "name": "filter",
+        "outputs": [
+          {
+            "internalType": "euint8",
+            "name": "",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "euint8",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "sniffer",
+            "type": "address"
+          }
+        ],
+        "name": "lastSniff",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "pick",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "roll",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "rats",
+        "outputs": [
+          {
+            "internalType": "contract ITrickRats",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "ratId",
+            "type": "uint256"
+          }
+        ],
+        "name": "readyAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "rebater",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "recharge",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "renounceOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "rebater_",
+            "type": "address"
+          }
+        ],
+        "name": "setRebater",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "ratId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          }
+        ],
+        "name": "sniff",
+        "outputs": [
+          {
+            "internalType": "euint8",
+            "name": "pick",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "euint8",
+            "name": "roll",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "sniffFee",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "sniffRebate",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "ratId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "externalEuint8",
+            "name": "trait",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "inputProof",
+            "type": "bytes"
+          }
+        ],
+        "name": "trick",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "trickDuration",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ],
+    "deployBlock": 11862335
+  },
+  "whitelistGifts": {
+    "address": "0xD244389bF81C38803c94957a1e6B5694eEeA678b",
+    "abi": [
+      {
+        "inputs": [
+          {
+            "internalType": "contract IGiftBoxes",
+            "name": "boxes_",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IGiftRats",
+            "name": "rats_",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC7984",
+            "name": "cCroq_",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC7984",
+            "name": "cUsdc_",
+            "type": "address"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint64",
+                "name": "croqMin",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "croqMax",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bool",
+                "name": "box",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "rat",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct WhitelistGifts.Tier[]",
+            "name": "tiers_",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "address",
+            "name": "owner_",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "AlreadyClaimed",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "BadTier",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotOnTheList",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotOpen",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableInvalidOwner",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "OwnableUnauthorizedAccount",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "RootAlreadySet",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "StillOpen",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZamaProtocolUnsupported",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ZeroAddress",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint8",
+            "name": "tier",
+            "type": "uint8"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "hasBox",
+            "type": "bool"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "box",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "hasRat",
+            "type": "bool"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "rat",
+            "type": "uint256"
+          }
+        ],
+        "name": "GiftClaimed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "previousOwner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnershipTransferred",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "root",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "closesAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "RootSet",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          }
+        ],
+        "name": "Swept",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "boxes",
+        "outputs": [
+          {
+            "internalType": "contract IGiftBoxes",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "cCroq",
+        "outputs": [
+          {
+            "internalType": "contract IERC7984",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "cUsdc",
+        "outputs": [
+          {
+            "internalType": "contract IERC7984",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint8",
+            "name": "tier",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32[]",
+            "name": "proof",
+            "type": "bytes32[]"
+          },
+          {
+            "internalType": "externalEuint8",
+            "name": "quantity",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "inputProof",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint64",
+            "name": "ratSeed",
+            "type": "uint64"
+          }
+        ],
+        "name": "claim",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "claimedCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "closesAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "confidentialProtocolId",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "giftOf",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint8",
+            "name": "tier",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "hasBox",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "box",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "hasRat",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rat",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "croq",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "rats",
+        "outputs": [
+          {
+            "internalType": "contract IGiftRats",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "renounceOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "root",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "root_",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "closesAt_",
+            "type": "uint64"
+          }
+        ],
+        "name": "setRoot",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          }
+        ],
+        "name": "sweep",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "tiers",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint64",
+                "name": "croqMin",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "croqMax",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bool",
+                "name": "box",
+                "type": "bool"
+              },
+              {
+                "internalType": "bool",
+                "name": "rat",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct WhitelistGifts.Tier[]",
+            "name": "",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ]
   }
 }

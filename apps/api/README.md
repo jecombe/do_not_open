@@ -112,9 +112,11 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `POST /v1/terms` | Files a signed release form (terms of play): `{ address, message, signature }`. The message must name the address, a version and the SHA-256 of the text, and be signed by that address (EIP-191, no gas). The first signature per address and version is kept. Answers `address`, `version`, `hash`, `receivedAt`; `400` if it is not a form or names another address, `401` if another account signed it. 10 a minute per IP |
 | `GET /v1/terms/:address` | The forms that address signed: `{ data: [{ version, hash, signature, message, receivedAt }] }` |
 | `POST /v1/allowlist` | Files a claim for a place on the mainnet allow list: `{ address, message, signature }`, the message from `allowListMessage` (`@dno/chain-adapter/standings`) naming that address, signed by it (EIP-191, no gas). Signing again keeps the first claim's date and the best points. Answers the status below; `400` if it is not a claim or names another address, `401` if another account signed it. 10 a minute per IP |
-| `GET /v1/allowlist/:address` | Where an address stands: `live` points (`beaten`, `faced`, `opened`), the `points` the ranking counts, `claimedAt`, `rank` among claimants (null until it claims), `claimants`, `places`. Not cached by HTTP; the public facts behind the points (resolved duels, openers) are reused for 30 s (`FACTS_TTL`), since quest platforms such as Galxe check addresses in bursts, and a claim always reads them afresh. Public: the points come from public facts only |
+| `GET /v1/allowlist/:address` | Where an address stands: `live` points (`beaten`, `faced`, `opened`), the `points` the ranking counts, `claimedAt`, `rank` among claimants (null until it claims), `claimants`, `places`, `tier` (the gift class the rank would get if the list closed now, null without a seat). Not cached by HTTP; the public facts behind the points (resolved duels, openers) are reused for 30 s (`FACTS_TTL`), since quest platforms such as Galxe check addresses in bursts, and a claim always reads them afresh. Public: the points come from public facts only |
 | `GET /v1/seats` | `{ taken, places, required }` (`required`: the tasks on X a pass needs): seats taken on the mainnet list, out of how many. Cached 10 s |
-| `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
+| `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`, `seated` and `tier`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
+| `GET /v1/allowlist/gifts?token=` | The list frozen into the whitelist gifts' Merkle tree of (wallet, tier): `{ root, count, tree }` (`tree` is OpenZeppelin's `StandardMerkleTree` dump; all null while nobody is seated). Save it, set its root on `WhitelistGifts` (`hardhat dno:whitelist-root --tree <file>`) and serve it with `WHITELIST_GIFTS_TREE`. Same token as the list |
+| `GET /v1/gifts/:address` | A wallet's gift proof once the list is frozen: `{ tier, proof, root }`; `404 not-frozen` without `WHITELIST_GIFTS_TREE`, `404 not-on-list` for a wallet not in it. Cached 60 s |
 | `POST /v1/sync/nudge` | Asks the indexer to look now |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
 | `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`). Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
@@ -149,6 +151,18 @@ spent of the old credits, which stay with the old contract; and moves the herald
 keys aside (`opening:0` becomes `v0x5eBa:opening:0`), or the new collection's facts would
 read as already posted. Until an API has run it, the app sees that it indexes another
 collection and reads the chain instead, without the relayer proxy.
+
+Migration 21 is for the redeploy of 2026-10-07 (`DoNotOpen` `0x7b24…2d52`, block 11862305, with
+`RatTricks`, a new economy, new rats, credits, studio packs and flea market). The test network
+promises that an update keeps the allow list's points and seats, and those come from indexed
+public facts: before emptying the index, it copies them into tables a replay never touches,
+`carried_duels` (each resolved duel: tokens, challenger, accepter, winner, loser),
+`carried_openers` (who opened each box) and `carried_minters` (who minted). `AllowList` reads
+them with the live facts (`Store.carriedFacts`), so an opponent beaten before and after counts
+once, and a wallet that only played before the redeploy is still seated. Then it empties the
+index as migration 10 did (`rats` and `rat_sniffers` and `studio_accounts` included, the old
+contracts' units staying with them), keeping sign-ins, claims, X passes, ideas, release forms,
+the decryption cache and the relayer's counts.
 
 Migration 6 adds the public decryption cache (`public_decryptions`, `public_decrypt_uses`):
 like the relayer meter, not a read model, and kept by a replay.
@@ -196,7 +210,7 @@ beaten in a duel, 1 per distinct opponent faced, 2 per box opened (10 boxes at m
 players of a resolved duel are public (the challenger proved holding box A, the accepter box B);
 a duel between one address and itself counts nothing. The ranking takes, for each claimant, the
 best of the points kept at its last claim and its points now; ties go to the earlier claim.
-Nobody is ranked who did not claim. The list has `ALLOW_LIST_PLACES` seats (3,000 by default), first come, first served
+Nobody is ranked who did not claim. The list has `ALLOW_LIST_PLACES` seats (the spec's `whitelist.places`, 1,500, by default), first come, first served
 (`application/seats.ts`): one per person, taken either way: an X account connected on a boarding
 pass with every required task done (follow and post; like, reply and repost too once
 `X_ANNOUNCEMENT_ID` names the announcement), or a wallet that claimed and tried the testnet (a mint,
@@ -204,6 +218,13 @@ an opening or a duel, all public facts). An X account and its linked wallet are 
 claimant who plays only after claiming sits down then, unchecked. Once they are taken, a new
 claim or a new X account gets `409 list-full`; those inside keep updating. `GET /v1/seats` says
 `{ taken, places }` (cached 10 s), the boarding page's counter; read the whole list with `GET /v1/allowlist?token=$ALLOW_LIST_ADMIN_TOKEN`.
+
+The seated claimants, in rank order, get the whitelist gifts' tiers (`whitelist.tiers` in the
+spec, 500 a tier); a claimant without a seat gets none and moves nobody down. When the list
+closes, `GET /v1/allowlist/gifts?token=` freezes it into a Merkle tree (`application/whitelistGifts.ts`);
+the API reads the same file back from `WHITELIST_GIFTS_TREE` at start and serves each wallet its
+proof (`GET /v1/gifts/:address`). The gift rats are indexed with `gift` true (a `RatMinted` with
+nothing paid, migration 20): `GET /v1/rats/supply` and the wallet limit count paid rats only.
 
 ### The suggestion box
 
@@ -419,8 +440,16 @@ account only:
 A `Rat` is `{ id, kind: "seed" | "model", seed, job, uri, owner, minter, mintedBlock, imageUrl,
 modelUrl, sniffs }`: `seed` in decimal for a seed rat, `job` (bytes32) and `uri` for an AI rat,
 `imageUrl` the API's SVG or the picture on Arweave (`ARWEAVE_GATEWAY`), `modelUrl` the GLB served by
-the API (`/rats/models/<job>.glb`), and `sniffs` the paid shakes of its owner. The croquettes a rat earns are read from the
+the API (`/rats/models/<job>.glb`), and `sniffs` the paid shakes and rat sniffs of its owner. The croquettes a rat earns are read from the
 `RatPantry` contract itself (`claimable(id)`); the index only records `RatsFed` in the feed.
+
+The rats' tricks are indexed from `RatTricks` (source `ratTricks`, the deployment's `ratTricks`
+entry): `Sniffed` becomes `RatSniffed` and counts as one sniff of its sniffer in `rat_sniffers`
+(the `Shaken` of a sniff names `RatTricks`, not the player); `TrickPlayed` becomes `RatTrick`,
+kept in the events and the box's and the player's feeds, and folded into nothing else: a rat's
+rest (`readyAt`) is read from the contract. No migration: `events.source` is free text and the
+existing read model takes the sniffs. Ship the API that knows `RatTricks` before the first trick,
+as for the rats.
 
 ## The manual's chatbot
 

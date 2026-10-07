@@ -233,6 +233,22 @@ export class IndexerClient {
     }
   }
 
+  /** A wallet's proof for WhitelistGifts, or null: the list is not frozen, or the wallet is not on it.
+   *  A 404 is an answer here, not the API being down. */
+  async giftProof(address: Address): Promise<{ tier: number; proof: string[] } | null> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 6000);
+    try {
+      const res = await (this.opts.fetch ?? fetch)(`${this.baseUrl}/v1/gifts/${address}`, { signal: controller.signal });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`API ${res.status} on /v1/gifts`);
+      const body = (await res.json()) as { data: { tier: number; proof: string[] } };
+      return { tier: body.data.tier, proof: body.data.proof };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   allowList(address: Address): Promise<Indexed<AllowListStatus>> {
     return this.get(`/v1/allowlist/${address}`, (a: AllowListStatus) => a);
   }

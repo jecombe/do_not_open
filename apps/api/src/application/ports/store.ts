@@ -134,6 +134,9 @@ export interface ReadStore {
   openedBoxes(): Promise<Box[]>;
   /** Every address that minted, once each. */
   minters(): Promise<Address[]>;
+  /** What earlier testnet deployments made public, kept when the contracts were redeployed: the
+   *  allow list's points and seats survive an update. Empty on a fresh index. */
+  carriedFacts(): Promise<CarriedFacts>;
   duel(duelId: number): Promise<Duel | null>;
   duels(q: DuelQuery): Promise<Duel[]>;
   proposal(tokenA: number, tokenB: number): Promise<EntangleProposal | null>;
@@ -202,4 +205,11 @@ export interface Store extends ReadStore {
   dropPublicDecryption(jobId: string): Promise<void>;
   /** How many requests sent to Zama named each of these handles; absent ones never were. */
   publicDecryptionsOf(handles: string[]): Promise<Map<string, number>>;
+}
+
+/** An earlier deployment's public facts: its resolved duels, who opened a box (once per box), who minted. */
+export interface CarriedFacts {
+  duels: { tokenA: number; tokenB: number; challenger: Address; accepter: Address; winner: number; loser: number }[];
+  openers: Address[];
+  minters: Address[];
 }

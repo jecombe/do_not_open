@@ -255,7 +255,7 @@ describe("CROQ economy", function () {
         for (const id of owned) if (alive === -1 && stateOfSeed(await peekSeed(dno, id)) === STATE_IDS.alive) alive = id;
       }
       await proveAlive(dno, alive, alice, carol);
-      expect(await dno.vetCertified(alive)).to.eq(true);
+      expect(await dno.aliveCheck(alive)).to.eq(1n);
 
       await (await pantry.connect(alice).claim([alive])).wait();
       const values = new Set<bigint>();

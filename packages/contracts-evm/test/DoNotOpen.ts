@@ -322,7 +322,7 @@ describe("DoNotOpen", function () {
         .and.to.emit(dno, "RequestSettled")
         .withArgs(id, REQUEST.Done);
 
-      expect(await dno.revealed(0)).to.eq(true);
+      expect(await dno.status(0)).to.eq(1n);
       const contents = await dno.contentsOf(0);
       expect(contents.seed).to.eq(seed);
       expect(contents.traits.map(Number)).to.deep.eq(TRAIT_KEYS.map((k) => cat.traits[k].roll));
@@ -356,10 +356,10 @@ describe("DoNotOpen", function () {
       const dream = ethers.AbiCoder.defaultAbiCoder().encode(["bool", "uint64"], [true, FIXTURE_SEEDS[3]!.seed]);
       await expect(dno.finalize(a, dream, realA.decryptionProof)).to.be.reverted;
       await expect(dno.finalize(a, realB.abiEncodedClearValues, realB.decryptionProof)).to.be.reverted;
-      expect(await dno.revealed(0)).to.eq(false);
+      expect(await dno.status(0)).to.eq(0n);
 
       await dno.finalize(a, realA.abiEncodedClearValues, realA.decryptionProof);
-      expect(await dno.revealed(0)).to.eq(true);
+      expect(await dno.status(0)).to.eq(1n);
       await expect(dno.finalize(a, realA.abiEncodedClearValues, realA.decryptionProof)).to.be.revertedWithCustomError(dno, "RequestNotPending");
       await expect(dno.connect(alice).observe(0)).to.be.revertedWithCustomError(dno, "NotSealed");
       await expect(dno.connect(alice).shake(0)).to.be.revertedWithCustomError(dno, "NotSealed");
@@ -369,7 +369,7 @@ describe("DoNotOpen", function () {
       const id = requestIdOf(dno, await (await dno.connect(alice).observe(0)).wait());
       await (await dno.connect(alice).confidentialTransfer(bob.address, 0)).wait();
       await finalizeRequest(dno, id, carol);
-      expect(await dno.revealed(0)).to.eq(true);
+      expect(await dno.status(0)).to.eq(1n);
       expect(await ownerOf(dno, 0)).to.eq(bob.address);
     });
   });
@@ -384,7 +384,7 @@ describe("DoNotOpen", function () {
       for (let tokenId = 0; tokenId < 6; tokenId++) {
         const expected = ((await peekSeed(tokenId)) & 0xffffn) < aliveBelow;
         expect(await proveAlive(dno, tokenId, alice, carol)).to.eq(REQUEST.Done);
-        expect(await dno.vetCertified(tokenId)).to.eq(expected);
+        expect(await dno.aliveCheck(tokenId) === 1n).to.eq(expected);
         expect(await dno.aliveCheck(tokenId)).to.eq(expected ? 1 : 2);
         expect(await dno.status(tokenId)).to.eq(0);
         await expectDenied(fhevm.publicDecrypt([await dno.seedHandle(tokenId)]));

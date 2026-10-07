@@ -2953,3 +2953,166 @@ p.pass-meter {
   color: var(--ink);
   transform: rotate(-1.5deg);
 }
+
+/* --- The whitelist's gifts: one plane ticket per class, a tear-off stub with the seats --- */
+.gift-tickets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.gift-ticket {
+  --band: var(--sun);
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 8px 8px 0 var(--ink);
+  overflow: hidden;
+  transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.gift-ticket:nth-child(1) {
+  transform: rotate(-1deg);
+}
+
+.gift-ticket:nth-child(3) {
+  transform: rotate(0.8deg);
+}
+
+.gift-ticket:hover {
+  transform: rotate(0) translateY(-4px);
+}
+
+.gift-ticket.is-business {
+  --band: var(--sky);
+}
+
+.gift-ticket.is-economy {
+  --band: var(--mint);
+}
+
+.gift-main {
+  min-width: 0;
+  padding: 0 18px 18px;
+}
+
+.gift-class {
+  margin: 0 -18px 12px;
+  padding: 12px 18px 8px;
+  border-bottom: 4px solid var(--ink);
+  background: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.25) 0 8px, transparent 8px 16px), var(--band);
+  font-family: var(--stencil);
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.gift-ranks {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gift-items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gift-items li {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px 6px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.gift-items small {
+  font-size: 15px;
+  opacity: 0.8;
+}
+
+.gift-croq {
+  background: var(--sun) !important;
+}
+
+/* The stub: dashed tear line, the seats in stencil, written sideways like a real boarding pass. */
+.gift-stub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  border-left: 4px dashed var(--ink);
+  background: var(--band);
+  text-align: center;
+}
+
+.gift-stub span {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gift-stub b {
+  font-family: var(--stencil);
+  font-size: 22px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.gift-stub i {
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gifts-fine {
+  max-width: 860px;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+@media (max-width: 900px) {
+  .gift-tickets {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 560px;
+    /* Room for the tickets' shadow inside the page's gutter. */
+    padding-right: 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  .gift-ticket {
+    grid-template-columns: minmax(0, 1fr) 64px;
+  }
+
+  .gift-stub b {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gift-ticket,
+  .gift-ticket:nth-child(1),
+  .gift-ticket:nth-child(3) {
+    transition: none;
+    transform: none;
+  }
+}

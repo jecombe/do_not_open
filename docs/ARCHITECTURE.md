@@ -70,7 +70,7 @@ flowchart LR
   cfg["DoNotOpenConfig<br/>rules, decode(seed)"] --> dno["DoNotOpen<br/>seeds, hidden mint, milestones,<br/>shake, requests, duel shelf"]
   dno -- "pulls and pays" --> cusdc["cUSDC<br/>ERC-7984"]
   croq["Croq<br/>ERC-20, 20M fixed"] -- "underlying" --> ccroq["ConfidentialCroq<br/>ERC-7984 wrapper, cCROQ"]
-  pantry["Pantry<br/>reserve, stashes, weights,<br/>treasury share, burnt pile, weigh-ins"] -- "isOwner (trusted reader), status,<br/>vetCertified, contentsOf" --> dno
+  pantry["Pantry<br/>reserve, stashes, weights,<br/>treasury share, burnt pile, weigh-ins"] -- "isOwner (trusted reader), status,<br/>aliveCheck, contentsOf" --> dno
   pantry -- "confidentialTransferFrom,<br/>confidentialTransfer, wrap" --> ccroq
   croq -- "4M, no USDC" --> pool["Uniswap V3 pool<br/>CROQ/USDC, 1%"]
   locker["LiquidityLocker<br/>holds the position for good,<br/>fees to the treasury"] -- "owns the position" --> pool

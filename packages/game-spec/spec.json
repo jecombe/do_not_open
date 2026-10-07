@@ -243,6 +243,17 @@
     "stateRule": "A box is sold in the public state it was listed in (sealed or opened, entangled partner, vet check). If that changes in escrow, buying and accepting are refused and a pending purchase is refunded.",
     "leaks": "Public: the seller of an active listing (so selling a box shows who held it), the asking price, the buyer of a sale, and whether each buyer at the asking price could pay. Never public: balances, offer amounts, the price of a sale by offer, what is inside a sealed box."
   },
+  "whitelist": {
+    "places": 1500,
+    "rule": "The mainnet whitelist has `places` seats, first come, first served. When it closes, the seated wallets that claimed a place are ranked by points (then by who claimed first) and frozen, with their tier, into a Merkle root in WhitelistGifts. Each wallet collects its tier's gift once, within claimDays: an encrypted number of cCROQ drawn at random in [croqMin, croqMax], which only that wallet can read, plus a free box, a free rat, or both. A seat held by an X account whose wallet never claimed a place gets no gift. The croquettes come from the treasury; the boxes are bought from the collection at the mint price; the rats are free seed rats outside the paid rats' cap.",
+    "claimDays": 30,
+    "tiers": [
+      { "key": "first", "name": "First class", "fromRank": 1, "toRank": 500, "croqMin": 100, "croqMax": 500, "box": true, "rat": true },
+      { "key": "business", "name": "Business", "fromRank": 501, "toRank": 1000, "croqMin": 50, "croqMax": 250, "box": true, "rat": false },
+      { "key": "economy", "name": "Economy", "fromRank": 1001, "toRank": 1500, "croqMin": 20, "croqMax": 100, "box": false, "rat": true }
+    ],
+    "leaks": "Public: who is on the list (their claim), each wallet's tier, and the box and the rat it received. Never public: how many croquettes a wallet drew."
+  },
   "events": {
     "MintPlaced": { "fields": ["firstTokenId", "buyer", "count", "quantity"], "note": "count ids are created; how many the buyer holds is the encrypted quantity, readable by the buyer only." },
     "ConfidentialTransfer": { "fields": ["tokenId", "from", "to", "moved"], "note": "moved is an encrypted bool readable by from and to: a transfer from a non-holder, or a decoy, moves nothing and looks the same." },
@@ -279,6 +290,7 @@
     "OfferMade": { "fields": ["offerId", "listingId", "buyer"], "note": "FleaMarket. The amount is not emitted: only the buyer and the seller can decrypt it." },
     "OfferWithdrawn": { "fields": ["offerId"], "note": "FleaMarket." },
     "OfferAccepted": { "fields": ["offerId", "listingId"], "note": "FleaMarket." },
-    "Sold": { "fields": ["listingId", "seller", "buyer", "price", "byOffer"], "note": "FleaMarket. price is 0 for a sale by secret offer: that price stays encrypted." }
+    "Sold": { "fields": ["listingId", "seller", "buyer", "price", "byOffer"], "note": "FleaMarket. price is 0 for a sale by secret offer: that price stays encrypted." },
+    "GiftClaimed": { "fields": ["account", "tier", "hasBox", "box", "hasRat", "rat"], "note": "WhitelistGifts. The croquettes are not emitted: an encrypted cCROQ transfer only the wallet can read." }
   }
 }

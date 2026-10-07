@@ -353,7 +353,15 @@ describe("duel ranking and allow list", () => {
   it("lists every claimant only for whoever holds the token", async () => {
     expect((await get("/v1/allowlist")).status).toBe(401);
     expect((await get("/v1/allowlist?token=wrong")).status).toBe(401);
-    expect((await get(`/v1/allowlist?token=${ADMIN}`)).body.data).toMatchObject([{ rank: 1, address: WALLET, inPlace: true }]);
+    expect((await get(`/v1/allowlist?token=${ADMIN}`)).body.data).toMatchObject([{ rank: 1, address: WALLET, inPlace: true, seated: false, tier: null }]);
+  });
+
+  it("freezes the gift tree only for whoever holds the token, and serves no proof before it is frozen", async () => {
+    expect((await get("/v1/allowlist/gifts")).status).toBe(401);
+    // The only claimant never played: no seat, so nothing to freeze yet.
+    expect((await get(`/v1/allowlist/gifts?token=${ADMIN}`)).body.data).toEqual({ root: null, count: 0, tree: null });
+    const res = await get(`/v1/gifts/${ALICE}`);
+    expect([res.status, res.body.error]).toEqual([404, "not-frozen"]);
   });
 });
 

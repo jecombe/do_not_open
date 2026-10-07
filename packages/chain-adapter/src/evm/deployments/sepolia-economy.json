@@ -1,6 +1,6 @@
 {
   "croq": {
-    "address": "0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308",
+    "address": "0x176f24a7ab07210E8306C4331104BC9a0d145a53",
     "abi": [
       {
         "inputs": [
@@ -329,7 +329,7 @@
     ]
   },
   "cCroq": {
-    "address": "0x358E932457A2F19B20BF49264875E94432941D81",
+    "address": "0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964",
     "abi": [
       {
         "inputs": [
@@ -1343,7 +1343,7 @@
     ]
   },
   "pantry": {
-    "address": "0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d",
+    "address": "0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F",
     "abi": [
       {
         "inputs": [
@@ -2341,12 +2341,12 @@
     ]
   },
   "market": {
-    "pool": "0xc1eFDaC0c240F9BbCE8788E18427666310E267ce",
+    "pool": "0xC2EA76E3c3107512A229936FfbD91cD297D40847",
     "fee": 10000,
-    "positionId": "233138",
+    "positionId": "233286",
     "tickLower": 69200,
     "tickUpper": 138200,
-    "locker": "0x85b827d5F40C15F0842F48C830B956cf8C5Da108",
+    "locker": "0x13B2636a1De5Ad3922aF6D499a290e8911F4e772",
     "positionManager": "0x1238536071E1c677A632429e3655c799b22cDA52",
     "swapRouter": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
     "quoter": "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3",

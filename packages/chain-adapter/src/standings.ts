@@ -5,6 +5,8 @@
  * challenger proved holding box A, the accepter box B, both at the outcome).
  */
 
+import { spec } from "@dno/game-spec";
+
 /** A settled duel, as public as it gets. */
 export interface SettledDuel {
   tokenA: number;
@@ -84,9 +86,9 @@ export function playerPoints(account: string, duels: readonly SettledDuel[], ope
   };
 }
 
-/** Seats on the mainnet list, first come, first served, unless the API is told otherwise
- *  (`ALLOW_LIST_PLACES`). Inside, points set the rank. */
-export const DEFAULT_ALLOW_LIST_PLACES: number | null = 3000;
+/** Seats on the mainnet list, first come, first served, from the spec unless the API is told
+ *  otherwise (`ALLOW_LIST_PLACES`). Inside, points set the rank, and the rank the gift. */
+export const DEFAULT_ALLOW_LIST_PLACES: number | null = spec.whitelist.places;
 
 /** What a player signs to claim a place. The address line is what the API checks. */
 export function allowListMessage(account: string, issuedAt: Date): string {

@@ -1,6 +1,21 @@
 import { DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { spec, studio } from "@dno/game-spec";
+
+/** The whitelist's three tiers, as the manual quotes them: from the spec, like the contract. */
+const [first, business, economy] = spec.whitelist.tiers;
+const whitelistGifts = {
+  firstTo: first!.toRank,
+  firstMin: first!.croqMin,
+  firstMax: first!.croqMax,
+  businessTo: business!.toRank,
+  businessMin: business!.croqMin,
+  businessMax: business!.croqMax,
+  economyTo: economy!.toRank,
+  economyMin: economy!.croqMin,
+  economyMax: economy!.croqMax,
+  days: spec.whitelist.claimDays,
+};
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { REPO } from "../links";
@@ -13,7 +28,7 @@ import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 import { MapFigure } from "./map";
 import { MarketWaysTable } from "./market";
-import { BoxVsRatTable, RatCroquettesFigure, RatFigure, StudioFigure } from "./rats";
+import { BoxVsRatTable, PowersTable, RatCroquettesFigure, RatFigure, StudioFigure, TricksTable } from "./rats";
 
 const DOCS = `${REPO}/blob/dev/docs`;
 const EXPLORER = "https://sepolia.etherscan.io/address/";
@@ -37,17 +52,20 @@ const SECTIONS = PARTS.flatMap((p) => p.sections);
 
 /** The contracts on Sepolia, as `dno:export` last wrote them. */
 const CONTRACTS = [
-  { key: "collection", address: "0x816a39b04e0672B4746A5B696E14145F4F852d37" },
-  { key: "pantry", address: "0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d" },
-  { key: "croq", address: "0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308" },
-  { key: "ccroq", address: "0x358E932457A2F19B20BF49264875E94432941D81" },
-  { key: "pool", address: "0xc1eFDaC0c240F9BbCE8788E18427666310E267ce" },
-  { key: "locker", address: "0x85b827d5F40C15F0842F48C830B956cf8C5Da108" },
-  { key: "ramp", address: "0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1" },
-  { key: "credits", address: "0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e" },
-  { key: "studio", address: "0x672cf76a68d4f181387B59caA1813eC425c1354C" },
-  { key: "rats", address: "0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264" },
-  { key: "ratPantry", address: "0x1334d72fC60cBedcF409d6583F0Ec009c285E75B" },
+  { key: "collection", address: "0x7b246695614Cc49A500bC8057345181689c82d52" },
+  { key: "pantry", address: "0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F" },
+  { key: "croq", address: "0x176f24a7ab07210E8306C4331104BC9a0d145a53" },
+  { key: "ccroq", address: "0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964" },
+  { key: "pool", address: "0xC2EA76E3c3107512A229936FfbD91cD297D40847" },
+  { key: "locker", address: "0x13B2636a1De5Ad3922aF6D499a290e8911F4e772" },
+  { key: "ramp", address: "0x02382AC8a24462FD830753Ca7e49E12486A65638" },
+  { key: "credits", address: "0x1d1848a72Ffd06e71161537472BFD6D903616511" },
+  { key: "studio", address: "0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6" },
+  { key: "rats", address: "0x441F9fe3B8333515Bc7B295E06C14948057b2cF6" },
+  { key: "ratPantry", address: "0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450" },
+  { key: "ratTricks", address: "0x44B2006E63Af469e5470eD5Fc2A6307117d22d0D" },
+  { key: "market", address: "0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1" },
+  { key: "whitelistGifts", address: "0xD244389bF81C38803c94957a1e6B5694eEeA678b" },
 ] as const;
 
 /** `part-boxes` reads as that part's first chapter; a chapter as itself. */
@@ -205,6 +223,7 @@ export function Manual() {
   const supply = spec.collection.maxSupply.toLocaleString(locale);
   const { economy } = spec;
   const maxPerTx = Number(spec.mechanics.mint?.maxPerTx ?? 10);
+  const tricks = { days: studio.rats.powers.trickDays, rest: studio.rats.powers.rechargeDays };
   const rats = { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay, maxDays: studio.rats.croquettes.maxDays, maxSeed: studio.rats.mint.maxSeedRats, maxModel: studio.rats.mint.maxModelRats, perWallet: studio.rats.mint.maxPerWallet, fund: studio.rats.croquettes.fund.toLocaleString(locale) };
   const market = { fee: spec.market.feeBps / 100, max: spec.market.maxFeeBps / 100, pct: 70 };
   const milestones = spec.collection.milestones.map((m) => m.toLocaleString(locale)).join(", ");
@@ -523,10 +542,25 @@ export function Manual() {
               <p>{t("docs.rats.p4", rats)}</p>
             </div>
             <RatCroquettesFigure />
+            <h3>{t("docs.rats.h.power")}</h3>
+            <div className="prose">
+              <p>{t("docs.rats.p7")}</p>
+            </div>
+            <PowersTable />
             <h3>{t("docs.rats.h.sniff")}</h3>
             <div className="prose">
               <p>{t("docs.rats.p5")}</p>
               <p>{t("docs.rats.p6")}</p>
+            </div>
+            <h3>{t("docs.rats.h.tricks")}</h3>
+            <div className="prose">
+              <p>{t("docs.rats.p8", tricks)}</p>
+            </div>
+            <TricksTable />
+            <div className="prose">
+              <p>{t("docs.rats.p9")}</p>
+              <p>{t("docs.rats.p10", tricks)}</p>
+              <p>{t("docs.rats.p11", tricks)}</p>
             </div>
           </section>
 
@@ -569,6 +603,7 @@ export function Manual() {
             <div className="prose">
               <p>{t("docs.testnet.p1")}</p>
               <p>{t("docs.testnet.allowList", { places: DEFAULT_ALLOW_LIST_PLACES ?? 0 })}</p>
+              <p>{t("docs.testnet.gifts", whitelistGifts)}</p>
               <p>{t("docs.testnet.contracts")}</p>
             </div>
             <ul className="addresses">

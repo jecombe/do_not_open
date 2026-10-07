@@ -1,3 +1,4 @@
+import { whitelistTierOf } from "@dno/game-spec";
 import { allowListAddress, byClaimRank, playerPoints, type PlayerPoints, type SettledDuel } from "@dno/chain-adapter/standings";
 import { ALL_DUELS, settledDuels } from "../domain/standings";
 import { normalizeAddress, type Address } from "../domain/types";
@@ -30,6 +31,9 @@ export interface AllowListView {
   claimants: number;
   /** The cap on the list, or null: no cap, every claimant is on it. */
   places: number | null;
+  /** The gift tier this wallet's rank would get if the list closed now (index into the spec's
+   *  whitelist tiers), or null: not seated, or past the last tier. */
+  tier: number | null;
 }
 
 export interface AllowListEntry {
@@ -40,6 +44,10 @@ export interface AllowListEntry {
   live: PlayerPoints;
   claimedAt: number;
   inPlace: boolean;
+  /** Holds a seat: tried the testnet, or the X account the wallet is linked to did every task. */
+  seated: boolean;
+  /** The gift tier, counted among the seated claimants only; null for the others and past the last tier. */
+  tier: number | null;
 }
 
 const MAX_MESSAGE = 1_000;
@@ -65,7 +73,7 @@ export class AllowList {
     /** Extra points per wallet, from X boarding passes. None by default. */
     private readonly bonuses: () => Promise<Map<Address, number>> = async () => new Map(),
     /** The list's seats: a claimant who tried the testnet takes one. No cap by default. */
-    private readonly seats: { admit(): Promise<void>; seatedPassOf(address: Address): Promise<boolean> } | null = null,
+    private readonly seats: { admit(): Promise<void>; seatedPassOf(address: Address): Promise<boolean>; seatedPassWallets(): Promise<Set<Address>> } | null = null,
   ) {}
 
   async claim(rawAddress: string, message: string, signature: string): Promise<AllowListView> {
@@ -107,12 +115,20 @@ export class AllowList {
     const live = mine ? mine.live : (await this.facts(address)).live;
     const bonus = mine ? mine.bonus : ((await this.bonuses()).get(address) ?? 0);
     const seated = (!!mine && (await this.players()).has(address)) || (!!this.seats && (await this.seats.seatedPassOf(address)));
-    return { live, seated, bonus, points: mine?.points ?? live.points + bonus, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: this.places };
+    return { live, seated, bonus, points: mine?.points ?? live.points + bonus, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: this.places, tier: mine?.tier ?? null };
   }
 
-  /** Every claimant, best first: the list to export when it closes. */
+  /** Every claimant, best first: the list to export when it closes. The seated ones, in that
+   *  order, get the gift tiers. */
   async ranked(): Promise<AllowListEntry[]> {
-    const [claims, facts, bonuses] = await Promise.all([this.store.allowListClaims(), this.publicFacts(), this.bonuses()]);
+    const [claims, facts, bonuses, players, passWallets] = await Promise.all([
+      this.store.allowListClaims(),
+      this.publicFacts(),
+      this.bonuses(),
+      this.players(),
+      this.seats ? this.seats.seatedPassWallets() : Promise.resolve(new Set<Address>()),
+    ]);
+    let seatedRank = 0;
     return claims
       .map((c) => {
         const live = playerPoints(c.address, facts.duels, facts.openers);
@@ -120,7 +136,10 @@ export class AllowList {
         return { address: c.address, bonus, points: Math.max(c.points, live.points) + bonus, claimedAt: c.claimedAt, live };
       })
       .sort(byClaimRank)
-      .map((e, i) => ({ rank: i + 1, ...e, inPlace: this.places === null || i < this.places }));
+      .map((e, i) => {
+        const seated = players.has(e.address) || passWallets.has(e.address);
+        return { rank: i + 1, ...e, inPlace: this.places === null || i < this.places, seated, tier: seated ? whitelistTierOf(++seatedRank) : null };
+      });
   }
 
   /** Addresses that tried the testnet: minted, opened a box, or fought a duel. Public facts only. */
@@ -152,8 +171,18 @@ export class AllowList {
     return facts;
   }
 
+  /** The live deployment's facts, plus those carried over from earlier testnet deployments. */
   private async loadFacts(): Promise<PublicFacts> {
-    const [duels, opened, minters] = await Promise.all([this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS }), this.store.openedBoxes(), this.store.minters()]);
-    return { duels: settledDuels(duels), openers: opened.flatMap((b) => (b.openedBy ? [b.openedBy] : [])), minters };
+    const [duels, opened, minters, carried] = await Promise.all([
+      this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS }),
+      this.store.openedBoxes(),
+      this.store.minters(),
+      this.store.carriedFacts(),
+    ]);
+    return {
+      duels: [...carried.duels, ...settledDuels(duels)],
+      openers: [...carried.openers, ...opened.flatMap((b) => (b.openedBy ? [b.openedBy] : []))],
+      minters: [...new Set([...carried.minters, ...minters])],
+    };
   }
 }

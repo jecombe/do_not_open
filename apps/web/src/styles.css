@@ -1001,6 +1001,39 @@ button {
   font-weight: 700;
 }
 
+/* The whitelist's gift: a band in the class's colour, the items as a ticket's list. */
+.gift-panel {
+  --band: var(--tape);
+}
+
+.gift-panel.is-first {
+  --band: #ffd66b;
+}
+
+.gift-panel.is-business {
+  --band: #9cc7f0;
+}
+
+.gift-panel.is-economy {
+  --band: #7de3d0;
+}
+
+.gift-head {
+  margin: 8px 0 6px;
+  padding: 4px 10px 2px;
+  border-left: 6px solid var(--band);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.gift-list {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding-left: 22px;
+  font-size: 17px;
+}
+
 
 /* --- Controls: a wallet tag and one manila tag that opens the packing list --- */
 .controls {
@@ -2533,6 +2566,17 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+/* Three facts side by side would run into each other on a phone. */
+.rats-fields {
+  gap: 4px 12px;
+}
+
+@media (max-width: 520px) {
+  .rats-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .pantry-form input:last-child {
   grid-column: 1 / -1;
 }
@@ -2704,4 +2748,94 @@ button {
 
 .xpass-line {
   margin-top: 10px;
+}
+
+/* A rat's power and tricks, under its croquettes. */
+.rat-tricks {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 2px dashed var(--ink);
+}
+
+.rat-tricks h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+/* One line per fact: the power and the rest are words, too long for the slip's columns. */
+.rat-facts {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px;
+}
+
+.rat-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 10px;
+}
+
+.rat-facts dt {
+  font-size: 15px;
+}
+
+.rat-facts dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.rat-tricks .actions .stamp-button,
+.rat-tricks .actions .plain-button {
+  grid-column: auto;
+  width: 100%;
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.rat-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rat-form .duel-form,
+.rat-form select {
+  min-width: 0;
+}
+
+.rat-how {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.rat-how summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.rat-how ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.rat-how li + li {
+  margin-top: 4px;
+}
+
+@media (max-width: 420px) {
+  .rat-form {
+    grid-template-columns: 1fr;
+  }
 }

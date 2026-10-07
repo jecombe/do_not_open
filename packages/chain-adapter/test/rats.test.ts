@@ -74,3 +74,79 @@ describe("MockAdapter rats", () => {
     expect(() => ratJob("nope")).toThrow();
   });
 });
+
+describe("MockAdapter rats' tricks", () => {
+  /** Adopts rats until one has `power`, as a player would mint. */
+  const ratWith = async (chain: MockAdapter, power: number, from = 100n) => {
+    for (let s = from; s < from + 60n; s++) {
+      const id = await chain.mintSeedRat(s).catch(() => null);
+      if (id === null) continue;
+      if ((await chain.ratPower(id)) === power) return id;
+    }
+    throw new Error(`no rat with power ${power}`);
+  };
+  const lenient = async () => {
+    let t = 1_000_000;
+    const chain = new MockAdapter({ latency: 0, dayMs: DAY, now: () => t });
+    await chain.connect();
+    // The wallet limit would stop the search for a power: the tests mint past it.
+    (chain as unknown as { ratSupply: () => Promise<unknown> }).ratSupply = async () => ({ seed: { minted: 0, max: 10_000 }, model: { minted: 0, max: 10_000 }, perWallet: 10_000, mintedBy: 0 });
+    return { chain, advance: (ms: number) => (t += ms) };
+  };
+  // The mock's first boxes are yours, the next ones the night shift's.
+  const theirs = async (chain: MockAdapter) => {
+    const yours = await chain.boxesOf(MOCK_YOU);
+    return Math.max(...yours) + 1;
+  };
+  const mine = async (chain: MockAdapter) => (await chain.boxesOf(MOCK_YOU))[0]!;
+
+  it("draws each rat a power with the spec's odds, readable by its holder", async () => {
+    const { chain } = await lenient();
+    const seen = new Set<number>();
+    for (let s = 1n; s <= 30n; s++) seen.add(await chain.ratPower(await chain.mintSeedRat(s)));
+    expect([...seen].sort()).toEqual([1, 2, 3]);
+    expect(await chain.ratTricks()).toMatchObject({ sniffFee: 2_500_000n, sniffRebate: 750_000n });
+  });
+
+  it("sniffs at the full price, and gives a power-1 rat its rebate back", async () => {
+    const { chain } = await lenient();
+    const box = await theirs(chain);
+    const cheap = await ratWith(chain, 1);
+    const plain = await ratWith(chain, 2, 300n);
+    let before = await chain.confidentialUsdcBalance();
+    expect((await chain.sniffWithRat(plain, box)).traitIndex).toBeGreaterThanOrEqual(0);
+    expect(await chain.confidentialUsdcBalance()).toBe(before - 2_500_000n);
+    before = await chain.confidentialUsdcBalance();
+    await chain.sniffWithRat(cheap, box);
+    expect(await chain.confidentialUsdcBalance()).toBe(before - 1_750_000n);
+  });
+
+  it("jams another's box for the holder, shields one's own from strangers, and rests the rat", async () => {
+    const { chain, advance } = await lenient();
+    const own = await mine(chain);
+    const rat = await ratWith(chain, 3);
+    const played = await chain.playTrick(rat, own, 0);
+    expect(played.readyAt - played.until).toBe((studio.rats.powers.rechargeDays * DAY) / 1000);
+    expect((await chain.ratReadyAt([rat]))[0]).toBe(played.readyAt);
+    await expect(chain.playTrick(rat, own, 0)).rejects.toMatchObject({ code: "reverted", reason: "Recharging" });
+    // A shield on one's own box: the holder still reads the truth.
+    const truth = await chain.shake(own);
+    expect(truth.roll).toBeGreaterThanOrEqual(0);
+
+    advance((studio.rats.powers.trickDays + studio.rats.powers.rechargeDays) * DAY);
+    expect((await chain.ratReadyAt([rat]))[0]).toBe(0);
+  });
+
+  it("scrambles the holder's shakes while a power-3 rat jams the box", async () => {
+    const { chain, advance } = await lenient();
+    const own = await mine(chain);
+    const rat = await ratWith(chain, 3);
+    // The mock plays the jam as another wallet would: the rat's holder is not the box's.
+    const hidden = chain as unknown as { jams: Map<number, { traits: Set<number>; until: number; noise: number[] }> };
+    hidden.jams.set(own, { traits: new Set([0, 1, 2, 3, 4]), until: 1_000_000 + 3 * DAY, noise: [0, 0, 0, 0, 0] });
+    await expect(chain.shake(own)).rejects.toMatchObject({ code: "scrambled" });
+    advance(3 * DAY);
+    await expect(chain.shake(own)).resolves.toBeTruthy();
+    expect(rat).toBeGreaterThan(0);
+  });
+});

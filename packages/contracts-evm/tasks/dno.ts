@@ -145,7 +145,7 @@ async function shake(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenI
   console.log(`  decrypting privately as ${signer.address}...`);
   const pick = Number(await hre.fhevm.userDecryptEuint(FhevmType.euint8, pickHandle, address, signer));
   const roll = Number(await hre.fhevm.userDecryptEuint(FhevmType.euint8, rollHandle, address, signer));
-  if (pick === Number(await dno.NOT_YOURS())) {
+  if (pick === 255) {
     console.log(`  nothing: you do not hold this box${paid ? ", or the fee did not go through" : ""}.`);
     return;
   }
@@ -362,6 +362,28 @@ task("dno:credit-price", "Sets the decryption credit's USDC price from Zama's do
     console.log(`DecryptionCredits ${deployment.address}: ${hre.ethers.formatUnits(before, 6)} -> ${hre.ethers.formatUnits(price, 6)} USDC a credit`);
   });
 
+task("dno:whitelist-root", "Freezes the whitelist: sets WhitelistGifts' root from the tree the API exported, open for the spec's claimDays")
+  .addParam("tree", "The JSON of GET /v1/allowlist/gifts?token= (its `data`, or the whole answer)")
+  .setAction(async (args: { tree: string }, hre) => {
+    const { readFileSync } = await import("node:fs");
+    const { StandardMerkleTree } = await import("@openzeppelin/merkle-tree");
+    const { whitelistParamsFromSpec } = await import("../lib/specParams");
+    const raw = JSON.parse(readFileSync(args.tree, "utf8"));
+    const dump = (raw.data ?? raw).tree ?? raw;
+    const tree = StandardMerkleTree.load(dump);
+    tree.validate();
+    const { claimDays, tiers } = whitelistParamsFromSpec();
+    for (const [, [address, tier]] of tree.entries()) if (Number(tier) >= tiers.length) throw new Error(`${address} has tier ${tier}, the spec has ${tiers.length}`);
+    const deployment = await hre.deployments.get("WhitelistGifts");
+    const [signer] = await hre.ethers.getSigners();
+    const gifts = new hre.ethers.Contract(deployment.address, deployment.abi, signer);
+    const block = await hre.ethers.provider.getBlock("latest");
+    const closesAt = block!.timestamp + claimDays * 86_400;
+    await (await gifts.getFunction("setRoot")(tree.root, closesAt)).wait();
+    console.log(`WhitelistGifts ${deployment.address}: root ${tree.root} (${tree.length} wallets), claims until ${new Date(closesAt * 1000).toISOString()}`);
+    console.log("Serve the same file to the API: WHITELIST_GIFTS_TREE=<path>");
+  });
+
 task("dno:export", "Writes the address and ABI of this network's deployment where the chain adapter reads them").setAction(
   async (_args, hre) => {
     const { writeFileSync } = await import("node:fs");
@@ -394,6 +416,12 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
       market: await hre.deployments
         .getOrNull("FleaMarket")
         .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
+      // The rats' tricks: sniffs, shields and jams, decided under encryption by each rat's power.
+      ratTricks: await hre.deployments
+        .getOrNull("RatTricks")
+        .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
+      // The whitelist's gifts, collected once per seated wallet.
+      whitelistGifts: await hre.deployments.getOrNull("WhitelistGifts").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
     };
     writeFileSync(out, JSON.stringify(slim, null, 2) + "\n");
     console.log(`wrote ${out}`);

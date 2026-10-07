@@ -94,9 +94,12 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
     case "RatMinted":
       return tx.saveRat(R.minted(await tx.rat(e.ratId), e));
     case "Shaken":
-      // A paid shake is a sniff: it counts for the rats of whoever paid it.
+      // A paid shake is a sniff: it counts for the rats of whoever paid it. A rat's sniff
+      // through RatTricks shakes as RatTricks: its own event names the sniffer.
       if (e.paid) await tx.addSniff(e.viewer);
       return;
+    case "RatSniffed":
+      return tx.addSniff(e.sniffer);
     case "WeighInRequested":
       return updateBox(tx, e.tokenId, e.block, B.weighRequested);
     case "Weighed":
@@ -111,6 +114,7 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
       );
     // Recorded in the activity feed and folded into their actors, nothing more to project.
     case "RatsFed":
+    case "RatTrick":
     case "Fed":
     case "MealServed":
     case "Purred":
