@@ -13,7 +13,7 @@ __ADMIN_HOST__ {
 	rewrite * /admin{uri}
 	# The same replicas as the API, one client IP on one replica: the sign-in limit stays exact.
 	reverse_proxy {
-		dynamic a dno-api 8080 {
+		dynamic a __API_ALIAS__ 8080 {
 			refresh 2s
 		}
 		lb_policy client_ip_hash

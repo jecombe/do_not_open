@@ -29,6 +29,12 @@ const schema = z.object({
   /** Without it the index lives in memory and is rebuilt from the chain at each start. */
   DATABASE_URL: z.string().optional(),
   DATABASE_POOL_SIZE: z.coerce.number().int().min(1).default(10),
+  /**
+   * The testnet site's API: its boarding passes, allow list claims and ideas live in this schema
+   * (migration 24), the chain's index stays shared with the live stack and its one indexer. Such an
+   * API never migrates the database: only the live stack does.
+   */
+  LISTS_SCHEMA: z.string().regex(/^[a-z_]+$/).optional(),
 
   NETWORK: z.literal("sepolia").default("sepolia"),
   RPC_URLS: list.default(FREE_SEPOLIA_RPCS),
@@ -113,6 +119,14 @@ const schema = z.object({
   HERALD_BOX_URL: z.string().url().optional(),
   /** Seats on the mainnet list, first come, first served (`application/seats.ts`): the spec's `whitelist.places` by default. */
   ALLOW_LIST_PLACES: z.coerce.number().int().positive().default(spec.whitelist.places),
+  /**
+   * The team's own wallets, comma-separated: they test the protocol and never take a place on the
+   * list (a claim from one is refused, they are left out of the ranking, the seats, the gifts and
+   * the admin's figures, and a boarding pass linked to one takes no seat). The deployer by default.
+   */
+  TEAM_WALLETS: list.default(["0x590891F269720001435004A1089cAB5b2c20029A"]).transform((a) => new Set(a.map((x) => x.toLowerCase()))),
+  /** The team's own X accounts, comma-separated (with or without @): a boarding pass with one takes no seat and stays out of the admin's figures. */
+  TEAM_X_HANDLES: list.default([]).transform((a) => new Set(a.map((x) => x.replace(/^@/, "").toLowerCase()))),
   /**
    * The frozen whitelist's gift tree (the JSON `GET /v1/allowlist/gifts?token=` returned when the
    * list closed): `GET /v1/gifts/:address` serves each wallet its proof from it. Without it, no gifts yet.

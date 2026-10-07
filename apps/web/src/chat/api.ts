@@ -1,5 +1,6 @@
 import type { Locale } from "../i18n/locale";
 import { docsPath } from "../site";
+import { apiUrl } from "../apiUrl";
 
 /** What the API's /v1/chat answers: see apps/api/src/application/askManual.ts. */
 export interface ClerkAnswer {
@@ -16,7 +17,7 @@ export interface Turn {
 }
 
 /** The API, when this build has one. The chat needs it: the model's key never reaches the browser. */
-export const chatApi = (): string | null => import.meta.env.VITE_API_URL?.replace(/\/$/, "") || null;
+export const chatApi = (): string | null => apiUrl();
 
 export class ClerkError extends Error {
   constructor(readonly kind: "busy" | "network") {

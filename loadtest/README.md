@@ -2,7 +2,7 @@
 
 k6 against the API as production runs it: N replicas (`ROLE=api`) behind Caddy, which spreads
 players with `lb_policy client_ip_hash`, on a Postgres index seeded with a collection a few weeks
-into its sale. CI runs it on every pull request that touches the backend
+into its sale. CI runs it on every pull request into `main` that touches the backend (the ones into `dev` skip it)
 (`.github/workflows/loadtest.yml`), with 1 then 3 replicas, and by hand (Actions, "Load test",
 Run workflow) with other replica counts, players or durations.
 

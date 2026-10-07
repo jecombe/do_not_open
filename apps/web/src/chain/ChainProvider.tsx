@@ -4,6 +4,7 @@ import { errorCopy, problemOf, type Problem, type ProblemContext } from "./copy"
 import { chainMode } from "./mode";
 import { useLive } from "./useLive";
 import { hasSigned, requireTerms, termsRequired } from "../terms/terms";
+import { apiUrl } from "../apiUrl";
 
 /** The demo's rats outlive a page: adopted in the studio, they are still there in the game. */
 const MOCK_RAT_STORE = {
@@ -73,7 +74,7 @@ export function ChainProvider({ children }: { children: ReactNode }) {
       mode,
       rpcUrl: import.meta.env.VITE_SEPOLIA_RPC_URL,
       address: import.meta.env.VITE_DNO_ADDRESS,
-      apiUrl: import.meta.env.VITE_API_URL,
+      apiUrl: apiUrl() ?? undefined,
       walletConnectProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
       relayerProxy: import.meta.env.VITE_RELAYER_PROXY === "true",
       mock: { ratStore: MOCK_RAT_STORE, fleaMarket: true },
