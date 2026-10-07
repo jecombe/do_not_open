@@ -458,6 +458,42 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.heraldCursor("x")).toEqual({ block: 1, logIndex: 0 });
     });
 
+    it("keeps tickets for every API process: once each, until they expire, one per owner", async () => {
+      const t = { kind: "board", key: "DNO-AAAAAA", owner: "pass-1", value: { a: 1 }, expiresAt: 200 };
+      expect(await store.putTicket(t, 100)).toBe(true);
+      expect(await store.putTicket({ ...t, owner: "pass-2" }, 100)).toBe(false);
+      expect(await store.ticket("board", "DNO-AAAAAA", 150)).toEqual(t);
+      expect(await store.ticket("board", "DNO-AAAAAA", 200)).toBeNull();
+      // A new ticket of the same owner replaces the old one.
+      expect(await store.putTicket({ ...t, key: "DNO-BBBBBB" }, 100)).toBe(true);
+      expect(await store.ticket("board", "DNO-AAAAAA", 150)).toBeNull();
+      expect(await store.takeTicket("board", "DNO-BBBBBB", 150)).toEqual({ ...t, key: "DNO-BBBBBB" });
+      expect(await store.takeTicket("board", "DNO-BBBBBB", 150)).toBeNull();
+      // Taken after it expired: gone, and nothing returned.
+      await store.putTicket({ kind: "x-sign-in", key: "s", owner: null, value: {}, expiresAt: 120 }, 100);
+      await store.transaction((tx) => tx.resetReadModels());
+      expect(await store.takeTicket("x-sign-in", "s", 130)).toBeNull();
+      expect(await store.takeTicket("x-sign-in", "s", 0)).toBeNull();
+      // Expired tickets go as new ones come in.
+      await store.putTicket({ kind: "x-sign-in", key: "old", owner: null, value: {}, expiresAt: 120 }, 100);
+      await store.putTicket({ kind: "x-sign-in", key: "new", owner: null, value: {}, expiresAt: 300 }, 250);
+      expect(await store.ticket("x-sign-in", "old", 0)).toBeNull();
+    });
+
+    it("counts a shared daily quota up to its limit", async () => {
+      expect(await store.takeQuota("chat", "2026-10-07", 2)).toBe(true);
+      expect(await store.takeQuota("chat", "2026-10-07", 2)).toBe(true);
+      expect(await store.takeQuota("chat", "2026-10-07", 2)).toBe(false);
+      expect(await store.quotaUsed("chat", "2026-10-07")).toBe(2);
+      await store.giveBackQuota("chat", "2026-10-07");
+      expect(await store.quotaUsed("chat", "2026-10-07")).toBe(1);
+      expect(await store.takeQuota("chat", "2026-10-08", 2)).toBe(true);
+      expect(await store.takeQuota("other", "2026-10-07", 0)).toBe(false);
+      expect(await store.quotaUsed("other", "2026-10-07")).toBe(0);
+      await store.giveBackQuota("none", "2026-10-07");
+      expect(await store.quotaUsed("none", "2026-10-07")).toBe(0);
+    });
+
     it("remembers the images stored on Arweave, once each, through a replay", async () => {
       expect(await store.archivedImages(["a", "b"])).toEqual(new Map());
       await store.saveArchivedImage("a", "id-a", 1);

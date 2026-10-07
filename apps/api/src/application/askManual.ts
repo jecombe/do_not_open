@@ -54,6 +54,37 @@ export interface AskManualOptions {
   cacheSize: number;
 }
 
+/**
+ * The day's questions to the model, counted for every API process together: in the store when
+ * several replicas serve, in this process otherwise.
+ */
+export interface DailyQuota {
+  take(day: string, limit: number): Promise<boolean>;
+  giveBack(day: string): Promise<void>;
+  used(day: string): Promise<number>;
+}
+
+/** The count in this process's memory: enough for one process and for tests. */
+export class LocalDailyQuota implements DailyQuota {
+  private readonly days = new Map<string, number>();
+
+  async take(day: string, limit: number) {
+    const used = this.days.get(day) ?? 0;
+    if (used >= limit) return false;
+    this.days.clear();
+    this.days.set(day, used + 1);
+    return true;
+  }
+
+  async giveBack(day: string) {
+    this.days.set(day, Math.max(0, (this.days.get(day) ?? 0) - 1));
+  }
+
+  async used(day: string) {
+    return this.days.get(day) ?? 0;
+  }
+}
+
 export const askInput = z.object({
   question: z.string().trim().min(2).max(500),
   locale: z.enum(MANUAL_LOCALES).default("en"),
@@ -95,7 +126,7 @@ const normalize = (q: string) => q.toLowerCase().replace(/\s+/g, " ").replace(/[
 export class AskManual {
   private readonly indexes: Record<ManualLocale, ManualIndex>;
   private day = "";
-  private asked = 0;
+  /** Per IP in this process: the proxy sends an IP to the same replica every time. */
   private readonly perIp = new Map<string, number>();
   private readonly cache = new Map<string, { answer: string; sections: string[] }>();
 
@@ -104,6 +135,7 @@ export class AskManual {
     private readonly model: AnswerModel | null,
     private readonly opts: AskManualOptions,
     private readonly now: () => number = Date.now,
+    private readonly daily: DailyQuota = new LocalDailyQuota(),
   ) {
     this.indexes = Object.fromEntries(MANUAL_LOCALES.map((l) => [l, new ManualIndex(manuals[l])])) as Record<ManualLocale, ManualIndex>;
   }
@@ -119,9 +151,8 @@ export class AskManual {
     if (!this.model) return this.passages(index, input, history, "no-model");
     this.rollDay();
     const used = this.perIp.get(ip) ?? 0;
-    if (used >= this.opts.perIpPerDay || this.asked >= this.opts.perDay) return this.passages(index, input, history, "limit");
+    if (used >= this.opts.perIpPerDay || !(await this.daily.take(this.day, this.opts.perDay))) return this.passages(index, input, history, "limit");
     this.perIp.set(ip, used + 1);
-    this.asked += 1;
 
     let reply: ModelAnswer;
     try {
@@ -129,7 +160,7 @@ export class AskManual {
     } catch (error) {
       // A question the model never answered does not count against anyone.
       this.perIp.set(ip, used);
-      this.asked -= 1;
+      await this.daily.giveBack(this.day);
       if (error instanceof ModelUnavailable) return this.passages(index, input, history, "unavailable");
       throw error;
     }
@@ -160,13 +191,12 @@ export class AskManual {
     const today = dayOf(this.now());
     if (today === this.day) return;
     this.day = today;
-    this.asked = 0;
     this.perIp.clear();
   }
 
   /** For the health route: how much of today's quota is used. */
-  usage(): { day: string; asked: number; perDay: number } {
+  async usage(): Promise<{ day: string; asked: number; perDay: number }> {
     this.rollDay();
-    return { day: this.day, asked: this.asked, perDay: this.opts.perDay };
+    return { day: this.day, asked: await this.daily.used(this.day), perDay: this.opts.perDay };
   }
 }

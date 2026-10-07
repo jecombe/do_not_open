@@ -1,0 +1,52 @@
+# The load test's throwaway stack (loadtest/README.md): Postgres holding a seeded index, any
+# number of API replicas (ROLE=api, `--scale api=N`) and Caddy balancing them on :8080. No
+# indexer: the seed is the whole chain. Built and torn down by .github/workflows/loadtest.yml.
+name: dno-loadtest
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dno
+      POSTGRES_PASSWORD: dno
+      POSTGRES_DB: dno
+    # Published for the seed, which runs on the host.
+    ports: ["${PG_PORT:-5433}:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dno -d dno"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    image: ${API_IMAGE:-dno-api:loadtest}
+    environment:
+      NODE_ENV: production
+      ROLE: api
+      DATABASE_URL: postgres://dno:dno@postgres:5432/dno
+      SESSION_SECRET: load-test-only-not-a-secret-0123456789
+      PUBLIC_URL: http://localhost:8080
+      TRUST_PROXY: "true"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-300}
+      LOG_LEVEL: warn
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # The production limit, so a replica here weighs what one weighs there.
+    mem_limit: 512m
+    # The image checks every 30 s; a run waits on this one.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks:
+      default:
+        aliases: [dno-api]
+
+  caddy:
+    image: caddy:2-alpine
+    ports: ["${LB_PORT:-8080}:8080"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [api]

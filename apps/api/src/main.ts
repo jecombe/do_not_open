@@ -37,7 +37,8 @@ import { EvmChainState } from "./infrastructure/chain/EvmChainState";
 import { RpcPool } from "./infrastructure/chain/RpcPool";
 import { migrate } from "./infrastructure/db/migrate";
 import { PgStore } from "./infrastructure/db/PgStore";
-import { buildServer } from "./infrastructure/http/server";
+import { listenForNudges, nudgeOver } from "./infrastructure/db/nudges";
+import { buildOpsServer, buildServer } from "./infrastructure/http/server";
 import { Indexer, type PeriodicTask } from "./infrastructure/Indexer";
 import { MemoryStore } from "./infrastructure/memory/MemoryStore";
 import { HttpRelayerUpstream } from "./infrastructure/relayer/HttpRelayerUpstream";
@@ -79,6 +80,7 @@ async function main() {
   const model = config.GEMINI_API_KEY ? new GeminiModel({ apiKey: config.GEMINI_API_KEY, models: config.GEMINI_MODELS, timeoutMs: config.GEMINI_TIMEOUT_MS, log }) : null;
 
   let indexer: Indexer | undefined;
+  let stopListening: (() => Promise<void>) | undefined;
   if (config.ROLE !== "api") {
     const source = new EvmChainSource(rpc, deployment, log);
     const startBlock = deployment.indexFrom;
@@ -103,6 +105,11 @@ async function main() {
     } else log.info("ARWEAVE_KEY is not set: token images are served by the API only");
     indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, tasks);
     indexer.start();
+    // API replicas (ROLE=api) nudge it over Postgres after a transaction is mined.
+    if (config.DATABASE_URL) {
+      const running = indexer;
+      stopListening = listenForNudges(config.DATABASE_URL, () => running.nudge(), log);
+    }
     log.info({ network: config.NETWORK, from: deployment.indexFrom, endpoints: rpc.status().map((e) => e.name) }, "indexer started");
   }
 
@@ -130,6 +137,13 @@ async function main() {
     manual.locales,
     model,
     { perIpPerDay: config.CHAT_PER_IP_PER_DAY, perDay: config.CHAT_PER_DAY, cacheSize: 500 },
+    Date.now,
+    // The day's total is counted in the store, for every replica together.
+    {
+      take: (day, limit) => store.takeQuota("chat-model", day, limit),
+      giveBack: (day) => store.giveBackQuota("chat-model", day),
+      used: (day) => store.quotaUsed("chat-model", day),
+    },
   );
   if (!config.GEMINI_API_KEY) log.info("GEMINI_API_KEY is not set: the chat quotes the manual instead of answering");
 
@@ -226,29 +240,34 @@ async function main() {
     config.DISCORD_APPLICATION_ID && config.DISCORD_PUBLIC_KEY && config.DISCORD_GUILD_ID ? { guildId: config.DISCORD_GUILD_ID } : null,
   );
 
+  // What the index holds is reported by one process only, the one that indexes: API replicas
+  // report their own traffic, memory and RPC calls.
+  const reports = config.ROLE !== "api";
   const metrics = new Metrics({
-    store,
-    whitelist: { seats, store, signInEnabled: xPasses.signInEnabled },
-    archive: store,
-    posts: store,
+    ...(reports && {
+      store,
+      whitelist: { seats, store, signInEnabled: xPasses.signInEnabled },
+      archive: store,
+      posts: store,
+      chat,
+      studio: {
+        store,
+        spentToday: () => studio.spentToday(),
+        spentTotal: () => studio.spentTotal(),
+        dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
+        open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
+      },
+      rats: store,
+    }),
     indexer,
     rpcStatus: () => rpc.status(),
-    chat,
-    studio: {
-      store,
-      spentToday: () => studio.spentToday(),
-      spentTotal: () => studio.spentTotal(),
-      dailyBudgetUsd: config.STUDIO_DAILY_BUDGET_USD,
-      open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
-    },
-    rats: store,
-    info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev" },
+    info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev", role: config.ROLE },
   });
 
 
   const server =
     config.ROLE === "indexer"
-      ? null
+      ? await buildOpsServer({ queries, indexer, rpcStatus: () => rpc.status(), metrics, logger: { level: config.LOG_LEVEL } })
       : await buildServer({
           queries,
           metadata: new Metadata(queries, config.PUBLIC_URL.replace(/\/$/, ""), new ImageArchive(store, config.ARWEAVE_GATEWAY.replace(/\/$/, ""))),
@@ -266,6 +285,7 @@ async function main() {
           discord,
           herald: config.HERALD_DISCORD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
           indexer,
+          nudge: config.ROLE === "api" && pool ? nudgeOver(pool, log) : undefined,
           rpcStatus: () => rpc.status(),
           metrics,
           corsOrigins: config.CORS_ORIGINS,
@@ -273,11 +293,13 @@ async function main() {
           logger: { level: config.LOG_LEVEL },
           trustProxy: config.TRUST_PROXY,
         });
-  if (server) await server.listen({ host: config.HOST, port: config.PORT });
+  await server.listen({ host: config.HOST, port: config.PORT });
 
   const shutdown = async (signal: string) => {
     log.info({ signal }, "shutting down");
-    await server?.close();
+    // In-flight requests finish first: a replica taken out by a deploy drops nothing it accepted.
+    await server.close();
+    await stopListening?.();
     await indexer?.stop();
     await pool?.end();
     process.exit(0);

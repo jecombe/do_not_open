@@ -1,4 +1,4 @@
-# DO NOT OPEN backend: Postgres and the API (indexer included). No port is published: the
+# DO NOT OPEN backend: Postgres, the indexer and the API's replicas. No port is published: the
 # shared edge proxy (deploy/edge) reaches the API over the `edge` network, so other projects
 # on the same server keep ports 80 and 443 through it. Values come from .env next to this file.
 name: dno
@@ -21,15 +21,21 @@ services:
     mem_limit: 1g
     networks: [internal]
 
+  # The public API: API_REPLICAS copies (2 by default) behind the edge proxy, which shares the
+  # load between them by client IP (deploy/dno.caddy.template). They only read the index and
+  # serve; deploy.sh replaces them one batch at a time, so a deploy drops no request.
   api:
     image: ${API_IMAGE:?set API_IMAGE}
     restart: unless-stopped
     env_file: .env
     environment:
       NODE_ENV: production
+      ROLE: api
       DATABASE_URL: postgres://dno:${POSTGRES_PASSWORD}@postgres:5432/dno
       PUBLIC_URL: https://${API_DOMAIN}
       TRUST_PROXY: "true"
+    deploy:
+      replicas: ${API_REPLICAS:-2}
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,8 +46,33 @@ services:
     networks:
       internal: {}
       edge:
-        # The name the edge proxy routes to. Unique across projects on this server.
+        # The name the edge proxy routes to, shared by every replica: Docker's DNS answers all
+        # of them. Unique across projects on this server.
         aliases: [dno-api]
+
+  # The one process that reads the chain and writes the index, with the periodic tasks (sweep,
+  # reconcile, herald, Arweave). Never more than one. It answers /health and /metrics only,
+  # to Prometheus over the edge network; the public never reaches it.
+  indexer:
+    image: ${API_IMAGE:?set API_IMAGE}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      ROLE: indexer
+      DATABASE_URL: postgres://dno:${POSTGRES_PASSWORD}@postgres:5432/dno
+      PUBLIC_URL: https://${API_DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+    networks:
+      internal: {}
+      edge:
+        aliases: [dno-indexer]
 
 networks:
   # Postgres is only on this one: nothing from another project can reach it.

@@ -12,7 +12,11 @@ import type { XPass } from "../../application/xPass";
 import type { AllowListClaim } from "../../application/allowList";
 
 export interface MetricsSources {
-  store: Pick<ReadStore, "stats" | "cursor" | "finalizedCursor" | "milestonesReached" | "allPendingRequests">;
+  /**
+   * The index's counts. Left out on API replicas (ROLE=api): they would all report the same
+   * table, and a sum over them would count it once per replica. The indexer reports it.
+   */
+  store?: Pick<ReadStore, "stats" | "cursor" | "finalizedCursor" | "milestonesReached" | "allPendingRequests">;
   archive?: Pick<ArchiveStore, "archivedCount">;
   posts?: Pick<PostStore, "postCounts">;
   indexer?: { status(): IndexerStatus };
@@ -28,8 +32,8 @@ export interface MetricsSources {
     store: { xPasses(): Promise<XPass[]>; allowListClaims(): Promise<AllowListClaim[]>; ideaCount(): Promise<number> };
     signInEnabled: boolean;
   };
-  /** Shown on `dno_info`; Prometheus adds the `network` label to every series from its target. */
-  info: { chain: string; collection: string; version: string };
+  /** Shown on `dno_info`; Prometheus adds the `network` and `role` labels to every series from its target. */
+  info: { chain: string; collection: string; version: string; role: string };
 }
 
 /**
@@ -47,8 +51,8 @@ export class Metrics {
     const r = this.registry;
     collectDefaultMetrics({ register: r });
 
-    new Gauge({ name: "dno_info", help: "Always 1; labels say what this API indexes", labelNames: ["chain", "collection", "version"], registers: [r] })
-      .set({ chain: s.info.chain, collection: s.info.collection.toLowerCase(), version: s.info.version }, 1);
+    new Gauge({ name: "dno_info", help: "Always 1; labels say what this API indexes", labelNames: ["chain", "collection", "version", "process_role"], registers: [r] })
+      .set({ chain: s.info.chain, collection: s.info.collection.toLowerCase(), version: s.info.version, process_role: s.info.role }, 1);
 
     this.http = new Histogram({
       name: "dno_http_request_duration_seconds",
@@ -61,40 +65,44 @@ export class Metrics {
     const gauge = (name: string, help: string, collect: (g: Gauge) => Promise<void> | void, labelNames: string[] = []) =>
       new Gauge({ name, help, labelNames, registers: [r], async collect() { await collect(this); } });
 
-    // --- the protocol ---
-    gauge("dno_boxes_minted", "Boxes minted", async (g) => g.set((await s.store.stats()).minted));
-    gauge("dno_boxes_opened", "Boxes opened (cats revealed)", async (g) => g.set((await s.store.stats()).opened));
-    gauge("dno_duels", "Duels ever posted", async (g) => g.set((await s.store.stats()).duels));
-    gauge("dno_duels_open", "Duels waiting on the shelf or for a proof", async (g) => g.set((await s.store.stats()).openDuels));
-    gauge("dno_users", "Addresses seen acting on-chain or signing in", async (g) => g.set((await s.store.stats()).users));
-    gauge("dno_users_registered", "Users who signed in", async (g) => g.set((await s.store.stats()).registered));
-    gauge("dno_events", "Protocol events indexed", async (g) => g.set((await s.store.stats()).events));
-    gauge("dno_milestones_reached", "Sale milestones reached", async (g) => g.set(await s.store.milestonesReached()));
-    gauge(
-      "dno_requests_pending",
-      "Requests waiting for their KMS proof, by kind",
-      async (g) => {
-        g.reset();
-        for (const req of await s.store.allPendingRequests()) g.inc({ kind: req.kind });
-      },
-      ["kind"],
-    );
-    gauge("dno_request_oldest_pending_blocks", "Blocks since the oldest pending request was placed (0: none)", async (g) => {
-      const [pending, cursor] = await Promise.all([s.store.allPendingRequests(), s.store.cursor()]);
-      const oldest = Math.min(...pending.map((p) => p.placedBlock));
-      g.set(pending.length && cursor !== null ? Math.max(0, cursor - oldest) : 0);
-    });
+    if (s.store) {
+      const store = s.store;
+      // --- the protocol ---
+      gauge("dno_boxes_minted", "Boxes minted", async (g) => g.set((await store.stats()).minted));
+      gauge("dno_boxes_opened", "Boxes opened (cats revealed)", async (g) => g.set((await store.stats()).opened));
+      gauge("dno_duels", "Duels ever posted", async (g) => g.set((await store.stats()).duels));
+      gauge("dno_duels_open", "Duels waiting on the shelf or for a proof", async (g) => g.set((await store.stats()).openDuels));
+      gauge("dno_users", "Addresses seen acting on-chain or signing in", async (g) => g.set((await store.stats()).users));
+      gauge("dno_users_registered", "Users who signed in", async (g) => g.set((await store.stats()).registered));
+      gauge("dno_events", "Protocol events indexed", async (g) => g.set((await store.stats()).events));
+      gauge("dno_milestones_reached", "Sale milestones reached", async (g) => g.set(await store.milestonesReached()));
+      gauge(
+        "dno_requests_pending",
+        "Requests waiting for their KMS proof, by kind",
+        async (g) => {
+          g.reset();
+          for (const req of await store.allPendingRequests()) g.inc({ kind: req.kind });
+        },
+        ["kind"],
+      );
+      gauge("dno_request_oldest_pending_blocks", "Blocks since the oldest pending request was placed (0: none)", async (g) => {
+        const [pending, cursor] = await Promise.all([store.allPendingRequests(), store.cursor()]);
+        const oldest = Math.min(...pending.map((p) => p.placedBlock));
+        g.set(pending.length && cursor !== null ? Math.max(0, cursor - oldest) : 0);
+      });
 
-    // --- the indexer ---
-    gauge("dno_indexer_block", "Last block indexed", async (g) => g.set((await s.store.cursor()) ?? 0));
-    gauge("dno_indexer_finalized_block", "Last block checked again once final", async (g) => g.set((await s.store.finalizedCursor()) ?? 0));
+      // --- the indexer ---
+      gauge("dno_indexer_block", "Last block indexed", async (g) => g.set((await store.cursor()) ?? 0));
+      gauge("dno_indexer_finalized_block", "Last block checked again once final", async (g) => g.set((await store.finalizedCursor()) ?? 0));
+    }
+
     if (s.indexer) {
       const status = () => s.indexer!.status();
       gauge("dno_indexer_up", "1 while the indexer loop runs", (g) => g.set(status().running ? 1 : 0));
       gauge("dno_chain_target_block", "Block the last pass aimed at (chain head minus confirmations)", (g) => g.set(status().lastPass?.target ?? 0));
       gauge("dno_indexer_lag_blocks", "Blocks between the target and what is indexed", async (g) => {
         const target = status().lastPass?.target;
-        const cursor = await s.store.cursor();
+        const cursor = (await s.store?.cursor()) ?? null;
         g.set(target !== undefined && cursor !== null ? Math.max(0, target - cursor) : 0);
       });
       gauge("dno_indexer_last_pass_timestamp_seconds", "When the last pass finished", (g) => g.set((status().lastPassAt ?? 0) / 1000));
@@ -156,8 +164,8 @@ export class Metrics {
     }
     if (s.chat) {
       const chat = s.chat;
-      gauge("dno_chat_model_questions_today", "Questions sent to Gemini today (UTC)", (g) => g.set(chat.usage().asked));
-      gauge("dno_chat_model_questions_limit", "Questions Gemini may get per UTC day", (g) => g.set(chat.usage().perDay));
+      gauge("dno_chat_model_questions_today", "Questions sent to Gemini today (UTC)", async (g) => g.set((await chat.usage()).asked));
+      gauge("dno_chat_model_questions_limit", "Questions Gemini may get per UTC day", async (g) => g.set((await chat.usage()).perDay));
     }
     if (s.studio) {
       const studio = s.studio;

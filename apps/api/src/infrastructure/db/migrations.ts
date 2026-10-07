@@ -559,4 +559,28 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       alter table x_passes add column discord_user_id text unique, add column discord_joined_at bigint;
     `,
   },
+  {
+    version: 23,
+    name: "state shared by api replicas",
+    sql: /* sql */ `
+      -- Several API processes serve behind the proxy: what one starts, another may finish. A
+      -- sign-in with X under way and a /board code live here instead of in one process's memory.
+      create table tickets (
+        kind text not null,
+        key text not null,
+        owner text,
+        value jsonb not null,
+        expires_at bigint not null,
+        primary key (kind, key)
+      );
+      create index tickets_owner on tickets (kind, owner);
+      -- Quotas every process draws from, per UTC day: the questions the chat may put to the model.
+      create table daily_quotas (
+        name text not null,
+        day text not null,
+        used integer not null,
+        primary key (name, day)
+      );
+    `,
+  },
 ];

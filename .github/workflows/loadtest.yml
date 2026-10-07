@@ -1,0 +1,133 @@
+name: Load test
+
+# The API under load, behind the same Caddy balancing as production, with 1 then N replicas on
+# a seeded index (loadtest/README.md). Runs on pull requests that touch the backend, and by hand
+# with other replica counts, players or durations. Nothing outside the runner is loaded, except
+# the few cached reads the API makes of the free Sepolia RPCs.
+on:
+  pull_request:
+    paths:
+      - apps/api/**
+      - packages/game-spec/**
+      - packages/generator/**
+      - packages/chain-adapter/**
+      - loadtest/**
+      - deploy/**
+      - pnpm-lock.yaml
+      - .github/workflows/loadtest.yml
+  workflow_dispatch:
+    inputs:
+      replicas:
+        description: Replica counts to compare, space separated
+        default: "1 3"
+      vus:
+        description: Players at once (k6 virtual users)
+        default: "100"
+      duration:
+        description: How long the plateau lasts (after a 30 s ramp)
+        default: "90s"
+
+concurrency:
+  group: loadtest-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  API_IMAGE: dno-api:loadtest
+  COMPOSE: docker compose -f loadtest/stack/docker-compose.yml
+  REPLICAS: ${{ inputs.replicas || '1 3' }}
+  VUS: ${{ inputs.vus || '100' }}
+  DURATION: ${{ inputs.duration || '90s' }}
+  RESULTS: ${{ github.workspace }}/loadtest-results
+
+jobs:
+  load:
+    name: k6 against 1 and N replicas
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter "@dno/api..."
+
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          load: true
+          tags: ${{ env.API_IMAGE }}
+          cache-from: type=gha
+          # Its own scope: the deploy's cache stays the deploy's.
+          cache-to: type=gha,mode=max,scope=loadtest
+
+      - name: Start Postgres and seed the index
+        run: |
+          $COMPOSE up -d --wait postgres
+          DATABASE_URL=postgres://dno:dno@localhost:5433/dno pnpm --filter @dno/api seed:load
+
+      - uses: grafana/setup-k6-action@v1
+
+      - name: Load each replica count
+        run: |
+          mkdir -p "$RESULTS"
+          failed=0
+          for n in $(echo $REPLICAS | tr ' ' '\n' | sort -n); do
+            echo "::group::$n replica(s)"
+            $COMPOSE up -d --wait --scale api="$n" api caddy
+            # Caddy reads the replicas' addresses every 2 s; wait until the proxy answers.
+            for _ in $(seq 1 30); do curl -fsS http://localhost:8080/health >/dev/null 2>&1 && break; sleep 1; done
+            sleep 3
+            k6 run -q -e BASE_URL=http://localhost:8080 -e VUS="$VUS" -e DURATION="$DURATION" \
+              -e LABEL="replicas-$n" -e SUMMARY_DIR="$RESULTS" loadtest/api.js || failed=1
+            echo "::endgroup::"
+          done
+          exit $failed
+
+      # On the stack the last run left up: the most replicas.
+      - name: One player gets one allowance across the replicas
+        if: always()
+        run: k6 run -q -e BASE_URL=http://localhost:8080 -e LABEL=ratelimit -e SUMMARY_DIR="$RESULTS" loadtest/ratelimit.js
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Load test: $VUS players, $DURATION plateau"
+            echo
+            echo "| replicas | requests | req/s | p95 (index) | p99 (index) | p95 (chain) | errors | thresholds |"
+            echo "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |"
+            for n in $REPLICAS; do
+              f="$RESULTS/replicas-$n.json"
+              [ -f "$f" ] || { echo "| $n | – | – | – | – | – | – | no result |"; continue; }
+              jq -r --arg n "$n" '"| \($n) | \(.requests) | \((.rps // 0)*10|round/10) | \((.p95 // 0)*10|round/10) ms | \((.p99 // 0)*10|round/10) ms | \((.chainP95 // 0)*10|round/10) ms | \((.failed // 0)*10000|round/100) % | \(if (.thresholdsFailed|length)>0 then "failed: " + (.thresholdsFailed|join(", ")) else "ok" end) |"' "$f"
+            done
+            echo
+            if [ -f "$RESULTS/ratelimit.json" ]; then
+              jq -r '"Rate limit, one address across the replicas: \(.served) served, \(.refused) refused (\(if .checks == 1 then "ok" else "FAILED: the proxy does not keep a player on one replica" end))."' "$RESULTS/ratelimit.json"
+            fi
+            echo
+            echo "_p95/p99 (index): reads Postgres answers, which decide the run (p95 < 300 ms, p99 < 800 ms, errors < 1 %). p95 (chain): reads that may wait on a free Sepolia RPC, reported only. Figures from one shared runner: compare the rows, not with production._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loadtest-results
+          path: loadtest-results/
+          if-no-files-found: ignore
+
+      - name: Logs
+        if: failure()
+        run: $COMPOSE logs --tail 200
+
+      - name: Tear down
+        if: always()
+        run: $COMPOSE down -v
