@@ -583,4 +583,19 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 24,
+    name: "the testnet site's own lists",
+    sql: /* sql */ `
+      -- The testnet site's API (LISTS_SCHEMA=testnet) shares the chain's index with the live one
+      -- (one indexer for Sepolia) but keeps its own boarding passes, allow list claims and ideas
+      -- here, so tests never reach the list that lasts until mainnet. Its connection searches
+      -- testnet, then public: these three tables shadow the live ones, everything else is shared.
+      -- A later migration that changes one of these tables changes its testnet copy too.
+      create schema if not exists testnet;
+      create table if not exists testnet.x_passes (like public.x_passes including all);
+      create table if not exists testnet.allow_list_claims (like public.allow_list_claims including all);
+      create table if not exists testnet.ideas (like public.ideas including all);
+    `,
+  },
 ];

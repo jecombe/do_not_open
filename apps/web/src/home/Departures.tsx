@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "../i18n/locale";
 import { useT } from "./i18n";
+import { apiUrl } from "../apiUrl";
 
 /**
  * The depot's departure board: where the boxes ship from today, and where they ship next.
@@ -21,7 +22,7 @@ function useSepoliaBlock(): number | null {
   const [block, setBlock] = useState<number | null>(null);
   useEffect(() => {
     let live = true;
-    const api = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+    const api = apiUrl();
     const rpc = import.meta.env.VITE_SEPOLIA_RPC_URL;
     if (!api && !rpc) return;
     const read = async (): Promise<number> => {

@@ -3,6 +3,7 @@ import { MockAdapter, type CollectionInfo } from "@dno/chain-adapter";
 import { useLocale } from "../i18n/locale";
 import { chainMode } from "../chain/mode";
 import { useT } from "./i18n";
+import { apiUrl } from "../apiUrl";
 
 /**
  * How many box numbers exist, empty ones included, and what is known about how many hold a
@@ -24,7 +25,7 @@ function useShelf(): Shelf | null {
   useEffect(() => {
     let live = true;
     const { mode } = chainMode();
-    const api = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+    const api = apiUrl();
     const read = async (): Promise<Shelf | null> => {
       if (mode === "mock") return new MockAdapter().collection();
       if (!api) return null;

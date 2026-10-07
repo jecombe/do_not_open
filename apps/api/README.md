@@ -621,6 +621,14 @@ counts come from `eventBuckets` and `activeAccounts` (a `group by` over `events`
 the whole history. Without the password nothing is served there; the edge proxy routes only
 `ADMIN_DOMAIN` to `/admin` ([`deploy/README.md`](../../deploy/README.md#the-admin-site)).
 
+## The testnet site's API
+
+With `LISTS_SCHEMA=testnet` (and `ROLE=api`, enforced), a replica keeps its boarding passes, allow
+list claims and ideas in that schema (migration 24 copies the three tables) and reads everything
+else from the live index: its pool searches `testnet,public`. It never runs migrations. This is how
+`api.testnet.do-not-open.app` gets lists of its own without a second indexer for the same chain
+([`deploy/README.md`](../../deploy/README.md#two-stacks-live-and-testnet)).
+
 ## Run it
 
 ```bash
@@ -633,6 +641,6 @@ Configuration is environment variables, all optional in development: see `src/co
 (`ROLE`, `RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
-`DISCORD_WEBHOOK_URL`, `ACTIVITY_DISCORD_WEBHOOK_URL`, `ADMIN_PASSWORD`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
+`DISCORD_WEBHOOK_URL`, `ACTIVITY_DISCORD_WEBHOOK_URL`, `ADMIN_PASSWORD`, `LISTS_SCHEMA`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
 `FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md); load tests in [`loadtest/README.md`](../../loadtest/README.md).

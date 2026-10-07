@@ -15,6 +15,7 @@ import { expectedSeconds, progressOf, startedMs } from "./progress";
 import type { Subject } from "./StageViewer";
 import { HttpStudio, LocalStudio, randomSeed, StudioError, type StudioCredits, type StudioErrorCode, type StudioInfo, type StudioJob, type StudioService } from "./service";
 import { storedSession, storeSession } from "./session";
+import { apiUrl as pageApiUrl } from "../apiUrl";
 
 // three.js and its helpers load with the turntable, never with the page's text.
 const StageViewer = lazy(() => import("./StageViewer").then((m) => ({ default: m.StageViewer })));
@@ -161,7 +162,7 @@ function StudioLive() {
   const ledger = useLedger();
   const buying = useAction();
   const adopting = useAction();
-  const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+  const apiUrl = pageApiUrl() ?? undefined;
   const demo = chainMode === "mock" || !apiUrl;
 
   const [session, setSession] = useState<ApiSession | null>(() => storedSession(account));

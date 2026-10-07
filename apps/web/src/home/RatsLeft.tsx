@@ -3,6 +3,7 @@ import { MockAdapter, type RatSupply } from "@dno/chain-adapter";
 import { studio } from "@dno/game-spec";
 import { chainMode } from "../chain/mode";
 import { useT } from "./i18n";
+import { apiUrl } from "../apiUrl";
 
 type Counts = Pick<RatSupply, "seed" | "model">;
 
@@ -17,7 +18,7 @@ function useRatCounts(): Counts | null {
   useEffect(() => {
     let live = true;
     const { mode } = chainMode();
-    const api = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+    const api = apiUrl();
     const read = async (): Promise<Counts | null> => {
       if (mode === "mock") return new MockAdapter().ratSupply(null);
       if (!api) return null;

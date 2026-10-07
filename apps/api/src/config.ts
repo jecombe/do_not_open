@@ -29,6 +29,12 @@ const schema = z.object({
   /** Without it the index lives in memory and is rebuilt from the chain at each start. */
   DATABASE_URL: z.string().optional(),
   DATABASE_POOL_SIZE: z.coerce.number().int().min(1).default(10),
+  /**
+   * The testnet site's API: its boarding passes, allow list claims and ideas live in this schema
+   * (migration 24), the chain's index stays shared with the live stack and its one indexer. Such an
+   * API never migrates the database: only the live stack does.
+   */
+  LISTS_SCHEMA: z.string().regex(/^[a-z_]+$/).optional(),
 
   NETWORK: z.literal("sepolia").default("sepolia"),
   RPC_URLS: list.default(FREE_SEPOLIA_RPCS),

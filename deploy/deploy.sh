@@ -2,9 +2,12 @@
 # Runs on the server, from CI: switches the API to IMAGE without dropping a request.
 #   echo "$REGISTRY_TOKEN" | ssh ubuntu@SERVER 'bash /opt/dno/deploy.sh IMAGE REGISTRY_USER'
 #   bash /opt/dno/deploy.sh          # the running image again, after editing .env
-# Expects /opt/dno (docker-compose.yml, .env, dno.caddy.template) and /opt/edge (the shared proxy).
+#   bash /opt/dno-testnet/deploy.sh  # the testnet site's stack, the same way
+# Runs in its own directory (docker-compose.yml, .env, dno.caddy.template): /opt/dno for the live
+# stack, /opt/dno-testnet for the testnet one; /opt/edge is the shared proxy. Its .env names the
+# stack (STACK, default dno) and the aliases the proxy reaches it by (API_ALIAS, INDEXER_ALIAS).
 set -euo pipefail
-cd /opt/dno
+cd "$(dirname "$(readlink -f "$0")")"
 IMAGE="${1:-$(grep '^API_IMAGE=' .env | cut -d= -f2- || true)}"
 [ -n "$IMAGE" ] || { echo "usage: deploy.sh <image> [registry-user]" >&2; exit 1; }
 REGISTRY_USER="${2:-}"
@@ -24,22 +27,28 @@ fi
 if grep -q '^API_IMAGE=' .env; then sed -i "s|^API_IMAGE=.*|API_IMAGE=$IMAGE|" .env; else echo "API_IMAGE=$IMAGE" >> .env; fi
 REPLICAS="$(grep '^API_REPLICAS=' .env | cut -d= -f2- || true)"
 REPLICAS="${REPLICAS:-2}"
+STACK="$(grep '^STACK=' .env | cut -d= -f2- || true)"
+export COMPOSE_PROJECT_NAME="${STACK:-dno}"
+API_ALIAS="$(grep '^API_ALIAS=' .env | cut -d= -f2- || true)"
+API_ALIAS="${API_ALIAS:-dno-api}"
 # A registry image is pulled; a local one (built on the server, for a test) is used as is.
-if [[ "$IMAGE" == */* ]]; then docker compose pull --quiet api indexer; fi
-docker compose up -d --no-deps postgres
+# The testnet stack has API replicas only: it reads the live stack's database.
+has() { docker compose config --services | grep -qx "$1"; }
+if [[ "$IMAGE" == */* ]]; then docker compose pull --quiet api; fi
+if has postgres; then docker compose up -d --no-deps postgres; fi
 
 # Route the domain, and any aliases (space or comma separated), to the replicas, then reload the
 # proxy (a reload keeps the other sites up). The proxy checks the file before switching to it.
 API_DOMAIN="$(grep '^API_DOMAIN=' .env | cut -d= -f2-)"
 API_ALIASES="$(grep '^API_ALIASES=' .env | cut -d= -f2- || true)"
 API_HOSTS="$(echo "$API_DOMAIN $API_ALIASES" | tr ',' ' ' | xargs | sed 's/ /, /g')"
-sed "s|__API_HOSTS__|$API_HOSTS|" dno.caddy.template > /opt/edge/sites/dno.caddy
+sed -e "s|__API_HOSTS__|$API_HOSTS|" -e "s|__API_ALIAS__|$API_ALIAS|" dno.caddy.template > "/opt/edge/sites/$COMPOSE_PROJECT_NAME.caddy"
 # The team's admin site, once ADMIN_DOMAIN is set (and ADMIN_PASSWORD, or it answers nothing).
 ADMIN_DOMAIN="$(grep '^ADMIN_DOMAIN=' .env | cut -d= -f2- || true)"
 if [ -n "$ADMIN_DOMAIN" ] && [ -f dno-admin.caddy.template ]; then
-  sed "s|__ADMIN_HOST__|$ADMIN_DOMAIN|" dno-admin.caddy.template > /opt/edge/sites/dno-admin.caddy
+  sed -e "s|__ADMIN_HOST__|$ADMIN_DOMAIN|" -e "s|__API_ALIAS__|$API_ALIAS|" dno-admin.caddy.template > "/opt/edge/sites/$COMPOSE_PROJECT_NAME-admin.caddy"
 else
-  rm -f /opt/edge/sites/dno-admin.caddy
+  rm -f "/opt/edge/sites/$COMPOSE_PROJECT_NAME-admin.caddy"
 fi
 
 answers() { docker exec "$1" wget -qO- http://127.0.0.1:8080/health 2>/dev/null | grep -q '"ok":true'; }
@@ -76,16 +85,18 @@ fi
 
 # The indexer, once the old processes are gone (a ROLE=all API from before the split indexed
 # too): a short pause in indexing, nothing the public sees.
-docker compose up -d --no-deps indexer
-healthy=""
-for _ in $(seq 1 60); do
-  if answers "$(docker compose ps -q indexer)"; then healthy=1; break; fi
-  sleep 2
-done
-if [ -z "$healthy" ]; then
-  docker compose logs --tail 80 indexer
-  echo "the indexer did not come up (the API still serves the index as it was)" >&2
-  exit 1
+if has indexer; then
+  docker compose up -d --no-deps indexer
+  healthy=""
+  for _ in $(seq 1 60); do
+    if answers "$(docker compose ps -q indexer)"; then healthy=1; break; fi
+    sleep 2
+  done
+  if [ -z "$healthy" ]; then
+    docker compose logs --tail 80 indexer
+    echo "the indexer did not come up (the API still serves the index as it was)" >&2
+    exit 1
+  fi
 fi
 docker compose up -d --remove-orphans --no-recreate
 
@@ -105,4 +116,4 @@ fi
 REPO="${IMAGE%:*}"
 docker images "$REPO" --format '{{.ID}}' | awk '!seen[$0]++' | tail -n +4 | xargs -r docker rmi -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null
-echo "deployed $IMAGE ($REPLICAS API replicas and the indexer) at https://${API_HOSTS//, / https://}"
+echo "deployed $IMAGE to $COMPOSE_PROJECT_NAME ($REPLICAS API replicas$(has indexer && echo " and the indexer" || true)) at https://${API_HOSTS//, / https://}"

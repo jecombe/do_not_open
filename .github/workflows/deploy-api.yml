@@ -1,10 +1,11 @@
 name: Deploy API
 
-# Deploys only what reaches main, by a merge or a push, once CI is green on that commit.
-# Other branches are tested by CI and never deployed.
+# Deploys what reaches main to the live stack (/opt/dno, the real allow list) and what reaches
+# dev to the testnet site's stack (/opt/dno-testnet, its own database), once CI is green on that
+# commit. Other branches are tested by CI and never deployed.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - apps/api/**
       - apps/admin/**
@@ -17,7 +18,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-api
+  group: deploy-api-${{ github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -26,6 +27,9 @@ permissions:
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/do_not_open-api
+  # main: the live stack; dev: the testnet site's.
+  STACK_DIR: ${{ github.ref_name == 'main' && '/opt/dno' || '/opt/dno-testnet' }}
+  DOMAIN: ${{ github.ref_name == 'main' && vars.API_DOMAIN || 'api.testnet.do-not-open.app' }}
 
 jobs:
   ci:
@@ -86,8 +90,8 @@ jobs:
     needs: image
     runs-on: ubuntu-latest
     environment:
-      name: api
-      url: https://${{ vars.API_DOMAIN }}
+      name: ${{ github.ref_name == 'main' && 'api' || 'api-testnet' }}
+      url: https://${{ github.ref_name == 'main' && vars.API_DOMAIN || 'api.testnet.do-not-open.app' }}
     steps:
       - uses: actions/checkout@v4
       - name: SSH key
@@ -100,22 +104,27 @@ jobs:
         env:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
         run: |
-          scp -i ~/.ssh/deploy deploy/docker-compose.yml deploy/deploy.sh deploy/dno.caddy.template deploy/dno-admin.caddy.template "$TARGET:/opt/dno/"
-          # The monitoring's files (its .env stays on the server, never copied over).
-          scp -i ~/.ssh/deploy -r deploy/monitoring "$TARGET:/opt/dno/"
+          ssh -i ~/.ssh/deploy "$TARGET" "mkdir -p $STACK_DIR"
+          # The testnet stack has its own compose file: API replicas over the live stack's database.
+          COMPOSE=deploy/docker-compose.yml
+          if [ "$STACK_DIR" != /opt/dno ]; then COMPOSE=deploy/testnet/docker-compose.yml; fi
+          scp -i ~/.ssh/deploy "$COMPOSE" "$TARGET:$STACK_DIR/docker-compose.yml"
+          scp -i ~/.ssh/deploy deploy/deploy.sh deploy/dno.caddy.template deploy/dno-admin.caddy.template "$TARGET:$STACK_DIR/"
+          # The monitoring's files, with the live stack only (its .env stays on the server, never copied over).
+          if [ "$STACK_DIR" = /opt/dno ]; then scp -i ~/.ssh/deploy -r deploy/monitoring "$TARGET:/opt/dno/"; fi
           scp -i ~/.ssh/deploy deploy/edge/docker-compose.yml deploy/edge/Caddyfile "$TARGET:/opt/edge/"
       - name: Switch to the new image
         env:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
         # The token goes on stdin, never on a command line.
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/deploy "$TARGET" "bash /opt/dno/deploy.sh ${{ env.IMAGE }}:${{ github.sha }} ${{ github.actor }}"
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/deploy "$TARGET" "bash $STACK_DIR/deploy.sh ${{ env.IMAGE }}:${{ github.sha }} ${{ github.actor }}"
       - name: Smoke test
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS "https://${{ vars.API_DOMAIN }}/health" | grep -q '"ok":true'; then
-              curl -fsS "https://${{ vars.API_DOMAIN }}/v1/stats"; echo; exit 0
+            if curl -fsS "https://$DOMAIN/health" | grep -q '"ok":true'; then
+              curl -fsS "https://$DOMAIN/v1/stats"; echo; exit 0
             fi
             sleep 5
           done
-          echo "the API is not answering at https://${{ vars.API_DOMAIN }}" >&2
+          echo "the API is not answering at https://$DOMAIN" >&2
           exit 1

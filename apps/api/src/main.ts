@@ -63,12 +63,17 @@ import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 async function main() {
   const config = loadConfig();
   const log = pino({ level: config.LOG_LEVEL });
+  // Lists of their own, the index shared: such a process must not index the chain a second time.
+  if (config.LISTS_SCHEMA && config.ROLE !== "api") throw new Error("LISTS_SCHEMA is for API replicas only (ROLE=api): the live stack's indexer indexes for both");
 
   let pool: pg.Pool | null = null;
   let store: Store & PostStore & ArchiveStore & StudioStore & RatStore;
   if (config.DATABASE_URL) {
-    pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE });
-    await migrate(pool, log);
+    // The testnet site's API reads its own lists first, then the shared index.
+    const searchPath = config.LISTS_SCHEMA ? { options: `-c search_path=${config.LISTS_SCHEMA},public` } : {};
+    pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE, ...searchPath });
+    if (config.LISTS_SCHEMA) log.info({ schema: config.LISTS_SCHEMA }, "own lists in their schema, the index shared; migrations are the live stack's");
+    else await migrate(pool, log);
     store = new PgStore(pool);
   } else {
     log.warn("DATABASE_URL is not set: the index lives in memory and is rebuilt at each start");
