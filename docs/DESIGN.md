@@ -148,6 +148,12 @@ those objects with `<primitive>`.
 Sounds are all synthesised (`ShakeSound`): thump, rattle, muffled complaint, tape rip,
 reveal chime (a darker one for ghosts), kibble tick, purr.
 
+Behind the home page and the game plays a discreet cartoon tune (`CartoonMusic`, about -22 dB):
+pizzicato oom-pah, a wandering xylophone and a "boing" now and then, generated as it plays, so
+it never quite repeats and needs no file. It starts on the page's first click (browser autoplay
+policy), sleeps while the tab is hidden, and the sound switch (one setting for the home page and
+the game, kept in `localStorage`) cuts it with every other sound.
+
 ## Performance budget
 
 | Target             | Desktop         | Mobile (low tier)                 |

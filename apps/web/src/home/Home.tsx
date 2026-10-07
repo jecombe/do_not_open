@@ -16,7 +16,7 @@ import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { RatsLeft } from "./RatsLeft";
 import { RatToy } from "./ratToy";
 import { Shipped } from "./Shipped";
-import { boxComplaint, pageSound, setMuted } from "./sound";
+import { boxComplaint, pageSound, setMuted, startMusicOnFirstGesture } from "./sound";
 
 /** One of the studio's free rats, sniffing about beside the studio's pitch. Click it for another. */
 function StudioRat() {
@@ -73,6 +73,7 @@ export function Home() {
     document.title = t("home.title");
     document.querySelector('meta[name="description"]')?.setAttribute("content", t("home.description", { supply }));
   }, [t, supply]);
+  useEffect(() => startMusicOnFirstGesture(), []);
 
   return (
     <div className="home">
