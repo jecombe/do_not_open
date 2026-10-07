@@ -3,6 +3,7 @@ import { shortAddress } from "@dno/chain-adapter";
 import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
 import { Clerk } from "./chat/Clerk";
+import { music, readMuted, saveMuted, startMusicOnFirstGesture } from "./home/sound";
 import { DISCORD } from "./links";
 import { useT } from "./i18n/app";
 import { isMenuView, Masthead, type View } from "./Masthead";
@@ -46,11 +47,16 @@ export function App() {
   const [intent, setIntent] = useState<PairIntent | null>(null);
   // The box the duel shelf offers to put up, when coming from one.
   const [duelFocus, setDuelFocus] = useState<number | null>(null);
-  const [muted, setMuted] = useState(false);
+  // One switch for the home page and the game, kept across visits.
+  const [muted, setMuted] = useState(readMuted);
+  const mutedNow = useRef(muted);
 
   useEffect(() => {
     sound.muted = muted;
+    mutedNow.current = muted;
+    saveMuted(muted);
   }, [sound, muted]);
+  useEffect(() => startMusicOnFirstGesture(() => mutedNow.current), []);
   useEffect(() => () => sound.dispose(), [sound]);
   // Any "buy" or "shield" link, anywhere, lands on the bureau de change.
   useEffect(() => onOpenExchange(() => setView("exchange")), []);
@@ -153,7 +159,17 @@ export function App() {
           <a className="link" href={DISCORD} target="_blank" rel="noreferrer">
             {t("footer.discord")}
           </a>
-          <button type="button" className="link" onClick={() => setMuted((m) => !m)} aria-pressed={muted}>
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              // Started inside the click, where the browser allows audio.
+              if (muted) music.start();
+              else music.stop();
+              setMuted(!muted);
+            }}
+            aria-pressed={muted}
+          >
             {muted ? t("footer.soundOff") : t("footer.soundOn")}
           </button>
         </span>

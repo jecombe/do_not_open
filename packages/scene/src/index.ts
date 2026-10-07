@@ -18,6 +18,7 @@ export * from "./effects/pet";
 export * from "./effects/thread";
 export * from "./effects/duel";
 export * from "./box/sound";
+export * from "./box/music";
 export * from "./box/meow";
 export * from "./box/clip";
 export * from "./box/textures";

@@ -1,9 +1,9 @@
-import { ShakeSound, type ClipFx, type MeowPhrase, type MeowVoice } from "@dno/scene";
+import { CartoonMusic, ShakeSound, type ClipFx, type MeowPhrase, type MeowVoice } from "@dno/scene";
 import type { CatSpec } from "@dno/generator";
 
 const MUTED_KEY = "dno.muted";
 
-function readMuted(): boolean {
+export function readMuted(): boolean {
   try {
     return localStorage.getItem(MUTED_KEY) === "1";
   } catch {
@@ -18,8 +18,35 @@ function readMuted(): boolean {
 export const pageSound = new ShakeSound();
 pageSound.muted = readMuted();
 
+/** The tune behind the home page and the game; the sound switch cuts it with the rest. */
+export const music = new CartoonMusic();
+
+/** Turns every sound on or off, the music too, and remembers it for the next visit and the game. */
 export function setMuted(muted: boolean): void {
   pageSound.muted = muted;
+  if (muted) music.stop();
+  else music.start();
+  saveMuted(muted);
+}
+
+/**
+ * Starts the music on the page's first click or key, unless the sound is off: browsers keep
+ * audio off until then. Returns the cleanup, which also stops it.
+ */
+export function startMusicOnFirstGesture(isMuted: () => boolean = () => pageSound.muted): () => void {
+  const go = () => {
+    if (!isMuted()) music.start();
+  };
+  window.addEventListener("pointerdown", go, { once: true });
+  window.addEventListener("keydown", go, { once: true });
+  return () => {
+    window.removeEventListener("pointerdown", go);
+    window.removeEventListener("keydown", go);
+    music.stop();
+  };
+}
+
+export function saveMuted(muted: boolean): void {
   try {
     localStorage.setItem(MUTED_KEY, muted ? "1" : "0");
   } catch {
