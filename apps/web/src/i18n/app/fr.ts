@@ -687,7 +687,7 @@ export const fr: Record<AppKey, string> = {
   "duels.yourBox": "Votre boîte",
   "duels.post": "Mettre {serial} en duel",
   "duels.posting": "Mise en duel…",
-  "duels.postExplain": "Gratuit, mais public : une fois la preuve publiée, tout le monde voit que votre adresse détient cette boîte. Elle reste en jeu {days} jours, jusqu'à ce que quelqu'un la relève ou que vous la retiriez. Remettre la même boîte en duel remplace l'annonce.",
+  "duels.postExplain": "Sans frais, une unité de déchiffrement pour la preuve, et public : une fois la preuve publiée, tout le monde voit que votre adresse détient cette boîte. Elle reste en jeu {days} jours, jusqu'à ce que quelqu'un la relève ou que vous la retiriez. Remettre la même boîte en duel remplace l'annonce.",
   "duels.aimAtOne": "Pour viser une seule boîte :",
   "duels.posted": "Votre boîte est sur l'étagère des duels. N'importe qui peut la relever.",
   "duels.withdrawn": "Retirée de l'étagère.",

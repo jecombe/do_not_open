@@ -148,7 +148,10 @@ any pair.
 
 Where the API's relayer proxy pays Zama (`metered`), `decryptionAllowance()` returns the
 wallet's units: `freePerDay`, `freeLeft`, `credits`, `resetsAt`, the credit `price` in
-plain USDC and `inputUnits`, what one encrypted input costs (a decrypted value costs one).
+plain USDC, `inputUnits`, what one encrypted input costs (a decrypted value costs one), and
+`publicUnits`, what a value made public costs the wallet that asks Zama for it first (an
+opening, a duel's proof; asked again it is free). Public decryptions carry the same bearer permit,
+and an opening, an alive check, an entanglement or a duel checks the allowance before its gas.
 Every encryption sends the session's decryption permit as a bearer token, so the input is
 charged to this wallet; a mint, a meal or a croquette send checks the allowance first and
 fails with `no-credits` before any gas. `buyCredits(n)` buys more. Only the API counts units, so

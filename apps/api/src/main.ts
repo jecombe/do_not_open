@@ -120,6 +120,7 @@ async function main() {
     { chainId: deployment.chainId, contracts: () => chainState.decryptable(), freePerDay: config.RELAYER_FREE_PER_DAY,
       newcomerPerDay: config.RELAYER_NEWCOMER_PER_DAY,
       inputUnits: config.RELAYER_INPUT_UNITS,
+      publicUnits: config.RELAYER_PUBLIC_UNITS,
       maxHandles: config.RELAYER_MAX_HANDLES, clockSkew: 600, publicPerHandle: config.RELAYER_PUBLIC_PER_HANDLE },
   );
   if (!config.RELAYER_API_KEY) log.info("RELAYER_API_KEY is not set: the relayer proxy forwards without a key (fine on Sepolia, refused on mainnet)");

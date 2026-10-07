@@ -11,8 +11,7 @@ import { parseUnits } from "ethers";
  * decryption, at every plan).
  *
  * `zamaUsd` is the collection's dollar price for one decryption on its Zama plan (0.001 to 0.1
- * on the price list); the margin covers the free daily allowance and the public decryptions
- * nobody is charged for.
+ * on the price list); the margin covers the free daily allowance.
  */
 export function creditPrice(zamaUsd: string, margin: string): bigint {
   const usd = parseUnits(zamaUsd, 18);
