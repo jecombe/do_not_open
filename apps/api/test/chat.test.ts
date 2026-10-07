@@ -33,7 +33,7 @@ describe("the exported manual", () => {
       for (const p of MANUALS[l].passages) expect(ids(l)).toContain(p.section);
     }
     expect(ids("en").slice(0, 3)).toEqual(["box", "map", "cats"]);
-    expect(MANUALS.en.sections.find((s) => s.id === "code")?.part).toBe("dev");
+    expect(MANUALS.en.sections.find((s) => s.id === "more")?.part).toBe("dev");
   });
 
   it("carries the numbers the page shows, not placeholders", () => {

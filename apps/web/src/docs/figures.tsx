@@ -5,7 +5,6 @@ import { useLocale } from "../i18n/locale";
 import { catNames, stateName, variantName } from "../i18n/names";
 import { flows, packetName, type PacketKind, type StationId } from "./flows";
 import { useT } from "./i18n";
-import { ARCH_NODES, ArchScene, archText } from "./three/arch";
 import { FlowScene } from "./three/flow";
 import { HeroScene } from "./three/hero";
 import { FIELD_COLORS, SEED_FIELDS, SeedScene } from "./three/seed";
@@ -276,49 +275,3 @@ export function FlowFigure() {
   );
 }
 
-// ---------------------------------------------------------- architecture
-
-export function ArchFigure() {
-  const t = useT();
-  const [picked, setPicked] = useState("adapter");
-  const [hovered, setHovered] = useState<string | null>(null);
-  const { host, scene, ready } = useScene((el) => new ArchScene(el));
-  const focus = hovered ?? picked;
-  const node = ARCH_NODES.find((n) => n.id === focus)!;
-
-  useEffect(() => {
-    const s = scene.current;
-    if (!s) return;
-    s.onHover = setHovered;
-    s.onSelect = setPicked;
-  }, [scene, ready]);
-  useEffect(() => scene.current?.setActive(focus), [scene, ready, focus]);
-
-  return (
-    <figure className="figure">
-      <div ref={host} className="stage" />
-      <figcaption className="slip">
-        {(["portable", "chain"] as const).map((shelf) => (
-          <div key={shelf}>
-            <div className="slip-head">
-              <span>{shelf === "portable" ? t("fig.arch.top") : t("fig.arch.bottom")}</span>
-            </div>
-            <div className="picker" role="group">
-              {ARCH_NODES.filter((n) => n.shelf === shelf).map((n) => (
-                <button type="button" key={n.id} aria-pressed={picked === n.id} onClick={() => setPicked(n.id)} onMouseEnter={() => setHovered(n.id)} onMouseLeave={() => setHovered(null)}>
-                  {n.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-        <div className="detail" aria-live="polite">
-          <p>
-            <strong>{node.name}.</strong> {archText(node.id)}
-          </p>
-        </div>
-        <p className="fine">{t("fig.arch.thread")}</p>
-      </figcaption>
-    </figure>
-  );
-}

@@ -24,7 +24,7 @@ import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
 import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY, RAMP_PCT } from "./fees";
 import { BureauFigure } from "./bureau";
-import { ArchFigure, FlowFigure, HeroFigure, SeedFigure } from "./figures";
+import { FlowFigure, HeroFigure, SeedFigure } from "./figures";
 import { useT } from "./i18n";
 import { MapFigure } from "./map";
 import { MarketWaysTable } from "./market";
@@ -36,7 +36,7 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
 /**
  * Seven parts. Five for players and anyone curious, with no code in them: a start, the boxes, the
  * money, the studio and its rats, the flea market. Then a short part about the testnet, which
- * goes away at mainnet, and the part for developers. `audience` is what the API's chatbot and
+ * goes away at mainnet, and the technical reference for developers. `audience` is what the API's chatbot and
  * lessons know a part by: "manual" for the players' five.
  */
 export const PARTS = [
@@ -46,7 +46,7 @@ export const PARTS = [
   { key: "rats", audience: "manual", sections: ["studio", "rats"] },
   { key: "market", audience: "manual", sections: ["market", "stall"] },
   { key: "testnet", audience: "testnet", sections: ["testnet"] },
-  { key: "dev", audience: "dev", sections: ["code", "solana", "more"] },
+  { key: "dev", audience: "dev", sections: ["more"] },
 ] as const;
 const SECTIONS = PARTS.flatMap((p) => p.sections);
 
@@ -616,72 +616,9 @@ export function Manual() {
                 </li>
               ))}
             </ul>
-            <h3>{t("docs.section.mainnet")}</h3>
-            <div className="prose">
-              <p>{t("docs.mainnet.intro.before")}</p>
-            </div>
-            <ul className="findings">
-              {(["f1", "f2", "f3", "f4", "f5", "f6", "f8"] as const).map((k) => (
-                <li key={k}>
-                  <strong>{t(`docs.mainnet.${k}`)}</strong> {t(`docs.mainnet.${k}.v`)}
-                </li>
-              ))}
-              <li>
-                <strong>{t("docs.mainnet.f7")}</strong>
-              </li>
-            </ul>
-            <div className="prose">
-              <p>
-                <a href={`${DOCS}/AUDIT_CHECKLIST.md`}>{t("docs.mainnet.checklist.link")}</a>
-                {t("docs.mainnet.checklist.after")}
-              </p>
-            </div>
           </section>
 
           <PartHead part="dev" />
-
-          <section id="code">
-            <h2>{t("docs.section.code")}</h2>
-            <div className="prose">
-              <p>{t("docs.code.p1")}</p>
-            </div>
-            <ArchFigure />
-            <div className="prose">
-              <p>{t("docs.code.p2")}</p>
-            </div>
-          </section>
-
-          <section id="solana">
-            <h2>{t("docs.section.solana")}</h2>
-            <div className="prose">
-              <p>{t("docs.solana.p1")}</p>
-            </div>
-            <div className="form">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">{t("docs.solana.h.eth")}</th>
-                    <th scope="col">{t("docs.solana.h.sol")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(["s1", "s2", "s3", "s4", "s5"] as const).map((k) => (
-                    <tr key={k}>
-                      <td>{t(`docs.solana.${k}.a`)}</td>
-                      <td>{t(`docs.solana.${k}.b`)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="prose">
-              <p>
-                {t("docs.solana.check.before")}
-                <a href={`${DOCS}/SOLANA_PORTING.md`}>{t("docs.solana.check.link")}</a>
-                {t("docs.solana.check.after")}
-              </p>
-            </div>
-          </section>
 
           <section id="more">
             <h2>{t("docs.section.more")}</h2>

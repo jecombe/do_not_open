@@ -94,16 +94,6 @@
      "part": "testnet"
     },
     {
-     "id": "code",
-     "title": "How the code is laid out",
-     "part": "dev"
-    },
-    {
-     "id": "solana",
-     "title": "Moving to Solana",
-     "part": "dev"
-    },
-    {
      "id": "more",
      "title": "Full reference",
      "part": "dev"
@@ -501,36 +491,6 @@
      "text": "Liquidity locker 0x13B2…e772\nThe USDC ramp (ETH to USDC) 0x0238…5638\nDecryption credits 0x1d18…6511\nStudio packs (StudioPacks) 0x4159…B5f6\nThe rats (Rats, ERC-721) 0x441F…2cF6\nThe rats' pantry (RatPantry) 0xC134…E450\nThe rats' tricks (RatTricks) 0x44B2…2d0D\nThe flea market (FleaMarket) 0x4E9f…81C1\nThe whitelist's gifts (WhitelistGifts) 0xD244…678b"
     },
     {
-     "id": "testnet-4",
-     "section": "testnet",
-     "heading": "Left to do before mainnet",
-     "text": "The contracts have been reviewed by the people who wrote them and by nobody else. They should not hold real money until that changes. These points are open:\nAn opening can hang between its two steps. If the key service never answers, there is no timeout and no refund. The box stays sealed, and its holder can only ask again and pay again.\nNothing limits one minter. A bot cannot pick good boxes, but it can mint all of them.\nThe owner can repoint the metadata. There is no freeze, and the owner is a single key. The pictures themselves are stored for good on Arweave: a repointed metadata file cannot change them.\nTwo deploy-time checks are missing. The config contract trusts that the score fits sixteen bits and that trait offsets do not overlap.\nMarketplaces are not told when a box opens. The contract does not emit a metadata update event."
-    },
-    {
-     "id": "testnet-5",
-     "section": "testnet",
-     "heading": "Left to do before mainnet",
-     "text": "Zama's relayer needs the collection's API key. The server that keeps it out of browsers and counts each wallet's decryptions is in place; the key itself is requested from Zama.\nCommon wallets and marketplaces do not know the confidential ERC-721. They cannot show these boxes or list them. A sale needs a market built for this standard.\nNo external audit, no static analysis, no fuzzing.\nThe audit checklist has each check, the test that backs it, and the rest of the findings."
-    },
-    {
-     "id": "code-0",
-     "section": "code",
-     "heading": null,
-     "text": "The repository is split so that most of it does not know which chain it runs on. The rules, the generator, the 3D scene and this app sit on one side. The contract and the code that talks to it sit on the other, behind one interface.\nTop shelf: runs on any chain game-spec generator scene ChainAdapter apps/web Bottom shelf: one chain each contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. The only door to a chain: one interface for accounts, reads and every mechanic, plus an in-memory implementation with the contract's rules. Nothing in it names a chain or a wallet library. A thread means \"depends on\". Pick a crate to see what it needs and what needs it.\nA sealed box is drawn from its token id and nothing else. The function that describes a box cannot see a seed, so no render, texture or metadata file of a sealed box can leak one. The cat exists as data only once the seed is public."
-    },
-    {
-     "id": "solana-0",
-     "section": "solana",
-     "heading": null,
-     "text": "Zama lists Solana support on its roadmap and has published no Solana SDK yet. So there is a map, and no port. What the map says: about two thirds of the code does not change, the contract becomes a program with one account per box, and one new adapter implements the same interface.\nToday on Ethereum | Expected on Solana\nEncrypted values in contract storage | Ciphertext handles in program accounts\nOne mapping entry per token | One account per box, derived from the token id\nPermit signed with the wallet's Ethereum key | A message signed with its ed25519 key\nProof verified in one transaction | Unknown. A transaction is limited to 1,232 bytes, and a proof may not fit\nFinding your boxes by decrypting the transfer receipts that name you | Unknown. It needs encrypted addresses there; an indexer can still list the receipts"
-    },
-    {
-     "id": "solana-1",
-     "section": "solana",
-     "heading": null,
-     "text": "Every line of the right-hand column has to be checked against the real SDK when it ships. The full porting map lists the open questions."
-    },
-    {
      "id": "more-0",
      "section": "more",
      "heading": null,
@@ -629,16 +589,6 @@
      "id": "testnet",
      "title": "Tant qu'on est sur le testnet",
      "part": "testnet"
-    },
-    {
-     "id": "code",
-     "title": "Comment le code est organisé",
-     "part": "dev"
-    },
-    {
-     "id": "solana",
-     "title": "Passer sur Solana",
-     "part": "dev"
     },
     {
      "id": "more",
@@ -1098,42 +1048,6 @@
      "text": "CROQ, la croquette ordinaire 0x176f…5a53\ncCROQ, la croquette chiffrée 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCoffre de liquidité 0x13B2…e772\nLa rampe USDC (de l'ETH vers l'USDC) 0x0238…5638\nCrédits de déchiffrement 0x1d18…6511\nLes packs du studio (StudioPacks) 0x4159…B5f6\nLes rats (Rats, ERC-721) 0x441F…2cF6\nLe garde-manger des rats (RatPantry) 0xC134…E450\nLes tours des rats (RatTricks) 0x44B2…2d0D\nLe marché aux puces (FleaMarket) 0x4E9f…81C1\nLes cadeaux de la whitelist (WhitelistGifts) 0xD244…678b"
     },
     {
-     "id": "testnet-4",
-     "section": "testnet",
-     "heading": "Ce qui reste à faire avant le mainnet",
-     "text": "Les contrats ont été relus par les gens qui les ont écrits et par personne d'autre. Ils ne devraient pas détenir d'argent réel tant que ça ne change pas. Ces points sont ouverts :\nUne ouverture peut rester bloquée entre ses deux étapes. Si le service de clés ne répond jamais, il n'y a ni délai d'expiration ni remboursement. La boîte reste scellée, et son détenteur ne peut que redemander et repayer.\nRien ne limite un minteur. Un bot ne peut pas choisir les bonnes boîtes, mais il peut toutes les minter.\nLe propriétaire peut rediriger les métadonnées. Il n'y a pas de gel, et le propriétaire est une seule clé. Les images, elles, sont stockées pour toujours sur Arweave : des métadonnées redirigées ne peuvent pas les changer.\nDeux vérifications au déploiement manquent. Le contrat de configuration suppose que le score tient sur seize bits et que les décalages des traits ne se chevauchent pas."
-    },
-    {
-     "id": "testnet-5",
-     "section": "testnet",
-     "heading": "Ce qui reste à faire avant le mainnet",
-     "text": "Les places de marché ne sont pas prévenues quand une boîte s'ouvre. Le contrat n'émet pas d'événement de mise à jour des métadonnées.\nLe relayer de Zama a besoin de la clé d'API de la collection. Le serveur qui la tient à l'écart des navigateurs et compte les déchiffrements de chaque wallet est en place ; la clé elle-même est demandée à Zama.\nLes wallets et places de marché courants ne connaissent pas l'ERC-721 confidentiel. Ils ne peuvent ni afficher ces boîtes ni les lister. Une vente demande un marché conçu pour ce standard.\nPas d'audit externe, pas d'analyse statique, pas de fuzzing.\nLa checklist d'audit contient chaque vérification, le test qui la couvre, et le reste des constats."
-    },
-    {
-     "id": "code-0",
-     "section": "code",
-     "heading": null,
-     "text": "Le dépôt est découpé pour que l'essentiel ignore sur quelle chaîne il tourne. Les règles, le générateur, la scène 3D et cette app sont d'un côté. Le contrat et le code qui lui parle sont de l'autre, derrière une seule interface.\nÉtagère du haut : tourne sur n'importe quelle chaîne game-spec generator scene ChainAdapter apps/web Étagère du bas : une chaîne chacun contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. La seule porte vers une chaîne : une interface pour les comptes, les lectures et chaque mécanique, plus une implémentation en mémoire avec les règles du contrat. Rien dedans ne nomme une chaîne ou une bibliothèque de wallet. Un fil veut dire « dépend de ». Choisissez une caisse pour voir ce dont elle a besoin et ce qui a besoin d'elle."
-    },
-    {
-     "id": "code-1",
-     "section": "code",
-     "heading": null,
-     "text": "Une boîte scellée est dessinée à partir de son id de token et de rien d'autre. La fonction qui décrit une boîte ne peut pas voir de graine, donc aucun rendu, aucune texture ni aucun fichier de métadonnées d'une boîte scellée ne peut en laisser fuir une. Le chat n'existe comme donnée qu'une fois la graine publique."
-    },
-    {
-     "id": "solana-0",
-     "section": "solana",
-     "heading": null,
-     "text": "Zama inscrit le support de Solana sur sa feuille de route et n'a encore publié aucun SDK Solana. Il y a donc une carte, et pas de portage. Ce que dit la carte : environ deux tiers du code ne changent pas, le contrat devient un programme avec un compte par boîte, et un nouvel adaptateur implémente la même interface.\nAujourd'hui sur Ethereum | Attendu sur Solana\nValeurs chiffrées dans le stockage du contrat | Poignées de chiffrés dans des comptes du programme\nUne entrée de mapping par token | Un compte par boîte, dérivé de l'id du token\nPermis signé avec la clé Ethereum du wallet | Un message signé avec sa clé ed25519\nPreuve vérifiée en une transaction | Inconnu. Une transaction est limitée à 1 232 octets, et une preuve peut ne pas tenir"
-    },
-    {
-     "id": "solana-1",
-     "section": "solana",
-     "heading": null,
-     "text": "Retrouver vos boîtes en déchiffrant les reçus des transferts qui vous nomment | Inconnu. Il faut des adresses chiffrées là-bas ; un indexeur peut toujours lister les reçus\nChaque ligne de la colonne de droite devra être vérifiée contre le vrai SDK quand il sortira. La carte de portage complète liste les questions ouvertes."
-    },
-    {
      "id": "more-0",
      "section": "more",
      "heading": null,
@@ -1232,16 +1146,6 @@
      "id": "testnet",
      "title": "Mientras estemos en la testnet",
      "part": "testnet"
-    },
-    {
-     "id": "code",
-     "title": "Cómo está organizado el código",
-     "part": "dev"
-    },
-    {
-     "id": "solana",
-     "title": "Pasar a Solana",
-     "part": "dev"
     },
     {
      "id": "more",
@@ -1677,42 +1581,6 @@
      "text": "cCROQ, la croqueta cifrada 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCofre de liquidez 0x13B2…e772\nLa rampa USDC (de ETH a USDC) 0x0238…5638\nCréditos de descifrado 0x1d18…6511\nLos packs del estudio (StudioPacks) 0x4159…B5f6\nLas ratas (Rats, ERC-721) 0x441F…2cF6\nLa despensa de las ratas (RatPantry) 0xC134…E450\nLos trucos de las ratas (RatTricks) 0x44B2…2d0D\nEl mercadillo (FleaMarket) 0x4E9f…81C1\nLos regalos de la whitelist (WhitelistGifts) 0xD244…678b"
     },
     {
-     "id": "testnet-4",
-     "section": "testnet",
-     "heading": "Lo que queda antes de mainnet",
-     "text": "Los contratos los han revisado quienes los escribieron y nadie más. No deberían guardar dinero real hasta que eso cambie. Estos puntos están abiertos:\nUna apertura puede quedarse atascada entre sus dos pasos. Si el servicio de claves nunca responde, no hay tiempo de espera ni reembolso. La caja sigue sellada, y su titular solo puede pedirlo otra vez y pagar otra vez.\nNada limita a un minteador. Un bot no puede elegir cajas buenas, pero puede mintearlas todas.\nEl propietario puede redirigir los metadatos. No hay congelación, y el propietario es una sola clave. Las imágenes, en cambio, quedan guardadas para siempre en Arweave: unos metadatos redirigidos no pueden cambiarlas.\nFaltan dos comprobaciones en el despliegue. El contrato de configuración confía en que la puntuación cabe en dieciséis bits y en que los desplazamientos de los rasgos no se solapan."
-    },
-    {
-     "id": "testnet-5",
-     "section": "testnet",
-     "heading": "Lo que queda antes de mainnet",
-     "text": "A los marketplaces no se les avisa cuando una caja se abre. El contrato no emite un evento de actualización de metadatos.\nEl relayer de Zama necesita la clave de API de la colección. El servidor que la mantiene fuera de los navegadores y cuenta los descifrados de cada cartera ya está en marcha; la clave en sí se ha pedido a Zama.\nLos wallets y marketplaces habituales no conocen el ERC-721 confidencial. No pueden mostrar estas cajas ni listarlas. Una venta necesita un mercado hecho para este estándar.\nSin auditoría externa, sin análisis estático, sin fuzzing.\nLa lista de auditoría tiene cada comprobación, la prueba que la respalda, y el resto de los hallazgos."
-    },
-    {
-     "id": "code-0",
-     "section": "code",
-     "heading": null,
-     "text": "El repositorio está dividido para que la mayor parte no sepa en qué cadena corre. Las reglas, el generador, la escena 3D y esta app están de un lado. El contrato y el código que habla con él están del otro, detrás de una sola interfaz.\nEstante de arriba: corre en cualquier cadena game-spec generator scene ChainAdapter apps/web Estante de abajo: una cadena cada uno contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. La única puerta a una cadena: una interfaz para cuentas, lecturas y cada mecánica, más una implementación en memoria con las reglas del contrato. Nada en ella nombra una cadena ni una biblioteca de wallet. Un hilo significa «depende de». Elige una caja para ver qué necesita y qué la necesita."
-    },
-    {
-     "id": "code-1",
-     "section": "code",
-     "heading": null,
-     "text": "Una caja sellada se dibuja a partir de su id de token y nada más. La función que describe una caja no puede ver una semilla, así que ningún render, textura ni archivo de metadatos de una caja sellada puede filtrar una. El gato existe como dato solo cuando la semilla es pública."
-    },
-    {
-     "id": "solana-0",
-     "section": "solana",
-     "heading": null,
-     "text": "Zama incluye el soporte de Solana en su hoja de ruta y todavía no ha publicado ningún SDK para Solana. Así que hay un mapa, y ningún port. Lo que dice el mapa: unos dos tercios del código no cambian, el contrato se convierte en un programa con una cuenta por caja, y un nuevo adaptador implementa la misma interfaz.\nHoy en Ethereum | Previsto en Solana\nValores cifrados en el almacenamiento del contrato | Handles de textos cifrados en cuentas del programa\nUna entrada de mapping por token | Una cuenta por caja, derivada del id del token\nPermiso firmado con la clave Ethereum del wallet | Un mensaje firmado con su clave ed25519\nPrueba verificada en una transacción | Desconocido. Una transacción está limitada a 1.232 bytes, y una prueba puede no caber"
-    },
-    {
-     "id": "solana-1",
-     "section": "solana",
-     "heading": null,
-     "text": "Encontrar tus cajas descifrando los recibos de las transferencias que te nombran | Desconocido. Hacen falta direcciones cifradas allí; un indexador puede seguir listando los recibos\nCada línea de la columna derecha tendrá que comprobarse contra el SDK real cuando salga. El mapa de portabilidad completo enumera las preguntas abiertas."
-    },
-    {
      "id": "more-0",
      "section": "more",
      "heading": null,
@@ -1811,16 +1679,6 @@
      "id": "testnet",
      "title": "Finché siamo sulla testnet",
      "part": "testnet"
-    },
-    {
-     "id": "code",
-     "title": "Com'è organizzato il codice",
-     "part": "dev"
-    },
-    {
-     "id": "solana",
-     "title": "Passare a Solana",
-     "part": "dev"
     },
     {
      "id": "more",
@@ -2266,42 +2124,6 @@
      "section": "testnet",
      "heading": null,
      "text": "CROQ, la crocchetta normale 0x176f…5a53\ncCROQ, la crocchetta cifrata 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCassaforte della liquidità 0x13B2…e772\nLa rampa USDC (da ETH a USDC) 0x0238…5638\nCrediti di decifratura 0x1d18…6511\nI pacchetti dello studio (StudioPacks) 0x4159…B5f6\nI ratti (Rats, ERC-721) 0x441F…2cF6\nLa dispensa dei ratti (RatPantry) 0xC134…E450\nGli scherzi dei ratti (RatTricks) 0x44B2…2d0D\nIl mercatino delle pulci (FleaMarket) 0x4E9f…81C1\nI regali della whitelist (WhitelistGifts) 0xD244…678b"
-    },
-    {
-     "id": "testnet-4",
-     "section": "testnet",
-     "heading": "Cosa resta da fare prima della mainnet",
-     "text": "I contratti sono stati rivisti da chi li ha scritti e da nessun altro. Non dovrebbero custodire denaro vero finché questo non cambia. Questi punti sono aperti:\nUn'apertura può bloccarsi tra i suoi due passi. Se il servizio di chiavi non risponde mai, non c'è timeout né rimborso. La scatola resta sigillata, e il suo detentore può solo chiedere di nuovo e pagare di nuovo.\nNiente limita un singolo minter. Un bot non può scegliere le scatole buone, ma può mintarle tutte.\nIl proprietario può reindirizzare i metadati. Non c'è un freeze, e il proprietario è una sola chiave. Le immagini, invece, restano salvate per sempre su Arweave: dei metadati reindirizzati non possono cambiarle.\nMancano due controlli al deploy. Il contratto di configurazione si fida che il punteggio stia in sedici bit e che gli offset dei tratti non si sovrappongano."
-    },
-    {
-     "id": "testnet-5",
-     "section": "testnet",
-     "heading": "Cosa resta da fare prima della mainnet",
-     "text": "I marketplace non vengono avvisati quando una scatola si apre. Il contratto non emette un evento di aggiornamento dei metadati.\nIl relayer di Zama ha bisogno della chiave API della collezione. Il server che la tiene fuori dai browser e conta le decifrature di ogni wallet è pronto; la chiave stessa è stata richiesta a Zama.\nWallet e marketplace comuni non conoscono l'ERC-721 confidenziale. Non possono mostrare queste scatole né elencarle. Una vendita richiede un mercato fatto per questo standard.\nNessun audit esterno, nessuna analisi statica, nessun fuzzing.\nLa checklist di audit contiene ogni controllo, il test che lo copre, e il resto dei rilievi."
-    },
-    {
-     "id": "code-0",
-     "section": "code",
-     "heading": null,
-     "text": "Il repository è diviso in modo che la maggior parte non sappia su quale chain gira. Le regole, il generatore, la scena 3D e questa app stanno da una parte. Il contratto e il codice che gli parla stanno dall'altra, dietro una sola interfaccia.\nScaffale in alto: gira su qualsiasi chain game-spec generator scene ChainAdapter apps/web Scaffale in basso: una chain ciascuno contracts-evm EvmFhevmAdapter SolanaAdapter ChainAdapter. L'unica porta verso una chain: un'interfaccia per account, letture e ogni meccanica, più un'implementazione in memoria con le regole del contratto. Niente al suo interno nomina una chain o una libreria di wallet. Un filo significa «dipende da». Scegli una cassa per vedere di cosa ha bisogno e chi ha bisogno di lei."
-    },
-    {
-     "id": "code-1",
-     "section": "code",
-     "heading": null,
-     "text": "Una scatola sigillata viene disegnata dal suo id di token e da nient'altro. La funzione che descrive una scatola non può vedere un seed, quindi nessun render, texture o file di metadati di una scatola sigillata può farne trapelare uno. Il gatto esiste come dato solo quando il seed è pubblico."
-    },
-    {
-     "id": "solana-0",
-     "section": "solana",
-     "heading": null,
-     "text": "Zama ha il supporto a Solana nella sua roadmap e non ha ancora pubblicato nessun SDK per Solana. Quindi c'è una mappa, e nessun port. Cosa dice la mappa: circa due terzi del codice non cambiano, il contratto diventa un programma con un account per scatola, e un nuovo adapter implementa la stessa interfaccia.\nOggi su Ethereum | Previsto su Solana\nValori cifrati nello storage del contratto | Handle di testi cifrati negli account del programma\nUna voce di mapping per token | Un account per scatola, derivato dall'id del token\nPermesso firmato con la chiave Ethereum del wallet | Un messaggio firmato con la sua chiave ed25519\nProva verificata in una transazione | Sconosciuto. Una transazione è limitata a 1.232 byte, e una prova potrebbe non entrarci"
-    },
-    {
-     "id": "solana-1",
-     "section": "solana",
-     "heading": null,
-     "text": "Trovare le tue scatole decifrando le ricevute dei trasferimenti che ti nominano | Sconosciuto. Servono indirizzi cifrati lì; un indexer può comunque elencare le ricevute\nOgni riga della colonna di destra andrà verificata contro il vero SDK quando uscirà. La mappa di porting completa elenca le domande aperte."
     },
     {
      "id": "more-0",
