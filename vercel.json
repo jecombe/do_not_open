@@ -5,6 +5,10 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "apps/web/dist",
   "cleanUrls": true,
+  "redirects": [
+    { "source": "/:lang(fr|es|it)/app/", "destination": "/app?lang=:lang", "permanent": true },
+    { "source": "/:lang(fr|es|it)/app", "destination": "/app?lang=:lang", "permanent": true }
+  ],
   "headers": [
     {
       "source": "/(.*)",

@@ -354,11 +354,11 @@ The site opens on a cartoon home page at `/` (source `apps/web/src/home`): the p
 navigation): the seed, the flows and the package layout as interactive three.js diagrams.
 Its source is `apps/web/src/docs`.
 
-The home page and the manual are prerendered at build time, one file per language
+The home page, the manual, the studio and the boarding page are prerendered at build time, one file per language
 (`apps/web/scripts/prerender.mts`, run by `pnpm build`), with their title, description,
 canonical, `hreflang`, Open Graph, Twitter and JSON-LD tags; `src/site.ts` holds the site's
 address and paths. `public/robots.txt` and `public/sitemap.xml` list them, and `vercel.json`
-serves clean URLs and marks the testnet site, the game and the render pages `noindex`. The
+serves clean URLs, sends `/fr/app` (and `/es/app`, `/it/app`) to `/app?lang=…`, and marks the testnet site, the game and the render pages `noindex`. The
 social card and app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics
 counts page views without cookies, and every URL is stripped of its query string first
 (`src/analytics.ts`), so a `?box=` link never ties a visitor to a token.

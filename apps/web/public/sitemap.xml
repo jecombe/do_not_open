@@ -96,4 +96,36 @@
     <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/apply"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/apply"/>
   </url>
+  <url>
+    <loc>https://do-not-open.app/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/studio"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/studio"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/studio"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/studio"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/studio"/>
+  </url>
+  <url>
+    <loc>https://do-not-open.app/fr/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/studio"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/studio"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/studio"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/studio"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/studio"/>
+  </url>
+  <url>
+    <loc>https://do-not-open.app/es/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/studio"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/studio"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/studio"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/studio"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/studio"/>
+  </url>
+  <url>
+    <loc>https://do-not-open.app/it/studio</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://do-not-open.app/studio"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://do-not-open.app/fr/studio"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://do-not-open.app/es/studio"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://do-not-open.app/it/studio"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://do-not-open.app/studio"/>
+  </url>
 </urlset>
