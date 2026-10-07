@@ -82,7 +82,7 @@ Without Docker, against an API started by hand (`ROLE=api`, `DATABASE_URL`, `TRU
 | `VUS` | 50 (CI: 100) | players at once, reached in a 30 s ramp |
 | `DURATION` | `2m` (CI: `90s`) | the plateau |
 | `THINK` | 1 | seconds between screens; 0 for a stress test |
-| `LABEL`, `SUMMARY_DIR` | `run`, `.` | where the summary files go and what they are called |
+| `LABEL`, `SUMMARY_DIR` | `run`, none | what the summary files are called and where they go; without `SUMMARY_DIR` the table is only printed |
 
 `PG_PORT` (5433), `LB_PORT` (8080), `API_IMAGE` (`dno-api:loadtest`) and `RATE_LIMIT_PER_MINUTE`
 (300) change the stack.

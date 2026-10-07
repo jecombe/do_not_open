@@ -16,3 +16,4 @@ deployments/localhost/
 deployments/hardhat/
 out/
 __pycache__/
+loadtest-results/

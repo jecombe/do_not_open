@@ -7,7 +7,8 @@ export const PLAYERS = Number(__ENV.PLAYERS || 600);
 export const DUELS = Number(__ENV.DUELS || 400);
 /** Names the run in its files and table: "replicas-3". */
 export const LABEL = __ENV.LABEL || "run";
-const OUT_DIR = (__ENV.SUMMARY_DIR || ".").replace(/\/$/, "");
+/** Where the summary files go; unset, the table is only printed (a run by hand leaves nothing behind). */
+const OUT_DIR = (__ENV.SUMMARY_DIR || "").replace(/\/$/, "");
 
 /** The seed's player addresses, fixed by their index. */
 export const playerAddress = (i) => `0x${(0xd0000000 + i).toString(16).padStart(40, "0")}`;
@@ -48,10 +49,12 @@ export function summarize(data, extra = {}) {
     `| ${f.requests ?? "–"} | ${f.rps?.toFixed(1) ?? "–"} | ${ms(f.p95)} | ${ms(f.p99)} | ${ms(f.chainP95)} | ${pct(f.failed)} | ${pct(f.checks)} | ${f.thresholdsFailed.length ? `failed: ${f.thresholdsFailed.join(", ")}` : "ok"} |`,
     "",
   ];
+  const stdout = `${lines.join("\n")}\n`;
+  if (!OUT_DIR) return { stdout };
   return {
     [`${OUT_DIR}/${LABEL}.k6.json`]: JSON.stringify(data, null, 2),
     [`${OUT_DIR}/${LABEL}.json`]: JSON.stringify(f, null, 2),
     [`${OUT_DIR}/${LABEL}.md`]: lines.join("\n"),
-    stdout: `${lines.join("\n")}\n`,
+    stdout,
   };
 }
