@@ -235,6 +235,49 @@ button {
   color: var(--sun);
 }
 
+/* The sound: a speaker that cuts everything, a slider for the music. */
+.sound-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sound-speaker {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sound-speaker[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--sun);
+}
+
+.sound-speaker:focus-visible,
+.sound-volume:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 2px;
+}
+
+.sound-speaker svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sound-volume {
+  width: 84px;
+  margin: 0;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
 /* --- Hero --- */
 .home-hero {
   display: grid;
@@ -993,6 +1036,22 @@ h2 {
 
   .home-top nav.is-open .lang {
     margin: 14px 18px 0;
+  }
+
+  .home-top nav.is-open .sound-control {
+    gap: 12px;
+    margin: 14px 18px 0;
+  }
+
+  .home-top nav.is-open .sound-speaker {
+    width: 44px;
+    height: 38px;
+  }
+
+  .home-top nav.is-open .sound-volume {
+    flex: 1;
+    width: auto;
+    height: 28px;
   }
 
   .home-top nav.is-open .lang button {

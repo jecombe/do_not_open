@@ -148,11 +148,14 @@ those objects with `<primitive>`.
 Sounds are all synthesised (`ShakeSound`): thump, rattle, muffled complaint, tape rip,
 reveal chime (a darker one for ghosts), kibble tick, purr.
 
-Behind the home page and the game plays a discreet cartoon tune (`CartoonMusic`, about -22 dB):
+Behind the home page and the game plays a cartoon tune (`CartoonMusic`, about -13 dB by default):
 pizzicato oom-pah, a wandering xylophone and a "boing" now and then, generated as it plays, so
 it never quite repeats and needs no file. It starts on the page's first click (browser autoplay
-policy), sleeps while the tab is hidden, and the sound switch (one setting for the home page and
-the game, kept in `localStorage`) cuts it with every other sound.
+policy) and sleeps while the tab is hidden. The sound row in the menus (the home page's and the
+game's packing list) holds a speaker that cuts every sound, the music too, and a slider for the
+music's volume (square curve, up to about -4 dB). Both are one setting for the home page, the
+manual and the game (`home/sound.ts`, kept in `localStorage`); the toy's button and the game's
+footer link are shortcuts to the same switch.
 
 ## Performance budget
 

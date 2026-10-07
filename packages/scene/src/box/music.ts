@@ -1,5 +1,7 @@
-/** How loud the music sits under everything else: about -22 dB. */
-const LEVEL = 0.08;
+/** How loud the music gets with the volume all the way up: about -4 dB. */
+const MAX_LEVEL = 0.6;
+/** Where the volume starts: about -13 dB, under the meows and the shakes but clearly there. */
+export const DEFAULT_MUSIC_VOLUME = 0.6;
 const FADE_IN = 4;
 const FADE_OUT = 0.6;
 
@@ -32,6 +34,7 @@ export class CartoonMusic {
   private at = 0;
   private step = 0;
   private note = 2;
+  private vol = DEFAULT_MUSIC_VOLUME;
   private readonly onVisibility = () => {
     if (!this.ctx || !this.timer) return;
     if (document.hidden) void this.ctx.suspend();
@@ -40,6 +43,24 @@ export class CartoonMusic {
 
   get playing(): boolean {
     return this.timer !== null;
+  }
+
+  /** From 0 to 1; the ear hears it on a square curve, so the middle of a slider sounds like the middle. */
+  get volume(): number {
+    return this.vol;
+  }
+
+  set volume(v: number) {
+    this.vol = Math.max(0, Math.min(1, v));
+    if (!this.ctx || !this.out) return;
+    const now = this.ctx.currentTime;
+    this.out.gain.cancelScheduledValues(now);
+    this.out.gain.setValueAtTime(this.out.gain.value, now);
+    this.out.gain.linearRampToValueAtTime(this.level, now + 0.08);
+  }
+
+  private get level(): number {
+    return MAX_LEVEL * this.vol * this.vol;
   }
 
   /** Must be called from a user gesture (browser autoplay policy). */
@@ -54,7 +75,7 @@ export class CartoonMusic {
     const now = ctx.currentTime;
     this.out = ctx.createGain();
     this.out.gain.setValueAtTime(0, now);
-    this.out.gain.linearRampToValueAtTime(LEVEL, now + FADE_IN);
+    this.out.gain.linearRampToValueAtTime(this.level, now + FADE_IN);
     this.out.connect(ctx.destination);
     this.at = now + 0.2;
     this.step = 0;
