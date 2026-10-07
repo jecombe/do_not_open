@@ -3,10 +3,11 @@ import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { applyPath, appPath, docsPath, homePath, marketPath, studioPath } from "../site";
 import { useT } from "./i18n";
+import { SoundControl } from "./SoundControl";
 
 /**
- * The stamp, the site's links and languages, and the way into the game. On a phone the links
- * and languages fold into a menu, so the stamp, "Play" and the menu button share one line.
+ * The stamp, the site's links, the sound and the languages, and the way into the game. On a
+ * phone the links, the sound and the languages fold into a menu, so the stamp, "Play" and the menu button share one line.
  */
 export function HomeTop({ here = "home" }: { here?: "home" | "apply" }) {
   const t = useT();
@@ -56,6 +57,7 @@ export function HomeTop({ here = "home" }: { here?: "home" | "apply" }) {
         <a href={applyPath(locale)} className="home-nav-apply" aria-current={here === "apply" ? "page" : undefined}>
           {t("home.nav.apply")}
         </a>
+        <SoundControl labels={{ group: t("home.nav.sound"), mute: t("home.nav.soundMute"), unmute: t("home.nav.soundUnmute"), volume: t("home.nav.musicVolume") }} />
         <LangSwitch label={t("home.nav")} />
       </nav>
       <div className="home-top-actions">

@@ -17,7 +17,7 @@ import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
 import { RatsLeft } from "./RatsLeft";
 import { RatToy } from "./ratToy";
 import { Shipped } from "./Shipped";
-import { boxComplaint, pageSound, setMuted, startMusicOnFirstGesture } from "./sound";
+import { boxComplaint, pageSound, setMuted, startMusicOnFirstGesture, useSoundSettings } from "./sound";
 
 /** One of the studio's free rats, sniffing about beside the studio's pitch. Click it for another. */
 function StudioRat() {
@@ -299,7 +299,8 @@ function Toy() {
   const [shakes, setShakes] = useState(0);
   const [cat, setCat] = useState<CatSpec | null>(null);
   const [webgl, setWebgl] = useState(true);
-  const [muted, setMutedState] = useState(pageSound.muted);
+  // Follows the menu's speaker too.
+  const { muted } = useSoundSettings();
   const lines = useRef<string[]>([]);
   lines.current = [t("home.toy.say1"), t("home.toy.say2"), t("home.toy.opening")];
 
@@ -360,7 +361,6 @@ function Toy() {
           aria-pressed={!muted}
           onClick={() => {
             setMuted(!muted);
-            setMutedState(!muted);
             if (muted) {
               pageSound.resume();
               boxComplaint();

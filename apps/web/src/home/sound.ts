@@ -1,9 +1,11 @@
-import { CartoonMusic, ShakeSound, type ClipFx, type MeowPhrase, type MeowVoice } from "@dno/scene";
+import { useSyncExternalStore } from "react";
+import { CartoonMusic, DEFAULT_MUSIC_VOLUME, ShakeSound, type ClipFx, type MeowPhrase, type MeowVoice } from "@dno/scene";
 import type { CatSpec } from "@dno/generator";
 
 const MUTED_KEY = "dno.muted";
+const VOLUME_KEY = "dno.musicVolume";
 
-export function readMuted(): boolean {
+function readMuted(): boolean {
   try {
     return localStorage.getItem(MUTED_KEY) === "1";
   } catch {
@@ -11,31 +13,90 @@ export function readMuted(): boolean {
   }
 }
 
+function readVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOLUME_KEY);
+    const v = raw === null ? NaN : Number(raw);
+    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULT_MUSIC_VOLUME;
+  } catch {
+    return DEFAULT_MUSIC_VOLUME;
+  }
+}
+
+function save(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private window or blocked storage: the setting still holds for this visit.
+  }
+}
+
+/** The sound switch and the music's volume: one setting for the home page, the manual and the game, kept across visits. */
+export interface SoundSettings {
+  muted: boolean;
+  volume: number;
+}
+
+let settings: SoundSettings = { muted: readMuted(), volume: readVolume() };
+const listeners = new Set<() => void>();
+/** What the prerendered pages show; the browser's own setting takes over on hydration. */
+const PRERENDERED: SoundSettings = { muted: false, volume: DEFAULT_MUSIC_VOLUME };
+
+function update(next: Partial<SoundSettings>): void {
+  settings = { ...settings, ...next };
+  for (const l of listeners) l();
+}
+
+export function useSoundSettings(): SoundSettings {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => void listeners.delete(l);
+    },
+    () => settings,
+    () => PRERENDERED,
+  );
+}
+
 /**
  * One synthesiser for the home page and the manual, so the toy and the parade share the
  * mute switch. It only makes a sound after a click: browsers keep audio off until then.
  */
 export const pageSound = new ShakeSound();
-pageSound.muted = readMuted();
+pageSound.muted = settings.muted;
 
 /** The tune behind the home page and the game; the sound switch cuts it with the rest. */
 export const music = new CartoonMusic();
+music.volume = settings.volume;
 
-/** Turns every sound on or off, the music too, and remembers it for the next visit and the game. */
+/**
+ * Turns every sound on or off, the music too, and remembers it. Call it from a click: that is
+ * where the browser lets the music start.
+ */
 export function setMuted(muted: boolean): void {
   pageSound.muted = muted;
   if (muted) music.stop();
   else music.start();
-  saveMuted(muted);
+  save(MUTED_KEY, muted ? "1" : "0");
+  update({ muted });
+}
+
+/** The music's volume, from 0 to 1. Turning it up while the sound is off turns the sound back on. */
+export function setVolume(volume: number): void {
+  music.volume = volume;
+  save(VOLUME_KEY, String(music.volume));
+  update({ volume: music.volume });
+  if (settings.muted && volume > 0) setMuted(false);
+  else if (!settings.muted) music.start();
 }
 
 /**
  * Starts the music on the page's first click or key, unless the sound is off: browsers keep
  * audio off until then. Returns the cleanup, which also stops it.
  */
-export function startMusicOnFirstGesture(isMuted: () => boolean = () => pageSound.muted): () => void {
+export function startMusicOnFirstGesture(): () => void {
   const go = () => {
-    if (!isMuted()) music.start();
+    if (!settings.muted) music.start();
   };
   window.addEventListener("pointerdown", go, { once: true });
   window.addEventListener("keydown", go, { once: true });
@@ -44,14 +105,6 @@ export function startMusicOnFirstGesture(isMuted: () => boolean = () => pageSoun
     window.removeEventListener("keydown", go);
     music.stop();
   };
-}
-
-export function saveMuted(muted: boolean): void {
-  try {
-    localStorage.setItem(MUTED_KEY, muted ? "1" : "0");
-  } catch {
-    // Private window or blocked storage: the switch still works for this visit.
-  }
 }
 
 /** How much lower a heavier cat meows. */

@@ -6,6 +6,7 @@ import { useAction, useChain } from "./chain/ChainProvider";
 import { useShielded } from "./chain/shielded";
 import { useT, type AppKey } from "./i18n/app";
 import { LangSwitch } from "./i18n/LangSwitch";
+import { SoundControl } from "./home/SoundControl";
 import { useLocale } from "./i18n/locale";
 import { docsPath, homePath, studioPath } from "./site";
 import { NetworkSwitch } from "./chain/NetworkSwitch";
@@ -41,7 +42,7 @@ export const isMenuView = (v: string | null): v is (typeof VIEWS)[number]["key"]
 /**
  * The stamp on the left; in the middle, the balances on frosted glass; on the right, the decryptions left, a small wallet tag and one manila tag
  * naming the current view. The tag opens a packing list with the other views,
- * the manual and the languages; the wallet tag opens a list of the browser's
+ * the manual, the sound and the languages; the wallet tag opens a list of the browser's
  * wallets when there is more than one, and once connected, a slip with the
  * balance and a way out.
  */
@@ -219,6 +220,7 @@ export function Masthead({ view, onView }: { view: View | "studio"; onView: (v: 
                 <a href={homePath(locale)}>{t("nav.home")}</a>
               </li>
             </ul>
+            <SoundControl labels={{ group: t("nav.sound"), mute: t("nav.soundMute"), unmute: t("nav.soundUnmute"), volume: t("nav.musicVolume") }} />
             <LangSwitch label={t("nav.language")} />
             <NetworkSwitch />
           </nav>
