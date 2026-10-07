@@ -206,7 +206,8 @@ studio pack are not doubled by switching sites. It never migrates: `dev` cannot 
 database, only `main` does; a migration that changes one of the three tables changes its
 `testnet` copy too. A push to `main` deploys the live stack, a push to `dev` the testnet one
 (`.github/workflows/deploy-api.yml`); the site picks its API by host (`apps/web/src/apiUrl.ts`)
-and Vercel builds `testnet.do-not-open.app` from `dev`. The testnet `.env` holds `STACK`,
+and both sites are the production build from `main` (`testnet.do-not-open.app` on a branch would
+be a preview, behind Vercel's login): only the testnet site's API follows `dev`. The testnet `.env` holds `STACK`,
 `API_ALIAS`, `API_DOMAIN`, `API_REPLICAS=1`, the live `POSTGRES_PASSWORD` and the API's keys, and
 none of `ACTIVITY_DISCORD_WEBHOOK_URL`, `ADMIN_*` or the Discord application. Sign in with X needs
 its callback (`https://api.testnet.do-not-open.app/v1/xpass/x/callback`) in the X app; `/board`
@@ -223,13 +224,13 @@ copied as they are). The testnet stack then keeps the current database, its Sepo
 | --- | --- | --- |
 | `do-not-open.app` | the site (Vercel), mainnet once it launches, Sepolia until then | `A 76.76.21.21` |
 | `www.do-not-open.app` | redirects to `do-not-open.app` (Vercel) | `CNAME cname.vercel-dns.com` |
-| `testnet.do-not-open.app` | the site on Sepolia, built from `dev` (Vercel) | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
+| `testnet.do-not-open.app` | the site on Sepolia, the production build (Vercel), talking to `api.testnet` | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
 | `api.do-not-open.app` | the API (`API_DOMAIN`) | `A` the server's IP |
 | `api.testnet.do-not-open.app` | the testnet site's API replicas and lists (`/opt/dno-testnet`, deployed from `dev`) | `A` the server's IP |
 | `admin.do-not-open.app` | the team's admin site (`ADMIN_DOMAIN`) | `A` the server's IP |
 | `monitoring.do-not-open.app` | Grafana (`MONITORING_DOMAIN`) | `A` the server's IP |
 
-Only one network runs today: both sites are on Sepolia, the testnet one built from `dev` with
+Only one network runs today: both sites are on Sepolia and the same build, the testnet one with
 its own API replicas and lists (above), the other from `main` with the list that lasts until mainnet. Remove the registrar's default parking records (`A` and `AAAA` on
 each name) before adding these: Let's Encrypt tries IPv6 first and would fail on a parking
 address. At the mainnet launch, `api.do-not-open.app` moves to a mainnet API, the testnet site
