@@ -5,6 +5,7 @@ import { AllowList, FACTS_TTL } from "../src/application/allowList";
 import { GiftProofs, giftTree } from "../src/application/whitelistGifts";
 import { silentLogger } from "../src/application/ports/logger";
 import { SyncChain } from "../src/application/syncChain";
+import { Seats } from "../src/application/seats";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { ALICE, BOB, ev, FakeChain } from "./fixtures";
 
@@ -53,6 +54,23 @@ describe("allow list", () => {
       ...duel(3, 130, { token: 3, who: BOB }, { token: 4, who: BOB }, 3),
       ev("Observed", 140, { tokenId: 1, openedBy: BOB, seed: "1", state: 0, score: 1, golden: false }),
     );
+  });
+
+  it("never gives the team's own wallets a place: no claim, no rank, no seat", async () => {
+    // Alice is the team here: she minted, opened and won duels, all to test.
+    let list: AllowList | null = null;
+    const seats = new Seats(store, 10, () => list!.players(), ["follow", "post"], new Set([ALICE]));
+    list = new AllowList(store, verifier, { now: () => now }, 10, async () => new Map(), seats);
+    await expect(claim(list, ALICE)).rejects.toThrow(/team's wallets/);
+    expect(await store.allowListClaim(ALICE)).toBeNull();
+    expect((await list.players()).has(ALICE)).toBe(false);
+    await claim(list, BOB);
+    expect((await list.ranked()).map((e) => e.address)).toEqual([BOB]);
+    expect(await seats.taken()).toBe(1);
+    // A boarding pass linked to a team wallet takes no seat either.
+    const pass = { id: "p", code: "DNO-TEAM01", handle: "team", xUserId: null, tweetId: null, tweetUrl: null, followedAt: 1, postedAt: 1, likedAt: null, repliedAt: null, repostedAt: null, address: ALICE, discordUserId: null, discordJoinedAt: null, createdAt: 1, verifiedAt: 1, updatedAt: 1 };
+    expect(seats.passSeated(pass)).toBe(false);
+    expect(seats.passSeated({ ...pass, address: CAROL })).toBe(true);
   });
 
   it("counts each opponent once and ignores duels against yourself", async () => {

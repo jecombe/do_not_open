@@ -121,7 +121,7 @@ export class Insights {
     const now = this.clock.now();
     const today = Math.floor(now / DAY) * DAY;
     const from = today - (days - 1) * DAY;
-    const [passes, claims, ideas, buckets, hours, active, taken, recentChain] = await Promise.all([
+    const [allPasses, allClaims, ideas, buckets, hours, active, taken, recentChain] = await Promise.all([
       this.store.xPasses(),
       this.store.allowListClaims(),
       this.store.ideas(),
@@ -132,6 +132,9 @@ export class Insights {
       this.store.activity({ limit: 40 }),
     ]);
     const required = this.seats.required;
+    // The team's own wallets and the passes linked to them are tests, not players.
+    const passes = allPasses.filter((p) => !this.seats.isTeam(p.address));
+    const claims = allClaims.filter((c) => !this.seats.isTeam(c.address));
 
     // Every dated fact, by series: a pass's steps, claims, ideas, and the chain's events.
     const facts = new Map<string, number[]>();
@@ -268,6 +271,7 @@ export class Insights {
     const [passes, claims] = await Promise.all([this.store.xPasses(), this.store.allowListClaims()]);
     const claimed = new Set(claims.map((c) => c.address));
     return passes
+      .filter((p) => !this.seats.isTeam(p.address))
       .map((p): PlayerRow => {
         const seat = seatedAt(p, this.seats.required);
         return {

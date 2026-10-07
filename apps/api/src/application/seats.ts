@@ -37,11 +37,18 @@ export class Seats {
     private readonly players: () => Promise<Set<Address>>,
     /** The tasks on X a pass needs: like, reply and repost only once there is an announcement. */
     readonly required: readonly XTask[],
+    /** The team's own wallets: they test the protocol and never take a place on its list. */
+    readonly team: ReadonlySet<Address> = new Set(),
   ) {}
 
-  /** Whether a pass holds a seat: its X account is connected and every required task is done. */
+  isTeam(address: Address | null): boolean {
+    return !!address && this.team.has(address);
+  }
+
+  /** Whether a pass holds a seat: its X account is connected and every required task is done,
+   *  and it is not linked to one of the team's wallets. */
   passSeated(p: XPass): boolean {
-    return !!p.handle && this.required.every((t) => p[TASK_FIELD[t]] !== null);
+    return !!p.handle && !this.isTeam(p.address) && this.required.every((t) => p[TASK_FIELD[t]] !== null);
   }
 
   /** Whether the X account this wallet is linked to holds a seat. */
@@ -66,7 +73,7 @@ export class Seats {
       seated++;
       if (p.address) linked.add(p.address);
     }
-    return seated + claims.filter((c) => players.has(c.address) && !linked.has(c.address)).length;
+    return seated + claims.filter((c) => players.has(c.address) && !linked.has(c.address) && !this.isTeam(c.address)).length;
   }
 
   async view(): Promise<SeatsView> {
