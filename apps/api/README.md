@@ -362,7 +362,7 @@ adds `RELAYER_API_KEY` and forwards.
 | Request | Let through when | Counted |
 | --- | --- | --- |
 | user decryption | every contract named is the protocol's (collection, its cUSDC, Pantry, cCROQ, flea market, and with the rats' tricks, Rats for a rat's power and RatTricks for a trick's encrypted trait), and the EIP-712 permit was signed by the `userAddress` it is for | one unit per value: the day's free units first (`RELAYER_FREE_PER_DAY`, 25, or `RELAYER_NEWCOMER_PER_DAY`, 16, for a wallet the index has never seen act on-chain or be sent a box; reset at midnight UTC), then the wallet's credits. Given back when Zama refuses |
-| public decryption | every handle was made public by the collection, the Pantry, cCROQ or the flea market: the index follows Zama's ACL (`AllowedForDecryption` with one of them as caller), and the last `RELAYER_RECENT_BLOCKS` are read directly for what it has not caught up with | free: it settles something already on-chain. Sent to Zama once per exact request (handles in order + extra data, `public_decryptions`): asking the same again replays the same job, answered from the cache once done, so a loop over an old duel costs nothing. Reordering or recombining handles makes a new request, so a handle may only be named in `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent to Zama (`public_decrypt_uses`), past which it is refused (`bad-request`). A job Zama fails or loses, or still running after 5 minutes, is sent again |
+| public decryption | every handle was made public by the collection, the Pantry, cCROQ or the flea market: the index follows Zama's ACL (`AllowedForDecryption` with one of them as caller), and the last `RELAYER_RECENT_BLOCKS` are read directly for what it has not caught up with | `RELAYER_PUBLIC_UNITS` (1) units a value, charged to the wallet whose permit comes as a bearer token (as for an input; else `bad-permit`), only when the request is sent to Zama: posting and settling duels in a loop spends the griefer's units, not the collection's money. 0 makes them free and anonymous again. Sent to Zama once per exact request (handles in order + extra data, `public_decryptions`): asking the same again replays the same job, answered from the cache once done, free and without a permit for whoever asks, so a loop over an old duel costs nothing. Reordering or recombining handles makes a new request, so a handle may only be named in `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent to Zama (`public_decrypt_uses`), past which it is refused (`bad-request`). A job Zama fails or loses, or still running after 5 minutes, is sent again |
 | encrypted input | for one of the protocol's contracts, on this chain, sent with `Authorization: Bearer <base64url of the JSON permit>`: the user-decryption permit of the `userAddress` the input is for (else `bad-permit`), so nobody spends another wallet's units | `RELAYER_INPUT_UNITS` (5) units, the same way: Zama charges an input five times a decryption. Given back when Zama refuses |
 
 Polling a queued job is passed through and not counted. A refusal answers in the relayer's
@@ -370,7 +370,7 @@ own error shape (`400`, label `request_error`, message `dno:<code>: ...`), so th
 it; the adapter turns `dno:no-credits` into a `no-credits` error, and checks the allowance
 before a shake, a mint or a meal so no gas is spent on a result it could not read.
 `GET /v1/relayer/allowance/:address` answers `freePerDay` (that wallet's: player or
-newcomer), `freeLeft`, `credits`, `resetsAt` and `inputUnits`.
+newcomer), `freeLeft`, `credits`, `resetsAt`, `inputUnits` and `publicUnits`.
 
 Credits are bought on-chain from `DecryptionCredits`, in plain USDC (a short balance
 reverts; cUSDC would move 0 silently), and indexed from its `CreditsBought` events. What was
@@ -631,7 +631,7 @@ DATABASE_URL=postgres://... pnpm --filter @dno/api dev
 
 Configuration is environment variables, all optional in development: see `src/config.ts`
 (`ROLE`, `RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
-`RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
+`RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `ACTIVITY_DISCORD_WEBHOOK_URL`, `ADMIN_PASSWORD`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
 `FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in

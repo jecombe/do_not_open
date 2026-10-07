@@ -364,8 +364,10 @@ players, so three things keep that bill bounded:
   returning player's old receipts and an unchanged cUSDC balance cost nothing.
 - **The relayer proxy** in `apps/api` holds the key and lets through only the protocol's
   own decryptions and inputs (see its README).
-- **A public decryption is paid once.** Free for players, so nothing else would stop someone
-  from asking for an old duel's result in a loop at the collection's expense: the proxy
+- **A public decryption is paid once, by the wallet that asks first.** It costs
+  `RELAYER_PUBLIC_UNITS` (1) a value, charged to the wallet whose permit comes with it, so
+  posting and settling duels in a loop (gas only, no fee) spends the griefer's units and
+  then its credits, not the collection's money. Asking for an old result again is free: the proxy
   keeps each request's job and answer, and a handle may be named in at most four requests
   sent to Zama (`RELAYER_PUBLIC_PER_HANDLE`).
 - **Units and credits.** Everything a wallet asks Zama for is counted in units: a decrypted
@@ -382,16 +384,19 @@ players, so three things keep that bill bounded:
 
 How much a game action costs, before the cache: a shake 2 units, a mint 5 for its input plus
 1 per id it hides among (10 by default) and 1 for the balance, a meal or a croquette send 5,
-a cUSDC payment 1 to read the balance first. An opening (2 to 5), a duel (6), a weigh-in, an
-alive check, a milestone or an unwrap are public decryptions: free for players, paid by the treasury.
+a cUSDC payment 1 to read the balance first. An opening (2 to 5), a duel (1 to post, 5 to settle), a weigh-in, an
+alive check (2), a milestone or an unwrap are public decryptions: one unit a value for the
+wallet that asks Zama first, free for anyone who asks again. Before 2026-10-07 they were
+free for players and paid by the treasury, which let a griefer cost the collection up to
+$0.60 a duel on pay-as-you-go for a few cents of gas.
 Checked on Sepolia through a local proxy: a newcomer's 1-box mint among 1 id took 7 units
 (5 + receipt + balance), and the wallet had a player's allowance once the mint was indexed.
 Open question for Zama: is a decryption billed per value or per request?
 
 **Does it pay for itself?** The paid actions do at any plan: a mint (5 USDC) costs Zama
 $0.016 to $1.60, an opening (1 USDC) up to $0.50, a pet (0.5) up to $0.10, a paid shake (0.75
-to the treasury) up to $0.30. What is free to players (their daily units, public
-decryptions) is paid from those fees. With a monthly plan ($0.001 a decryption) the margin is
+to the treasury) up to $0.30. What is free to players (their daily units) is paid
+from those fees. With a monthly plan ($0.001 a decryption) the margin is
 large; pay-as-you-go ($0.10) is not sustainable with a generous allowance.
 
 **Credit price.** Zama prices in dollars and takes $ZAMA at its oracle's rate, and credits

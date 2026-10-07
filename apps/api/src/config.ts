@@ -76,6 +76,8 @@ const schema = z.object({
   RELAYER_NEWCOMER_PER_DAY: z.coerce.number().int().min(0).default(16),
   /** Units an encrypted input costs: Zama's price for one over its price for a decryption. */
   RELAYER_INPUT_UNITS: z.coerce.number().int().min(0).default(5),
+  /** Units a value of a public decryption costs, charged to the wallet that asks first (the cache is free). 0: free for everyone, paid by the collection. */
+  RELAYER_PUBLIC_UNITS: z.coerce.number().int().min(0).default(1),
   /** Most values one decryption may ask for. */
   RELAYER_MAX_HANDLES: z.coerce.number().int().positive().default(64),
   /** Public decryptions sent to Zama that may name one handle. The same request is served from the cache. */

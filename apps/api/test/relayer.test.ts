@@ -83,13 +83,13 @@ describe("relayer meter", () => {
     expect(charge(3, { freeUsed: 4, spent: 0, bought: 10 }, 5)).toEqual({ free: 1, credits: 2 });
     expect(charge(3, { freeUsed: 5, spent: 9, bought: 10 }, 5)).toBeNull();
     expect(charge(0, { freeUsed: 5, spent: 10, bought: 10 }, 5)).toEqual({ free: 0, credits: 0 });
-    expect(allowanceOf({ freeUsed: 2, spent: 1, bought: 4 }, 5, NOW, 5)).toEqual({ freePerDay: 5, freeLeft: 3, credits: 3, resetsAt: nextDayAt(NOW), inputUnits: 5 });
+    expect(allowanceOf({ freeUsed: 2, spent: 1, bought: 4 }, 5, NOW, 5, 1)).toEqual({ freePerDay: 5, freeLeft: 3, credits: 3, resetsAt: nextDayAt(NOW), inputUnits: 5, publicUnits: 1 });
   });
 
   it("starts a new free allowance at UTC midnight", () => {
     expect(dayOf(NOW)).toBe("2026-09-21");
     expect(nextDayAt(NOW)).toBe(Date.UTC(2026, 8, 22) / 1000);
-    expect(allowanceOf({ freeUsed: 7, spent: 3, bought: 10 }, 5, NOW, 5)).toEqual({ freePerDay: 5, freeLeft: 0, credits: 7, resetsAt: nextDayAt(NOW), inputUnits: 5 });
+    expect(allowanceOf({ freeUsed: 7, spent: 3, bought: 10 }, 5, NOW, 5, 1)).toEqual({ freePerDay: 5, freeLeft: 0, credits: 7, resetsAt: nextDayAt(NOW), inputUnits: 5, publicUnits: 1 });
   });
 });
 
@@ -109,7 +109,7 @@ describe("RelayerGate", () => {
       eip712PermitVerifier(DOMAIN),
       { recentlyPublished: async (hs) => hs.filter((h) => published.includes(h)) },
       { now: () => NOW },
-      { chainId: CHAIN_ID, contracts: async () => [GAME, CUSDC], freePerDay: 5, newcomerPerDay: 5, inputUnits: 2, maxHandles: 10, clockSkew: 600, publicPerHandle: 3 },
+      { chainId: CHAIN_ID, contracts: async () => [GAME, CUSDC], freePerDay: 5, newcomerPerDay: 5, inputUnits: 2, publicUnits: 1, maxHandles: 10, clockSkew: 600, publicPerHandle: 3 },
     );
   });
 
@@ -144,50 +144,78 @@ describe("RelayerGate", () => {
     expect(upstream.calls).toHaveLength(0);
   });
 
+  const publicly = async (hs: string[], auth?: string) => gate.submit("public-decrypt", { ciphertextHandles: hs, extraData: "0x00" }, auth ?? (await bearer(wallet)));
+
   it("publicly decrypts only what the protocol made public, from the index or the latest blocks", async () => {
     await store.transaction((tx) => tx.savePublished([handle(1)], GAME, 10));
-    await gate.submit("public-decrypt", { ciphertextHandles: [handle(1)], extraData: "0x00" });
-    expect(await refusal(gate.submit("public-decrypt", { ciphertextHandles: [handle(1), handle(2)], extraData: "0x00" }))).toBe("not-ours");
+    await publicly([handle(1)]);
+    expect(await refusal(publicly([handle(1), handle(2)]))).toBe("not-ours");
     published = [handle(2)];
-    await gate.submit("public-decrypt", { ciphertextHandles: [handle(1), handle(2)], extraData: "0x00" });
+    await publicly([handle(1), handle(2)]);
     expect(upstream.calls.map((c) => c.path)).toEqual(["public-decrypt", "public-decrypt"]);
-    // Free: it settles something already on-chain.
+  });
+
+  it("charges a public decryption sent to Zama to the wallet whose permit comes with it, a unit a value", async () => {
+    await store.transaction((tx) => tx.savePublished([handle(1), handle(2), handle(3), handle(4)], GAME, 10));
+    await publicly([handle(1), handle(2)]);
+    expect((await gate.allowance(ACCOUNT)).freeLeft).toBe(3);
+    // Asked again, by anyone: answered from the cache, free.
+    await publicly([handle(1), handle(2)], await bearer(Wallet.createRandom()));
+    expect((await gate.allowance(ACCOUNT)).freeLeft).toBe(3);
+    await publicly([handle(3), handle(4)]);
+    // A griefer's day runs out: the next duel's outcome is on them, not on the collection.
+    expect(await refusal(publicly([handle(1), handle(3)]))).toBe("no-credits");
+    expect(upstream.calls).toHaveLength(2);
+  });
+
+  it("refuses a new public decryption without a permit, or with an unreadable one", async () => {
+    await store.transaction((tx) => tx.savePublished([handle(1)], GAME, 10));
+    expect(await refusal(gate.submit("public-decrypt", { ciphertextHandles: [handle(1)], extraData: "0x00" }))).toBe("bad-permit");
+    expect(await refusal(publicly([handle(1)], "Bearer not-base64-json"))).toBe("bad-permit");
+    expect(await refusal(publicly([handle(1)], await bearer(wallet, NOW - 2 * 86_400)))).toBe("bad-permit");
+    expect(upstream.calls).toHaveLength(0);
+    // Once sent, the cache answers whoever asks, permit or not.
+    await publicly([handle(1)]);
+    expect((await gate.submit("public-decrypt", { ciphertextHandles: [handle(1)], extraData: "0x00" })).status).toBe(202);
+  });
+
+  it("gives the units of a public decryption back when Zama turns it away", async () => {
+    await store.transaction((tx) => tx.savePublished([handle(1)], GAME, 10));
+    upstream.status = 400;
+    await publicly([handle(1)]);
     expect((await gate.allowance(ACCOUNT)).freeLeft).toBe(5);
   });
 
   it("sends each public decryption to Zama once, and answers the same request from the cache", async () => {
     await store.transaction((tx) => tx.savePublished([handle(1), handle(2)], GAME, 10));
-    const ask = (hs: string[]) => gate.submit("public-decrypt", { ciphertextHandles: hs, extraData: "0x00" });
-    const first = await ask([handle(1), handle(2)]);
+    const first = await publicly([handle(1), handle(2)]);
     expect(first.status).toBe(202);
     // Asked again while the job runs: the same job, nothing sent.
-    expect(await ask([handle(1), handle(2)])).toMatchObject({ status: 202, body: first.body });
+    expect(await publicly([handle(1), handle(2)])).toMatchObject({ status: 202, body: first.body });
     expect((await gate.poll("public-decrypt", "job-1")).status).toBe(200);
     // Done: the request and its polls are answered from the cache.
-    expect(await ask([handle(1), handle(2)])).toMatchObject({ status: 202, body: first.body });
+    expect(await publicly([handle(1), handle(2)])).toMatchObject({ status: 202, body: first.body });
     expect(await gate.poll("public-decrypt", "job-1")).toMatchObject({ status: 200, body: { status: "succeeded", path: "public-decrypt/job-1" } });
     expect(upstream.calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST public-decrypt", "GET public-decrypt/job-1"]);
   });
 
   it("refuses a handle already sent to Zama in too many different requests", async () => {
     await store.transaction((tx) => tx.savePublished([handle(1), handle(2), handle(3)], GAME, 10));
-    const ask = (hs: string[]) => gate.submit("public-decrypt", { ciphertextHandles: hs, extraData: "0x00" });
-    await ask([handle(1)]);
-    await ask([handle(1), handle(2)]);
-    await ask([handle(2), handle(1)]);
-    expect(await refusal(ask([handle(1), handle(3)]))).toBe("bad-request");
+    await publicly([handle(1)]);
+    await publicly([handle(1), handle(2)]);
+    await publicly([handle(2), handle(1)]);
+    expect(await refusal(publicly([handle(1), handle(3)]))).toBe("bad-request");
     // The requests already made are still answered.
-    expect((await ask([handle(2), handle(1)])).status).toBe(202);
+    expect((await publicly([handle(2), handle(1)])).status).toBe(202);
     expect(upstream.calls).toHaveLength(3);
   });
 
   it("sends a public decryption again when Zama lost the job", async () => {
     await store.transaction((tx) => tx.savePublished([handle(1)], GAME, 10));
-    const ask = () => gate.submit("public-decrypt", { ciphertextHandles: [handle(1)], extraData: "0x00" });
-    await ask();
+    await publicly([handle(1)]);
     upstream.getStatus = 404;
     await gate.poll("public-decrypt", "job-1");
-    await ask();
+    await publicly([handle(1)]);
     expect(upstream.calls.filter((c) => c.method === "POST")).toHaveLength(2);
   });
 
@@ -235,6 +263,7 @@ describe("RelayerGate", () => {
       freePerDay: 5,
       newcomerPerDay: 2,
       inputUnits: 2,
+      publicUnits: 1,
       maxHandles: 10,
       clockSkew: 600,
       publicPerHandle: 3,
@@ -275,6 +304,7 @@ describe("relayer proxy over HTTP", () => {
         freePerDay: 1,
         newcomerPerDay: 1,
         inputUnits: 5,
+        publicUnits: 0,
         maxHandles: 10,
         clockSkew: 600,
         publicPerHandle: 3,

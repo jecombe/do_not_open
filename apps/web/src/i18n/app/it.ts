@@ -687,7 +687,7 @@ export const it: Record<AppKey, string> = {
   "duels.yourBox": "La tua scatola",
   "duels.post": "Metti {serial} in duello",
   "duels.posting": "Messa in duello…",
-  "duels.postExplain": "Gratis, ma pubblico: una volta pubblicata la prova, tutti vedono che il tuo indirizzo detiene questa scatola. Resta in gioco {days} giorni, finché qualcuno non la accetta o tu non la ritiri. Rimettere la stessa scatola in duello sostituisce l'annuncio.",
+  "duels.postExplain": "Senza commissione, un'unità di decifratura per la prova, e pubblico: una volta pubblicata la prova, tutti vedono che il tuo indirizzo detiene questa scatola. Resta in gioco {days} giorni, finché qualcuno non la accetta o tu non la ritiri. Rimettere la stessa scatola in duello sostituisce l'annuncio.",
   "duels.aimAtOne": "Per puntare a una sola scatola:",
   "duels.posted": "La tua scatola è sullo scaffale dei duelli. Chiunque può accettarla.",
   "duels.withdrawn": "Ritirata dallo scaffale.",

@@ -766,15 +766,23 @@ sequenceDiagram
   App->>P: input-proof (mint quantity, meal), Bearer = the same permit
   P->>P: our contracts only, permit signer = the input's userAddress
   P->>P: count 5 units, the same way, then forward to Zama
+  App->>P: public-decrypt (an opening, a duel), Bearer = the same permit
+  alt asked before, by anyone
+    P-->>App: the same job, from the cache, free
+  else first to ask
+    P->>P: made public by our contracts? count 1 unit a value, then forward to Zama
+  end
 ```
 
 Public decryptions (an opening, an alive check, a duel, a milestone, a weigh-in, an
-unwrap) go through the same proxy, free: it checks that one of the protocol's contracts
-made the handles public (Zama's ACL logs it). A handle's value never changes, so each exact
-request is sent to Zama once and replayed from the proxy's cache after, and a handle may be
-named in at most `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent there: asking for an old duel
-in a loop costs the collection nothing. The adapter checks the allowance before a
-shake, a mint or a meal, so no gas is spent on a result that could not be read. A wallet
+unwrap) go through the same proxy: it checks that one of the protocol's contracts made the
+handles public (Zama's ACL logs it), and charges `RELAYER_PUBLIC_UNITS` (1) a value to the
+wallet whose permit comes with the request, so posting and settling duels in a loop costs the
+griefer its units, not the collection. A handle's value never changes, so each exact
+request is sent to Zama once and replayed from the proxy's cache after, free for whoever
+asks, and a handle may be named in at most `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent
+there. The adapter checks the allowance before a shake, a mint, a meal, an opening, an alive
+check, an entanglement or a duel, so no gas is spent on a result that could not be read. A wallet
 the index has never seen act gets a newcomer's allowance (16, one mint) instead of a
 player's (25).
 
@@ -1165,13 +1173,13 @@ flowchart LR
   P -- "flea market sale" --> F{split}
   F -- "2.5%" --> T
   F -- "the rest" --> SE[Seller]
-  T -- "free and public decryptions" --> Z[Zama]
+  T -- "free daily decryptions" --> Z[Zama]
   T --> I[Indexer and API servers]
   T -- "sketches and 3D models" --> AI[AI services]
 ```
 
 The treasury pays Zama for what players do not pay themselves: each wallet's free daily
-decryptions and every public decryption.
+units. Public decryptions are counted to the wallet that asks first.
 
 ## Croquettes
 
