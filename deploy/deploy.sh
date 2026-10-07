@@ -28,27 +28,31 @@ if grep -q '^API_IMAGE=' .env; then sed -i "s|^API_IMAGE=.*|API_IMAGE=$IMAGE|" .
 REPLICAS="$(grep '^API_REPLICAS=' .env | cut -d= -f2- || true)"
 REPLICAS="${REPLICAS:-2}"
 STACK="$(grep '^STACK=' .env | cut -d= -f2- || true)"
-export COMPOSE_PROJECT_NAME="${STACK:-dno}"
+PROJECT="${STACK:-dno}"
+# This stack's compose project, named on each call and never exported: the monitoring and the
+# edge proxy, started from here too, are projects of their own. Under this name, the monitoring's
+# `up --remove-orphans` would take this stack's containers for orphans and remove them.
+dc() { docker compose -p "$PROJECT" "$@"; }
 API_ALIAS="$(grep '^API_ALIAS=' .env | cut -d= -f2- || true)"
 API_ALIAS="${API_ALIAS:-dno-api}"
 # A registry image is pulled; a local one (built on the server, for a test) is used as is.
 # The testnet stack has API replicas only: it reads the live stack's database.
-has() { docker compose config --services | grep -qx "$1"; }
-if [[ "$IMAGE" == */* ]]; then docker compose pull --quiet api; fi
-if has postgres; then docker compose up -d --no-deps postgres; fi
+has() { dc config --services | grep -qx "$1"; }
+if [[ "$IMAGE" == */* ]]; then dc pull --quiet api; fi
+if has postgres; then dc up -d --no-deps postgres; fi
 
 # Route the domain, and any aliases (space or comma separated), to the replicas, then reload the
 # proxy (a reload keeps the other sites up). The proxy checks the file before switching to it.
 API_DOMAIN="$(grep '^API_DOMAIN=' .env | cut -d= -f2-)"
 API_ALIASES="$(grep '^API_ALIASES=' .env | cut -d= -f2- || true)"
 API_HOSTS="$(echo "$API_DOMAIN $API_ALIASES" | tr ',' ' ' | xargs | sed 's/ /, /g')"
-sed -e "s|__API_HOSTS__|$API_HOSTS|" -e "s|__API_ALIAS__|$API_ALIAS|" dno.caddy.template > "/opt/edge/sites/$COMPOSE_PROJECT_NAME.caddy"
+sed -e "s|__API_HOSTS__|$API_HOSTS|" -e "s|__API_ALIAS__|$API_ALIAS|" dno.caddy.template > "/opt/edge/sites/$PROJECT.caddy"
 # The team's admin site, once ADMIN_DOMAIN is set (and ADMIN_PASSWORD, or it answers nothing).
 ADMIN_DOMAIN="$(grep '^ADMIN_DOMAIN=' .env | cut -d= -f2- || true)"
 if [ -n "$ADMIN_DOMAIN" ] && [ -f dno-admin.caddy.template ]; then
-  sed -e "s|__ADMIN_HOST__|$ADMIN_DOMAIN|" -e "s|__API_ALIAS__|$API_ALIAS|" dno-admin.caddy.template > "/opt/edge/sites/$COMPOSE_PROJECT_NAME-admin.caddy"
+  sed -e "s|__ADMIN_HOST__|$ADMIN_DOMAIN|" -e "s|__API_ALIAS__|$API_ALIAS|" dno-admin.caddy.template > "/opt/edge/sites/$PROJECT-admin.caddy"
 else
-  rm -f "/opt/edge/sites/$COMPOSE_PROJECT_NAME-admin.caddy"
+  rm -f "/opt/edge/sites/$PROJECT-admin.caddy"
 fi
 
 answers() { docker exec "$1" wget -qO- http://127.0.0.1:8080/health 2>/dev/null | grep -q '"ok":true'; }
@@ -57,10 +61,10 @@ answers() { docker exec "$1" wget -qO- http://127.0.0.1:8080/health 2>/dev/null 
 # health check, then the proxy sees them (it reads the DNS every 2 s) and the old ones stop,
 # finishing the requests they hold. If a new one never answers, it is removed and the old ones
 # keep serving: a broken image never takes the API down.
-old="$(docker compose ps -q api || true)"
+old="$(dc ps -q api || true)"
 count=$(echo "$old" | grep -c . || true)
-docker compose up -d --no-deps --no-recreate --scale api=$((count + REPLICAS)) api
-new="$(comm -13 <(echo "$old" | sort) <(docker compose ps -q api | sort))"
+dc up -d --no-deps --no-recreate --scale api=$((count + REPLICAS)) api
+new="$(comm -13 <(echo "$old" | sort) <(dc ps -q api | sort))"
 for c in $new; do
   up=""
   for _ in $(seq 1 60); do
@@ -86,19 +90,19 @@ fi
 # The indexer, once the old processes are gone (a ROLE=all API from before the split indexed
 # too): a short pause in indexing, nothing the public sees.
 if has indexer; then
-  docker compose up -d --no-deps indexer
+  dc up -d --no-deps indexer
   healthy=""
   for _ in $(seq 1 60); do
-    if answers "$(docker compose ps -q indexer)"; then healthy=1; break; fi
+    if answers "$(dc ps -q indexer)"; then healthy=1; break; fi
     sleep 2
   done
   if [ -z "$healthy" ]; then
-    docker compose logs --tail 80 indexer
+    dc logs --tail 80 indexer
     echo "the indexer did not come up (the API still serves the index as it was)" >&2
     exit 1
   fi
 fi
-docker compose up -d --remove-orphans --no-recreate
+dc up -d --remove-orphans --no-recreate
 
 # The monitoring (Prometheus, Grafana, Alertmanager), once monitoring/.env exists: see
 # monitoring/.env.example. One stack for every network; Prometheus finds each API replica by DNS.
@@ -116,4 +120,4 @@ fi
 REPO="${IMAGE%:*}"
 docker images "$REPO" --format '{{.ID}}' | awk '!seen[$0]++' | tail -n +4 | xargs -r docker rmi -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null
-echo "deployed $IMAGE to $COMPOSE_PROJECT_NAME ($REPLICAS API replicas$(has indexer && echo " and the indexer" || true)) at https://${API_HOSTS//, / https://}"
+echo "deployed $IMAGE to $PROJECT ($REPLICAS API replicas$(has indexer && echo " and the indexer" || true)) at https://${API_HOSTS//, / https://}"

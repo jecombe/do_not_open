@@ -1,14 +1,19 @@
 # Deployment
 
 The site stays on Vercel. The backend (`apps/api` + Postgres) runs on one server with Docker,
-deployed by GitHub Actions when a change that touches it reaches `main` (a merged PR), and
-only once the whole CI is green on that commit: a red `main` deploys nothing.
+deployed by GitHub Actions when a change that touches it reaches `dev` (the testnet site's API)
+or `main` (the live stack), each through a pull request, and only once the whole CI finished
+green on that push: a red `main` deploys nothing. The deploy starts when the CI run ends
+(`workflow_run`) rather than waiting beside it, and a push that changes nothing the image or its
+stack is built from deploys nothing: the repo is private, every runner minute counts. CI runs
+once per pull request and on the pushes to `dev` and `main`, not on a working branch alone, and
+not for docs alone; the load test only on pull requests into `main`.
 
 ```mermaid
 flowchart LR
-  push["git push<br/>any branch"] --> ci["CI<br/>typecheck, tests,<br/>Postgres tests"]
-  pr["pull request<br/>touching the API"] --> lt["Load test<br/>k6 on 1 and 3 replicas"]
-  merge["merge to main"] --> wf["Deploy API<br/>waits for CI green,<br/>builds the image"]
+  pr["pull request"] --> ci["CI<br/>typecheck, tests,<br/>Postgres tests"]
+  prmain["pull request into main<br/>touching the API"] --> lt["Load test<br/>k6 on 1 and 3 replicas"]
+  merge["merge to dev or main"] --> ci2["CI on the push"] -- "green" --> wf["Deploy API<br/>builds the image<br/>if the API changed"]
   wf -- "push" --> ghcr["ghcr.io/jecombe/<br/>do_not_open-api:SHA"]
   wf -- "ssh: deploy.sh SHA" --> server
   subgraph server["Server"]
