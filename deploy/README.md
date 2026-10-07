@@ -123,7 +123,7 @@ them, and the edge Caddy (`dno.caddy.template`) reads that list every 2 s:
   `bash /opt/dno/deploy.sh`. Grafana's "API replicas" row says when one is full (its CPU near
   100%, its event loop lagging: the `ApiEventLoopBlocked` alert).
 - **Measured, not guessed.** `.github/workflows/loadtest.yml` runs the same proxy settings in
-  front of 1 and 3 replicas on every pull request that touches the API, and fails it when reads
+  front of 1 and 3 replicas on every pull request into `main` that touches the API, and fails it when reads
   get slow ([`loadtest/README.md`](../loadtest/README.md)).
 
 ## Monitoring
