@@ -549,6 +549,32 @@ Each code, X account, post and wallet sits on one pass at most. The handle-to-wa
 in the API: no route shows it but the token holder's own `GET /v1/xpass` and the operator's
 `GET /v1/xpass/all?token=`.
 
+### The Discord server
+
+Joining the Discord server adds 3 points (`DISCORD_BONUS`) to the pass's wallet. Unlike the
+tasks on X, it is proved: the page asks for a one-time code, the player runs `/board` with it in
+the server, and Discord tells the API who ran it and where. The code works for 15 minutes and
+once; the account must be at least 30 days old (its id says when it was made); one Discord
+account boards one pass, and boarding a newer pass moves it there. Before mainnet, the team
+checks that each account is still in the server.
+
+```mermaid
+sequenceDiagram
+  participant U as Player
+  participant Home as Home page
+  participant API
+  participant D as Discord
+  U->>D: join the server (invite link)
+  Home->>API: POST /v1/xpass/discord (bearer: the pass token)
+  API-->>Home: {code, expiresAt} (15 minutes, kept in the API process)
+  U->>D: /board code:<code> in any channel of the server
+  D->>API: POST /v1/discord/interactions (signed: user id, server id)
+  API-->>D: deferred, then the reply only the player sees
+  API->>API: server, code and account age checked: the Discord account on the pass
+  Home->>API: GET /v1/xpass every few seconds
+  API-->>Home: discord: true, bonus +3 once a wallet is linked
+```
+
 ## Give a box away
 
 ```mermaid

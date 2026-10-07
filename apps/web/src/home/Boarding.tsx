@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { X_PASS_BONUS } from "@dno/chain-adapter/standings";
-import { ANNOUNCEMENT_TWEET_ID, announcementLinks, X_FOLLOW, X_HANDLE, xPost } from "../links";
+import { DISCORD_BONUS, X_PASS_BONUS } from "@dno/chain-adapter/standings";
+import { ANNOUNCEMENT_TWEET_ID, announcementLinks, DISCORD, X_FOLLOW, X_HANDLE, xPost } from "../links";
 import { useLocale } from "../i18n/locale";
 import { duelRankingPath, homePath, SITE_URL } from "../site";
-import { declareXTask, signInWithX, startXPass, useSeats, useXPass, verifyXPassTweet, xPassApi, XPassError, xSettings, type XPassView, type XTask } from "../xpass";
+import { declareXTask, discordBoardCode, signInWithX, xPassStatus, startXPass, useSeats, useXPass, verifyXPassTweet, xPassApi, XPassError, xSettings, type XPassView, type XTask } from "../xpass";
 import { useT } from "./i18n";
 
 const REFUSALS = ["bad-tweet-url", "tweet-not-found", "code-missing", "tweet-used", "x-down", "no-pass", "sign-in-expired", "sign-in-refused", "list-full"] as const;
@@ -15,8 +15,8 @@ const WAIT = 8;
  * The first thing on the home page: a boarding pass for the mainnet list, X first. On the left,
  * the X account: Sign in with X, then the boarding tweet (where the API has no X app, a post
  * carrying the boarding code proves the account instead). On the right, four quick tasks on X,
- * declared by the player and checked by hand before mainnet. Below, the bonus: a wallet and
- * testnet play.
+ * declared by the player and checked by hand before mainnet. Below, the bonus: the Discord
+ * server (proved with `/board` there), a wallet and testnet play.
  */
 export function Boarding() {
   const t = useT();
@@ -25,6 +25,7 @@ export function Boarding() {
   const { pass, loading, set } = useXPass();
   const [busy, setBusy] = useState<"code" | "verify" | "x" | null>(null);
   const [signIn, setSignIn] = useState<boolean | null>(null);
+  const [discord, setDiscord] = useState(false);
   const [announcement, setAnnouncement] = useState<string | null>(ANNOUNCEMENT_TWEET_ID || null);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState("");
@@ -36,6 +37,7 @@ export function Boarding() {
     void xSettings().then((x) => {
       if (!on) return;
       setSignIn(x.signIn);
+      setDiscord(x.discord);
       if (x.announcement) setAnnouncement(x.announcement);
     });
     return () => {
@@ -242,6 +244,8 @@ export function Boarding() {
           </div>
         </div>
 
+        {discord && live && <DiscordStep pass={pass} ensurePass={ensurePass} onPass={set} onError={(e) => fail(e)} />}
+
         <p className="boarding-error" aria-live="polite">
           {error}
         </p>
@@ -270,6 +274,78 @@ export function Boarding() {
         </a>
       </div>
     </section>
+  );
+}
+
+/** How often the page asks whether `/board` went through, while a code is up. */
+const BOARD_POLL_MS = 4_000;
+
+/**
+ * The Discord server: join it, ask for a one-time code, run `/board <code>` there. Discord says who
+ * ran it, so this one is proved, not declared. The page asks the API until the pass shows it.
+ */
+function DiscordStep({ pass, ensurePass, onPass, onError }: { pass: XPassView | null; ensurePass: () => Promise<XPassView>; onPass: (p: XPassView) => void; onError: (e: unknown) => void }) {
+  const t = useT();
+  const [code, setCode] = useState<{ code: string; expiresAt: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const joined = !!pass?.discord;
+  const command = code ? `/board code:${code.code}` : "";
+
+  // While a code is up and the pass does not show Discord yet, ask again now and then.
+  useEffect(() => {
+    if (!code || joined) return;
+    const timer = setInterval(() => {
+      if (Date.now() / 1000 >= code.expiresAt) {
+        setCode(null);
+        return;
+      }
+      xPassStatus().then(onPass, () => undefined);
+    }, BOARD_POLL_MS);
+    return () => clearInterval(timer);
+  }, [code, joined, onPass]);
+
+  const ask = async () => {
+    setBusy(true);
+    try {
+      await ensurePass();
+      setCode(await discordBoardCode());
+      setCopied(false);
+    } catch (e) {
+      onError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = () => {
+    void navigator.clipboard?.writeText(command).then(() => setCopied(true), () => undefined);
+  };
+
+  return (
+    <div className={`boarding-discord${joined ? " is-done" : ""}`}>
+      <span className="boarding-bonus-tag">{t("home.boarding.discord.tag", { bonus: DISCORD_BONUS })}</span>
+      <strong>{joined ? t("home.boarding.discord.done", { bonus: DISCORD_BONUS }) : t("home.boarding.discord.title", { bonus: DISCORD_BONUS })}</strong>
+      <span>{joined ? t("home.boarding.discord.doneBody") : t("home.boarding.discord.body")}</span>
+      {!joined && (
+        <span className="boarding-task-actions">
+          <a className="btn btn-small btn-discord" href={DISCORD} target="_blank" rel="noreferrer">
+            {t("home.boarding.discord.join")}&nbsp;↗
+          </a>
+          {code ? (
+            <button type="button" className="boarding-code boarding-command" onClick={copy} title={t("home.boarding.discord.copy")}>
+              {command}
+              <span className="boarding-command-hint">{copied ? t("home.boarding.discord.copied") : t("home.boarding.discord.copy")}</span>
+            </button>
+          ) : (
+            <button type="button" className="btn btn-small btn-paper" onClick={() => void ask()} disabled={busy} aria-busy={busy}>
+              {busy ? t("home.boarding.gettingCode") : t("home.boarding.discord.code")}
+            </button>
+          )}
+        </span>
+      )}
+      {code && !joined && <span className="boarding-fine">{t("home.boarding.discord.waiting")}</span>}
+    </div>
   );
 }
 

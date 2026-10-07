@@ -24,7 +24,7 @@ flowchart LR
 | `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats and the flea market (`market`, null until it is deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
 | `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
-| `src/standings.ts` | The duel ranking (`duelStandings`, `rosettePlace`, `ROSETTES`) and the mainnet allow list's points and claim message (`playerPoints`, `ALLOW_LIST_POINTS`, `allowListMessage`, `allowListAddress`, `byClaimRank`). Pure, exported as `@dno/chain-adapter/standings`, also used by the API, so every reader ranks the same way |
+| `src/standings.ts` | The duel ranking (`duelStandings`, `rosettePlace`, `ROSETTES`) and the mainnet allow list's points and claim message (`playerPoints`, `ALLOW_LIST_POINTS`, `allowListMessage`, `allowListAddress`, `byClaimRank`), and the boarding pass bonuses (`X_PASS_BONUS`, `DISCORD_BONUS`, `xPassWalletMessage`). Pure, exported as `@dno/chain-adapter/standings`, also used by the API, so every reader ranks the same way |
 | `src/mock/pool.ts` | `MockPool`: the mock's market, the same CROQ-only V3 range |
 | `src/solana/README.md` | What the Solana port needs |
 

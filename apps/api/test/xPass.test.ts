@@ -1,7 +1,7 @@
 import { Wallet } from "ethers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AllowList } from "../src/application/allowList";
-import { parseTweetUrl, SIGN_IN_TTL, X_PASS_BONUS, xPassBonuses, XPasses, xPassWalletMessage, type Tweet, type TweetLookup, type XSignIn } from "../src/application/xPass";
+import { DISCORD_BONUS, DISCORD_CODE_TTL, DISCORD_MIN_AGE, discordCreatedAt, parseTweetUrl, SIGN_IN_TTL, X_PASS_BONUS, xPassBonuses, XPasses, xPassWalletMessage, type Tweet, type TweetLookup, type XSignIn } from "../src/application/xPass";
 import { ethersVerifier, loginSecrets, passSecrets } from "../src/infrastructure/auth/crypto";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { OEmbedTweets, oEmbedText } from "../src/infrastructure/x/OEmbedTweets";
@@ -38,7 +38,7 @@ describe("X boarding passes", () => {
 
   it("hands out a token once, and keeps only its hash", async () => {
     const { token, pass } = await passes.start();
-    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), seated: false, handle: null, tweetUrl: null, followed: false, tasks: { follow: false, post: false, like: false, reply: false, repost: false }, address: null, bonus: 0 });
+    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), seated: false, handle: null, tweetUrl: null, followed: false, tasks: { follow: false, post: false, like: false, reply: false, repost: false }, address: null, discord: false, bonus: 0 });
     const [stored] = await store.xPasses();
     expect(stored!.id).toBe(passSecrets.hash(token));
     expect(JSON.stringify(stored)).not.toContain(token);
@@ -116,6 +116,80 @@ describe("X boarding passes", () => {
     const message = linkMessage(wallet.address, pass.code);
     await passes.linkWallet(token, wallet.address, message, await wallet.signMessage(message));
     expect(await list.status(wallet.address)).toMatchObject({ bonus: X_PASS_BONUS, points: X_PASS_BONUS, rank: null });
+  });
+});
+
+describe("boarding from Discord", () => {
+  const GUILD = "555";
+  /** A Discord user id (a snowflake) for an account made at `seconds`. */
+  const userMadeAt = (seconds: number) => String((BigInt(seconds * 1000) - 1_420_070_400_000n) << 22n);
+  let store: MemoryStore;
+  let tweets: FakeTweets;
+  let passes: XPasses;
+  let now: number;
+  let old: string;
+
+  beforeEach(() => {
+    store = new MemoryStore();
+    tweets = new FakeTweets();
+    now = 1_800_000_000;
+    old = userMadeAt(now - DISCORD_MIN_AGE - 1);
+    passes = new XPasses(store, tweets, passSecrets, ethersVerifier, { now: () => now }, null, null, { guildId: GUILD });
+  });
+
+  it("reads when an account was made from its id", () => {
+    expect(discordCreatedAt("175928847299117063")).toBeCloseTo(1_462_015_105.796, 2);
+  });
+
+  it("is off without a server", async () => {
+    const off = new XPasses(store, tweets, passSecrets, ethersVerifier, { now: () => now });
+    const { token } = await off.start();
+    expect(off.discordEnabled).toBe(false);
+    await expect(off.discordCode(token)).rejects.toMatchObject({ code: "discord-off" });
+    expect(await off.joinDiscord("DNO-AAAAAA", { userId: old, guildId: GUILD })).toBe("off");
+  });
+
+  it("ties the account that runs /board in the server to the pass, once per code", async () => {
+    const { token } = await passes.start();
+    const { code, expiresAt } = await passes.discordCode(token);
+    expect(expiresAt).toBe(now + DISCORD_CODE_TTL);
+    expect(await passes.joinDiscord(code, { userId: old, guildId: null })).toBe("wrong-server");
+    expect(await passes.joinDiscord(code, { userId: old, guildId: "666" })).toBe("wrong-server");
+    expect(await passes.joinDiscord(code, { userId: userMadeAt(now - 3_600), guildId: GUILD })).toBe("too-young");
+    expect(await passes.joinDiscord(` ${code.toLowerCase()} `, { userId: old, guildId: GUILD })).toBe("ok");
+    expect(await passes.status(token)).toMatchObject({ discord: true, bonus: 0 });
+    expect(await store.xPassByDiscordUser(old)).toMatchObject({ discordJoinedAt: now });
+    // The code is spent.
+    expect(await passes.joinDiscord(code, { userId: old, guildId: GUILD })).toBe("unknown-code");
+    expect(await passes.joinDiscord((await passes.discordCode(token)).code, { userId: old, guildId: GUILD })).toBe("already");
+  });
+
+  it("lets a code expire, and keeps only the newest code of a pass", async () => {
+    const { token } = await passes.start();
+    const first = await passes.discordCode(token);
+    const second = await passes.discordCode(token);
+    expect(await passes.joinDiscord(first.code, { userId: old, guildId: GUILD })).toBe("unknown-code");
+    now += DISCORD_CODE_TTL;
+    expect(await passes.joinDiscord(second.code, { userId: old, guildId: GUILD })).toBe("unknown-code");
+  });
+
+  it("moves an account to the newest pass it boards", async () => {
+    const a = await passes.start();
+    const b = await passes.start();
+    await passes.joinDiscord((await passes.discordCode(a.token)).code, { userId: old, guildId: GUILD });
+    await passes.joinDiscord((await passes.discordCode(b.token)).code, { userId: old, guildId: GUILD });
+    expect((await passes.status(a.token)).discord).toBe(false);
+    expect((await passes.status(b.token)).discord).toBe(true);
+  });
+
+  it("adds its bonus on top of the X one, on the linked wallet", async () => {
+    const wallet = Wallet.createRandom();
+    const { token, pass } = await passes.start();
+    await passes.joinDiscord((await passes.discordCode(token)).code, { userId: old, guildId: GUILD });
+    await passes.verifyTweet(token, tweets.post("cat", "9", pass.code));
+    const message = xPassWalletMessage(wallet.address, pass.code, new Date(now * 1000));
+    expect(await passes.linkWallet(token, wallet.address, message, await wallet.signMessage(message))).toMatchObject({ discord: true, bonus: X_PASS_BONUS + DISCORD_BONUS });
+    expect((await xPassBonuses(store)).get(wallet.address.toLowerCase() as never)).toBe(X_PASS_BONUS + DISCORD_BONUS);
   });
 });
 

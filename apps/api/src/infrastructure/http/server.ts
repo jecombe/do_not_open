@@ -351,6 +351,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       "sign-in-expired": 400,
       "sign-in-refused": 400,
       "list-full": 409,
+      "discord-off": 503,
     };
     const passToken = (req: FastifyRequest) => {
       const h = req.headers.authorization;
@@ -385,7 +386,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     };
     app.get("/v1/xpass/x", async (_req, reply) => {
       reply.header("cache-control", "public, max-age=60");
-      return { data: { signIn: passes.signInEnabled, announcement: xPasses.announcement ?? null } };
+      return { data: { signIn: passes.signInEnabled, announcement: xPasses.announcement ?? null, discord: passes.discordEnabled } };
     });
     app.post("/v1/xpass/x/start", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
       const body = z.object({ returnTo: z.string().url().max(500) }).parse(req.body);
@@ -413,6 +414,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const body = z.object({ url: z.string().min(1).max(300) }).parse(req.body);
       return passed(reply, () => passes.verifyTweet(passToken(req), body.url));
     });
+    // A one-time code for `/board` on Discord: the bot ties the account that runs it to this pass.
+    app.post("/v1/xpass/discord", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => passed(reply, () => passes.discordCode(passToken(req))));
     app.post("/v1/xpass/wallet", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
       const body = z.object({ address, message: z.string().min(1).max(1_000), signature: z.string().regex(/^0x[0-9a-fA-F]+$/) }).parse(req.body);
       return passed(reply, () => passes.linkWallet(passToken(req), body.address, body.message, body.signature));

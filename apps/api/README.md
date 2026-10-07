@@ -237,7 +237,7 @@ newest first, with `ALLOW_LIST_ADMIN_TOKEN` only.
 ### X boarding passes
 
 The home page's boarding pass (`src/application/xPass.ts`, `infrastructure/x/XOAuth.ts`,
-`infrastructure/x/OEmbedTweets.ts`, migrations 16 to 18). The player connects their X account
+`infrastructure/x/OEmbedTweets.ts`, migrations 16 to 18, and 22 for Discord). The player connects their X account
 with **Sign in with X** (OAuth 2.0, authorization code with PKCE, scopes `tweet.read users.read`:
 the API reads `users/me` once and keeps no X token). It needs `X_CLIENT_ID` and
 `X_CLIENT_SECRET` from an app on developer.x.com, whose callback is
@@ -250,17 +250,19 @@ as a bearer (`private, no-store`):
 | Route | What |
 | --- | --- |
 | `POST /v1/xpass` | A new pass: `{ token, pass }`. The token is shown once; the store keeps its sha256. 5 a minute per IP |
-| `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `tasks`, `address`, `bonus`. `401 no-pass` for an unknown token |
-| `GET /v1/xpass/x` | `{ signIn, announcement }`: whether Sign in with X is configured, and the announcement post's id (`X_ANNOUNCEMENT_ID`) |
+| `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `tasks`, `address`, `discord`, `bonus`. `401 no-pass` for an unknown token |
+| `GET /v1/xpass/x` | `{ signIn, announcement, discord }`: whether Sign in with X is configured, the announcement post's id (`X_ANNOUNCEMENT_ID`), and whether the Discord step is on |
 | `POST /v1/xpass/x/start` | `{ returnTo }` (one of `X_RETURN_ORIGINS`): `{ url }`, X's authorize page for this pass. `503 sign-in-off` without an X app |
 | `GET /v1/xpass/x/callback` | Where X sends the player: puts the account (handle and X user id) on the pass, then `303` to `returnTo?x=<ok\|sign-in-refused\|sign-in-expired\|x-down\|no-pass>#boarding`. An account already on an older pass moves to this one |
 | `POST /v1/xpass/follow` | Notes the declared follow (X's follows cannot be read for free) |
 | `POST /v1/xpass/task` | `{ task: "follow" \| "post" \| "like" \| "reply" \| "repost" }`: notes a declared task (migration 17); the pass shows them in `tasks`. 20 a minute per IP |
 | `POST /v1/xpass/tweet` | `{ url }`: `400 bad-tweet-url`, `404 tweet-not-found`, `400 code-missing`, `409 tweet-used`, `503 x-down`. An X account already on an older pass moves to this one, with its wallet and follow |
 | `POST /v1/xpass/wallet` | `{ address, message, signature }`, the message from `xPassWalletMessage` (`@dno/chain-adapter/standings`) naming the wallet and the code, signed by it: `409 connect-x-first`, `400 bad-message`, `401 bad-signature`, `409 address-taken` |
+| `POST /v1/xpass/discord` | `{ code, expiresAt }`: a one-time code for `/board` on Discord, good for 15 minutes (`DISCORD_CODE_TTL`), kept in the API process; a new one replaces the pass's last. `503 discord-off` without `DISCORD_GUILD_ID` and the Discord application |
 | `GET /v1/xpass/all?token=` | Every pass (no token hash), for the checks before mainnet. `ALLOW_LIST_ADMIN_TOKEN` |
 
-A wallet linked to a verified pass gets 5 points (`X_PASS_BONUS`) on the allow list.
+A wallet linked to a verified pass gets 5 points (`X_PASS_BONUS`) on the allow list, and 3 more
+(`DISCORD_BONUS`) once the pass's holder ran `/board` in the Discord server (see below).
 
 **On Galxe.** A Galxe quest checks a player's testnet play with a REST credential on this
 route, nothing to add on our side:
@@ -498,6 +500,15 @@ again after `ASK_COMMAND` changes, with `pnpm --filter @dno/api discord:commands
 needed by that script only, never by the API. It prints the link that adds the command to a
 server (scope `applications.commands`, no bot user needed).
 
+**`/board <code>`** ties a Discord account to a boarding pass, for 3 more allow list points.
+With `DISCORD_GUILD_ID` (the collection's server id) set as well, `POST /v1/xpass/discord` hands
+the page a one-time code and the clerk serves `/board` (registered with `/ask` by the same
+script). It counts only in that server (Discord signs the server id into the interaction), with
+an unspent code under 15 minutes old, from an account at least 30 days old (`DISCORD_MIN_AGE`,
+read from the user id); one Discord account per pass, moved by a newer boarding. Replies are
+ephemeral, in the player's Discord language: `ok`, `already`, `unknown-code`, `too-young`,
+`wrong-server`. Migration 22 adds `discord_user_id` (unique) and `discord_joined_at` to `x_passes`.
+
 ## The collection's Discord channel (the herald)
 
 A periodic task of the indexer (`application/herald.ts`) speaks for the collection in a Discord
@@ -555,6 +566,6 @@ Configuration is environment variables, all optional in development: see `src/co
 (`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
-`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
+`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
 `FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md).

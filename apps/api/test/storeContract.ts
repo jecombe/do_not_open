@@ -168,10 +168,10 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.allowListClaims()).toHaveLength(1);
     });
 
-    it("keeps X boarding passes, each code, handle, tweet and wallet on one pass only", async () => {
-      const p = { id: "h1", code: "DNO-AAAAAA", handle: null, xUserId: null, tweetId: null, tweetUrl: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, createdAt: 100, verifiedAt: null, updatedAt: 100 };
+    it("keeps X boarding passes, each code, handle, tweet, wallet and Discord account on one pass only", async () => {
+      const p = { id: "h1", code: "DNO-AAAAAA", handle: null, xUserId: null, tweetId: null, tweetUrl: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, createdAt: 100, verifiedAt: null, updatedAt: 100 };
       await store.saveXPass(p);
-      const verified = { ...p, handle: "cat", xUserId: "9001", postedAt: 109, tweetId: "42", tweetUrl: "https://x.com/cat/status/42", followedAt: 110, likedAt: 111, repliedAt: 112, repostedAt: 113, address: ALICE, verifiedAt: 120, updatedAt: 120 };
+      const verified = { ...p, handle: "cat", xUserId: "9001", postedAt: 109, tweetId: "42", tweetUrl: "https://x.com/cat/status/42", followedAt: 110, likedAt: 111, repliedAt: 112, repostedAt: 113, address: ALICE, discordUserId: "7007", discordJoinedAt: 115, verifiedAt: 120, updatedAt: 120 };
       await store.saveXPass(verified);
       expect(await store.xPassById("h1")).toEqual(verified);
       expect(await store.xPassByCode("DNO-AAAAAA")).toEqual(verified);
@@ -180,9 +180,12 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.xPassByXUser("9001")).toEqual(verified);
       expect(await store.xPassByAddress(ALICE)).toEqual(verified);
       expect(await store.xPassByAddress(BOB)).toBeNull();
+      expect(await store.xPassByDiscordUser("7007")).toEqual(verified);
+      expect(await store.xPassByDiscordUser("7008")).toBeNull();
       // Two passes without a handle yet are fine; two with the same handle are not.
       await store.saveXPass({ ...p, id: "h2", code: "DNO-BBBBBB", createdAt: 90 });
       await expect(store.saveXPass({ ...p, id: "h3", code: "DNO-CCCCCC", handle: "cat" })).rejects.toThrow();
+      await expect(store.saveXPass({ ...p, id: "h4", code: "DNO-DDDDDD", discordUserId: "7007" })).rejects.toThrow();
       expect((await store.xPasses()).map((x) => x.id)).toEqual(["h2", "h1"]);
       await store.deleteXPass("h1");
       expect(await store.xPassByHandle("cat")).toBeNull();
