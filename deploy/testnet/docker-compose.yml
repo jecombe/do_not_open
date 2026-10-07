@@ -29,7 +29,7 @@ services:
       # The live stack's Postgres, by its service name there.
       dno_internal: {}
       edge:
-        aliases: [${API_ALIAS:-dno-api-testnet}]
+        aliases: ["${API_ALIAS:-dno-api-testnet}"]
 
 networks:
   dno_internal:
