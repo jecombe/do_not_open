@@ -17,6 +17,8 @@ export const FREE_PER_DAY = 25;
 export const NEWCOMER_PER_DAY = 16;
 /** Units an encrypted input costs (RELAYER_INPUT_UNITS): Zama charges an input five times a decryption. */
 export const INPUT_UNITS = 5;
+/** Units a value made public costs the wallet that asks first (RELAYER_PUBLIC_UNITS). */
+export const PUBLIC_UNITS = 1;
 /** The ramp's fee on ETH, in percent. */
 export const RAMP_PCT = 0.3;
 
