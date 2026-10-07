@@ -242,7 +242,6 @@ export const homeEs: Record<HomeKey, string> = {
   "home.end.docs": "Leer el manual",
   "home.foot": "DO NOT OPEN funciona en una red de pruebas. Nada aquí vale dinero, solo curiosidad.",
   "home.foot.discord": "Discord",
-  "home.foot.source": "Código fuente",
   "home.nav.croq": "Croquetas",
   "home.croq.title": "Croquetas",
   "home.croq.bubble": "¿Crunch?",

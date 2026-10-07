@@ -7,7 +7,6 @@ export const docsEn = {
   "docs.homeAria": "DO NOT OPEN, home",
   "docs.site": "Site",
   "docs.back": "Back to the depot",
-  "docs.source": "Source",
   "docs.contents": "Contents",
   "docs.foot": "DO NOT OPEN runs on a testnet. Nothing here is worth money.",
 

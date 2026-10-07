@@ -8,7 +8,6 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.homeAria": "DO NOT OPEN, inicio",
   "docs.site": "Sitio",
   "docs.back": "Volver al depósito",
-  "docs.source": "Código fuente",
   "docs.contents": "Contenido",
   "docs.foot": "DO NOT OPEN funciona en una testnet. Nada de esto vale dinero.",
 
