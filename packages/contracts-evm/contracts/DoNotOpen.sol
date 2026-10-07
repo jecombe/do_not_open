@@ -2,12 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {FHE, ebool, eaddress, euint8, euint16, euint32, euint64, externalEuint8} from "@fhevm/solidity/lib/FHE.sol";
+import {Impl} from "@fhevm/solidity/lib/Impl.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984.sol";
 import {ConfidentialERC721} from "./confidential/ConfidentialERC721.sol";
 import {DoNotOpenConfig} from "./DoNotOpenConfig.sol";
+import {IShakeGuard} from "./IShakeGuard.sol";
 
 /// @title DO NOT OPEN
 /// @notice 10,000 sealed boxes. Each holds one encrypted 64-bit seed drawn at mint; the cat
@@ -200,11 +202,11 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
 
     /// @notice Shake results for someone who did not hold the box (or did not pay): no trait
     ///         sits at this offset, so the app can tell.
-    uint8 public constant NOT_YOURS = 255;
+    uint8 private constant NOT_YOURS = 255;
     /// @notice Boxes one `claimEarnings` may cover.
-    uint256 public constant MAX_CLAIM = 10;
+    uint256 private constant MAX_CLAIM = 10;
     /// @notice How long a proven duel stays on the shelf.
-    uint64 public constant DUEL_LIFETIME = 7 days;
+    uint64 private constant DUEL_LIFETIME = 7 days;
     /// @dev The least time between two withdrawals: the owner learns the revenue only in
     ///         sums this long, never mint by mint.
     uint64 private constant WITHDRAW_INTERVAL = 7 days;
@@ -256,6 +258,8 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     /// @dev When the revenue was last withdrawn (the deployment counts as one).
     uint64 private _lastWithdrawal;
 
+    /// @notice Passes every shake through the rats' shields and jams. Zero: none.
+    IShakeGuard public guard;
     mapping(address reader => bool) public trustedReader;
     mapping(uint256 tokenId => euint64) private _seed;
     mapping(uint256 tokenId => euint32) private _affection;
@@ -416,7 +420,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     ///         Anyone else gets `NOT_YOURS` and a zero.
     /// @dev Never touches the state roll: the five possible picks are the five trait bytes.
     function shake(uint256 tokenId) external onlySealed(tokenId) returns (euint8 pick, euint8 roll) {
-        (pick, roll) = _shakeFor(tokenId, msg.sender, _isOwner(tokenId, msg.sender));
+        (pick, roll) = _shakeFor(tokenId, msg.sender, _isOwner(tokenId, msg.sender), false);
         emit Shaken(tokenId, msg.sender, false);
     }
 
@@ -433,7 +437,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         _earnings[tokenId] = earnings;
         _addRevenue(FHE.sub(paid, share));
 
-        (pick, roll) = _shakeFor(tokenId, msg.sender, ok);
+        (pick, roll) = _shakeFor(tokenId, msg.sender, ok, true);
         emit Shaken(tokenId, msg.sender, true);
     }
 
@@ -472,11 +476,19 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     }
 
     /// @dev Both results are fresh ciphertexts; granting the viewer access to them says
-    ///      nothing about the seed they were cut from. Masked when `ok` is false.
-    function _shakeFor(uint256 tokenId, address viewer, ebool ok) internal returns (euint8 pick, euint8 roll) {
-        euint8 picked = _randomPick();
-        pick = FHE.select(ok, picked, FHE.asEuint8(NOT_YOURS));
-        roll = FHE.select(ok, _rollAt(tokenId, picked), FHE.asEuint8(0));
+    ///      nothing about the seed they were cut from. The guard, when set, may scramble them
+    ///      (a rat's shield or jam). Masked when `ok` is false.
+    function _shakeFor(uint256 tokenId, address viewer, ebool ok, bool paid) internal returns (euint8 pick, euint8 roll) {
+        pick = _randomPick();
+        roll = _rollAt(tokenId, pick);
+        IShakeGuard g = guard;
+        if (address(g) != address(0)) {
+            FHE.allowTransient(pick, address(g));
+            FHE.allowTransient(roll, address(g));
+            (pick, roll) = g.filter(tokenId, paid, pick, roll);
+        }
+        pick = FHE.select(ok, pick, FHE.asEuint8(NOT_YOURS));
+        roll = FHE.select(ok, roll, FHE.asEuint8(0));
         // The relayer requires the contract itself to be allowed on anything a user decrypts.
         FHE.allowThis(pick);
         FHE.allowThis(roll);
@@ -525,7 +537,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         bool withPartner = partner != 0 && status[partner - 1] == BoxStatus.Sealed;
         requestId = _newRequest(RequestKind.Open, tokenId, withPartner ? partner : 0);
         bytes32[] storage handles = _requestHandles[requestId];
-        handles.push(_publish(ok));
+        handles.push(_publish(FHE.toBytes32(ok)));
         uint8 fed = _pushContents(handles, ok, tokenId) ? 1 : 0;
         if (withPartner && _pushContents(handles, ok, partner - 1)) fed |= 2;
         _requests[requestId].fed = fed;
@@ -534,10 +546,10 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     /// @dev The seed, and the affection if the box was ever fed, masked by `ok`. An unfed box has
     ///      none: publishing a zero for it would put the same handle twice in one request.
     function _pushContents(bytes32[] storage handles, ebool ok, uint256 tokenId) internal returns (bool fed) {
-        handles.push(_publish(FHE.select(ok, _seed[tokenId], FHE.asEuint64(0))));
+        handles.push(_publish(FHE.toBytes32(FHE.select(ok, _seed[tokenId], FHE.asEuint64(0)))));
         euint32 affection = _affection[tokenId];
         fed = FHE.isInitialized(affection);
-        if (fed) handles.push(_publish(FHE.select(ok, affection, FHE.asEuint32(0))));
+        if (fed) handles.push(_publish(FHE.toBytes32(FHE.select(ok, affection, FHE.asEuint32(0)))));
     }
 
     function _reveal(uint256 tokenId, uint64 seed, uint32 affection, address openedBy) internal {
@@ -556,11 +568,6 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
             golden: golden
         });
         emit Observed(tokenId, openedBy, seed, state, score, golden);
-    }
-
-    /// @notice True once the box has been opened and its contents stored in the clear.
-    function revealed(uint256 tokenId) external view returns (bool) {
-        return status[tokenId] == BoxStatus.Revealed;
     }
 
     /// @notice Plaintext contents of an opened box. All zero while sealed.
@@ -583,13 +590,8 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         // The state roll is the low 16 bits of the seed; "alive" is the lowest range.
         ebool alive = FHE.and(holds, FHE.lt(FHE.asEuint16(_seed[tokenId]), _aliveBelow));
         requestId = _newRequest(RequestKind.AliveCheck, tokenId, 0);
-        _requestHandles[requestId].push(_publish(holds));
-        _requestHandles[requestId].push(_publish(alive));
-    }
-
-    /// @notice The "Vet Certified" badge: the box was proven alive while still sealed.
-    function vetCertified(uint256 tokenId) external view returns (bool) {
-        return aliveCheck[tokenId] == AliveCheck.Alive;
+        _requestHandles[requestId].push(_publish(FHE.toBytes32(holds)));
+        _requestHandles[requestId].push(_publish(FHE.toBytes32(alive)));
     }
 
     // -------------------------------------------------------------- entangle
@@ -610,7 +612,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         _checkEntangleable(tokenIdA, tokenIdB);
         ebool ok = FHE.and(_isOwner(tokenIdA, proposer), _isOwner(tokenIdB, msg.sender));
         requestId = _newRequest(RequestKind.Entangle, tokenIdA, tokenIdB + 1);
-        _requestHandles[requestId].push(_publish(ok));
+        _requestHandles[requestId].push(_publish(FHE.toBytes32(ok)));
     }
 
     function _checkEntangleable(uint256 tokenIdA, uint256 tokenIdB) internal view {
@@ -709,28 +711,12 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         emit RequestPlaced(requestId, tokenId, msg.sender, kind);
     }
 
-    function _publish(ebool value) internal returns (bytes32) {
-        FHE.allowThis(value);
-        FHE.makePubliclyDecryptable(value);
-        return FHE.toBytes32(value);
-    }
-
-    function _publish(euint64 value) internal returns (bytes32) {
-        FHE.allowThis(value);
-        FHE.makePubliclyDecryptable(value);
-        return FHE.toBytes32(value);
-    }
-
-    function _publish(euint8 value) internal returns (bytes32) {
-        FHE.allowThis(value);
-        FHE.makePubliclyDecryptable(value);
-        return FHE.toBytes32(value);
-    }
-
-    function _publish(euint32 value) internal returns (bytes32) {
-        FHE.allowThis(value);
-        FHE.makePubliclyDecryptable(value);
-        return FHE.toBytes32(value);
+    /// @dev One helper for every type: a handle is a handle. Published values are always
+    ///      initialized, computed just before.
+    function _publish(bytes32 handle) internal returns (bytes32) {
+        Impl.allow(handle, address(this));
+        Impl.makePubliclyDecryptable(handle);
+        return handle;
     }
 
     /// @notice One request. `handles` is what to pass, in this order, to the relayer's
@@ -768,7 +754,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         d.challenger = msg.sender;
         d.status = DuelStatus.Posted;
         d.posted = _isOwner(tokenIdA, msg.sender);
-        _publish(d.posted);
+        _publish(FHE.toBytes32(d.posted));
         emit DuelPosted(duelId, tokenIdA, tokenIdB, msg.sender, reserved);
     }
 
@@ -809,11 +795,11 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         d.aWins = FHE.and(valid, aWins);
         d.pick = FHE.select(valid, pick, zero);
         d.loserRoll = FHE.select(valid, loserRoll, zero);
-        _publish(aHolds);
-        _publish(valid);
-        _publish(d.aWins);
-        _publish(d.pick);
-        _publish(d.loserRoll);
+        _publish(FHE.toBytes32(aHolds));
+        _publish(FHE.toBytes32(valid));
+        _publish(FHE.toBytes32(d.aWins));
+        _publish(FHE.toBytes32(d.pick));
+        _publish(FHE.toBytes32(d.loserRoll));
         d.tokenB = uint32(tokenIdB);
         d.accepter = msg.sender;
         d.status = DuelStatus.Pending;
@@ -983,6 +969,10 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     /// @notice Lets `reader` ask `isOwner` about anyone: the collection's own game contracts.
     function setTrustedReader(address reader, bool trusted) external onlyOwner {
         trustedReader[reader] = trusted;
+    }
+
+    function setGuard(IShakeGuard guard_) external onlyOwner {
+        guard = guard_;
     }
 
     function setBaseURI(string calldata baseURI_) external onlyOwner {

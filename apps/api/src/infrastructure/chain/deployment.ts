@@ -29,6 +29,8 @@ export interface ProtocolDeployment {
   /** The depot's rats (ERC-721) and the pantry that pays them CROQ. Null where none was deployed. */
   rats: (Deployed & { deployBlock?: number | null }) | null;
   ratPantry: (Deployed & { deployBlock?: number | null }) | null;
+  /** The rats' tricks: sniffs, shields and jams. Null where none was deployed. */
+  ratTricks: (Deployed & { deployBlock?: number | null }) | null;
   /** The flea market, where players sell to each other in cUSDC: wallets' permits name it. Null where none was deployed. */
   fleaMarket: Deployed | null;
   /** Zama's contracts on this network, as the Relayer SDK's preset names them. */
@@ -57,10 +59,11 @@ const SEPOLIA_FHEVM: FhevmConfig = {
 
 type Optional = (Deployed & { deployBlock?: number | null }) | null | undefined;
 /** `dno:export` writes the studio, the rats, their pantry and the flea market next to the credits once they are deployed. */
-const EXTRA = SEPOLIA_DEPLOYMENT as Deployment & { studio?: Optional; rats?: Optional; ratPantry?: Optional };
+const EXTRA = SEPOLIA_DEPLOYMENT as Deployment & { studio?: Optional; rats?: Optional; ratPantry?: Optional; ratTricks?: Optional };
 const SEPOLIA_STUDIO = EXTRA.studio ?? null;
 const SEPOLIA_RATS = EXTRA.rats ?? null;
 const SEPOLIA_RAT_PANTRY = EXTRA.ratPantry ?? null;
+const SEPOLIA_RAT_TRICKS = EXTRA.ratTricks ?? null;
 const SEPOLIA_FLEA_MARKET = EXTRA.market ?? null;
 
 export function deploymentFor(network: string, overrides: { address?: string; startBlock?: number } = {}): ProtocolDeployment {
@@ -82,6 +85,7 @@ export function deploymentFor(network: string, overrides: { address?: string; st
       (own && SEPOLIA_STUDIO?.deployBlock) || Number.MAX_SAFE_INTEGER,
       (own && SEPOLIA_RATS?.deployBlock) || Number.MAX_SAFE_INTEGER,
       (own && SEPOLIA_RAT_PANTRY?.deployBlock) || Number.MAX_SAFE_INTEGER,
+      (own && SEPOLIA_RAT_TRICKS?.deployBlock) || Number.MAX_SAFE_INTEGER,
     ),
     pantry: own ? SEPOLIA_ECONOMY.pantry : null,
     croq: own ? SEPOLIA_ECONOMY.croq : null,
@@ -91,6 +95,7 @@ export function deploymentFor(network: string, overrides: { address?: string; st
     studio: own ? SEPOLIA_STUDIO : null,
     rats: own ? SEPOLIA_RATS : null,
     ratPantry: own ? SEPOLIA_RAT_PANTRY : null,
+    ratTricks: own ? SEPOLIA_RAT_TRICKS : null,
     fleaMarket: own ? SEPOLIA_FLEA_MARKET : null,
     fhevm: SEPOLIA_FHEVM,
     market: own ? SEPOLIA_ECONOMY.market : null,

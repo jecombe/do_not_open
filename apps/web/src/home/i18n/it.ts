@@ -78,7 +78,7 @@ export const homeIt: Record<HomeKey, string> = {
   "home.studio.ai.title": "Dalle tue parole.",
   "home.studio.ai.body": "Descrivi il tuo ratto: l'IA lo disegna, poi lo passa al 3D. Pacchetti da {price} USDC, pagati prima di disegnare.",
   "home.studio.next.title": "Adottalo.",
-  "home.studio.next.body": "Adotta il tuo ratto per {seed} USDC ({model} per un ratto IA): guadagna {perDay} crocchette al giorno e può annusare le scatole.",
+  "home.studio.next.body": "Adotta il tuo ratto per {seed} USDC ({model} per un ratto IA): guadagna {perDay} crocchette al giorno, annusa le scatole e nasconde un potere segreto per proteggere le tue o disturbare quelle degli altri.",
   "home.studio.cta": "Apri lo studio",
   "home.studio.left.title": "Ratti ancora da adottare",
   "home.studio.left.aria": "Ratti ancora da adottare, per tipo",

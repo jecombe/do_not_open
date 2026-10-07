@@ -35,6 +35,8 @@ const config: HardhatUserConfig = {
       accounts: sepoliaAccounts,
       chainId: 11155111,
       url: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
+      // Sepolia's fees are far below the wallets' defaults: SEPOLIA_GAS_PRICE (wei) pins them.
+      ...(process.env.SEPOLIA_GAS_PRICE ? { gasPrice: Number(process.env.SEPOLIA_GAS_PRICE) } : {}),
     },
   },
   paths: { artifacts: "./artifacts", cache: "./cache", sources: "./contracts", tests: "./test" },

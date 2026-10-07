@@ -1,3 +1,4 @@
+import { ratParamsFromSpec } from "../lib/ratParams";
 import { FhevmType } from "@fhevm/hardhat-plugin";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
@@ -5,6 +6,8 @@ import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
 import { marketParamsFromSpec } from "../lib/marketParams";
 import { DoNotOpen, DoNotOpenHooks, FleaMarket, Rats, TestConfidentialUSDC, TestUSDC } from "../types";
+
+const RAT_POWERS = ratParamsFromSpec().powerBelow;
 import {
   REQUEST,
   STARTING_CUSDC,
@@ -122,7 +125,7 @@ describe("FleaMarket", function () {
     ({ dno, usdc, cUsdc } = await deploy({ maxSupply: 100 }));
     hooks = (await (await ethers.getContractFactory("DoNotOpenHooks")).deploy(await dno.getAddress())) as unknown as DoNotOpenHooks;
     rats = (await (await ethers.getContractFactory("Rats")).deploy(
-      await usdc.getAddress(), deployer.address, deployer.address, deployer.address, usd("1"), usd("3"), "https://api.test/rats/", 100, 100, 50, 100,
+      await usdc.getAddress(), deployer.address, deployer.address, deployer.address, usd("1"), usd("3"), "https://api.test/rats/", [100, 100, 50, 100], RAT_POWERS,
     )) as unknown as Rats;
     market = (await (await ethers.getContractFactory("FleaMarket")).deploy(
       await dno.getAddress(), await hooks.getAddress(), await rats.getAddress(), await cUsdc.getAddress(), treasury.address, deployer.address, FEE_BPS,

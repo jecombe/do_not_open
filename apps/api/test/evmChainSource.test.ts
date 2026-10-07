@@ -154,7 +154,7 @@ describe("EvmChainSource", () => {
     const source = new EvmChainSource(new RpcPool({ urls: ["https://n"], rps: 100, maxLogRange: 100, fetch }), d, silentLogger);
     expect(await source.read(1, 50)).toMatchObject({ to: 50, events: [] });
     const [filter, acl] = filters;
-    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : []), ...(d.studio ? [d.studio.address] : []), ...(d.rats ? [d.rats.address] : []), ...(d.ratPantry ? [d.ratPantry.address] : [])].map((a) => a.toLowerCase()));
+    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : []), ...(d.studio ? [d.studio.address] : []), ...(d.rats ? [d.rats.address] : []), ...(d.ratPantry ? [d.ratPantry.address] : []), ...(d.ratTricks ? [d.ratTricks.address] : [])].map((a) => a.toLowerCase()));
     const decryptionProof = collection.getEvent("PublicDecryptionVerified")!.topicHash;
     expect(filter!.topics[0]).not.toContain(decryptionProof);
     for (const name of ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened"]) expect(filter!.topics[0]).toContain(collection.getEvent(name)!.topicHash);

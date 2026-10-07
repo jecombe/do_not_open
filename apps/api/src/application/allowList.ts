@@ -171,8 +171,18 @@ export class AllowList {
     return facts;
   }
 
+  /** The live deployment's facts, plus those carried over from earlier testnet deployments. */
   private async loadFacts(): Promise<PublicFacts> {
-    const [duels, opened, minters] = await Promise.all([this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS }), this.store.openedBoxes(), this.store.minters()]);
-    return { duels: settledDuels(duels), openers: opened.flatMap((b) => (b.openedBy ? [b.openedBy] : [])), minters };
+    const [duels, opened, minters, carried] = await Promise.all([
+      this.store.duels({ statuses: ["resolved"], limit: ALL_DUELS }),
+      this.store.openedBoxes(),
+      this.store.minters(),
+      this.store.carriedFacts(),
+    ]);
+    return {
+      duels: [...carried.duels, ...settledDuels(duels)],
+      openers: [...carried.openers, ...opened.flatMap((b) => (b.openedBy ? [b.openedBy] : []))],
+      minters: [...new Set([...carried.minters, ...minters])],
+    };
   }
 }

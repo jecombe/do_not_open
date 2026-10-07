@@ -253,6 +253,9 @@ export type ChainErrorCode =
   | "unpaid"
   /** The caller did not hold the box. Nothing happened, and nobody else learned it. */
   | "not-yours"
+  /** The holder's shake came back scrambled: someone's rat jams that trait of the box for a few
+   *  days. Only the holder learns it. */
+  | "scrambled"
   /** The flea market sold the item to someone else first, or the listing changed (repriced,
    *  cancelled, its box opened): the payment came back in full. */
   | "missed"
@@ -470,6 +473,29 @@ export interface RatInfo {
   modelUrl: string | null;
   /** Boxes its owner sniffed (paid shakes), as the API counts them. 0 when unknown. */
   sniffs: number;
+}
+
+/** A rat's secret power, drawn encrypted at its mint: 1 sniffs cheaper, 2 blocks one trait of a
+ *  box, 3 all five. Only its holder reads it. */
+export type RatPower = 1 | 2 | 3;
+
+/** The rats' tricks: what a sniff costs and gives back, how long a trick lasts and rests. */
+export interface RatTricksInfo {
+  /** A sniff's price, cUSDC smallest unit: the paid shake's. */
+  sniffFee: bigint;
+  /** What a power-1 rat gets back, from the treasury. */
+  sniffRebate: bigint;
+  /** How long a trick holds, in seconds. */
+  trickSeconds: number;
+  /** How long the rat rests after it, in seconds. */
+  rechargeSeconds: number;
+}
+
+/** A trick played: when it ends and when the rat can play again, unix seconds. Whether it
+ *  shielded, jammed or bluffed stays encrypted. */
+export interface RatTrickPlayed {
+  until: number;
+  readyAt: number;
 }
 
 /** What adopting a rat costs, in plain USDC, smallest unit. */
@@ -718,7 +744,8 @@ export interface ChainAdapter {
   /** Announces the next sale milestone if the sold count reached it. Anyone may. Returns
    *  whether one was announced. */
   announceMilestone(opts?: ActionOptions): Promise<boolean>;
-  /** Holder only, free. One random trait, readable by the caller alone. Throws `not-yours`. */
+  /** Holder only, free. One random trait, readable by the caller alone. Throws `not-yours`, or
+   *  `scrambled` when a rat jams the trait it picked. */
   shake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll>;
   /** Anyone, paid; the holder's share waits in the box. Same result, same privacy. Throws
    *  `unpaid` when the cUSDC did not cover the fee. */
@@ -880,6 +907,22 @@ export interface ChainAdapter {
   claimRatCroq(ids: number[], opts?: ActionOptions): Promise<bigint>;
   /** One rat, whoever holds it (the flea market, while it is for sale). */
   rat(id: number): Promise<RatInfo>;
+  /** The rats' tricks. Null where none are deployed. */
+  ratTricks(): Promise<RatTricksInfo | null>;
+  /** Decrypts the connected account's rat's power. A rat bought from someone asks the wallet
+   *  once for the right to read it. Throws `reverted` (`NotYourRat`) for someone else's rat. */
+  ratPower(id: number, opts?: ActionOptions): Promise<RatPower>;
+  /** When each rat can play a trick again, unix seconds, in the order of `ids`. 0: ready now. */
+  ratReadyAt(ids: number[]): Promise<number[]>;
+  /** The connected account's rat sniffs `tokenId`: a paid shake at `sniffFee` cUSDC, readable
+   *  by the caller alone; a power-1 rat gets `sniffRebate` back. Throws `unpaid`. A box a rat
+   *  shields reads a fake for its blocked traits, the same every time. */
+  sniffWithRat(ratId: number, tokenId: number, opts?: PayOptions): Promise<TraitRoll>;
+  /** Sets the connected account's rat on sealed box `tokenId`. On a box the caller holds it
+   *  shields it from strangers' shakes; on another's it jams the holder's own. `traitIndex` is
+   *  the trait a power-2 rat blocks, sent encrypted. Throws `reverted` (`Recharging`,
+   *  `NotYourRat`, `NotSealed`). */
+  playTrick(ratId: number, tokenId: number, traitIndex: number, opts?: ActionOptions): Promise<RatTrickPlayed>;
 
   // --- flea market ---
   // Everything is paid in cUSDC. The asking price is public; a secret offer's amount is

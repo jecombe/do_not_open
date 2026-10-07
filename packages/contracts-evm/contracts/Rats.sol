@@ -8,6 +8,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {FHE, euint8, euint16} from "@fhevm/solidity/lib/FHE.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /// @title The depot's rats
 /// @notice Rats drawn in the studio, adopted as a plain ERC-721: nothing about a rat is secret,
@@ -20,7 +22,12 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 ///         rats: every rat earns croquettes from the RatPantry, which holds a fixed fund. The
 ///         whitelist's gifts (`giver`) adopt free seed rats for their wallets, outside the paid
 ///         rats' cap and the wallet limit, at most `maxGiftRats` of them.
-contract Rats is ERC721, Ownable, EIP712 {
+///
+///         The one secret: each rat's power, 1, 2 or 3, drawn encrypted at its mint with the
+///         spec's odds. Its holder reads it (`allowPower` after a sale; the seller keeps reading
+///         it, an access is never taken back). The rats' tricks (`RatTricks`) use it, encrypted:
+///         1 sniffs boxes cheaper, 2 shields or jams one trait of a box, 3 all of them.
+contract Rats is ERC721, Ownable, EIP712, ZamaEthereumConfig {
     using SafeERC20 for IERC20;
 
     enum Kind {
@@ -60,6 +67,12 @@ contract Rats is ERC721, Ownable, EIP712 {
     /// @notice The whitelist's gifts contract, the only one that adopts rats for free. Zero: none.
     address public giver;
     mapping(address account => uint256) public mintedBy;
+    /// @notice The rats' tricks, the only contract that computes with the powers. Zero: none.
+    address public tricks;
+    /// @dev A 16-bit draw below the first bound is power 1, below the second power 2, else 3.
+    uint16 private immutable _power1Below;
+    uint16 private immutable _power2Below;
+    mapping(uint256 tokenId => euint8) private _power;
 
     mapping(uint256 tokenId => Rat) private _rats;
     /// @notice The rat minted from a seed or a job, or 0. Token ids start at 1.
@@ -79,6 +92,9 @@ contract Rats is ERC721, Ownable, EIP712 {
     error WalletLimit();
     error ZeroCap();
     error NotGiver();
+    error NotTricks();
+    error NotYourRat();
+    error BadOdds();
 
     event RatMinted(uint256 indexed tokenId, address indexed minter, Kind kind, bytes32 ref, string uri, uint256 paid);
     event PricesSet(uint256 seedPrice, uint256 modelPrice);
@@ -86,6 +102,7 @@ contract Rats is ERC721, Ownable, EIP712 {
     event AttesterSet(address attester);
     event BaseURISet(string baseURI);
     event GiverSet(address giver);
+    event TricksSet(address tricks);
 
     constructor(
         IERC20 usdc_,
@@ -95,21 +112,23 @@ contract Rats is ERC721, Ownable, EIP712 {
         uint256 seedPrice_,
         uint256 modelPrice_,
         string memory baseURI_,
-        uint256 maxSeedRats_,
-        uint256 maxModelRats_,
-        uint256 maxPerWallet_,
-        uint256 maxGiftRats_
+        uint256[4] memory caps_,
+        uint16[2] memory powerBelow_
     ) ERC721("DO NOT OPEN Rats", "DNORAT") Ownable(owner_) EIP712("DO NOT OPEN Rats", "1") {
         usdc = usdc_;
         _setTreasury(treasury_);
         _setAttester(attester_);
         _setPrices(seedPrice_, modelPrice_);
         _base = baseURI_;
-        if (maxSeedRats_ == 0 || maxModelRats_ == 0 || maxPerWallet_ == 0) revert ZeroCap();
-        maxSeedRats = maxSeedRats_;
-        maxModelRats = maxModelRats_;
-        maxPerWallet = maxPerWallet_;
-        maxGiftRats = maxGiftRats_;
+        // maxSeedRats, maxModelRats, maxPerWallet, maxGiftRats.
+        if (caps_[0] == 0 || caps_[1] == 0 || caps_[2] == 0) revert ZeroCap();
+        maxSeedRats = caps_[0];
+        maxModelRats = caps_[1];
+        maxPerWallet = caps_[2];
+        maxGiftRats = caps_[3];
+        if (powerBelow_[0] == 0 || powerBelow_[1] < powerBelow_[0]) revert BadOdds();
+        _power1Below = powerBelow_[0];
+        _power2Below = powerBelow_[1];
     }
 
     /// @notice Adopts the free rat of `seed`, at most `maxPrice` USDC. The caller must have
@@ -144,8 +163,35 @@ contract Rats is ERC721, Ownable, EIP712 {
         tokenId = ++totalSupply;
         tokenOfSeed[seed] = tokenId;
         _rats[tokenId] = Rat(Kind.Seed, uint64(block.timestamp), bytes32(uint256(seed)));
+        _drawPower(tokenId, to);
         _mint(to, tokenId);
         emit RatMinted(tokenId, to, Kind.Seed, bytes32(uint256(seed)), "", 0);
+    }
+
+    /// @notice Handle of the rat's encrypted power. Its holder decrypts it once allowed.
+    function powerOf(uint256 tokenId) external view returns (bytes32) {
+        _requireOwned(tokenId);
+        return FHE.toBytes32(_power[tokenId]);
+    }
+
+    /// @notice Lets the rat's holder read its power, after buying it.
+    function allowPower(uint256 tokenId) external {
+        if (ownerOf(tokenId) != msg.sender) revert NotYourRat();
+        FHE.allow(_power[tokenId], msg.sender);
+    }
+
+    /// @notice Whether `account` may decrypt the rat's power: its minter, and whoever called
+    ///         `allowPower` while holding it.
+    function powerReadableBy(uint256 tokenId, address account) external view returns (bool) {
+        return FHE.isAllowed(_power[tokenId], account);
+    }
+
+    /// @notice The power, for the tricks' computation in this transaction only.
+    function powerFor(uint256 tokenId) external returns (euint8 power) {
+        if (msg.sender != tricks || tricks == address(0)) revert NotTricks();
+        _requireOwned(tokenId);
+        power = _power[tokenId];
+        FHE.allowTransient(power, msg.sender);
     }
 
     function ratOf(uint256 tokenId) external view returns (Rat memory) {
@@ -181,6 +227,11 @@ contract Rats is ERC721, Ownable, EIP712 {
         emit GiverSet(giver_);
     }
 
+    function setTricks(address tricks_) external onlyOwner {
+        tricks = tricks_;
+        emit TricksSet(tricks_);
+    }
+
     function setBaseURI(string calldata baseURI_) external onlyOwner {
         _base = baseURI_;
         emit BaseURISet(baseURI_);
@@ -190,10 +241,21 @@ contract Rats is ERC721, Ownable, EIP712 {
         if (price > maxPrice) revert PriceChanged();
         if (++mintedBy[msg.sender] > maxPerWallet) revert WalletLimit();
         _rats[tokenId] = Rat(kind, uint64(block.timestamp), ref);
+        _drawPower(tokenId, msg.sender);
         usdc.safeTransferFrom(msg.sender, treasury, price);
         // _mint, not _safeMint: no call into the receiver, so nothing can re-enter.
         _mint(msg.sender, tokenId);
         emit RatMinted(tokenId, msg.sender, kind, ref, uri, price);
+    }
+
+    /// @dev One encrypted 16-bit draw folded into 1, 2 or 3 with the spec's odds. Nobody can
+    ///      predict or grind it: it is drawn under encryption, after the payment is decided.
+    function _drawPower(uint256 tokenId, address holder) private {
+        euint16 draw = FHE.randEuint16();
+        euint8 power = FHE.select(FHE.lt(draw, _power1Below), FHE.asEuint8(1), FHE.select(FHE.lt(draw, _power2Below), FHE.asEuint8(2), FHE.asEuint8(3)));
+        FHE.allowThis(power);
+        FHE.allow(power, holder);
+        _power[tokenId] = power;
     }
 
     function _setPrices(uint256 seedPrice_, uint256 modelPrice_) private {

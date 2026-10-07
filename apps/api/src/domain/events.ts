@@ -2,7 +2,7 @@ import type { RatKind } from "./rats";
 import type { Address, ChainRef, DuelStatus, RequestKind, RequestStatus, RevealedContents, WeighIn } from "./types";
 
 /** Which deployed contract emitted an event. */
-export type Source = "collection" | "pantry" | "ramp" | "credits" | "studio" | "rats" | "ratPantry" | "acl";
+export type Source = "collection" | "pantry" | "ramp" | "credits" | "studio" | "rats" | "ratPantry" | "ratTricks" | "acl";
 
 type Ev<N extends string, B> = ChainRef & { source: Source; name: N } & B;
 
@@ -40,6 +40,10 @@ export type ProtocolEvent =
   /** The rats' ERC-721 Transfer, the mint included (from the zero address). */
   | Ev<"RatTransfer", { ratId: number; from: Address; to: Address }>
   | Ev<"RatsFed", { owner: Address; ratIds: number[]; amount: string }>
+  /** RatTricks: a rat sniffed a box for its holder, a paid shake only the sniffer reads. */
+  | Ev<"RatSniffed", { ratId: number; tokenId: number; sniffer: Address }>
+  /** RatTricks: a rat was set on a box until `until` (seconds), resting until `readyAt`. Shield, jam or bluff is encrypted. */
+  | Ev<"RatTrick", { ratId: number; tokenId: number; player: Address; until: number; readyAt: number }>
   /** Zama's ACL: one of the protocol's contracts made these handles publicly decryptable. */
   | Ev<"PubliclyDecryptable", { caller: Address; handles: string[] }>;
 
@@ -156,6 +160,10 @@ export function actorsOf(e: ProtocolEvent): Address[] {
       return [e.minter];
     case "RatsFed":
       return [e.owner];
+    case "RatSniffed":
+      return [e.sniffer];
+    case "RatTrick":
+      return [e.player];
     default:
       return [];
   }

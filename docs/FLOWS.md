@@ -173,6 +173,11 @@ The app lists whole windows of ten ids (`claimWindows`), never the held boxes al
 The event says a shake happened. It does not say which trait, nor whether the caller
 held the box.
 
+Every shake, free or paid, also passes through the collection's guard, `RatTricks`, before
+anything is allowed to the caller: a rat may have shielded the box (paid shakes read a fake)
+or jammed it (the holder's shakes read `SCRAMBLED`). See
+[The rats' tricks](#the-rats-tricks-sniff-shield-jam).
+
 ## Feed
 
 ```mermaid
@@ -835,15 +840,110 @@ sequenceDiagram
   App->>API: GET /v1/rats?owner=…: "My rats"
 ```
 
-### The rats' croquettes, and sniffing
+### The rats' croquettes
 
 Each rat earns 3 plain CROQ a day from its mint, paid by the `RatPantry` to whoever owns it,
 at most 7 days kept between two claims ("Collect croquettes" claims every rat at once). The
 pantry gets 500,000 CROQ from the treasury by a plain transfer and has no owner; while it is
-empty a claim reverts, so no day is lost, and when it runs low a claim pays what is left. A rat sniffs a box through the paid shake that
-already exists: its owner pays 2.5 cUSDC, sees one trait of a sealed box privately, and the
-box's hidden holder gets 70%. The API counts the paid shakes of each rat's owner as the rat's
-"boxes sniffed".
+empty a claim reverts, so no day is lost, and when it runs low a claim pays what is left.
+
+### The rats' tricks: sniff, shield, jam
+
+Every rat draws a secret power when it is minted (paid or gifted): `Rats` folds one encrypted
+16-bit draw into 1, 2 or 3 with `studio.json`'s odds (55%, 30%, 15%) and allows it to the
+minter. A buyer asks for it once with `allowPower` (the seller keeps reading it: an ACL grant is
+never taken back). What the powers do lives in `RatTricks`:
+
+| Power | Sniff | Trick |
+| --- | --- | --- |
+| 1, keen nose | 30% of the price back, encrypted | nothing: a bluff |
+| 2, trait jammer | full price | blocks the one trait its holder picked (sent encrypted) |
+| 3, total jammer | full price | blocks all five traits |
+
+```mermaid
+flowchart TD
+  T["trick(rat, box, encrypted trait)"] --> R{rat resting?}
+  R -- yes --> X[revert Recharging]
+  R -- no --> E["effect = power 3: all traits, power 2: the picked trait, power 1: none (encrypted)"]
+  E --> H{"caller holds the box? (encrypted)"}
+  H -- yes --> S["SHIELD for 3 days: strangers' paid shakes and sniffs read a fake roll"]
+  H -- no --> F{"box fully shielded?"}
+  F -- yes --> N[nothing]
+  F -- no --> J["JAM for 3 days: the holder's own shakes read SCRAMBLED"]
+  S --> Z[rat rests 7 more days]
+  J --> Z
+  N --> Z
+```
+
+The chain only shows `TrickPlayed(rat, box, player, until, readyAt)`. Shield, jam or bluff, the
+power and the trait are all decided by `select`s on ciphertexts: both slots (shield and jam) are
+rewritten on every trick, and their end times are encrypted too, so even which slot changed
+does not show.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as Rat holder
+  participant App
+  participant T as RatTricks
+  participant R as Rats
+  participant C as DoNotOpen
+  U->>App: Set it on box N (trait picked)
+  App->>App: encrypt the trait for RatTricks and the wallet
+  App->>T: trick(ratId, N, trait, inputProof)
+  T->>R: ownerOf(ratId) == caller, then powerFor(ratId) (allowed for this tx only)
+  T->>C: isOwner(N, caller) (RatTricks is a trusted reader)
+  T->>T: effect, shield and jam slots rewritten under encryption
+  T-->>App: TrickPlayed(ratId, N, caller, until, readyAt)
+```
+
+A sniff is a paid shake made by `RatTricks` for the rat's holder:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as Rat holder
+  participant App
+  participant T as RatTricks
+  participant C as DoNotOpen
+  participant G as Treasury cUSDC
+  U->>App: Sniff box N
+  App->>T: sniff(ratId, N) (RatTricks is the caller's cUSDC operator)
+  T->>T: pull 2.5 cUSDC from the caller (all or nothing)
+  T->>C: paidShake(N): pulls 2.5 from RatTricks, 70% waits in the box for its holder
+  C->>T: filter(N, paid, pick, roll): a shield swaps the roll for its fake
+  C-->>T: pick, roll (allowed to RatTricks)
+  T->>T: allow the caller on pick and roll, keep as lastSniff
+  T->>G: confidentialTransferFrom(treasury, caller, power == 1 and paid ? 0.75 : 0)
+  T-->>App: Sniffed(ratId, N, caller)
+  App->>App: userDecrypt(lastSniff) with the collection's permit
+```
+
+`RatTricks` holds no cUSDC at rest, so an unpaid sniff leaves nothing for `DoNotOpen` to pull:
+the shake reads `NOT_YOURS` and the treasury pays no rebate. The rebate is skipped altogether
+while the treasury has not made `RatTricks` its cUSDC operator.
+
+How a shake comes out of the guard:
+
+```mermaid
+flowchart LR
+  P["pick, roll (from the seed)"] --> K{paid?}
+  K -- "yes: a stranger, or a sniff" --> SH{"shield active and covers pick?"}
+  SH -- yes --> FK["roll = the shield's fake for that trait (same every time)"]
+  SH -- no --> OUT[as drawn]
+  K -- "no: the holder's free shake" --> JM{"jam active and covers pick?"}
+  JM -- yes --> SC["pick = SCRAMBLED (254), roll = 0"]
+  JM -- no --> OUT
+  FK --> M[masked by holds / paid, allowed to the caller]
+  SC --> M
+  OUT --> M
+```
+
+The app shows a scrambled shake as the `scrambled` problem ("someone's rat is jamming this
+trait"): only the holder learns it. A holder who pays to shake their own shielded box reads the
+fakes like anyone. Duels are not touched: the trait a loser shows is drawn inside `acceptDuel`,
+not through the guard. The API counts `Sniffed` as a sniff of its sniffer (the `Shaken` of a
+sniff names `RatTricks`).
 
 ## The flea market
 
@@ -858,7 +958,7 @@ back. Two more participants:
 Before a first sale the seller lets the market move the item: `setOperator(market, until)`
 on the boxes (the adapter asks for 365 days) or `setApprovalForAll(market, true)` on the rats.
 A buyer makes the market their cUSDC operator, as for any payment. The adapter sends these
-when they are missing. The market is on Sepolia at `0xb5c799bF626e70DcE6804BDef06199661cDc8665`; the API does not index it,
+when they are missing. The market is on Sepolia at `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` (since 2026-10-07; before it `0xb5c799bF626e70DcE6804BDef06199661cDc8665`); the API does not index it,
 so the adapter reads listings (`listings(from, count)`) and offers (`offerInfo`) from the chain.
 
 ### List a box
@@ -1018,7 +1118,7 @@ inside a sealed box.
 | Fee | Paid in | Goes to |
 | --- | --- | --- |
 | Mint (5 a box), open (1, once the box opens), pet (0.5) | cUSDC | `DoNotOpen`, withdrawn by the owner at most once a week; nobody can read the total before |
-| Paid shake (2.5) | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen`; all of it to `DoNotOpen` for an empty id |
+| Paid shake (2.5), or a rat's sniff | cUSDC | 70% waits in the box for its holder (`claimEarnings`), 30% to `DoNotOpen`; all of it to `DoNotOpen` for an empty id. A power-1 rat's sniff gets 0.75 back from the treasury's cUSDC (`RatTricks`' rebater), encrypted |
 | Decryption credits (0.01 each on Sepolia; on mainnet Zama's dollar price for a decryption x 2) | plain USDC | the treasury address set in `DecryptionCredits`, at once |
 | Studio packs (Starter 2, Litter 8) | plain USDC | the treasury address set in `StudioPacks`, at once; the AI services are paid from it |
 | Adopting a rat (1 a free rat, 3 an AI rat) | plain USDC | the treasury address set in `Rats`, at once; Arweave storage of AI rats is paid from it |
@@ -1032,6 +1132,7 @@ flowchart LR
   P -- "paid shake" --> S{split}
   S -- 70% --> H[Box holder]
   S -- 30% --> T
+  T -. "power-1 sniff rebate, 0.75" .-> P
   P -- "credits, plain USDC" --> T
   P -- "studio packs, plain USDC" --> T
   P -- "ramp, 0.3% of ETH" --> T
@@ -1140,7 +1241,7 @@ sequenceDiagram
     alt never claimed
       Pa->>Pa: due = 100, lastPurr = now, WelcomeBag(tokenId)
     else whole days owed (at most 7)
-      Pa->>B: vetCertified(tokenId)
+      Pa->>B: aliveCheck(tokenId) (1: vet certified)
       Pa->>Co: due = randEuint8() mod 5, x days, x 2 if certified, >> halvings
     end
     Pa->>B: isOwner(tokenId, address(0)) (trusted reader)

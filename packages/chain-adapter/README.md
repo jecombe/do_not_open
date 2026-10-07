@@ -9,7 +9,7 @@ flowchart LR
   iface --> mock["MockAdapter<br/>in memory"]
   iface --> evm["EvmFhevmAdapter<br/>ethers + Relayer SDK"]
   iface -.-> sol["solana/<br/>not started"]
-  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC,<br/>Rats, FleaMarket on Sepolia"]
+  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC,<br/>Rats, RatTricks, FleaMarket on Sepolia"]
   evm --> market["Uniswap V3: CROQ/USDC<br/>QuoterV2, SwapRouter02"]
   evm --> relayer["Zama relayer + KMS"]
 ```
@@ -42,10 +42,11 @@ const { traitIndex, roll } = await chain.shake(tokenId, { onStep: console.log })
 
 Every action takes `onStep` and reports its steps, in order, from `encrypting`, `wallet`,
 `confirming`, `decrypting`, `proving`. Failures are `ChainError` with a chain-neutral
-`code`, and for contract refusals the contract's error name in `reason`. Two codes come
+`code`, and for contract refusals the contract's error name in `reason`. Three codes come
 from encrypted checks rather than reverts: `unpaid` (the cUSDC did not cover the price,
-or the mint would pass the cap; nothing was taken) and `not-yours` (the caller did not
-hold the box; nothing happened, and nobody else learned it). The others are `rejected`,
+or the mint would pass the cap; nothing was taken), `not-yours` (the caller did not
+hold the box; nothing happened, and nobody else learned it) and `scrambled` (the holder's
+shake hit a trait someone's rat jams). The others are `rejected`,
 `wallet-busy` (the wallet already shows a request), `wrong-network`, `insufficient-funds`
 (the gas coin), `insufficient-usdc`, `nonce` (an earlier transaction in the way), `network`
 (an endpoint or the decryption service did not answer), `decryption`, `reverted`,
@@ -187,11 +188,24 @@ the same rules with its clock (a "day" is a minute) and, given `ratStore`, keeps
 pages: the web app passes one backed by `localStorage`, so a rat adopted in the studio is still
 there in the game.
 
+Each rat has a secret power (1, 2 or 3) and `RatTricks` (the deployment's `ratTricks`, the EVM
+adapter's `ratTricks` option) plays with it. `ratTricks()` reads `{ sniffFee, sniffRebate,
+trickSeconds, rechargeSeconds }`, null where none is deployed. `ratPower(id)` user-decrypts the
+connected account's rat's power; for a rat it bought (`powerReadableBy` false) it first sends
+`allowPower`, one transaction. `ratReadyAt(ids)` reads when each rat can play again (unix
+seconds, 0 when ready). `sniffWithRat(ratId, tokenId, { pay })` makes `RatTricks` its cUSDC
+operator if needed, sniffs and decrypts the trait (`lastSniff`, the collection's handles); it
+throws `unpaid` like `paidShake`. `playTrick(ratId, tokenId, traitIndex)` encrypts the trait for
+`RatTricks` and returns `{ until, readyAt }` from `TrickPlayed`; it throws `reverted` with
+`Recharging`, `NotYourRat` or `NotSealed`. A holder's `shake` of a jammed trait throws
+`scrambled`. The mock draws powers with `mockRatPower(id)` (the spec's odds, from the id) and
+keeps shields and jams in memory, its days a minute long.
+
 ## The flea market
 
 `FleaMarket` sells boxes, cats and rats between players, in cUSDC. `fleaMarket()` reads its
 terms (`address`, `explorerUrl`, `feeBps`, `maxPrice`), null where no market is deployed: the
-app then shows "Closed tonight". On Sepolia at `0xb5c799bF626e70DcE6804BDef06199661cDc8665`; the EVM adapter takes it as its
+app then shows "Closed tonight". On Sepolia at `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` (since 2026-10-07); the EVM adapter takes it as its
 `market` option (`sepolia.json`'s `market` entry in `createSepoliaBrowserAdapter` and
 `createSepoliaNodeAdapter`). `rat(id)` reads one rat whoever holds it (the market, while it is for
 sale).
@@ -298,9 +312,13 @@ boxes and reading a mint's result use the same user decryption as a shake.
 pnpm --filter @dno/chain-adapter test            # the mock and the V3 math, no network
 pnpm --filter @dno/chain-adapter smoke:sepolia   # every mechanic on the deployed contracts
 pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap, unwrap, transfer, sell
+pnpm --filter @dno/chain-adapter smoke:rats      # a rat's power, a sniff, a shield, a rest, a jam on a second wallet
 ```
 
 The smoke scripts spend testnet ETH (mints, fees, a small market buy) and need
 `PRIVATE_KEY` in the repo-root `.env`. `smoke:croq` passed against the Uniswap V2 economy
 on 2026-10-01. Both passed in full against the contracts deployed on 2026-10-03 (block
-11836238), and a box sent there with three decoys left the sender's holdings.
+11836238), and a box sent there with three decoys left the sender's holdings. `smoke:rats`
+passed against the contracts of 2026-10-07: a power read, a sniff, a shield, `Recharging` on a
+resting rat, and a power-2 jam scrambling half of a throwaway wallet's shakes (it sends that
+wallet 0.003 ETH).

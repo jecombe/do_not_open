@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (!croqDeployment) throw new Error("no Croq deployment on this network: deploy the economy first");
   const p = ratParamsFromSpec();
 
-  const rats = await deploy("Rats", { from: deployer, args: [usdc, treasury, owner, attester, p.seedPrice, p.modelPrice, baseURI, p.maxSeedRats, p.maxModelRats, p.maxPerWallet, p.maxGiftRats], log: true });
+  const rats = await deploy("Rats", { from: deployer, args: [usdc, treasury, owner, attester, p.seedPrice, p.modelPrice, baseURI, [p.maxSeedRats, p.maxModelRats, p.maxPerWallet, p.maxGiftRats], p.powerBelow], log: true });
   const pantry = await deploy("RatPantry", { from: deployer, args: [croqDeployment.address, rats.address, p.perDay, p.maxDays], log: true });
 
   // Fund the pantry up to the spec's amount, from the deployer or the treasury's key.

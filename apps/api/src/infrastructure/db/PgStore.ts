@@ -402,6 +402,19 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
     return rows.map((r) => r.buyer as Address);
   }
 
+  async carriedFacts() {
+    const [duels, openers, minters] = await Promise.all([
+      this.pool.query("select token_a, token_b, challenger, accepter, winner, loser from carried_duels"),
+      this.pool.query("select address from carried_openers"),
+      this.pool.query("select address from carried_minters order by address"),
+    ]);
+    return {
+      duels: duels.rows.map((r) => ({ tokenA: r.token_a as number, tokenB: r.token_b as number, challenger: r.challenger as Address, accepter: r.accepter as Address, winner: r.winner as number, loser: r.loser as number })),
+      openers: openers.rows.map((r) => r.address as Address),
+      minters: minters.rows.map((r) => r.address as Address),
+    };
+  }
+
   async openedBoxes() {
     const { rows } = await this.pool.query("select * from boxes where status = 'revealed' order by token_id");
     return rows.map(boxFrom);

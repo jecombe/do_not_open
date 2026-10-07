@@ -276,6 +276,10 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(await store.meterOf(BOB, day)).toEqual({ freeUsed: 8, spent: 5, bought: 0 });
     });
 
+    it("starts with no facts carried from an earlier deployment", async () => {
+      expect(await store.carriedFacts()).toEqual({ duels: [], openers: [], minters: [] });
+    });
+
     it("folds the rats and the sniffs as read models, and keeps the adoptions across replays", async () => {
       const rat = { id: 1, kind: "seed" as const, ref: "42", uri: null, owner: ALICE, minter: ALICE, mintedBlock: 10, mintedAt: 1_000, gift: false };
       await store.transaction(async (tx) => {

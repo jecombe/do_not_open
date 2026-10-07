@@ -88,6 +88,26 @@ describe("allow list", () => {
     expect(await list.status(ALICE)).toMatchObject({ points: 8, live: { points: 0 }, rank: 1 });
   });
 
+  it("carries an earlier deployment's facts: points and seats survive a redeploy, opponents counted once", async () => {
+    const fresh = await indexed(...duel(0, 101, { token: 5, who: ALICE }, { token: 6, who: BOB }, 5));
+    // What migration 21 kept of the old index: Alice beat Bob and Carol, Bob opened a box, Carol minted.
+    fresh.carried = {
+      duels: [
+        { tokenA: 0, tokenB: 1, challenger: ALICE, accepter: BOB, winner: 0, loser: 1 },
+        { tokenA: 2, tokenB: 0, challenger: CAROL, accepter: ALICE, winner: 0, loser: 2 },
+      ],
+      openers: [BOB],
+      minters: [CAROL],
+    };
+    const list = new AllowList(fresh, verifier, { now: () => now }, 2);
+    // Bob beaten again on the new collection is still one opponent.
+    expect((await list.status(ALICE)).live).toEqual({ points: 3 * 2 + 2, beaten: 2, faced: 2, opened: 0 });
+    expect((await list.status(BOB)).live).toMatchObject({ faced: 1, opened: 1 });
+    // Carol only minted before the redeploy: she still played, so her claim is seated.
+    await claim(list, CAROL);
+    expect(await list.status(CAROL)).toMatchObject({ seated: true });
+  });
+
   it("gives the gift tiers to the seated claimants only, in rank order", async () => {
     const DAVE = "0x000000000000000000000000000000000000da7e";
     const list = new AllowList(store, verifier, { now: () => now }, null);

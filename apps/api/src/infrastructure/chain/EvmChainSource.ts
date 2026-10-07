@@ -26,6 +26,7 @@ const INDEXED: Record<Source, string[]> = {
   studio: ["PackBought"],
   rats: ["RatMinted", "Transfer"],
   ratPantry: ["RatsFed"],
+  ratTricks: ["Sniffed", "TrickPlayed"],
   acl: ["AllowedForDecryption"],
 };
 
@@ -85,6 +86,7 @@ export class EvmChainSource implements ChainSource {
       ...(d.studio ? [{ source: "studio" as const, address: d.studio.address, iface: new Interface(d.studio.abi) }] : []),
       ...(d.rats ? [{ source: "rats" as const, address: d.rats.address, iface: new Interface(d.rats.abi) }] : []),
       ...(d.ratPantry ? [{ source: "ratPantry" as const, address: d.ratPantry.address, iface: new Interface(d.ratPantry.abi) }] : []),
+      ...(d.ratTricks ? [{ source: "ratTricks" as const, address: d.ratTricks.address, iface: new Interface(d.ratTricks.abi) }] : []),
     ].map((c) => ({ ...c, address: c.address.toLowerCase() }));
     this.topics = this.contracts.flatMap((c) => INDEXED[c.source].map((name) => c.iface.getEvent(name)!.topicHash));
     this.aclFilter = aclFilterFor(d);
@@ -342,6 +344,10 @@ function toBody(name: string, a: Result): Record<string, unknown> | null {
       return { name: "RatTransfer", ratId: num(a.tokenId), from: addr(a.from), to: addr(a.to) };
     case "RatsFed":
       return { name, owner: addr(a.owner), ratIds: [...a.ids].map(num), amount: String(a.amount) };
+    case "Sniffed":
+      return { name: "RatSniffed", ratId: num(a.ratId), tokenId: num(a.tokenId), sniffer: addr(a.sniffer) };
+    case "TrickPlayed":
+      return { name: "RatTrick", ratId: num(a.ratId), tokenId: num(a.tokenId), player: addr(a.player), until: num(a.until), readyAt: num(a.readyAt) };
     case "AllowedForDecryption":
       return { name: "PubliclyDecryptable", caller: addr(a.caller), handles: [...a.handlesList].map((h: string) => String(h).toLowerCase()) };
     default:

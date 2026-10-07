@@ -1,9 +1,12 @@
+import { ratParamsFromSpec } from "../lib/ratParams";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import type { ContractTransactionResponse } from "ethers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { ethers, fhevm } from "hardhat";
 import { whitelistParamsFromSpec } from "../lib/specParams";
+
+const RAT_POWERS = ratParamsFromSpec().powerBelow;
 import {
   deploy,
   deployEconomy,
@@ -88,7 +91,7 @@ describe("Costs", function () {
     // The flea market: a box listed by alice, bought by carol; a rat sold to a secret offer.
     const hooks = await (await ethers.getContractFactory("DoNotOpenHooks")).deploy(address);
     const rats = await (await ethers.getContractFactory("Rats")).deploy(
-      await usdc.getAddress(), alice.address, alice.address, alice.address, 1_000_000, 3_000_000, "", 10, 10, 5, 10,
+      await usdc.getAddress(), alice.address, alice.address, alice.address, 1_000_000, 3_000_000, "", [10, 10, 5, 10], RAT_POWERS,
     );
     const market = await (await ethers.getContractFactory("FleaMarket")).deploy(
       address, await hooks.getAddress(), await rats.getAddress(), await cUsdc.getAddress(), alice.address, alice.address, 250,
@@ -130,6 +133,30 @@ describe("Costs", function () {
     const box = await fhevm.createEncryptedInput(address, giftsAddress).add8(1).encrypt();
     await measure("WhitelistGifts.claim (first class)", gifts.connect(bob).claim(0, tree.getProof(0), box.handles[0]!, box.inputProof, 77n));
     await measure("WhitelistGifts.claim (economy)", gifts.connect(carol).claim(2, tree.getProof(1), ethers.ZeroHash, "0x", 78n));
+
+    // The rats' tricks: a shield, a jam, a sniff with its rebate, and shakes through the guard.
+    const tricks = await (await ethers.getContractFactory("RatTricks")).deploy(
+      address, await rats.getAddress(), await cUsdc.getAddress(), await dno.config(), 750_000, 3 * 86_400, 7 * 86_400, alice.address, alice.address,
+    );
+    const tricksAddress = await tricks.getAddress();
+    await (await dno.setGuard(tricksAddress)).wait();
+    await (await dno.setTrustedReader(tricksAddress, true)).wait();
+    await (await rats.connect(alice).setTricks(tricksAddress)).wait();
+    for (const who of [alice, bob, carol]) await (await cUsdc.connect(who).setOperator(tricksAddress, nextYear)).wait();
+    await (await usdc.mint(carol.address, 2_000_000)).wait();
+    await (await usdc.connect(carol).approve(await rats.getAddress(), 2_000_000)).wait();
+    await (await rats.connect(carol).mintSeed(91, 1_000_000)).wait();
+    await (await rats.connect(carol).mintSeed(92, 1_000_000)).wait();
+    const ratOf = async (seed: number) => rats.tokenOfSeed(seed);
+    const trick = async (label: string, rat: bigint, tokenId: number) => {
+      const input = await fhevm.createEncryptedInput(tricksAddress, carol.address).add8(1).encrypt();
+      return measure(label, tricks.connect(carol).trick(rat, tokenId, input.handles[0]!, input.inputProof));
+    };
+    await trick("RatTricks.trick (first on a box)", await ratOf(91), B[2]!);
+    await trick("RatTricks.trick (box already tricked)", await ratOf(92), B[2]!);
+    await measure("RatTricks.sniff (rebate)", tricks.connect(carol).sniff(await ratOf(91), B[2]!));
+    await measure("shake (holder, through the guard)", dno.connect(bob).shake(B[2]!));
+    await measure("paidShake (through the guard)", dno.connect(alice).paidShake(B[2]!));
 
     console.table(rows);
   });

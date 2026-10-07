@@ -162,6 +162,30 @@ one id. The usual advice holds: send it on with decoys, or to a fresh address, t
 doubt back. The rat is public anyway. The croquettes drawn are an encrypted cCROQ transfer:
 allowed to the wallet and the gifts contract only, never published.
 
+## 5d. The rats' powers and tricks
+
+A rat stays a public NFT, but its power (1, 2 or 3) is encrypted in `Rats`: its minter can read
+it, a buyer asks once (`allowPower`), and a seller keeps reading it, since an ACL grant is never
+taken back. `RatTricks` uses it without ever publishing it.
+
+A **trick** puts a rat on a box. Whether it shields (the caller holds the box) or jams (they do
+not) is decided with `isOwner`, under encryption: `RatTricks` is one of the collection's trusted
+readers, and the answer is allowed to the caller alone. Both effect slots are rewritten on every
+trick and their end times are encrypted, so `TrickPlayed` reads the same for a shield, a jam or
+a power-1 bluff. **A trick says nothing about who holds the box**, as a stranger's shake says
+nothing.
+
+What a trick does leak: the jammed holder sees `SCRAMBLED` and learns their box is jammed (not
+by whom: many rats may sit on it); and a sniffer who reads a shielded trait, then reads it again
+once the shield is over, sees it changed. A **sniff** is a paid shake made by `RatTricks`: the
+`Shaken` event names `RatTricks`, its own `Sniffed` names the rat and the sniffer, as a paid
+shake names its caller. The power-1 rebate is an encrypted cUSDC transfer from the treasury,
+made on every sniff (0 for the other rats), so the rebate does not show which rats are cheap.
+
+The guard is trusted: the owner sets it (`setGuard`) and it sees every shake's handles,
+transiently. A malicious guard could falsify shakes; it cannot read them (it has no decryption
+right). See O34 in [AUDIT_CHECKLIST.md](AUDIT_CHECKLIST.md).
+
 ## 6. What still leaks
 
 | Fact | Visible to everyone |
@@ -177,7 +201,8 @@ allowed to the wallet and the gifts contract only, never published.
 | Operator approvals | that an account made an address its operator |
 | Signing the terms of play (off-chain, filed by the API) | that an address signed the terms: address, version, signature, time. Nothing about holdings |
 | A flea market listing or sale (`FleaMarket`) | the seller of an active listing (so it held the box), the asking price, the buyer of a sale (now a proven holder), and for each purchase at the asking price whether the buyer could pay. Not the amount of a secret offer, nor the price of a sale by offer |
-| An adopted rat (`Rats`, plain ERC-721) | who owns it and every transfer, as for any NFT, and the CROQ its owner claims from the `RatPantry`. A rat says nothing about boxes, but an owner who also sniffs boxes ties those paid shakes to the address that owns the rat (the paid shake already names its caller) |
+| An adopted rat (`Rats`, ERC-721) | who owns it and every transfer, as for any NFT, and the CROQ its owner claims from the `RatPantry`. Not its power. A rat says nothing about boxes, but an owner who also sniffs boxes ties those sniffs to the address that owns the rat (`Sniffed` names the sniffer, as a paid shake names its caller) |
+| A rat's trick (`RatTricks.trick`) | the rat, the box, the player, until when and when the rat is ready again. Not whether it shielded, jammed or bluffed, nor the power or the trait. The jammed holder learns of the jam |
 | A studio pack (`StudioPacks.buy`, plain USDC) | the payer, the account and the pack. The studio never touches the boxes, so it says nothing about holdings; the API also sees the prompts and pictures of the account that signed in, and sends the prompts to the AI services |
 | The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
 | Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
@@ -217,8 +242,8 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | mint, 10 boxes among 10 ids | 2,560,000 | 3,316,000 |
 | `confidentialTransfer` | 184,000 | 200,000 |
 | `confidentialTransferIf`, each decoy or the real one | 278,000 | 225,000 |
-| `shake` | 421,000 | 899,000 |
-| `paidShake` | 896,000 | 2,171,000 |
+| `shake` (no guard set / through `RatTricks`, a tricked box) | 424,000 / 554,000 | 899,000 / 1,415,000 |
+| `paidShake` (no guard set / through `RatTricks`, a tricked box) | 899,000 / 1,014,000 | 2,171,000 / 2,842,000 |
 | `claimEarnings`, 1 box | 419,000 | 1,082,000 |
 | `feed` | 502,000 | 1,071,000 |
 | `proveAlive` + `finalize` | 314,000 + 126,000 | 200,000 |
@@ -233,8 +258,10 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | `FleaMarket.buy` + `finalizePurchase` (box) | 546,000 + 855,000 | 2,078,000 |
 | `FleaMarket.makeOffer` | 543,000 | 736,000 |
 | `FleaMarket.acceptOffer` (rat) | 677,000 | 2,414,000 |
-| `WhitelistGifts.claim`, first class (croquettes, box, rat) | 1,692,000 | 3,407,000 |
-| `WhitelistGifts.claim`, economy (croquettes, rat) | 586,000 | 1,322,000 |
+| `WhitelistGifts.claim`, first class (croquettes, box, rat and its power) | 1,847,000 | 3,656,000 |
+| `WhitelistGifts.claim`, economy (croquettes, rat and its power) | 741,000 | 1,571,000 |
+| `RatTricks.trick` | 881,000 to 1,063,000 | 2,245,000 to 2,270,000 |
+| `RatTricks.sniff` (a tricked box, power-1 rebate) | 1,789,000 | 4,269,000 |
 | `FleaMarket.list` (rat) | 139,000 | 0 |
 
 Every transaction stays well under the protocol limits (20M HCU, 5M depth); a full 10-box
@@ -243,6 +270,6 @@ at 1 gwei and 3,000 USD per ETH, 1,000,000 gas is 3 USD. On Ethereum mainnet a h
 a few dollars; on the cheaper chains Zama supports it is cents. Zama's protocol fees
 (input proofs, decryptions) come on top on mainnet.
 
-`DoNotOpen` is 24,512 bytes deployed, 64 under the 24,576 limit, compiled alone with the
+`DoNotOpen` is 24,553 bytes deployed, 23 under the 24,576 limit, compiled alone with the
 optimizer at 1 run (size over gas; the other contracts stay at 200). The next feature should
 move logic out (a library, or a second contract that is a trusted reader).

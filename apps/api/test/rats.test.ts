@@ -12,7 +12,7 @@ import type { ImageShrinker, ServiceFiles } from "../src/application/ports/rats"
 import { project } from "../src/application/projector";
 import { Queries } from "../src/application/queries";
 import { RatRefused, Rats, type RatsConfig } from "../src/application/rats";
-import { emptySnapshots } from "../src/domain/events";
+import { actorsOf, emptySnapshots, tokensOf } from "../src/domain/events";
 import type { StudioJob } from "../src/domain/studio";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
 import { buildServer } from "../src/infrastructure/http/server";
@@ -106,6 +106,19 @@ describe("rats in the index", () => {
       ev("Shaken", 12, { tokenId: 4, viewer: BOB, paid: true }),
     ]);
     expect((await rats.list(ALICE))[0]!.sniffs).toBe(1);
+  });
+
+  it("counts a rat's sniff through RatTricks for the sniffer, and keeps its tricks as plain activity", async () => {
+    const { store, rats } = setup();
+    await fold(store, [
+      ev("RatTransfer", 10, { ratId: 1, from: ZERO, to: ALICE }),
+      ev("RatMinted", 10, { ratId: 1, minter: ALICE, kind: "seed", ref: "5", uri: "", paid: "1000000" }, { logIndex: 1 }),
+      ev("RatSniffed", 11, { ratId: 1, tokenId: 3, sniffer: ALICE }),
+      ev("RatTrick", 12, { ratId: 1, tokenId: 3, player: ALICE, until: 1_000, readyAt: 2_000 }),
+    ]);
+    expect((await rats.list(ALICE))[0]!.sniffs).toBe(1);
+    expect(actorsOf(ev("RatTrick", 12, { ratId: 1, tokenId: 3, player: ALICE, until: 1_000, readyAt: 2_000 }))).toEqual([ALICE]);
+    expect(tokensOf(ev("RatTrick", 12, { ratId: 1, tokenId: 3, player: ALICE, until: 1_000, readyAt: 2_000 }))).toEqual([3]);
   });
 
   it("describes a seed rat from its seed, and draws it", async () => {

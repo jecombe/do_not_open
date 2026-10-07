@@ -38,6 +38,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing on mainnet, filed by the API (`POST /v1/terms`); on Sepolia a notice says what a redeployment keeps instead | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
 | Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
+| Rat powers | Each rat draws a secret power at its mint (1 cheaper sniffs, 2 blocks one trait, 3 all five); a rat set on a box for 3 days shields it from strangers or jams its holder, decided under encryption (`RatTricks`, the collection's shake guard) | **Done** on the mock and in the tests, not yet deployed on Sepolia |
 | Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Done** on the mock and in the tests, not yet deployed on Sepolia |
 | Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 15) | **Done** |
 | Boarding page | `/apply`: a boarding gate in 3D (boxes on a baggage belt, a cat at the desk, a rat on the tarmac), Sign in with X, five quick tasks on X (declared), the mainnet list's points and a wallet bonus; linked from the home page's "Apply" button (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
@@ -50,7 +51,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, FleaMarket"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
   api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
@@ -191,7 +192,15 @@ seed) or 3 USDC (an AI rat: the API stores its picture on Arweave like a cat's a
 adopted rat earns 3 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ sent from the
 treasury with a plain transfer, at most 7 days kept between two claims; while it is empty a
 claim waits rather than losing the days) and sniffs boxes for its
-owner through the paid shake. "My rats" in the game lists them. There will only ever be 700
+owner through the paid shake. "My rats" in the game lists them.
+
+Each rat also gets a secret power when it is minted, which only its holder can read: 1 (keen
+nose: 30% of a sniff's price comes back, in secret), 2 (blocks one trait you pick) or 3 (blocks
+all five). A rat can be set on a sealed box for 3 days, then rests 7. On your own box it
+protects it: whoever shakes or sniffs it reads a fake for the blocked traits. On someone else's
+box it attacks it: its holder's shakes of those traits come back scrambled. The contract
+decides which under encryption, so nobody can tell a shield from an attack, a rat's power, or
+the trait (`RatTricks`, see [`docs/FLOWS.md`](docs/FLOWS.md#the-rats-tricks-sniff-shield-jam)). There will only ever be 700
 free rats and 300 AI rats, and one wallet mints 5 at most: every rat is paid from the same
 fixed fund, so the supply is capped in the contract, and the home page and the studio count
 the rats left.
@@ -219,39 +228,67 @@ are in [`docs/FLOWS.md`](docs/FLOWS.md#the-flea-market).
 
 ## On Sepolia
 
-The current contracts, deployed on 2026-10-03 (block 11836238) with the security review's
-fixes, decoy transfers and a fresh croquette economy. The deployer
-`0x6a18cFC3fAeef453B295B12246d40a82593b3208` owns every contract and is the treasury:
+The current contracts, deployed on 2026-10-07 (block 11862300 to 11862351) for the rats'
+powers and tricks: a new `DoNotOpen` (its shakes pass through `RatTricks`), its `Pantry` and a
+fresh croquette economy (new CROQ, pool and locker: the old Pantry's reserve could not be moved),
+new `Rats` and `RatPantry`, the flea market, `RatTricks` and `WhitelistGifts`, and the credits,
+studio packs and USDC ramp again. The deployer `0x590891F269720001435004A1089cAB5b2c20029A` owns
+every contract and is the treasury and the rebater of power-1 sniffs (until 2026-10-07 the
+owner was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`):
 
 | Contract | Address |
 | --- | --- |
-| `DoNotOpen` (Confidential ERC-721, 10,000 boxes) | [`0x816a39b04e0672B4746A5B696E14145F4F852d37`](https://sepolia.etherscan.io/address/0x816a39b04e0672B4746A5B696E14145F4F852d37) |
-| `DoNotOpenConfig` | [`0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D`](https://sepolia.etherscan.io/address/0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D) |
-| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x2861240671f6a46522297427FE2BF59F2f9C1074`](https://sepolia.etherscan.io/address/0x2861240671f6a46522297427FE2BF59F2f9C1074) |
-| `Croq` (CROQ) | [`0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308`](https://sepolia.etherscan.io/address/0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308) |
-| `ConfidentialCroq` (cCROQ) | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
-| `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
-| `LiquidityLocker` (holds position #233138 for good) | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
-| CROQ/USDC pool, Uniswap V3, 1% fee | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes, every shake through `RatTricks`) | [`0x7b246695614Cc49A500bC8057345181689c82d52`](https://sepolia.etherscan.io/address/0x7b246695614Cc49A500bC8057345181689c82d52) |
+| `DoNotOpenConfig` | [`0xf6589be5E6F9dE6174cdBD9C0Ef182079a2bC7F8`](https://sepolia.etherscan.io/address/0xf6589be5E6F9dE6174cdBD9C0Ef182079a2bC7F8) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x194585DD7B1e009694D760618C76c1ee48e37798`](https://sepolia.etherscan.io/address/0x194585DD7B1e009694D760618C76c1ee48e37798) |
+| `Croq` (CROQ) | [`0x176f24a7ab07210E8306C4331104BC9a0d145a53`](https://sepolia.etherscan.io/address/0x176f24a7ab07210E8306C4331104BC9a0d145a53) |
+| `ConfidentialCroq` (cCROQ) | [`0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964`](https://sepolia.etherscan.io/address/0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964) |
+| `Pantry` | [`0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F`](https://sepolia.etherscan.io/address/0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F) |
+| `LiquidityLocker` (holds position #233286 for good) | [`0x13B2636a1De5Ad3922aF6D499a290e8911F4e772`](https://sepolia.etherscan.io/address/0x13B2636a1De5Ad3922aF6D499a290e8911F4e772) |
+| CROQ/USDC pool, Uniswap V3, 1% fee | [`0xC2EA76E3c3107512A229936FfbD91cD297D40847`](https://sepolia.etherscan.io/address/0xC2EA76E3c3107512A229936FfbD91cD297D40847) |
 | USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
 | cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
-| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
-| `DecryptionCredits` (0.01 USDC a credit) | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
-| `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
-| `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat) | [`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264`](https://sepolia.etherscan.io/address/0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264) |
-| `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
-| `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xb5c799bF626e70DcE6804BDef06199661cDc8665`](https://sepolia.etherscan.io/address/0xb5c799bF626e70DcE6804BDef06199661cDc8665) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x02382AC8a24462FD830753Ca7e49E12486A65638`](https://sepolia.etherscan.io/address/0x02382AC8a24462FD830753Ca7e49E12486A65638) |
+| `DecryptionCredits` (0.01 USDC a credit) | [`0x1d1848a72Ffd06e71161537472BFD6D903616511`](https://sepolia.etherscan.io/address/0x1d1848a72Ffd06e71161537472BFD6D903616511) |
+| `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6`](https://sepolia.etherscan.io/address/0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6) |
+| `Rats` (ERC-721: 1 USDC a free rat, 3 an AI rat, each with an encrypted power) | [`0x441F9fe3B8333515Bc7B295E06C14948057b2cF6`](https://sepolia.etherscan.io/address/0x441F9fe3B8333515Bc7B295E06C14948057b2cF6) |
+| `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450`](https://sepolia.etherscan.io/address/0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450) |
+| `RatTricks` (sniffs, shields and jams; DoNotOpen's guard) | [`0x44B2006E63Af469e5470eD5Fc2A6307117d22d0D`](https://sepolia.etherscan.io/address/0x44B2006E63Af469e5470eD5Fc2A6307117d22d0D) |
+| `WhitelistGifts` (the whitelist's gifts, root not set yet) | [`0xD244389bF81C38803c94957a1e6B5694eEeA678b`](https://sepolia.etherscan.io/address/0xD244389bF81C38803c94957a1e6B5694eEeA678b) |
+| `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1`](https://sepolia.etherscan.io/address/0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1) |
 
-`FleaMarket` was added next to the live collection on 2026-10-05 (block 11849253) with
-`pnpm --filter @dno/contracts-evm exec hardhat deploy --network sepolia --tags Market`, then
-`pnpm --filter @dno/contracts-evm export:sepolia`.
+Deployed with `SEPOLIA_GAS_PRICE=20000000 pnpm --filter @dno/contracts-evm exec hardhat deploy
+--network sepolia --maxfee 300000000 --priorityfee 2000000`, then `export:sepolia`. The API's
+migration 21 carries the allow list's points and seats over and rebuilds the index.
+`smoke:rats` passed against it: a power read, a sniff, a shield, a rat resting, and a jam
+scrambling its victim's shakes; a bought power-1 rat read its power and sniffed for 1.75 cUSDC.
 
 CROQ trades through Uniswap's own V3 contracts on Sepolia: `SwapRouter02`
 `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`, `QuoterV2`
 `0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3`, `NonfungiblePositionManager`
-`0x1238536071E1c677A632429e3655c799b22cDA52`. The adapter's market calls (a sale
-quoted at 0 before any buy, a buy, a sale back) were run against this deployment.
-`smoke:sepolia`, `smoke:croq` and a box sent with three decoys all passed against it.
+`0x1238536071E1c677A632429e3655c799b22cDA52`.
+
+The contracts of 2026-10-03 (block 11836238), with the security review's fixes and decoy
+transfers, replaced. Owned by `0x6a18cFC3fAeef453B295B12246d40a82593b3208`; `Rats` and
+`RatPantry` were added 2026-10-05, `FleaMarket` the same day (block 11849253). `smoke:sepolia`,
+`smoke:croq` and a box sent with three decoys passed against them:
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` | [`0x816a39b04e0672B4746A5B696E14145F4F852d37`](https://sepolia.etherscan.io/address/0x816a39b04e0672B4746A5B696E14145F4F852d37) |
+| `DoNotOpenConfig` | [`0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D`](https://sepolia.etherscan.io/address/0xf4589d1d91Df3a0A98E7C6E79f6CaFCdbdc8203D) |
+| `DoNotOpenHooks` | [`0x2861240671f6a46522297427FE2BF59F2f9C1074`](https://sepolia.etherscan.io/address/0x2861240671f6a46522297427FE2BF59F2f9C1074) |
+| `Croq` | [`0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308`](https://sepolia.etherscan.io/address/0x142ADF07aEcdd0D1c915bBCa574B1A9EBDd91308) |
+| `ConfidentialCroq` | [`0x358E932457A2F19B20BF49264875E94432941D81`](https://sepolia.etherscan.io/address/0x358E932457A2F19B20BF49264875E94432941D81) |
+| `Pantry` | [`0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d`](https://sepolia.etherscan.io/address/0x7Df443562BD787A56b1026aD91cFa0A8E91E7d9d) |
+| `LiquidityLocker` (position #233138) | [`0x85b827d5F40C15F0842F48C830B956cf8C5Da108`](https://sepolia.etherscan.io/address/0x85b827d5F40C15F0842F48C830B956cf8C5Da108) |
+| `CroqUsdcPool` | [`0xc1eFDaC0c240F9BbCE8788E18427666310E267ce`](https://sepolia.etherscan.io/address/0xc1eFDaC0c240F9BbCE8788E18427666310E267ce) |
+| `UsdcRamp` | [`0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1`](https://sepolia.etherscan.io/address/0xaa3B58D5B4Eb66d455b4099588D3aC76dF329AA1) |
+| `DecryptionCredits` | [`0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e`](https://sepolia.etherscan.io/address/0x300cc9CE50003750fC052bfEf3ee87fFE9B1534e) |
+| `StudioPacks` | [`0x672cf76a68d4f181387B59caA1813eC425c1354C`](https://sepolia.etherscan.io/address/0x672cf76a68d4f181387B59caA1813eC425c1354C) |
+| `Rats` | [`0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264`](https://sepolia.etherscan.io/address/0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264) |
+| `RatPantry` | [`0x1334d72fC60cBedcF409d6583F0Ec009c285E75B`](https://sepolia.etherscan.io/address/0x1334d72fC60cBedcF409d6583F0Ec009c285E75B) |
+| `FleaMarket` | [`0xb5c799bF626e70DcE6804BDef06199661cDc8665`](https://sepolia.etherscan.io/address/0xb5c799bF626e70DcE6804BDef06199661cDc8665) |
 
 The CROQ-only V3 market contracts (2026-10-02, block 11830294), replaced:
 

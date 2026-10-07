@@ -1,3 +1,4 @@
+import { studio } from "@dno/game-spec";
 import { buildCatSpec, type CatSpec } from "@dno/generator";
 import { ChainError, formatAmount, type CollectionInfo, type Payment, type RevealedContents, type Step, type TraitRoll, type WeighIn } from "@dno/chain-adapter";
 import { lookup, t, type AppKey } from "../i18n/app";
@@ -100,6 +101,10 @@ export function problemOf(error: unknown, ctx: ProblemContext = {}): Problem {
     case "not-yours":
       p.text = t("error.notYours");
       p.hints.push(t("problem.notYoursHint"));
+      break;
+    case "scrambled":
+      p.text = t("error.scrambled");
+      p.hints.push(t("problem.scrambledHint", { days: studio.rats.powers.trickDays }));
       break;
     case "no-wallet":
       p.text = t("error.noWallet");

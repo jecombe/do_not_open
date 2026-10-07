@@ -183,25 +183,44 @@ pictures stay in the API's database and at the AI service.
 
 ## Rats
 
-`Rats` is a plain ERC-721: owners are public. Per rat it keeps its kind (a seed rat or an AI
+`Rats` is an ERC-721: owners are public. Per rat it keeps its kind (a seed rat or an AI
 rat), its mint time (the croquettes count from there) and its reference: the 64-bit seed, or
 the studio job's `keccak256` (`tokenOfSeed`, `tokenOfJob` make each one adoptable once). An AI
 rat's `uri` (an `ar://` record pointing at its picture on Arweave and its GLB on the API) is only in the `RatMinted`
 event. It counts `seedMinted` and `modelMinted` against the immutable caps `maxSeedRats` (700)
 and `maxModelRats` (300), and `mintedBy[address]` against `maxPerWallet` (5). The `giver` (the
 whitelist's gifts) adopts free seed rats outside those caps and the wallet limit, counted in
-`giftMinted` against `maxGiftRats` (1,000). `RatPantry` keeps
-`paidUntil[rat]` and the plain CROQ it holds. The API keeps:
+`giftMinted` against `maxGiftRats` (1,000). Each rat also has `_power[rat]`, an `euint8` (1, 2 or
+3) drawn at its mint and allowed to `Rats` and the minter; the bounds of the draw are the
+immutables `_power1Below`, `_power2Below`, and `tricks` names the one contract allowed to compute
+with it. `RatPantry` keeps `paidUntil[rat]` and the plain CROQ it holds.
+
+`RatTricks` keeps, all encrypted unless said:
+
+| Field | Type | Visibility | Meaning |
+| --- | --- | --- | --- |
+| `readyAt[rat]` | `uint64` | public | When the rat can play a trick again |
+| `_shield[box]` | `{ euint64 mask, euint64 until, euint64 noise }` | nobody | Traits strangers read wrong (0xFF over each trait's byte of the seed), until when, and the fake rolls, one byte per trait |
+| `_jam[box]` | `{ euint64 mask, euint64 until, euint64 noise }` (noise unused) | nobody | Traits the holder's shakes read `SCRAMBLED`, until when |
+| `_sniffs[box][sniffer]` | `{ euint8 pick, euint8 roll }` | the sniffer | Their latest sniff of the box (`lastSniff`) |
+| `sniffFee`, `sniffRebate`, `trickDuration`, `recharge` | `uint64` immutables | public | 2.5 cUSDC, 0.75 cUSDC, 3 days, 7 days |
+| `rebater` | `address` | public | Whose cUSDC pays the power-1 rebates (the treasury) |
+
+`DoNotOpen` keeps one more slot, `guard` (the `IShakeGuard` every shake passes through), set by
+the owner.
+
+The API keeps:
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |
 | `rats` | token id, kind, ref, uri, current owner (follows `Transfer`), minter, mint block and time, `gift` (a `RatMinted` with nothing paid: outside the caps and the wallet limit; migration 20) | yes |
-| `rat_sniffers` | paid shakes per account, folded from `Shaken`: a rat's "boxes sniffed" are its owner's | yes |
+| `rat_sniffers` | paid shakes and rat sniffs per account, folded from `Shaken` and `RatSniffed`: a rat's "boxes sniffed" are its owner's | yes |
 | `rat_adoptions` | an AI rat's Arweave ids (picture, record) by studio job, so a second adoption signs again without uploading again | no: not on the chain |
 | `rat_models` | an AI rat's 3D model (GLB) by job, served at `/rats/models/<job>.glb`: kept here rather than paid for on Arweave, and in the nightly dump | no: not on the chain |
 
 A seed rat's picture is rendered from its seed on request (`/rats/:id/image.svg`); nothing about
-it is stored.
+it is stored. `RatTrick` events stay in `events` (source `ratTricks`) and the feeds, folded into
+nothing else.
 
 ## Flea market
 
@@ -275,6 +294,7 @@ gas; see [FLOWS.md](FLOWS.md#mainnet-allow-list-claim)). The API files it:
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |
+| `carried_duels`, `carried_openers`, `carried_minters` | the public facts of earlier test network deployments the points come from: each resolved duel (`token_a`, `token_b`, `challenger`, `accepter`, `winner`, `loser`), who opened each box (`address`), who minted (`address`, unique); copied by migration 21 before it emptied the index | no: a redeploy's carry-over, read with the live facts so points and seats survive it |
 | `allow_list_claims` | `address`, the best `points` it had at a claim, its last `message` and `signature`, `claimed_at` (first claim), `updated_at`; one row per address | no: not on the chain, and kept by a redeploy, so the test network's claims and points survive it |
 
 The points (`playerPoints`) count only public facts about the address: 3 per distinct opponent

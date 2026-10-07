@@ -152,6 +152,18 @@ keys aside (`opening:0` becomes `v0x5eBa:opening:0`), or the new collection's fa
 read as already posted. Until an API has run it, the app sees that it indexes another
 collection and reads the chain instead, without the relayer proxy.
 
+Migration 21 is for the redeploy of 2026-10-07 (`DoNotOpen` `0x7b24…2d52`, block 11862305, with
+`RatTricks`, a new economy, new rats, credits, studio packs and flea market). The test network
+promises that an update keeps the allow list's points and seats, and those come from indexed
+public facts: before emptying the index, it copies them into tables a replay never touches,
+`carried_duels` (each resolved duel: tokens, challenger, accepter, winner, loser),
+`carried_openers` (who opened each box) and `carried_minters` (who minted). `AllowList` reads
+them with the live facts (`Store.carriedFacts`), so an opponent beaten before and after counts
+once, and a wallet that only played before the redeploy is still seated. Then it empties the
+index as migration 10 did (`rats` and `rat_sniffers` and `studio_accounts` included, the old
+contracts' units staying with them), keeping sign-ins, claims, X passes, ideas, release forms,
+the decryption cache and the relayer's counts.
+
 Migration 6 adds the public decryption cache (`public_decryptions`, `public_decrypt_uses`):
 like the relayer meter, not a read model, and kept by a replay.
 
@@ -428,8 +440,16 @@ account only:
 A `Rat` is `{ id, kind: "seed" | "model", seed, job, uri, owner, minter, mintedBlock, imageUrl,
 modelUrl, sniffs }`: `seed` in decimal for a seed rat, `job` (bytes32) and `uri` for an AI rat,
 `imageUrl` the API's SVG or the picture on Arweave (`ARWEAVE_GATEWAY`), `modelUrl` the GLB served by
-the API (`/rats/models/<job>.glb`), and `sniffs` the paid shakes of its owner. The croquettes a rat earns are read from the
+the API (`/rats/models/<job>.glb`), and `sniffs` the paid shakes and rat sniffs of its owner. The croquettes a rat earns are read from the
 `RatPantry` contract itself (`claimable(id)`); the index only records `RatsFed` in the feed.
+
+The rats' tricks are indexed from `RatTricks` (source `ratTricks`, the deployment's `ratTricks`
+entry): `Sniffed` becomes `RatSniffed` and counts as one sniff of its sniffer in `rat_sniffers`
+(the `Shaken` of a sniff names `RatTricks`, not the player); `TrickPlayed` becomes `RatTrick`,
+kept in the events and the box's and the player's feeds, and folded into nothing else: a rat's
+rest (`readyAt`) is read from the contract. No migration: `events.source` is free text and the
+existing read model takes the sniffs. Ship the API that knows `RatTricks` before the first trick,
+as for the rats.
 
 ## The manual's chatbot
 

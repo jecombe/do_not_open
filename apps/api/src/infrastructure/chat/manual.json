@@ -264,7 +264,7 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Shaking someone else's box, or sending your rat to sniff it | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury. An empty id has no holder: it still shows a trait, and the 70% goes to the treasury too\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA studio pack (AI sketches and 3D models) | 2 USDC (Starter) or 8 USDC (Litter) | The treasury, which pays the AI services out of it\nAdopting a studio rat | 1 USDC, 3 USDC for an AI rat | The treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
+     "text": "Shaking someone else's box, or sending your rat to sniff it | 2.5 USDC | 70% to whoever holds the box, 30% to the treasury. An empty id has no holder: it still shows a trait, and the 70% goes to the treasury too. A power-1 rat gets 0.75 back from the treasury, in secret\nDecryption credits, past the free ones | 0.01 USDC each | The collection's treasury\nBuying USDC with ETH on the site | 0.3% of the ETH | The collection's treasury\nA studio pack (AI sketches and 3D models) | 2 USDC (Starter) or 8 USDC (Litter) | The treasury, which pays the AI services out of it\nAdopting a studio rat | 1 USDC, 3 USDC for an AI rat | The treasury\nA croquette meal | Croquettes, not dollars | 20% to the treasury, 20% burnt, 60% back to the daily purr\nShaking your own box, the alive check, entangling, duels, sending a box | Free | Only the network's gas, like any transaction"
     },
     {
      "id": "fees-2",
@@ -390,25 +390,49 @@
      "id": "rats-1",
      "section": "rats",
      "heading": null,
-     "text": "A rat is everything a box is not, on purpose: the cats are the depot's secret residents, the rats its open ones. Nothing about a rat is encrypted, so it works like any NFT.\n| A box | A rat\nWhat it is | A sealed box with a cat nobody can see | A cartoon rat, there for anyone to see\nWho holds it | Encrypted: only the holder knows | Public, like any NFT\nWhat it is made of | One encrypted seed, readable by the contract only | Its seed, or its picture on Arweave, in the clear\nPrice | 5 cUSDC, encrypted payment | 1 USDC, 3 for an AI rat, plain payment\nHow many | 10,000; how many are sold is encrypted | 700 random and 300 AI, 5 per wallet\nEarns | A bag of 100 cCROQ, then 0 to 4 a day, hidden in the box | 3 plain CROQ a day, to its owner\nWallets and markets | Need a market built for the confidential ERC-721, like the flea market | A standard ERC-721: any wallet or market can show it"
+     "text": "A rat is everything a box is not, on purpose: the cats are the depot's secret residents, the rats its open ones. Who owns a rat and what it looks like are public, so it works like any NFT. It keeps one secret only: its power, below.\n| A box | A rat\nWhat it is | A sealed box with a cat nobody can see | A cartoon rat, there for anyone to see\nWho holds it | Encrypted: only the holder knows | Public, like any NFT\nWhat it is made of | One encrypted seed, readable by the contract only | Its seed, or its picture on Arweave, in the clear\nIts secret | The cat, who holds it, what it earns | Its power (1, 2 or 3), read by its holder only\nPrice | 5 cUSDC, encrypted payment | 1 USDC, 3 for an AI rat, plain payment\nHow many | 10,000; how many are sold is encrypted | 700 random and 300 AI, 5 per wallet\nEarns | A bag of 100 cCROQ, then 0 to 4 a day, hidden in the box | 3 plain CROQ a day, to its owner"
     },
     {
      "id": "rats-2",
      "section": "rats",
-     "heading": "A rat's croquettes",
-     "text": "Each rat earns 3 plain CROQ a day from the day it was adopted. They come from the rats' own pantry, the RatPantry, which got 500,000 CROQ from the treasury, and not from the Pantry that feeds the boxes: the rats never touch the game reserve. Collect them from \"My rats\" in the game, for all your rats at once. A rat keeps 7 days at most between two collections; left alone longer, it earns nothing more. If the pantry is ever empty, collecting fails and the days wait; when it runs low, it pays what is left. The croquettes are plain because a rat's owner is public anyway: there is nothing to hide in what it earns. Sealed at the bureau de change, they can feed a cat.\nA rat's croquettes go from the treasury to the rats' pantry, from there to the rat's owner, and sealed, into a cat"
+     "heading": null,
+     "text": "Wallets and markets | Need a market built for the confidential ERC-721, like the flea market | A standard ERC-721: any wallet or market can show it"
     },
     {
      "id": "rats-3",
      "section": "rats",
      "heading": "A rat's croquettes",
-     "text": "The rats' pantry is separate from the boxes' one: what the rats earn never comes out of the purr. Plain until you seal them, a rat's croquettes become secret the moment they enter cCROQ.\nTreasury 500,000 CROQ, once\nfunded Rats' pantry 3 CROQ a rat a day\ncollect, 7 days at most You plain CROQ, in public\nseal, then feed Your cat a meal, encrypted"
+     "text": "Each rat earns 3 plain CROQ a day from the day it was adopted. They come from the rats' own pantry, the RatPantry, which got 500,000 CROQ from the treasury, and not from the Pantry that feeds the boxes: the rats never touch the game reserve. Collect them from \"My rats\" in the game, for all your rats at once. A rat keeps 7 days at most between two collections; left alone longer, it earns nothing more. If the pantry is ever empty, collecting fails and the days wait; when it runs low, it pays what is left. The croquettes are plain because a rat's owner is public anyway: there is nothing to hide in what it earns. Sealed at the bureau de change, they can feed a cat.\nA rat's croquettes go from the treasury to the rats' pantry, from there to the rat's owner, and sealed, into a cat"
     },
     {
      "id": "rats-4",
      "section": "rats",
+     "heading": "A rat's croquettes",
+     "text": "The rats' pantry is separate from the boxes' one: what the rats earn never comes out of the purr. Plain until you seal them, a rat's croquettes become secret the moment they enter cCROQ.\nTreasury 500,000 CROQ, once\nfunded Rats' pantry 3 CROQ a rat a day\ncollect, 7 days at most You plain CROQ, in public\nseal, then feed Your cat a meal, encrypted"
+    },
+    {
+     "id": "rats-5",
+     "section": "rats",
+     "heading": "A secret power",
+     "text": "Every rat gets a secret power when it is adopted, random or AI, bought or given: 1, 2 or 3, drawn under encryption, so nobody, the team included, can choose or predict it. Only its holder can read it: in \"My rats\", press Read it. If you buy a rat, the first reading asks your wallet once for the right to read it; the seller keeps knowing what it was.\nThe three powers a rat can have, how often each comes, and what each does\nDrawn at adoption, encrypted, readable by the rat's holder only.\nPower | Sniffing a box | Set on a box\n1 · Keen nose 55 rats in 100 | 2.5 cUSDC, 0.75 back in secret | Nothing: a bluff\n2 · Trait jammer 30 rats in 100 | 2.5 cUSDC | Blocks the one trait you pick\n3 · Total jammer 15 rats in 100 | 2.5 cUSDC | Blocks all five traits"
+    },
+    {
+     "id": "rats-6",
+     "section": "rats",
      "heading": "Sniffing the boxes",
-     "text": "A rat also sniffs. From \"My rats\", send it sniffing: pick a sealed box you do not hold, and your rat tells you one of its traits, for your eyes only. Under the hood it is a paid shake, 2.5 cUSDC: 70% waits in the box for its holder, 30% goes to the treasury, and everyone else only sees that someone paid to shake.\nThat is how a rat helps before a purchase: a few sniffs of a box you are thinking of buying, and you know as much about it as the seller did."
+     "text": "A rat also sniffs. In \"My rats\", type the number of a sealed box you do not hold and press Sniff: your rat tells you one of its traits, for your eyes only. It is a paid shake, 2.5 cUSDC: 70% waits in the box for its holder, 30% goes to the treasury, and everyone else only sees that a rat sniffed that box. A power-1 rat gets 0.75 cUSDC of it back from the treasury, in secret: nobody can tell which rats sniff cheaper.\nThat is how a rat helps before a purchase: a few sniffs of a box you are thinking of buying, and you know as much about it as the seller did."
+    },
+    {
+     "id": "rats-7",
+     "section": "rats",
+     "heading": "Protect or attack a box",
+     "text": "A rat can also be set on a sealed box for 3 days; then it rests 7 days before it can go again. Type the box's number in \"My rats\", pick the trait to block (it only counts for a power-2 rat), and set it on the box. What it does depends on whose box it is, and the contract works that out by itself, in secret:\nWhat a rat set on a box does, depending on whose box it is\nOn the chain every trick reads the same: a rat, a box, a date. Protect or attack, the power and the trait stay encrypted.\nWhere you set it | For 3 days | Who notices\nOn your own box | Strangers who shake or sniff it read a fake for the blocked traits | Nobody: the fake looks real\nOn someone else's box | Its holder's shakes of the blocked traits come back scrambled | The holder, that someone jams them. Not who\nEither, with a power-1 rat | Nothing | Nobody: it looks like the others"
+    },
+    {
+     "id": "rats-8",
+     "section": "rats",
+     "heading": "Protect or attack a box",
+     "text": "On one of your own boxes, it protects it. Whoever pays to shake it, or sends a rat to sniff it, reads a fake for the traits your rat blocks: the same fake every time, so it looks real. You still read the truth. Before a sale, that keeps your box's best traits to yourself.\nOn someone else's box, it attacks it. When its holder shakes their own box, the traits your rat blocks come back scrambled for 3 days. They learn that someone jams them, never who. A box protected by a power-3 rat resists attacks.\nEvery rat has the same button, the same 3 days and the same rest, so the chain only shows \"rat 12 sat on box 340\": not whether it protected or attacked, not its power, not which trait. A power-1 rat set on a box does nothing at all: a perfect bluff. Duels are not affected: the trait a loser shows is always the true one."
     },
     {
      "id": "market-0",
@@ -468,13 +492,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Every seat comes with a gift, set by your rank among the seated players when the list closes. Ranks 1 to 500 fly First class: 100 to 500 cCROQ, a sealed box and a rat. Up to rank 1,000, Business: 50 to 250 cCROQ and a box. Up to rank 1,500, Economy: 20 to 100 cCROQ and a rat. The croquettes are drawn at random under encryption: only your wallet can read how many. The box and the rat are public, like any box's first holder after a mint of one. The gift is collected on mainnet, in one transaction from the same Duels tab, within 30 days of the list closing, by a wallet that claimed its place: a seat held only by an X account has no wallet to send it to.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce"
+     "text": "Every seat comes with a gift, set by your rank among the seated players when the list closes. Ranks 1 to 500 fly First class: 100 to 500 cCROQ, a sealed box and a rat. Up to rank 1,000, Business: 50 to 250 cCROQ and a box. Up to rank 1,500, Economy: 20 to 100 cCROQ and a rat. The croquettes are drawn at random under encryption: only your wallet can read how many. The box and the rat are public, like any box's first holder after a mint of one. The gift is collected on mainnet, in one transaction from the same Duels tab, within 30 days of the list closing, by a wallet that claimed its place: a seat held only by an X account has no wallet to send it to.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x7b24…2d52\nThe Pantry (croquettes, meals, weigh-ins) 0x4e62…B72F\nCROQ, the plain croquette 0x176f…5a53\ncCROQ, the encrypted croquette 0xa9de…9964\nCROQ / USDC pool 0xC2EA…0847"
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "Liquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0x138f…1264\nThe rats' pantry (RatPantry) 0x1334…E75B"
+     "text": "Liquidity locker 0x13B2…e772\nThe USDC ramp (ETH to USDC) 0x0238…5638\nDecryption credits 0x1d18…6511\nStudio packs (StudioPacks) 0x4159…B5f6\nThe rats (Rats, ERC-721) 0x441F…2cF6\nThe rats' pantry (RatPantry) 0xC134…E450\nThe rats' tricks (RatTricks) 0x44B2…2d0D\nThe flea market (FleaMarket) 0x4E9f…81C1\nThe whitelist's gifts (WhitelistGifts) 0xD244…678b"
     },
     {
      "id": "testnet-4",
@@ -795,22 +819,28 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Ouvrir une boîte | 1 USDC | La trésorerie de la collection\nCaresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre, ou la faire renifler par votre rat | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie. Un id vide n'a pas de détenteur : il montre quand même un trait, et les 70 % vont aussi à la trésorerie\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn pack du studio (croquis et modèles 3D par IA) | 2 USDC (Starter) ou 8 USDC (Litter) | La trésorerie, qui paie les services d'IA avec\nAdopter un rat du studio | 1 USDC, 3 USDC pour un rat IA | La trésorerie\nUn repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien"
+     "text": "Ouvrir une boîte | 1 USDC | La trésorerie de la collection\nCaresser un chat | 0,5 USDC | La trésorerie de la collection\nSecouer la boîte de quelqu'un d'autre, ou la faire renifler par votre rat | 2,5 USDC | 70 % à celui qui détient la boîte, 30 % à la trésorerie. Un id vide n'a pas de détenteur : il montre quand même un trait, et les 70 % vont aussi à la trésorerie. Un rat de pouvoir 1 récupère 0,75 auprès de la trésorerie, en secret\nCrédits de déchiffrement, au-delà des gratuits | 0.01 USDC l'unité | La trésorerie de la collection\nAcheter de l'USDC avec de l'ETH sur le site | 0,3 % de l'ETH | La trésorerie de la collection\nUn pack du studio (croquis et modèles 3D par IA) | 2 USDC (Starter) ou 8 USDC (Litter) | La trésorerie, qui paie les services d'IA avec\nAdopter un rat du studio | 1 USDC, 3 USDC pour un rat IA | La trésorerie"
     },
     {
      "id": "fees-2",
      "section": "fees",
      "heading": null,
-     "text": "Secouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction\nPourquoi les déchiffrements coûtent quelque chose : lire une valeur chiffrée demande du travail au réseau de Zama. Les parties qui se partagent la clé de déchiffrement doivent chacune y prendre part, et Zama le facture, pour chaque valeur lue, d'un dixième de centime à dix centimes selon la formule. Vérifier la preuve qui accompagne une valeur chiffrée par votre navigateur coûte cinq fois plus. Il le facture à la collection, pas à vous. Secouer, retrouver vos boîtes, lire votre propre solde, le résultat d'un duel : chacun est un déchiffrement. Minter, nourrir un chat ou envoyer des croquettes : chacun chiffre une valeur."
+     "text": "Un repas de croquettes | Des croquettes, pas des dollars | 20 % à la trésorerie, 20 % brûlés, 60 % retournent au ronron quotidien\nSecouer sa propre boîte, la vérification de vie, l'intrication, les duels, envoyer une boîte | Gratuit | Seulement le gas du réseau, comme toute transaction"
     },
     {
      "id": "fees-3",
      "section": "fees",
      "heading": null,
-     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés au bureau de change. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie. Dans le jeu, le compteur Déchiffrements en haut à droite montre ce qu'il reste (gratuits du jour, plus crédits) : il clignote quand vous arrivez au bout, passe au rouge à zéro, et un clic ouvre le bureau de change pour en racheter."
+     "text": "Pourquoi les déchiffrements coûtent quelque chose : lire une valeur chiffrée demande du travail au réseau de Zama. Les parties qui se partagent la clé de déchiffrement doivent chacune y prendre part, et Zama le facture, pour chaque valeur lue, d'un dixième de centime à dix centimes selon la formule. Vérifier la preuve qui accompagne une valeur chiffrée par votre navigateur coûte cinq fois plus. Il le facture à la collection, pas à vous. Secouer, retrouver vos boîtes, lire votre propre solde, le résultat d'un duel : chacun est un déchiffrement. Minter, nourrir un chat ou envoyer des croquettes : chacun chiffre une valeur."
     },
     {
      "id": "fees-4",
+     "section": "fees",
+     "heading": null,
+     "text": "Chaque wallet a donc droit à 25 unités gratuites par jour, payées par la collection, et elles reviennent à minuit UTC ; un wallet qui n'a pas encore joué en a 16, de quoi faire un premier mint. Lire une valeur coûte une unité : un secouage en utilise 2, et retrouver les boîtes d'un mint en utilise une par numéro de boîte parmi lesquels il les a cachées. Chiffrer une valeur, comme la quantité d'un mint ou un repas, en coûte 5. Ce que votre navigateur a lu une fois, il s'en souvient, et ce n'est jamais compté à nouveau. Au-delà des gratuites, vous dépensez des crédits, un par unité, achetés au bureau de change. Leur prix suit ce que Zama facture à la collection en dollars, pas le cours du jeton de Zama : il ne bouge pas avec le marché. Ils se paient en USDC non chiffrés, exprès : un solde trop court annule l'achat, là où un paiement en cUSDC ne déplacerait rien, sans bruit. Ouvrir une boîte, régler un duel ou annoncer un palier n'est jamais compté à personne : la collection les paie. Dans le jeu, le compteur Déchiffrements en haut à droite montre ce qu'il reste (gratuits du jour, plus crédits) : il clignote quand vous arrivez au bout, passe au rouge à zéro, et un clic ouvre le bureau de change pour en racheter."
+    },
+    {
+     "id": "fees-5",
      "section": "fees",
      "heading": null,
      "text": "La trésorerie paie ce qui fait tourner le jeu : les frais de Zama pour chaque déchiffrement gratuit et chaque déchiffrement public, et les serveurs qui suivent la chaîne pour que le site reste rapide. Le reste va au projet. Personne ne peut lire les cUSDC qu'elle reçoit, propriétaire compris : lus après chaque paiement, ils trahiraient la quantité cachée de chaque mint, et donc qui a acheté quelles boîtes. Le propriétaire les retire au plus une fois tous les 7 jours, et n'apprend donc jamais que des sommes hebdomadaires. Les frais de 1 USDC d'une ouverture attendent qu'elle se règle : ils rejoignent la trésorerie quand la boîte s'ouvre, et reviennent à celui qui l'ouvrait si la boîte intriquée avec elle l'a ouverte d'abord."
@@ -951,13 +981,13 @@
      "id": "rats-1",
      "section": "rats",
      "heading": null,
-     "text": "Un des 700 rats au hasard qui existeront jamais, dessiné dans votre navigateur à partir d'une graine au hasard. Cliquez dessus et un autre atterrit.\nUn rat est tout ce qu'une boîte n'est pas, exprès : les chats sont les résidents secrets du dépôt, les rats ses résidents à découvert. Rien n'est chiffré chez un rat, il fonctionne donc comme n'importe quel NFT.\n| Une boîte | Un rat\nCe que c'est | Une boîte scellée avec un chat que personne ne voit | Un rat de dessin animé, visible par tous\nQui le détient | Chiffré : seul le détenteur le sait | Public, comme n'importe quel NFT\nDe quoi il est fait | Une graine chiffrée, lisible par le contrat seul | Sa graine, ou son image sur Arweave, en clair\nPrix | 5 cUSDC, paiement chiffré | 1 USDC, 3 pour un rat IA, paiement en clair\nCombien | 10 000 ; le nombre vendu est chiffré | 700 au hasard et 300 IA, 5 par wallet"
+     "text": "Un des 700 rats au hasard qui existeront jamais, dessiné dans votre navigateur à partir d'une graine au hasard. Cliquez dessus et un autre atterrit.\nUn rat est tout ce qu'une boîte n'est pas, exprès : les chats sont les résidents secrets du dépôt, les rats ses résidents à découvert. Qui possède un rat et à quoi il ressemble est public, il fonctionne donc comme n'importe quel NFT. Il ne garde qu'un secret : son pouvoir, plus bas.\n| Une boîte | Un rat\nCe que c'est | Une boîte scellée avec un chat que personne ne voit | Un rat de dessin animé, visible par tous\nQui le détient | Chiffré : seul le détenteur le sait | Public, comme n'importe quel NFT\nDe quoi il est fait | Une graine chiffrée, lisible par le contrat seul | Sa graine, ou son image sur Arweave, en clair\nSon secret | Le chat, qui la détient, ce qu'elle gagne | Son pouvoir (1, 2 ou 3), lu par son détenteur seul"
     },
     {
      "id": "rats-2",
      "section": "rats",
      "heading": null,
-     "text": "Gagne | Un sac de 100 cCROQ, puis 0 à 4 par jour, cachés dans la boîte | 3 CROQ classiques par jour, pour son propriétaire\nWallets et marchés | Il faut un marché fait pour l'ERC-721 confidentiel, comme le marché aux puces | Un ERC-721 standard : n'importe quel wallet ou marché l'affiche"
+     "text": "Prix | 5 cUSDC, paiement chiffré | 1 USDC, 3 pour un rat IA, paiement en clair\nCombien | 10 000 ; le nombre vendu est chiffré | 700 au hasard et 300 IA, 5 par wallet\nGagne | Un sac de 100 cCROQ, puis 0 à 4 par jour, cachés dans la boîte | 3 CROQ classiques par jour, pour son propriétaire\nWallets et marchés | Il faut un marché fait pour l'ERC-721 confidentiel, comme le marché aux puces | Un ERC-721 standard : n'importe quel wallet ou marché l'affiche"
     },
     {
      "id": "rats-3",
@@ -974,8 +1004,32 @@
     {
      "id": "rats-5",
      "section": "rats",
+     "heading": "Un pouvoir secret",
+     "text": "Chaque rat reçoit un pouvoir secret à son adoption, aléatoire ou IA, acheté ou offert : 1, 2 ou 3, tiré au sort sous chiffrement, si bien que personne, l'équipe comprise, ne peut le choisir ni le prévoir. Seul son détenteur peut le lire : dans « Mes rats », appuyez sur Le lire. Si vous achetez un rat, la première lecture demande une fois à votre wallet le droit de le lire ; le vendeur continue de savoir ce qu'il était.\nLes trois pouvoirs qu'un rat peut avoir, leur fréquence et ce que chacun fait\nTiré à l'adoption, chiffré, lisible par le seul détenteur du rat.\nPouvoir | Renifler une boîte | Posé sur une boîte\n1 · Fin nez 55 rats sur 100 | 2,5 cUSDC, 0,75 rendus en secret | Rien : un bluff\n2 · Brouilleur d'un trait 30 rats sur 100 | 2,5 cUSDC | Bloque le trait que vous choisissez\n3 · Grand brouilleur 15 rats sur 100 | 2,5 cUSDC | Bloque les cinq traits"
+    },
+    {
+     "id": "rats-6",
+     "section": "rats",
      "heading": "Renifler les boîtes",
-     "text": "Un rat renifle aussi. Depuis « Mes rats », envoyez-le renifler : choisissez une boîte scellée qui n'est pas à vous, et votre rat vous révèle un de ses traits, à vous seul. En coulisse, c'est un secouage payant, 2,5 cUSDC : 70 % attendent dans la boîte son détenteur, 30 % vont à la trésorerie, et tous les autres voient seulement que quelqu'un a payé pour secouer.\nC'est ainsi qu'un rat aide avant un achat : quelques reniflements d'une boîte que vous pensez acheter, et vous en savez autant que le vendeur."
+     "text": "Un rat renifle aussi. Dans « Mes rats », tapez le numéro d'une boîte scellée que vous ne détenez pas et appuyez sur Renifler : votre rat vous révèle un de ses traits, à vous seul. C'est un secouage payant, 2,5 cUSDC : 70 % attendent dans la boîte son détenteur, 30 % vont à la trésorerie, et tous les autres voient seulement qu'un rat a reniflé cette boîte. Un rat de pouvoir 1 en récupère 0,75 cUSDC auprès de la trésorerie, en secret : personne ne peut savoir quels rats reniflent moins cher.\nC'est ainsi qu'un rat aide avant un achat : quelques reniflements d'une boîte que vous pensez acheter, et vous en savez autant que le vendeur."
+    },
+    {
+     "id": "rats-7",
+     "section": "rats",
+     "heading": "Protéger ou attaquer une boîte",
+     "text": "Un rat peut aussi être posé sur une boîte scellée pendant 3 jours ; ensuite, il se repose 7 jours avant de pouvoir recommencer. Tapez le numéro de la boîte dans « Mes rats », choisissez le trait à bloquer (il ne compte que pour un rat de pouvoir 2), et posez-le. Ce qu'il fait dépend de qui détient la boîte, et le contrat le décide seul, en secret :\nCe que fait un rat posé sur une boîte, selon qui la détient\nSur la chaîne, chaque tour se lit pareil : un rat, une boîte, une date. Protection ou attaque, le pouvoir et le trait restent chiffrés.\nOù vous le posez | Pendant 3 jours | Qui s'en aperçoit\nSur une de vos boîtes | Les autres qui la secouent ou la reniflent lisent un faux pour les traits bloqués | Personne : le faux a l'air vrai\nSur la boîte de quelqu'un d'autre | Les secouages de son détenteur sortent brouillés pour les traits bloqués | Le détenteur, qu'on le brouille. Pas qui"
+    },
+    {
+     "id": "rats-8",
+     "section": "rats",
+     "heading": "Protéger ou attaquer une boîte",
+     "text": "L'une ou l'autre, avec un rat de pouvoir 1 | Rien | Personne : il ressemble aux autres\nSur une de vos boîtes, il la protège. Qui paie pour la secouer, ou envoie un rat la renifler, lit un faux pour les traits que votre rat bloque : toujours le même faux, il a donc l'air vrai. Vous, vous lisez toujours la vérité. Avant une vente, vous gardez ainsi les meilleurs traits de votre boîte pour vous.\nSur la boîte de quelqu'un d'autre, il l'attaque. Quand son détenteur secoue sa propre boîte, les traits que votre rat bloque sortent brouillés pendant 3 jours. Il apprend qu'on le brouille, jamais par qui. Une boîte protégée par un rat de pouvoir 3 résiste aux attaques."
+    },
+    {
+     "id": "rats-9",
+     "section": "rats",
+     "heading": "Protéger ou attaquer une boîte",
+     "text": "Tous les rats ont le même bouton, les mêmes 3 jours et le même repos, donc la chaîne montre seulement « le rat 12 s'est posé sur la boîte 340 » : ni s'il a protégé ou attaqué, ni son pouvoir, ni le trait. Un rat de pouvoir 1 posé sur une boîte ne fait rien du tout : un bluff parfait. Les duels ne changent pas : le trait que montre un perdant est toujours le vrai."
     },
     {
      "id": "market-0",
@@ -1035,13 +1089,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Chaque place vient avec un cadeau, fixé par votre rang parmi les joueurs assis quand la liste ferme. Les rangs 1 à 500 voyagent en Première classe : 100 à 500 cCROQ, une boîte scellée et un rat. Jusqu'au rang 1 000, Business : 50 à 250 cCROQ et une boîte. Jusqu'au rang 1 500, Économie : 20 à 100 cCROQ et un rat. Les croquettes sont tirées au sort sous chiffrement : seul votre wallet peut lire combien. La boîte et le rat sont publics, comme le premier détenteur d'une boîte après un mint d'une seule. Le cadeau se récupère sur le mainnet, en une transaction depuis le même onglet Duels, dans les 30 jours qui suivent la fermeture de la liste, avec un wallet qui a réclamé sa place : une place tenue seulement par un compte X n'a pas de wallet où l'envoyer.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d"
+     "text": "Chaque place vient avec un cadeau, fixé par votre rang parmi les joueurs assis quand la liste ferme. Les rangs 1 à 500 voyagent en Première classe : 100 à 500 cCROQ, une boîte scellée et un rat. Jusqu'au rang 1 000, Business : 50 à 250 cCROQ et une boîte. Jusqu'au rang 1 500, Économie : 20 à 100 cCROQ et un rat. Les croquettes sont tirées au sort sous chiffrement : seul votre wallet peut lire combien. La boîte et le rat sont publics, comme le premier détenteur d'une boîte après un mint d'une seule. Le cadeau se récupère sur le mainnet, en une transaction depuis le même onglet Duels, dans les 30 jours qui suivent la fermeture de la liste, avec un wallet qui a réclamé sa place : une place tenue seulement par un compte X n'a pas de wallet où l'envoyer.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x7b24…2d52\nLe Garde-manger (croquettes, repas, pesées) 0x4e62…B72F"
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "CROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0x138f…1264\nLe garde-manger des rats (RatPantry) 0x1334…E75B"
+     "text": "CROQ, la croquette ordinaire 0x176f…5a53\ncCROQ, la croquette chiffrée 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCoffre de liquidité 0x13B2…e772\nLa rampe USDC (de l'ETH vers l'USDC) 0x0238…5638\nCrédits de déchiffrement 0x1d18…6511\nLes packs du studio (StudioPacks) 0x4159…B5f6\nLes rats (Rats, ERC-721) 0x441F…2cF6\nLe garde-manger des rats (RatPantry) 0xC134…E450\nLes tours des rats (RatTricks) 0x44B2…2d0D\nLe marché aux puces (FleaMarket) 0x4E9f…81C1\nLes cadeaux de la whitelist (WhitelistGifts) 0xD244…678b"
     },
     {
      "id": "testnet-4",
@@ -1368,7 +1422,7 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Acariciar a un gato | 0,5 USDC | La tesorería de la colección\nAgitar la caja de otro, o mandar a tu rata a olfatearla | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería. Un id vacío no tiene titular: muestra igualmente un rasgo, y el 70 % también va a la tesorería\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUn pack del estudio (bocetos y modelos 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesorería, que paga con él los servicios de IA\nAdoptar una rata del estudio | 1 USDC, 3 USDC por una rata de IA | La tesorería\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario"
+     "text": "Acariciar a un gato | 0,5 USDC | La tesorería de la colección\nAgitar la caja de otro, o mandar a tu rata a olfatearla | 2,5 USDC | El 70 % para quien tiene la caja, el 30 % para la tesorería. Un id vacío no tiene titular: muestra igualmente un rasgo, y el 70 % también va a la tesorería. Una rata de poder 1 recupera 0,75 de la tesorería, en secreto\nCréditos de descifrado, más allá de los gratuitos | 0.01 USDC cada uno | La tesorería de la colección\nComprar USDC con ETH en el sitio | El 0,3 % del ETH | La tesorería de la colección\nUn pack del estudio (bocetos y modelos 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesorería, que paga con él los servicios de IA\nAdoptar una rata del estudio | 1 USDC, 3 USDC por una rata de IA | La tesorería\nUna comida de croquetas | Croquetas, no dólares | El 20 % a la tesorería, el 20 % se quema, el 60 % vuelve al ronroneo diario"
     },
     {
      "id": "fees-2",
@@ -1506,13 +1560,13 @@
      "id": "rats-1",
      "section": "rats",
      "heading": null,
-     "text": "Una de las 700 ratas al azar que habrá jamás, dibujada en tu navegador a partir de una semilla al azar. Haz clic y aterriza otra.\nUna rata es todo lo que una caja no es, a propósito: los gatos son los residentes secretos del depósito, las ratas los que van a cara descubierta. Nada en una rata está cifrado, así que funciona como cualquier NFT.\n| Una caja | Una rata\nQué es | Una caja sellada con un gato que nadie ve | Una rata de dibujos animados, a la vista de todos\nQuién la tiene | Cifrado: solo lo sabe quien la tiene | Público, como cualquier NFT\nDe qué está hecha | Una semilla cifrada, legible solo por el contrato | Su semilla, o su imagen en Arweave, en claro\nPrecio | 5 cUSDC, pago cifrado | 1 USDC, 3 una rata IA, pago en claro\nCuántas | 10.000; cuántas se han vendido está cifrado | 700 al azar y 300 IA, 5 por wallet"
+     "text": "Una de las 700 ratas al azar que habrá jamás, dibujada en tu navegador a partir de una semilla al azar. Haz clic y aterriza otra.\nUna rata es todo lo que una caja no es, a propósito: los gatos son los residentes secretos del depósito, las ratas los que van a cara descubierta. Quién tiene una rata y cómo es son públicos, así que funciona como cualquier NFT. Solo guarda un secreto: su poder, más abajo.\n| Una caja | Una rata\nQué es | Una caja sellada con un gato que nadie ve | Una rata de dibujos animados, a la vista de todos\nQuién la tiene | Cifrado: solo lo sabe quien la tiene | Público, como cualquier NFT\nDe qué está hecha | Una semilla cifrada, legible solo por el contrato | Su semilla, o su imagen en Arweave, en claro\nSu secreto | El gato, quién la tiene, lo que gana | Su poder (1, 2 o 3), que solo lee quien la tiene\nPrecio | 5 cUSDC, pago cifrado | 1 USDC, 3 una rata IA, pago en claro"
     },
     {
      "id": "rats-2",
      "section": "rats",
      "heading": null,
-     "text": "Gana | Una bolsa de 100 cCROQ, luego de 0 a 4 al día, ocultas en la caja | 3 CROQ normales al día, para su dueño\nWallets y mercados | Necesita un mercado hecho para el ERC-721 confidencial, como el mercadillo | Un ERC-721 estándar: cualquier wallet o mercado la muestra"
+     "text": "Cuántas | 10.000; cuántas se han vendido está cifrado | 700 al azar y 300 IA, 5 por wallet\nGana | Una bolsa de 100 cCROQ, luego de 0 a 4 al día, ocultas en la caja | 3 CROQ normales al día, para su dueño\nWallets y mercados | Necesita un mercado hecho para el ERC-721 confidencial, como el mercadillo | Un ERC-721 estándar: cualquier wallet o mercado la muestra"
     },
     {
      "id": "rats-3",
@@ -1529,8 +1583,32 @@
     {
      "id": "rats-5",
      "section": "rats",
+     "heading": "Un poder secreto",
+     "text": "Cada rata recibe un poder secreto al adoptarla, aleatoria o IA, comprada o regalada: 1, 2 o 3, sorteado bajo cifrado, así que nadie, ni el equipo, puede elegirlo ni preverlo. Solo quien la tiene puede leerlo: en «Mis ratas», pulsa Leerlo. Si compras una rata, la primera lectura pide una vez a tu wallet el derecho a leerlo; quien te la vendió sigue sabiendo cuál era.\nLos tres poderes que puede tener una rata, con qué frecuencia sale cada uno y qué hace\nSorteado al adoptarla, cifrado, solo lo lee quien tiene la rata.\nPoder | Olfatear una caja | Puesta en una caja\n1 · Buen olfato 55 ratas de cada 100 | 2,5 cUSDC, 0,75 devueltos en secreto | Nada: un farol\n2 · Bloqueador de un rasgo 30 ratas de cada 100 | 2,5 cUSDC | Bloquea el rasgo que elijas\n3 · Gran bloqueador 15 ratas de cada 100 | 2,5 cUSDC | Bloquea los cinco rasgos"
+    },
+    {
+     "id": "rats-6",
+     "section": "rats",
      "heading": "Olfatear las cajas",
-     "text": "Una rata también olfatea. Desde «Mis ratas», mándala a olfatear: elige una caja sellada que no tengas, y tu rata te dice uno de sus rasgos, solo a ti. Por dentro es una agitada de pago, 2,5 cUSDC: el 70 % espera en la caja a quien la tiene, el 30 % va a la tesorería, y los demás solo ven que alguien pagó por agitarla.\nAsí ayuda una rata antes de una compra: unas cuantas olfateadas a una caja que piensas comprar, y sabes tanto de ella como el vendedor."
+     "text": "Una rata también olfatea. En «Mis ratas», escribe el número de una caja sellada que no tengas y pulsa Olfatear: tu rata te dice uno de sus rasgos, solo a ti. Es una agitada de pago, 2,5 cUSDC: el 70 % espera en la caja a quien la tiene, el 30 % va a la tesorería, y los demás solo ven que una rata olfateó esa caja. Una rata de poder 1 recupera 0,75 cUSDC de la tesorería, en secreto: nadie puede saber qué ratas olfatean más barato.\nAsí ayuda una rata antes de una compra: unas cuantas olfateadas a una caja que piensas comprar, y sabes tanto de ella como el vendedor."
+    },
+    {
+     "id": "rats-7",
+     "section": "rats",
+     "heading": "Proteger o atacar una caja",
+     "text": "Una rata también puede ponerse en una caja sellada durante 3 días; después descansa 7 días antes de poder repetir. Escribe el número de la caja en «Mis ratas», elige el rasgo a bloquear (solo cuenta para una rata de poder 2) y ponla. Lo que hace depende de quién tiene la caja, y el contrato lo decide solo, en secreto:\nLo que hace una rata puesta en una caja, según de quién sea la caja\nEn la cadena, cada truco se lee igual: una rata, una caja, una fecha. Proteger o atacar, el poder y el rasgo siguen cifrados.\nDónde la pones | Durante 3 días | Quién lo nota\nEn una caja tuya | Los demás que la agitan u olfatean leen un rasgo falso en los rasgos bloqueados | Nadie: lo falso parece verdadero\nEn la caja de otra persona | Las agitadas de quien la tiene salen revueltas en los rasgos bloqueados | Quien la tiene, que alguien le bloquea. No quién"
+    },
+    {
+     "id": "rats-8",
+     "section": "rats",
+     "heading": "Proteger o atacar una caja",
+     "text": "En cualquiera, con una rata de poder 1 | Nada | Nadie: parece igual que las demás\nEn una de tus cajas, la protege. Quien pague por agitarla, o mande una rata a olfatearla, lee un rasgo falso en los rasgos que tu rata bloquea: siempre el mismo, así que parece verdadero. Tú sigues leyendo la verdad. Antes de una venta, guardas así para ti los mejores rasgos de tu caja.\nEn la caja de otra persona, la ataca. Cuando quien la tiene agita su propia caja, los rasgos que tu rata bloquea salen revueltos durante 3 días. Sabe que alguien le bloquea, nunca quién. Una caja protegida por una rata de poder 3 resiste los ataques."
+    },
+    {
+     "id": "rats-9",
+     "section": "rats",
+     "heading": "Proteger o atacar una caja",
+     "text": "Todas las ratas tienen el mismo botón, los mismos 3 días y el mismo descanso, así que la cadena solo muestra «la rata 12 se puso en la caja 340»: ni si protegió o atacó, ni su poder, ni el rasgo. Una rata de poder 1 puesta en una caja no hace nada: un farol perfecto. Los duelos no cambian: el rasgo que muestra quien pierde es siempre el verdadero."
     },
     {
      "id": "market-0",
@@ -1590,13 +1668,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Cada lugar viene con un regalo, fijado por tu puesto entre los jugadores sentados cuando la lista cierra. Los puestos 1 a 500 viajan en Primera clase: 100 a 500 cCROQ, una caja sellada y una rata. Hasta el puesto 1000, Business: 50 a 250 cCROQ y una caja. Hasta el puesto 1500, Turista: 20 a 100 cCROQ y una rata. Las croquetas se sortean bajo cifrado: solo tu wallet puede leer cuántas. La caja y la rata son públicas, como el primer titular de una caja tras un mint de una sola. El regalo se recoge en mainnet, en una transacción desde la misma pestaña Duelos, en los 30 días siguientes al cierre de la lista, con un wallet que reclamó su lugar: un lugar que solo tiene una cuenta de X no tiene wallet al que enviarlo.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308"
+     "text": "Cada lugar viene con un regalo, fijado por tu puesto entre los jugadores sentados cuando la lista cierra. Los puestos 1 a 500 viajan en Primera clase: 100 a 500 cCROQ, una caja sellada y una rata. Hasta el puesto 1000, Business: 50 a 250 cCROQ y una caja. Hasta el puesto 1500, Turista: 20 a 100 cCROQ y una rata. Las croquetas se sortean bajo cifrado: solo tu wallet puede leer cuántas. La caja y la rata son públicas, como el primer titular de una caja tras un mint de una sola. El regalo se recoge en mainnet, en una transacción desde la misma pestaña Duelos, en los 30 días siguientes al cierre de la lista, con un wallet que reclamó su lugar: un lugar que solo tiene una cuenta de X no tiene wallet al que enviarlo.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x7b24…2d52\nLa Despensa (croquetas, comidas, pesajes) 0x4e62…B72F\nCROQ, la croqueta sin cifrar 0x176f…5a53"
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "cCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0x138f…1264\nLa despensa de las ratas (RatPantry) 0x1334…E75B"
+     "text": "cCROQ, la croqueta cifrada 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCofre de liquidez 0x13B2…e772\nLa rampa USDC (de ETH a USDC) 0x0238…5638\nCréditos de descifrado 0x1d18…6511\nLos packs del estudio (StudioPacks) 0x4159…B5f6\nLas ratas (Rats, ERC-721) 0x441F…2cF6\nLa despensa de las ratas (RatPantry) 0xC134…E450\nLos trucos de las ratas (RatTricks) 0x44B2…2d0D\nEl mercadillo (FleaMarket) 0x4E9f…81C1\nLos regalos de la whitelist (WhitelistGifts) 0xD244…678b"
     },
     {
      "id": "testnet-4",
@@ -1923,7 +2001,7 @@
      "id": "fees-1",
      "section": "fees",
      "heading": null,
-     "text": "Accarezzare un gatto | 0,5 USDC | La tesoreria della collezione\nScuotere la scatola di qualcun altro, o mandare il tuo ratto ad annusarla | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria. Un id vuoto non ha detentore: mostra comunque un tratto, e anche il 70% va alla tesoreria\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pack dello studio (schizzi e modelli 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesoreria, che ci paga i servizi di IA\nAdottare un ratto dello studio | 1 USDC, 3 USDC per un ratto IA | La tesoreria\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane"
+     "text": "Accarezzare un gatto | 0,5 USDC | La tesoreria della collezione\nScuotere la scatola di qualcun altro, o mandare il tuo ratto ad annusarla | 2,5 USDC | Il 70% a chi detiene la scatola, il 30% alla tesoreria. Un id vuoto non ha detentore: mostra comunque un tratto, e anche il 70% va alla tesoreria. Un ratto di potere 1 riceve 0,75 indietro dalla tesoreria, in segreto\nCrediti di decifratura, oltre quelli gratuiti | 0.01 USDC l'uno | La tesoreria della collezione\nComprare USDC con ETH sul sito | Il 0,3% dell'ETH | La tesoreria della collezione\nUn pack dello studio (schizzi e modelli 3D con IA) | 2 USDC (Starter) o 8 USDC (Litter) | La tesoreria, che ci paga i servizi di IA\nAdottare un ratto dello studio | 1 USDC, 3 USDC per un ratto IA | La tesoreria\nUn pasto di crocchette | Crocchette, non dollari | Il 20% alla tesoreria, il 20% bruciato, il 60% torna alle fusa quotidiane"
     },
     {
      "id": "fees-2",
@@ -2073,13 +2151,13 @@
      "id": "rats-1",
      "section": "rats",
      "heading": null,
-     "text": "Uno dei 700 ratti a caso che esisteranno mai, disegnato nel tuo browser da un seme a caso. Cliccalo e ne atterra un altro.\nUn ratto è tutto ciò che una scatola non è, apposta: i gatti sono gli abitanti segreti del deposito, i ratti quelli allo scoperto. Niente di un ratto è cifrato, quindi funziona come qualsiasi NFT.\n| Una scatola | Un ratto\nCos'è | Una scatola sigillata con un gatto che nessuno vede | Un ratto da cartone animato, sotto gli occhi di tutti\nChi lo tiene | Cifrato: lo sa solo chi la tiene | Pubblico, come qualsiasi NFT\nDi cosa è fatto | Un seme cifrato, leggibile solo dal contratto | Il suo seme, o la sua immagine su Arweave, in chiaro\nPrezzo | 5 cUSDC, pagamento cifrato | 1 USDC, 3 un ratto IA, pagamento in chiaro\nQuanti | 10.000; quante ne sono vendute è cifrato | 700 a caso e 300 IA, 5 per wallet"
+     "text": "Uno dei 700 ratti a caso che esisteranno mai, disegnato nel tuo browser da un seme a caso. Cliccalo e ne atterra un altro.\nUn ratto è tutto ciò che una scatola non è, apposta: i gatti sono gli abitanti segreti del deposito, i ratti quelli allo scoperto. Chi possiede un ratto e com'è fatto sono pubblici, quindi funziona come qualsiasi NFT. Tiene un solo segreto: il suo potere, più sotto.\n| Una scatola | Un ratto\nCos'è | Una scatola sigillata con un gatto che nessuno vede | Un ratto da cartone animato, sotto gli occhi di tutti\nChi lo tiene | Cifrato: lo sa solo chi la tiene | Pubblico, come qualsiasi NFT\nDi cosa è fatto | Un seme cifrato, leggibile solo dal contratto | Il suo seme, o la sua immagine su Arweave, in chiaro\nIl suo segreto | Il gatto, chi la possiede, quanto guadagna | Il suo potere (1, 2 o 3), letto solo da chi lo possiede"
     },
     {
      "id": "rats-2",
      "section": "rats",
      "heading": null,
-     "text": "Guadagna | Un sacchetto di 100 cCROQ, poi da 0 a 4 al giorno, nascoste nella scatola | 3 CROQ normali al giorno, al suo proprietario\nWallet e mercati | Serve un mercato fatto per l'ERC-721 confidenziale, come il mercatino | Un ERC-721 standard: qualsiasi wallet o mercato lo mostra"
+     "text": "Prezzo | 5 cUSDC, pagamento cifrato | 1 USDC, 3 un ratto IA, pagamento in chiaro\nQuanti | 10.000; quante ne sono vendute è cifrato | 700 a caso e 300 IA, 5 per wallet\nGuadagna | Un sacchetto di 100 cCROQ, poi da 0 a 4 al giorno, nascoste nella scatola | 3 CROQ normali al giorno, al suo proprietario\nWallet e mercati | Serve un mercato fatto per l'ERC-721 confidenziale, come il mercatino | Un ERC-721 standard: qualsiasi wallet o mercato lo mostra"
     },
     {
      "id": "rats-3",
@@ -2096,8 +2174,32 @@
     {
      "id": "rats-5",
      "section": "rats",
+     "heading": "Un potere segreto",
+     "text": "Ogni ratto riceve un potere segreto quando viene adottato, casuale o IA, comprato o regalato: 1, 2 o 3, sorteggiato sotto cifratura, così nessuno, il team compreso, può sceglierlo o prevederlo. Solo chi lo possiede può leggerlo: in «I miei ratti», premi Leggilo. Se compri un ratto, la prima lettura chiede una volta al tuo wallet il diritto di leggerlo; chi te l'ha venduto continua a sapere qual era.\nI tre poteri che un ratto può avere, quanto spesso esce ciascuno e cosa fa\nSorteggiato all'adozione, cifrato, leggibile solo da chi possiede il ratto.\nPotere | Annusare una scatola | Messo su una scatola\n1 · Buon fiuto 55 ratti su 100 | 2,5 cUSDC, 0,75 restituiti in segreto | Niente: un bluff\n2 · Disturbatore di un tratto 30 ratti su 100 | 2,5 cUSDC | Blocca il tratto che scegli\n3 · Grande disturbatore 15 ratti su 100 | 2,5 cUSDC | Blocca tutti e cinque i tratti"
+    },
+    {
+     "id": "rats-6",
+     "section": "rats",
      "heading": "Annusare le scatole",
-     "text": "Un ratto annusa anche. Da «I miei ratti», mandalo ad annusare: scegli una scatola sigillata che non tieni, e il tuo ratto ti rivela uno dei suoi tratti, solo a te. Sotto il cofano è uno scuotimento a pagamento, 2,5 cUSDC: il 70% aspetta nella scatola chi la tiene, il 30% va alla tesoreria, e tutti gli altri vedono solo che qualcuno ha pagato per scuoterla.\nEcco come un ratto aiuta prima di un acquisto: qualche annusata a una scatola che pensi di comprare, e ne sai quanto il venditore."
+     "text": "Un ratto annusa anche. In «I miei ratti», scrivi il numero di una scatola sigillata che non possiedi e premi Annusa: il tuo ratto ti dice uno dei suoi tratti, solo a te. È uno scuotimento a pagamento, 2,5 cUSDC: il 70% aspetta nella scatola chi la possiede, il 30% va alla tesoreria, e tutti gli altri vedono solo che un ratto ha annusato quella scatola. Un ratto di potere 1 ne riceve indietro 0,75 cUSDC dalla tesoreria, in segreto: nessuno può sapere quali ratti annusano a meno.\nEcco come un ratto aiuta prima di un acquisto: qualche annusata a una scatola che pensi di comprare, e ne sai quanto il venditore."
+    },
+    {
+     "id": "rats-7",
+     "section": "rats",
+     "heading": "Proteggere o attaccare una scatola",
+     "text": "Un ratto può anche essere messo su una scatola sigillata per 3 giorni; poi riposa 7 giorni prima di poter ricominciare. Scrivi il numero della scatola in «I miei ratti», scegli il tratto da bloccare (conta solo per un ratto di potere 2) e mettilo. Quello che fa dipende da chi possiede la scatola, e il contratto lo decide da solo, in segreto:\nCosa fa un ratto messo su una scatola, a seconda di chi la possiede\nSulla catena ogni scherzo si legge allo stesso modo: un ratto, una scatola, una data. Protezione o attacco, il potere e il tratto restano cifrati.\nDove lo metti | Per 3 giorni | Chi se ne accorge\nSu una tua scatola | Gli altri che la scuotono o la annusano leggono un falso per i tratti bloccati | Nessuno: il falso sembra vero\nSulla scatola di qualcun altro | Gli scuotimenti di chi la possiede escono confusi per i tratti bloccati | Chi la possiede, che qualcuno lo disturba. Non chi"
+    },
+    {
+     "id": "rats-8",
+     "section": "rats",
+     "heading": "Proteggere o attaccare una scatola",
+     "text": "Su una qualsiasi, con un ratto di potere 1 | Niente | Nessuno: sembra uguale agli altri\nSu una tua scatola, la protegge. Chi paga per scuoterla, o manda un ratto ad annusarla, legge un falso per i tratti che il tuo ratto blocca: sempre lo stesso, quindi sembra vero. Tu continui a leggere la verità. Prima di una vendita, tieni così per te i tratti migliori della tua scatola.\nSulla scatola di qualcun altro, la attacca. Quando chi la possiede scuote la propria scatola, i tratti che il tuo ratto blocca escono confusi per 3 giorni. Scopre che qualcuno lo disturba, mai chi. Una scatola protetta da un ratto di potere 3 resiste agli attacchi."
+    },
+    {
+     "id": "rats-9",
+     "section": "rats",
+     "heading": "Proteggere o attaccare una scatola",
+     "text": "Tutti i ratti hanno lo stesso pulsante, gli stessi 3 giorni e lo stesso riposo, quindi la catena mostra solo «il ratto 12 si è messo sulla scatola 340»: né se ha protetto o attaccato, né il suo potere, né il tratto. Un ratto di potere 1 messo su una scatola non fa niente: un bluff perfetto. I duelli non cambiano: il tratto che mostra chi perde è sempre quello vero."
     },
     {
      "id": "market-0",
@@ -2157,13 +2259,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Ogni posto arriva con un regalo, fissato dalla tua posizione tra i giocatori seduti quando la lista chiude. Le posizioni da 1 a 500 viaggiano in Prima classe: da 100 a 500 cCROQ, una scatola sigillata e un ratto. Fino alla posizione 1000, Business: da 50 a 250 cCROQ e una scatola. Fino alla posizione 1500, Economy: da 20 a 100 cCROQ e un ratto. Le crocchette sono estratte a sorte sotto cifratura: solo il tuo wallet può leggere quante. La scatola e il ratto sono pubblici, come il primo detentore di una scatola dopo un mint di una sola. Il regalo si ritira su mainnet, in una transazione dalla stessa scheda Duelli, entro 30 giorni dalla chiusura della lista, con un wallet che ha reclamato il suo posto: un posto tenuto solo da un account X non ha un wallet a cui inviarlo.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37\nLa Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d"
+     "text": "Ogni posto arriva con un regalo, fissato dalla tua posizione tra i giocatori seduti quando la lista chiude. Le posizioni da 1 a 500 viaggiano in Prima classe: da 100 a 500 cCROQ, una scatola sigillata e un ratto. Fino alla posizione 1000, Business: da 50 a 250 cCROQ e una scatola. Fino alla posizione 1500, Economy: da 20 a 100 cCROQ e un ratto. Le crocchette sono estratte a sorte sotto cifratura: solo il tuo wallet può leggere quante. La scatola e il ratto sono pubblici, come il primo detentore di una scatola dopo un mint di una sola. Il regalo si ritira su mainnet, in una transazione dalla stessa scheda Duelli, entro 30 giorni dalla chiusura della lista, con un wallet che ha reclamato il suo posto: un posto tenuto solo da un account X non ha un wallet a cui inviarlo.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x7b24…2d52\nLa Dispensa (crocchette, pasti, pesate) 0x4e62…B72F"
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "CROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e\nI pacchetti dello studio (StudioPacks) 0x672c…354C\nI ratti (Rats, ERC-721) 0x138f…1264\nLa dispensa dei ratti (RatPantry) 0x1334…E75B"
+     "text": "CROQ, la crocchetta normale 0x176f…5a53\ncCROQ, la crocchetta cifrata 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCassaforte della liquidità 0x13B2…e772\nLa rampa USDC (da ETH a USDC) 0x0238…5638\nCrediti di decifratura 0x1d18…6511\nI pacchetti dello studio (StudioPacks) 0x4159…B5f6\nI ratti (Rats, ERC-721) 0x441F…2cF6\nLa dispensa dei ratti (RatPantry) 0xC134…E450\nGli scherzi dei ratti (RatTricks) 0x44B2…2d0D\nIl mercatino delle pulci (FleaMarket) 0x4E9f…81C1\nI regali della whitelist (WhitelistGifts) 0xD244…678b"
     },
     {
      "id": "testnet-4",

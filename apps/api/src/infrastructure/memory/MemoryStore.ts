@@ -1,4 +1,4 @@
-import type { ActivityQuery, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, CarriedFacts, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
 import { actorsOf, byChainOrder, QUIET_EVENTS, tokensOf } from "../../domain/events";
@@ -217,6 +217,13 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
 
   async minters() {
     return [...new Set([...this.s.mints.values()].map((m) => m.buyer))];
+  }
+
+  /** Seeded by tests: what an earlier deployment made public. */
+  carried: CarriedFacts = { duels: [], openers: [], minters: [] };
+
+  async carriedFacts() {
+    return this.carried;
   }
 
   async openedBoxes() {

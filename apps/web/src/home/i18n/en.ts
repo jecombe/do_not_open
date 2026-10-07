@@ -77,7 +77,7 @@ export const homeEn = {
   "home.studio.ai.title": "From your words.",
   "home.studio.ai.body": "Describe your rat and the AI draws it, then makes it 3D. Packs from {price} USDC, paid before anything is drawn.",
   "home.studio.next.title": "Adopt it.",
-  "home.studio.next.body": "Adopt your rat for {seed} USDC ({model} for an AI rat): it earns {perDay} croquettes a day and can sniff the boxes.",
+  "home.studio.next.body": "Adopt your rat for {seed} USDC ({model} for an AI rat): it earns {perDay} croquettes a day, sniffs the boxes, and hides a secret power to protect yours or jam someone else's.",
   "home.studio.cta": "Open the studio",
   "home.studio.left.title": "Rats left to adopt",
   "home.studio.left.aria": "Rats left to adopt, per kind",

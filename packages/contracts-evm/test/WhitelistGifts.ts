@@ -1,3 +1,4 @@
+import { ratParamsFromSpec } from "../lib/ratParams";
 import { FhevmType } from "@fhevm/hardhat-plugin";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
@@ -8,6 +9,8 @@ import { spec } from "@dno/game-spec";
 import { whitelistParamsFromSpec } from "../lib/specParams";
 import { ConfidentialCroq, Croq, DoNotOpen, Rats, TestConfidentialUSDC, TestUSDC, WhitelistGifts } from "../types";
 import { balanceOf, confidentialUsdcOf, deploy, deployEconomy, expectDenied, FEES, ownerOf, usd } from "./helpers";
+
+const RAT_POWERS = ratParamsFromSpec().powerBelow;
 
 const DAY = 86_400;
 const { tiers: TIERS } = whitelistParamsFromSpec();
@@ -49,7 +52,7 @@ describe("WhitelistGifts", function () {
     ({ dno, usdc, cUsdc } = await deploy({ maxSupply: 100 }));
     ({ croq, cCroq } = await deployEconomy(dno, {}, 0n));
     rats = (await (await ethers.getContractFactory("Rats")).deploy(
-      await usdc.getAddress(), deployer.address, deployer.address, deployer.address, usd("1"), usd("3"), "", 10, 10, 5, 10,
+      await usdc.getAddress(), deployer.address, deployer.address, deployer.address, usd("1"), usd("3"), "", [10, 10, 5, 10], RAT_POWERS,
     )) as unknown as Rats;
     gifts = (await (await ethers.getContractFactory("WhitelistGifts")).deploy(
       await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress(), await cUsdc.getAddress(), TIERS, deployer.address,

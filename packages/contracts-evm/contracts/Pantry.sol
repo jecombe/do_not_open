@@ -22,7 +22,8 @@ interface IDoNotOpen {
     ///      The Pantry must be one of the collection's trusted readers.
     function isOwner(uint256 tokenId, address account) external returns (ebool);
     function status(uint256 tokenId) external view returns (uint8);
-    function vetCertified(uint256 tokenId) external view returns (bool);
+    /// @dev 1 is Alive: the "Vet Certified" badge.
+    function aliveCheck(uint256 tokenId) external view returns (uint8);
     function contentsOf(uint256 tokenId) external view returns (Revealed memory);
 }
 
@@ -424,7 +425,7 @@ contract Pantry is ZamaEthereumConfig {
         }
         emit Purred(tokenId, owed);
 
-        uint256 factor = owed * (boxes.vetCertified(tokenId) ? vetMultiplier : 1);
+        uint256 factor = owed * (boxes.aliveCheck(tokenId) == 1 ? vetMultiplier : 1);
         // Past the point where even the best draw halves to zero, skip the FHE work.
         if (era >= 64 || (uint256(purrMaxPerDay) * factor) >> era == 0) return due;
         return _purrDraw(factor, uint8(era));

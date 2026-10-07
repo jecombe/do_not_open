@@ -7,6 +7,8 @@ import { Croq, RatPantry, Rats, TestUSDC } from "../types";
 import { ratParamsFromSpec } from "../lib/ratParams";
 import { usd } from "./helpers";
 
+const RAT_POWERS = ratParamsFromSpec().powerBelow;
+
 const DAY = 86_400;
 
 describe("Rats and RatPantry", function () {
@@ -34,7 +36,7 @@ describe("Rats and RatPantry", function () {
     usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     croq = (await (await ethers.getContractFactory("Croq")).deploy(20_000_000, deployer.address)) as unknown as Croq;
     rats = (await (await ethers.getContractFactory("Rats")).deploy(
-      await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/", 700, 300, 50, 2,
+      await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/", [700, 300, 50, 2], RAT_POWERS,
     )) as unknown as Rats;
     pantry = (await (await ethers.getContractFactory("RatPantry")).deploy(await croq.getAddress(), await rats.getAddress(), 10, 7)) as unknown as RatPantry;
     await croq.transfer(await pantry.getAddress(), 1_000);
@@ -142,9 +144,9 @@ describe("Rats and RatPantry", function () {
   it("caps each kind for good, and each wallet's mints, but not what a wallet holds", async function () {
     const Rats = await ethers.getContractFactory("Rats");
     const args = [await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/"] as const;
-    await expect(Rats.deploy(...args, 0, 1, 1, 1)).to.be.revertedWithCustomError(rats, "ZeroCap");
-    await expect(Rats.deploy(...args, 1, 1, 0, 1)).to.be.revertedWithCustomError(rats, "ZeroCap");
-    const small = (await Rats.deploy(...args, 2, 1, 2, 1)) as unknown as Rats;
+    await expect(Rats.deploy(...args, [0, 1, 1, 1], RAT_POWERS)).to.be.revertedWithCustomError(rats, "ZeroCap");
+    await expect(Rats.deploy(...args, [1, 1, 0, 1], RAT_POWERS)).to.be.revertedWithCustomError(rats, "ZeroCap");
+    const small = (await Rats.deploy(...args, [2, 1, 2, 1], RAT_POWERS)) as unknown as Rats;
     const at = await small.getAddress();
     await usdc.connect(alice).approve(at, usd("20"));
     await usdc.mint(bob.address, usd("20"));

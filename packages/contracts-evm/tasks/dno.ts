@@ -145,7 +145,7 @@ async function shake(hre: HardhatRuntimeEnvironment, args: TaskArguments, tokenI
   console.log(`  decrypting privately as ${signer.address}...`);
   const pick = Number(await hre.fhevm.userDecryptEuint(FhevmType.euint8, pickHandle, address, signer));
   const roll = Number(await hre.fhevm.userDecryptEuint(FhevmType.euint8, rollHandle, address, signer));
-  if (pick === Number(await dno.NOT_YOURS())) {
+  if (pick === 255) {
     console.log(`  nothing: you do not hold this box${paid ? ", or the fee did not go through" : ""}.`);
     return;
   }
@@ -415,6 +415,10 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
       // The flea market: boxes, cats and rats sold between players, in cUSDC.
       market: await hre.deployments
         .getOrNull("FleaMarket")
+        .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
+      // The rats' tricks: sniffs, shields and jams, decided under encryption by each rat's power.
+      ratTricks: await hre.deployments
+        .getOrNull("RatTricks")
         .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
       // The whitelist's gifts, collected once per seated wallet.
       whitelistGifts: await hre.deployments.getOrNull("WhitelistGifts").then((r) => (r ? { address: r.address, abi: r.abi } : null)),

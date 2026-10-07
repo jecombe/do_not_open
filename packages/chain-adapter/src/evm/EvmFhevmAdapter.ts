@@ -71,7 +71,10 @@ import {
   type RatAdoption,
   type RatInfo,
   type RatPantryInfo,
+  type RatPower,
   type RatPrices,
+  type RatTrickPlayed,
+  type RatTricksInfo,
   type RatRef,
   type RatSupply,
   type RatTaken,
@@ -170,6 +173,8 @@ export interface EvmAdapterOptions {
   market?: Deployed & { deployBlock?: number | null };
   /** The whitelist's gifts. Without it, there is none to collect on this network. */
   whitelistGifts?: Deployed;
+  /** The rats' tricks: sniffs, shields and jams. Without it, rats only earn croquettes. */
+  ratTricks?: Deployed;
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -213,6 +218,8 @@ const REQUEST_PENDING = 1;
 const REQUEST_REFUSED = 3;
 /** DoNotOpen.NOT_YOURS: the pick a shake returns to someone who did not hold the box or pay. */
 const NOT_YOURS = 255;
+/** RatTricks.SCRAMBLED: the pick of a holder's shake a rat jams. */
+const SCRAMBLED = 254;
 /** Events are read in slices of this many blocks: public endpoints refuse wider ranges. */
 const LOG_SPAN = 40_000;
 /** How many handles one user decryption asks for. */
@@ -371,7 +378,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : []), ...(opts.whitelistGifts ? [opts.whitelistGifts.abi] : []), ...(opts.ratTricks ? [opts.ratTricks.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -1013,6 +1020,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, (c) => c.shake!(tokenId));
     const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
     if (!roll) throw new ChainError("not-yours", "This box is not yours: shaking it showed nothing.");
+    if (roll === "scrambled") throw new ChainError("scrambled", "A rat jams this trait of the box for now: the shake came back scrambled.");
     return roll;
   }
 
@@ -1022,7 +1030,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.prepay(opts, fees.paidShake);
     await this.send(opts, (c) => c.paidShake!(tokenId));
     const roll = await this.afterSent("landed", () => this.readShake(tokenId, opts));
-    if (!roll) throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
+    if (!roll || roll === "scrambled") throw new ChainError("unpaid", "The fee did not go through: the shake showed nothing.");
     return roll;
   }
 
@@ -1444,6 +1452,76 @@ export class EvmFhevmAdapter implements ChainAdapter {
       modelUrl: null,
       sniffs: 0,
     };
+  }
+
+  // --- rats' tricks ---
+
+  private tricks(): Deployed {
+    const deployed = this.opts.ratTricks;
+    if (!deployed) throw new ChainError("unknown", "Rats cannot play tricks on this network yet.");
+    return deployed;
+  }
+
+  async ratTricks(): Promise<RatTricksInfo | null> {
+    const deployed = this.opts.ratTricks;
+    if (!deployed) return null;
+    const t = this.at(deployed);
+    const [sniffFee, sniffRebate, trick, recharge] = await this.reading(Promise.all([t.sniffFee!(), t.sniffRebate!(), t.trickDuration!(), t.recharge!()]));
+    return { sniffFee: BigInt(sniffFee), sniffRebate: BigInt(sniffRebate), trickSeconds: Number(trick), rechargeSeconds: Number(recharge) };
+  }
+
+  async ratPower(id: number, opts?: ActionOptions): Promise<RatPower> {
+    const deployed = this.rats();
+    const account = await this.signer().getAddress();
+    const rats = this.at(deployed);
+    const owner: string = await this.reading(rats.ownerOf!(id));
+    if (!sameAddress(owner, account)) throw new ChainError("reverted", "This rat is not yours.", "NotYourRat");
+    const [handle, readable] = await this.reading(Promise.all([rats.powerOf!(id), rats.powerReadableBy!(id, account)]));
+    // A rat bought from someone: the wallet asks once for the right to read it.
+    if (!readable) await this.send(opts, () => this.writer(deployed).allowPower!(id));
+    const read = () => this.userDecrypt([String(handle)], deployed.address, opts);
+    const clear = readable ? await read() : await this.afterSent("landed", read);
+    return Number(clear[String(handle)]) as RatPower;
+  }
+
+  async ratReadyAt(ids: number[]): Promise<number[]> {
+    const deployed = this.opts.ratTricks;
+    if (!deployed || ids.length === 0) return ids.map(() => 0);
+    const t = this.at(deployed);
+    const now = Math.floor(Date.now() / 1000);
+    const at = await this.reading(Promise.all(ids.map((id) => t.readyAt!(id))));
+    return at.map((v: bigint) => (Number(v) > now ? Number(v) : 0));
+  }
+
+  async sniffWithRat(ratId: number, tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
+    const deployed = this.tricks();
+    const account = await this.signer().getAddress();
+    const fee = BigInt(await this.reading(this.at(deployed).sniffFee!()));
+    await this.ensureDecryptions(2);
+    await this.prepay(opts, fee, deployed.address);
+    await this.send(opts, () => this.writer(deployed).sniff!(ratId, tokenId));
+    const roll = await this.afterSent("landed", async () => {
+      const [pick, value]: [string, string] = await this.reading(this.at(deployed).lastSniff!(tokenId, account));
+      return this.readPick(String(pick), String(value), opts);
+    });
+    if (!roll || roll === "scrambled") throw new ChainError("unpaid", "The fee did not go through: the sniff showed nothing.");
+    return roll;
+  }
+
+  async playTrick(ratId: number, tokenId: number, traitIndex: number, opts?: ActionOptions): Promise<RatTrickPlayed> {
+    const deployed = this.tricks();
+    const account = (await this.signer().getAddress()) as Address;
+    if (!Number.isInteger(traitIndex) || traitIndex < 0 || traitIndex >= spec.traits.length) throw new ChainError("unknown", "Pick one of the five traits.");
+    // The trait stays secret: encrypted for RatTricks and the wallet.
+    const input = await this.encrypt(deployed.address, account, (b) => b.add8(traitIndex), "the trait", opts);
+    const receipt = await this.send(opts, () => this.writer(deployed).trick!(ratId, tokenId, input.handles[0], input.inputProof));
+    const iface = new Interface(deployed.abi);
+    for (const log of receipt.logs) {
+      if (!sameAddress(log.address, deployed.address)) continue;
+      const parsed = iface.parseLog(log);
+      if (parsed?.name === "TrickPlayed") return { until: Number(parsed.args.until), readyAt: Number(parsed.args.readyAt) };
+    }
+    throw new ChainError("unknown", "The trick was played, but its receipt could not be read.");
   }
 
   // --- flea market ---
@@ -2035,7 +2113,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private async permitContracts(): Promise<string[]> {
     const e = this.opts.economy;
     const { cUsdc } = await this.payment();
-    return [this.opts.address, cUsdc.address, ...(e ? [e.cCroq.address, e.pantry.address] : []), ...(this.opts.market ? [this.opts.market.address] : [])];
+    return [
+      this.opts.address,
+      cUsdc.address,
+      ...(e ? [e.cCroq.address, e.pantry.address] : []),
+      ...(this.opts.market ? [this.opts.market.address] : []),
+      // A rat's power is the Rats contract's handle.
+      ...(this.opts.ratTricks && this.opts.rats ? [this.opts.rats.address] : []),
+    ];
   }
 
   // --- internals ---
@@ -2206,13 +2291,20 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   /** Decrypts the caller's latest shake of a box: the picked trait and its roll. Null when the
-   *  shake showed nothing (not the holder, or an unpaid paid shake). */
-  private async readShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll | null> {
+   *  shake showed nothing (not the holder, or an unpaid paid shake); "scrambled" when a rat jams it. */
+  private async readShake(tokenId: number, opts?: ActionOptions): Promise<TraitRoll | "scrambled" | null> {
     const account = await this.signer().getAddress();
     const [pick, roll]: [string, string] = await this.reading(this.contract.lastShake!(tokenId, account));
+    return this.readPick(pick, roll, opts);
+  }
+
+  /** Decrypts a pick and its roll, both computed and kept allowed by the collection. */
+  private async readPick(pick: string, roll: string, opts?: ActionOptions): Promise<TraitRoll | "scrambled" | null> {
     const clear = await this.userDecrypt([pick, roll], this.opts.address, opts);
-    if (Number(clear[pick]) === NOT_YOURS) return null;
-    return { traitIndex: traitIndexAtOffset(Number(clear[pick])), roll: Number(clear[roll]) };
+    const at = Number(clear[pick]);
+    if (at === NOT_YOURS) return null;
+    if (at === SCRAMBLED) return "scrambled";
+    return { traitIndex: traitIndexAtOffset(at), roll: Number(clear[roll]) };
   }
 
   /**

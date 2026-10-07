@@ -43,8 +43,11 @@ import {
   type RatAdoption,
   type RatInfo,
   type RatPantryInfo,
+  type RatPower,
   type RatPrices,
   type RatRef,
+  type RatTrickPlayed,
+  type RatTricksInfo,
   type RatSupply,
   type RatTaken,
   type FleaMarketInfo,
@@ -169,6 +172,24 @@ interface MockRat {
   modelUrl: string | null;
   /** Handed out by the whitelist's gifts: outside the caps and the wallet limit. */
   gift?: boolean;
+  /** Mock milliseconds: when it can play a trick again. */
+  readyAt?: number;
+}
+
+/** A rat's trick on a box: the traits it blocks (indexes into `spec.traits`), until when (mock
+ *  milliseconds), and for a shield the fake rolls strangers read. */
+interface MockTrick {
+  traits: Set<number>;
+  until: number;
+  noise: number[];
+}
+
+const POWERS = studioSpec.rats.powers;
+
+/** A mock rat's power, drawn from its id with the spec's odds, as the contract draws it at mint. */
+export function mockRatPower(id: number): RatPower {
+  const draw = mulberry32(Math.imul(id + 13, 0x2545f491))() * 10_000;
+  return draw < POWERS.odds[0]! ? 1 : draw < POWERS.odds[0]! + POWERS.odds[1]! ? 2 : 3;
 }
 
 interface MockListing extends Listing {
@@ -255,6 +276,9 @@ export class MockAdapter implements ChainAdapter {
   private ratReserve = BigInt(studioSpec.rats.croquettes.fund);
   /** Paid shakes by account: the API's "boxes sniffed". */
   private readonly sniffs = new Map<Address, number>();
+  /** Rats' shields (on a box by its holder) and jams (by anyone else), per box. */
+  private readonly shields = new Map<number, MockTrick>();
+  private readonly jams = new Map<number, MockTrick>();
   /** cUSDC: encrypted on a real chain, readable by its holder only. */
   private readonly cUsdc = new Map<Address, bigint>();
   /** Bumped on every cUSDC move, standing in for the fresh ciphertext a real transfer makes. */
@@ -618,7 +642,11 @@ export class MockAdapter implements ChainAdapter {
       await this.decrypting(opts);
       throw notYours();
     }
-    return this.decryptShake(tokenId, opts);
+    const roll = await this.decryptShake(tokenId, opts);
+    if (this.blocked(this.jams, tokenId, roll.traitIndex)) {
+      throw new ChainError("scrambled", "A rat jams this trait of the box for now: the shake came back scrambled.");
+    }
+    return roll;
   }
 
   async paidShake(tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
@@ -634,7 +662,17 @@ export class MockAdapter implements ChainAdapter {
     if (box.owner !== null) box.earnings += (FEES.paidShake * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
     this.sniffs.set(me, (this.sniffs.get(me) ?? 0) + 1);
     this.saveRats();
-    return this.decryptShake(tokenId, opts);
+    return this.shielded(tokenId, await this.decryptShake(tokenId, opts));
+  }
+
+  /** A stranger's shake of a shielded trait reads the shield's fake roll. */
+  private shielded(tokenId: number, roll: TraitRoll): TraitRoll {
+    return this.blocked(this.shields, tokenId, roll.traitIndex) ? { ...roll, roll: this.shields.get(tokenId)!.noise[roll.traitIndex]! } : roll;
+  }
+
+  private blocked(book: Map<number, MockTrick>, tokenId: number, traitIndex: number): boolean {
+    const t = book.get(tokenId);
+    return !!t && t.until > this.now() && t.traits.has(traitIndex);
   }
 
   async feed(tokenId: number, opts?: PayOptions): Promise<void> {
@@ -1222,6 +1260,79 @@ export class MockAdapter implements ChainAdapter {
   async rat(id: number): Promise<RatInfo> {
     const r = this.rat_(id);
     return this.ratInfo(r);
+  }
+
+  // --- rats' tricks ---
+
+  async ratTricks(): Promise<RatTricksInfo | null> {
+    return {
+      sniffFee: FEES.paidShake,
+      sniffRebate: (FEES.paidShake * BigInt(POWERS.sniffRebateBps)) / 10_000n,
+      // Mock days are short (`dayMs`), like the pantry's.
+      trickSeconds: (POWERS.trickDays * this.dayMs) / 1000,
+      rechargeSeconds: (POWERS.rechargeDays * this.dayMs) / 1000,
+    };
+  }
+
+  async ratPower(id: number, opts?: ActionOptions): Promise<RatPower> {
+    const me = this.signer();
+    if (this.rat_(id).owner !== me) throw revert("NotYourRat");
+    opts?.onStep?.("decrypting");
+    await this.wait(1);
+    return mockRatPower(id);
+  }
+
+  async ratReadyAt(ids: number[]): Promise<number[]> {
+    return ids.map((id) => {
+      const at = this.rat_(id).readyAt ?? 0;
+      return at > this.now() ? Math.ceil(at / 1000) : 0;
+    });
+  }
+
+  async sniffWithRat(ratId: number, tokenId: number, opts?: PayOptions): Promise<TraitRoll> {
+    const me = this.signer();
+    if (this.rat_(ratId).owner !== me) throw revert("NotYourRat");
+    const box = this.sealed(tokenId);
+    const { sniffFee, sniffRebate } = (await this.ratTricks())!;
+    await this.prepay(opts, sniffFee);
+    await this.send(opts, "sniff");
+    if (!this.pull(me, sniffFee)) {
+      await this.decrypting(opts);
+      throw new ChainError("unpaid", "The fee did not go through: the sniff showed nothing.");
+    }
+    if (box.owner !== null) box.earnings += (sniffFee * BigInt(Number(spec.mechanics.paidShake?.holderShareBps ?? 7000))) / 10_000n;
+    if (mockRatPower(ratId) === 1) this.credit(this.cUsdc, me, sniffRebate);
+    this.sniffs.set(me, (this.sniffs.get(me) ?? 0) + 1);
+    this.saveRats();
+    return this.shielded(tokenId, await this.decryptShake(tokenId, opts));
+  }
+
+  async playTrick(ratId: number, tokenId: number, traitIndex: number, opts?: ActionOptions): Promise<RatTrickPlayed> {
+    const me = this.signer();
+    const rat = this.rat_(ratId);
+    if (rat.owner !== me) throw revert("NotYourRat");
+    if ((rat.readyAt ?? 0) > this.now()) throw revert("Recharging");
+    const box = this.sealed(tokenId);
+    opts?.onStep?.("encrypting");
+    await this.send(opts, "trick");
+    const now = this.now();
+    const until = now + POWERS.trickDays * this.dayMs;
+    rat.readyAt = until + POWERS.rechargeDays * this.dayMs;
+    this.saveRats();
+    const power = mockRatPower(ratId);
+    const traits = new Set(power === 3 ? spec.traits.map((t) => t.index) : power === 2 ? [Math.min(Math.max(0, traitIndex), spec.traits.length - 1)] : []);
+    if (traits.size) {
+      const shield = box.owner === me;
+      const fortified = !shield && this.shields.get(tokenId)?.until! > now && this.shields.get(tokenId)!.traits.size === spec.traits.length;
+      if (!fortified) {
+        const book = shield ? this.shields : this.jams;
+        const old = book.get(tokenId);
+        const live = old && old.until > now;
+        const noise = live ? old.noise : spec.traits.map((_, i) => Math.floor(mulberry32(Math.imul(tokenId + 1, 7) + now + i)() * 256));
+        book.set(tokenId, { traits: new Set([...(live ? old.traits : []), ...traits]), until, noise });
+      }
+    }
+    return { until: Math.ceil(until / 1000), readyAt: Math.ceil(rat.readyAt / 1000) };
   }
 
   // --- flea market ---

@@ -518,4 +518,36 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       alter table rats add column gift boolean not null default false;
     `,
   },
+  {
+    version: 21,
+    name: "rats' tricks redeploy",
+    sql: /* sql */ `
+      -- DoNotOpen, its Pantry, a new CROQ economy, Rats, RatPantry, the flea market and RatTricks
+      -- were deployed again on Sepolia. The testnet promises that an update keeps the allow
+      -- list's points and seats: the public facts they come from (resolved duels, openings,
+      -- mints) are carried into tables a replay never touches, then the index is emptied and
+      -- rebuilt from the oldest live contract on (the decryption credits and the studio's packs,
+      -- kept). Sign-ins, claims, X passes and the relayer proxy's counts are kept.
+      create table carried_duels (
+        token_a integer not null,
+        token_b integer not null,
+        challenger text not null,
+        accepter text not null,
+        winner integer not null,
+        loser integer not null
+      );
+      insert into carried_duels
+        select token_a, token_b, challenger, accepter, winner, loser from duels
+        where status = 'resolved' and challenger is not null and accepter is not null and winner is not null and loser is not null;
+      create table carried_openers (address text not null);
+      insert into carried_openers select opened_by from boxes where status = 'revealed' and opened_by is not null;
+      create table carried_minters (address text primary key);
+      insert into carried_minters select distinct buyer from mints on conflict do nothing;
+
+      truncate events, boxes, duels, requests, entangle_proposals, mints, milestones, transfers, sync_state, indexed_ranges,
+        published_handles, credit_accounts, studio_accounts, rats, rat_sniffers;
+      delete from users where registered_at is null;
+      update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
+    `,
+  },
 ];

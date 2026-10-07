@@ -11,7 +11,9 @@ Hardhat project built on the official Zama template. Eleven contracts, and a reu
   [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNERS.md).
 - **`DoNotOpen`** — a Confidential ERC-721 and all FHE logic of the boxes. 10,000 boxes; who
   holds them and how many were sold are encrypted. Paid in cUSDC. Nobody may read the
-  revenue, the owner included; `withdraw` pays it out at most once a week.
+  revenue, the owner included; `withdraw` pays it out at most once a week. Every shake passes
+  its encrypted pick and roll through the `guard` the owner sets (`setGuard`, an `IShakeGuard`:
+  `RatTricks`), allowed to it for the transaction only.
 - **`UsdcRamp`** — ETH in, USDC or cUSDC out, through a public pool, for a small fee.
 - **`Croq`** — CROQ, a plain ERC-20 with 0 decimals. 20,000,000 minted once in the
   constructor; no mint function, no owner.
@@ -33,8 +35,13 @@ Hardhat project built on the official Zama template. Eleven contracts, and a reu
   reads `PackBought` and spends the units off-chain. Packs from
   `packages/game-spec/studio.json` (`lib/studioPacks.ts`, which refuses a pack priced under
   `minMargin` times its estimated cost); the owner can change one with `setPack`, up to 100 USDC.
-- **`Rats`** — the depot's rats, a plain ERC-721 ("DO NOT OPEN Rats", `DNORAT`): owners are
-  public, unlike the boxes. `mintSeed(seed, maxPrice)` adopts the studio's free rat of a 64-bit
+- **`Rats`** — the depot's rats, an ERC-721 ("DO NOT OPEN Rats", `DNORAT`): owners are
+  public, unlike the boxes. Each rat draws an encrypted power at its mint, paid or gifted (one
+  `randEuint16` folded into 1, 2 or 3 with the bounds `powerBelow`, from the spec's odds 55/30/15),
+  allowed to the minter; `allowPower(id)` lets a later holder read it, `powerReadableBy` says
+  who may, `powerOf` returns the handle, and `powerFor` hands it to `tricks` (`setTricks`,
+  owner) for one transaction. The constructor takes the caps as `uint256[4]` (seed, model, per
+  wallet, gifts) and `powerBelow` as `uint16[2]`. `mintSeed(seed, maxPrice)` adopts the studio's free rat of a 64-bit
   seed, each seed once (1 USDC); `mintModel(job, uri, deadline, signature, maxPrice)` adopts an
   AI rat, each studio job once (3 USDC), on an EIP-712 signature of the `attester` (the API's
   key) naming the caller, once the API has put its picture on Arweave and kept its 3D model (`uri`, an Arweave record of both).
@@ -51,6 +58,16 @@ Hardhat project built on the official Zama template. Eleven contracts, and a reu
   (`PantryEmpty`), so no earned day is lost; when it runs low a claim pays what is left. No
   owner, immutable numbers. Funded with `fund` (500,000) CROQ by a plain transfer from the
   treasury.
+- **`RatTricks`** — what a rat does with its power. `sniff(ratId, tokenId)`: a paid shake for
+  the rat's holder (the fee pulled from them first; `RatTricks` holds nothing at rest), the
+  result kept for them in `lastSniff`; a power-1 rat gets `sniffRebate` (30%) back from the
+  `rebater`'s cUSDC, selected under encryption. `trick(ratId, tokenId, trait, inputProof)`:
+  the rat sits on a sealed box for `trickDuration` (3 days) and then rests `recharge` (7 days,
+  `readyAt`, `Recharging`); under encryption, on a box the caller holds it shields it
+  (strangers' paid shakes read a fake roll for the blocked traits), on another's it jams it (the
+  holder's shakes read `SCRAMBLED`); power 2 blocks the picked trait, 3 all five, 1 nothing, and
+  a full shield resists jams. `filter` is `DoNotOpen`'s guard hook and answers `DoNotOpen` only
+  (`OnlyBoxes`). A trusted reader of `DoNotOpen`.
 - **`FleaMarket`** — the flea market: players sell each other sealed boxes, cats (opened
   boxes) and rats, in cUSDC. The market escrows what it sells: a rat with `transferFrom`,
   listed at once; a box with `confidentialTransferFrom` (a "maybe" transfer), whose "arrived"
@@ -96,6 +113,8 @@ The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 | Status, badge, revealed contents, opener | plain storage, events | Everyone                       |
 | Weight, today's meals, stash | `euint64`/`euint8` in the Pantry | Nobody (the holder reads today's meals) |
 | A secret offer on the flea market | `euint64` escrowed in `FleaMarket` | Its buyer and the listing's seller |
+| A rat's power | `euint8` in `Rats` | Its minter and whoever held it and asked (`allowPower`) |
+| A rat's shield or jam on a box | `euint64` masks, fake rolls and end times in `RatTricks` | Nobody; only selected under encryption |
 
 ## Cost per function
 
@@ -109,7 +128,8 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `mint`, 1 box among 1 id | ~1.0M | ~1.9M |
 | `confidentialTransfer` | ~184k | ~200k |
 | `confidentialTransferIf` (a decoy, or the real one sent among decoys) | ~278k | ~225k |
-| `shake` / `paidShake` | ~421k / ~896k | ~0.9M / ~2.17M |
+| `shake` / `paidShake` | ~424k / ~899k | ~0.9M / ~2.17M |
+| `shake` / `paidShake` through `RatTricks`, on a tricked box | ~554k / ~1.01M | ~1.42M / ~2.84M |
 | `feed` | ~502k | ~1.07M |
 | `observe` + `finalize` | ~625k + ~291k | ~1.12M |
 | `postDuel` (first score) + `finalizeDuel` | ~585k + ~139k | ~1.47M |
@@ -121,8 +141,10 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `FleaMarket.buy` + `finalizePurchase` (box) | ~546k + ~855k | ~0.71M + ~1.37M |
 | `FleaMarket.makeOffer` | ~543k | ~0.74M |
 | `FleaMarket.acceptOffer` (rat) | ~677k | ~2.41M |
-| `WhitelistGifts.claim`, first class (croquettes, box, rat) | ~1.69M | ~3.41M |
-| `WhitelistGifts.claim`, economy (croquettes, rat) | ~586k | ~1.32M |
+| `WhitelistGifts.claim`, first class (croquettes, box, rat and its power) | ~1.85M | ~3.66M |
+| `WhitelistGifts.claim`, economy (croquettes, rat and its power) | ~741k | ~1.57M |
+| `RatTricks.trick` (first on a box / box already tricked) | ~1.06M / ~881k | ~2.27M / ~2.25M |
+| `RatTricks.sniff` (tricked box, power-1 rebate) | ~1.79M | ~4.27M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
 `Rats` and `RatPantry` have no FHE: `mintSeed` ~248k gas (~163k after the first), `mintModel`
@@ -130,7 +152,7 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 `StudioPacks` has no FHE either: `buy` takes ~115k gas the first time (~63k after), and the
 contract ~641k to deploy (Hardhat).
 
-Deployed size: `DoNotOpen` 24,512 bytes (limit 24,576), `Pantry` about 14,000, `FleaMarket`
+Deployed size: `DoNotOpen` 24,553 bytes (limit 24,576), `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
 12,377. To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
@@ -155,6 +177,15 @@ pnpm demo2:sepolia
 pnpm test:sepolia         # optional integration test, spends a little Sepolia ETH
 pnpm verify:sepolia
 ```
+
+When Sepolia's fees are far below a wallet's default tip (about 0.001 gwei in October 2026,
+against a default of 1 to 1.5 gwei), a deploy can ask for more ETH than the deployer holds.
+`SEPOLIA_GAS_PRICE` (wei, in `.env`) pins the gas price of every transaction the scripts send
+through Hardhat's provider, and `hardhat deploy --maxfee` / `--priorityfee` the deploy's own:
+`SEPOLIA_GAS_PRICE=20000000 pnpm exec hardhat deploy --network sepolia --maxfee 300000000
+--priorityfee 2000000`, then `pnpm export:sepolia`. A public RPC's nonce lag can stop a run
+midway; running it again resumes it, since every step checks what is already done (but a
+`Pantry` deployed in an interrupted run is not funded again: `Pantry.fund` it by hand).
 
 `pnpm deploy:<net>` runs three scripts. `deploy/deploy.ts` deploys the config and
 `DoNotOpen` (with the spec's milestones), paid in Zama's USDCMock / cUSDCMock on Sepolia and
@@ -197,7 +228,7 @@ It only looks up `DoNotOpen`, `DoNotOpenHooks` and `Rats`, never redeploys them,
 every other script (`runAtTheEnd`), so `npx hardhat deploy --network sepolia --tags Market` (or
 `pnpm --filter @dno/contracts-evm exec hardhat deploy --network sepolia --tags Market` from the
 root) adds the market next to a live collection; `pnpm export:sepolia` then writes it under
-`market` in `sepolia.json`. On Sepolia since 2026-10-05: `0xb5c799bF626e70DcE6804BDef06199661cDc8665`. To sell, a player makes the
+`market` in `sepolia.json`. On Sepolia since 2026-10-07: `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` (the first one, 2026-10-05: `0xb5c799bF626e70DcE6804BDef06199661cDc8665`). To sell, a player makes the
 market their operator on the boxes (`setOperator(market, until)`) or approves it on the rats
 (`setApprovalForAll`); to buy or offer, their cUSDC operator. The adapter does both when
 needed (a year for the boxes).
@@ -211,6 +242,13 @@ the API's `GET /v1/allowlist/gifts?token=` answer and run
 `npx hardhat --network <net> dno:whitelist-root --tree <file>`: it checks the tree, sets the root
 with `closesAt` `claimDays` (30) from now, and the same file goes to the API
 (`WHITELIST_GIFTS_TREE`). `dno:export` writes the contract under `whitelistGifts`.
+
+`deploy/tricks.ts` (tag `Tricks`) deploys `RatTricks` with the paid shake's fee, the spec's
+rebate (30%), trick and rest days (`studio.json` `rats.powers`, `lib/ratParams.ts`), then makes it
+`DoNotOpen`'s guard (`setGuard`) and trusted reader, and the rats' `tricks` (`setTricks`), or
+prints each call for an owner who is not the deployer. Rebates come from `TRICKS_REBATER` (or the
+collection's owner), once it made `RatTricks` its cUSDC operator: on a test network the deployer
+does so and wraps 1,000 test USDC for them. `dno:export` writes it under `ratTricks`.
 
 `Pantry.fund` calls FHE, so the economy script fails on the bare in-process `hardhat`
 network. Use `pnpm chain` + `pnpm deploy:localhost`, which runs the FHEVM mock.
