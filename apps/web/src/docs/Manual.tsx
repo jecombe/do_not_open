@@ -34,10 +34,10 @@ const DOCS = `${REPO}/blob/dev/docs`;
 const EXPLORER = "https://sepolia.etherscan.io/address/";
 
 /**
- * Seven parts. Five for players and anyone curious, with no code in them: a start, the boxes, the
- * money, the studio and its rats, the flea market. Then a short part about the testnet, which
- * goes away at mainnet, and the technical reference for developers. `audience` is what the API's chatbot and
- * lessons know a part by: "manual" for the players' five.
+ * Five parts for players and anyone curious, with no code in them: a start, the boxes, the money,
+ * the studio and its rats, the flea market. Then two bare chapters with no part title: the
+ * testnet, which goes away at mainnet, and the references. `audience` is what the API's chatbot
+ * and lessons know a chapter by: "manual" for the players' five parts.
  */
 export const PARTS = [
   { key: "start", audience: "manual", sections: ["box", "map", "cats", "terms"] },
@@ -45,8 +45,8 @@ export const PARTS = [
   { key: "money", audience: "manual", sections: ["fees", "exchange", "croquettes"] },
   { key: "rats", audience: "manual", sections: ["studio", "rats"] },
   { key: "market", audience: "manual", sections: ["market", "stall"] },
-  { key: "testnet", audience: "testnet", sections: ["testnet"] },
-  { key: "dev", audience: "dev", sections: ["more"] },
+  { key: "testnet", audience: "testnet", sections: ["testnet"], bare: true },
+  { key: "dev", audience: "dev", sections: ["more"], bare: true },
 ] as const;
 const SECTIONS = PARTS.flatMap((p) => p.sections);
 
@@ -138,7 +138,7 @@ const REFS = [
   { key: "r9", href: `${REPO}/blob/dev/apps/api/README.md#relayer-proxy` },
 ] as const;
 
-type PartKey = (typeof PARTS)[number]["key"];
+type PartKey = Exclude<(typeof PARTS)[number], { bare: true }>["key"];
 
 /** The title page of a part: its number, its name, what is in it, and its chapters. */
 function PartHead({ part }: { part: PartKey }) {
@@ -161,7 +161,7 @@ function PartHead({ part }: { part: PartKey }) {
 }
 
 /**
- * The routing slip. On a wide screen, the seven parts stay listed and only the one being read
+ * The routing slip. On a wide screen, the five parts and the bare chapters stay listed and only the one being read
  * shows its chapters, so the slip never needs scrolling. On a phone, one bar names the chapter
  * being read and unfolds the whole list.
  */
@@ -182,6 +182,14 @@ function Contents({ current }: { current: string }) {
   const list = (
     <ol className="toc-parts">
       {PARTS.map((part) => {
+        if ("bare" in part)
+          return part.sections.map((id) => (
+            <li key={id}>
+              <a className="toc-group" href={`#${id}`} aria-current={current === id ? "true" : undefined}>
+                {t(`docs.section.${id}`)}
+              </a>
+            </li>
+          ));
         const open = part.key === reading.key;
         return (
           <li key={part.key} className={open ? "is-open" : undefined}>
@@ -595,8 +603,6 @@ export function Manual() {
             </div>
           </section>
 
-          <PartHead part="testnet" />
-
           <section id="testnet">
             <h2>{t("docs.section.testnet")}</h2>
             <p className="testnet-note">{t("docs.testnet.note")}</p>
@@ -617,8 +623,6 @@ export function Manual() {
               ))}
             </ul>
           </section>
-
-          <PartHead part="dev" />
 
           <section id="more">
             <h2>{t("docs.section.more")}</h2>

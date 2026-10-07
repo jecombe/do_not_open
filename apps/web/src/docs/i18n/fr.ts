@@ -28,9 +28,6 @@ export const docsFr: Record<DocsKey, string> = {
   "docs.section.more": "Référence complète",
   "docs.section.fees": "Les frais, et où ils vont",
   "docs.section.testnet": "Tant qu'on est sur le testnet",
-  "docs.group.testnet": "Testnet uniquement",
-  "docs.group.dev": "Pour les développeurs",
-  "docs.group.dev.v": "La référence technique complète : architecture, modèle de données, contrats, flux. Inutile pour jouer.",
 
   "docs.box.p1": "DO NOT OPEN est une collection de {supply} NFT sur Ethereum, construite avec le chiffrement de Zama. Chaque token est une boîte en carton. Quand une boîte est mintée, le contrat tire un nombre aléatoire pour elle et garde ce nombre chiffré. Le chat à l'intérieur, son état, ses cinq traits et sa rareté découlent tous de ce seul nombre. Qui détient chaque boîte est chiffré aussi.",
   "docs.box.p2": "Chiffré ne veut pas dire ici caché derrière un serveur ou révélé plus tard depuis une liste préparée par quelqu'un. Le nombre est un chiffré sur la chaîne dès l'instant où il existe. Le contrat peut quand même calculer avec : le comparer, en découper un morceau, lui ajouter quelque chose. Il le fait sans jamais le déchiffrer, c'est à ça que sert le chiffrement totalement homomorphe.",
@@ -515,7 +512,6 @@ export const docsFr: Record<DocsKey, string> = {
   "docs.group.money.v": "Chaque frais et où il va, le bureau de change et ses cinq jetons, et les croquettes qui font grossir un chat.",
   "docs.group.rats": "Le studio et les rats",
   "docs.group.rats.v": "Les autres résidents du dépôt : des rats que vous dessinez gratuitement ou avec l'IA et adoptez en NFT. Ils gagnent des croquettes, reniflent les boîtes, et les protègent ou les attaquent grâce à un pouvoir secret.",
-  "docs.group.testnet.v": "Où le jeu tourne aujourd'hui, ses contrats, et ce qu'il reste à faire avant qu'il porte de l'argent réel.",
   "docs.section.map": "Le dépôt en un coup d'œil",
   "docs.section.rats": "Les rats",
   "docs.map.p1": "Le jeu a cinq guichets. Une règle les sépare : ce qui touche à une boîte est chiffré, ce qui touche à un rat ne l'est pas. L'argent passe de l'un à l'autre au bureau de change, et le montant se voit à la frontière.",

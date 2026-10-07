@@ -27,9 +27,6 @@ export const docsEn = {
   "docs.section.more": "Full reference",
   "docs.section.fees": "Fees, and where they go",
   "docs.section.testnet": "While on the testnet",
-  "docs.group.testnet": "Testnet only",
-  "docs.group.dev": "For developers",
-  "docs.group.dev.v": "The full technical reference: architecture, data model, contracts, flows. Not needed to play.",
 
   "docs.box.p1": "DO NOT OPEN is a collection of {supply} NFTs on Ethereum, built with Zama's encryption. Each token is a cardboard box. When a box is minted, the contract draws a random number for it and keeps that number encrypted. The cat inside, its state, its five traits and its rarity are all worked out from that one number. Who holds each box is encrypted too.",
   "docs.box.p2": "Encrypted here does not mean hidden behind a server or revealed later from a list someone prepared. The number is a ciphertext on-chain from the moment it exists. The contract can still compute with it: compare it, cut a piece out of it, add to it. It does that without ever decrypting it, which is what fully homomorphic encryption is for.",
@@ -518,7 +515,6 @@ export const docsEn = {
   "docs.group.money.v": "Every fee and where it goes, the bureau de change and its five tokens, and the croquettes that make a cat fat.",
   "docs.group.rats": "The studio and the rats",
   "docs.group.rats.v": "The depot's other residents: rats you draw for free or with AI and adopt as NFTs. They earn croquettes, sniff the boxes, and protect or attack them with a secret power.",
-  "docs.group.testnet.v": "Where the game runs today, its contracts, and what is left to do before it holds real money.",
   "docs.section.map": "The depot at a glance",
   "docs.section.rats": "The rats",
   "docs.map.p1": "The game has five counters. One rule tells them apart: what is about a box is encrypted, what is about a rat is not. Money crosses between the two at the bureau de change, and the amount shows at the border.",

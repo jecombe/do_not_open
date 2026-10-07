@@ -28,9 +28,6 @@ export const docsIt: Record<DocsKey, string> = {
   "docs.section.more": "Riferimento completo",
   "docs.section.fees": "Le commissioni, e dove vanno",
   "docs.section.testnet": "Finché siamo sulla testnet",
-  "docs.group.testnet": "Solo testnet",
-  "docs.group.dev": "Per sviluppatori",
-  "docs.group.dev.v": "Il riferimento tecnico completo: architettura, modello dei dati, contratti, flussi. Non serve per giocare.",
 
   "docs.box.p1": "DO NOT OPEN è una collezione di {supply} NFT su Ethereum, costruita con la cifratura di Zama. Ogni token è una scatola di cartone. Quando una scatola viene mintata, il contratto estrae per lei un numero casuale e lo tiene cifrato. Il gatto dentro, il suo stato, i suoi cinque tratti e la sua rarità derivano tutti da quell'unico numero. Anche chi detiene ogni scatola è cifrato.",
   "docs.box.p2": "Cifrato qui non significa nascosto dietro un server o rivelato più tardi da una lista che qualcuno ha preparato. Il numero è un testo cifrato on-chain dal momento in cui esiste. Il contratto può comunque farci dei calcoli: confrontarlo, ritagliarne un pezzo, aggiungergli qualcosa. Lo fa senza mai decifrarlo, che è ciò a cui serve la cifratura completamente omomorfica.",
@@ -515,7 +512,6 @@ export const docsIt: Record<DocsKey, string> = {
   "docs.group.money.v": "Ogni commissione e dove va, il cambiavalute e i suoi cinque token, e le crocchette che fanno ingrassare un gatto.",
   "docs.group.rats": "Lo studio e i ratti",
   "docs.group.rats.v": "Gli altri abitanti del deposito: ratti che disegni gratis o con l'IA e adotti come NFT. Guadagnano crocchette, annusano le scatole e le proteggono o le attaccano con un potere segreto.",
-  "docs.group.testnet.v": "Dove gira oggi il gioco, i suoi contratti, e cosa resta da fare prima che gestisca denaro vero.",
   "docs.section.map": "Il deposito in un colpo d'occhio",
   "docs.section.rats": "I ratti",
   "docs.map.p1": "Il gioco ha cinque sportelli. Una regola li separa: ciò che riguarda una scatola è cifrato, ciò che riguarda un ratto no. Il denaro passa dall'uno all'altro al cambiavalute, e l'importo si vede al confine.",

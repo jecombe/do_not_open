@@ -28,9 +28,6 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.section.more": "Referencia completa",
   "docs.section.fees": "Las tarifas, y adónde van",
   "docs.section.testnet": "Mientras estemos en la testnet",
-  "docs.group.testnet": "Solo en la testnet",
-  "docs.group.dev": "Para desarrolladores",
-  "docs.group.dev.v": "La referencia técnica completa: arquitectura, modelo de datos, contratos, flujos. No hace falta para jugar.",
 
   "docs.box.p1": "DO NOT OPEN es una colección de {supply} NFT en Ethereum, construida con el cifrado de Zama. Cada token es una caja de cartón. Cuando se mintea una caja, el contrato sortea un número aleatorio para ella y mantiene ese número cifrado. El gato de dentro, su estado, sus cinco rasgos y su rareza se derivan todos de ese único número. Quién tiene cada caja también está cifrado.",
   "docs.box.p2": "Cifrado no significa aquí escondido detrás de un servidor o revelado más tarde desde una lista que alguien preparó. El número es un texto cifrado en la cadena desde el momento en que existe. El contrato todavía puede calcular con él: compararlo, recortarle un trozo, sumarle algo. Lo hace sin descifrarlo nunca, que es para lo que sirve el cifrado totalmente homomórfico.",
@@ -515,7 +512,6 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.group.money.v": "Cada comisión y adónde va, la casa de cambio y sus cinco tokens, y las croquetas que engordan a un gato.",
   "docs.group.rats": "El estudio y las ratas",
   "docs.group.rats.v": "Los otros residentes del depósito: ratas que dibujas gratis o con IA y adoptas como NFT. Ganan croquetas, olfatean las cajas y las protegen o las atacan con un poder secreto.",
-  "docs.group.testnet.v": "Dónde funciona hoy el juego, sus contratos, y lo que queda por hacer antes de que maneje dinero real.",
   "docs.section.map": "El depósito de un vistazo",
   "docs.section.rats": "Las ratas",
   "docs.map.p1": "El juego tiene cinco mostradores. Una regla los separa: lo que toca a una caja está cifrado, lo que toca a una rata no. El dinero pasa de un lado a otro en la casa de cambio, y el importe se ve en la frontera.",
