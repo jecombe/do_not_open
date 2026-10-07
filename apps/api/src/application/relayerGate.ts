@@ -32,6 +32,9 @@ export interface GateConfig {
   newcomerPerDay: number;
   /** Units one encrypted input costs: what Zama charges for one over what it charges for a decryption. */
   inputUnits: number;
+  /** Units a value costs in a public decryption sent to Zama, charged to the wallet whose
+   *  permit comes with it. 0 keeps public decryptions free and anonymous. */
+  publicUnits: number;
   /** Most handles one decryption may ask for. */
   maxHandles: number;
   /** A permit signed more than this far in the future is refused. Seconds. */
@@ -98,9 +101,11 @@ export function encodePermitToken(p: UserDecryptPermit): string {
  *   it is for, charged the same way: `inputUnits` an input, since Zama bills an input several
  *   times a decryption;
  * - a public decryption of handles the protocol's contracts made public (a request, a duel,
- *   a milestone, a weigh-in, an unwrap): free, it settles something already on-chain. A
- *   handle's value never changes, so each request is sent to Zama once and answered from the
- *   cache after, and a handle may only be named in `publicPerHandle` requests sent there.
+ *   a milestone, a weigh-in, an unwrap): `publicUnits` a value, charged to the wallet whose
+ *   permit comes with it, so posting and taking up duels in a loop spends the griefer's units,
+ *   not the collection's money. A handle's value never changes, so each request is sent to
+ *   Zama once and answered from the cache after, free for whoever asks again, and a handle may
+ *   only be named in `publicPerHandle` requests sent there.
  */
 export class RelayerGate {
   private keyurl: { at: number; reply: UpstreamReply } | null = null;
@@ -116,7 +121,7 @@ export class RelayerGate {
 
   async allowance(account: Address): Promise<Allowance> {
     const now = this.clock.now();
-    return allowanceOf(await this.store.meterOf(account, dayOf(now)), await this.freePerDay(account), now, this.cfg.inputUnits);
+    return allowanceOf(await this.store.meterOf(account, dayOf(now)), await this.freePerDay(account), now, this.cfg.inputUnits, this.cfg.publicUnits);
   }
 
   /** `authorization` is the request's Authorization header: an encrypted input needs it. */
@@ -125,7 +130,7 @@ export class RelayerGate {
       case "user-decrypt":
         return this.userDecrypt(body);
       case "public-decrypt":
-        return this.publicDecrypt(body);
+        return this.publicDecrypt(body, authorization);
       case "input-proof":
         return this.inputProof(body, authorization);
     }
@@ -214,7 +219,7 @@ export class RelayerGate {
     return (await this.store.transfers(account, 0, 1)).length ? this.cfg.freePerDay : this.cfg.newcomerPerDay;
   }
 
-  private async publicDecrypt(raw: unknown): Promise<UpstreamReply> {
+  private async publicDecrypt(raw: unknown, authorization?: string): Promise<UpstreamReply> {
     const body = this.parse(publicDecryptBody, raw);
     if (body.ciphertextHandles.length > this.cfg.maxHandles) throw new RelayerRefused("bad-request", `at most ${this.cfg.maxHandles} values at once`);
     const known = new Set(await this.store.publishedAmong(body.ciphertextHandles));
@@ -235,7 +240,10 @@ export class RelayerGate {
     if (body.ciphertextHandles.some((h) => (uses.get(h) ?? 0) >= this.cfg.publicPerHandle)) {
       throw new RelayerRefused("bad-request", "this value was already decrypted publicly; ask with the same handles as before");
     }
-    const reply = await this.upstream.post("public-decrypt", raw);
+    // Only a request sent to Zama is charged: the one who asks first pays, the cache is free.
+    const units = body.ciphertextHandles.length * this.cfg.publicUnits;
+    const send = () => this.upstream.post("public-decrypt", raw);
+    const reply = units > 0 ? await this.metered(await this.bearerAccount(authorization, "A public decryption"), units, `A public decryption of ${body.ciphertextHandles.length} value${body.ciphertextHandles.length === 1 ? "" : "s"}`, send) : await send();
     const jobId = (reply.body as { result?: { jobId?: unknown } } | null)?.result?.jobId;
     if (reply.status === 202 && typeof jobId === "string") {
       await this.store.savePublicDecryption({ key, jobId, queued: reply.body, at: now }, [...new Set(body.ciphertextHandles)]);
@@ -250,16 +258,21 @@ export class RelayerGate {
     if (!ours.has(body.contractAddress)) throw new RelayerRefused("not-ours", "inputs can only be made for this game's contracts");
     // The input names the wallet it is for, but nothing in it proves who sent it: the permit
     // does, or anyone could spend someone else's allowance and credits.
+    if ((await this.bearerAccount(authorization, "An encrypted input")) !== body.userAddress) throw new RelayerRefused("bad-permit", "the permit was signed by another account");
+    return this.metered(body.userAddress, this.cfg.inputUnits, "An encrypted input", () => this.upstream.post("input-proof", raw));
+  }
+
+  /** The wallet whose decryption permit comes as the bearer token: the one a request is charged to. */
+  private async bearerAccount(authorization: string | undefined, what: string): Promise<Address> {
     const token = /^Bearer\s+(\S+)$/i.exec(authorization ?? "")?.[1];
-    if (!token) throw new RelayerRefused("bad-permit", "an encrypted input needs the wallet's decryption permit");
+    if (!token) throw new RelayerRefused("bad-permit", `${what} needs the wallet's decryption permit`);
     let permit: UserDecryptPermit;
     try {
       permit = permitToken.parse(JSON.parse(Buffer.from(token, "base64url").toString("utf8")));
     } catch {
       throw new RelayerRefused("bad-permit", "unreadable permit");
     }
-    if ((await this.permitSigner(permit, ours)) !== body.userAddress) throw new RelayerRefused("bad-permit", "the permit was signed by another account");
-    return this.metered(body.userAddress, this.cfg.inputUnits, "An encrypted input", () => this.upstream.post("input-proof", raw));
+    return this.permitSigner(permit, new Set(await this.cfg.contracts()));
   }
 
   private parse<T>(schema: z.ZodType<T>, raw: unknown): T {

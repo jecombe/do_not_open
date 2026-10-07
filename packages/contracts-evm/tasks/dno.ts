@@ -346,7 +346,7 @@ withAddress("dno:demo", "Full walkthrough: mint, shake twice, prove alive, obser
 
 task("dno:credit-price", "Sets the decryption credit's USDC price from Zama's dollar price for one decryption")
   .addOptionalParam("zama", "Zama's price for one decryption on the collection's plan, in US dollars (0.001 to 0.1)")
-  .addOptionalParam("margin", "Times Zama's price: covers the free allowance and the public decryptions", "2")
+  .addOptionalParam("margin", "Times Zama's price: covers the free allowance", "2")
   .addOptionalParam("usdc", "Or the price itself, in USDC")
   .setAction(async (args: TaskArguments, hre) => {
     const { creditPrice } = await import("../lib/creditPrice");

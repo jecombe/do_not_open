@@ -418,7 +418,8 @@ export type TradeSide = "buy" | "sell";
 /**
  * What a wallet may still decrypt and encrypt where the collection pays the relayer (mainnet):
  * a free allowance each UTC day, then credits bought in plain USDC. Both are counted in units:
- * a decrypted value is one, an encrypted input (a mint's quantity, a meal) `inputUnits`.
+ * a decrypted value is one, an encrypted input (a mint's quantity, a meal) `inputUnits`, a
+ * value made public (an opening, a duel) `publicUnits` for the first wallet to ask.
  */
 export interface DecryptionAllowance {
   /** Fewer before the wallet's first act on-chain. */
@@ -432,6 +433,9 @@ export interface DecryptionAllowance {
   price: bigint | null;
   /** Units one encrypted input costs. */
   inputUnits: number;
+  /** Units a value costs in a public decryption the wallet is first to ask for (an opening,
+   *  a duel's outcome); asking again is free. */
+  publicUnits: number;
 }
 
 /** A studio pack as the StudioPacks contract sells it. */

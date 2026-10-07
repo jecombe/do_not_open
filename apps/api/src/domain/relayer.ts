@@ -29,6 +29,8 @@ export interface Allowance {
   resetsAt: number;
   /** Units one encrypted input costs. */
   inputUnits: number;
+  /** Units one value of a public decryption costs, when it is sent to Zama. */
+  publicUnits: number;
 }
 
 /**
@@ -68,12 +70,13 @@ export function charge(units: number, m: Meter, freePerDay: number): Charge | nu
 
 export const refund = (c: Charge): Charge => ({ free: -c.free, credits: -c.credits });
 
-export function allowanceOf(m: Meter, freePerDay: number, now: number, inputUnits: number): Allowance {
+export function allowanceOf(m: Meter, freePerDay: number, now: number, inputUnits: number, publicUnits: number): Allowance {
   return {
     freePerDay,
     freeLeft: Math.max(0, freePerDay - m.freeUsed),
     credits: Math.max(0, m.bought - m.spent),
     resetsAt: nextDayAt(now),
     inputUnits,
+    publicUnits,
   };
 }

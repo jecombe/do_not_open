@@ -1041,6 +1041,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async proveAlive(tokenId: number, opts?: ActionOptions): Promise<boolean> {
+    // Its proof makes two values public: whether the caller holds it, and the bit.
+    await this.ensureDecryptions(0, 0, 2);
     await this.request(opts, (c) => c.proveAlive!(tokenId));
     return Number(await this.reading(this.contract.aliveCheck!(tokenId))) === 1;
   }
@@ -1052,6 +1054,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   async observe(tokenId: number, opts?: PayOptions): Promise<BoxInfo[]> {
     const { fees } = await this.collection();
+    // Its proof makes at least two values public: whether it went through, and the seed.
+    await this.ensureDecryptions(0, 0, 2);
     // Only a holder is charged: a refused opening costs nothing but gas.
     await this.prepay(opts, fees.observe);
     await this.request(opts, (c) => c.observe!(tokenId));
@@ -1073,11 +1077,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async acceptEntangle(tokenA: number, tokenB: number, opts?: ActionOptions): Promise<void> {
+    await this.ensureDecryptions(0, 0, 1);
     await this.request(opts, (c) => c.acceptEntangle!(tokenA, tokenB));
   }
 
   async postDuel(tokenA: number, opts?: PostDuelOptions): Promise<DuelInfo> {
     const reserved = opts?.reservedFor !== undefined;
+    // Proving the posting makes one value public: the caller holds the box.
+    await this.ensureDecryptions(0, 0, 1);
     const receipt = await this.send(opts, (c) => c.postDuel!(tokenA, opts?.reservedFor ?? 0, reserved));
     const duelId = Number(this.events(receipt, "DuelPosted")[0]!.duelId);
     await this.afterSent("resumable", () => this.finishDuel(duelId, opts));
@@ -1093,6 +1100,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   async acceptDuel(duelId: number, tokenB: number, opts?: ActionOptions): Promise<DuelResult | null> {
+    // Its outcome is five public values: both holds, who wins, the trait and the loser's roll.
+    await this.ensureDecryptions(0, 0, 5);
     await this.send(opts, (c) => c.acceptDuel!(duelId, tokenB));
     const result = await this.afterSent("resumable", () => this.finishDuel(duelId, opts));
     if (!result && (await this.duelInfo(duelId)).status === "open") {
@@ -1730,10 +1739,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   /** What the wallet has left against what an action needs, for a `no-credits` error. */
-  private async creditsDetail(needed: number): Promise<ChainErrorDetail> {
-    // `needed` is in units: an input counts `inputUnits`.
+  private async creditsDetail(needed: Needed): Promise<ChainErrorDetail> {
+    // `needed` is in units: an input counts `inputUnits`, a public value `publicUnits`.
     const allowance = await this.decryptionAllowance().catch(() => null);
-    return { needed: BigInt(needed), ...(allowance ? { held: BigInt(allowance.freeLeft + allowance.credits) } : {}) };
+    const units = typeof needed === "number" ? needed : needed(allowance);
+    return { needed: BigInt(units), ...(allowance ? { held: BigInt(allowance.freeLeft + allowance.credits) } : {}) };
   }
 
   /**
@@ -1742,10 +1752,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * be read. Lets it through when the allowance cannot be read; the relayer proxy is the real
    * check.
    */
-  private async ensureDecryptions(decryptions: number, inputs = 0): Promise<void> {
+  private async ensureDecryptions(decryptions: number, inputs = 0, publicValues = 0): Promise<void> {
     const allowance = await this.decryptionAllowance().catch(() => null);
     if (!allowance) return;
-    const needed = decryptions + inputs * allowance.inputUnits;
+    const needed = decryptions + inputs * allowance.inputUnits + publicValues * allowance.publicUnits;
     const held = allowance.freeLeft + allowance.credits;
     if (held < needed) {
       throw new ChainError("no-credits", "Not enough decryptions left today for this.", undefined, { held: BigInt(held), needed: BigInt(needed) });
@@ -2263,7 +2273,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * The coprocessor computes ciphertexts a few seconds after the transaction that asked
    * for them, so a decryption requested right away can be told "not ready". Retry a few times.
    */
-  private async decrypting<T>(opts: ActionOptions | undefined, run: (relayer: Relayer) => Promise<T>): Promise<T> {
+  private async decrypting<T>(opts: ActionOptions | undefined, run: (relayer: Relayer) => Promise<T>, units?: Needed): Promise<T> {
     opts?.onStep?.("decrypting");
     let last: unknown;
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -2272,7 +2282,10 @@ export class EvmFhevmAdapter implements ChainAdapter {
       } catch (error) {
         if (error instanceof ChainError || isError(error, "ACTION_REJECTED")) throw this.toChainError(error);
         const refusal = gateRefusal(error);
-        if (refusal?.code === "no-credits") throw new ChainError("no-credits", refusal.message);
+        if (refusal?.code === "no-credits") {
+          const error = new ChainError("no-credits", refusal.message);
+          throw units === undefined ? error : error.with(await this.creditsDetail(units));
+        }
         // A permit the proxy will not take (expired): sign a fresh one and go again.
         if (refusal?.code === "bad-permit" && attempt === 0) {
           this.permit = null;
@@ -2286,8 +2299,22 @@ export class EvmFhevmAdapter implements ChainAdapter {
     throw new ChainError("decryption", `The decryption service did not answer: ${(last as Error)?.message ?? "unknown error"}`);
   }
 
+  /**
+   * Through the API's proxy, the wallet that has a value publicly decrypted first pays for it
+   * out of its units (a duel's outcome, an opening), proving it is itself with its permit, the
+   * same bearer token as an input. Asked again, by anyone, it is free.
+   */
   private publicDecrypt(handles: string[], opts?: ActionOptions) {
-    return this.decrypting(opts, (relayer) => relayer.publicDecrypt(handles));
+    return this.decrypting(
+      opts,
+      async (relayer) => {
+        if (!(await this.metered())) return relayer.publicDecrypt(handles);
+        const signer = this.signer();
+        const permit = await this.permitFor(relayer, signer, await signer.getAddress(), opts);
+        return relayer.publicDecrypt(handles, { auth: { __type: "BearerToken", token: permitToken(permit) } });
+      },
+      (a) => handles.length * (a?.publicUnits ?? 1),
+    );
   }
 
   /** Decrypts the caller's latest shake of a box: the picked trait and its roll. Null when the
@@ -2335,6 +2362,9 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return toChainError(error, this.ifaces);
   }
 }
+
+/** Units an action needs, or how to count them from the wallet's allowance once it is read. */
+type Needed = number | ((allowance: DecryptionAllowance | null) => number);
 
 /** A permit as the API's relayer proxy reads it from a bearer token: base64url of its JSON. */
 function permitToken(p: Permit): string {

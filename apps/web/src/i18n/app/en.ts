@@ -695,7 +695,7 @@ export const en = {
   "duels.yourBox": "Your box",
   "duels.post": "Put {serial} up",
   "duels.posting": "Putting it up…",
-  "duels.postExplain": "Free, but public: once the proof is in, everyone can see that your address holds this box. It stays up for {days} days, until someone takes it up or you withdraw it. Putting the same box up again replaces it.",
+  "duels.postExplain": "No fee, one decryption unit for the proof, and public: once the proof is in, everyone can see that your address holds this box. It stays up for {days} days, until someone takes it up or you withdraw it. Putting the same box up again replaces it.",
   "duels.aimAtOne": "To aim at one box only:",
   "duels.posted": "Your box is on the duel shelf. Anyone can take it up now.",
   "duels.withdrawn": "Taken off the shelf.",
