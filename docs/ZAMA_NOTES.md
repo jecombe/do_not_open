@@ -579,7 +579,8 @@ over the gas of each call. The 2026-10-03 security fixes then fit by dropping
 private. Decoy transfers (`confidentialTransferIf`, 217 bytes) fit by compiling
 `DoNotOpen` alone with the optimizer at 1 run (a per-file override in `hardhat.config.ts`;
 the other contracts stay at 200): gas per call barely moves, as FHE operations dominate.
-The next feature has to move logic out.
+The next feature has to move logic out: the whitelist's gifts (below) are their own contract
+and reach `DoNotOpen` only as a buyer.
 
 ### The studio's packs stay off FHE (2026-10-04)
 
@@ -620,6 +621,35 @@ owner, treasury, attester and metadata URL: `Rats` at `0x138f8F6aae87f3762C9d03C
 `RatPantry` at `0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A`, 10 CROQ a day) stays where it is with its two rats, and the
 500,000 CROQ sent to the first `RatPantry` stay locked there (it has no owner), paying those two
 rats. The API forgot them (migration 14), since its `rats` table is keyed by token id alone.
+
+### The whitelist's gifts (2026-10-07)
+
+`WhitelistGifts` gives each wallet on the frozen whitelist its tier's gift once: an encrypted
+number of cCROQ drawn in the tier's range, a box, a rat, or both (`whitelist` in `spec.json`).
+Not deployed yet: it opens on mainnet. Decisions:
+
+- **Its own contract, no privilege in `DoNotOpen`.** `DoNotOpen` has 64 bytes left, so the gift
+  box is bought with `mint` like any buyer, paid with the cUSDC the owner sends the gifts
+  contract (it comes back as the collection's revenue), then sent with `confidentialTransfer`.
+  `mint` takes only an `externalEuint8`: the wallet encrypts the quantity (1) for `DoNotOpen`
+  with the gifts contract as the input's user, since that contract is `msg.sender` of `mint`.
+- **The draw.** One `FHE.randEuint16()`, `rem` by the span (`croqMax - croqMin + 1`, at most 401),
+  plus `croqMin`: the bias is under span / 65,536, a fraction of a percent, accepted like the
+  purr's. The constructor refuses a span that does not fit 16 bits.
+- **ACL: the wallet and the contract.** The amount is moved with `cCroq.confidentialTransfer`,
+  which allows the transferred amount to its sender (the gifts contract) and its recipient (the
+  wallet) for good; the contract keeps that handle in `giftOf`, so the wallet reads it with a
+  user decryption. Nobody else is allowed on it. If the contract runs short, the wallet gets 0,
+  silently, like any cCROQ transfer.
+- **The list is a Merkle root.** Leaves are `(address, uint8 tier)`, OpenZeppelin's standard
+  tree; the API serves the proofs. The owner can correct the root until the first claim, never
+  after, and takes back what is left with `sweep` once `closesAt` passed.
+- **Rats through a giver role.** `Rats.gift(to, seed)` is open to the `giver` only, free, outside
+  the paid rats' caps and the wallet limit, at most `maxGiftRats` (1,000, a new constructor
+  argument, so `Rats` is deployed again with the gifts).
+
+What becomes public: who is on the list (their claim), their tier, the gift box's id and the
+rat. Never public: the croquettes drawn. About 3.4M HCU for the biggest gift (first class).
 
 ### The flea market (2026-10-05)
 

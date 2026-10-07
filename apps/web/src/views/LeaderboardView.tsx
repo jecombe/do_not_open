@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ROSETTES, sameAddress, shortAddress, type Address, type AllowListStatus, type OpenedCat } from "@dno/chain-adapter";
+import { ROSETTES, sameAddress, shortAddress, type Address, type AllowListStatus, type OpenedCat, type WhitelistGift } from "@dno/chain-adapter";
+import { spec, type WhitelistTierKey } from "@dno/game-spec";
 import { X_PASS_BONUS, xPassWalletMessage } from "@dno/chain-adapter/standings";
 import { buildBoxSpec } from "@dno/generator";
 import type { QualitySettings, ShakeSound } from "@dno/scene";
@@ -155,6 +156,7 @@ export function LeaderboardView({ quality, sound, onSelect }: Props) {
             )}
             {standings && standings.length > 0 && <p className="fine after-table">{t("lb.rankedDuels", { n: ROSETTES })}</p>}
             <AllowListPanel account={account} connect={connect} ledger={ledger} />
+            <GiftPanel account={account} ledger={ledger} onSelect={onSelect} />
           </>
         ) : failed ? (
           <p className="fine problem">{t("lb.failed")}</p>
@@ -273,10 +275,105 @@ function AllowListPanel({ account, connect, ledger }: { account: Address | null;
           </button>
           {action.error && <ProblemNote problem={action.error} />}
           {status.seated === false && status.rank !== null && <p className="fine">{t("al.noSeatYet")}</p>}
+          {status.tier !== null && status.tier !== undefined && (
+            <p className="fine">
+              {t("al.tier", { class: t(`gift.class.${spec.whitelist.tiers[status.tier]!.key as WhitelistTierKey}`) })}
+            </p>
+          )}
           <XPassLink account={account} onLinked={() => void adapter.allowList().then((s) => s && setStatus(s), () => undefined)} />
         </>
       )}
       <p className="fine">{t("al.rules")}</p>
+    </div>
+  );
+}
+
+/**
+ * The whitelist's gift: what the connected wallet's class gets, collected in one transaction on
+ * the network where WhitelistGifts is deployed. The croquettes stay encrypted until the wallet
+ * reads them. Hidden where there are no gifts (the testnet, for now).
+ */
+function GiftPanel({ account, ledger, onSelect }: { account: Address | null; ledger: number; onSelect: (tokenId: number) => void }) {
+  const { adapter } = useChain();
+  const t = useT();
+  const locale = useLocale();
+  const action = useAction();
+  const [gift, setGift] = useState<WhitelistGift | null>(null);
+  const [croq, setCroq] = useState<bigint | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    setGift(null);
+    setCroq(null);
+    if (!account) return;
+    adapter.whitelistGift().then(
+      (g) => live && setGift(g),
+      () => live && setGift(null),
+    );
+    return () => {
+      live = false;
+    };
+  }, [adapter, account, ledger]);
+
+  if (!account || !gift) return null;
+  const tier = gift.tier === null ? null : spec.whitelist.tiers[gift.tier]!;
+  const className = tier ? t(`gift.class.${tier.key as WhitelistTierKey}`) : "";
+  const date = gift.closesAt ? new Date(gift.closesAt * 1000).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" }) : "";
+
+  const claim = async () => {
+    const g = await action.run("gift", (opts) => adapter.claimWhitelistGift(opts));
+    if (g) setGift(g);
+  };
+  const reveal = async () => {
+    const n = await action.run("giftCroq", (opts) => adapter.whitelistGiftCroq(opts));
+    if (n !== undefined) setCroq(n);
+  };
+
+  return (
+    <div className={`allow-list gift-panel${tier ? ` is-${tier.key}` : ""}`}>
+      <h3>{t("gift.title")}</h3>
+      {gift.status === "waiting" && <p className="fine">{t("gift.waiting")}</p>}
+      {gift.status === "none" && <p className="fine">{t("gift.none")}</p>}
+      {gift.status === "closed" && <p className="fine">{t("gift.closed", { date })}</p>}
+      {gift.status === "ready" && tier && (
+        <>
+          <p className="gift-head">{t("gift.ready", { class: className, date })}</p>
+          <ul className="gift-list">
+            <li>{t("gift.croq", { min: tier.croqMin, max: tier.croqMax })}</li>
+            {tier.box && <li>{t("gift.box")}</li>}
+            {tier.rat && <li>{t("gift.rat")}</li>}
+          </ul>
+          <button type="button" className="stamp-button" onClick={() => void claim()} disabled={!!action.busy}>
+            {action.busy === "gift" ? t("gift.claiming") : t("gift.claim")}
+          </button>
+          <p className="fine">{t("gift.fine")}</p>
+        </>
+      )}
+      {gift.status === "claimed" && (
+        <>
+          <p className="gift-head mark-good">{t("gift.claimed", { class: className })}</p>
+          <ul className="gift-list">
+            <li>
+              {croq === null ? (
+                <button type="button" className="link" onClick={() => void reveal()} disabled={!!action.busy}>
+                  {action.busy === "giftCroq" ? t("gift.revealing") : t("gift.reveal")}
+                </button>
+              ) : (
+                t("gift.got", { n: croq.toLocaleString(locale) })
+              )}
+            </li>
+            {gift.box !== null && (
+              <li>
+                <button type="button" className="link" onClick={() => onSelect(gift.box!)}>
+                  {t("gift.boxGot", { serial: buildBoxSpec(gift.box).serial })}
+                </button>
+              </li>
+            )}
+            {gift.rat !== null && <li>{t("gift.ratGot", { id: gift.rat })}</li>}
+          </ul>
+        </>
+      )}
+      {action.error && <ProblemNote problem={action.error} />}
     </div>
   );
 }

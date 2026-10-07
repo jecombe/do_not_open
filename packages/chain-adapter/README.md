@@ -241,9 +241,23 @@ connected wallet sign `allowListMessage(account, now)` (EIP-191, free) and files
 return `AllowListStatus`: `live` (`PlayerPoints`: `points`, `beaten`, `faced`, `opened`), the
 `points` the ranking counts (the best since the claim: a test network redeployment forgets the
 duels, not the claims), `claimedAt`, `rank` among claimants (null until it claims),
-`claimants` and `places`. The claims live in the API only: without one, `allowList()` returns
+`claimants`, `places` and `tier`, the gift class the rank would get if the list closed now
+(an index into the spec's `whitelist.tiers`, null without a seat). The claims live in the API only: without one, `allowList()` returns
 null and `claimAllowList` throws `network`. The mock keeps its claims in memory, with the
 same rules (`playerPoints`).
+
+`whitelistGift()`, `claimWhitelistGift()` and `whitelistGiftCroq()` are the whitelist's gifts
+(`WhitelistGifts`, `whitelistGifts` in the deployment file). `whitelistGift` returns null where
+none is deployed or nobody is connected, else a `WhitelistGift`: `status` (`waiting` before the
+root is set, `none` when the frozen list does not have the wallet, `ready`, `claimed`, `closed`),
+`tier`, `closesAt`, and the `box` and `rat` once collected. The proof comes from the API
+(`GET /v1/gifts/:address`; a 404 is an answer, not the API being down). `claimWhitelistGift`
+encrypts the box's quantity (1) for `DoNotOpen` with the gifts contract as the input's user,
+draws a rat seed nobody adopted, and sends `claim`; it throws `reverted` (`NotOnTheList`,
+`AlreadyClaimed`, `NotOpen`). `whitelistGiftCroq` user-decrypts the croquettes drawn (null
+before the claim). The mock (`MockOptions.whitelistGifts`: `open` by default, `waiting`, `off`)
+treats its list as frozen as it stands, so a claimant collects their rank's gift; its gift
+rats stay out of `ratSupply`.
 
 `signText(message)` has the connected wallet sign any text (EIP-191, free) and returns the
 signature, filed nowhere: the app sends it where it belongs, such as linking a wallet to an X

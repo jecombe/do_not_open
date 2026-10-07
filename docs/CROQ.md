@@ -61,6 +61,12 @@ the owner) (see
 "The rats' croquettes" below): the studio's adopted rats are paid from it, not from the game
 reserve.
 
+The whitelist's gifts come out of the treasury too: at most 425,000 cCROQ (500 seats at most
+500, 500 at most 250, 500 at most 100), wrapped to `WhitelistGifts` when it is deployed. Each
+seated wallet draws its share at random in its tier's range, under encryption, and only it can
+read how many (`whitelist` in `spec.json`; see [FLOWS.md](FLOWS.md#whitelist-gifts)). What is
+not drawn goes back to the owner with `sweep` once the 30 days are over.
+
 `economyFromSpec()` in `packages/contracts-evm/lib/specParams.ts` refuses a spec whose
 shares do not add up to the total, or whose welcome bags do not equal
 `maxSupply × welcomeBag`.
@@ -177,7 +183,9 @@ The rats are capped for good in the `Rats` contract: 700 seed rats and 300 AI ra
 more, and one address mints 5 at most. With every rat adopted and claiming, the pantry pays
 3,000 CROQ a day, so its 500,000 last about 167 days; longer in practice, since a rat left
 alone more than 7 days earns nothing more. It was 10 CROQ a day with no cap before the
-2026-10-04 redeployment: an unlimited mint would have emptied the fixed fund. Numbers in
+2026-10-04 redeployment: an unlimited mint would have emptied the fixed fund. The whitelist's
+gifts add up to 1,000 free rats outside those caps (`maxGiftRats`): with every one of them
+claiming too, the pantry lasts about 83 days, unless the treasury tops it up. Numbers in
 `packages/game-spec/studio.json` (`rats.mint`, `rats.croquettes`).
 
 ## Where croquettes go

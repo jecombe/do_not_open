@@ -188,12 +188,14 @@ rat), its mint time (the croquettes count from there) and its reference: the 64-
 the studio job's `keccak256` (`tokenOfSeed`, `tokenOfJob` make each one adoptable once). An AI
 rat's `uri` (an `ar://` record pointing at its picture on Arweave and its GLB on the API) is only in the `RatMinted`
 event. It counts `seedMinted` and `modelMinted` against the immutable caps `maxSeedRats` (700)
-and `maxModelRats` (300), and `mintedBy[address]` against `maxPerWallet` (5). `RatPantry` keeps
+and `maxModelRats` (300), and `mintedBy[address]` against `maxPerWallet` (5). The `giver` (the
+whitelist's gifts) adopts free seed rats outside those caps and the wallet limit, counted in
+`giftMinted` against `maxGiftRats` (1,000). `RatPantry` keeps
 `paidUntil[rat]` and the plain CROQ it holds. The API keeps:
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |
-| `rats` | token id, kind, ref, uri, current owner (follows `Transfer`), minter, mint block and time | yes |
+| `rats` | token id, kind, ref, uri, current owner (follows `Transfer`), minter, mint block and time, `gift` (a `RatMinted` with nothing paid: outside the caps and the wallet limit; migration 20) | yes |
 | `rat_sniffers` | paid shakes per account, folded from `Shaken`: a rat's "boxes sniffed" are its owner's | yes |
 | `rat_adoptions` | an AI rat's Arweave ids (picture, record) by studio job, so a second adoption signs again without uploading again | no: not on the chain |
 | `rat_models` | an AI rat's 3D model (GLB) by job, served at `/rats/models/<job>.glb`: kept here rather than paid for on Arweave, and in the nightly dump | no: not on the chain |
@@ -280,6 +282,16 @@ beaten in a resolved duel, 1 per distinct opponent faced, 2 per box it opened (1
 duel against itself counts nothing. The ranking counts, for each claimant, the best of its kept
 points and its points now; ties go to the earlier claim. What this tells the backend: that an
 address asked for a place, and when. Nobody is ranked who did not ask.
+
+### Whitelist gifts
+
+Each claimant's `tier` (index into `whitelist.tiers`) is computed, never stored: the seated
+claimants in rank order, 500 a tier. When the list closes, `GET /v1/allowlist/gifts?token=`
+freezes it into OpenZeppelin's standard Merkle tree of `(address, uint8 tier)`; the API loads
+that file back (`WHITELIST_GIFTS_TREE`) to serve proofs. On chain, `WhitelistGifts` keeps the
+`root`, `closesAt`, the tiers (`croqMin`, `croqMax`, `box`, `rat`), `claimedCount` and per
+wallet a `Gift`: claimed, tier, box id, rat id, and the `euint64` croquettes it drew (allowed to
+the wallet and the contract only, by the cCROQ transfer).
 
 ### The suggestion box
 

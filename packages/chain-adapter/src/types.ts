@@ -625,9 +625,28 @@ export interface AllowListStatus {
   /** 1-based, among claimants; null until it claims. */
   rank: number | null;
   claimants: number;
-  /** How many claimants get a place. */
   /** The cap on the list, or null: no cap, every claimant is on it. */
   places: number | null;
+  /** The gift tier this rank would get if the list closed now (an index into the spec's
+   *  `whitelist.tiers`), or null: not seated, past the last tier, or not counted here. */
+  tier?: number | null;
+}
+
+/** The whitelist's gift for the connected wallet, from `WhitelistGifts`. */
+export interface WhitelistGift {
+  /**
+   * `waiting`: the list is not frozen yet. `none`: the frozen list does not have this wallet.
+   * `ready`: on the list, to collect. `claimed`: collected. `closed`: the window is over and it
+   * was not collected.
+   */
+  status: "waiting" | "none" | "ready" | "claimed" | "closed";
+  /** Index into the spec's `whitelist.tiers` once the list is frozen; null otherwise. */
+  tier: number | null;
+  /** Unix seconds when claims end; null before the list is frozen. */
+  closesAt: number | null;
+  /** The box and the rat received, once collected. */
+  box: number | null;
+  rat: number | null;
 }
 
 /** A wallet the browser offers, as shown in a picker. */
@@ -808,6 +827,15 @@ export interface ChainAdapter {
   /** Has the connected wallet sign a claim (free, off-chain) and files it. Signing again later
    *  keeps the best points. Throws `rejected` if refused, `network` without an API. */
   claimAllowList(): Promise<AllowListStatus>;
+
+  // --- the whitelist's gifts ---
+  /** The connected wallet's gift. Null where no WhitelistGifts contract is deployed, or nobody is connected. */
+  whitelistGift(): Promise<WhitelistGift | null>;
+  /** Collects it: an encrypted draw of cCROQ, and the tier's box and rat (a seed rat drawn at
+   *  random). Throws `reverted` (`AlreadyClaimed`, `NotOnTheList`, `NotOpen`) when it cannot. */
+  claimWhitelistGift(opts?: ActionOptions): Promise<WhitelistGift>;
+  /** The croquettes the gift drew, decrypted for the wallet (one signature a session). Null before the claim. */
+  whitelistGiftCroq(opts?: ActionOptions): Promise<bigint | null>;
 
   // --- decryption credits ---
   /** The connected account's decryptions left. Null where nobody counts them (the mock, a free relayer). */

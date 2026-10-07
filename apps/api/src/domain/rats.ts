@@ -18,6 +18,8 @@ export interface Rat {
   mintedBlock: number;
   /** Unix seconds, when the index knew the block's time. */
   mintedAt: number | null;
+  /** Handed out by the whitelist's gifts, free: outside the paid rats' caps and the wallet limit. */
+  gift: boolean;
 }
 
 /**
@@ -39,11 +41,11 @@ export interface Adoption {
 /** The rat a transfer leaves behind: a new owner, or a fresh rat when the mint's transfer comes before its RatMinted. */
 export function transferred(rat: Rat | null, e: { ratId: number; to: Address; block: number; timestamp: number | null }): Rat {
   if (rat) return { ...rat, owner: e.to };
-  return { id: e.ratId, kind: "seed", ref: "", uri: null, owner: e.to, minter: e.to, mintedBlock: e.block, mintedAt: e.timestamp };
+  return { id: e.ratId, kind: "seed", ref: "", uri: null, owner: e.to, minter: e.to, mintedBlock: e.block, mintedAt: e.timestamp, gift: false };
 }
 
 /** What RatMinted says about a rat; its owner stays the one the transfers left. */
-export function minted(rat: Rat | null, e: { ratId: number; minter: Address; kind: RatKind; ref: string; uri: string; block: number; timestamp: number | null }): Rat {
+export function minted(rat: Rat | null, e: { ratId: number; minter: Address; kind: RatKind; ref: string; uri: string; paid: string; block: number; timestamp: number | null }): Rat {
   return {
     id: e.ratId,
     kind: e.kind,
@@ -53,6 +55,8 @@ export function minted(rat: Rat | null, e: { ratId: number; minter: Address; kin
     minter: e.minter,
     mintedBlock: e.block,
     mintedAt: e.timestamp ?? rat?.mintedAt ?? null,
+    // Every paid rat costs something: a free one is a gift.
+    gift: BigInt(e.paid || "0") === 0n,
   };
 }
 

@@ -153,6 +153,15 @@ market their operator (`setOperator`) and lists; the market pulls the box with
 
 Rats have public owners anyway; selling one shows nothing new.
 
+## 5c. The whitelist's gifts
+
+`WhitelistGifts` buys a gift box from `DoNotOpen` like any buyer, one id, then sends it to the
+wallet. The wallet's tier is in its claim (`GiftClaimed`), so everyone knows the gift had a box
+and which id it is: **a gift box's first holder is public**, as if they had minted one box among
+one id. The usual advice holds: send it on with decoys, or to a fresh address, to bring the
+doubt back. The rat is public anyway. The croquettes drawn are an encrypted cCROQ transfer:
+allowed to the wallet and the gifts contract only, never published.
+
 ## 6. What still leaks
 
 | Fact | Visible to everyone |
@@ -172,6 +181,7 @@ Rats have public owners anyway; selling one shows nothing new.
 | A studio pack (`StudioPacks.buy`, plain USDC) | the payer, the account and the pack. The studio never touches the boxes, so it says nothing about holdings; the API also sees the prompts and pictures of the account that signed in, and sends the prompts to the AI services |
 | The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
 | Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
+| A whitelist gift (`WhitelistGifts.claim`) | that the wallet is on the frozen list, its tier, the gift box's id (the wallet held it then) and its rat. Not how many croquettes it drew |
 | An X boarding pass (off-chain, filed by the API) | the boarding tweet itself, public on X: that this X account wants a place. The wallet a player chooses to link to it stays in the API, never shown; that link ties an X identity to the wallet's public facts (duels, openings), so the page says a game-only wallet keeps a player anonymous |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
@@ -223,6 +233,8 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | `FleaMarket.buy` + `finalizePurchase` (box) | 546,000 + 855,000 | 2,078,000 |
 | `FleaMarket.makeOffer` | 543,000 | 736,000 |
 | `FleaMarket.acceptOffer` (rat) | 677,000 | 2,414,000 |
+| `WhitelistGifts.claim`, first class (croquettes, box, rat) | 1,692,000 | 3,407,000 |
+| `WhitelistGifts.claim`, economy (croquettes, rat) | 586,000 | 1,322,000 |
 | `FleaMarket.list` (rat) | 139,000 | 0 |
 
 Every transaction stays well under the protocol limits (20M HCU, 5M depth); a full 10-box

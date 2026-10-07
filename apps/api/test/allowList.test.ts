@@ -1,6 +1,8 @@
 import { allowListMessage } from "@dno/chain-adapter/standings";
 import { beforeEach, describe, expect, it } from "vitest";
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { AllowList, FACTS_TTL } from "../src/application/allowList";
+import { GiftProofs, giftTree } from "../src/application/whitelistGifts";
 import { silentLogger } from "../src/application/ports/logger";
 import { SyncChain } from "../src/application/syncChain";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
@@ -84,6 +86,36 @@ describe("allow list", () => {
     await fresh.saveAllowListClaim((await store.allowListClaim(ALICE))!);
     const list = new AllowList(fresh, verifier, { now: () => now }, 2);
     expect(await list.status(ALICE)).toMatchObject({ points: 8, live: { points: 0 }, rank: 1 });
+  });
+
+  it("gives the gift tiers to the seated claimants only, in rank order", async () => {
+    const DAVE = "0x000000000000000000000000000000000000da7e";
+    const list = new AllowList(store, verifier, { now: () => now }, null);
+    await claim(list, CAROL);
+    await claim(list, DAVE);
+    await claim(list, ALICE);
+    // Dave never played and has no X seat: ranked, no tier, and nobody moves down for him.
+    expect((await list.ranked()).map((e) => [e.address, e.seated, e.tier])).toEqual([
+      [ALICE, true, 0],
+      [CAROL, true, 0],
+      [DAVE, false, null],
+    ]);
+    expect(await list.status(DAVE)).toMatchObject({ tier: null });
+    expect(await list.status(ALICE)).toMatchObject({ tier: 0 });
+  });
+
+  it("freezes the tiers into the tree WhitelistGifts checks, and serves each wallet its proof", async () => {
+    const list = new AllowList(store, verifier, { now: () => now }, null);
+    await claim(list, ALICE);
+    await claim(list, BOB);
+    const tree = giftTree(await list.ranked())!;
+    const gifts = new GiftProofs(JSON.parse(JSON.stringify(tree.dump())));
+    expect([gifts.frozen, gifts.count, gifts.root]).toEqual([true, 2, tree.root]);
+    const proof = gifts.proofOf(BOB.toUpperCase().replace("0X", "0x"))!;
+    expect(proof.tier).toBe(0);
+    expect(StandardMerkleTree.verify(tree.root, ["address", "uint8"], [BOB, 0], proof.proof)).toBe(true);
+    expect(gifts.proofOf(CAROL)).toBeNull();
+    expect(new GiftProofs(null)).toMatchObject({ frozen: false, root: null });
   });
 
   it("puts every claimant on the list when there is no cap", async () => {

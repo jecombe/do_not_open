@@ -4,6 +4,7 @@ import { chainMode } from "../chain/mode";
 import { useLocale } from "../i18n/locale";
 import { appPath, duelRankingPath } from "../site";
 import { useSeats, useXPass } from "../xpass";
+import { useTierName } from "./GiftTiers";
 import { useT } from "./i18n";
 
 /** What the API says about one address on the mainnet allow list (`GET /v1/allowlist/:address`). */
@@ -14,6 +15,8 @@ interface PassStatus {
   rank: number | null;
   claimants: number;
   places: number | null;
+  /** The gift class this rank would fly if the list closed now; null without a seat. */
+  tier?: number | null;
 }
 
 const REMEMBER = "dno:pass:address";
@@ -49,6 +52,7 @@ export function Passport() {
   const live = api() !== null;
   const { pass: xPass } = useXPass();
   const seats = useSeats();
+  const tierName = useTierName();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -147,7 +151,8 @@ export function Passport() {
               {check.state === "down" && t("home.pass.check.down")}
               {pass &&
                 (pass.rank !== null
-                  ? t("home.pass.check.in", { points: pass.points, rank: pass.rank, claimants: pass.claimants })
+                  ? t("home.pass.check.in", { points: pass.points, rank: pass.rank, claimants: pass.claimants }) +
+                    (pass.tier !== null && pass.tier !== undefined ? ` ${t("home.gifts.yours", { class: tierName(pass.tier) })}` : "")
                   : pass.live.points > 0
                     ? t("home.pass.check.unsigned", { points: pass.points })
                     : t("home.pass.check.none"))}

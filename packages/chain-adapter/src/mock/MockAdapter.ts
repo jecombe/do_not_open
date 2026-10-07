@@ -1,4 +1,4 @@
-import { spec, studio as studioSpec, TRAIT_KEYS } from "@dno/game-spec";
+import { spec, studio as studioSpec, TRAIT_KEYS, whitelistTierOf } from "@dno/game-spec";
 import { buildCatSpec, buildForWeight, fold32, mulberry32, stateDef } from "@dno/generator";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
@@ -36,6 +36,7 @@ import {
   type TxRecord,
   type WalletOption,
   type WeighIn,
+  type WhitelistGift,
   type ApiSession,
   type StudioPack,
   type StudioUnits,
@@ -146,6 +147,11 @@ export interface MockOptions {
   fleaMarket?: boolean;
   /** Keeps the demo's rats between pages (the studio and the game are two pages). In memory without it. */
   ratStore?: { load(): string | null; save(value: string): void };
+  /**
+   * The whitelist's gifts. `open` (the default): the list stands frozen as it is, so a claimant
+   * collects their rank's gift. `waiting`: not frozen yet, as on the testnet. `off`: none deployed.
+   */
+  whitelistGifts?: "open" | "waiting" | "off";
 }
 
 interface MockRat {
@@ -161,6 +167,8 @@ interface MockRat {
   paidUntil: number | null;
   mintedBlock: number;
   modelUrl: string | null;
+  /** Handed out by the whitelist's gifts: outside the caps and the wallet limit. */
+  gift?: boolean;
 }
 
 interface MockListing extends Listing {
@@ -229,6 +237,10 @@ export class MockAdapter implements ChainAdapter {
   private readonly settled: SettledDuel[] = [];
   /** Allow list claims: best points and when, by address. */
   private readonly claims = new Map<Address, { points: number; claimedAt: number }>();
+  private readonly giftsMode: "open" | "waiting" | "off";
+  /** Mock milliseconds when the gifts close: 30 days from the start. */
+  private giftsCloseAt = 0;
+  private readonly gifts = new Map<Address, { tier: number; croq: bigint; box: number | null; rat: number | null }>();
   private readonly proposals = new Map<string, Address>();
   /** Boxes sold: encrypted on a real chain. */
   private sold = 0;
@@ -279,6 +291,8 @@ export class MockAdapter implements ChainAdapter {
     this.dayMs = opts.dayMs ?? 60_000;
     this.now = opts.now ?? Date.now;
     this.startedAt = this.now();
+    this.giftsMode = opts.whitelistGifts ?? "open";
+    this.giftsCloseAt = this.startedAt + spec.whitelist.claimDays * 86_400_000;
     this.usdc.set(MOCK_YOU, START_USDC);
     this.cUsdc.set(MOCK_YOU, START_CUSDC);
     for (let i = 0; i < (opts.yours ?? 3); i++) this.boxes.push(this.newBox(MOCK_YOU));
@@ -417,6 +431,56 @@ export class MockAdapter implements ChainAdapter {
     return this.standing(me);
   }
 
+  async whitelistGift(): Promise<WhitelistGift | null> {
+    if (this.giftsMode === "off" || !this.me) return null;
+    const closesAt = Math.floor(this.giftsCloseAt / 1000);
+    const got = this.gifts.get(this.me);
+    if (got) return { status: "claimed", tier: got.tier, closesAt, box: got.box, rat: got.rat };
+    if (this.giftsMode === "waiting") return { status: "waiting", tier: null, closesAt: null, box: null, rat: null };
+    // The demo's list is frozen as it stands: every claimant is seated.
+    const tier = this.standing(this.me).tier ?? null;
+    if (tier === null) return { status: "none", tier: null, closesAt, box: null, rat: null };
+    return { status: this.now() >= this.giftsCloseAt ? "closed" : "ready", tier, closesAt, box: null, rat: null };
+  }
+
+  async claimWhitelistGift(opts?: ActionOptions): Promise<WhitelistGift> {
+    const me = this.signer();
+    const gift = await this.whitelistGift();
+    if (!gift) throw new ChainError("unknown", "There are no whitelist gifts here.");
+    if (gift.status === "claimed") throw revert("AlreadyClaimed");
+    if (gift.status !== "ready") throw revert(gift.status === "none" ? "NotOnTheList" : "NotOpen");
+    const tier = spec.whitelist.tiers[gift.tier!]!;
+    if (tier.box) opts?.onStep?.("encrypting");
+    await this.send(opts, "claim");
+    // One encrypted 16-bit draw folded into the range, as the contract does.
+    const croq = BigInt(tier.croqMin + (Math.floor(Math.random() * 65_536) % (tier.croqMax - tier.croqMin + 1)));
+    this.credit(this.hidden, me, croq);
+    this.hiddenMoves.set(me, (this.hiddenMoves.get(me) ?? 0) + 1);
+    let box: number | null = null;
+    if (tier.box && this.sold < spec.collection.maxSupply) {
+      box = this.boxes.length;
+      this.boxes.push(this.newBox(me));
+      this.sold++;
+      this.settleMilestones();
+    }
+    let rat: number | null = null;
+    if (tier.rat) {
+      rat = this.ratList.length + 1;
+      const seed = BigInt.asUintN(64, BigInt(Math.floor(Math.random() * 2 ** 32)) * 2n ** 32n + BigInt(Math.floor(Math.random() * 2 ** 32)));
+      this.ratList.push({ id: rat, kind: "seed", seed: seed.toString(), job: null, uri: null, owner: me, minter: me, mintedAt: this.now(), paidUntil: null, mintedBlock: this.block, modelUrl: null, gift: true });
+      this.saveRats();
+    }
+    this.gifts.set(me, { tier: gift.tier!, croq, box, rat });
+    return (await this.whitelistGift())!;
+  }
+
+  async whitelistGiftCroq(opts?: ActionOptions): Promise<bigint | null> {
+    const got = this.me ? this.gifts.get(this.me) : undefined;
+    if (!got) return null;
+    await this.decrypting(opts);
+    return got.croq;
+  }
+
   private livePoints(account: Address) {
     return playerPoints(account, this.settled, this.boxes.flatMap((b) => (b.openedBy ? [b.openedBy] : [])));
   }
@@ -426,7 +490,7 @@ export class MockAdapter implements ChainAdapter {
     const ranked = [...this.claims].map(([address, c]) => ({ address, points: Math.max(c.points, this.livePoints(address).points), claimedAt: c.claimedAt })).sort(byClaimRank);
     const i = ranked.findIndex((c) => c.address === account);
     const mine = i >= 0 ? ranked[i]! : null;
-    return { live, points: mine?.points ?? live.points, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: DEFAULT_ALLOW_LIST_PLACES };
+    return { live, points: mine?.points ?? live.points, claimedAt: mine?.claimedAt ?? null, rank: mine ? i + 1 : null, claimants: ranked.length, places: DEFAULT_ALLOW_LIST_PLACES, tier: mine ? whitelistTierOf(i + 1) : null };
   }
 
   /** Gas is free in the mock: every account holds a round 1 ETH. */
@@ -1043,12 +1107,12 @@ export class MockAdapter implements ChainAdapter {
 
   async ratSupply(account?: Address | null): Promise<RatSupply | null> {
     const m = studioSpec.rats.mint;
-    const count = (kind: "seed" | "model") => this.ratList.filter((r) => r.kind === kind).length;
+    const count = (kind: "seed" | "model") => this.ratList.filter((r) => r.kind === kind && !r.gift).length;
     return {
       seed: { minted: count("seed"), max: m.maxSeedRats },
       model: { minted: count("model"), max: m.maxModelRats },
       perWallet: m.maxPerWallet,
-      mintedBy: account ? this.ratList.filter((r) => r.minter === account).length : null,
+      mintedBy: account ? this.ratList.filter((r) => r.minter === account && !r.gift).length : null,
     };
   }
 

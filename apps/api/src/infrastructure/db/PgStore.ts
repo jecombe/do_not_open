@@ -139,6 +139,7 @@ const ratFrom = (r: Row): Rat => ({
   minter: r.minter,
   mintedBlock: r.minted_block,
   mintedAt: r.minted_at,
+  gift: r.gift ?? false,
 });
 
 const adoptionFrom = (r: Row): Adoption => ({
@@ -333,9 +334,9 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
       rat: (id) => one(c, "select * from rats where token_id = $1", [id], ratFrom),
       saveRat: async (r) => {
         await c.query(
-          `insert into rats (token_id, kind, ref, uri, owner, minter, minted_block, minted_at) values ($1, $2, $3, $4, $5, $6, $7, $8)
-           on conflict (token_id) do update set kind = $2, ref = $3, uri = $4, owner = $5, minter = $6, minted_block = $7, minted_at = $8`,
-          [r.id, r.kind, r.ref, r.uri, r.owner, r.minter, r.mintedBlock, r.mintedAt],
+          `insert into rats (token_id, kind, ref, uri, owner, minter, minted_block, minted_at, gift) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           on conflict (token_id) do update set kind = $2, ref = $3, uri = $4, owner = $5, minter = $6, minted_block = $7, minted_at = $8, gift = $9`,
+          [r.id, r.kind, r.ref, r.uri, r.owner, r.minter, r.mintedBlock, r.mintedAt, r.gift],
         );
       },
       addSniff: async (account) => {
@@ -599,12 +600,12 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
   }
 
   async ratCounts() {
-    const { rows } = await this.pool.query("select kind, count(*)::int as count from rats group by kind");
+    const { rows } = await this.pool.query("select kind, count(*)::int as count from rats where not gift group by kind");
     return rows.map((r) => ({ kind: r.kind as RatKind, count: r.count as number }));
   }
 
   async ratsMintedBy(minter: Address) {
-    const { rows } = await this.pool.query("select count(*)::int as count from rats where minter = $1", [minter]);
+    const { rows } = await this.pool.query("select count(*)::int as count from rats where minter = $1 and not gift", [minter]);
     return rows[0].count as number;
   }
 

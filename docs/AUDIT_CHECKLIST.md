@@ -55,6 +55,9 @@ mainnet), **Not done** (a check nobody has run).
 | O28 | The `RatPantry` has no owner and no refill but a transfer: once its 500,000 CROQ are paid out (about 167 days with all 1,000 rats claiming 3 a day), rats earn nothing (`claim` reverts `PantryEmpty` while it is empty, so earned days wait; it pays what is left when low) | Low (UX) | `RatPantry.claim` |
 | O29 | A box with a pending opening can be listed and sold on the flea market as sealed, its seed already public (extends O24) | Low | `FleaMarket.list`, `DoNotOpenHooks` |
 | O30 | X boarding passes: the follow, like, reply and repost are declared, not checked, and anyone can make many X accounts; the pass token is a bearer kept in the browser (lost with it, moved by a new post) | Low (fairness) | `apps/api` `XPasses` |
+| O31 | A whitelist gift box's first holder is public (the claim names the tier, the box id goes to the wallet) | Low (privacy) | `WhitelistGifts.claim` |
+| O32 | The whitelist is frozen off-chain: the operator builds the Merkle tree from the API's ranking, and players trust it to match the published rules (the root can be corrected until the first claim) | Medium (trust) | `WhitelistGifts.setRoot`, `GET /v1/allowlist/gifts` |
+| O33 | `Rats.giver` adopts free rats outside the paid caps, up to `maxGiftRats` (1,000): with the 1,000 paid rats, the `RatPantry`'s 500,000 CROQ last about half as long | Low (economy) | `Rats.gift`, `RatPantry` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -374,9 +377,31 @@ Sepolia yet. 31 tests in `test/FleaMarket.ts`, on the FHEVM mock, against the re
 | A purchase whose proof never comes keeps the buyer's cUSDC | Accepted | Anyone may send `finalizePurchase`; the adapter's `pendingPurchases` and `finishPurchase` pick it up |
 | Static analysis, fuzzing | Not done | |
 
+## 13. The whitelist's gifts: WhitelistGifts and Rats.gift
+
+`WhitelistGifts.sol` gives each wallet on the frozen whitelist its tier's gift once (see
+[FLOWS.md](FLOWS.md#whitelist-gifts)). Not deployed yet: it opens on mainnet. 8 tests in
+`test/WhitelistGifts.ts`, on the FHEVM mock, against the real `DoNotOpen`, `ConfidentialCroq`
+and `Rats`; the giver role in `test/Rats.ts`.
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Only a wallet on the root, with its own tier, claims, and once | Pass | Leaf `keccak256(keccak256(abi.encode(msg.sender, tier)))` checked with `MerkleProof.verifyCalldata`; `claimed` set before any external call. Test: "refuses a second claim, another tier, a wallet off the list, and claims outside the window" |
+| Claims only between the root and `closesAt` | Pass | `NotOpen` before the root and after `closesAt`. Same test |
+| The root cannot change once someone claimed | Pass | `setRoot` reverts `RootAlreadySet` once `claimedCount` is not 0; owner only. Tests: "waits for the root, and lets the owner correct it until the first claim", and the refusals test |
+| The croquettes stay in the tier's range and readable by the wallet only | Pass | `rem(randEuint16, span) + croqMin`; the constructor refuses a span over 16 bits. The amount is allowed by the cCROQ transfer to the wallet and the contract only. Tests: "gives first class an encrypted draw…", "gives business a box and no rat…", "refuses tiers whose range does not fit the draw" |
+| The gift box is paid for, and lands with the wallet | Pass | `DoNotOpen.mint` pulls the price from the contract's cUSDC (operator set in the constructor), then `confidentialTransfer` to the wallet. Test: "gives first class…" checks the owner and the wallet's untouched cUSDC |
+| Only the giver adopts free rats, outside the paid caps and the wallet limit, up to `maxGiftRats` | Pass | `NotGiver`, `SoldOut`, `AlreadyAdopted`; `setGiver` owner only. Test: "lets only the giver adopt free rats…" |
+| Re-entrancy | Pass | `claimed` is set before the calls; the callees are the collection's own contracts (`ConfidentialCroq`, `DoNotOpen`, `Rats`, which mints with `_mint`, no receiver hook) |
+| The owner takes back what is left only once claims are over | Pass | `sweep` reverts `StillOpen` before `closesAt`. Test: "gives back what is left to the owner once claims are over" |
+| A short contract gives 0 croquettes or no box, silently | Accepted | ERC-7984 semantics. The deploy script funds the most the tiers can draw (425,000 cCROQ) and one mint price per box |
+| HCU | Pass | First class (draw, cCROQ transfer, box mint and transfer, rat): ~3.4M of 20M. Test: "stays under the HCU limit for the biggest gift" |
+| The gift box's first holder is public (O31) | Accepted | Documented in `HIDDEN_OWNERS.md` §5c |
+| Static analysis, fuzzing | Not done | |
+
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29. Fix O3, O4, O7, O17 (small and
+1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29, O32, O33. Fix O3, O4, O7, O17 (small and
    mechanical), and make room for O18.
 2. Set the relayer key and the credit price from Zama's plan (O9).
 3. Run the "Not done" rows of section 8.

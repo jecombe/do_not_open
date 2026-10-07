@@ -1,8 +1,10 @@
 import {
   Contract,
+  hexlify,
   Interface,
   isError,
   keccak256,
+  randomBytes,
   toUtf8Bytes,
   VoidSigner,
   type ContractTransactionReceipt,
@@ -15,7 +17,7 @@ import {
   type TransactionResponse,
 } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/web";
-import { studio as studioSpec } from "@dno/game-spec";
+import { spec, studio as studioSpec } from "@dno/game-spec";
 import { decoyPlan } from "../decoys";
 import { duelSettles, duelUnderway, onShelf, shelfBoxes } from "../duels";
 import { traitIndexAtOffset } from "../layout";
@@ -26,6 +28,7 @@ import {
   sameAddress,
   type ActionOptions,
   type AllowListStatus,
+  type WhitelistGift,
   type SwapOptions,
   type SignedTerms,
   type Address,
@@ -165,6 +168,8 @@ export interface EvmAdapterOptions {
   ratPantry?: Deployed;
   /** The FleaMarket, where players sell each other boxes, cats and rats. Without it, nothing can be listed. */
   market?: Deployed & { deployBlock?: number | null };
+  /** The whitelist's gifts. Without it, there is none to collect on this network. */
+  whitelistGifts?: Deployed;
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -696,6 +701,66 @@ export class EvmFhevmAdapter implements ChainAdapter {
       return (await ix.allowList(account)).data;
     } catch {
       return null;
+    }
+  }
+
+  async whitelistGift(): Promise<WhitelistGift | null> {
+    const deployed = this.opts.whitelistGifts;
+    const account = this.address_;
+    if (!deployed || !account) return null;
+    const gifts = this.at(deployed);
+    const [root, closesAt, g] = await Promise.all([this.reading(gifts.root!()), this.reading(gifts.closesAt!()), this.reading(gifts.giftOf!(account))]);
+    const frozen = root !== ZERO_HANDLE;
+    const closes = frozen ? Number(closesAt) : null;
+    if (g.claimed) return { status: "claimed", tier: Number(g.tier), closesAt: closes, box: g.hasBox ? Number(g.box) : null, rat: g.hasRat ? Number(g.rat) : null };
+    if (!frozen) return { status: "waiting", tier: null, closesAt: null, box: null, rat: null };
+    const proof = await this.giftProof(account);
+    const status = !proof ? "none" : Date.now() / 1000 >= closes! ? "closed" : "ready";
+    return { status, tier: proof?.tier ?? null, closesAt: closes, box: null, rat: null };
+  }
+
+  async claimWhitelistGift(opts?: ActionOptions): Promise<WhitelistGift> {
+    const deployed = this.opts.whitelistGifts;
+    if (!deployed) throw new ChainError("unknown", "There are no whitelist gifts on this network.");
+    const account = (await this.signer().getAddress()) as Address;
+    const proof = await this.giftProof(account);
+    if (!proof) throw new ChainError("reverted", "This wallet is not on the frozen whitelist.", "NotOnTheList");
+    const tier = spec.whitelist.tiers[proof.tier];
+    // The box is bought by the gifts contract: its quantity (1) is encrypted for it, not for the wallet.
+    const input = tier?.box
+      ? await this.encrypt(this.opts.address, account, (b) => b.add8(1), "the box", opts, deployed.address)
+      : { handles: [ZERO_HANDLE], inputProof: "0x" };
+    const seed = await this.freeRatSeed(!!tier?.rat);
+    await this.send(opts, () => this.writer(deployed).claim!(proof.tier, proof.proof, input.handles[0], input.inputProof, seed));
+    return (await this.whitelistGift())!;
+  }
+
+  async whitelistGiftCroq(opts?: ActionOptions): Promise<bigint | null> {
+    const deployed = this.opts.whitelistGifts;
+    const account = this.address_;
+    if (!deployed || !account) return null;
+    const g = await this.reading(this.at(deployed).giftOf!(account));
+    if (!g.claimed) return null;
+    return this.userDecrypt64(String(g.croq), this.eco().cCroq.address, opts);
+  }
+
+  /** The wallet's proof from the API, or null: not frozen, or not on the list. */
+  private async giftProof(account: Address): Promise<{ tier: number; proof: string[] } | null> {
+    const ix = this.opts.indexer;
+    if (!ix) throw new ChainError("network", "No API serves the whitelist's proofs on this network.");
+    try {
+      return await ix.giftProof(account);
+    } catch (error) {
+      throw new ChainError("network", `The API did not answer: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /** A seed no rat was adopted from yet; 0 when the tier has no rat (the contract ignores it). */
+  private async freeRatSeed(wanted: boolean): Promise<bigint> {
+    if (!wanted) return 0n;
+    for (;;) {
+      const seed = BigInt.asUintN(64, BigInt(hexlify(randomBytes(8))));
+      if (!this.opts.rats || !(await this.ratTaken({ seed }))) return seed;
     }
   }
 
@@ -1936,7 +2001,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * them. Through the API's proxy an input is charged to the wallet, which proves it is itself
    * with its decryption permit, sent as a bearer token: signed once a session, not per input.
    */
-  private async encrypt(contract: string, account: Address, fill: (b: InputBuilder) => InputBuilder, what: string, opts?: ActionOptions) {
+  private async encrypt(contract: string, account: Address, fill: (b: InputBuilder) => InputBuilder, what: string, opts?: ActionOptions, inputUser: string = account) {
     for (let attempt = 0; ; attempt++) {
       try {
         const relayer = await this.loadRelayer();
@@ -1946,7 +2011,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
           auth = { auth: { __type: "BearerToken", token: permitToken(permit) } };
         }
         opts?.onStep?.("encrypting");
-        return await fill(relayer.createEncryptedInput(contract, account)).encrypt(auth);
+        // `inputUser` calls `contract`: the wallet itself, or a contract acting for it.
+        return await fill(relayer.createEncryptedInput(contract, inputUser)).encrypt(auth);
       } catch (error) {
         if (error instanceof ChainError || isError(error, "ACTION_REJECTED")) throw this.toChainError(error);
         const refusal = gateRefusal(error);

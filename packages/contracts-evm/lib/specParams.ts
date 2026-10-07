@@ -142,3 +142,36 @@ export function economyFromSpec() {
   }
   return { totalSupply, allocation };
 }
+
+export interface WhitelistTierParams {
+  croqMin: number;
+  croqMax: number;
+  box: boolean;
+  rat: boolean;
+}
+
+/**
+ * The WhitelistGifts tiers, checked to cover ranks 1 to `places` with no gap, and what the gifts
+ * cost at most: the croquettes to send it, the boxes it buys and the rats it adopts.
+ */
+export function whitelistParamsFromSpec() {
+  const { spec } = loadSpec();
+  const w = spec.whitelist;
+  let next = 1;
+  const tiers: WhitelistTierParams[] = [];
+  let maxCroq = 0n;
+  let boxes = 0;
+  let rats = 0;
+  for (const t of w.tiers as { fromRank: number; toRank: number; croqMin: number; croqMax: number; box: boolean; rat: boolean }[]) {
+    if (t.fromRank !== next || t.toRank < t.fromRank) throw new Error(`whitelist.tiers must cover the ranks in order: expected one from rank ${next}`);
+    if (t.croqMin < 0 || t.croqMax < t.croqMin || t.croqMax - t.croqMin >= 65_535) throw new Error("a whitelist tier's croquettes must be a range under 65,535 wide");
+    const seats = t.toRank - t.fromRank + 1;
+    maxCroq += BigInt(seats) * BigInt(t.croqMax);
+    if (t.box) boxes += seats;
+    if (t.rat) rats += seats;
+    tiers.push({ croqMin: t.croqMin, croqMax: t.croqMax, box: t.box, rat: t.rat });
+    next = t.toRank + 1;
+  }
+  if (next - 1 !== w.places) throw new Error(`whitelist.tiers end at rank ${next - 1}, the list has ${w.places} places`);
+  return { places: w.places as number, claimDays: w.claimDays as number, tiers, maxCroq, boxes, rats };
+}

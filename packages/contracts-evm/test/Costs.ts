@@ -1,7 +1,9 @@
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import type { ContractTransactionResponse } from "ethers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { ethers, fhevm } from "hardhat";
+import { whitelistParamsFromSpec } from "../lib/specParams";
 import {
   deploy,
   deployEconomy,
@@ -86,7 +88,7 @@ describe("Costs", function () {
     // The flea market: a box listed by alice, bought by carol; a rat sold to a secret offer.
     const hooks = await (await ethers.getContractFactory("DoNotOpenHooks")).deploy(address);
     const rats = await (await ethers.getContractFactory("Rats")).deploy(
-      await usdc.getAddress(), alice.address, alice.address, alice.address, 1_000_000, 3_000_000, "", 10, 10, 5,
+      await usdc.getAddress(), alice.address, alice.address, alice.address, 1_000_000, 3_000_000, "", 10, 10, 5, 10,
     );
     const market = await (await ethers.getContractFactory("FleaMarket")).deploy(
       address, await hooks.getAddress(), await rats.getAddress(), await cUsdc.getAddress(), alice.address, alice.address, 250,
@@ -111,6 +113,23 @@ describe("Costs", function () {
     const offer = await fhevm.createEncryptedInput(marketAddress, carol.address).add64(4_000_000n).encrypt();
     await measure("FleaMarket.makeOffer", market.connect(carol).makeOffer(1, offer.handles[0]!, offer.inputProof));
     await measure("FleaMarket.acceptOffer (rat)", market.connect(bob).acceptOffer(0));
+
+    // The whitelist's gifts: first class (croquettes, a box, a rat) and economy (croquettes, a rat).
+    const gifts = await (await ethers.getContractFactory("WhitelistGifts")).deploy(
+      address, await rats.getAddress(), await cCroq.getAddress(), await cUsdc.getAddress(), whitelistParamsFromSpec().tiers, alice.address,
+    );
+    const giftsAddress = await gifts.getAddress();
+    await (await rats.connect(alice).setGiver(giftsAddress)).wait();
+    await (await croq.approve(await cCroq.getAddress(), 1_000)).wait();
+    await (await cCroq.wrap(giftsAddress, 1_000)).wait();
+    await (await usdc.mint(alice.address, 10_000_000)).wait();
+    await (await usdc.connect(alice).approve(await cUsdc.getAddress(), 10_000_000)).wait();
+    await (await cUsdc.connect(alice).wrap(giftsAddress, 10_000_000)).wait();
+    const tree = StandardMerkleTree.of<[string, number]>([[bob.address, 0], [carol.address, 2]], ["address", "uint8"]);
+    await (await gifts.connect(alice).setRoot(tree.root, (await time.latest()) + 86_400)).wait();
+    const box = await fhevm.createEncryptedInput(address, giftsAddress).add8(1).encrypt();
+    await measure("WhitelistGifts.claim (first class)", gifts.connect(bob).claim(0, tree.getProof(0), box.handles[0]!, box.inputProof, 77n));
+    await measure("WhitelistGifts.claim (economy)", gifts.connect(carol).claim(2, tree.getProof(1), ethers.ZeroHash, "0x", 78n));
 
     console.table(rows);
   });

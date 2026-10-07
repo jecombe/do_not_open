@@ -34,7 +34,7 @@ describe("Rats and RatPantry", function () {
     usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     croq = (await (await ethers.getContractFactory("Croq")).deploy(20_000_000, deployer.address)) as unknown as Croq;
     rats = (await (await ethers.getContractFactory("Rats")).deploy(
-      await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/", 700, 300, 50,
+      await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/", 700, 300, 50, 2,
     )) as unknown as Rats;
     pantry = (await (await ethers.getContractFactory("RatPantry")).deploy(await croq.getAddress(), await rats.getAddress(), 10, 7)) as unknown as RatPantry;
     await croq.transfer(await pantry.getAddress(), 1_000);
@@ -142,9 +142,9 @@ describe("Rats and RatPantry", function () {
   it("caps each kind for good, and each wallet's mints, but not what a wallet holds", async function () {
     const Rats = await ethers.getContractFactory("Rats");
     const args = [await usdc.getAddress(), treasury.address, deployer.address, attester.address, usd("1"), usd("3"), "https://api.test/rats/"] as const;
-    await expect(Rats.deploy(...args, 0, 1, 1)).to.be.revertedWithCustomError(rats, "ZeroCap");
-    await expect(Rats.deploy(...args, 1, 1, 0)).to.be.revertedWithCustomError(rats, "ZeroCap");
-    const small = (await Rats.deploy(...args, 2, 1, 2)) as unknown as Rats;
+    await expect(Rats.deploy(...args, 0, 1, 1, 1)).to.be.revertedWithCustomError(rats, "ZeroCap");
+    await expect(Rats.deploy(...args, 1, 1, 0, 1)).to.be.revertedWithCustomError(rats, "ZeroCap");
+    const small = (await Rats.deploy(...args, 2, 1, 2, 1)) as unknown as Rats;
     const at = await small.getAddress();
     await usdc.connect(alice).approve(at, usd("20"));
     await usdc.mint(bob.address, usd("20"));
@@ -188,6 +188,27 @@ describe("Rats and RatPantry", function () {
     expect(p.modelPrice).to.eq(usd(studio.rats.mint.modelPriceUsdc));
     expect(p.perDay).to.eq(studio.rats.croquettes.perDay);
     expect([p.maxSeedRats, p.maxModelRats, p.maxPerWallet]).to.deep.eq([studio.rats.mint.maxSeedRats, studio.rats.mint.maxModelRats, studio.rats.mint.maxPerWallet]);
+    expect(p.maxGiftRats).to.eq(studio.rats.mint.maxGiftRats);
     expect(() => ratParamsFromSpec({ ...studio, rats: { ...studio.rats, mint: { ...studio.rats.mint, seedPriceUsdc: "0" } } })).to.throw(/positive/);
+  });
+
+  it("lets only the giver adopt free rats, outside the paid caps and the wallet limit, up to maxGiftRats", async function () {
+    await expect(rats.connect(alice).gift(alice.address, 7)).to.be.revertedWithCustomError(rats, "NotGiver");
+    await expect(rats.connect(alice).setGiver(alice.address)).to.be.revertedWithCustomError(rats, "OwnableUnauthorizedAccount");
+    await expect(rats.setGiver(bob.address)).to.emit(rats, "GiverSet").withArgs(bob.address);
+    await expect(rats.connect(bob).gift(alice.address, 7))
+      .to.emit(rats, "RatMinted")
+      .withArgs(1, alice.address, 0, ethers.zeroPadValue("0x07", 32), "", 0);
+    expect(await rats.ownerOf(1)).to.eq(alice.address);
+    expect([await rats.seedMinted(), await rats.giftMinted(), await rats.mintedBy(alice.address)]).to.deep.eq([0n, 1n, 0n]);
+    expect(await usdc.balanceOf(treasury.address)).to.eq(0);
+    // A seed is adopted once, whichever way.
+    await expect(rats.connect(alice).mintSeed(7, usd("1"))).to.be.revertedWithCustomError(rats, "AlreadyAdopted");
+    await expect(rats.connect(bob).gift(alice.address, 7)).to.be.revertedWithCustomError(rats, "AlreadyAdopted");
+    await rats.connect(bob).gift(alice.address, 8);
+    await expect(rats.connect(bob).gift(alice.address, 9)).to.be.revertedWithCustomError(rats, "SoldOut");
+    // The rats earn croquettes like any other.
+    await time.increase(2 * DAY);
+    await expect(pantry.connect(alice).claim([1])).to.emit(pantry, "RatsFed");
   });
 });

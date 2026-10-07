@@ -277,17 +277,20 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
     });
 
     it("folds the rats and the sniffs as read models, and keeps the adoptions across replays", async () => {
-      const rat = { id: 1, kind: "seed" as const, ref: "42", uri: null, owner: ALICE, minter: ALICE, mintedBlock: 10, mintedAt: 1_000 };
+      const rat = { id: 1, kind: "seed" as const, ref: "42", uri: null, owner: ALICE, minter: ALICE, mintedBlock: 10, mintedAt: 1_000, gift: false };
       await store.transaction(async (tx) => {
         await tx.saveRat(rat);
         await tx.saveRat({ ...rat, id: 2, kind: "model", ref: "0xabc", uri: "ar://rec" });
         await tx.saveRat({ ...rat, id: 3, ref: "7", owner: BOB });
+        // A whitelist gift: outside the caps and the wallet limit.
+        await tx.saveRat({ ...rat, id: 4, ref: "8", gift: true });
         await tx.addSniff(ALICE);
         await tx.addSniff(ALICE);
         expect(await tx.rat(1)).toEqual(rat);
       });
       await store.transaction(async (tx) => tx.saveRat({ ...(await tx.rat(1))!, owner: CAROL }));
-      expect((await store.ratsOf(ALICE)).map((r) => r.id)).toEqual([2]);
+      expect((await store.ratsOf(ALICE)).map((r) => r.id)).toEqual([2, 4]);
+      expect(await store.rat(4)).toMatchObject({ gift: true });
       expect((await store.ratsOf(CAROL)).map((r) => r.id)).toEqual([1]);
       expect(await store.rat(2)).toMatchObject({ kind: "model", ref: "0xabc", uri: "ar://rec" });
       expect((await store.ratOfRef("0xabc"))?.id).toBe(2);

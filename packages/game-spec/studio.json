@@ -63,7 +63,8 @@
       "maxSeedRats": 700,
       "maxModelRats": 300,
       "maxPerWallet": 5,
-      "rule": "The supply is capped for good when the contract is deployed: maxSeedRats free rats and maxModelRats AI rats, never more. One address mints at most maxPerWallet rats, both kinds together; buying a rat from someone is not limited. Every rat earns croquettes from a fixed fund, so an unlimited mint would empty it."
+      "maxGiftRats": 1000,
+      "rule": "The supply is capped for good when the contract is deployed: maxSeedRats free rats and maxModelRats AI rats, never more. One address mints at most maxPerWallet rats, both kinds together; buying a rat from someone is not limited. Every rat earns croquettes from a fixed fund, so an unlimited mint would empty it. The whitelist's gifts adopt up to maxGiftRats more free rats for the wallets on the list, outside both caps and the wallet limit."
     },
     "croquettes": {
       "perDay": 3,

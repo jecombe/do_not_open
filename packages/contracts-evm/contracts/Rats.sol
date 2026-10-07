@@ -17,7 +17,9 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 ///         stored its picture on Arweave and kept its 3D model first (`uri`). Paid in plain USDC, straight
 ///         to the treasury. Unrelated to the collection: it never reads or writes DoNotOpen.
 ///         The supply is capped for good, per kind, and each address mints at most `maxPerWallet`
-///         rats: every rat earns croquettes from the RatPantry, which holds a fixed fund.
+///         rats: every rat earns croquettes from the RatPantry, which holds a fixed fund. The
+///         whitelist's gifts (`giver`) adopt free seed rats for their wallets, outside the paid
+///         rats' cap and the wallet limit, at most `maxGiftRats` of them.
 contract Rats is ERC721, Ownable, EIP712 {
     using SafeERC20 for IERC20;
 
@@ -50,8 +52,13 @@ contract Rats is ERC721, Ownable, EIP712 {
     uint256 public immutable maxModelRats;
     /// @notice The most rats one address may mint, both kinds together. Buying one is not limited.
     uint256 public immutable maxPerWallet;
+    /// @notice The most free rats the giver may ever hand out.
+    uint256 public immutable maxGiftRats;
     uint256 public seedMinted;
     uint256 public modelMinted;
+    uint256 public giftMinted;
+    /// @notice The whitelist's gifts contract, the only one that adopts rats for free. Zero: none.
+    address public giver;
     mapping(address account => uint256) public mintedBy;
 
     mapping(uint256 tokenId => Rat) private _rats;
@@ -71,12 +78,14 @@ contract Rats is ERC721, Ownable, EIP712 {
     error SoldOut();
     error WalletLimit();
     error ZeroCap();
+    error NotGiver();
 
     event RatMinted(uint256 indexed tokenId, address indexed minter, Kind kind, bytes32 ref, string uri, uint256 paid);
     event PricesSet(uint256 seedPrice, uint256 modelPrice);
     event TreasurySet(address treasury);
     event AttesterSet(address attester);
     event BaseURISet(string baseURI);
+    event GiverSet(address giver);
 
     constructor(
         IERC20 usdc_,
@@ -88,7 +97,8 @@ contract Rats is ERC721, Ownable, EIP712 {
         string memory baseURI_,
         uint256 maxSeedRats_,
         uint256 maxModelRats_,
-        uint256 maxPerWallet_
+        uint256 maxPerWallet_,
+        uint256 maxGiftRats_
     ) ERC721("DO NOT OPEN Rats", "DNORAT") Ownable(owner_) EIP712("DO NOT OPEN Rats", "1") {
         usdc = usdc_;
         _setTreasury(treasury_);
@@ -99,6 +109,7 @@ contract Rats is ERC721, Ownable, EIP712 {
         maxSeedRats = maxSeedRats_;
         maxModelRats = maxModelRats_;
         maxPerWallet = maxPerWallet_;
+        maxGiftRats = maxGiftRats_;
     }
 
     /// @notice Adopts the free rat of `seed`, at most `maxPrice` USDC. The caller must have
@@ -122,6 +133,19 @@ contract Rats is ERC721, Ownable, EIP712 {
         tokenId = ++totalSupply;
         tokenOfJob[job] = tokenId;
         _adopt(tokenId, Kind.Model, job, uri, modelPrice, maxPrice);
+    }
+
+    /// @notice The giver adopts the free rat of `seed` for `to`, without payment, once per seed.
+    function gift(address to, uint64 seed) external returns (uint256 tokenId) {
+        if (msg.sender != giver || giver == address(0)) revert NotGiver();
+        if (to == address(0)) revert ZeroAddress();
+        if (tokenOfSeed[seed] != 0) revert AlreadyAdopted();
+        if (++giftMinted > maxGiftRats) revert SoldOut();
+        tokenId = ++totalSupply;
+        tokenOfSeed[seed] = tokenId;
+        _rats[tokenId] = Rat(Kind.Seed, uint64(block.timestamp), bytes32(uint256(seed)));
+        _mint(to, tokenId);
+        emit RatMinted(tokenId, to, Kind.Seed, bytes32(uint256(seed)), "", 0);
     }
 
     function ratOf(uint256 tokenId) external view returns (Rat memory) {
@@ -150,6 +174,11 @@ contract Rats is ERC721, Ownable, EIP712 {
 
     function setAttester(address attester_) external onlyOwner {
         _setAttester(attester_);
+    }
+
+    function setGiver(address giver_) external onlyOwner {
+        giver = giver_;
+        emit GiverSet(giver_);
     }
 
     function setBaseURI(string calldata baseURI_) external onlyOwner {

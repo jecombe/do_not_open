@@ -108,6 +108,18 @@ script reads `feeBps` through `marketParamsFromSpec()` (`packages/contracts-evm/
 which refuses a fee above `maxFeeBps`; `FleaMarket` hardcodes `MAX_FEE_BPS` and `MAX_PRICE`
 and a test checks them against the spec. The mock adapter reads the same numbers.
 
+## Whitelist
+
+The `whitelist` section holds the mainnet whitelist and its gifts: `places` (1,500, the API's
+default `ALLOW_LIST_PLACES`), `claimDays` (30) and three `tiers`, each with its ranks
+(`fromRank`, `toRank`), the cCROQ range drawn under encryption (`croqMin`, `croqMax`) and
+whether it gets a box and a rat: First class 1 to 500 (100 to 500, box and rat), Business 501
+to 1,000 (50 to 250, box), Economy 1,001 to 1,500 (20 to 100, rat). `whitelistTierOf(rank)`
+maps a rank to its tier. The deploy script reads it through `whitelistParamsFromSpec()`
+(`packages/contracts-evm/lib/specParams.ts`), which checks the tiers cover ranks 1 to `places`
+in order and that each range fits the contract's 16-bit draw; the API, the mock adapter and the
+web pages read the same numbers. The gift rats' cap is `rats.mint.maxGiftRats` in `studio.json`.
+
 ## Mechanics and events
 
 See `mechanics` and `events` in `spec.json` (the flea market's events, `Listed` to `Sold`,

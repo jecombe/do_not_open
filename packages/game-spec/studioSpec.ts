@@ -26,7 +26,7 @@ export interface StudioSpec {
   rats: {
     name: string;
     rule: string;
-    mint: { seedPriceUsdc: string; modelPriceUsdc: string; maxPriceUsdc: string; maxSeedRats: number; maxModelRats: number; maxPerWallet: number; rule: string };
+    mint: { seedPriceUsdc: string; modelPriceUsdc: string; maxPriceUsdc: string; maxSeedRats: number; maxModelRats: number; maxPerWallet: number; maxGiftRats: number; rule: string };
     croquettes: { perDay: number; maxDays: number; fund: number; rule: string };
     events: Record<string, { fields: string[]; note: string }>;
   };

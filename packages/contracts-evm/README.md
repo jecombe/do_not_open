@@ -43,7 +43,9 @@ Hardhat project built on the official Zama template. Eleven contracts, and a reu
   for good at deployment, from `studio.json`: `maxSeedRats` (700) and `maxModelRats` (300),
   `SoldOut` past either, and `maxPerWallet` (5) mints an address, both kinds together
   (`WalletLimit`; `mintedBy` counts mints, not holdings). `seedMinted`, `modelMinted` and
-  `mintedBy` are public for the app's counters.
+  `mintedBy` are public for the app's counters. `gift(to, seed)` is open to the `giver` only
+  (`setGiver`, owner): a free seed rat for `to`, outside both caps and the wallet limit, counted
+  in `giftMinted` against `maxGiftRats` (1,000, a constructor argument from `studio.json`).
 - **`RatPantry`** — pays each rat `perDay` (3) plain CROQ a day from its mint, to its current
   owner, at most `maxDays` (7) kept between two claims; while it is empty a claim reverts
   (`PantryEmpty`), so no earned day is lost; when it runs low a claim pays what is left. No
@@ -64,6 +66,17 @@ Hardhat project built on the official Zama template. Eleven contracts, and a reu
   250 bps), at most `MAX_FEE_BPS` (1,000) hardcoded; `MAX_PRICE` is 1,000,000 USDC. The owner
   (`Ownable`) can only `setFee` and `setTreasury`, never move an escrowed item. Never writes to
   `DoNotOpen` beyond the transfers its sellers allowed.
+
+- **`WhitelistGifts`** — the whitelist's gifts, collected once per wallet on the frozen list.
+  The owner sets a Merkle `root` of (wallet, tier) and `closesAt` with `setRoot` (correctable
+  until the first claim); `claim(tier, proof, quantity, inputProof, ratSeed)` sends the wallet
+  an encrypted draw of cCROQ in its tier's range (`rem(randEuint16, span) + croqMin`, readable by
+  the wallet only), buys it a box from `DoNotOpen` with the contract's cUSDC (one id, `quantity`
+  encrypted by the wallet for `DoNotOpen` with this contract as the input's user) and sends it
+  on, and adopts its rat through `Rats.gift`. `giftOf(account)` returns what it got, the
+  croquettes as a handle. `sweep` returns what is left once `closesAt` passed. Tiers from the
+  spec's `whitelist` section (`whitelistParamsFromSpec`, which checks they cover ranks 1 to
+  `places`). Never writes to `DoNotOpen` beyond buying and sending its gift boxes.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -108,6 +121,8 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `FleaMarket.buy` + `finalizePurchase` (box) | ~546k + ~855k | ~0.71M + ~1.37M |
 | `FleaMarket.makeOffer` | ~543k | ~0.74M |
 | `FleaMarket.acceptOffer` (rat) | ~677k | ~2.41M |
+| `WhitelistGifts.claim`, first class (croquettes, box, rat) | ~1.69M | ~3.41M |
+| `WhitelistGifts.claim`, economy (croquettes, rat) | ~586k | ~1.32M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
 `Rats` and `RatPantry` have no FHE: `mintSeed` ~248k gas (~163k after the first), `mintModel`
@@ -186,6 +201,16 @@ root) adds the market next to a live collection; `pnpm export:sepolia` then writ
 market their operator on the boxes (`setOperator(market, until)`) or approves it on the rats
 (`setApprovalForAll`); to buy or offer, their cUSDC operator. The adapter does both when
 needed (a year for the boxes).
+
+`deploy/whitelist.ts` deploys `WhitelistGifts` with the spec's tiers, owned by
+`COLLECTION_OWNER` (or the deployer), makes it the rats' `giver` (or prints the call), and funds
+it: the most the tiers can draw (425,000 cCROQ, wrapped from the deployer's CROQ when it holds
+them) and one mint price per gift box (1,000 boxes: test USDC minted and wrapped on a test
+network, printed as a to-do on mainnet). It runs after `rats.ts`. When the list closes, save
+the API's `GET /v1/allowlist/gifts?token=` answer and run
+`npx hardhat --network <net> dno:whitelist-root --tree <file>`: it checks the tree, sets the root
+with `closesAt` `claimDays` (30) from now, and the same file goes to the API
+(`WHITELIST_GIFTS_TREE`). `dno:export` writes the contract under `whitelistGifts`.
 
 `Pantry.fund` calls FHE, so the economy script fails on the bare in-process `hardhat`
 network. Use `pnpm chain` + `pnpm deploy:localhost`, which runs the FHEVM mock.

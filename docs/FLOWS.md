@@ -448,10 +448,58 @@ sequenceDiagram
 
 Signing again ("Update my points") keeps the first claim's date and the best points. When the
 list closes, every claimant has a place, ranked by points. Seats are capped, first come, first
-served (`ALLOW_LIST_PLACES`, 3,000), and taken either way: an X account that did every boarding
+served (`ALLOW_LIST_PLACES`, the spec's `whitelist.places`, 1,500), and taken either way: an X account that did every boarding
 task, or a wallet that claimed and tried the testnet (a mint, an opening or a duel). Once they are
 gone nobody new sits down (`409 list-full`). The operator exports
 them with `GET /v1/allowlist?token=`.
+
+## Whitelist gifts
+
+Every seated wallet gets a gift, set by its rank among the seated claimants (`whitelist.tiers` in
+`spec.json`): ranks 1 to 500 fly First class (100 to 500 cCROQ, a box and a rat), 501 to 1,000
+Business (50 to 250 cCROQ and a box), 1,001 to 1,500 Economy (20 to 100 cCROQ and a rat). While
+the list is open, `GET /v1/allowlist/:address` says which `tier` the rank would get. When it
+closes, the operator freezes it into a Merkle tree of (wallet, tier), sets the root on
+`WhitelistGifts` and gives the same file to the API, which serves each wallet its proof. A seat
+held by an X account whose wallet never claimed a place has no wallet to send a gift to.
+
+```mermaid
+sequenceDiagram
+  participant Op as Operator
+  participant API
+  participant G as WhitelistGifts
+  participant U as Player
+  participant App as Game (Duels tab)
+  participant D as DoNotOpen
+  participant R as Rats
+  participant C as cCROQ
+  Op->>API: GET /v1/allowlist/gifts?token=
+  API-->>Op: root, count, tree (seated claimants, ranked, with their tier)
+  Op->>G: setRoot(root, now + claimDays) (hardhat dno:whitelist-root)
+  Op->>API: WHITELIST_GIFTS_TREE=<the same file>
+  U->>App: Leaderboard, Duels tab
+  App->>G: root, closesAt, giftOf(wallet)
+  App->>API: GET /v1/gifts/:address
+  API-->>App: tier, proof (404 not-frozen / not-on-list)
+  U->>App: Collect my gift
+  App->>App: encrypt quantity 1 for DoNotOpen, user = WhitelistGifts (box tiers only)
+  App->>G: claim(tier, proof, quantity, inputProof, ratSeed)
+  G->>G: leaf (wallet, tier) in the root, not claimed, before closesAt
+  G->>G: randEuint16 % (croqMax - croqMin + 1) + croqMin
+  G->>C: confidentialTransfer(wallet, amount): allowed to the wallet and the gifts
+  G->>D: mint(quantity, inputProof, 1): paid with the gifts' cUSDC
+  G->>D: confidentialTransfer(wallet, box)
+  G->>R: gift(wallet, ratSeed): free, outside the paid caps
+  G-->>App: GiftClaimed(wallet, tier, box, rat)
+  U->>App: Read my croquettes
+  App->>App: user-decrypt the amount (one signature a session)
+```
+
+The croquettes come from the treasury (at most 425,000 cCROQ for 1,500 seats), the boxes are
+bought at the mint price with cUSDC the owner sends the contract (the money comes back as the
+collection's revenue), the rats are free seed rats outside the 700 + 300 paid ones (at most
+`maxGiftRats`, 1,000). The owner can correct the root until the first claim, and takes back what
+is left with `sweep` once `claimDays` (30) are over.
 
 ## X boarding pass
 

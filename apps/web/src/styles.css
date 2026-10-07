@@ -1001,6 +1001,39 @@ button {
   font-weight: 700;
 }
 
+/* The whitelist's gift: a band in the class's colour, the items as a ticket's list. */
+.gift-panel {
+  --band: var(--tape);
+}
+
+.gift-panel.is-first {
+  --band: #ffd66b;
+}
+
+.gift-panel.is-business {
+  --band: #9cc7f0;
+}
+
+.gift-panel.is-economy {
+  --band: #7de3d0;
+}
+
+.gift-head {
+  margin: 8px 0 6px;
+  padding: 4px 10px 2px;
+  border-left: 6px solid var(--band);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.gift-list {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding-left: 22px;
+  font-size: 17px;
+}
+
 
 /* --- Controls: a wallet tag and one manila tag that opens the packing list --- */
 .controls {

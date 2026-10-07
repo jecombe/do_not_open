@@ -21,6 +21,8 @@ export interface Deployment {
   ratPantry?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
   /** The flea market, where players sell each other boxes, cats and rats. Null where none was deployed. */
   market?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  /** The whitelist's gifts. Absent until they are deployed (mainnet). */
+  whitelistGifts?: { address: string; abi: InterfaceAbi } | null;
 }
 
 export const SEPOLIA: ChainParams = {

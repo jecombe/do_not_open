@@ -4,6 +4,7 @@ import { useSeats, useXPass } from "../xpass";
 import { Boarding } from "../home/Boarding";
 import { HomeTop } from "../home/HomeTop";
 import { useT } from "../home/i18n";
+import { GiftTiers } from "../home/GiftTiers";
 import { Passport, SeatMeter } from "../home/Passport";
 import { GateScene } from "./gateScene";
 import { IdeaBox } from "./IdeaBox";
@@ -52,6 +53,8 @@ export function ApplyPage() {
       </section>
 
       <Boarding />
+
+      <GiftTiers />
 
       <Passport />
 

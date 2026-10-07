@@ -462,22 +462,28 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "The mainnet allow list has 3,000 seats, first come, first served: a seat goes to each player who claims one, or who connects an X account on the boarding page, until none is left. Your points: 3 for each opponent you beat in a duel, 1 for each opponent you faced, 2 for each box you opened, up to 10 boxes. Each opponent counts once, however many times you meet, and duels between your own wallets count nothing. Claim your place from the leaderboard's Duels tab by signing with your wallet: it is free and sends no transaction, and it tells the game only that your address is asking. Sign again later to update your points; the best you ever had are kept, even if the test network starts over. Claimants are ranked by points; between equal points, the earlier claim goes first.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d"
+     "text": "The mainnet allow list has 1,500 seats, first come, first served: a seat goes to each player who claims one, or who connects an X account on the boarding page, until none is left. Your points: 3 for each opponent you beat in a duel, 1 for each opponent you faced, 2 for each box you opened, up to 10 boxes. Each opponent counts once, however many times you meet, and duels between your own wallets count nothing. Claim your place from the leaderboard's Duels tab by signing with your wallet: it is free and sends no transaction, and it tells the game only that your address is asking. Sign again later to update your points; the best you ever had are kept, even if the test network starts over. Claimants are ranked by points; between equal points, the earlier claim goes first."
     },
     {
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "CROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce\nLiquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0x138f…1264\nThe rats' pantry (RatPantry) 0x1334…E75B"
+     "text": "Every seat comes with a gift, set by your rank among the seated players when the list closes. Ranks 1 to 500 fly First class: 100 to 500 cCROQ, a sealed box and a rat. Up to rank 1,000, Business: 50 to 250 cCROQ and a box. Up to rank 1,500, Economy: 20 to 100 cCROQ and a rat. The croquettes are drawn at random under encryption: only your wallet can read how many. The box and the rat are public, like any box's first holder after a mint of one. The gift is collected on mainnet, in one transaction from the same Duels tab, within 30 days of the list closing, by a wallet that claimed its place: a seat held only by an X account has no wallet to send it to.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x816a…2d37\nThe Pantry (croquettes, meals, weigh-ins) 0x7Df4…7d9d\nCROQ, the plain croquette 0x142A…1308\ncCROQ, the encrypted croquette 0x358E…1D81\nCROQ / USDC pool 0xc1eF…67ce"
     },
     {
      "id": "testnet-3",
+     "section": "testnet",
+     "heading": null,
+     "text": "Liquidity locker 0x85b8…a108\nThe USDC ramp (ETH to USDC) 0xaa3B…9AA1\nDecryption credits 0x300c…534e\nStudio packs (StudioPacks) 0x672c…354C\nThe rats (Rats, ERC-721) 0x138f…1264\nThe rats' pantry (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Left to do before mainnet",
      "text": "The contracts have been reviewed by the people who wrote them and by nobody else. They should not hold real money until that changes. These points are open:\nAn opening can hang between its two steps. If the key service never answers, there is no timeout and no refund. The box stays sealed, and its holder can only ask again and pay again.\nNothing limits one minter. A bot cannot pick good boxes, but it can mint all of them.\nThe owner can repoint the metadata. There is no freeze, and the owner is a single key. The pictures themselves are stored for good on Arweave: a repointed metadata file cannot change them.\nTwo deploy-time checks are missing. The config contract trusts that the score fits sixteen bits and that trait offsets do not overlap.\nMarketplaces are not told when a box opens. The contract does not emit a metadata update event."
     },
     {
-     "id": "testnet-4",
+     "id": "testnet-5",
      "section": "testnet",
      "heading": "Left to do before mainnet",
      "text": "Zama's relayer needs the collection's API key. The server that keeps it out of browsers and counts each wallet's decryptions is in place; the key itself is requested from Zama.\nCommon wallets and marketplaces do not know the confidential ERC-721. They cannot show these boxes or list them. A sale needs a market built for this standard.\nNo external audit, no static analysis, no fuzzing.\nThe audit checklist has each check, the test that backs it, and the rest of the findings."
@@ -1023,22 +1029,28 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "La liste blanche du mainnet a 3 000 places, premiers arrivés, premiers servis : une place va à chaque joueur qui la réclame, ou qui connecte un compte X sur la page d'embarquement, jusqu'à ce qu'il n'en reste plus. Vos points : 3 par adversaire battu en duel, 1 par adversaire affronté, 2 par boîte ouverte, jusqu'à 10 boîtes. Chaque adversaire compte une fois, peu importe combien de fois vous l'affrontez, et les duels entre vos propres wallets ne comptent pas. Réclamez votre place depuis l'onglet Duels du classement en signant avec votre wallet : c'est gratuit, aucune transaction n'est envoyée, et le jeu apprend seulement que votre adresse le demande. Signez à nouveau plus tard pour mettre vos points à jour ; vos meilleurs points sont gardés, même si le réseau de test repart de zéro. Les joueurs sont classés par points ; à points égaux, la réclamation la plus ancienne passe devant."
+     "text": "La liste blanche du mainnet a 1 500 places, premiers arrivés, premiers servis : une place va à chaque joueur qui la réclame, ou qui connecte un compte X sur la page d'embarquement, jusqu'à ce qu'il n'en reste plus. Vos points : 3 par adversaire battu en duel, 1 par adversaire affronté, 2 par boîte ouverte, jusqu'à 10 boîtes. Chaque adversaire compte une fois, peu importe combien de fois vous l'affrontez, et les duels entre vos propres wallets ne comptent pas. Réclamez votre place depuis l'onglet Duels du classement en signant avec votre wallet : c'est gratuit, aucune transaction n'est envoyée, et le jeu apprend seulement que votre adresse le demande. Signez à nouveau plus tard pour mettre vos points à jour ; vos meilleurs points sont gardés, même si le réseau de test repart de zéro. Les joueurs sont classés par points ; à points égaux, la réclamation la plus ancienne passe devant."
     },
     {
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Les contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d\nCROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0x138f…1264\nLe garde-manger des rats (RatPantry) 0x1334…E75B"
+     "text": "Chaque place vient avec un cadeau, fixé par votre rang parmi les joueurs assis quand la liste ferme. Les rangs 1 à 500 voyagent en Première classe : 100 à 500 cCROQ, une boîte scellée et un rat. Jusqu'au rang 1 000, Business : 50 à 250 cCROQ et une boîte. Jusqu'au rang 1 500, Économie : 20 à 100 cCROQ et un rat. Les croquettes sont tirées au sort sous chiffrement : seul votre wallet peut lire combien. La boîte et le rat sont publics, comme le premier détenteur d'une boîte après un mint d'une seule. Le cadeau se récupère sur le mainnet, en une transaction depuis le même onglet Duels, dans les 30 jours qui suivent la fermeture de la liste, avec un wallet qui a réclamé sa place : une place tenue seulement par un compte X n'a pas de wallet où l'envoyer.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x816a…2d37\nLe Garde-manger (croquettes, repas, pesées) 0x7Df4…7d9d"
     },
     {
      "id": "testnet-3",
+     "section": "testnet",
+     "heading": null,
+     "text": "CROQ, la croquette ordinaire 0x142A…1308\ncCROQ, la croquette chiffrée 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCoffre de liquidité 0x85b8…a108\nLa rampe USDC (de l'ETH vers l'USDC) 0xaa3B…9AA1\nCrédits de déchiffrement 0x300c…534e\nLes packs du studio (StudioPacks) 0x672c…354C\nLes rats (Rats, ERC-721) 0x138f…1264\nLe garde-manger des rats (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Ce qui reste à faire avant le mainnet",
      "text": "Les contrats ont été relus par les gens qui les ont écrits et par personne d'autre. Ils ne devraient pas détenir d'argent réel tant que ça ne change pas. Ces points sont ouverts :\nUne ouverture peut rester bloquée entre ses deux étapes. Si le service de clés ne répond jamais, il n'y a ni délai d'expiration ni remboursement. La boîte reste scellée, et son détenteur ne peut que redemander et repayer.\nRien ne limite un minteur. Un bot ne peut pas choisir les bonnes boîtes, mais il peut toutes les minter.\nLe propriétaire peut rediriger les métadonnées. Il n'y a pas de gel, et le propriétaire est une seule clé. Les images, elles, sont stockées pour toujours sur Arweave : des métadonnées redirigées ne peuvent pas les changer.\nDeux vérifications au déploiement manquent. Le contrat de configuration suppose que le score tient sur seize bits et que les décalages des traits ne se chevauchent pas."
     },
     {
-     "id": "testnet-4",
+     "id": "testnet-5",
      "section": "testnet",
      "heading": "Ce qui reste à faire avant le mainnet",
      "text": "Les places de marché ne sont pas prévenues quand une boîte s'ouvre. Le contrat n'émet pas d'événement de mise à jour des métadonnées.\nLe relayer de Zama a besoin de la clé d'API de la collection. Le serveur qui la tient à l'écart des navigateurs et compte les déchiffrements de chaque wallet est en place ; la clé elle-même est demandée à Zama.\nLes wallets et places de marché courants ne connaissent pas l'ERC-721 confidentiel. Ils ne peuvent ni afficher ces boîtes ni les lister. Une vente demande un marché conçu pour ce standard.\nPas d'audit externe, pas d'analyse statique, pas de fuzzing.\nLa checklist d'audit contient chaque vérification, le test qui la couvre, et le reste des constats."
@@ -1572,22 +1584,28 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "La lista blanca de mainnet tiene 3000 lugares, por orden de llegada: un lugar para cada jugador que lo reclama, o que conecta una cuenta de X en la página de embarque, hasta que no quede ninguno. Tus puntos: 3 por cada rival que vences en un duelo, 1 por cada rival al que te enfrentas, 2 por cada caja que abres, hasta 10 cajas. Cada rival cuenta una vez, por muchas veces que os enfrentéis, y los duelos entre tus propias wallets no cuentan. Reclama tu lugar desde la pestaña Duelos de la clasificación firmando con tu wallet: es gratis, no envía ninguna transacción, y el juego solo sabe que tu dirección lo pide. Vuelve a firmar más tarde para actualizar tus puntos; se guardan los mejores que hayas tenido, aunque la red de pruebas vuelva a empezar. Los jugadores se ordenan por puntos; a igualdad de puntos, pasa primero quien reclamó antes.\nLos contratos en Sepolia:"
+     "text": "La lista blanca de mainnet tiene 1500 lugares, por orden de llegada: un lugar para cada jugador que lo reclama, o que conecta una cuenta de X en la página de embarque, hasta que no quede ninguno. Tus puntos: 3 por cada rival que vences en un duelo, 1 por cada rival al que te enfrentas, 2 por cada caja que abres, hasta 10 cajas. Cada rival cuenta una vez, por muchas veces que os enfrentéis, y los duelos entre tus propias wallets no cuentan. Reclama tu lugar desde la pestaña Duelos de la clasificación firmando con tu wallet: es gratis, no envía ninguna transacción, y el juego solo sabe que tu dirección lo pide. Vuelve a firmar más tarde para actualizar tus puntos; se guardan los mejores que hayas tenido, aunque la red de pruebas vuelva a empezar. Los jugadores se ordenan por puntos; a igualdad de puntos, pasa primero quien reclamó antes."
     },
     {
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Las cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308\ncCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0x138f…1264\nLa despensa de las ratas (RatPantry) 0x1334…E75B"
+     "text": "Cada lugar viene con un regalo, fijado por tu puesto entre los jugadores sentados cuando la lista cierra. Los puestos 1 a 500 viajan en Primera clase: 100 a 500 cCROQ, una caja sellada y una rata. Hasta el puesto 1000, Business: 50 a 250 cCROQ y una caja. Hasta el puesto 1500, Turista: 20 a 100 cCROQ y una rata. Las croquetas se sortean bajo cifrado: solo tu wallet puede leer cuántas. La caja y la rata son públicas, como el primer titular de una caja tras un mint de una sola. El regalo se recoge en mainnet, en una transacción desde la misma pestaña Duelos, en los 30 días siguientes al cierre de la lista, con un wallet que reclamó su lugar: un lugar que solo tiene una cuenta de X no tiene wallet al que enviarlo.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x816a…2d37\nLa Despensa (croquetas, comidas, pesajes) 0x7Df4…7d9d\nCROQ, la croqueta sin cifrar 0x142A…1308"
     },
     {
      "id": "testnet-3",
+     "section": "testnet",
+     "heading": null,
+     "text": "cCROQ, la croqueta cifrada 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCofre de liquidez 0x85b8…a108\nLa rampa USDC (de ETH a USDC) 0xaa3B…9AA1\nCréditos de descifrado 0x300c…534e\nLos packs del estudio (StudioPacks) 0x672c…354C\nLas ratas (Rats, ERC-721) 0x138f…1264\nLa despensa de las ratas (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Lo que queda antes de mainnet",
      "text": "Los contratos los han revisado quienes los escribieron y nadie más. No deberían guardar dinero real hasta que eso cambie. Estos puntos están abiertos:\nUna apertura puede quedarse atascada entre sus dos pasos. Si el servicio de claves nunca responde, no hay tiempo de espera ni reembolso. La caja sigue sellada, y su titular solo puede pedirlo otra vez y pagar otra vez.\nNada limita a un minteador. Un bot no puede elegir cajas buenas, pero puede mintearlas todas.\nEl propietario puede redirigir los metadatos. No hay congelación, y el propietario es una sola clave. Las imágenes, en cambio, quedan guardadas para siempre en Arweave: unos metadatos redirigidos no pueden cambiarlas.\nFaltan dos comprobaciones en el despliegue. El contrato de configuración confía en que la puntuación cabe en dieciséis bits y en que los desplazamientos de los rasgos no se solapan."
     },
     {
-     "id": "testnet-4",
+     "id": "testnet-5",
      "section": "testnet",
      "heading": "Lo que queda antes de mainnet",
      "text": "A los marketplaces no se les avisa cuando una caja se abre. El contrato no emite un evento de actualización de metadatos.\nEl relayer de Zama necesita la clave de API de la colección. El servidor que la mantiene fuera de los navegadores y cuenta los descifrados de cada cartera ya está en marcha; la clave en sí se ha pedido a Zama.\nLos wallets y marketplaces habituales no conocen el ERC-721 confidencial. No pueden mostrar estas cajas ni listarlas. Una venta necesita un mercado hecho para este estándar.\nSin auditoría externa, sin análisis estático, sin fuzzing.\nLa lista de auditoría tiene cada comprobación, la prueba que la respalda, y el resto de los hallazgos."
@@ -2133,22 +2151,28 @@
      "id": "testnet-1",
      "section": "testnet",
      "heading": null,
-     "text": "La lista bianca della mainnet ha 3000 posti, chi prima arriva meglio alloggia: un posto a ogni giocatore che lo reclama, o che collega un account X nella pagina d'imbarco, finché ce ne sono. I tuoi punti: 3 per ogni avversario battuto in duello, 1 per ogni avversario affrontato, 2 per ogni scatola aperta, fino a 10 scatole. Ogni avversario conta una volta, per quante volte vi affrontiate, e i duelli tra i tuoi stessi wallet non contano. Reclama il tuo posto dalla scheda Duelli della classifica firmando con il tuo wallet: è gratis, non invia nessuna transazione, e il gioco sa solo che il tuo indirizzo lo chiede. Firma di nuovo più tardi per aggiornare i punti; restano i migliori che hai avuto, anche se la rete di prova riparte da zero. I giocatori sono in ordine di punti; a parità di punti, passa prima chi ha reclamato prima.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37"
+     "text": "La lista bianca della mainnet ha 1500 posti, chi prima arriva meglio alloggia: un posto a ogni giocatore che lo reclama, o che collega un account X nella pagina d'imbarco, finché ce ne sono. I tuoi punti: 3 per ogni avversario battuto in duello, 1 per ogni avversario affrontato, 2 per ogni scatola aperta, fino a 10 scatole. Ogni avversario conta una volta, per quante volte vi affrontiate, e i duelli tra i tuoi stessi wallet non contano. Reclama il tuo posto dalla scheda Duelli della classifica firmando con il tuo wallet: è gratis, non invia nessuna transazione, e il gioco sa solo che il tuo indirizzo lo chiede. Firma di nuovo più tardi per aggiornare i punti; restano i migliori che hai avuto, anche se la rete di prova riparte da zero. I giocatori sono in ordine di punti; a parità di punti, passa prima chi ha reclamato prima."
     },
     {
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "La Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d\nCROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e\nI pacchetti dello studio (StudioPacks) 0x672c…354C\nI ratti (Rats, ERC-721) 0x138f…1264\nLa dispensa dei ratti (RatPantry) 0x1334…E75B"
+     "text": "Ogni posto arriva con un regalo, fissato dalla tua posizione tra i giocatori seduti quando la lista chiude. Le posizioni da 1 a 500 viaggiano in Prima classe: da 100 a 500 cCROQ, una scatola sigillata e un ratto. Fino alla posizione 1000, Business: da 50 a 250 cCROQ e una scatola. Fino alla posizione 1500, Economy: da 20 a 100 cCROQ e un ratto. Le crocchette sono estratte a sorte sotto cifratura: solo il tuo wallet può leggere quante. La scatola e il ratto sono pubblici, come il primo detentore di una scatola dopo un mint di una sola. Il regalo si ritira su mainnet, in una transazione dalla stessa scheda Duelli, entro 30 giorni dalla chiusura della lista, con un wallet che ha reclamato il suo posto: un posto tenuto solo da un account X non ha un wallet a cui inviarlo.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x816a…2d37\nLa Dispensa (crocchette, pasti, pesate) 0x7Df4…7d9d"
     },
     {
      "id": "testnet-3",
+     "section": "testnet",
+     "heading": null,
+     "text": "CROQ, la crocchetta normale 0x142A…1308\ncCROQ, la crocchetta cifrata 0x358E…1D81\nPool CROQ / USDC 0xc1eF…67ce\nCassaforte della liquidità 0x85b8…a108\nLa rampa USDC (da ETH a USDC) 0xaa3B…9AA1\nCrediti di decifratura 0x300c…534e\nI pacchetti dello studio (StudioPacks) 0x672c…354C\nI ratti (Rats, ERC-721) 0x138f…1264\nLa dispensa dei ratti (RatPantry) 0x1334…E75B"
+    },
+    {
+     "id": "testnet-4",
      "section": "testnet",
      "heading": "Cosa resta da fare prima della mainnet",
      "text": "I contratti sono stati rivisti da chi li ha scritti e da nessun altro. Non dovrebbero custodire denaro vero finché questo non cambia. Questi punti sono aperti:\nUn'apertura può bloccarsi tra i suoi due passi. Se il servizio di chiavi non risponde mai, non c'è timeout né rimborso. La scatola resta sigillata, e il suo detentore può solo chiedere di nuovo e pagare di nuovo.\nNiente limita un singolo minter. Un bot non può scegliere le scatole buone, ma può mintarle tutte.\nIl proprietario può reindirizzare i metadati. Non c'è un freeze, e il proprietario è una sola chiave. Le immagini, invece, restano salvate per sempre su Arweave: dei metadati reindirizzati non possono cambiarle.\nMancano due controlli al deploy. Il contratto di configurazione si fida che il punteggio stia in sedici bit e che gli offset dei tratti non si sovrappongano."
     },
     {
-     "id": "testnet-4",
+     "id": "testnet-5",
      "section": "testnet",
      "heading": "Cosa resta da fare prima della mainnet",
      "text": "I marketplace non vengono avvisati quando una scatola si apre. Il contratto non emette un evento di aggiornamento dei metadati.\nIl relayer di Zama ha bisogno della chiave API della collezione. Il server che la tiene fuori dai browser e conta le decifrature di ogni wallet è pronto; la chiave stessa è stata richiesta a Zama.\nWallet e marketplace comuni non conoscono l'ERC-721 confidenziale. Non possono mostrare queste scatole né elencarle. Una vendita richiede un mercato fatto per questo standard.\nNessun audit esterno, nessuna analisi statica, nessun fuzzing.\nLa checklist di audit contiene ogni controllo, il test che lo copre, e il resto dei rilievi."

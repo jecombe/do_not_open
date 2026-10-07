@@ -1,6 +1,21 @@
 import { DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { spec, studio } from "@dno/game-spec";
+
+/** The whitelist's three tiers, as the manual quotes them: from the spec, like the contract. */
+const [first, business, economy] = spec.whitelist.tiers;
+const whitelistGifts = {
+  firstTo: first!.toRank,
+  firstMin: first!.croqMin,
+  firstMax: first!.croqMax,
+  businessTo: business!.toRank,
+  businessMin: business!.croqMin,
+  businessMax: business!.croqMax,
+  economyTo: economy!.toRank,
+  economyMin: economy!.croqMin,
+  economyMax: economy!.croqMax,
+  days: spec.whitelist.claimDays,
+};
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { REPO } from "../links";
@@ -569,6 +584,7 @@ export function Manual() {
             <div className="prose">
               <p>{t("docs.testnet.p1")}</p>
               <p>{t("docs.testnet.allowList", { places: DEFAULT_ALLOW_LIST_PLACES ?? 0 })}</p>
+              <p>{t("docs.testnet.gifts", whitelistGifts)}</p>
               <p>{t("docs.testnet.contracts")}</p>
             </div>
             <ul className="addresses">

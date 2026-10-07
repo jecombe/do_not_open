@@ -14,6 +14,7 @@ export interface RatStore {
   ratOfRef(ref: string): Promise<Rat | null>;
   /** Paid shakes by each of these addresses. */
   sniffsOf(accounts: Address[]): Promise<Map<Address, number>>;
+  /** Paid rats by kind: the whitelist's gifts are outside the caps. */
   ratCounts(): Promise<{ kind: RatKind; count: number }[]>;
   /** Rats this address minted, both kinds: each address mints at most the spec's maxPerWallet. */
   ratsMintedBy(minter: Address): Promise<number>;

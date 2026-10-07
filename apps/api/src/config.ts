@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { spec } from "@dno/game-spec";
 
 /**
  * Free Sepolia endpoints that answer `eth_getLogs` without a key, checked on 2026-10-01. Their
@@ -108,9 +109,13 @@ const schema = z.object({
   HERALD_STALE_HOURS: z.coerce.number().positive().default(12),
   /** The app's page for a box, the id appended: linked from opening posts. Without it, no link. */
   HERALD_BOX_URL: z.string().url().optional(),
-  /** How many claimants of the mainnet allow list get a place. */
-  /** Seats on the mainnet list, first come, first served (`application/seats.ts`). */
-  ALLOW_LIST_PLACES: z.coerce.number().int().positive().default(3000),
+  /** Seats on the mainnet list, first come, first served (`application/seats.ts`): the spec's `whitelist.places` by default. */
+  ALLOW_LIST_PLACES: z.coerce.number().int().positive().default(spec.whitelist.places),
+  /**
+   * The frozen whitelist's gift tree (the JSON `GET /v1/allowlist/gifts?token=` returned when the
+   * list closed): `GET /v1/gifts/:address` serves each wallet its proof from it. Without it, no gifts yet.
+   */
+  WHITELIST_GIFTS_TREE: z.string().optional(),
   /** Reads the whole allow list (GET /v1/allowlist?token=). Without it, nobody can. */
   ALLOW_LIST_ADMIN_TOKEN: z.string().min(16).optional(),
   /** Required to read GET /v1/herald when set. */

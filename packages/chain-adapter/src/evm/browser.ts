@@ -48,6 +48,7 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     rats: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.rats ?? undefined),
     ratPantry: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.ratPantry ?? undefined),
     market: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.market ?? undefined),
+    whitelistGifts: opts.address ? undefined : (SEPOLIA_DEPLOYMENT.whitelistGifts ?? undefined),
     // Decrypted receipts, balances and shakes, kept per collection so a new deployment starts clean.
     decryptCache: new LocalStorageDecryptCache(`dno:decrypted:${(opts.address || SEPOLIA_DEPLOYMENT.address).toLowerCase()}`),
     // A rat adopted in the studio is in "my rats" on the next page, before the API indexes it.

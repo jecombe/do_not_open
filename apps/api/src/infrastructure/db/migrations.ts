@@ -509,4 +509,13 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 20,
+    name: "gift rats",
+    sql: /* sql */ `
+      -- A rat the whitelist's gifts handed out (RatMinted with nothing paid): outside the paid
+      -- rats' caps and the wallet limit. A fold of RatMinted like the rest of the table.
+      alter table rats add column gift boolean not null default false;
+    `,
+  },
 ];
