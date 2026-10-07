@@ -775,6 +775,10 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
     return one(this.pool, "select * from x_passes where address = $1", [address], xPassFrom);
   }
 
+  xPassByDiscordUser(discordUserId: string) {
+    return one(this.pool, "select * from x_passes where discord_user_id = $1", [discordUserId], xPassFrom);
+  }
+
   async xPasses() {
     const { rows } = await this.pool.query("select * from x_passes order by created_at, id");
     return rows.map(xPassFrom);
@@ -782,12 +786,12 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
 
   async saveXPass(p: XPass) {
     await this.pool.query(
-      `insert into x_passes (id, code, handle, x_user_id, tweet_id, tweet_url, followed_at, posted_at, liked_at, replied_at, reposted_at, address, created_at, verified_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `insert into x_passes (id, code, handle, x_user_id, tweet_id, tweet_url, followed_at, posted_at, liked_at, replied_at, reposted_at, address, discord_user_id, discord_joined_at, created_at, verified_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        on conflict (id) do update set code = excluded.code, handle = excluded.handle, x_user_id = excluded.x_user_id, tweet_id = excluded.tweet_id, tweet_url = excluded.tweet_url,
          followed_at = excluded.followed_at, posted_at = excluded.posted_at, liked_at = excluded.liked_at, replied_at = excluded.replied_at, reposted_at = excluded.reposted_at,
-         address = excluded.address, created_at = excluded.created_at, verified_at = excluded.verified_at, updated_at = excluded.updated_at`,
-      [p.id, p.code, p.handle, p.xUserId, p.tweetId, p.tweetUrl, p.followedAt, p.postedAt, p.likedAt, p.repliedAt, p.repostedAt, p.address, p.createdAt, p.verifiedAt, p.updatedAt],
+         address = excluded.address, discord_user_id = excluded.discord_user_id, discord_joined_at = excluded.discord_joined_at, created_at = excluded.created_at, verified_at = excluded.verified_at, updated_at = excluded.updated_at`,
+      [p.id, p.code, p.handle, p.xUserId, p.tweetId, p.tweetUrl, p.followedAt, p.postedAt, p.likedAt, p.repliedAt, p.repostedAt, p.address, p.discordUserId, p.discordJoinedAt, p.createdAt, p.verifiedAt, p.updatedAt],
     );
   }
 
@@ -946,6 +950,8 @@ const xPassFrom = (r: Record<string, unknown>): XPass => ({
   repliedAt: num(r.replied_at),
   repostedAt: num(r.reposted_at),
   address: (r.address as Address | null) ?? null,
+  discordUserId: (r.discord_user_id as string | null) ?? null,
+  discordJoinedAt: num(r.discord_joined_at),
   createdAt: Number(r.created_at),
   verifiedAt: num(r.verified_at),
   updatedAt: Number(r.updated_at),

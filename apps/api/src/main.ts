@@ -9,7 +9,7 @@ import { AllowList } from "./application/allowList";
 import { Seats } from "./application/seats";
 import { GiftProofs } from "./application/whitelistGifts";
 import { Ideas } from "./application/ideas";
-import { X_TASKS, xPassBonuses, XPasses } from "./application/xPass";
+import { DISCORD_BONUS, X_TASKS, xPassBonuses, XPasses, type DiscordBoarding } from "./application/xPass";
 import type { Store } from "./application/ports/store";
 import { ArchiveImages, ImageArchive } from "./application/archive";
 import type { ArchiveStore } from "./application/ports/archive";
@@ -137,7 +137,16 @@ async function main() {
   const discord =
     config.DISCORD_APPLICATION_ID && config.DISCORD_PUBLIC_KEY
       ? {
-          clerk: new DiscordClerk(chat, { applicationId: config.DISCORD_APPLICATION_ID, manualUrl: config.DISCORD_MANUAL_URL ?? config.HERALD_MANUAL_URL ?? null }, log),
+          clerk: new DiscordClerk(
+            chat,
+            {
+              applicationId: config.DISCORD_APPLICATION_ID,
+              manualUrl: config.DISCORD_MANUAL_URL ?? config.HERALD_MANUAL_URL ?? null,
+              // `/board`: the passes are made further down, before any request comes in.
+              boarding: config.DISCORD_GUILD_ID ? { joinDiscord: (code: string, member: { userId: string; guildId: string | null }): Promise<DiscordBoarding> => xPasses.joinDiscord(code, member), bonus: DISCORD_BONUS } : undefined,
+            },
+            log,
+          ),
           publicKey: config.DISCORD_PUBLIC_KEY,
         }
       : undefined;
@@ -214,6 +223,7 @@ async function main() {
         }
       : null,
     seats,
+    config.DISCORD_APPLICATION_ID && config.DISCORD_PUBLIC_KEY && config.DISCORD_GUILD_ID ? { guildId: config.DISCORD_GUILD_ID } : null,
   );
 
   const metrics = new Metrics({

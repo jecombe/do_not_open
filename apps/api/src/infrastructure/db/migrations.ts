@@ -550,4 +550,13 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
     `,
   },
+  {
+    version: 22,
+    name: "discord boarding",
+    sql: /* sql */ `
+      -- The Discord account that ran /board in the collection's server with a pass's one-time
+      -- code: it adds points to the pass's wallet. Private, like the wallet.
+      alter table x_passes add column discord_user_id text unique, add column discord_joined_at bigint;
+    `,
+  },
 ];

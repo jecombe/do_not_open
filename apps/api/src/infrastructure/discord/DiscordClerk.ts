@@ -2,6 +2,7 @@ import { createPublicKey, verify } from "node:crypto";
 import { z } from "zod";
 import type { AskManual, ChatAnswer } from "../../application/askManual";
 import type { Logger } from "../../application/ports/logger";
+import type { DiscordBoarding } from "../../application/xPass";
 import { MANUAL_LOCALES, type ManualLocale } from "../../domain/manual";
 
 /**
@@ -10,6 +11,9 @@ import { MANUAL_LOCALES, type ManualLocale } from "../../domain/manual";
  * an answer within 3 seconds and the model takes longer, so the clerk first says it is looking
  * ("deferred"), then edits that message with the answer. Both are ephemeral: only the asker sees
  * the question and the answer, so a public channel never fills with other players' questions.
+ *
+ * `/board <code>` ties the Discord account that runs it to a boarding pass on the site, which
+ * adds points to the pass's wallet. Discord says who ran it and in which server: that is the proof.
  */
 
 const API = "https://discord.com/api/v10";
@@ -56,30 +60,97 @@ export const ASK_COMMAND = {
   integration_types: [0],
 } as const;
 
+/** `/board`, registered with `/ask`: the one-time code the boarding page shows. */
+export const BOARD_COMMAND = {
+  name: "board",
+  type: 1,
+  description: "Join the DO NOT OPEN whitelist from Discord with the code from the boarding page.",
+  description_localizations: {
+    fr: "Rejoins la whitelist de DO NOT OPEN depuis Discord avec le code de la page d'embarquement.",
+    "es-ES": "Únete a la whitelist de DO NOT OPEN desde Discord con el código de la página de embarque.",
+    "es-419": "Únete a la whitelist de DO NOT OPEN desde Discord con el código de la página de embarque.",
+    it: "Entra nella whitelist di DO NOT OPEN da Discord con il codice della pagina d'imbarco.",
+  },
+  options: [
+    {
+      name: "code",
+      type: 3,
+      required: true,
+      max_length: 20,
+      description: "The code the boarding page shows, like DNO-AB12CD.",
+      name_localizations: { fr: "code", "es-ES": "codigo", "es-419": "codigo", it: "codice" },
+      description_localizations: {
+        fr: "Le code affiché sur la page d'embarquement, comme DNO-AB12CD.",
+        "es-ES": "El código que muestra la página de embarque, como DNO-AB12CD.",
+        "es-419": "El código que muestra la página de embarque, como DNO-AB12CD.",
+        it: "Il codice mostrato nella pagina d'imbarco, come DNO-AB12CD.",
+      },
+    },
+  ],
+  // In servers only: the server is what is proved.
+  contexts: [0],
+  integration_types: [0],
+} as const;
+
+const BOARD_WORDS: Record<ManualLocale, Record<DiscordBoarding, string>> = {
+  en: {
+    ok: "✅ You're on board: your Discord counts {bonus} points on the whitelist once your wallet is linked to your pass. Stay in the server: the team checks before mainnet.",
+    already: "✅ This Discord account is already on that pass.",
+    "unknown-code": "That code is unknown or expired. Ask the boarding page for a new one.",
+    "too-young": "This Discord account is too new to board. Accounts must be at least 30 days old.",
+    "wrong-server": "Run /board in the DO NOT OPEN server.",
+    off: "Boarding from Discord is closed for now.",
+  },
+  fr: {
+    ok: "✅ C'est bon : ton Discord compte {bonus} points sur la whitelist une fois ton wallet lié à ton pass. Reste dans le serveur : l'équipe vérifie avant le mainnet.",
+    already: "✅ Ce compte Discord est déjà sur ce pass.",
+    "unknown-code": "Ce code est inconnu ou a expiré. Demandes-en un nouveau sur la page d'embarquement.",
+    "too-young": "Ce compte Discord est trop récent pour embarquer. Il doit avoir au moins 30 jours.",
+    "wrong-server": "Lance /board dans le serveur DO NOT OPEN.",
+    off: "L'embarquement depuis Discord est fermé pour l'instant.",
+  },
+  es: {
+    ok: "✅ Ya estás a bordo: tu Discord suma {bonus} puntos en la whitelist en cuanto tu wallet esté vinculada a tu pase. Quédate en el servidor: el equipo lo revisa antes de mainnet.",
+    already: "✅ Esta cuenta de Discord ya está en ese pase.",
+    "unknown-code": "Ese código no existe o caducó. Pide uno nuevo en la página de embarque.",
+    "too-young": "Esta cuenta de Discord es demasiado nueva para embarcar. Debe tener al menos 30 días.",
+    "wrong-server": "Usa /board en el servidor de DO NOT OPEN.",
+    off: "El embarque desde Discord está cerrado por ahora.",
+  },
+  it: {
+    ok: "✅ Sei a bordo: il tuo Discord vale {bonus} punti nella whitelist appena il tuo wallet è collegato al pass. Resta nel server: il team controlla prima della mainnet.",
+    already: "✅ Questo account Discord è già su quel pass.",
+    "unknown-code": "Codice sconosciuto o scaduto. Chiedine uno nuovo nella pagina d'imbarco.",
+    "too-young": "Questo account Discord è troppo recente per imbarcarsi. Deve avere almeno 30 giorni.",
+    "wrong-server": "Usa /board nel server di DO NOT OPEN.",
+    off: "L'imbarco da Discord è chiuso per ora.",
+  },
+};
+
 const WORDS: Record<ManualLocale, { away: string; nothing: string; failed: string; unknown: string }> = {
   en: {
     away: "The clerk is away from the desk. Here is what the manual says:",
     nothing: "The manual has nothing on that.",
     failed: "The clerk dropped the file. Try again in a minute.",
-    unknown: "The depot only knows /ask.",
+    unknown: "The depot only knows /ask and /board.",
   },
   fr: {
     away: "Le guichetier s'est absenté. Voici ce que dit le manuel :",
     nothing: "Le manuel ne dit rien là-dessus.",
     failed: "Le guichetier a fait tomber le dossier. Réessaie dans une minute.",
-    unknown: "Le dépôt ne connaît que /ask.",
+    unknown: "Le dépôt ne connaît que /ask et /board.",
   },
   es: {
     away: "El empleado no está en el mostrador. Esto dice el manual:",
     nothing: "El manual no dice nada de eso.",
     failed: "Al empleado se le cayó el expediente. Prueba de nuevo en un minuto.",
-    unknown: "El depósito solo conoce /ask.",
+    unknown: "El depósito solo conoce /ask y /board.",
   },
   it: {
     away: "L'impiegato non è allo sportello. Ecco cosa dice il manuale:",
     nothing: "Il manuale non dice nulla su questo.",
     failed: "All'impiegato è caduta la pratica. Riprova tra un minuto.",
-    unknown: "Il deposito conosce solo /ask.",
+    unknown: "Il deposito conosce solo /ask e /board.",
   },
 };
 
@@ -101,6 +172,7 @@ const interaction = z.object({
   type: z.number(),
   token: z.string().optional(),
   locale: z.string().optional(),
+  guild_id: z.string().optional(),
   member: z.object({ user: z.object({ id: z.string() }) }).optional(),
   user: z.object({ id: z.string() }).optional(),
   data: z
@@ -128,6 +200,8 @@ export function clerkReply(question: string, a: ChatAnswer, locale: ManualLocale
 
 export interface DiscordClerkOptions {
   applicationId: string;
+  /** Serves `/board` when set: ties the account that runs it to a boarding pass. */
+  boarding?: { joinDiscord(code: string, member: { userId: string; guildId: string | null }): Promise<DiscordBoarding>; bonus: number };
   /** The manual page, e.g. https://<site>/docs.html: sections are linked. Without it, named only. */
   manualUrl: string | null;
 }
@@ -148,14 +222,33 @@ export class DiscordClerk {
     const i = interaction.parse(body);
     if (i.type === PING) return { type: PONG };
     const locale = localeOf(i.locale);
-    if (i.type !== COMMAND || i.data?.name !== ASK_COMMAND.name || !i.token) {
+    const user = i.member?.user.id ?? i.user?.id ?? "unknown";
+    let task: Promise<void>;
+    if (i.type === COMMAND && i.data?.name === ASK_COMMAND.name && i.token) {
+      const question = String(i.data.options?.find((o) => o.name === "question")?.value ?? "").trim();
+      task = this.answer(i.token, question, locale, user);
+    } else if (i.type === COMMAND && i.data?.name === BOARD_COMMAND.name && i.token && this.opts.boarding) {
+      const code = String(i.data.options?.find((o) => o.name === "code")?.value ?? "");
+      // In a server, Discord sends the member; in a direct message, only the user and no server.
+      task = this.board(i.token, code, locale, { userId: user, guildId: i.member ? (i.guild_id ?? null) : null });
+    } else {
       return { type: MESSAGE, data: { content: WORDS[locale].unknown, flags: EPHEMERAL } };
     }
-    const question = String(i.data.options?.find((o) => o.name === "question")?.value ?? "").trim();
-    const user = i.member?.user.id ?? i.user?.id ?? "unknown";
-    const task = this.answer(i.token, question, locale, user).finally(() => this.pending.delete(task));
-    this.pending.add(task);
+    const running = task.finally(() => this.pending.delete(running));
+    this.pending.add(running);
     return { type: DEFERRED, data: { flags: EPHEMERAL } };
+  }
+
+  private async board(token: string, code: string, locale: ManualLocale, member: { userId: string; guildId: string | null }): Promise<void> {
+    let content: string;
+    try {
+      const outcome = await this.opts.boarding!.joinDiscord(code, member);
+      content = BOARD_WORDS[locale][outcome].replace("{bonus}", String(this.opts.boarding!.bonus));
+    } catch (error) {
+      this.log.warn({ err: (error as Error).message }, "discord clerk could not board");
+      content = WORDS[locale].failed;
+    }
+    await this.send(token, content);
   }
 
   /** Resolves when every answer under way has been sent: for tests and shutdown. */
@@ -173,6 +266,11 @@ export class DiscordClerk {
       this.log.warn({ err: (error as Error).message }, "discord clerk could not answer");
       content = WORDS[locale].failed;
     }
+    await this.send(token, content);
+  }
+
+  /** Replaces the "thinking" message with the reply. */
+  private async send(token: string, content: string): Promise<void> {
     try {
       const res = await this.fetcher(`${API}/webhooks/${this.opts.applicationId}/${token}/messages/@original`, {
         method: "PATCH",

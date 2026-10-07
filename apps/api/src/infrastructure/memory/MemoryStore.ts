@@ -414,6 +414,10 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
     return this.xPassWhere((p) => p.address === address);
   }
 
+  async xPassByDiscordUser(discordUserId: string) {
+    return this.xPassWhere((p) => p.discordUserId === discordUserId);
+  }
+
   async xPasses() {
     return [...this.s.xPasses.values()].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).map(clone);
   }
@@ -421,7 +425,7 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
   async saveXPass(p: XPass) {
     for (const o of this.s.xPasses.values()) {
       if (o.id === p.id) continue;
-      if (o.code === p.code || (p.handle && o.handle === p.handle) || (p.xUserId && o.xUserId === p.xUserId) || (p.tweetId && o.tweetId === p.tweetId) || (p.address && o.address === p.address)) throw new Error("x pass conflicts with another");
+      if (o.code === p.code || (p.handle && o.handle === p.handle) || (p.xUserId && o.xUserId === p.xUserId) || (p.tweetId && o.tweetId === p.tweetId) || (p.address && o.address === p.address) || (p.discordUserId && o.discordUserId === p.discordUserId)) throw new Error("x pass conflicts with another");
     }
     this.s.xPasses.set(p.id, clone(p));
   }

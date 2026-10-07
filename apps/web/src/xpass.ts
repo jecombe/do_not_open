@@ -15,6 +15,8 @@ export interface XPassView {
   followed: boolean;
   tasks: Record<XTask, boolean>;
   address: string | null;
+  /** Whether the holder joined the Discord server and proved it with `/board`. */
+  discord: boolean;
   bonus: number;
 }
 
@@ -81,17 +83,34 @@ export const declareXTask = (task: XTask) => call("POST", "/task", { task });
 export const verifyXPassTweet = (url: string) => call("POST", "/tweet", { url });
 export const linkXPassWallet = (address: string, message: string, signature: string) => call("POST", "/wallet", { address, message, signature });
 /** What the API says about X: whether Sign in with X is on (without it, a post carrying the
- *  pass code proves the account), and the announcement post the tasks are about. */
-export async function xSettings(): Promise<{ signIn: boolean; announcement: string | null }> {
+ *  pass code proves the account), the announcement post the tasks are about, and whether the
+ *  Discord step (`/board`) is on. */
+export async function xSettings(): Promise<{ signIn: boolean; announcement: string | null; discord: boolean }> {
   const api = xPassApi();
-  if (!api) return { signIn: false, announcement: null };
+  if (!api) return { signIn: false, announcement: null, discord: false };
   try {
     const res = await fetch(`${api}/v1/xpass/x`);
-    const data = res.ok ? ((await res.json()) as { data?: { signIn?: boolean; announcement?: string | null } }).data : undefined;
-    return { signIn: data?.signIn === true, announcement: data?.announcement ?? null };
+    const data = res.ok ? ((await res.json()) as { data?: { signIn?: boolean; announcement?: string | null; discord?: boolean } }).data : undefined;
+    return { signIn: data?.signIn === true, announcement: data?.announcement ?? null, discord: data?.discord === true };
   } catch {
-    return { signIn: false, announcement: null };
+    return { signIn: false, announcement: null, discord: false };
   }
+}
+
+/** A one-time code for `/board` on Discord, good until `expiresAt` (seconds). */
+export async function discordBoardCode(): Promise<{ code: string; expiresAt: number }> {
+  const api = xPassApi();
+  if (!api) throw new XPassError("network");
+  const token = memoryToken ?? readToken();
+  let res: Response;
+  try {
+    res = await fetch(`${api}/v1/xpass/discord`, { method: "POST", headers: token ? { authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new XPassError("network");
+  }
+  const json = (await res.json().catch(() => ({}))) as { data?: { code: string; expiresAt: number }; error?: string };
+  if (!res.ok || !json.data) throw new XPassError(json.error ?? "network");
+  return json.data;
 }
 
 /** Sends the browser to X to sign in; X sends it back to `returnTo` with `?x=<outcome>#boarding`. */

@@ -178,6 +178,7 @@ export interface Store extends ReadStore {
   xPassByXUser(xUserId: string): Promise<XPass | null>;
   xPassByTweet(tweetId: string): Promise<XPass | null>;
   xPassByAddress(address: Address): Promise<XPass | null>;
+  xPassByDiscordUser(discordUserId: string): Promise<XPass | null>;
   /** Every pass, oldest first. */
   xPasses(): Promise<XPass[]>;
   /** Files a pass, replacing the one with the same id. */

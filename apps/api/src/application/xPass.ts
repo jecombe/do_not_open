@@ -1,4 +1,4 @@
-import { X_PASS_BONUS } from "@dno/chain-adapter/standings";
+import { DISCORD_BONUS, X_PASS_BONUS } from "@dno/chain-adapter/standings";
 import { normalizeAddress, type Address } from "../domain/types";
 import type { Clock, SignatureVerifier } from "./auth";
 import type { Store } from "./ports/store";
@@ -8,7 +8,8 @@ import type { Store } from "./ports/store";
  * or, where no X app is configured, a post carrying their pass code, read through X's public
  * oEmbed), declares the tasks they did on X, and may link a wallet for the testnet points. X's
  * follows, likes and reposts cannot be read without a paid API, so the tasks are declared and
- * the team checks the list by hand before mainnet.
+ * the team checks the list by hand before mainnet. Joining the Discord server is proved instead:
+ * the player runs `/board` there with a one-time code from the site, and Discord says who ran it.
  */
 export interface XPass {
   /** sha256 of the secret token the browser keeps: the token itself is never stored. */
@@ -30,6 +31,9 @@ export interface XPass {
   repostedAt: number | null;
   /** The wallet the player linked by signing, for the testnet points. Private. */
   address: Address | null;
+  /** The Discord account that ran `/board` in the server with this pass's code. Private. */
+  discordUserId: string | null;
+  discordJoinedAt: number | null;
   createdAt: number;
   verifiedAt: number | null;
   updatedAt: number;
@@ -45,6 +49,8 @@ export interface XPassView {
   /** Each task the player declared done. */
   tasks: Record<XTask, boolean>;
   address: Address | null;
+  /** Whether the pass's holder joined the Discord server and proved it with `/board`. */
+  discord: boolean;
   /** Bonus points the pass adds to its wallet on the allow list. */
   bonus: number;
 }
@@ -70,6 +76,17 @@ export interface LoginSecrets {
 
 /** How long a sign-in started on the site may take on X. */
 export const SIGN_IN_TTL = 10 * 60;
+
+/** How long a `/board` code from the site stays good. */
+export const DISCORD_CODE_TTL = 15 * 60;
+/** A Discord account younger than this cannot board: fresh accounts are free to make. */
+export const DISCORD_MIN_AGE = 30 * 24 * 60 * 60;
+
+/** How a `/board` on Discord went. */
+export type DiscordBoarding = "ok" | "already" | "unknown-code" | "too-young" | "wrong-server" | "off";
+
+/** When a Discord account was made, in seconds: its id is a snowflake whose top bits count ms since 2015. */
+export const discordCreatedAt = (userId: string): number => Number((BigInt(userId) >> 22n) + 1_420_070_400_000n) / 1000;
 
 /** What X's public oEmbed says about a tweet. */
 export interface Tweet {
@@ -104,7 +121,8 @@ export type XPassRefusal =
   | "sign-in-off"
   | "sign-in-expired"
   | "sign-in-refused"
-  | "list-full";
+  | "list-full"
+  | "discord-off";
 
 export class XPassRefused extends Error {
   constructor(
@@ -115,7 +133,7 @@ export class XPassRefused extends Error {
   }
 }
 
-export { X_PASS_BONUS, xPassWalletMessage } from "@dno/chain-adapter/standings";
+export { DISCORD_BONUS, X_PASS_BONUS, xPassWalletMessage } from "@dno/chain-adapter/standings";
 
 const TWEET_URL = /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d{1,25})(?:[/?#].*)?$/;
 
@@ -138,7 +156,53 @@ export class XPasses {
     private readonly signIn: { x: XSignIn; secrets: LoginSecrets } | null = null,
     /** The list's seats: a pass takes one once its account is connected and its tasks done. */
     private readonly seats: { admit(): Promise<void>; passSeated(p: XPass): boolean } | null = null,
+    /** The Discord server whose members can board with `/board`; null: no Discord step. */
+    private readonly discord: { guildId: string } | null = null,
   ) {}
+
+  /** `/board` codes handed out, by code: one API process serves them, and a lost one is just asked again. */
+  private readonly boardCodes = new Map<string, { passId: string; expiresAt: number }>();
+
+  /** Whether the Discord step is on: a server to join, and the bot that serves `/board` in it. */
+  get discordEnabled(): boolean {
+    return this.discord !== null;
+  }
+
+  /** A one-time code the player types in `/board` on Discord, which ties their account to this pass. */
+  async discordCode(token: string): Promise<{ code: string; expiresAt: number }> {
+    if (!this.discord) throw new XPassRefused("discord-off", "the Discord step is not configured here");
+    const pass = await this.find(token);
+    const now = this.clock.now();
+    for (const [k, v] of this.boardCodes) if (v.expiresAt <= now || v.passId === pass.id) this.boardCodes.delete(k);
+    let code = this.secrets.code();
+    for (let i = 0; i < 5 && this.boardCodes.has(code); i++) code = this.secrets.code();
+    const expiresAt = now + DISCORD_CODE_TTL;
+    this.boardCodes.set(code, { passId: pass.id, expiresAt });
+    return { code, expiresAt };
+  }
+
+  /**
+   * Someone ran `/board <code>` on Discord. It counts in the collection's server only, from an
+   * account at least DISCORD_MIN_AGE old. One Discord account boards one pass: run again with a
+   * newer code, it moves to that pass.
+   */
+  async joinDiscord(rawCode: string, member: { userId: string; guildId: string | null }): Promise<DiscordBoarding> {
+    if (!this.discord) return "off";
+    if (member.guildId !== this.discord.guildId) return "wrong-server";
+    const now = this.clock.now();
+    const code = rawCode.trim().toUpperCase();
+    const started = this.boardCodes.get(code);
+    if (!started || started.expiresAt <= now) return "unknown-code";
+    if (now - discordCreatedAt(member.userId) < DISCORD_MIN_AGE) return "too-young";
+    const pass = await this.store.xPassById(started.passId);
+    if (!pass) return "unknown-code";
+    this.boardCodes.delete(code);
+    if (pass.discordUserId === member.userId) return "already";
+    const older = await this.store.xPassByDiscordUser(member.userId);
+    if (older && older.id !== pass.id) await this.store.saveXPass({ ...older, discordUserId: null, discordJoinedAt: null, updatedAt: now });
+    await this.store.saveXPass({ ...pass, discordUserId: member.userId, discordJoinedAt: now, updatedAt: now });
+    return "ok";
+  }
 
   /** Whether Sign in with X is configured; without it, the code-in-a-post proof stands in. */
   get signInEnabled(): boolean {
@@ -192,7 +256,7 @@ export class XPasses {
     // Codes are short: draw again on the rare clash.
     for (let i = 0; i < 5 && (await this.store.xPassByCode(code)); i++) code = this.secrets.code();
     const now = this.clock.now();
-    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, xUserId: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, createdAt: now, verifiedAt: null, updatedAt: now };
+    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, xUserId: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, createdAt: now, verifiedAt: null, updatedAt: now };
     await this.store.saveXPass(pass);
     return { token, pass: this.view(pass) };
   }
@@ -268,6 +332,8 @@ export class XPasses {
         tweetUrl: next.tweetUrl ?? older.tweetUrl,
         ...Object.fromEntries(X_TASKS.map((t) => [TASK_FIELD[t], next[TASK_FIELD[t]] ?? older[TASK_FIELD[t]]])),
         address: next.address ?? older.address,
+        discordUserId: next.discordUserId ?? older.discordUserId,
+        discordJoinedAt: next.discordUserId ? next.discordJoinedAt : older.discordJoinedAt,
         createdAt: Math.min(older.createdAt, next.createdAt),
       };
     }
@@ -334,14 +400,17 @@ export class XPasses {
   }
 }
 
+/** What a pass adds to its wallet: the X bonus once it is verified and linked, and the Discord one on top. */
+export const passBonus = (p: XPass): number => (p.handle && p.address ? X_PASS_BONUS + (p.discordUserId ? DISCORD_BONUS : 0) : 0);
+
 /** The allow list bonus of each wallet linked to a verified pass. */
 export async function xPassBonuses(store: Store): Promise<Map<Address, number>> {
   const bonus = new Map<Address, number>();
-  for (const p of await store.xPasses()) if (p.handle && p.address) bonus.set(p.address, X_PASS_BONUS);
+  for (const p of await store.xPasses()) if (p.address && passBonus(p) > 0) bonus.set(p.address, passBonus(p));
   return bonus;
 }
 
 function view(p: XPass, seated: boolean): XPassView {
   const tasks = Object.fromEntries(X_TASKS.map((t) => [t, p[TASK_FIELD[t]] !== null])) as Record<XTask, boolean>;
-  return { code: p.code, seated, handle: p.handle, tweetUrl: p.tweetUrl, followed: tasks.follow, tasks, address: p.address, bonus: p.handle && p.address ? X_PASS_BONUS : 0 };
+  return { code: p.code, seated, handle: p.handle, tweetUrl: p.tweetUrl, followed: tasks.follow, tasks, address: p.address, discord: p.discordUserId !== null, bonus: passBonus(p) };
 }

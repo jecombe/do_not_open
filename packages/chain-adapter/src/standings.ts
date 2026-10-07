@@ -121,3 +121,6 @@ export function xPassWalletMessage(account: string, code: string, issuedAt: Date
 
 /** Points a verified X boarding pass adds to the wallet it links. */
 export const X_PASS_BONUS = 5;
+
+/** Points a boarding pass adds on top, once its holder joined the Discord server (`/board`). */
+export const DISCORD_BONUS = 3;

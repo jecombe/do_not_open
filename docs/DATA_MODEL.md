@@ -323,10 +323,12 @@ the wallet and the contract only, by the cCROQ transfer).
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |
-| `x_passes` | `id` (sha256 of the token the browser keeps), `code` (`DNO-` and six characters, in the post), `handle` and `x_user_id` once Sign in with X proved the account (or `handle` and `tweet_id` from a post carrying the code; migration 18 for `x_user_id`), `tweet_url`, `followed_at`, `posted_at`, `liked_at`, `replied_at`, `reposted_at` (the tasks, declared; migrations 17 and 18), `address` (the wallet the player linked by signing), `created_at`, `verified_at`, `updated_at`; code, handle, X user id, tweet and address each unique | no: not on the chain, kept by a redeploy like `allow_list_claims` (migration 16) |
+| `x_passes` | `id` (sha256 of the token the browser keeps), `code` (`DNO-` and six characters, in the post), `handle` and `x_user_id` once Sign in with X proved the account (or `handle` and `tweet_id` from a post carrying the code; migration 18 for `x_user_id`), `tweet_url`, `followed_at`, `posted_at`, `liked_at`, `replied_at`, `reposted_at` (the tasks, declared; migrations 17 and 18), `address` (the wallet the player linked by signing), `discord_user_id` and `discord_joined_at` (the Discord account that ran `/board` in the server with the pass's one-time code; migration 22), `created_at`, `verified_at`, `updated_at`; code, handle, X user id, tweet, address and Discord account each unique | no: not on the chain, kept by a redeploy like `allow_list_claims` (migration 16) |
 
-A wallet linked to a verified pass gets `X_PASS_BONUS` (5) on top of its allow list points
-(`bonus` in `GET /v1/allowlist/:address`). The link X account ↔ wallet is private to the API.
+A wallet linked to a verified pass gets `X_PASS_BONUS` (5) on top of its allow list points, and
+`DISCORD_BONUS` (3) more once the pass's holder joined the Discord server (`bonus` in
+`GET /v1/allowlist/:address`). The links X account ↔ wallet and Discord account ↔ wallet are
+private to the API.
 
 ## Croquettes
 

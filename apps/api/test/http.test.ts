@@ -429,8 +429,11 @@ describe("X boarding passes", () => {
 
 describe("Sign in with X routes", () => {
   it("says whether Sign in with X is on, and refuses to send players anywhere but the site", async () => {
-    expect((await get("/v1/xpass/x")).body.data).toEqual({ signIn: false, announcement: null });
+    expect((await get("/v1/xpass/x")).body.data).toEqual({ signIn: false, announcement: null, discord: false });
     const { token } = (await app.inject({ method: "POST", url: "/v1/xpass" })).json().data;
+    // No Discord server here: no /board code either.
+    const board = await app.inject({ method: "POST", url: "/v1/xpass/discord", headers: { authorization: `Bearer ${token}` } });
+    expect([board.statusCode, board.json().error]).toEqual([503, "discord-off"]);
     const start = (returnTo: string) => app.inject({ method: "POST", url: "/v1/xpass/x/start", payload: { returnTo }, headers: { authorization: `Bearer ${token}` } });
     expect((await start("https://evil.test/")).statusCode).toBe(400);
     expect((await start("https://donotopen.test/fr/")).json()).toMatchObject({ error: "sign-in-off" });

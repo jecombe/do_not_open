@@ -10,7 +10,7 @@ import { Queries } from "../src/application/queries";
 import type { MANUAL_LOCALES, Manual } from "../src/domain/manual";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
 import manualJson from "../src/infrastructure/chat/manual.json";
-import { ASK_COMMAND, clerkReply, DiscordClerk, localeOf, signedByDiscord } from "../src/infrastructure/discord/DiscordClerk";
+import { ASK_COMMAND, BOARD_COMMAND, clerkReply, DiscordClerk, localeOf, signedByDiscord } from "../src/infrastructure/discord/DiscordClerk";
 import { buildServer } from "../src/infrastructure/http/server";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { DiscordNetwork } from "../src/infrastructure/social/DiscordNetwork";
@@ -153,18 +153,40 @@ describe("the clerk on Discord", () => {
     const pong = await app.inject({ method: "POST", url: "/v1/discord/interactions", payload: ping, headers: signed(ping) });
     expect(pong.json()).toEqual({ type: 1 });
     const other = JSON.stringify({ type: 2, token: "t", locale: "it", data: { name: "dance" } });
-    expect((await app.inject({ method: "POST", url: "/v1/discord/interactions", payload: other, headers: signed(other) })).json()).toEqual({ type: 4, data: { content: "Il deposito conosce solo /ask.", flags: 64 } });
+    expect((await app.inject({ method: "POST", url: "/v1/discord/interactions", payload: other, headers: signed(other) })).json()).toEqual({ type: 4, data: { content: "Il deposito conosce solo /ask e /board.", flags: 64 } });
     await clerk.idle();
     await app.close();
   });
 
-  it("declares a command Discord accepts", () => {
-    expect(ASK_COMMAND.description.length).toBeLessThanOrEqual(100);
-    for (const o of ASK_COMMAND.options) {
-      expect(o.description.length).toBeLessThanOrEqual(100);
-      for (const d of Object.values(o.description_localizations)) expect(d.length).toBeLessThanOrEqual(100);
-      for (const n of Object.values(o.name_localizations)) expect(n).toMatch(/^[-_\p{L}\p{N}]{1,32}$/u);
+  it("declares commands Discord accepts", () => {
+    for (const command of [ASK_COMMAND, BOARD_COMMAND]) {
+      expect(command.description.length).toBeLessThanOrEqual(100);
+      for (const o of command.options) {
+        expect(o.description.length).toBeLessThanOrEqual(100);
+        for (const d of Object.values(o.description_localizations)) expect(d.length).toBeLessThanOrEqual(100);
+        for (const n of Object.values(o.name_localizations)) expect(n).toMatch(/^[-_\p{L}\p{N}]{1,32}$/u);
+      }
+      for (const d of Object.values(command.description_localizations)) expect(d.length).toBeLessThanOrEqual(100);
     }
-    for (const d of Object.values(ASK_COMMAND.description_localizations)) expect(d.length).toBeLessThanOrEqual(100);
+  });
+
+  it("boards from /board in a server, and answers only to the one who ran it", async () => {
+    const { calls, fetcher } = fakeFetch(() => json({}));
+    const seen: { code: string; member: { userId: string; guildId: string | null } }[] = [];
+    const boarding = { bonus: 3, joinDiscord: async (code: string, member: { userId: string; guildId: string | null }) => (seen.push({ code, member }), "ok" as const) };
+    const clerk = new DiscordClerk(new AskManual(MANUALS, null, { perIpPerDay: 5, perDay: 5, cacheSize: 5 }), { applicationId: "app", manualUrl: null, boarding }, silentLogger, fetcher);
+    const board = { type: 2, token: "tok", locale: "fr", guild_id: "555", member: { user: { id: "42" } }, data: { name: "board", options: [{ name: "code", value: "DNO-AB12CD" }] } };
+    expect(clerk.respond(board)).toEqual({ type: 5, data: { flags: 64 } });
+    // In a direct message, Discord sends no member and no server.
+    clerk.respond({ type: 2, token: "tok", locale: "fr", user: { id: "42" }, data: board.data });
+    await clerk.idle();
+    expect(seen).toEqual([
+      { code: "DNO-AB12CD", member: { userId: "42", guildId: "555" } },
+      { code: "DNO-AB12CD", member: { userId: "42", guildId: null } },
+    ]);
+    expect(JSON.parse(String(calls[0]!.init.body)).content).toContain("3 points");
+    // Without boarding, /board is unknown.
+    const plain = new DiscordClerk(new AskManual(MANUALS, null, { perIpPerDay: 5, perDay: 5, cacheSize: 5 }), { applicationId: "app", manualUrl: null }, silentLogger, fetcher);
+    expect(plain.respond(board)).toMatchObject({ type: 4 });
   });
 });

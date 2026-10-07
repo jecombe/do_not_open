@@ -398,7 +398,7 @@ function XPassLink({ account, onLinked }: { account: Address; onLinked: () => vo
     );
   }
   if (pass.address && sameAddress(pass.address, account)) {
-    return <p className="fine mark-good xpass-line">{t("xpass.linked", { handle: pass.handle, bonus: X_PASS_BONUS })}</p>;
+    return <p className="fine mark-good xpass-line">{t("xpass.linked", { handle: pass.handle, bonus: pass.bonus })}</p>;
   }
 
   const link = async () => {

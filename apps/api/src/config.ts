@@ -193,6 +193,9 @@ const schema = z.object({
   DISCORD_PUBLIC_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "64 hex characters").optional(),
   /** The manual page `/ask` links its sections to, e.g. https://<site>/docs. Defaults to HERALD_MANUAL_URL. */
   DISCORD_MANUAL_URL: z.string().url().optional(),
+  /** The collection's Discord server (its id: right-click the server, Copy Server ID). Set with the
+   *  application above, the boarding page asks players to join it and run `/board`, for points. */
+  DISCORD_GUILD_ID: z.string().regex(/^\d{1,25}$/, "the server's id: digits").optional(),
 });
 
 export type Config = z.infer<typeof schema>;
