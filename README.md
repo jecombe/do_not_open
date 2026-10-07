@@ -64,7 +64,7 @@ flowchart LR
 
 The backend, `apps/api`, indexes the protocol into Postgres and serves the app's reads, so
 visitors do not each hit a public RPC; it runs on its own server (one indexer and several API
-replicas behind Caddy, load-tested with k6 on every API pull request), the site stays on Vercel.
+replicas behind Caddy, load-tested with k6 on every API pull request into `main`), the site stays on Vercel.
 See [`apps/api/README.md`](apps/api/README.md), [`deploy/README.md`](deploy/README.md) and
 [`loadtest/README.md`](loadtest/README.md). The team follows the players and the game on a
 password-protected admin site, `apps/admin` ([`apps/admin/README.md`](apps/admin/README.md)).

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { chainMode } from "./chain/mode";
+import { apiUrl } from "./apiUrl";
 
 /** The tasks on X a pass asks for, declared by the player (X's likes and reposts cannot be read for free). */
 export type XTask = "follow" | "post" | "like" | "reply" | "repost";
@@ -48,7 +49,7 @@ const writeToken = (token: string | null) => {
 };
 
 /** The API's base, or null in the demo and where none is set: then there is no pass to keep. */
-export const xPassApi = (): string | null => (chainMode().mode === "mock" ? null : import.meta.env.VITE_API_URL?.replace(/\/$/, "") || null);
+export const xPassApi = (): string | null => (chainMode().mode === "mock" ? null : apiUrl());
 
 let memoryToken: string | null = null;
 

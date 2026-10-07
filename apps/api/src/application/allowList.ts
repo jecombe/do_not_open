@@ -74,7 +74,7 @@ export class AllowList {
     /** Extra points per wallet, from X boarding passes. None by default. */
     private readonly bonuses: () => Promise<Map<Address, number>> = async () => new Map(),
     /** The list's seats: a claimant who tried the testnet takes one. No cap by default. */
-    private readonly seats: { admit(): Promise<void>; seatedPassOf(address: Address): Promise<boolean>; seatedPassWallets(): Promise<Set<Address>> } | null = null,
+    private readonly seats: { admit(): Promise<void>; seatedPassOf(address: Address): Promise<boolean>; seatedPassWallets(): Promise<Set<Address>>; isTeam(address: Address): boolean } | null = null,
     /** The team's private channel, told of each first claim. */
     private readonly feed: ActivityFeed = noActivityFeed,
   ) {}
@@ -92,6 +92,7 @@ export class AllowList {
       throw new Unauthorized("unreadable signature");
     }
     if (signer !== address) throw new Unauthorized("signed by another account");
+    if (this.seats?.isTeam(address)) throw new BadRequest("this is one of the team's wallets: it does not take a place on the list");
     // A claim reads the chain's facts afresh, so a duel won a moment ago counts.
     const { live } = await this.facts(address, true);
     const kept = await this.store.allowListClaim(address);
@@ -134,6 +135,7 @@ export class AllowList {
     ]);
     let seatedRank = 0;
     return claims
+      .filter((c) => !this.seats?.isTeam(c.address))
       .map((c) => {
         const live = playerPoints(c.address, facts.duels, facts.openers);
         const bonus = bonuses.get(c.address) ?? 0;
@@ -155,6 +157,8 @@ export class AllowList {
       out.add(normalizeAddress(d.challenger));
       out.add(normalizeAddress(d.accepter));
     }
+    // The team plays to test: that is not a place on the list.
+    for (const a of out) if (this.seats?.isTeam(a)) out.delete(a);
     return out;
   }
 

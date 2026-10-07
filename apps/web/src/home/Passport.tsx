@@ -6,6 +6,7 @@ import { appPath, duelRankingPath } from "../site";
 import { useSeats, useXPass } from "../xpass";
 import { useTierName } from "./GiftTiers";
 import { useT } from "./i18n";
+import { apiUrl } from "../apiUrl";
 
 /** What the API says about one address on the mainnet allow list (`GET /v1/allowlist/:address`). */
 interface PassStatus {
@@ -22,7 +23,7 @@ interface PassStatus {
 const REMEMBER = "dno:pass:address";
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
-const api = () => (chainMode().mode === "mock" ? null : (import.meta.env.VITE_API_URL?.replace(/\/$/, "") || null));
+const api = () => (chainMode().mode === "mock" ? null : apiUrl());
 
 async function readPass(address: string): Promise<PassStatus> {
   const res = await fetch(`${api()}/v1/allowlist/${address}`);

@@ -1,7 +1,10 @@
 # DO NOT OPEN backend: Postgres, the indexer and the API's replicas. No port is published: the
 # shared edge proxy (deploy/edge) reaches the API over the `edge` network, so other projects
 # on the same server keep ports 80 and 443 through it. Values come from .env next to this file.
-name: dno
+# One stack per directory: /opt/dno is the live one (STACK=dno), /opt/dno-testnet the testnet
+# site's (STACK=dno-testnet, deploy/testnet/docker-compose.yml: API replicas over this stack's
+# database, their own lists and aliases), deployed from the dev branch.
+name: ${STACK:-dno}
 
 services:
   postgres:
@@ -47,8 +50,8 @@ services:
       internal: {}
       edge:
         # The name the edge proxy routes to, shared by every replica: Docker's DNS answers all
-        # of them. Unique across projects on this server.
-        aliases: [dno-api]
+        # of them. Unique across projects on this server: the testnet stack takes dno-api-testnet.
+        aliases: ["${API_ALIAS:-dno-api}"]
 
   # The one process that reads the chain and writes the index, with the periodic tasks (sweep,
   # reconcile, herald, Arweave). Never more than one. It answers /health and /metrics only,
@@ -72,7 +75,7 @@ services:
     networks:
       internal: {}
       edge:
-        aliases: [dno-indexer]
+        aliases: ["${INDEXER_ALIAS:-dno-indexer}"]
 
 networks:
   # Postgres is only on this one: nothing from another project can reach it.

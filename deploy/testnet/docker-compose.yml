@@ -1,0 +1,38 @@
+# The testnet site's API (testnet.do-not-open.app → api.testnet.do-not-open.app), deployed from the
+# dev branch into /opt/dno-testnet. API replicas only: no indexer and no Postgres of its own. While
+# both sites run on Sepolia, it reads the live stack's index (one indexer for one chain) and keeps
+# its boarding passes, allow list claims and ideas in the `testnet` schema of the same database
+# (LISTS_SCHEMA), so tests never reach the list that lasts until mainnet. It never migrates.
+# Values come from .env next to this file (the live one's POSTGRES_PASSWORD).
+name: ${STACK:-dno-testnet}
+
+services:
+  api:
+    image: ${API_IMAGE:?set API_IMAGE}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      ROLE: api
+      LISTS_SCHEMA: testnet
+      DATABASE_URL: postgres://dno:${POSTGRES_PASSWORD}@postgres:5432/dno
+      DATABASE_POOL_SIZE: "5"
+      PUBLIC_URL: https://${API_DOMAIN}
+      TRUST_PROXY: "true"
+    deploy:
+      replicas: ${API_REPLICAS:-1}
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+    networks:
+      # The live stack's Postgres, by its service name there.
+      dno_internal: {}
+      edge:
+        aliases: ["${API_ALIAS:-dno-api-testnet}"]
+
+networks:
+  dno_internal:
+    external: true
+  edge:
+    external: true

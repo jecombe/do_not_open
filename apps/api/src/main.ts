@@ -63,12 +63,21 @@ import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 async function main() {
   const config = loadConfig();
   const log = pino({ level: config.LOG_LEVEL });
+  // Lists of their own, the index shared: such a process must not index the chain a second time.
+  if (config.LISTS_SCHEMA && config.ROLE !== "api") throw new Error("LISTS_SCHEMA is for API replicas only (ROLE=api): the live stack's indexer indexes for both");
 
   let pool: pg.Pool | null = null;
   let store: Store & PostStore & ArchiveStore & StudioStore & RatStore;
   if (config.DATABASE_URL) {
-    pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE });
-    await migrate(pool, log);
+    // The testnet site's API reads its own lists first, then the shared index.
+    const searchPath = config.LISTS_SCHEMA ? { options: `-c search_path=${config.LISTS_SCHEMA},public` } : {};
+    pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_SIZE, ...searchPath });
+    if (config.LISTS_SCHEMA) {
+      // Without its own tables, the search path would fall through to the live lists: refuse to start.
+      const { rows } = await pool.query("select to_regclass($1) as passes, to_regclass($2) as claims, to_regclass($3) as ideas", [`${config.LISTS_SCHEMA}.x_passes`, `${config.LISTS_SCHEMA}.allow_list_claims`, `${config.LISTS_SCHEMA}.ideas`]);
+      if (!rows[0].passes || !rows[0].claims || !rows[0].ideas) throw new Error(`schema ${config.LISTS_SCHEMA} lacks its list tables: deploy the live stack first (migration 24)`);
+      log.info({ schema: config.LISTS_SCHEMA }, "own lists in their schema, the index shared; migrations are the live stack's");
+    } else await migrate(pool, log);
     store = new PgStore(pool);
   } else {
     log.warn("DATABASE_URL is not set: the index lives in memory and is rebuilt at each start");
@@ -226,7 +235,7 @@ async function main() {
   // The list and its seats read each other: the seats count who tried the testnet, the list
   // admits a new claimant to a seat.
   let allowList: AllowList | null = null;
-  const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"]);
+  const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"], { wallets: config.TEAM_WALLETS, handles: config.TEAM_X_HANDLES });
   allowList = new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats, feed);
   // The frozen list, once it closed: each wallet's proof for WhitelistGifts.
   const gifts = new GiftProofs(config.WHITELIST_GIFTS_TREE ? JSON.parse(readFileSync(config.WHITELIST_GIFTS_TREE, "utf8")) : null);

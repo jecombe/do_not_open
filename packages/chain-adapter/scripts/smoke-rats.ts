@@ -1,7 +1,7 @@
 /**
  * End-to-end check of the rats' powers and tricks against the live Sepolia deployment: adopts
  * rats, reads their secret power, sniffs a box, shields one of the account's boxes, and has a
- * second, throwaway wallet's box jammed so that its holder's shakes come back scrambled. Spends
+ * second, kept test wallet's box jammed (scripts/testWallets.ts) so that its holder's shakes come back scrambled. Spends
  * testnet ETH for gas (a little goes to the throwaway wallet), and test USDC it mints itself.
  *
  *   pnpm --filter @dno/chain-adapter smoke:rats
@@ -10,7 +10,8 @@
  */
 import { config } from "dotenv";
 import { resolve } from "node:path";
-import { JsonRpcProvider, parseEther, Wallet } from "ethers";
+import { JsonRpcProvider, Wallet } from "ethers";
+import { fundTestWallet, testWallet } from "./testWallets";
 import { spec } from "@dno/game-spec";
 import { ChainError } from "../src";
 import { createSepoliaNodeAdapter, type Step } from "../src/evm/node";
@@ -74,9 +75,10 @@ async function main() {
   console.log(`  holder's own shake of ${a}: ${trait(await chain.shake(a, { onStep }))}`);
 
   console.log("a second wallet holds a box; a power-3 rat of ours jams it");
-  const other = Wallet.createRandom();
-  const funder = new Wallet(privateKey, new JsonRpcProvider(rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com"));
-  await (await funder.sendTransaction({ to: other.address, value: parseEther("0.003") })).wait();
+  // A kept test wallet (.test-wallets.json): the same one every run, topped up only when low.
+  const other = testWallet("smoke-rats-victim", "smoke:rats: holds a box that a rat of ours jams");
+  const provider = new JsonRpcProvider(rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com");
+  await fundTestWallet(new Wallet(privateKey), other, provider);
   const victim = createSepoliaNodeAdapter({ privateKey: other.privateKey, rpcUrl });
   const them = await victim.connect();
   await ready(victim, them);

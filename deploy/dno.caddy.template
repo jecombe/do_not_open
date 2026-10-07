@@ -21,7 +21,7 @@ __API_HOSTS__ {
 	# connections (stopped by a deploy) is left out for 30 s and the request tries another one.
 	# Active health checks do not run on dynamic upstreams: deploy.sh checks each replica itself.
 	reverse_proxy {
-		dynamic a dno-api 8080 {
+		dynamic a __API_ALIAS__ 8080 {
 			refresh 2s
 		}
 		lb_policy client_ip_hash

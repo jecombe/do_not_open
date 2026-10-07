@@ -337,6 +337,12 @@ private to the API.
 | `tickets` | `kind`, `key` (together unique), `owner` (or null), `value` (JSON), `expires_at`: a Sign in with X under way (kind `x-sign-in`, key the OAuth state, value the pass id, PKCE verifier and return page, 10 minutes) and `/board` codes (kind `board`, key the code, owner the pass, 15 minutes); taken once, dropped once expired (migration 23) | no: secrets a few minutes long, out of the index |
 | `daily_quotas` | `name`, `day` (UTC), `used`: the questions the manual's chat put to Gemini that day (`chat-model`), counted for every replica together (migration 23) | no |
 
+### The testnet site's lists
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `testnet.x_passes`, `testnet.allow_list_claims`, `testnet.ideas` | the same columns as their `public` tables (`like ... including all`, migration 24): the boarding passes, claims and ideas of `testnet.do-not-open.app`, whose API replicas (`LISTS_SCHEMA=testnet`) search `testnet` before `public` and share every other table, the chain's index included | no; never mixed with the live lists, which last until mainnet |
+
 ## Croquettes
 
 The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CROQ.md).

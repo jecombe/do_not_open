@@ -316,6 +316,7 @@ pnpm --filter @dno/chain-adapter test            # the mock and the V3 math, no 
 pnpm --filter @dno/chain-adapter smoke:sepolia   # every mechanic on the deployed contracts
 pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap, unwrap, transfer, sell
 pnpm --filter @dno/chain-adapter smoke:rats      # a rat's power, a sniff, a shield, a rest, a jam on a second wallet
+pnpm --filter @dno/chain-adapter test-wallets    # the kept throwaway wallets (.test-wallets.json), for TEAM_WALLETS
 ```
 
 The smoke scripts spend testnet ETH (mints, fees, a small market buy) and need
