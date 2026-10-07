@@ -330,6 +330,13 @@ A wallet linked to a verified pass gets `X_PASS_BONUS` (5) on top of its allow l
 `GET /v1/allowlist/:address`). The links X account ↔ wallet and Discord account ↔ wallet are
 private to the API.
 
+### Shared by the API replicas
+
+| Table | What | Rebuilt by a replay |
+| --- | --- | --- |
+| `tickets` | `kind`, `key` (together unique), `owner` (or null), `value` (JSON), `expires_at`: a Sign in with X under way (kind `x-sign-in`, key the OAuth state, value the pass id, PKCE verifier and return page, 10 minutes) and `/board` codes (kind `board`, key the code, owner the pass, 15 minutes); taken once, dropped once expired (migration 23) | no: secrets a few minutes long, out of the index |
+| `daily_quotas` | `name`, `day` (UTC), `used`: the questions the manual's chat put to Gemini that day (`chat-model`), counted for every replica together (migration 23) | no |
+
 ## Croquettes
 
 The Pantry and cCROQ add encrypted amounts. Rules and flows are in [CROQ.md](CROQ.md).

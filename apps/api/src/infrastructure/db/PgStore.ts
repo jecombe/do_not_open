@@ -1,5 +1,5 @@
 import pg, { type Pool, type PoolClient } from "pg";
-import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, DuelQuery, EntangleProposal, ProjectionTx, Stats, Store, StoredEvent, Ticket, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import type { Duel } from "../../domain/duel";
 import { actorsOf, QUIET_EVENTS, tokensOf, type ProtocolEvent } from "../../domain/events";
@@ -104,6 +104,8 @@ const transferFrom = (r: Row): Transfer => ({
 });
 
 const json = (v: unknown) => (v === null || v === undefined ? null : JSON.stringify(v));
+
+const ticketFrom = (r: Row): Ticket => ({ kind: r.kind, key: r.key, owner: r.owner, value: r.value, expiresAt: Number(r.expires_at) });
 
 async function one<T>(q: Q, sql: string, params: unknown[], map: (r: Row) => T): Promise<T | null> {
   const { rows } = await q.query(sql, params);
@@ -718,6 +720,51 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
   async publicDecryptionsOf(handles: string[]) {
     const { rows } = await this.pool.query("select handle, uses from public_decrypt_uses where handle = any($1::text[])", [handles]);
     return new Map(rows.map((r) => [r.handle as string, r.uses as number]));
+  }
+
+  async putTicket(t: Ticket, now: number) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("delete from tickets where expires_at <= $1", [now]);
+      if (t.owner !== null) await client.query("delete from tickets where kind = $1 and owner = $2", [t.kind, t.owner]);
+      const { rowCount } = await client.query(
+        "insert into tickets (kind, key, owner, value, expires_at) values ($1, $2, $3, $4, $5) on conflict do nothing",
+        [t.kind, t.key, t.owner, JSON.stringify(t.value), t.expiresAt],
+      );
+      await client.query("commit");
+      return rowCount === 1;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  ticket(kind: string, key: string, now: number) {
+    return one(this.pool, "select * from tickets where kind = $1 and key = $2 and expires_at > $3", [kind, key, now], ticketFrom);
+  }
+
+  takeTicket(kind: string, key: string, now: number) {
+    return one(this.pool, "with gone as (delete from tickets where kind = $1 and key = $2 returning *) select * from gone where expires_at > $3", [kind, key, now], ticketFrom);
+  }
+
+  async takeQuota(name: string, day: string, limit: number) {
+    const { rowCount } = await this.pool.query(
+      `insert into daily_quotas (name, day, used) select $1, $2, 1 where $3 > 0
+       on conflict (name, day) do update set used = daily_quotas.used + 1 where daily_quotas.used < $3`,
+      [name, day, limit],
+    );
+    return rowCount === 1;
+  }
+
+  async giveBackQuota(name: string, day: string) {
+    await this.pool.query("update daily_quotas set used = greatest(used - 1, 0) where name = $1 and day = $2", [name, day]);
+  }
+
+  async quotaUsed(name: string, day: string) {
+    return (await one(this.pool, "select used from daily_quotas where name = $1 and day = $2", [name, day], (r) => r.used as number)) ?? 0;
   }
 
   async saveTermsAcceptance(a: TermsAcceptance) {

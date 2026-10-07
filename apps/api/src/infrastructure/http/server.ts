@@ -62,6 +62,8 @@ export interface HttpDeps {
   herald?: { posts: Pick<PostStore, "posts">; adminToken: string | null };
   /** Absent when this process does not index (ROLE=api). */
   indexer?: { status(): IndexerStatus; nudge(): void };
+  /** Wakes the indexer wherever it runs (ROLE=api: over Postgres). Defaults to `indexer.nudge`. */
+  nudge?: () => void;
   rpcStatus?: () => EndpointStatus[];
   /** Prometheus metrics at GET /metrics. The edge proxy refuses that path from outside; the monitoring stack scrapes it over the Docker network. */
   metrics?: Metrics;
@@ -457,7 +459,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
 
   /** The app calls this after a transaction is mined, so the index catches it within seconds. */
   app.post("/v1/sync/nudge", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (_req, reply) => {
-    deps.indexer?.nudge();
+    (deps.nudge ?? (() => deps.indexer?.nudge()))();
     return reply.status(202).send({ ok: true });
   });
 
@@ -770,5 +772,25 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     return deps.metadata.svg(tokenId);
   });
 
+  return app;
+}
+
+/**
+ * What an indexer-only process (ROLE=indexer) answers: its health, for the proxy and Docker, and
+ * its metrics, for Prometheus. Nothing public goes through it.
+ */
+export async function buildOpsServer(deps: Pick<HttpDeps, "queries" | "indexer" | "rpcStatus" | "metrics" | "logger">): Promise<FastifyInstance> {
+  const app = Fastify({ logger: deps.logger ?? false });
+  if (deps.metrics) {
+    const metrics = deps.metrics;
+    app.get("/metrics", async (_req, reply) => {
+      reply.header("content-type", metrics.contentType).header("cache-control", "no-store");
+      return metrics.render();
+    });
+  }
+  app.get("/health", async (_req, reply) => {
+    reply.header("cache-control", "no-store");
+    return { ok: true, block: await deps.queries.indexedBlock(), indexer: deps.indexer?.status() ?? null, rpc: deps.rpcStatus?.() ?? null };
+  });
   return app;
 }

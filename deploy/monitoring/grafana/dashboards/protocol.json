@@ -1,7 +1,7 @@
 {
   "uid": "dno-protocol",
   "title": "DO NOT OPEN \u00b7 Protocol",
-  "description": "The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.",
+  "description": "The protocol on one network: collection, pending proofs, indexer, RPC pool, API replicas and traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.",
   "tags": [
     "dno"
   ],
@@ -1135,8 +1135,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "dno_rpc_latency_seconds{network=\"$network\"}",
-          "legendFormat": "{{endpoint}}",
+          "expr": "max by (endpoint, role) (dno_rpc_latency_seconds{network=\"$network\"})",
+          "legendFormat": "{{endpoint}} \u00b7 {{role}}",
           "instant": false
         }
       ],
@@ -1162,7 +1162,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Worst replica for the API (it reads the economy and claim times), the indexer on its own."
     },
     {
       "id": 22,
@@ -1185,8 +1186,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(dno_rpc_requests_total{network=\"$network\",result=\"failed\"}[5m]) * 60",
-          "legendFormat": "{{endpoint}}",
+          "expr": "sum by (endpoint, role) (rate(dno_rpc_requests_total{network=\"$network\",result=\"failed\"}[5m])) * 60",
+          "legendFormat": "{{endpoint}} \u00b7 {{role}}",
           "instant": false
         }
       ],
@@ -1216,7 +1217,7 @@
     },
     {
       "type": "row",
-      "title": "Traffic and services",
+      "title": "API replicas",
       "id": 23,
       "gridPos": {
         "h": 1,
@@ -1229,6 +1230,666 @@
     },
     {
       "id": 24,
+      "title": "Replicas up",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 51
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(up{network=\"$network\",job=\"dno-api\",role=\"api\"})",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "API processes Prometheus finds behind the alias and that answer. API_REPLICAS in /opt/dno/.env sets how many run."
+    },
+    {
+      "id": 25,
+      "title": "Indexer up",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 51
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(up{network=\"$network\",job=\"dno-api\",role=\"indexer\"})",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {},
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN"
+                },
+                "1": {
+                  "text": "UP"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 26,
+      "title": "Busiest replica's share",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 51
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(sum by (instance) (rate(dno_http_request_duration_seconds_count{network=\"$network\",role=\"api\",route!=\"/metrics\"}[15m]))) / sum(rate(dno_http_request_duration_seconds_count{network=\"$network\",role=\"api\",route!=\"/metrics\"}[15m]))",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.8
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "The proxy keeps each client IP on one replica: with few visitors one can take most of the traffic, with many it evens out."
+    },
+    {
+      "id": 27,
+      "title": "Event loop lag p99, worst replica",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 51
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(nodejs_eventloop_lag_p99_seconds{network=\"$network\",role=\"api\"})",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Above 0.5 s for 10 minutes the ApiEventLoopBlocked alert fires: time for another replica."
+    },
+    {
+      "id": 28,
+      "title": "Restarts, last 24 h",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 51
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(changes(process_start_time_seconds{network=\"$network\",job=\"dno-api\"}[24h]))",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Deploys included: each one starts a new set of replicas and the indexer."
+    },
+    {
+      "id": 29,
+      "title": "Version",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 51
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count by (version) (dno_info{network=\"$network\"})",
+          "legendFormat": "{{version}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Processes per image tag (the commit): two tags only while a deploy runs."
+    },
+    {
+      "id": 30,
+      "title": "Requests per second, by replica",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 55
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (instance) (rate(dno_http_request_duration_seconds_count{network=\"$network\",role=\"api\",route!=\"/metrics\"}[5m]))",
+          "legendFormat": "{{instance}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 31,
+      "title": "Latency p95, by replica",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 55
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (instance, le) (rate(dno_http_request_duration_seconds_bucket{network=\"$network\",role=\"api\",route!~\"/metrics|/relayer/.*|/v1/chat\"}[5m])))",
+          "legendFormat": "{{instance}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Relayer and chat left out: they wait on Zama and Gemini."
+    },
+    {
+      "id": 32,
+      "title": "CPU by process",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 63
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(process_cpu_seconds_total{network=\"$network\",job=\"dno-api\"}[5m])",
+          "legendFormat": "{{role}} {{instance}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "One Node process uses one core at most: near 100% is a full replica."
+    },
+    {
+      "id": 33,
+      "title": "Memory by process",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 63
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_resident_memory_bytes{network=\"$network\",job=\"dno-api\"}",
+          "legendFormat": "{{role}} {{instance}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Each container is capped at 512 MiB (deploy/docker-compose.yml)."
+    },
+    {
+      "id": 34,
+      "title": "Event loop lag p99",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 63
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "nodejs_eventloop_lag_p99_seconds{network=\"$network\",job=\"dno-api\"}",
+          "legendFormat": "{{role}} {{instance}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Traffic and services",
+      "id": 35,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 71
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 36,
       "title": "Requests per second, by route",
       "type": "timeseries",
       "datasource": {
@@ -1239,7 +1900,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 51
+        "y": 72
       },
       "targets": [
         {
@@ -1278,7 +1939,7 @@
       }
     },
     {
-      "id": 25,
+      "id": 37,
       "title": "Errors per second, by status",
       "type": "timeseries",
       "datasource": {
@@ -1289,7 +1950,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 51
+        "y": 72
       },
       "targets": [
         {
@@ -1328,7 +1989,7 @@
       }
     },
     {
-      "id": 26,
+      "id": 38,
       "title": "Latency p95, by route",
       "type": "timeseries",
       "datasource": {
@@ -1339,7 +2000,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 59
+        "y": 80
       },
       "targets": [
         {
@@ -1378,7 +2039,7 @@
       }
     },
     {
-      "id": 27,
+      "id": 39,
       "title": "Zama relayer proxy calls, by operation and status",
       "type": "timeseries",
       "datasource": {
@@ -1389,7 +2050,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 59
+        "y": 80
       },
       "targets": [
         {
@@ -1429,7 +2090,7 @@
       "description": "Per minute. On mainnet each decryption and input is billed to the collection."
     },
     {
-      "id": 28,
+      "id": 40,
       "title": "Token images on Arweave",
       "type": "timeseries",
       "datasource": {
@@ -1440,7 +2101,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 67
+        "y": 88
       },
       "targets": [
         {
@@ -1479,7 +2140,7 @@
       }
     },
     {
-      "id": 29,
+      "id": 41,
       "title": "Gemini questions today",
       "type": "timeseries",
       "datasource": {
@@ -1490,7 +2151,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 67
+        "y": 88
       },
       "targets": [
         {
@@ -1539,7 +2200,7 @@
       }
     },
     {
-      "id": 30,
+      "id": 42,
       "title": "Herald posts by account and status",
       "type": "timeseries",
       "datasource": {
@@ -1550,7 +2211,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 67
+        "y": 88
       },
       "targets": [
         {
@@ -1591,18 +2252,18 @@
     {
       "type": "row",
       "title": "The mainnet whitelist",
-      "id": 31,
+      "id": 43,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 75
+        "y": 96
       },
       "collapsed": false,
       "panels": []
     },
     {
-      "id": 32,
+      "id": 44,
       "title": "Seats taken",
       "type": "stat",
       "datasource": {
@@ -1613,7 +2274,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1661,7 +2322,7 @@
       "description": "X accounts with every boarding task done, and wallets that claimed and played the testnet; an X account and its linked wallet count once."
     },
     {
-      "id": 33,
+      "id": 45,
       "title": "Seats filled",
       "type": "stat",
       "datasource": {
@@ -1672,7 +2333,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1728,7 +2389,7 @@
       "description": "Out of ALLOW_LIST_PLACES. Full: nobody new gets a seat."
     },
     {
-      "id": 34,
+      "id": 46,
       "title": "X accounts connected",
       "type": "stat",
       "datasource": {
@@ -1739,7 +2400,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1786,7 +2447,7 @@
       }
     },
     {
-      "id": 35,
+      "id": 47,
       "title": "Wallet claims",
       "type": "stat",
       "datasource": {
@@ -1797,7 +2458,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1845,7 +2506,7 @@
       "description": "Wallets that signed a claim; they sit down once they minted, opened or dueled."
     },
     {
-      "id": 36,
+      "id": 48,
       "title": "Sign in with X",
       "type": "stat",
       "datasource": {
@@ -1856,7 +2517,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1921,7 +2582,7 @@
       "description": "ON: X_CLIENT_ID is set. OFF: players prove their account with a post carrying their code."
     },
     {
-      "id": 37,
+      "id": 49,
       "title": "Ideas in the box",
       "type": "stat",
       "datasource": {
@@ -1932,7 +2593,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 76
+        "y": 97
       },
       "targets": [
         {
@@ -1980,7 +2641,7 @@
       "description": "Read them with GET /v1/ideas?token=ALLOW_LIST_ADMIN_TOKEN."
     },
     {
-      "id": 38,
+      "id": 50,
       "title": "Seats taken against the places",
       "type": "timeseries",
       "datasource": {
@@ -1991,7 +2652,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 80
+        "y": 101
       },
       "targets": [
         {
@@ -2040,7 +2701,7 @@
       }
     },
     {
-      "id": 39,
+      "id": 51,
       "title": "Boarding funnel",
       "type": "timeseries",
       "datasource": {
@@ -2051,7 +2712,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 80
+        "y": 101
       },
       "targets": [
         {
@@ -2091,7 +2752,7 @@
       "description": "started: a pass handed out; connected: an X account proved; seated: every required task done; wallet: a wallet linked."
     },
     {
-      "id": 40,
+      "id": 52,
       "title": "Tasks on X declared, by task",
       "type": "timeseries",
       "datasource": {
@@ -2102,7 +2763,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 88
+        "y": 109
       },
       "targets": [
         {
@@ -2142,7 +2803,7 @@
       "description": "Declared by the players, checked by hand before mainnet."
     },
     {
-      "id": 41,
+      "id": 53,
       "title": "Sign in with X per hour, by outcome",
       "type": "timeseries",
       "datasource": {
@@ -2153,7 +2814,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 88
+        "y": 109
       },
       "targets": [
         {
@@ -2195,18 +2856,18 @@
     {
       "type": "row",
       "title": "The studio",
-      "id": 42,
+      "id": 54,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 96
+        "y": 117
       },
       "collapsed": false,
       "panels": []
     },
     {
-      "id": 43,
+      "id": 55,
       "title": "Open",
       "type": "stat",
       "datasource": {
@@ -2217,7 +2878,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 97
+        "y": 118
       },
       "targets": [
         {
@@ -2282,7 +2943,7 @@
       "description": "Open: the fal key and the StudioPacks contract are there, and STUDIO_PAUSED is not set."
     },
     {
-      "id": 44,
+      "id": 56,
       "title": "Packs sold",
       "type": "stat",
       "datasource": {
@@ -2293,7 +2954,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 97
+        "y": 118
       },
       "targets": [
         {
@@ -2340,7 +3001,7 @@
       }
     },
     {
-      "id": 45,
+      "id": 57,
       "title": "USDC brought in",
       "type": "stat",
       "datasource": {
@@ -2351,7 +3012,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 97
+        "y": 118
       },
       "targets": [
         {
@@ -2399,7 +3060,7 @@
       "description": "Paid for packs, straight to the treasury. Test USDC on Sepolia."
     },
     {
-      "id": 46,
+      "id": 58,
       "title": "AI cost, all time",
       "type": "stat",
       "datasource": {
@@ -2410,7 +3071,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 97
+        "y": 118
       },
       "targets": [
         {
@@ -2458,7 +3119,7 @@
       "description": "Estimated from studio.json's estimatedCostUsd, failed jobs included: check it against fal's bill."
     },
     {
-      "id": 47,
+      "id": 59,
       "title": "Margin",
       "type": "stat",
       "datasource": {
@@ -2469,7 +3130,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 97
+        "y": 118
       },
       "targets": [
         {
@@ -2521,7 +3182,7 @@
       "description": "USDC brought in minus the estimated AI cost. The StudioLosingMoney alert fires when it stays negative."
     },
     {
-      "id": 48,
+      "id": 60,
       "title": "Today's AI budget used",
       "type": "stat",
       "datasource": {
@@ -2532,7 +3193,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 97
+        "y": 118
       },
       "targets": [
         {
@@ -2588,7 +3249,7 @@
       "description": "Past it, generation waits for midnight UTC (STUDIO_DAILY_BUDGET_USD)."
     },
     {
-      "id": 49,
+      "id": 61,
       "title": "Generations by kind and status",
       "type": "timeseries",
       "datasource": {
@@ -2599,7 +3260,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 101
+        "y": 122
       },
       "targets": [
         {
@@ -2639,7 +3300,7 @@
       "description": "failed: unit given back; rejected: refused by the safety checker or past the day's refunds, unit kept."
     },
     {
-      "id": 50,
+      "id": 62,
       "title": "AI spend today against the budget",
       "type": "timeseries",
       "datasource": {
@@ -2650,7 +3311,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 101
+        "y": 122
       },
       "targets": [
         {

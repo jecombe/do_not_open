@@ -82,6 +82,31 @@ or void.
 Every answer of the API carries `block`, the last block indexed. The app trusts it only when
 it covers the account's own last transaction, and reads the chain otherwise.
 
+## Several replicas
+
+`ROLE` splits the process: `all` (the default, one process does everything), `indexer` (reads
+the chain, writes the index, runs the periodic tasks; answers `/health` and `/metrics` only) and
+`api` (serves the routes below from the index, writes nothing to it). Production runs one
+indexer and `API_REPLICAS` API replicas behind Caddy ([`deploy/README.md`](../../deploy/README.md#replicas-and-load-balancing));
+never two indexers. What a replica must share with the others lives in Postgres, what it can keep
+to itself stays in its memory, and the proxy sends one client IP to the same replica:
+
+| State | Where | Why it holds with several replicas |
+| --- | --- | --- |
+| A Sign in with X under way (OAuth state, PKCE verifier, return page) | `tickets` (kind `x-sign-in`, 10 min) | X sends the player back to whichever replica; the state is taken once |
+| A `/board` code | `tickets` (kind `board`, owner the pass) | `/board` comes from Discord's servers, never from the player's IP |
+| Questions the chat may put to Gemini today, in all | `daily_quotas` (`chat-model`) | One free quota for every replica (`CHAT_PER_DAY`) |
+| A nudge after a transaction | `NOTIFY dno_nudge`, the indexer listens | The replica that gets it does not index |
+| Sign-in nonces, sessions, the relayer meter, studio jobs, everything else | Postgres already | |
+| Rate limits per IP (`RATE_LIMIT_PER_MINUTE` and each route's), questions per IP (`CHAT_PER_IP_PER_DAY`) | the replica's memory | The proxy hashes the client IP to one replica, so its count is the whole count. A deploy, or a replica leaving, moves some IPs and starts their minute again |
+| Caches (economy, claim times, chat answers, facts behind the points) | the replica's memory | Each replica reads them once per period: a few more RPC calls, never a wrong answer |
+| A studio generation running | the replica that started it | A replica stopped mid-job loses it; `recover()` gives the unit back after twice `STUDIO_TIMEOUT_MS`, on any replica |
+
+Every process runs the migrations at start under an advisory lock, so replicas starting
+together migrate once. During a deploy the old replicas still serve against the new schema
+for a few seconds: a migration must keep the previous release working (add, never rename or
+drop in the same release).
+
 ## API
 
 Every `GET` returns `{ "block": <last indexed block>, "data": ... }`, except the studio's
@@ -89,7 +114,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 
 | Route | What |
 | --- | --- |
-| `GET /health` | Indexer status, lag, RPC endpoints and their learned ranges |
+| `GET /health` | Indexer status, lag, RPC endpoints and their learned ranges (`indexer` is null on an API replica, `ROLE=api`) |
 | `GET /v1/collection` | Fees, supply, token count, sale milestones |
 | `GET /v1/boxes?from=&to=` | Status and partner of up to 1,000 boxes |
 | `GET /v1/boxes/:id` | Everything public about a box |
@@ -117,9 +142,9 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/allowlist?token=` | The whole list, best first, with `inPlace` for the first `ALLOW_LIST_PLACES`, `seated` and `tier`: the export when the list closes. Only with `ALLOW_LIST_ADMIN_TOKEN` (`401` otherwise, and always when it is unset) |
 | `GET /v1/allowlist/gifts?token=` | The list frozen into the whitelist gifts' Merkle tree of (wallet, tier): `{ root, count, tree }` (`tree` is OpenZeppelin's `StandardMerkleTree` dump; all null while nobody is seated). Save it, set its root on `WhitelistGifts` (`hardhat dno:whitelist-root --tree <file>`) and serve it with `WHITELIST_GIFTS_TREE`. Same token as the list |
 | `GET /v1/gifts/:address` | A wallet's gift proof once the list is frozen: `{ tier, proof, root }`; `404 not-frozen` without `WHITELIST_GIFTS_TREE`, `404 not-on-list` for a wallet not in it. Cached 60 s |
-| `POST /v1/sync/nudge` | Asks the indexer to look now |
+| `POST /v1/sync/nudge` | Asks the indexer to look now; an API replica passes it on over Postgres (`NOTIFY dno_nudge`) |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
-| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`). Public facts only. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
+| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`). Public facts only. Each process reports its own traffic and memory; the index's counts come from the indexer only, so a sum over replicas counts them once. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 | `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
@@ -163,6 +188,10 @@ once, and a wallet that only played before the redeploy is still seated. Then it
 index as migration 10 did (`rats` and `rat_sniffers` and `studio_accounts` included, the old
 contracts' units staying with them), keeping sign-ins, claims, X passes, ideas, release forms,
 the decryption cache and the relayer's counts.
+
+Migration 23 adds what several API replicas share (see [Several replicas](#several-replicas)):
+`tickets` (short-lived secrets by kind and key, with an optional owner, dropped once expired) and
+`daily_quotas` (uses of a quota by name and UTC day). Neither is a read model: a replay keeps them.
 
 Migration 6 adds the public decryption cache (`public_decryptions`, `public_decrypt_uses`):
 like the relayer meter, not a read model, and kept by a replay.
@@ -243,8 +272,9 @@ the API reads `users/me` once and keeps no X token). It needs `X_CLIENT_ID` and
 `X_CLIENT_SECRET` from an app on developer.x.com, whose callback is
 `${PUBLIC_URL}/v1/xpass/x/callback`; X sends the player back only to `X_RETURN_ORIGINS`.
 Without them, a post carrying the pass code, read through X's public oEmbed
-(`publish.x.com/oembed`, no key), proves the account instead. Sign-ins under way live in the
-API process for 10 minutes; a restart only makes the player click again. Routes, the pass token
+(`publish.x.com/oembed`, no key), proves the account instead. Sign-ins under way are kept in
+Postgres for 10 minutes (`tickets`), so X may send the player back to any API replica, and a
+deploy in between loses nothing. Routes, the pass token
 as a bearer (`private, no-store`):
 
 | Route | What |
@@ -258,7 +288,7 @@ as a bearer (`private, no-store`):
 | `POST /v1/xpass/task` | `{ task: "follow" \| "post" \| "like" \| "reply" \| "repost" }`: notes a declared task (migration 17); the pass shows them in `tasks`. 20 a minute per IP |
 | `POST /v1/xpass/tweet` | `{ url }`: `400 bad-tweet-url`, `404 tweet-not-found`, `400 code-missing`, `409 tweet-used`, `503 x-down`. An X account already on an older pass moves to this one, with its wallet and follow |
 | `POST /v1/xpass/wallet` | `{ address, message, signature }`, the message from `xPassWalletMessage` (`@dno/chain-adapter/standings`) naming the wallet and the code, signed by it: `409 connect-x-first`, `400 bad-message`, `401 bad-signature`, `409 address-taken` |
-| `POST /v1/xpass/discord` | `{ code, expiresAt }`: a one-time code for `/board` on Discord, good for 15 minutes (`DISCORD_CODE_TTL`), kept in the API process; a new one replaces the pass's last. `503 discord-off` without `DISCORD_GUILD_ID` and the Discord application |
+| `POST /v1/xpass/discord` | `{ code, expiresAt }`: a one-time code for `/board` on Discord, good for 15 minutes (`DISCORD_CODE_TTL`), kept in Postgres (`tickets`) since `/board` may reach any replica; a new one replaces the pass's last. `503 discord-off` without `DISCORD_GUILD_ID` and the Discord application |
 | `GET /v1/xpass/all?token=` | Every pass (no token hash), for the checks before mainnet. `ALLOW_LIST_ADMIN_TOKEN` |
 
 A wallet linked to a verified pass gets 5 points (`X_PASS_BONUS`) on the allow list, and 3 more
@@ -471,7 +501,9 @@ When there is no key, the model fails, or a limit is reached, the answer comes b
 `CHAT_PER_IP_PER_DAY` (40) and `CHAT_PER_DAY` (1,000, kept under the free quota) questions
 to the model per UTC day, `CHAT_RATE_PER_MINUTE` (10) requests per IP per minute. A first
 question asked before is answered from an in-memory cache and counts against nothing. The
-counters and cache live in memory and start over when the API restarts.
+day's total is counted in Postgres (`daily_quotas`), for every replica together; the per-IP
+count and the cache live in each replica's memory (the proxy keeps an IP on one replica) and
+start over when it restarts.
 
 The manual is `src/infrastructure/chat/manual.json`, written by
 `pnpm --filter @dno/web export:manual`, which renders the manual page in each language as a
@@ -563,9 +595,9 @@ DATABASE_URL=postgres://... pnpm --filter @dno/api dev
 ```
 
 Configuration is environment variables, all optional in development: see `src/config.ts`
-(`RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
+(`ROLE`, `RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
 `FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
-[`deploy/README.md`](../../deploy/README.md).
+[`deploy/README.md`](../../deploy/README.md); load tests in [`loadtest/README.md`](../../loadtest/README.md).

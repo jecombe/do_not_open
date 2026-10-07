@@ -1,4 +1,0 @@
-# The testnet API, as the edge network names it (deploy/docker-compose.yml, alias dno-api).
-- targets: ["dno-api:8080"]
-  labels:
-    network: sepolia

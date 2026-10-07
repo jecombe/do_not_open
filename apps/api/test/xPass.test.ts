@@ -182,6 +182,14 @@ describe("boarding from Discord", () => {
     expect((await passes.status(b.token)).discord).toBe(true);
   });
 
+  it("takes a code handed out by one API replica on another", async () => {
+    const { token } = await passes.start();
+    const replica = new XPasses(store, tweets, passSecrets, ethersVerifier, { now: () => now }, null, null, { guildId: GUILD });
+    const { code } = await passes.discordCode(token);
+    expect(await replica.joinDiscord(code, { userId: old, guildId: GUILD })).toBe("ok");
+    expect(await passes.joinDiscord(code, { userId: old, guildId: GUILD })).toBe("unknown-code");
+  });
+
   it("adds its bonus on top of the X one, on the linked wallet", async () => {
     const wallet = Wallet.createRandom();
     const { token, pass } = await passes.start();
@@ -239,6 +247,15 @@ describe("Sign in with X", () => {
     expect((await store.xPasses())[0]!.xUserId).toBe("42");
     // The PKCE verifier went to X, and the state cannot be used twice.
     expect(x.verifiers).toHaveLength(1);
+    expect(await passes.finishSignIn(state, "good")).toEqual({ returnTo: null, outcome: "sign-in-expired" });
+  });
+
+  it("finishes on another API replica than the one it started on", async () => {
+    const { token } = await passes.start();
+    const replica = new XPasses(store, new FakeTweets(), passSecrets, ethersVerifier, { now: () => now }, { x, secrets: loginSecrets });
+    x.accounts.set("good", { id: "42", username: "cat" });
+    const state = stateOf((await passes.startSignIn(token, "https://site.test/")).url);
+    expect(await replica.finishSignIn(state, "good")).toEqual({ returnTo: "https://site.test/", outcome: "ok" });
     expect(await passes.finishSignIn(state, "good")).toEqual({ returnTo: null, outcome: "sign-in-expired" });
   });
 

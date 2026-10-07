@@ -53,8 +53,20 @@ protocol=mk("DO NOT OPEN · Protocol","dno-protocol",[
   {"title":"Indexed block","type":"stat","exprs":[[f"dno_indexer_block{{{N}}}"]],"w":6,"h":4,"decimals":0,"unit":"none"}],
  [{"title":"Indexed, finalized and target blocks","exprs":[[f"dno_chain_target_block{{{N}}}","target"],[f"dno_indexer_block{{{N}}}","indexed"],[f"dno_indexer_finalized_block{{{N}}}","finalized"]],"decimals":0,"unit":"none"},
   {"title":"Periodic tasks failing","exprs":[[f"dno_task_failing{{{N}}}","{{task}}"]],"desc":"1 while a task's last run threw: finality sweep, reconciliation, Arweave images, herald."}],
- [{"title":"RPC latency by endpoint","exprs":[[f"dno_rpc_latency_seconds{{{N}}}","{{endpoint}}"]],"unit":"s"},
-  {"title":"RPC calls failed per minute, by endpoint","exprs":[[f'rate(dno_rpc_requests_total{{{N},result="failed"}}[5m]) * 60',"{{endpoint}}"]]}],
+ [{"title":"RPC latency by endpoint","exprs":[[f"max by (endpoint, role) (dno_rpc_latency_seconds{{{N}}})","{{endpoint}} · {{role}}"]],"unit":"s","desc":"Worst replica for the API (it reads the economy and claim times), the indexer on its own."},
+  {"title":"RPC calls failed per minute, by endpoint","exprs":[[f'sum by (endpoint, role) (rate(dno_rpc_requests_total{{{N},result="failed"}}[5m])) * 60',"{{endpoint}} · {{role}}"]]}],
+ "API replicas",
+ [{"title":"Replicas up","type":"stat","exprs":[[f'sum(up{{{N},job="dno-api",role="api"}})']],"w":4,"h":4,"thresholds":[{"color":"red","value":None},{"color":"orange","value":1},{"color":"green","value":2}],"desc":"API processes Prometheus finds behind the alias and that answer. API_REPLICAS in /opt/dno/.env sets how many run."},
+  {"title":"Indexer up","type":"stat","exprs":[[f'sum(up{{{N},job="dno-api",role="indexer"}})']],"w":4,"h":4,"mappings":[{"type":"value","options":{"0":{"text":"DOWN"},"1":{"text":"UP"}}}],"thresholds":[{"color":"red","value":None},{"color":"green","value":1}]},
+  {"title":"Busiest replica's share","type":"stat","exprs":[[f'max(sum by (instance) (rate(dno_http_request_duration_seconds_count{{{N},role="api",route!="/metrics"}}[15m]))) / sum(rate(dno_http_request_duration_seconds_count{{{N},role="api",route!="/metrics"}}[15m]))']],"unit":"percentunit","w":4,"h":4,"thresholds":G+[{"color":"orange","value":0.8}],"desc":"The proxy keeps each client IP on one replica: with few visitors one can take most of the traffic, with many it evens out."},
+  {"title":"Event loop lag p99, worst replica","type":"stat","exprs":[[f'max(nodejs_eventloop_lag_p99_seconds{{{N},role="api"}})']],"unit":"s","w":4,"h":4,"thresholds":G+[{"color":"orange","value":0.1},{"color":"red","value":0.5}],"desc":"Above 0.5 s for 10 minutes the ApiEventLoopBlocked alert fires: time for another replica."},
+  {"title":"Restarts, last 24 h","type":"stat","exprs":[[f'sum(changes(process_start_time_seconds{{{N},job="dno-api"}}[24h]))']],"w":4,"h":4,"thresholds":G+[{"color":"orange","value":3}],"desc":"Deploys included: each one starts a new set of replicas and the indexer."},
+  {"title":"Version","type":"stat","exprs":[[f'count by (version) (dno_info{{{N}}})',"{{version}}"]],"w":4,"h":4,"desc":"Processes per image tag (the commit): two tags only while a deploy runs."}],
+ [{"title":"Requests per second, by replica","exprs":[[f'sum by (instance) (rate(dno_http_request_duration_seconds_count{{{N},role="api",route!="/metrics"}}[5m]))',"{{instance}}"]],"unit":"reqps"},
+  {"title":"Latency p95, by replica","exprs":[[f'histogram_quantile(0.95, sum by (instance, le) (rate(dno_http_request_duration_seconds_bucket{{{N},role="api",route!~"/metrics|/relayer/.*|/v1/chat"}}[5m])))',"{{instance}}"]],"unit":"s","desc":"Relayer and chat left out: they wait on Zama and Gemini."}],
+ [{"title":"CPU by process","exprs":[[f'rate(process_cpu_seconds_total{{{N},job="dno-api"}}[5m])',"{{role}} {{instance}}"]],"unit":"percentunit","desc":"One Node process uses one core at most: near 100% is a full replica."},
+  {"title":"Memory by process","exprs":[[f'process_resident_memory_bytes{{{N},job="dno-api"}}',"{{role}} {{instance}}"]],"unit":"bytes","desc":"Each container is capped at 512 MiB (deploy/docker-compose.yml)."},
+  {"title":"Event loop lag p99","exprs":[[f'nodejs_eventloop_lag_p99_seconds{{{N},job="dno-api"}}',"{{role}} {{instance}}"]],"unit":"s"}],
  "Traffic and services",
  [{"title":"Requests per second, by route","exprs":[[f'sum by (route) (rate(dno_http_request_duration_seconds_count{{{N},route!="/metrics"}}[5m]))',"{{route}}"]],"unit":"reqps"},
   {"title":"Errors per second, by status","exprs":[[f'sum by (status) (rate(dno_http_request_duration_seconds_count{{{N},status=~"4..|5.."}}[5m]))',"{{status}}"]],"unit":"reqps"}],
@@ -83,7 +95,7 @@ protocol=mk("DO NOT OPEN · Protocol","dno-protocol",[
   {"title":"Today's AI budget used","type":"stat","exprs":[[f"dno_studio_spent_today_usd{{{N}}} / dno_studio_daily_budget_usd{{{N}}}"]],"unit":"percentunit","w":4,"h":4,"thresholds":G+[{"color":"orange","value":0.8},{"color":"red","value":0.98}],"desc":"Past it, generation waits for midnight UTC (STUDIO_DAILY_BUDGET_USD)."}],
  [{"title":"Generations by kind and status","exprs":[[f"dno_studio_jobs{{{N}}}","{{kind}} {{status}}"]],"desc":"failed: unit given back; rejected: refused by the safety checker or past the day's refunds, unit kept."},
   {"title":"AI spend today against the budget","exprs":[[f"dno_studio_spent_today_usd{{{N}}}","spent today"],[f"dno_studio_daily_budget_usd{{{N}}}","daily budget"]],"unit":"currencyUSD"}],
-],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.")
+],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API replicas and traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.")
 
 srv=mk("DO NOT OPEN · Server and URLs","dno-server",[
  "Public URLs",

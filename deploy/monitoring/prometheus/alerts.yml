@@ -3,12 +3,39 @@
 groups:
   - name: api
     rules:
-      - alert: ApiDown
-        expr: up{job="dno-api"} == 0
+      - alert: ApiReplicaDown
+        expr: up{job="dno-api",role="api"} == 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "A {{ $labels.network }} API replica does not answer Prometheus ({{ $labels.instance }}); the others carry its traffic."
+
+      - alert: ApiNoReplica
+        expr: sum by (network) (up{job="dno-api",role="api"}) < 1
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "No {{ $labels.network }} API replica answers: the API is down."
+
+      - alert: IndexerDown
+        expr: up{job="dno-api",role="indexer"} == 0
         for: 2m
         labels: { severity: critical }
         annotations:
-          summary: "The {{ $labels.network }} API does not answer Prometheus ({{ $labels.instance }})."
+          summary: "The {{ $labels.network }} indexer does not answer Prometheus ({{ $labels.instance }}): the index stops moving."
+
+      - alert: ApiRestarting
+        expr: changes(process_start_time_seconds{job="dno-api"}[30m]) > 2
+        labels: { severity: warning }
+        annotations:
+          summary: "A {{ $labels.network }} {{ $labels.role }} process restarted {{ $value }} times in 30 minutes ({{ $labels.instance }}): out of memory, or crashing."
+
+      - alert: ApiEventLoopBlocked
+        expr: nodejs_eventloop_lag_p99_seconds{job="dno-api",role="api"} > 0.5
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "A {{ $labels.network }} API replica's event loop lags {{ $value | printf \"%.2f\" }} s (p99, {{ $labels.instance }}): it is saturated, add a replica (API_REPLICAS)."
 
       - alert: ApiServerErrors
         expr: sum by (network) (rate(dno_http_request_duration_seconds_count{status=~"5.."}[5m])) > 0.1
@@ -55,11 +82,11 @@ groups:
           summary: "The periodic task {{ $labels.task }} keeps failing (finality sweep, reconciliation, Arweave, herald)."
 
       - alert: RpcPoolDegraded
-        expr: count by (network) (dno_rpc_healthy == 1) < 2
+        expr: count by (network, role, instance) (dno_rpc_healthy == 1) < 2
         for: 10m
         labels: { severity: warning }
         annotations:
-          summary: "Fewer than two free RPC endpoints are healthy."
+          summary: "Fewer than two free RPC endpoints are healthy for {{ $labels.role }} {{ $labels.instance }}."
 
   - name: protocol
     rules:

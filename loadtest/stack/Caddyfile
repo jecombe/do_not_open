@@ -1,0 +1,25 @@
+# The load test's proxy: the same reverse_proxy block as production (deploy/dno.caddy.template),
+# in front of however many API replicas the run starts.
+{
+	admin off
+	servers {
+		# k6 reaches the proxy from the Docker gateway, a private address: the X-Forwarded-For it
+		# sends then names the player, as the edge proxy's own client address does in production.
+		trusted_proxies static private_ranges
+	}
+}
+
+:8080 {
+	reverse_proxy {
+		# Every replica answers to the alias; the list is read again every two seconds.
+		dynamic a dno-api 8080 {
+			refresh 2s
+		}
+		# One player, one replica: the per-IP rate limit and chat quota live in each replica's memory.
+		lb_policy client_ip_hash
+		# A replica that went away is skipped for 30 s, and the request tried on another.
+		# (Active health checks do not run for dynamic upstreams.)
+		lb_try_duration 5s
+		fail_duration 30s
+	}
+}

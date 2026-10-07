@@ -1,6 +1,7 @@
-# Every series carries `network` (sepolia, mainnet) from its target file, or `network="server"`
-# for what the networks share: the machine, its containers. Add a network by dropping a file in
-# targets/ (its API) and probes/ (its public URLs): Prometheus reads them again on its own.
+# Every series carries `network` (sepolia, mainnet) from its API job, or `network="server"` for
+# what the networks share: the machine, its containers. An API runs as several replicas and one
+# indexer: Prometheus finds each process by DNS on the edge network and labels it `role` (api or
+# indexer), so each replica is scraped on its own. Public URLs: one file per network in probes/.
 global:
   scrape_interval: 30s
   evaluation_interval: 30s
@@ -14,10 +15,50 @@ alerting:
         - targets: ["alertmanager:9093"]
 
 scrape_configs:
-  - job_name: dno-api
+  # The testnet API (deploy/docker-compose.yml): replicas under the alias dno-api, the indexer
+  # under dno-indexer. Looked up again every 15 s, so a deploy's new replicas show up at once.
+  - job_name: dno-api-sepolia
     metrics_path: /metrics
-    file_sd_configs:
-      - files: ["/etc/prometheus/targets/*.yml"]
+    dns_sd_configs:
+      - names: [dno-api, dno-indexer]
+        type: A
+        port: 8080
+        refresh_interval: 15s
+    relabel_configs:
+      - target_label: job
+        replacement: dno-api
+      - source_labels: [__meta_dns_name]
+        regex: dno-indexer.*
+        target_label: role
+        replacement: indexer
+      - source_labels: [__meta_dns_name]
+        regex: dno-api(-mainnet)?
+        target_label: role
+        replacement: api
+      - target_label: network
+        replacement: sepolia
+
+  # At the mainnet launch: the mainnet stack's aliases (dno-api-mainnet, dno-indexer-mainnet).
+  # - job_name: dno-api-mainnet
+  #   metrics_path: /metrics
+  #   dns_sd_configs:
+  #     - names: [dno-api-mainnet, dno-indexer-mainnet]
+  #       type: A
+  #       port: 8080
+  #       refresh_interval: 15s
+  #   relabel_configs:
+  #     - target_label: job
+  #       replacement: dno-api
+  #     - source_labels: [__meta_dns_name]
+  #       regex: dno-indexer.*
+  #       target_label: role
+  #       replacement: indexer
+  #     - source_labels: [__meta_dns_name]
+  #       regex: dno-api(-mainnet)?
+  #       target_label: role
+  #       replacement: api
+  #     - target_label: network
+  #       replacement: mainnet
 
   - job_name: probes
     metrics_path: /probe

@@ -144,9 +144,6 @@ export function parseTweetUrl(url: string): { handle: string; id: string } | nul
 }
 
 export class XPasses {
-  /** Sign-ins under way, by OAuth state: one API process serves them, and a lost one is just retried. */
-  private readonly pending = new Map<string, { passId: string; verifier: string; returnTo: string; expiresAt: number }>();
-
   constructor(
     private readonly store: Store,
     private readonly tweets: TweetLookup,
@@ -160,9 +157,6 @@ export class XPasses {
     private readonly discord: { guildId: string } | null = null,
   ) {}
 
-  /** `/board` codes handed out, by code: one API process serves them, and a lost one is just asked again. */
-  private readonly boardCodes = new Map<string, { passId: string; expiresAt: number }>();
-
   /** Whether the Discord step is on: a server to join, and the bot that serves `/board` in it. */
   get discordEnabled(): boolean {
     return this.discord !== null;
@@ -173,12 +167,14 @@ export class XPasses {
     if (!this.discord) throw new XPassRefused("discord-off", "the Discord step is not configured here");
     const pass = await this.find(token);
     const now = this.clock.now();
-    for (const [k, v] of this.boardCodes) if (v.expiresAt <= now || v.passId === pass.id) this.boardCodes.delete(k);
-    let code = this.secrets.code();
-    for (let i = 0; i < 5 && this.boardCodes.has(code); i++) code = this.secrets.code();
     const expiresAt = now + DISCORD_CODE_TTL;
-    this.boardCodes.set(code, { passId: pass.id, expiresAt });
-    return { code, expiresAt };
+    // Kept in the store, not in this process: `/board` comes from Discord, to any API replica.
+    // A pass holds one code at a time; a new one replaces it.
+    for (let i = 0; i < 5; i++) {
+      const code = this.secrets.code();
+      if (await this.store.putTicket({ kind: "board", key: code, owner: pass.id, value: {}, expiresAt }, now)) return { code, expiresAt };
+    }
+    throw new Error("no free /board code");
   }
 
   /**
@@ -191,12 +187,12 @@ export class XPasses {
     if (member.guildId !== this.discord.guildId) return "wrong-server";
     const now = this.clock.now();
     const code = rawCode.trim().toUpperCase();
-    const started = this.boardCodes.get(code);
-    if (!started || started.expiresAt <= now) return "unknown-code";
+    const started = await this.store.ticket("board", code, now);
+    if (!started?.owner) return "unknown-code";
     if (now - discordCreatedAt(member.userId) < DISCORD_MIN_AGE) return "too-young";
-    const pass = await this.store.xPassById(started.passId);
+    const pass = await this.store.xPassById(started.owner);
     if (!pass) return "unknown-code";
-    this.boardCodes.delete(code);
+    if (!(await this.store.takeTicket("board", code, now))) return "unknown-code";
     if (pass.discordUserId === member.userId) return "already";
     const older = await this.store.xPassByDiscordUser(member.userId);
     if (older && older.id !== pass.id) await this.store.saveXPass({ ...older, discordUserId: null, discordJoinedAt: null, updatedAt: now });
@@ -213,11 +209,11 @@ export class XPasses {
   async startSignIn(token: string, returnTo: string): Promise<{ url: string }> {
     if (!this.signIn) throw new XPassRefused("sign-in-off", "Sign in with X is not configured here");
     const pass = await this.find(token);
-    const now = this.clock.now();
-    for (const [k, v] of this.pending) if (v.expiresAt <= now) this.pending.delete(k);
     const state = this.signIn.secrets.state();
     const { verifier, challenge } = this.signIn.secrets.pkce();
-    this.pending.set(state, { passId: pass.id, verifier, returnTo, expiresAt: now + SIGN_IN_TTL });
+    // X may send the player back to another API replica than this one: the sign-in waits in the store.
+    const now = this.clock.now();
+    await this.store.putTicket({ kind: "x-sign-in", key: state, owner: null, value: { passId: pass.id, verifier, returnTo }, expiresAt: now + SIGN_IN_TTL }, now);
     return { url: this.signIn.x.authorizeUrl(state, challenge) };
   }
 
@@ -226,11 +222,12 @@ export class XPasses {
    * the pass the sign-in started from; an account already on an older pass moves to this one.
    */
   async finishSignIn(state: string, code: string | null): Promise<{ returnTo: string | null; outcome: "ok" | XPassRefusal }> {
-    const started = this.pending.get(state);
-    this.pending.delete(state);
-    if (!this.signIn || !started) return { returnTo: null, outcome: "sign-in-expired" };
+    // Taken whatever happens next: a state is good for one return from X.
+    const ticket = await this.store.takeTicket("x-sign-in", state, 0);
+    if (!this.signIn || !ticket) return { returnTo: null, outcome: "sign-in-expired" };
+    const started = ticket.value as { passId: string; verifier: string; returnTo: string };
     const { returnTo } = started;
-    if (started.expiresAt <= this.clock.now()) return { returnTo, outcome: "sign-in-expired" };
+    if (ticket.expiresAt <= this.clock.now()) return { returnTo, outcome: "sign-in-expired" };
     if (!code) return { returnTo, outcome: "sign-in-refused" };
     let account: { id: string; username: string };
     try {

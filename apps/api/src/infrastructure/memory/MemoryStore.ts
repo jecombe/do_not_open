@@ -1,4 +1,4 @@
-import type { ActivityQuery, CarriedFacts, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, CarriedFacts, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Ticket, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
 import { actorsOf, byChainOrder, QUIET_EVENTS, tokensOf } from "../../domain/events";
@@ -108,6 +108,9 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
   private readonly jobs = new Map<string, StudioJob>();
   /** AI rats' files on Arweave, by job id. Kept across replays and out of the swapped state, like the jobs. */
   private readonly adoptions = new Map<string, Adoption>();
+  /** Tickets and daily quotas: kept across replays and out of the swapped state, like the jobs. */
+  private readonly tickets = new Map<string, Ticket>();
+  private readonly quotas = new Map<string, number>();
   private readonly ratModels = new Map<string, Uint8Array>();
 
   async transaction<T>(run: (tx: ProjectionTx) => Promise<T>): Promise<T> {
@@ -360,6 +363,41 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
 
   async publicDecryptionsOf(handles: string[]) {
     return new Map(handles.filter((h) => this.s.publicUses.has(h)).map((h) => [h, this.s.publicUses.get(h)!]));
+  }
+
+  async putTicket(t: Ticket, now: number) {
+    for (const [k, v] of this.tickets) if (v.expiresAt <= now || (t.owner !== null && v.kind === t.kind && v.owner === t.owner)) this.tickets.delete(k);
+    const k = `${t.kind}:${t.key}`;
+    if (this.tickets.has(k)) return false;
+    this.tickets.set(k, clone(t));
+    return true;
+  }
+
+  async ticket(kind: string, key: string, now: number) {
+    const t = this.tickets.get(`${kind}:${key}`);
+    return t && t.expiresAt > now ? clone(t) : null;
+  }
+
+  async takeTicket(kind: string, key: string, now: number) {
+    const t = await this.ticket(kind, key, now);
+    this.tickets.delete(`${kind}:${key}`);
+    return t;
+  }
+
+  async takeQuota(name: string, day: string, limit: number) {
+    const used = this.quotas.get(`${name}:${day}`) ?? 0;
+    if (used >= limit) return false;
+    this.quotas.set(`${name}:${day}`, used + 1);
+    return true;
+  }
+
+  async giveBackQuota(name: string, day: string) {
+    const used = this.quotas.get(`${name}:${day}`) ?? 0;
+    this.quotas.set(`${name}:${day}`, Math.max(0, used - 1));
+  }
+
+  async quotaUsed(name: string, day: string) {
+    return this.quotas.get(`${name}:${day}`) ?? 0;
   }
 
   async saveTermsAcceptance(a: TermsAcceptance) {

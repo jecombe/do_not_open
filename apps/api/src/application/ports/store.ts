@@ -206,6 +206,32 @@ export interface Store extends ReadStore {
   dropPublicDecryption(jobId: string): Promise<void>;
   /** How many requests sent to Zama named each of these handles; absent ones never were. */
   publicDecryptionsOf(handles: string[]): Promise<Map<string, number>>;
+  /**
+   * Short-lived secrets every API process must see, whichever one the next request reaches: a
+   * sign-in under way, a one-time code. Returns false when the key is taken. A ticket with an
+   * owner replaces that owner's earlier ticket of the same kind; expired ones (at `now`) are dropped
+   * as new ones come in.
+   */
+  putTicket(t: Ticket, now: number): Promise<boolean>;
+  /** A ticket still valid at `now`, left in place. */
+  ticket(kind: string, key: string, now: number): Promise<Ticket | null>;
+  /** Removes a ticket and returns it if it was still valid at `now`: it can be used once. */
+  takeTicket(kind: string, key: string, now: number): Promise<Ticket | null>;
+  /** Counts one use of a quota shared by every API process for a UTC day, if under `limit`. */
+  takeQuota(name: string, day: string, limit: number): Promise<boolean>;
+  /** Gives back a use that was never made. */
+  giveBackQuota(name: string, day: string): Promise<void>;
+  quotaUsed(name: string, day: string): Promise<number>;
+}
+
+export interface Ticket {
+  kind: string;
+  key: string;
+  owner: string | null;
+  /** Kept as JSON. */
+  value: Record<string, unknown>;
+  /** Seconds. */
+  expiresAt: number;
 }
 
 /** An earlier deployment's public facts: its resolved duels, who opened a box (once per box), who minted. */

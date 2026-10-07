@@ -1,3 +1,4 @@
+import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import Fastify from "fastify";
 import { describe, expect, it } from "vitest";
 import { AskManual, askInput, instructions, ModelUnavailable, type AnswerModel, type AnswerRequest } from "../src/application/askManual";
@@ -122,9 +123,22 @@ describe("AskManual", () => {
     expect((await chat.ask(ask("d?"), "other")).mode).toBe("ai");
     expect((await chat.ask(ask("e?"), "third")).mode).toBe("ai");
     expect((await chat.ask(ask("f?"), "fourth")).reason).toBe("limit");
-    expect(chat.usage()).toMatchObject({ day: "2026-10-03", asked: 5, perDay: 5 });
+    expect(await chat.usage()).toMatchObject({ day: "2026-10-03", asked: 5, perDay: 5 });
     now += 24 * 3600_000;
     expect((await chat.ask(ask("g?"), "ip")).mode).toBe("ai");
+  });
+
+  it("shares the day's total between API replicas", async () => {
+    const store = new MemoryStore();
+    const shared = { take: (day: string, limit: number) => store.takeQuota("chat", day, limit), giveBack: (day: string) => store.giveBackQuota("chat", day), used: (day: string) => store.quotaUsed("chat", day) };
+    const model = new FakeModel((r) => ({ text: r.question, sections: [] }));
+    const a = new AskManual(MANUALS, model, { ...options, perIpPerDay: 100, perDay: 3 }, Date.now, shared);
+    const b = new AskManual(MANUALS, model, { ...options, perIpPerDay: 100, perDay: 3 }, Date.now, shared);
+    expect((await a.ask(ask("a?"), "1")).mode).toBe("ai");
+    expect((await b.ask(ask("b?"), "2")).mode).toBe("ai");
+    expect((await a.ask(ask("c?"), "3")).mode).toBe("ai");
+    expect((await b.ask(ask("d?"), "4")).reason).toBe("limit");
+    expect((await b.usage()).asked).toBe(3);
   });
 
   it("quotes the manual when the model is down, without counting the question", async () => {

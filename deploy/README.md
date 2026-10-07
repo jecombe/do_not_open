@@ -7,12 +7,15 @@ only once the whole CI is green on that commit: a red `main` deploys nothing.
 ```mermaid
 flowchart LR
   push["git push<br/>any branch"] --> ci["CI<br/>typecheck, tests,<br/>Postgres tests"]
+  pr["pull request<br/>touching the API"] --> lt["Load test<br/>k6 on 1 and 3 replicas"]
   merge["merge to main"] --> wf["Deploy API<br/>waits for CI green,<br/>builds the image"]
   wf -- "push" --> ghcr["ghcr.io/jecombe/<br/>do_not_open-api:SHA"]
   wf -- "ssh: deploy.sh SHA" --> server
   subgraph server["Server"]
-    edge["edge-caddy<br/>:80 :443, HTTPS<br/>(shared by all projects)"] -- "edge network" --> api["dno-api"]
+    edge["edge-caddy<br/>:80 :443, HTTPS<br/>(shared by all projects)"] -- "edge network,<br/>by client IP" --> api["dno-api × API_REPLICAS<br/>ROLE=api"]
     api -- "internal network" --> pg[(dno-postgres)]
+    indexer["dno-indexer<br/>ROLE=indexer"] -- "internal network" --> pg
+    api -. "NOTIFY dno_nudge" .-> indexer
   end
   vercel["Vercel<br/>VITE_API_URL"] --> edge
 ```
@@ -53,18 +56,18 @@ And in Vercel, `VITE_API_URL=https://<api-domain>`. Without it the site reads th
 
 The manual's chatbot answers with Google's Gemini when `/opt/dno/.env` holds
 `GEMINI_API_KEY=...` (a free key from https://aistudio.google.com/apikey, on a project with
-no billing, so it can never cost anything), then `docker compose up -d api`. Without it, the
+no billing, so it can never cost anything), then `bash /opt/dno/deploy.sh` (the running image again, replica by replica). Without it, the
 chat quotes the manual.
 
 The token images are stored for good on Arweave when `/opt/dno/.env` holds `ARWEAVE_KEY=0x...`:
 a fresh Ethereum key made for this only (`node -e "console.log(require('ethers').Wallet.createRandom().privateKey)"`
 from the repo, or any wallet's "create account"), never one with funds. Uploads under 100 KiB
-are free on ArDrive's Turbo, so it never needs any. Then `docker compose up -d api`: about 30
+are free on ArDrive's Turbo, so it never needs any. Then `bash /opt/dno/deploy.sh`: about 30
 images a minute go up, opened cats first, then every minted box. See
 [`apps/api/README.md`](../apps/api/README.md#token-images-on-arweave).
 
 The studio draws rats with fal.ai when `/opt/dno/.env` holds `FAL_KEY=...` and the network's
-deployment has a `StudioPacks` address (`dno:export` writes it), then `docker compose up -d api`.
+deployment has a `StudioPacks` address (`dno:export` writes it), then `bash /opt/dno/deploy.sh`.
 The key bills real dollars: `STUDIO_DAILY_BUDGET_USD` (20 by default) caps the estimated spend a
 day, `STUDIO_PAUSED=true` closes the studio at once, and on Sepolia, where packs are paid in test
 USDC, `STUDIO_ALLOWLIST=0x...,0x...` keeps generation to testers. Deploy `StudioPacks` and this
@@ -88,24 +91,57 @@ first to read the posts at `https://<api-domain>/v1/herald?network=discord&token
 `HERALD_ADMIN_TOKEN` set; `HERALD_BOX_URL=https://<site>/app?box=` and
 `HERALD_MANUAL_URL=https://<site>/docs` for links, the daily lesson worded with `GEMINI_API_KEY`). The manual's chatbot answers `/ask` in the server too: create an
 application at https://discord.com/developers/applications, add its `DISCORD_APPLICATION_ID` and
-`DISCORD_PUBLIC_KEY` to `/opt/dno/.env`, run `docker compose up -d api`, set the Interactions
+`DISCORD_PUBLIC_KEY` to `/opt/dno/.env`, run `bash /opt/dno/deploy.sh`, set the Interactions
 Endpoint URL to `https://<api-domain>/v1/discord/interactions`, then, from a machine with the
 repo and `DISCORD_BOT_TOKEN` in its `.env`, run `pnpm --filter @dno/api discord:commands` and open
 the link it prints to add the command to the server. All in
 [`apps/api/README.md`](../apps/api/README.md#on-discord-ask).
 
+## Replicas and load balancing
+
+The API runs as `API_REPLICAS` replicas (2 by default, in `/opt/dno/.env`) with `ROLE=api`,
+and one indexer with `ROLE=indexer`, all from the same image (`docker-compose.yml`). The
+replicas share the alias `dno-api` on the `edge` network; Docker's DNS answers every one of
+them, and the edge Caddy (`dno.caddy.template`) reads that list every 2 s:
+
+- **One client IP, one replica** (`lb_policy client_ip_hash`). The rate limits and the chat's
+  per-IP quota are counted in each process, and stay exact because an IP always lands on the
+  same replica. What one replica starts and another may finish (a Sign in with X, a `/board`
+  code, the chat's daily total, a nudge to the indexer) is shared through Postgres
+  ([`apps/api/README.md`](../apps/api/README.md#several-replicas)).
+- **A replica that refuses connections** is left out for 30 s, and the request tries another
+  one for up to 5 s (a `GET` always; any method when the connection itself failed). Caddy does
+  not run active health checks on DNS upstreams: `deploy.sh` checks each new replica itself.
+- **Deploys drop no request.** `deploy.sh` starts the new replicas beside the old ones, waits
+  until each answers `/health`, gives the proxy 5 s to see them, then stops the old ones, which
+  finish what they hold (`SIGTERM`, up to 30 s). A new replica that never answers is removed and
+  the old ones keep serving. The indexer is replaced last: indexing pauses a few seconds, nothing
+  the public sees. During the overlap the old replicas run against the new schema, so a
+  migration must keep the previous release working.
+- **How many.** One Node process uses one core: a replica per core the server can spare, each
+  capped at 512 MiB, plus the indexer's 512 MiB. `API_REPLICAS=3` in `/opt/dno/.env`, then
+  `bash /opt/dno/deploy.sh`. Grafana's "API replicas" row says when one is full (its CPU near
+  100%, its event loop lagging: the `ApiEventLoopBlocked` alert).
+- **Measured, not guessed.** `.github/workflows/loadtest.yml` runs the same proxy settings in
+  front of 1 and 3 replicas on every pull request that touches the API, and fails it when reads
+  get slow ([`loadtest/README.md`](../loadtest/README.md)).
+
 ## Monitoring
 
-`deploy/monitoring` is one stack for every network: Prometheus scrapes each API's `/metrics`
-over the `edge` network (one file per network in `prometheus/targets/`: `sepolia.yml` now,
-`mainnet.yml.example` to rename at launch), the server (node-exporter), its containers
+`deploy/monitoring` is one stack for every network: Prometheus scrapes the `/metrics` of each
+API replica and of the indexer over the `edge` network, found by DNS (`dno-api`, `dno-indexer`;
+one job per network in `prometheus/prometheus.yml`, the mainnet one commented out until launch),
+each labelled `role` (`api` or `indexer`), the server (node-exporter), its containers
 (cAdvisor) and the public URLs (blackbox, one file per network in `prometheus/probes/`).
 Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they share).
 Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
-indexer, RPC pool, API traffic, Zama relayer calls, Arweave, Gemini, herald, the mainnet whitelist
+indexer, RPC pool, API replicas (up, traffic and p95 per replica, CPU, memory, event loop lag,
+restarts, the image each runs), API traffic, Zama relayer calls, Arweave, Gemini, herald, the mainnet whitelist
 (seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the studio) and "Server and
 URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
-each titled with its network. Only Grafana is public, behind its own login; the edge proxy
+each titled with its network: a replica down (`ApiReplicaDown`, the others carry its traffic),
+none left (`ApiNoReplica`), the indexer down (`IndexerDown`), a process restarting over and over
+(`ApiRestarting`), a saturated replica (`ApiEventLoopBlocked`), among the others. Only Grafana is public, behind its own login; the edge proxy
 answers `404` to `/metrics` from outside. About 1.2 GB of memory at most (limits in the compose
 file), 5 GB of disk for 90 days of series.
 
@@ -115,13 +151,14 @@ To turn it on, once:
 2. A webhook on a private Discord channel (channel settings, Integrations, Webhooks).
 3. On the server, `/opt/dno/monitoring/.env` from `deploy/monitoring/.env.example`
    (`MONITORING_DOMAIN`, `GRAFANA_ADMIN_PASSWORD`, `ALERT_DISCORD_WEBHOOK_URL`), `chmod 600`.
-4. The next deploy (or `bash /opt/dno/deploy.sh <current image>`) starts the stack and routes
+4. The next deploy (or `bash /opt/dno/deploy.sh`) starts the stack and routes
    the domain; Grafana is at `https://<MONITORING_DOMAIN>`, folder "DO NOT OPEN".
 
 CI copies `deploy/monitoring` on every deploy and reloads Prometheus and Alertmanager; the
 `.env` stays on the server. Dashboards are written by `grafana/dashboards.py`. At mainnet
-launch: rename `prometheus/targets/mainnet.yml.example` and `probes/mainnet.yml.example` (the
-mainnet API on the edge network as `dno-api-mainnet`), and move the apex probe out of Sepolia.
+launch: uncomment the `dno-api-mainnet` job in `prometheus/prometheus.yml` and rename
+`probes/mainnet.yml.example` (the mainnet replicas and indexer on the edge network as
+`dno-api-mainnet` and `dno-indexer-mainnet`), and move the apex probe out of Sepolia.
 
 ## Domains
 
@@ -134,11 +171,11 @@ mainnet API on the edge network as `dno-api-mainnet`), and move the apex probe o
 | `api.testnet.do-not-open.app` | the same API for now (`API_ALIASES`) | `A` the server's IP |
 
 Only one network runs today, so both site names are the same Vercel build and both API names
-reach the same container. Remove the registrar's default parking records (`A` and `AAAA` on
+reach the same replicas. Remove the registrar's default parking records (`A` and `AAAA` on
 each name) before adding these: Let's Encrypt tries IPv6 first and would fail on a parking
 address. At the mainnet launch, `api.do-not-open.app` moves to a mainnet API, the testnet site
 gets its own Vercel project with `VITE_API_URL=https://api.testnet.do-not-open.app`, and this
-stack takes a per-network container name and Caddy file.
+stack takes per-network aliases and a Caddy file.
 
 Every API name gets its own certificate from Caddy, and plain HTTP redirects to HTTPS. In
 `/opt/dno/.env`:
@@ -150,7 +187,7 @@ SIGN_IN_DOMAIN=do-not-open.app                 # the name shown in the sign-in m
 CORS_ORIGINS=https://do-not-open.app,https://www.do-not-open.app,https://testnet.do-not-open.app,https://do-not-open-*.vercel.app
 ```
 
-then `bash /opt/dno/deploy.sh <current image>` (or the next deploy) renders the Caddy file
+then `bash /opt/dno/deploy.sh` (or the next deploy) renders the Caddy file
 and reloads the proxy. The GitHub variable `API_DOMAIN` is the name CI smoke-tests.
 
 ## By hand
@@ -159,7 +196,8 @@ and reloads the proxy. The GitHub variable `API_DOMAIN` is the name CI smoke-tes
 ssh ubuntu@SERVER
 cd /opt/dno
 docker compose ps
-docker compose logs -f api
+docker compose logs -f api          # every replica, each line prefixed with its container
+docker compose logs -f indexer
 curl -s https://<api-domain>/health | jq
 docker compose exec postgres psql -U dno          # the database
 ```
@@ -176,7 +214,7 @@ logdno () {
 }
 ```
 
-`logdno` follows the API, `logdno postgres` the database, `logdno api 500` the last 500 lines.
+`logdno` follows the API replicas, `logdno indexer` the indexer, `logdno postgres` the database, `logdno api 500` the last 500 lines.
 It relies on a `vps_zama` host in `~/.ssh/config` pointing at the server.
 
 Rolling back is deploying an older image: `bash /opt/dno/deploy.sh ghcr.io/jecombe/do_not_open-api:<older-sha>`
@@ -187,4 +225,4 @@ ones (every deploy pulls a new `:<sha>` tag, which `docker image prune` alone ne
 older rollback pulls its image again.
 
 Starting the index over (it rebuilds from the chain in a minute or two):
-`docker compose exec postgres psql -U dno -c 'drop schema public cascade; create schema public' && docker compose restart api`.
+`docker compose exec postgres psql -U dno -c 'drop schema public cascade; create schema public' && docker compose restart indexer api`.

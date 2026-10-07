@@ -14,7 +14,7 @@ import { XPasses, type Tweet } from "../src/application/xPass";
 import { Seats } from "../src/application/seats";
 import { ethersVerifier, HmacSessions, passSecrets } from "../src/infrastructure/auth/crypto";
 import { Metrics } from "../src/infrastructure/http/metrics";
-import { buildServer } from "../src/infrastructure/http/server";
+import { buildOpsServer, buildServer } from "../src/infrastructure/http/server";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { ALICE, BOB, ev, FakeChain, FakeChainState } from "./fixtures";
 
@@ -89,7 +89,7 @@ beforeAll(async () => {
         open: true,
       },
       rats: { ratCounts: async () => [{ kind: "seed" as const, count: 2 }, { kind: "model" as const, count: 1 }] },
-      info: { chain: "sepolia", collection: "0xABC", version: "test" },
+      info: { chain: "sepolia", collection: "0xABC", version: "test", role: "all" },
     }),
     corsOrigins: ["https://donotopen.vercel.app", "https://donotopen-*.vercel.app"],
     rateLimitPerMinute: 10_000,
@@ -209,7 +209,7 @@ describe("metrics", () => {
     expect(res.headers["content-type"]).toContain("text/plain");
     const text = res.body;
     for (const line of [
-      'dno_info{chain="sepolia",collection="0xabc",version="test"} 1',
+      'dno_info{chain="sepolia",collection="0xabc",version="test",process_role="all"} 1',
       "dno_boxes_minted 4",
       "dno_boxes_opened 1",
       "dno_duels_open 2",
@@ -238,6 +238,25 @@ describe("metrics", () => {
     expect(text).toMatch(/dno_http_request_duration_seconds_count\{method="GET",route="\/v1\/stats",status="200"\} \d+/);
     for (const series of ["dno_whitelist_seats_taken", "dno_whitelist_claims", 'dno_xpass_passes{stage="seated"}', 'dno_xpass_tasks{task="follow"}']) expect(text).toMatch(new RegExp(`^${series.replace(/[{}]/g, "\\$&")} \\d+$`, "m"));
     expect(text).not.toMatch(/0x[0-9a-f]{40}/); // no address of any player
+  });
+});
+
+describe("metrics of an API replica", () => {
+  it("leave the index's counts to the indexer, so a sum over replicas counts them once", async () => {
+    const replica = new Metrics({ rpcStatus: () => [], info: { chain: "sepolia", collection: "0xABC", version: "test", role: "api" } });
+    const text = await replica.render();
+    expect(text).toContain('process_role="api"');
+    expect(text).not.toContain("dno_boxes_minted");
+    expect(text).not.toContain("dno_studio_spent_today_usd");
+    expect(text).toContain("dno_http_request_duration_seconds");
+  });
+
+  it("an indexer-only process answers its health and metrics, nothing else", async () => {
+    const ops = await buildOpsServer({ queries: new Queries(store, new FakeChainState()), metrics: new Metrics({ info: { chain: "sepolia", collection: "0xABC", version: "test", role: "indexer" } }) });
+    expect((await ops.inject({ method: "GET", url: "/health" })).json()).toMatchObject({ ok: true });
+    expect((await ops.inject({ method: "GET", url: "/metrics" })).body).toContain('process_role="indexer"');
+    expect((await ops.inject({ method: "GET", url: "/v1/stats" })).statusCode).toBe(404);
+    await ops.close();
   });
 });
 

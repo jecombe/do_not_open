@@ -1,5 +1,5 @@
-# DO NOT OPEN monitoring: Prometheus scrapes every network's API (testnet and mainnet, one
-# target file each in prometheus/targets), the server and its containers, and probes the public
+# DO NOT OPEN monitoring: Prometheus scrapes every network's API (testnet and mainnet, each
+# replica and the indexer, found by DNS), the server and its containers, and probes the public
 # URLs; Grafana shows it at MONITORING_DOMAIN; Alertmanager posts alerts to a Discord channel.
 # Only Grafana is reachable from outside, through the shared edge proxy. Values come from .env
 # next to this file (see .env.example). Started by ../deploy.sh when that .env exists.
@@ -20,7 +20,7 @@ services:
     mem_limit: 512m
     networks:
       monitoring: {}
-      # To reach each network's API (dno-api, dno-api-mainnet) where the edge proxy does.
+      # To reach each network's API replicas and indexer (dno-api, dno-indexer, and the mainnet ones).
       edge: {}
 
   alertmanager:

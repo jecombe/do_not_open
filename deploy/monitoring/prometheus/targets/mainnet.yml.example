@@ -1,4 +1,0 @@
-# Rename to mainnet.yml once the mainnet API runs, under its own alias on the edge network.
-- targets: ["dno-api-mainnet:8080"]
-  labels:
-    network: mainnet
