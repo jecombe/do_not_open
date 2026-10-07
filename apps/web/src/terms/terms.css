@@ -468,6 +468,32 @@
   line-height: 1.4;
 }
 
+.testnet-faucet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 2px solid var(--ink);
+  background: rgb(255 180 84 / 0.25);
+}
+
+.testnet-faucet h3 {
+  margin: 0 0 6px;
+  font-family: var(--stencil);
+  font-size: 18px;
+  text-transform: uppercase;
+}
+
+.testnet-faucet p {
+  margin: 0 0 6px;
+  max-width: 44ch;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
 .testnet-actions {
   display: flex;
   flex-wrap: wrap;

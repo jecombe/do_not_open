@@ -89,7 +89,11 @@ VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app?chain=s
 
 You need a browser wallet with a little Sepolia ETH for gas. Prices are in Zama's test USDC
 on Sepolia; the wallet slip has a button that mints some, and the bureau de change (in the
-menu) shields it as cUSDC, buys it with ETH or trades it for croquettes.
+menu) shields it as cUSDC, buys it with ETH or trades it for croquettes. On Sepolia the
+bureau's "Testnet faucet" card mints 100 test USDC, then turns the counter to shielding it,
+with links to Google's Sepolia ETH faucet for gas and to Zama's test token addresses. The
+notice shown when the game first opens on Sepolia (contracts can be redeployed, what is kept)
+points to it.
 Who holds a box is encrypted, so the app finds yours from your own transfer receipts: one
 decryption signature per visit ("Show my boxes"). `?chain=mock` and `?chain=sepolia`
 switch modes without restarting. The menu does the same under the languages: ETH / SOL

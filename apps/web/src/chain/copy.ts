@@ -35,6 +35,12 @@ const GAS_FAUCETS: Record<string, string> = {
 };
 export const gasFaucet = (c: CollectionInfo | null | undefined): string | null => (c ? (GAS_FAUCETS[c.chain] ?? null) : null);
 
+/** Where Zama lists its test USDC, whose `mint` anyone can call: the way round when the site's faucet fails. */
+const TEST_USDC_GUIDES: Record<string, string> = {
+  Sepolia: "https://docs.zama.org/protocol/protocol-apps/addresses/testnet/sepolia",
+};
+export const testUsdcGuide = (c: CollectionInfo | null | undefined): string | null => (c ? (TEST_USDC_GUIDES[c.chain] ?? null) : null);
+
 /** "0.00213" rather than eighteen decimals: three significant digits are enough to act on. */
 const rough = (amount: bigint, decimals: number) => {
   const n = Number(formatAmount(amount, decimals));

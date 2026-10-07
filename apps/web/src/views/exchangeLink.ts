@@ -8,6 +8,8 @@ export interface ExchangePreset {
   amount?: bigint;
   /** Straight to the decryption credits window rather than the counter. */
   credits?: true;
+  /** Straight to the test faucet (test networks only). */
+  faucet?: true;
 }
 
 const listeners = new Set<(preset: ExchangePreset) => void>();

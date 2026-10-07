@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { formatAmount, type EconomyInfo, type Step } from "@dno/chain-adapter";
 import { bumpLedger, useChain } from "../chain/ChainProvider";
-import { problemOf, stepCopy, type Problem } from "../chain/copy";
+import { gasFaucet, problemOf, testUsdcGuide, stepCopy, type Problem } from "../chain/copy";
 import {
   canKeep,
   DECRYPTS,
@@ -193,9 +193,11 @@ export function ExchangeView() {
 
   const [presetAmount, setPresetAmount] = useState<bigint | null>(null);
   const [creditsWanted, setCreditsWanted] = useState(0);
+  const [faucetWanted, setFaucetWanted] = useState(0);
   const applyPreset = useCallback((p: ExchangePreset | null) => {
     if (!p) return;
     if (p.credits) setCreditsWanted((n) => n + 1);
+    if (p.faucet) setFaucetWanted((n) => n + 1);
     if (p.from) setFrom(p.from);
     if (p.to) setTo(p.to);
     setText("");
@@ -594,7 +596,7 @@ export function ExchangeView() {
           </div>
         </section>
 
-        <Ledger desk={desk} held={held} sealedKnown={(k) => sealedValue(k) !== null} revealing={revealing} onReveal={(k) => void reveal(k)} onPick={(k) => pick("from", k)} current={from} onDone={() => setTick((n) => n + 1)} disabled={running} />
+        <Ledger desk={desk} held={held} sealedKnown={(k) => sealedValue(k) !== null} revealing={revealing} onReveal={(k) => void reveal(k)} onPick={(k) => pick("from", k)} current={from} onDone={() => setTick((n) => n + 1)} onMinted={() => applyPreset({ from: "usdc", to: "cusdc" })} faucetWanted={faucetWanted} disabled={running} />
         <CreditDesk
           usdc={balances.usdc ?? null}
           onGetUsdc={
@@ -960,24 +962,28 @@ function Ledger(props: {
   onPick: (k: TokenKey) => void;
   current: TokenKey;
   onDone: () => void;
+  /** Test USDC just landed: the counter turns to shielding it. */
+  onMinted: () => void;
+  /** Bumped by a link that came for the faucet: the card scrolls into view. */
+  faucetWanted: number;
   disabled: boolean;
 }) {
-  const { desk, held, sealedKnown, revealing, onReveal, onPick, current, onDone, disabled } = props;
-  const { adapter, account, collection } = useChain();
+  const { desk, held, sealedKnown, revealing, onReveal, onPick, current, onDone, onMinted, faucetWanted, disabled } = props;
+  const { account } = useChain();
   const t = useT();
-  const [faucet, setFaucet] = useState<"idle" | "busy" | "done" | "failed">("idle");
   if (!account || !desk) {
     return (
       <aside className="ledger">
         <h3 className="ledger-title">{t("ex.ledger")}</h3>
+        <FaucetCard disabled={disabled} onDone={onDone} onMinted={onMinted} wanted={faucetWanted} />
         <p className="fine">{account ? t("ex.reading") : t("ex.ledgerConnect")}</p>
       </aside>
     );
   }
-  const payment = collection?.payment;
   return (
     <aside className="ledger" aria-label={t("ex.ledger")}>
       <h3 className="ledger-title">{t("ex.ledger")}</h3>
+      <FaucetCard disabled={disabled} onDone={onDone} onMinted={onMinted} wanted={faucetWanted} />
       <ul>
         {TOKENS.filter((k) => desk.croq || (k !== "croq" && k !== "ccroq")).map((k) => {
           const info = desk.tokens[k];
@@ -1007,29 +1013,66 @@ function Ledger(props: {
         })}
       </ul>
       <p className="fine ledger-note">{t("ex.ledgerNote")}</p>
-      {payment?.faucet != null && (
+    </aside>
+  );
+}
+
+/**
+ * Free test dollars, on the test network only: Zama's USDCMock lets anyone mint. With the way
+ * to the Sepolia ETH that pays the gas, and Zama's own page when the button is not enough.
+ */
+function FaucetCard(props: { disabled: boolean; onDone: () => void; onMinted: () => void; wanted: number }) {
+  const { disabled, onDone, onMinted, wanted } = props;
+  const { adapter, account, collection, mode } = useChain();
+  const t = useT();
+  const [faucet, setFaucet] = useState<"idle" | "busy" | "done" | "failed">("idle");
+  const card = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (wanted) card.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [wanted]);
+  const payment = collection?.payment;
+  if (mode !== "sepolia" || payment?.faucet == null) return null;
+  const gas = gasFaucet(collection);
+  const zama = testUsdcGuide(collection);
+  return (
+    <div ref={card} className="faucet-card">
+      <h4>{t("ex.faucet.title")}</h4>
+      <p className="fine">{t("ex.faucet.body", { symbol: payment.symbol, confidential: payment.confidentialSymbol })}</p>
+      <button
+        type="button"
+        className="plain-button"
+        disabled={disabled || !account || faucet === "busy"}
+        onClick={async () => {
+          setFaucet("busy");
+          try {
+            await adapter.faucetUsdc();
+            setFaucet("done");
+            onDone();
+            onMinted();
+          } catch (error) {
+            console.error("[exchange] faucet failed", error);
+            setFaucet("failed");
+          }
+        }}
+      >
+        {faucet === "busy" ? t("ex.faucetBusy") : t("pay.faucet", { amount: formatAmount(payment.faucet, payment.decimals), symbol: payment.symbol })}
+      </button>
+      {faucet === "done" && <p className="fine">{t("ex.faucet.next", { symbol: payment.symbol, confidential: payment.confidentialSymbol })}</p>}
+      {faucet === "failed" && <p className="fine">{t("ex.faucetFailed")}</p>}
+      {gas && (
         <p className="fine">
-          <button
-            type="button"
-            className="link"
-            disabled={disabled || faucet === "busy"}
-            onClick={async () => {
-              setFaucet("busy");
-              try {
-                await adapter.faucetUsdc();
-                setFaucet("done");
-                onDone();
-              } catch (error) {
-                console.error("[exchange] faucet failed", error);
-                setFaucet("failed");
-              }
-            }}
-          >
-            {faucet === "busy" ? t("ex.faucetBusy") : t("pay.faucet", { amount: formatAmount(payment.faucet, payment.decimals), symbol: payment.symbol })}
-          </button>
-          {faucet === "done" ? ` ${t("ex.faucetDone")}` : faucet === "failed" ? ` ${t("ex.faucetFailed")}` : ""}
+          <a className="link" href={gas} target="_blank" rel="noreferrer">
+            {t("ex.faucet.gas")}&nbsp;→
+          </a>
         </p>
       )}
-    </aside>
+      {zama && (
+        <p className="fine">
+          <a className="link" href={zama} target="_blank" rel="noreferrer">
+            {t("ex.faucet.zama", { symbol: payment.symbol })}&nbsp;→
+          </a>
+        </p>
+      )}
+    </div>
   );
 }

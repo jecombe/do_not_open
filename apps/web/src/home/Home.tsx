@@ -10,6 +10,7 @@ import { applyPath, appPath, docsPath, homePath, marketPath, studioPath } from "
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
+import { FloatApply } from "./floatApply";
 import { HomeTop } from "./HomeTop";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
@@ -62,6 +63,38 @@ function StudioRat() {
   );
 }
 
+/** The way to the boarding page, floating weightless in the hero with croquettes in orbit. */
+function FloatingApply() {
+  const t = useT();
+  const locale = useLocale();
+  const host = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!host.current || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const float = new FloatApply(host.current);
+    return () => float.dispose();
+  }, []);
+
+  return (
+    <span ref={host} className="apply-float">
+      <span className="apply-shadow" aria-hidden="true" />
+      <span className="apply-body">
+        <a className="btn btn-x btn-apply" href={applyPath(locale)}>
+          <svg className="x-logo" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.8-6.3L6.4 22H3.3l7.3-8.3L1 2h6.3l4.4 5.8L18.9 2Zm-1.1 18h1.7L6.3 3.9H4.5L17.8 20Z" />
+          </svg>
+          {t("home.hero.apply")}
+        </a>
+        {[0, 1, 2].map((i) => (
+          <svg key={i} className="apply-kibble" viewBox="-12 -12 24 24" aria-hidden="true">
+            <path d="M-7 -4 Q0 -10 7 -4 Q10 2 4 6 Q0 8 -4 6 Q-10 2 -7 -4 Z" fill="#a0612c" {...stroke} strokeWidth={3} />
+          </svg>
+        ))}
+      </span>
+    </span>
+  );
+}
+
 export function Home() {
   const t = useT();
   const locale = useLocale();
@@ -91,12 +124,7 @@ export function Home() {
             <a className="btn btn-paper" href={`${DOCS}#box`}>
               {t("home.hero.docs")}
             </a>
-            <a className="btn btn-x btn-apply" href={applyPath(locale)}>
-              <svg className="x-logo" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.8-6.3L6.4 22H3.3l7.3-8.3L1 2h6.3l4.4 5.8L18.9 2Zm-1.1 18h1.7L6.3 3.9H4.5L17.8 20Z" />
-              </svg>
-              {t("home.hero.apply")}
-            </a>
+            <FloatingApply />
           </p>
           {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
           <a className="hero-allow" href={applyPath(locale)}>
