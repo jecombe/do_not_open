@@ -1,4 +1,4 @@
-import type { ActivityQuery, CarriedFacts, DuelQuery, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Ticket, Transfer } from "../../application/ports/store";
+import type { ActivityQuery, CarriedFacts, DuelQuery, EventBucket, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Ticket, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
 import { actorsOf, byChainOrder, QUIET_EVENTS, tokensOf } from "../../domain/events";
@@ -301,6 +301,32 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
       openDuels: duels.filter(isOpen).length,
       events: this.s.events.size,
     };
+  }
+
+  async eventBuckets(since: number, seconds: number): Promise<EventBucket[]> {
+    const counts = new Map<string, EventBucket>();
+    for (const e of this.timedEvents(since)) {
+      const start = Math.floor(e.timestamp! / seconds) * seconds;
+      const b = counts.get(`${start}:${e.name}`) ?? { start, name: e.name, count: 0 };
+      b.count++;
+      counts.set(`${start}:${e.name}`, b);
+    }
+    return [...counts.values()].sort((a, b) => a.start - b.start || a.name.localeCompare(b.name));
+  }
+
+  async activeAccounts(since: number, seconds: number) {
+    const actors = new Map<number, Set<Address>>();
+    for (const e of this.timedEvents(since)) {
+      const start = Math.floor(e.timestamp! / seconds) * seconds;
+      const set = actors.get(start) ?? new Set();
+      for (const a of actorsOf(e)) set.add(a);
+      actors.set(start, set);
+    }
+    return [...actors].filter(([, s]) => s.size).map(([start, s]) => ({ start, accounts: s.size })).sort((a, b) => a.start - b.start);
+  }
+
+  private timedEvents(since: number) {
+    return [...this.s.events.values()].map((s) => s.event).filter((e) => e.timestamp !== null && e.timestamp >= since && !QUIET_EVENTS.includes(e.name));
   }
 
   async saveUser(user: User) {

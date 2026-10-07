@@ -1,5 +1,6 @@
 import { DISCORD_BONUS, X_PASS_BONUS } from "@dno/chain-adapter/standings";
 import { normalizeAddress, type Address } from "../domain/types";
+import { noActivityFeed, type ActivityFeed } from "./activity";
 import type { Clock, SignatureVerifier } from "./auth";
 import type { Store } from "./ports/store";
 
@@ -155,6 +156,8 @@ export class XPasses {
     private readonly seats: { admit(): Promise<void>; passSeated(p: XPass): boolean } | null = null,
     /** The Discord server whose members can board with `/board`; null: no Discord step. */
     private readonly discord: { guildId: string } | null = null,
+    /** The team's private channel, told of each step a player takes. */
+    private readonly feed: ActivityFeed = noActivityFeed,
   ) {}
 
   /** Whether the Discord step is on: a server to join, and the bot that serves `/board` in it. */
@@ -197,6 +200,7 @@ export class XPasses {
     const older = await this.store.xPassByDiscordUser(member.userId);
     if (older && older.id !== pass.id) await this.store.saveXPass({ ...older, discordUserId: null, discordJoinedAt: null, updatedAt: now });
     await this.store.saveXPass({ ...pass, discordUserId: member.userId, discordJoinedAt: now, updatedAt: now });
+    this.feed.tell({ kind: "discord", handle: pass.handle, code: pass.code });
     return "ok";
   }
 
@@ -238,7 +242,7 @@ export class XPasses {
     const pass = await this.store.xPassById(started.passId);
     if (!pass) return { returnTo, outcome: "no-pass" };
     try {
-      await this.attach(pass, { handle: account.username.toLowerCase(), xUserId: account.id });
+      await this.attach(pass, { handle: account.username.toLowerCase(), xUserId: account.id }, "sign-in");
     } catch (e) {
       if (e instanceof XPassRefused) return { returnTo, outcome: e.code };
       throw e;
@@ -269,8 +273,10 @@ export class XPasses {
     if (pass[field] !== null) return this.view(pass);
     const now = this.clock.now();
     const next = { ...pass, [field]: now, updatedAt: now };
-    await this.sitDown(pass, next);
+    const seated = await this.sitDown(pass, next);
     await this.store.saveXPass(next);
+    this.feed.tell({ kind: "task", handle: next.handle, code: next.code, task });
+    if (seated) this.feed.tell({ kind: "seated", handle: next.handle, code: next.code });
     return this.view(next);
   }
 
@@ -300,14 +306,14 @@ export class XPasses {
 
     // That post carried the code: it is the boarding tweet, the "post" task done and proved.
     const posted = pass.postedAt === null ? { ...pass, postedAt: this.clock.now() } : pass;
-    return this.view(await this.attach(posted, { handle: tweet.handle, tweetId: tweet.id, tweetUrl: `https://x.com/${tweet.handle}/status/${tweet.id}` }));
+    return this.view(await this.attach(posted, { handle: tweet.handle, tweetId: tweet.id, tweetUrl: `https://x.com/${tweet.handle}/status/${tweet.id}` }, "post"));
   }
 
   /**
    * Puts a proved X account on a pass. An account already on an older pass (a lost token,
    * another browser) moves to this one with its tasks and wallet: only its owner could prove it.
    */
-  private async attach(pass: XPass, proof: { handle: string; xUserId?: string; tweetId?: string; tweetUrl?: string }): Promise<XPass> {
+  private async attach(pass: XPass, proof: { handle: string; xUserId?: string; tweetId?: string; tweetUrl?: string }, via: "sign-in" | "post"): Promise<XPass> {
     const now = this.clock.now();
     const byId = proof.xUserId ? await this.store.xPassByXUser(proof.xUserId) : null;
     const byHandle = await this.store.xPassByHandle(proof.handle);
@@ -335,21 +341,25 @@ export class XPasses {
       };
     }
     // Someone who had no seat, on this pass or an older one of the same account, sits down now.
-    await this.sitDown(pass, next, [byId, byHandle]);
+    const seated = await this.sitDown(pass, next, [byId, byHandle]);
     for (const older of [byId, byHandle]) if (older && older.id !== pass.id) await this.store.deleteXPass(older.id);
     await this.store.saveXPass(next);
+    // A handle new to this pass: an account signing in again on its own pass says nothing.
+    if (pass.handle !== next.handle) this.feed.tell({ kind: "x-connected", handle: proof.handle, via, code: next.code });
+    if (seated) this.feed.tell({ kind: "seated", handle: next.handle, code: next.code });
     return next;
   }
 
-  /** Checks for a free seat when a pass is about to take one it did not have. */
-  private async sitDown(before: XPass, after: XPass, older: (XPass | null)[] = []): Promise<void> {
-    if (!this.seats || !this.seats.passSeated(after)) return;
-    if (this.seats.passSeated(before) || older.some((o) => o && this.seats!.passSeated(o))) return;
+  /** Checks for a free seat when a pass is about to take one it did not have. True: it took one. */
+  private async sitDown(before: XPass, after: XPass, older: (XPass | null)[] = []): Promise<boolean> {
+    if (!this.seats || !this.seats.passSeated(after)) return false;
+    if (this.seats.passSeated(before) || older.some((o) => o && this.seats!.passSeated(o))) return false;
     try {
       await this.seats.admit();
     } catch {
       throw new XPassRefused("list-full", "every seat on the mainnet list is taken");
     }
+    return true;
   }
 
   private view(p: XPass): XPassView {
@@ -376,6 +386,7 @@ export class XPasses {
     if (other && other.id !== pass.id) throw new XPassRefused("address-taken", "this wallet is already linked to another X account");
     const next = { ...pass, address, updatedAt: this.clock.now() };
     await this.store.saveXPass(next);
+    if (pass.address !== address) this.feed.tell({ kind: "wallet", handle: pass.handle, code: pass.code });
     return this.view(next);
   }
 

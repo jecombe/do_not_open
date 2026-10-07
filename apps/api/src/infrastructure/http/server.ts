@@ -22,6 +22,7 @@ import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
 import type { IndexerStatus } from "../Indexer";
 import type { EndpointStatus } from "../chain/RpcPool";
 import type { Metrics } from "./metrics";
+import { registerAdmin, type AdminDeps } from "./admin";
 
 export interface HttpDeps {
   queries: Queries;
@@ -67,6 +68,8 @@ export interface HttpDeps {
   rpcStatus?: () => EndpointStatus[];
   /** Prometheus metrics at GET /metrics. The edge proxy refuses that path from outside; the monitoring stack scrapes it over the Docker network. */
   metrics?: Metrics;
+  /** The team's admin site, under /admin. Absent (no ADMIN_PASSWORD): nothing is served there. */
+  admin?: AdminDeps;
   /** Origins allowed to call from a browser. `*` alone allows any; inside an origin, it matches one DNS label. */
   corsOrigins: string[];
   /** Requests per minute per IP. */
@@ -151,6 +154,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     reply.header("cache-control", "no-store");
     return { ok: true, block, indexer, rpc: deps.rpcStatus?.() ?? null };
   });
+
+  if (deps.admin) await registerAdmin(app, deps.admin);
 
   // --- collection and boxes ---
 

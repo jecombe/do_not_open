@@ -12,6 +12,9 @@ __API_HOSTS__ {
 	# Prometheus' scrape path: read over the Docker network only (deploy/monitoring).
 	@metrics path /metrics
 	respond @metrics 404
+	# The team's admin site: only through its own domain (dno-admin.caddy.template).
+	@admin path /admin /admin/*
+	respond @admin 404
 	# Every replica of the API, as Docker's DNS lists them under the alias, looked up again every
 	# 2 s so a deploy's new replicas join quickly. One client IP always reaches the same replica:
 	# its rate limit and chat quota, counted in that process, stay exact. A replica that refuses

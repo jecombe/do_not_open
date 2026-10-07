@@ -586,6 +586,41 @@ them, marked `rehearsed`, without sending anything, to be read at `GET /v1/heral
 Integrations, Webhooks; a secret, since whoever has it can post there) and falls back to
 rehearsing without it. Discord is free and its limits are far above what the herald sends.
 
+### The team's activity feed
+
+With `ACTIVITY_DISCORD_WEBHOOK_URL` (a webhook of a private channel, the monitoring one will do),
+each API replica tells the team, as it happens, what players do on the boarding page and the
+whitelist (`application/activity.ts`, sent by `infrastructure/discord/DiscordActivityFeed.ts`):
+an X account connected (Sign in with X or a post), each task declared, a seat taken, a wallet
+linked, `/board` run on Discord, a first whitelist claim, a new idea with its text. Each message
+starts with the network and links the player's X profile; a pass with no account yet shows its
+code. A wallet is never shown next to a handle (a claim with no pass shows it shortened). A
+request never waits on Discord: messages queue in order, a rate limit is waited out once, and
+past 50 waiting the extra ones are dropped and counted in the next message. The counts and the
+daily recap come from Prometheus instead ([`deploy/README.md`](../../deploy/README.md#monitoring)).
+
+## The admin site
+
+With `ADMIN_PASSWORD` (16 characters or more), API replicas serve the team's dashboard
+(`apps/admin`, built into the image next to `main.js`, or `ADMIN_DIR`) under `/admin`, and its
+routes under `/admin/api` (`infrastructure/http/admin.ts`, read from `application/insights.ts`):
+
+| Route | Answers |
+| --- | --- |
+| `GET /admin/api/session` | `{ signedIn }` |
+| `POST /admin/api/login` | `{ password }` → a `dno_admin` cookie (HttpOnly, SameSite=Strict, 7 days); 5 tries a minute per IP |
+| `POST /admin/api/logout` | clears it |
+| `GET /admin/api/dashboard?days=30` | KPIs (total, today, yesterday, 7 days against the 7 before, a daily line), the seats and their pace, the boarding funnel, tasks, median time to a seat, daily boarding and chain series, active wallets, a weekday × hour heatmap, the latest steps |
+| `GET /admin/api/players` | every pass: handle, tasks with their times, seat, whether a wallet is linked, claimed, `/board` |
+| `GET /admin/api/players/:code/wallet` | the wallet linked to one pass (logged) |
+| `GET /admin/api/ideas` | the suggestion box |
+
+The session is a signed expiry, its key derived from the password: no table, any replica checks
+it, a new password ends every session. Nothing lists a wallet next to a handle. The chain's daily
+counts come from `eventBuckets` and `activeAccounts` (a `group by` over `events`), so they cover
+the whole history. Without the password nothing is served there; the edge proxy routes only
+`ADMIN_DOMAIN` to `/admin` ([`deploy/README.md`](../../deploy/README.md#the-admin-site)).
+
 ## Run it
 
 ```bash
@@ -598,6 +633,6 @@ Configuration is environment variables, all optional in development: see `src/co
 (`ROLE`, `RPC_URLS`, `RPC_RPS`, `CONFIRMATIONS`, `CORS_ORIGINS`, `SESSION_SECRET`, `RELAYER_API_KEY`,
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
-`DISCORD_WEBHOOK_URL`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
+`DISCORD_WEBHOOK_URL`, `ACTIVITY_DISCORD_WEBHOOK_URL`, `ADMIN_PASSWORD`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
 `FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md); load tests in [`loadtest/README.md`](../../loadtest/README.md).

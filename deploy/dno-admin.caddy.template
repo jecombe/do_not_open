@@ -1,0 +1,23 @@
+# The team's admin site (apps/admin). Rendered by deploy.sh into /opt/edge/sites/dno-admin.caddy
+# when ADMIN_DOMAIN is set in the server's .env. Every path goes to the API under /admin, which
+# serves the app and asks for ADMIN_PASSWORD; the public API's domain refuses /admin.
+__ADMIN_HOST__ {
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Robots-Tag "noindex, nofollow"
+	}
+	rewrite * /admin{uri}
+	# The same replicas as the API, one client IP on one replica: the sign-in limit stays exact.
+	reverse_proxy {
+		dynamic a dno-api 8080 {
+			refresh 2s
+		}
+		lb_policy client_ip_hash
+		lb_try_duration 5s
+		fail_duration 30s
+	}
+}

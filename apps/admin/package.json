@@ -1,0 +1,26 @@
+{
+  "name": "@dno/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The team's admin site: the boarding page, the players and the game at a glance, behind one password. Served by the API under /admin.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fontsource/barlow-condensed": "^5.2.8",
+    "@fontsource/stardos-stencil": "^5.2.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.1"
+  }
+}

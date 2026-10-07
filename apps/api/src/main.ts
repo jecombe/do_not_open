@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 import pino from "pino";
 import { AskManual, type AnswerModel } from "./application/askManual";
@@ -27,6 +28,9 @@ import { SyncChain } from "./application/syncChain";
 import { loadConfig } from "./config";
 import { ethersVerifier, HmacSessions, loginSecrets, passSecrets, randomNonce } from "./infrastructure/auth/crypto";
 import { OEmbedTweets } from "./infrastructure/x/OEmbedTweets";
+import { DiscordActivityFeed } from "./infrastructure/discord/DiscordActivityFeed";
+import { noActivityFeed } from "./application/activity";
+import { Insights } from "./application/insights";
 import { XOAuth } from "./infrastructure/x/XOAuth";
 import { GeminiModel } from "./infrastructure/chat/GeminiModel";
 import manual from "./infrastructure/chat/manual.json";
@@ -216,11 +220,14 @@ async function main() {
   if (!deployment.rats) log.info("no Rats contract on this network: no rat to show, none to adopt");
   else if (!config.RATS_ATTESTER_KEY) log.info("RATS_ATTESTER_KEY is not set: only seed rats can be adopted");
 
+  // The team's private channel: each step a player takes on the boarding page and the whitelist.
+  const feed = config.ACTIVITY_DISCORD_WEBHOOK_URL ? new DiscordActivityFeed(config.ACTIVITY_DISCORD_WEBHOOK_URL, log, { prefix: `**[${config.NETWORK}]** ` }) : noActivityFeed;
+
   // The list and its seats read each other: the seats count who tried the testnet, the list
   // admits a new claimant to a seat.
   let allowList: AllowList | null = null;
   const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"]);
-  allowList = new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats);
+  allowList = new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats, feed);
   // The frozen list, once it closed: each wallet's proof for WhitelistGifts.
   const gifts = new GiftProofs(config.WHITELIST_GIFTS_TREE ? JSON.parse(readFileSync(config.WHITELIST_GIFTS_TREE, "utf8")) : null);
   if (gifts.frozen) log.info({ root: gifts.root, wallets: gifts.count }, "whitelist gifts: tree loaded");
@@ -239,6 +246,7 @@ async function main() {
       : null,
     seats,
     config.DISCORD_APPLICATION_ID && config.DISCORD_PUBLIC_KEY && config.DISCORD_GUILD_ID ? { guildId: config.DISCORD_GUILD_ID } : null,
+    feed,
   );
 
   // What the index holds is reported by one process only, the one that indexes: API replicas
@@ -276,7 +284,7 @@ async function main() {
           terms: new AcceptTerms(store, ethersVerifier, clock),
           allowList: { list: allowList, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, seats, gifts },
           xPasses: { passes: xPasses, adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null, returnOrigins: config.X_RETURN_ORIGINS, announcement: config.X_ANNOUNCEMENT_ID ?? null },
-          ideas: { box: new Ideas(store, clock, (token) => xPasses.handleOf(token)), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
+          ideas: { box: new Ideas(store, clock, (token) => xPasses.handleOf(token), feed), adminToken: config.ALLOW_LIST_ADMIN_TOKEN ?? null },
           relayer,
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           studio: { studio, publicUrl: config.PUBLIC_URL },
@@ -289,6 +297,9 @@ async function main() {
           nudge: config.ROLE === "api" && pool ? nudgeOver(pool, log) : undefined,
           rpcStatus: () => rpc.status(),
           metrics,
+          admin: config.ADMIN_PASSWORD
+            ? { insights: new Insights(store, seats, clock), password: config.ADMIN_PASSWORD, staticDir: config.ADMIN_DIR ?? fileURLToPath(new URL("./admin", import.meta.url)), log }
+            : undefined,
           corsOrigins: config.CORS_ORIGINS,
           rateLimitPerMinute: config.RATE_LIMIT_PER_MINUTE,
           logger: { level: config.LOG_LEVEL },

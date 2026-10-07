@@ -141,7 +141,16 @@ restarts, the image each runs), API traffic, Zama relayer calls, Arweave, Gemini
 URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
 each titled with its network: a replica down (`ApiReplicaDown`, the others carry its traffic),
 none left (`ApiNoReplica`), the indexer down (`IndexerDown`), a process restarting over and over
-(`ApiRestarting`), a saturated replica (`ApiEventLoopBlocked`), among the others. Only Grafana is public, behind its own login; the edge proxy
+(`ApiRestarting`), a saturated replica (`ApiEventLoopBlocked`), among the others. The same
+channel follows what players do (the `activity` group, posted with ✨ and no "resolved"
+message): new boarding passes, X accounts connected, seats taken, whitelist claims, ideas, new
+addresses, boxes sold and opened, duels, milestones, rats, studio packs and traffic spikes, each
+compared with 15 minutes earlier and posted again every 30 minutes while it lasts; a 🗞️ recap of
+the last 24 hours at 08:00 UTC, which also proves once a day that alerts still reach Discord; and
+`SiteQuiet` when nobody has called the API for 6 hours. For each player by name (their X handle:
+X connected, tasks, seat, wallet, `/board`, whitelist claim, idea), the API posts there itself
+when `/opt/dno/.env` sets `ACTIVITY_DISCORD_WEBHOOK_URL` to the same webhook
+([`apps/api/README.md`](../apps/api/README.md#the-teams-activity-feed)). Only Grafana is public, behind its own login; the edge proxy
 answers `404` to `/metrics` from outside. About 1.2 GB of memory at most (limits in the compose
 file), 5 GB of disk for 90 days of series.
 
@@ -160,6 +169,26 @@ launch: uncomment the `dno-api-mainnet` job in `prometheus/prometheus.yml` and r
 `probes/mainnet.yml.example` (the mainnet replicas and indexer on the edge network as
 `dno-api-mainnet` and `dno-indexer-mainnet`), and move the apex probe out of Sepolia.
 
+## The admin site
+
+`apps/admin` is the team's dashboard, on its own domain behind one password: the whitelist's
+seats and pace, the boarding funnel (where people drop off), each day's figures with their week
+over week change, the players by X handle (a linked wallet shown only on a click, which is
+logged), the ideas, the chain's public activity and when players are around. The API image carries
+the built app and serves it under `/admin` when `ADMIN_PASSWORD` is set; `dno-admin.caddy.template`
+routes the domain there, and the public API's domain answers `404` to `/admin`. A session is a
+signed cookie (7 days; a new password ends them all), and sign-in attempts are limited to 5 a
+minute per IP. To turn it on, once:
+
+1. An A record `admin` → the server's IP.
+2. In `/opt/dno/.env`: `ADMIN_DOMAIN=admin.do-not-open.app` and `ADMIN_PASSWORD=` a long random
+   one (`openssl rand -base64 24`), shared with the team.
+3. `bash /opt/dno/deploy.sh` (or the next deploy): Caddy gets the certificate, the site is at
+   `https://admin.do-not-open.app`.
+
+It reads Postgres directly, so its history goes back to the first event, unlike Prometheus;
+Grafana stays the place for the server and the API's health.
+
 ## Domains
 
 | Name | Serves | DNS record |
@@ -169,6 +198,8 @@ launch: uncomment the `dno-api-mainnet` job in `prometheus/prometheus.yml` and r
 | `testnet.do-not-open.app` | the site on Sepolia (Vercel) | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
 | `api.do-not-open.app` | the API (`API_DOMAIN`) | `A` the server's IP |
 | `api.testnet.do-not-open.app` | the same API for now (`API_ALIASES`) | `A` the server's IP |
+| `admin.do-not-open.app` | the team's admin site (`ADMIN_DOMAIN`) | `A` the server's IP |
+| `monitoring.do-not-open.app` | Grafana (`MONITORING_DOMAIN`) | `A` the server's IP |
 
 Only one network runs today, so both site names are the same Vercel build and both API names
 reach the same replicas. Remove the registrar's default parking records (`A` and `AAAA` on
