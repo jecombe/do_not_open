@@ -132,8 +132,8 @@ export class Insights {
       this.store.activity({ limit: 40 }),
     ]);
     const required = this.seats.required;
-    // The team's own wallets and the passes linked to them are tests, not players.
-    const passes = allPasses.filter((p) => !this.seats.isTeam(p.address));
+    // The team's own wallets and passes are tests, not players.
+    const passes = allPasses.filter((p) => !this.seats.isTeamPass(p));
     const claims = allClaims.filter((c) => !this.seats.isTeam(c.address));
 
     // Every dated fact, by series: a pass's steps, claims, ideas, and the chain's events.
@@ -271,7 +271,7 @@ export class Insights {
     const [passes, claims] = await Promise.all([this.store.xPasses(), this.store.allowListClaims()]);
     const claimed = new Set(claims.map((c) => c.address));
     return passes
-      .filter((p) => !this.seats.isTeam(p.address))
+      .filter((p) => !this.seats.isTeamPass(p))
       .map((p): PlayerRow => {
         const seat = seatedAt(p, this.seats.required);
         return {

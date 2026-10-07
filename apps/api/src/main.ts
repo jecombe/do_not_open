@@ -231,7 +231,7 @@ async function main() {
   // The list and its seats read each other: the seats count who tried the testnet, the list
   // admits a new claimant to a seat.
   let allowList: AllowList | null = null;
-  const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"], config.TEAM_WALLETS);
+  const seats = new Seats(store, config.ALLOW_LIST_PLACES, () => allowList!.players(), config.X_ANNOUNCEMENT_ID ? X_TASKS : ["follow", "post"], { wallets: config.TEAM_WALLETS, handles: config.TEAM_X_HANDLES });
   allowList = new AllowList(store, ethersVerifier, clock, config.ALLOW_LIST_PLACES, () => xPassBonuses(store), seats, feed);
   // The frozen list, once it closed: each wallet's proof for WhitelistGifts.
   const gifts = new GiftProofs(config.WHITELIST_GIFTS_TREE ? JSON.parse(readFileSync(config.WHITELIST_GIFTS_TREE, "utf8")) : null);

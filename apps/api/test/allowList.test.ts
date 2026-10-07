@@ -59,7 +59,7 @@ describe("allow list", () => {
   it("never gives the team's own wallets a place: no claim, no rank, no seat", async () => {
     // Alice is the team here: she minted, opened and won duels, all to test.
     let list: AllowList | null = null;
-    const seats = new Seats(store, 10, () => list!.players(), ["follow", "post"], new Set([ALICE]));
+    const seats = new Seats(store, 10, () => list!.players(), ["follow", "post"], { wallets: new Set([ALICE]), handles: new Set(["herald_dno"]) });
     list = new AllowList(store, verifier, { now: () => now }, 10, async () => new Map(), seats);
     await expect(claim(list, ALICE)).rejects.toThrow(/team's wallets/);
     expect(await store.allowListClaim(ALICE)).toBeNull();
@@ -71,6 +71,8 @@ describe("allow list", () => {
     const pass = { id: "p", code: "DNO-TEAM01", handle: "team", xUserId: null, tweetId: null, tweetUrl: null, followedAt: 1, postedAt: 1, likedAt: null, repliedAt: null, repostedAt: null, address: ALICE, discordUserId: null, discordJoinedAt: null, createdAt: 1, verifiedAt: 1, updatedAt: 1 };
     expect(seats.passSeated(pass)).toBe(false);
     expect(seats.passSeated({ ...pass, address: CAROL })).toBe(true);
+    // So does a pass with one of the team's X accounts, whatever wallet it links.
+    expect(seats.passSeated({ ...pass, address: CAROL, handle: "herald_dno" })).toBe(false);
   });
 
   it("counts each opponent once and ignores duels against yourself", async () => {
