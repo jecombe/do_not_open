@@ -1,8 +1,15 @@
 name: CI
 
+# Once per pull request, and on the pushes to dev and main that deploy (deploy-api.yml starts
+# when this finishes green). A push to a working branch alone runs nothing: open a pull request.
+# A change to the docs alone runs nothing either. Every run counts against the private repo's
+# Actions minutes.
 on:
   push:
+    branches: [main, dev]
+    paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**/*.md", "docs/**"]
 
 concurrency:
   group: ci-${{ github.ref }}

@@ -1,24 +1,19 @@
 name: Deploy API
 
 # Deploys what reaches main to the live stack (/opt/dno, the real allow list) and what reaches
-# dev to the testnet site's stack (/opt/dno-testnet, its own database), once CI is green on that
-# commit. Other branches are tested by CI and never deployed.
+# dev to the testnet site's API (/opt/dno-testnet), once CI finished green on that push: it starts
+# when the CI run ends instead of waiting for it, which would bill the minutes it waits. A push
+# that touches nothing the API image or its stack is built from deploys nothing. Other branches
+# are tested by CI and never deployed. (A workflow_run workflow always runs from main's copy.)
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main, dev]
-    paths:
-      - apps/api/**
-      - apps/admin/**
-      - packages/game-spec/**
-      - packages/generator/**
-      - packages/chain-adapter/**
-      - deploy/**
-      - pnpm-lock.yaml
-      - .github/workflows/deploy-api.yml
   workflow_dispatch:
 
 concurrency:
-  group: deploy-api-${{ github.ref_name }}
+  group: deploy-api-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -27,47 +22,47 @@ permissions:
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/do_not_open-api
+  BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
   # main: the live stack; dev: the testnet site's.
-  STACK_DIR: ${{ github.ref_name == 'main' && '/opt/dno' || '/opt/dno-testnet' }}
-  DOMAIN: ${{ github.ref_name == 'main' && vars.API_DOMAIN || 'api.testnet.do-not-open.app' }}
+  STACK_DIR: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && '/opt/dno' || '/opt/dno-testnet' }}
+  DOMAIN: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && vars.API_DOMAIN || 'api.testnet.do-not-open.app' }}
 
 jobs:
-  ci:
-    name: Wait for CI to pass
+  changes:
+    name: Check what changed
+    # Only a green CI on a push (not a pull request) deploys; by hand, always.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-    # The whole CI (web, contracts, API, Postgres) must be green on this commit: a red main never deploys.
+    outputs:
+      api: ${{ steps.diff.outputs.api }}
     steps:
-      - name: Wait for the CI run of this commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 2
+      - id: diff
+        name: Does this push touch the API image or its stack?
         run: |
-          for i in $(seq 1 120); do
-            run=$(gh run list --workflow ci.yml --commit "$SHA" --event push --limit 1 --json status,conclusion,url --jq '.[0] // empty')
-            if [ -n "$run" ]; then
-              status=$(echo "$run" | jq -r .status)
-              conclusion=$(echo "$run" | jq -r .conclusion)
-              if [ "$status" = completed ]; then
-                echo "CI: $conclusion ($(echo "$run" | jq -r .url))"
-                [ "$conclusion" = success ] && exit 0
-                echo "CI did not pass on $SHA: nothing is deployed." >&2
-                exit 1
-              fi
-            fi
-            sleep 15
-          done
-          echo "CI did not finish within 30 minutes." >&2
-          exit 1
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then echo "api=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # A merge's first parent is the branch before it: its diff is all the pull request brought.
+          files="$(git diff --name-only HEAD^1 HEAD)"
+          echo "$files"
+          if echo "$files" | grep -qE '^(apps/api/|apps/admin/|packages/(game-spec|generator|chain-adapter)/|deploy/|pnpm-lock\.yaml|\.github/workflows/deploy-api\.yml)'; then
+            echo "api=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api=false" >> "$GITHUB_OUTPUT"; echo "nothing the API is built from changed: no deploy"
+          fi
 
   image:
     name: Build and push the image
-    needs: ci
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -80,8 +75,8 @@ jobs:
           file: apps/api/Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ github.sha }}
-            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:${{ env.SHA }}
+            ${{ env.IMAGE }}:${{ env.BRANCH }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -90,10 +85,12 @@ jobs:
     needs: image
     runs-on: ubuntu-latest
     environment:
-      name: ${{ github.ref_name == 'main' && 'api' || 'api-testnet' }}
-      url: https://${{ github.ref_name == 'main' && vars.API_DOMAIN || 'api.testnet.do-not-open.app' }}
+      name: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'api' || 'api-testnet' }}
+      url: https://${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && vars.API_DOMAIN || 'api.testnet.do-not-open.app' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
       - name: SSH key
         run: |
           install -m 700 -d ~/.ssh
@@ -117,7 +114,7 @@ jobs:
         env:
           TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
         # The token goes on stdin, never on a command line.
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/deploy "$TARGET" "bash $STACK_DIR/deploy.sh ${{ env.IMAGE }}:${{ github.sha }} ${{ github.actor }}"
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/deploy "$TARGET" "bash $STACK_DIR/deploy.sh ${{ env.IMAGE }}:${{ env.SHA }} ${{ github.actor }}"
       - name: Smoke test
         run: |
           for i in $(seq 1 30); do
