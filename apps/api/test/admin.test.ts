@@ -23,7 +23,7 @@ const PASSWORD = "correct horse battery staple";
 function pass(over: Partial<XPass> & { id: string; code: string }): XPass {
   return {
     handle: null, xUserId: null, tweetId: null, tweetUrl: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null,
-    address: null, discordUserId: null, discordJoinedAt: null, createdAt: NOW - 3 * DAY, verifiedAt: null, updatedAt: NOW - 3 * DAY,
+    address: null, discordUserId: null, discordJoinedAt: null, referredBy: null, createdAt: NOW - 3 * DAY, verifiedAt: null, updatedAt: NOW - 3 * DAY,
     ...over,
   };
 }

@@ -68,7 +68,7 @@ describe("allow list", () => {
     expect((await list.ranked()).map((e) => e.address)).toEqual([BOB]);
     expect(await seats.taken()).toBe(1);
     // A boarding pass linked to a team wallet takes no seat either.
-    const pass = { id: "p", code: "DNO-TEAM01", handle: "team", xUserId: null, tweetId: null, tweetUrl: null, followedAt: 1, postedAt: 1, likedAt: null, repliedAt: null, repostedAt: null, address: ALICE, discordUserId: null, discordJoinedAt: null, createdAt: 1, verifiedAt: 1, updatedAt: 1 };
+    const pass = { id: "p", code: "DNO-TEAM01", handle: "team", xUserId: null, tweetId: null, tweetUrl: null, followedAt: 1, postedAt: 1, likedAt: null, repliedAt: null, repostedAt: null, address: ALICE, discordUserId: null, discordJoinedAt: null, referredBy: null, createdAt: 1, verifiedAt: 1, updatedAt: 1 };
     expect(seats.passSeated(pass)).toBe(false);
     expect(seats.passSeated({ ...pass, address: CAROL })).toBe(true);
     // So does a pass with one of the team's X accounts, whatever wallet it links.

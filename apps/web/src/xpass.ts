@@ -19,6 +19,10 @@ export interface XPassView {
   /** Whether the holder joined the Discord server and proved it with `/board`. */
   discord: boolean;
   bonus: number;
+  /** The code of the pass whose referral link this one started from. */
+  referredBy: string | null;
+  /** The passes this one referred: those that earn points (seated, wallet linked) and the others. */
+  referrals: { counted: number; pending: number };
 }
 
 /** Why the API refused, as its `error` code (`no-pass`, `code-missing`…), or `network`. */
@@ -77,7 +81,8 @@ async function call(method: "GET" | "POST", path: string, body?: object): Promis
   return json.data;
 }
 
-export const startXPass = () => call("POST", "");
+export const startXPass = (ref: string | null = null) => call("POST", "", ref ? { ref } : undefined);
+export const referXPass = (code: string) => call("POST", "/referrer", { code });
 export const xPassStatus = () => call("GET", "");
 export const followXPass = () => call("POST", "/follow");
 export const declareXTask = (task: XTask) => call("POST", "/task", { task });
@@ -165,6 +170,53 @@ export function useSeats(refreshMs = 20_000): SeatsView | null {
 }
 
 export const hasXPassToken = () => !!(memoryToken ?? readToken());
+
+// The code of the pass whose link brought this browser (`?ref=DNO-XXXXXX`), until a pass takes it.
+const REF = "dno:xpass:ref";
+const REF_CODE = /^DNO-[A-Z0-9]{6}$/;
+
+/** Keeps a `?ref=` from the address for the pass this browser starts later, and takes it off the
+ *  address so a link copied from here does not carry someone else's code. */
+export function rememberReferral(): void {
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get("ref")?.trim().toUpperCase();
+  if (!ref) return;
+  if (REF_CODE.test(ref)) {
+    try {
+      localStorage.setItem(REF, ref);
+    } catch {
+      memoryRef = ref;
+    }
+  }
+  params.delete("ref");
+  const q = params.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+}
+
+let memoryRef: string | null = null;
+
+/** The referrer's code this browser keeps, if any. */
+export function pendingReferral(): string | null {
+  try {
+    return localStorage.getItem(REF) ?? memoryRef;
+  } catch {
+    return memoryRef;
+  }
+}
+
+export function forgetReferral(): void {
+  memoryRef = null;
+  try {
+    localStorage.removeItem(REF);
+  } catch {
+    // Nothing kept.
+  }
+}
+
+/** The link that brings a friend to the boarding page with this pass as their referrer. */
+export function referralUrl(origin: string, applyPath: string, code: string): string {
+  return `${origin}${applyPath}?ref=${encodeURIComponent(code)}`;
+}
 
 /** The pass this browser holds, read once; null when it has none (or lost it). */
 export function useXPass(): { pass: XPassView | null; loading: boolean; set: (p: XPassView | null) => void } {

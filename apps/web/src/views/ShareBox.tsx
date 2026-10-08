@@ -3,7 +3,7 @@ import type { CatSpec } from "@dno/generator";
 import { useT, type AppKey } from "../i18n/app";
 import { buildName, cap, catNames, diseaseName } from "../i18n/names";
 import { drawCard, type CardFormat, type CardText } from "../share/card";
-import { boxUrl, intentUrl, NETWORKS } from "../share/links";
+import { boxUrl, canShareFiles, copy, download, intentUrl, NETWORKS } from "../share/links";
 
 interface Props {
   tokenId: number;
@@ -27,31 +27,6 @@ interface Card {
   format: CardFormat;
   file: File;
   src: string;
-}
-
-const canShareFiles = (file: File) => {
-  try {
-    return !!navigator.canShare?.({ files: [file] });
-  } catch {
-    return false;
-  }
-};
-
-async function copy(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function download(file: File) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(file);
-  a.download = file.name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
 
 /**

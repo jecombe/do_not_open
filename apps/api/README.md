@@ -283,7 +283,7 @@ newest first, with `ALLOW_LIST_ADMIN_TOKEN` only.
 ### X boarding passes
 
 The home page's boarding pass (`src/application/xPass.ts`, `infrastructure/x/XOAuth.ts`,
-`infrastructure/x/OEmbedTweets.ts`, migrations 16 to 18, and 22 for Discord). The player connects their X account
+`infrastructure/x/OEmbedTweets.ts`, migrations 16 to 18, 22 for Discord and 26 for referrals). The player connects their X account
 with **Sign in with X** (OAuth 2.0, authorization code with PKCE, scopes `tweet.read users.read`:
 the API reads `users/me` once and keeps no X token). It needs `X_CLIENT_ID` and
 `X_CLIENT_SECRET` from an app on developer.x.com, whose callback is
@@ -296,11 +296,12 @@ as a bearer (`private, no-store`):
 
 | Route | What |
 | --- | --- |
-| `POST /v1/xpass` | A new pass: `{ token, pass }`. The token is shown once; the store keeps its sha256. 5 a minute per IP |
-| `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `tasks`, `address`, `discord`, `bonus`. `401 no-pass` for an unknown token |
+| `POST /v1/xpass` | `{ ref? }`, the code of a referrer's pass (a `?ref=` link): a new pass, `{ token, pass }`. The token is shown once; the store keeps its sha256. A `ref` that names no pass is dropped. 5 a minute per IP |
+| `GET /v1/xpass` | The pass: `code`, `handle`, `tweetUrl`, `followed`, `tasks`, `address`, `discord`, `bonus`, `referredBy` (the referrer's code or `null`), `referrals: { counted, pending }`. `401 no-pass` for an unknown token |
 | `GET /v1/xpass/x` | `{ signIn, announcement, discord }`: whether Sign in with X is configured, the announcement post's id (`X_ANNOUNCEMENT_ID`), and whether the Discord step is on |
 | `POST /v1/xpass/x/start` | `{ returnTo }` (one of `X_RETURN_ORIGINS`): `{ url }`, X's authorize page for this pass. `503 sign-in-off` without an X app |
 | `GET /v1/xpass/x/callback` | Where X sends the player: puts the account (handle and X user id) on the pass, then `303` to `returnTo?x=<ok\|sign-in-refused\|sign-in-expired\|x-down\|no-pass>#boarding`. An account already on an older pass moves to this one |
+| `POST /v1/xpass/referrer` | `{ code }`: names the pass that referred this one, once, before its X account is connected. `404 bad-referral` (no other pass has this code), `409 referral-locked` (a referrer already, or X connected). 10 a minute per IP |
 | `POST /v1/xpass/follow` | Notes the declared follow (X's follows cannot be read for free) |
 | `POST /v1/xpass/task` | `{ task: "follow" \| "post" \| "like" \| "reply" \| "repost" }`: notes a declared task (migration 17); the pass shows them in `tasks`. 20 a minute per IP |
 | `POST /v1/xpass/tweet` | `{ url }`: `400 bad-tweet-url`, `404 tweet-not-found`, `400 code-missing`, `409 tweet-used`, `503 x-down`. An X account already on an older pass moves to this one, with its wallet and follow |
@@ -310,6 +311,14 @@ as a bearer (`private, no-store`):
 
 A wallet linked to a verified pass gets 5 points (`X_PASS_BONUS`) on the allow list, and 3 more
 (`DISCORD_BONUS`) once the pass's holder ran `/board` in the Discord server (see below).
+Each pass started from its referral link (`https://do-not-open.app/apply?ref=<code>`) adds 2
+more (`REFERRAL_BONUS`), up to 10 referrals (`REFERRAL_CAP`), once that pass holds a seat, has a
+wallet linked and belongs to another X account; the others show as `pending`. Like the X and
+Discord points, they count only once the referrer's own pass has its X account and a wallet
+(`xPassBonuses(store, seats.passSeated)`). Being referred earns nothing extra. When an X account
+moves to a newer pass, the passes its older one referred follow it to the new code, and a pass
+never ends up referring itself. Migration 26 adds `referred_by` to `x_passes` (and
+`testnet.x_passes`), indexed where set; who referred whom never leaves the API.
 
 **On Galxe.** A Galxe quest checks a player's testnet play with a REST credential on this
 route, nothing to add on our side:
@@ -610,7 +619,7 @@ With `ACTIVITY_DISCORD_WEBHOOK_URL` (a webhook of a private channel, the monitor
 each API replica tells the team, as it happens, what players do on the boarding page and the
 whitelist (`application/activity.ts`, sent by `infrastructure/discord/DiscordActivityFeed.ts`):
 an X account connected (Sign in with X or a post), each task declared, a seat taken, a wallet
-linked, `/board` run on Discord, a first whitelist claim, a new idea with its text. Each message
+linked, `/board` run on Discord, a pass started from someone's referral link, a first whitelist claim, a new idea with its text. Each message
 starts with the network and links the player's X profile; a pass with no account yet shows its
 code. A wallet is never shown next to a handle (a claim with no pass shows it shortened). A
 request never waits on Discord: messages queue in order, a rate limit is waited out once, and

@@ -2561,6 +2561,51 @@ h2 {
   opacity: 0.7;
 }
 
+/* Referrals: the pass's own link, what it earned, and the pass as a picture to post. */
+.boarding-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 10px 16px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: var(--sun);
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.3;
+  transform: rotate(0.3deg);
+}
+
+.boarding-invite strong {
+  font-family: var(--stencil);
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.boarding-invite-count {
+  margin-top: 2px;
+  font: 700 15px/1.2 var(--label);
+  text-transform: uppercase;
+}
+
+.boarding-invite-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 0;
+}
+
+.boarding-invite-card img {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+}
+
 @media (max-width: 1000px) {
   .boarding {
     grid-template-columns: 96px minmax(0, 1fr);

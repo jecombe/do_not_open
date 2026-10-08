@@ -482,6 +482,10 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
     return this.xPassWhere((p) => p.discordUserId === discordUserId);
   }
 
+  async xPassReferrals(code: string) {
+    return (await this.xPasses()).filter((p) => p.referredBy === code);
+  }
+
   async xPasses() {
     return [...this.s.xPasses.values()].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).map(clone);
   }

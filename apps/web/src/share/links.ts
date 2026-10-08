@@ -45,3 +45,29 @@ export function boxUrl(tokenId: number): string {
   if (chain) url.searchParams.set("chain", chain);
   return url.toString();
 }
+
+/** Whether this browser can hand a picture to another app (a phone's share sheet). */
+export const canShareFiles = (file: File) => {
+  try {
+    return !!navigator.canShare?.({ files: [file] });
+  } catch {
+    return false;
+  }
+};
+
+export async function copy(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function download(file: File) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+}

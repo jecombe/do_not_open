@@ -578,6 +578,39 @@ sequenceDiagram
   API-->>Home: discord: true, bonus +3 once a wallet is linked
 ```
 
+### Referrals
+
+Each pass's code is its referral link: `https://do-not-open.app/apply?ref=<code>` (`/fr/apply`,
+`/es/apply`, `/it/apply` in the other languages). A friend's pass started from it adds 2 points
+(`REFERRAL_BONUS`) to the referrer's wallet, up to 10 friends (`REFERRAL_CAP`), once that pass
+holds a seat, has a wallet linked and belongs to another X account; until then it shows as on the
+way. The referrer's own pass needs its X account and a wallet for them to count, like its other
+bonuses. Being referred earns nothing. A pass names its referrer once, before its X account is
+connected; a code that names no pass is dropped, so a stale link never stops anyone boarding.
+When an X account moves to a newer pass, the passes it referred follow it to the new code. Who
+referred whom stays in the API. Once X is connected, the page also prints the boarding pass as a
+1200×675 picture to post, with the referral link on it.
+
+```mermaid
+sequenceDiagram
+  participant F as Friend
+  participant Home as Home page
+  participant API
+  participant R as Referrer's pass
+  F->>Home: opens /apply?ref=<code>
+  Home->>Home: keeps the code (localStorage), takes it out of the address bar
+  alt no pass in this browser yet
+    Home->>API: POST /v1/xpass {ref}
+  else a pass, X not connected yet
+    Home->>API: POST /v1/xpass/referrer {code}
+  end
+  API->>API: referred_by = code (dropped or refused if no other pass has it)
+  F->>Home: Sign in with X, the tasks, a wallet linked
+  Home->>API: GET /v1/xpass (the referrer's page)
+  API-->>Home: referrals {counted, pending}
+  API->>R: seat + wallet + another X account: +2 on the referrer's wallet, up to 10 friends
+```
+
 ## Give a box away
 
 ```mermaid
