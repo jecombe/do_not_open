@@ -330,12 +330,13 @@ of one box for the wallet (a `mints` row with a count of 1, a box row).
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |
-| `x_passes` | `id` (sha256 of the token the browser keeps), `code` (`DNO-` and six characters, in the post), `handle` and `x_user_id` once Sign in with X proved the account (or `handle` and `tweet_id` from a post carrying the code; migration 18 for `x_user_id`), `tweet_url`, `followed_at`, `posted_at`, `liked_at`, `replied_at`, `reposted_at` (the tasks, declared; migrations 17 and 18), `address` (the wallet the player linked by signing), `discord_user_id` and `discord_joined_at` (the Discord account that ran `/board` in the server with the pass's one-time code; migration 22), `created_at`, `verified_at`, `updated_at`; code, handle, X user id, tweet, address and Discord account each unique | no: not on the chain, kept by a redeploy like `allow_list_claims` (migration 16) |
+| `x_passes` | `id` (sha256 of the token the browser keeps), `code` (`DNO-` and six characters, in the post), `handle` and `x_user_id` once Sign in with X proved the account (or `handle` and `tweet_id` from a post carrying the code; migration 18 for `x_user_id`), `tweet_url`, `followed_at`, `posted_at`, `liked_at`, `replied_at`, `reposted_at` (the tasks, declared; migrations 17 and 18), `address` (the wallet the player linked by signing), `discord_user_id` and `discord_joined_at` (the Discord account that ran `/board` in the server with the pass's one-time code; migration 22), `referred_by` (the code of the pass whose `?ref=` link this one started from, set once before the X account is connected, indexed where set; migration 26), `created_at`, `verified_at`, `updated_at`; code, handle, X user id, tweet, address and Discord account each unique | no: not on the chain, kept by a redeploy like `allow_list_claims` (migration 16) |
 
 A wallet linked to a verified pass gets `X_PASS_BONUS` (5) on top of its allow list points, and
-`DISCORD_BONUS` (3) more once the pass's holder joined the Discord server (`bonus` in
-`GET /v1/allowlist/:address`). The links X account ↔ wallet and Discord account ↔ wallet are
-private to the API.
+`DISCORD_BONUS` (3) more once the pass's holder joined the Discord server, and `REFERRAL_BONUS`
+(2) for each pass naming its code in `referred_by` that holds a seat, has a wallet and another X
+account, up to `REFERRAL_CAP` (10) of them (`bonus` in `GET /v1/allowlist/:address`). The links
+X account ↔ wallet, Discord account ↔ wallet and referrer ↔ referred pass are private to the API.
 
 ### Shared by the API replicas
 
@@ -348,7 +349,7 @@ private to the API.
 
 | Table | What | Rebuilt by a replay |
 | --- | --- | --- |
-| `testnet.x_passes`, `testnet.allow_list_claims`, `testnet.ideas` | the same columns as their `public` tables (`like ... including all`, migration 24): the boarding passes, claims and ideas of `testnet.do-not-open.app`, whose API replicas (`LISTS_SCHEMA=testnet`) search `testnet` before `public` and share every other table, the chain's index included | no; never mixed with the live lists, which last until mainnet |
+| `testnet.x_passes`, `testnet.allow_list_claims`, `testnet.ideas` | the same columns as their `public` tables (`like ... including all`, migration 24; `referred_by` added by migration 26): the boarding passes, claims and ideas of `testnet.do-not-open.app`, whose API replicas (`LISTS_SCHEMA=testnet`) search `testnet` before `public` and share every other table, the chain's index included | no; never mixed with the live lists, which last until mainnet |
 
 ## Croquettes
 

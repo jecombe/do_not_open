@@ -1,7 +1,7 @@
 import { Wallet } from "ethers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AllowList } from "../src/application/allowList";
-import { DISCORD_BONUS, DISCORD_CODE_TTL, DISCORD_MIN_AGE, discordCreatedAt, parseTweetUrl, SIGN_IN_TTL, X_PASS_BONUS, xPassBonuses, XPasses, xPassWalletMessage, type Tweet, type TweetLookup, type XSignIn } from "../src/application/xPass";
+import { DISCORD_BONUS, DISCORD_CODE_TTL, DISCORD_MIN_AGE, discordCreatedAt, parseTweetUrl, REFERRAL_BONUS, REFERRAL_CAP, SIGN_IN_TTL, X_PASS_BONUS, xPassBonuses, XPasses, xPassWalletMessage, type Tweet, type TweetLookup, type XSignIn } from "../src/application/xPass";
 import { ethersVerifier, loginSecrets, passSecrets } from "../src/infrastructure/auth/crypto";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
 import { OEmbedTweets, oEmbedText } from "../src/infrastructure/x/OEmbedTweets";
@@ -38,7 +38,7 @@ describe("X boarding passes", () => {
 
   it("hands out a token once, and keeps only its hash", async () => {
     const { token, pass } = await passes.start();
-    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), seated: false, handle: null, tweetUrl: null, followed: false, tasks: { follow: false, post: false, like: false, reply: false, repost: false }, address: null, discord: false, bonus: 0 });
+    expect(pass).toEqual({ code: expect.stringMatching(/^DNO-[A-HJ-NP-Z2-9]{6}$/), seated: false, handle: null, tweetUrl: null, followed: false, tasks: { follow: false, post: false, like: false, reply: false, repost: false }, address: null, discord: false, bonus: 0, referredBy: null, referrals: { counted: 0, pending: 0 } });
     const [stored] = await store.xPasses();
     expect(stored!.id).toBe(passSecrets.hash(token));
     expect(JSON.stringify(stored)).not.toContain(token);
@@ -116,6 +116,82 @@ describe("X boarding passes", () => {
     const message = linkMessage(wallet.address, pass.code);
     await passes.linkWallet(token, wallet.address, message, await wallet.signMessage(message));
     expect(await list.status(wallet.address)).toMatchObject({ bonus: X_PASS_BONUS, points: X_PASS_BONUS, rank: null });
+  });
+});
+
+describe("referrals", () => {
+  let store: MemoryStore;
+  let tweets: FakeTweets;
+  let passes: XPasses;
+  let now: number;
+  let posts: number;
+
+  beforeEach(() => {
+    store = new MemoryStore();
+    tweets = new FakeTweets();
+    now = 1_000;
+    posts = 0;
+    passes = new XPasses(store, tweets, passSecrets, ethersVerifier, { now: () => now });
+  });
+
+  /** A pass with its X account connected and, unless told otherwise, a wallet linked. */
+  const board = async (handle: string, ref: string | null = null, withWallet = true) => {
+    const { token, pass } = await passes.start(ref);
+    await passes.verifyTweet(token, tweets.post(handle, String(++posts), pass.code));
+    if (!withWallet) return { token, pass: await passes.status(token) };
+    const w = Wallet.createRandom();
+    const message = xPassWalletMessage(w.address, pass.code, new Date(now * 1000));
+    return { token, pass: await passes.linkWallet(token, w.address, message, await w.signMessage(message)), wallet: w };
+  };
+
+  it("names the referrer from the link a pass starts from, and drops a code that names no pass", async () => {
+    const referrer = await board("cat");
+    expect((await passes.start(referrer.pass.code.toLowerCase())).pass.referredBy).toBe(referrer.pass.code);
+    expect((await passes.start("DNO-ZZZZZZ")).pass.referredBy).toBeNull();
+    expect((await passes.start("not a code")).pass.referredBy).toBeNull();
+  });
+
+  it("takes a referrer later only once, and only before the X account is connected", async () => {
+    const referrer = await board("cat");
+    const { token, pass } = await passes.start();
+    await expect(passes.refer(token, "DNO-ZZZZZZ")).rejects.toMatchObject({ code: "bad-referral" });
+    await expect(passes.refer(token, pass.code)).rejects.toMatchObject({ code: "bad-referral" });
+    expect((await passes.refer(token, referrer.pass.code)).referredBy).toBe(referrer.pass.code);
+    await expect(passes.refer(token, referrer.pass.code)).rejects.toMatchObject({ code: "referral-locked" });
+
+    const late = await board("dog");
+    await expect(passes.refer(late.token, referrer.pass.code)).rejects.toMatchObject({ code: "referral-locked" });
+  });
+
+  it("counts a referral once it holds a seat with a wallet linked, up to the cap", async () => {
+    const referrer = await board("cat");
+    await board("idle", referrer.pass.code, false);
+    await passes.start(referrer.pass.code);
+    expect(await passes.status(referrer.token)).toMatchObject({ bonus: X_PASS_BONUS, referrals: { counted: 0, pending: 2 } });
+
+    for (let i = 0; i < REFERRAL_CAP + 1; i++) await board(`friend${i}`, referrer.pass.code);
+    const capped = X_PASS_BONUS + REFERRAL_CAP * REFERRAL_BONUS;
+    expect(await passes.status(referrer.token)).toMatchObject({ bonus: capped, referrals: { counted: REFERRAL_CAP + 1, pending: 2 } });
+    expect((await xPassBonuses(store)).get(referrer.wallet!.address.toLowerCase() as never)).toBe(capped);
+    // The referrals earn nothing for having been referred.
+    expect((await passes.status((await board("last", referrer.pass.code)).token)).bonus).toBe(X_PASS_BONUS);
+  });
+
+  it("counts only seated referrals, by the list's own rule", async () => {
+    const referrer = await board("cat");
+    await board("dog", referrer.pass.code);
+    expect((await xPassBonuses(store, () => false)).get(referrer.wallet!.address.toLowerCase() as never)).toBe(X_PASS_BONUS);
+    expect((await xPassBonuses(store)).get(referrer.wallet!.address.toLowerCase() as never)).toBe(X_PASS_BONUS + REFERRAL_BONUS);
+  });
+
+  it("keeps the referrals of an account that moves to a new pass, and never lets it refer itself", async () => {
+    const referrer = await board("cat");
+    await board("dog", referrer.pass.code);
+    // A new browser, started from the account's own old link.
+    const { token, pass } = await passes.start(referrer.pass.code);
+    const moved = await passes.verifyTweet(token, tweets.post("cat", "99", pass.code));
+    expect(moved).toMatchObject({ code: pass.code, referredBy: null, referrals: { counted: 1, pending: 0 }, bonus: X_PASS_BONUS + REFERRAL_BONUS });
+    expect((await store.xPassByHandle("dog"))!.referredBy).toBe(pass.code);
   });
 });
 

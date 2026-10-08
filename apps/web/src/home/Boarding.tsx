@@ -1,9 +1,29 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { DISCORD_BONUS, X_PASS_BONUS } from "@dno/chain-adapter/standings";
+import { DISCORD_BONUS, REFERRAL_BONUS, REFERRAL_CAP, X_PASS_BONUS } from "@dno/chain-adapter/standings";
 import { ANNOUNCEMENT_TWEET_ID, announcementLinks, DISCORD, X_FOLLOW, X_HANDLE, xPost } from "../links";
 import { useLocale } from "../i18n/locale";
-import { duelRankingPath, homePath, SITE_URL } from "../site";
-import { declareXTask, discordBoardCode, signInWithX, xPassStatus, startXPass, useSeats, useXPass, verifyXPassTweet, xPassApi, XPassError, xSettings, type XPassView, type XTask } from "../xpass";
+import { canShareFiles, copy, download, intentUrl } from "../share/links";
+import { applyPath, duelRankingPath, homePath, SITE_URL } from "../site";
+import {
+  declareXTask,
+  discordBoardCode,
+  forgetReferral,
+  pendingReferral,
+  referralUrl,
+  referXPass,
+  rememberReferral,
+  signInWithX,
+  xPassStatus,
+  startXPass,
+  useSeats,
+  useXPass,
+  verifyXPassTweet,
+  xPassApi,
+  XPassError,
+  xSettings,
+  type XPassView,
+  type XTask,
+} from "../xpass";
 import { useT } from "./i18n";
 
 const REFUSALS = ["bad-tweet-url", "tweet-not-found", "code-missing", "tweet-used", "x-down", "no-pass", "sign-in-expired", "sign-in-refused", "list-full"] as const;
@@ -16,7 +36,9 @@ const WAIT = 8;
  * the X account: Sign in with X, then the boarding tweet (where the API has no X app, a post
  * carrying the boarding code proves the account instead). On the right, four quick tasks on X,
  * declared by the player and checked by hand before mainnet. Below, the bonus: the Discord
- * server (proved with `/board` there), a wallet and testnet play.
+ * server (proved with `/board` there), a wallet and testnet play, and once the account is
+ * connected, the pass's referral link. A `?ref=` this page was opened with names the referrer of
+ * the pass this browser starts.
  */
 export function Boarding() {
   const t = useT();
@@ -50,7 +72,34 @@ export function Boarding() {
     setError((REFUSALS as readonly string[]).includes(c) ? t(`home.boarding.error.${c as (typeof REFUSALS)[number]}`, { code }) : t("home.boarding.error.network"));
   };
 
-  const ensurePass = async (): Promise<XPassView> => pass ?? (await startXPass().then((p) => (set(p), p)));
+  const ensurePass = async (): Promise<XPassView> => {
+    if (pass) return pass;
+    const p = await startXPass(pendingReferral());
+    forgetReferral();
+    set(p);
+    return p;
+  };
+
+  // A referral link opened on a browser that already holds a pass: it names the referrer, if the
+  // pass has none yet and its X account is not connected. Any refusal drops the code.
+  useEffect(() => rememberReferral(), []);
+  useEffect(() => {
+    const ref = pendingReferral();
+    if (!pass || !ref) return;
+    if (pass.handle || pass.referredBy) {
+      forgetReferral();
+      return;
+    }
+    referXPass(ref).then(
+      (p) => {
+        forgetReferral();
+        set(p);
+      },
+      (e: unknown) => {
+        if (e instanceof XPassError && e.code !== "network") forgetReferral();
+      },
+    );
+  }, [pass, set]);
 
   // Back from X: `?x=ok` or what went wrong. The pass itself reloads with the page.
   useEffect(() => {
@@ -246,6 +295,8 @@ export function Boarding() {
 
         {discord && live && <DiscordStep pass={pass} ensurePass={ensurePass} onPass={set} onError={(e) => fail(e)} />}
 
+        {verified && live && <Invite pass={pass!} />}
+
         <p className="boarding-error" aria-live="polite">
           {error}
         </p>
@@ -274,6 +325,106 @@ export function Boarding() {
         </a>
       </div>
     </section>
+  );
+}
+
+/**
+ * The pass's referral link: each friend who boards from it, takes a seat and links a wallet adds
+ * REFERRAL_BONUS points, up to REFERRAL_CAP friends. The link goes out as is, in a post on X, or
+ * printed on a picture of the pass.
+ */
+function Invite({ pass }: { pass: XPassView }) {
+  const t = useT();
+  const locale = useLocale();
+  const [copied, setCopied] = useState(false);
+  const [card, setCard] = useState<{ file: File; src: string } | null>(null);
+  const [drawing, setDrawing] = useState(false);
+  const link = referralUrl(SITE_URL, applyPath(locale), pass.code);
+  const { counted, pending } = pass.referrals;
+  const capped = counted >= REFERRAL_CAP;
+
+  useEffect(() => {
+    if (!card) return;
+    return () => URL.revokeObjectURL(card.src);
+  }, [card]);
+
+  const draw = async () => {
+    setDrawing(true);
+    try {
+      const { drawBoardingCard } = await import("../share/boardingCard");
+      const blob = await drawBoardingCard({
+        title: t("home.boarding.card.title"),
+        passenger: t("home.boarding.card.passenger"),
+        from: t("home.boarding.card.from"),
+        to: t("home.boarding.card.to"),
+        gate: t("home.boarding.card.gate"),
+        handle: `@${pass.handle}`,
+        fromValue: "SEPOLIA",
+        toValue: "MAINNET",
+        gateValue: "X",
+        code: pass.code,
+        stamp: t(pass.seated ? "home.boarding.card.seated" : "home.boarding.card.boarding"),
+        invite: t("home.boarding.card.invite"),
+        where: link.replace(/^https?:\/\//, ""),
+      });
+      setCard({ file: new File([blob], `${pass.code}.png`, { type: "image/png" }), src: URL.createObjectURL(blob) });
+    } finally {
+      setDrawing(false);
+    }
+  };
+
+  const share = async () => {
+    if (!card) return;
+    try {
+      await navigator.share({ files: [card.file], text: `${t("home.boarding.invite.post")}\n${link}` });
+    } catch {
+      // Closed without sharing.
+    }
+  };
+
+  return (
+    <div className="boarding-invite">
+      <span className="boarding-bonus-tag">{t("home.boarding.invite.tag", { bonus: REFERRAL_BONUS })}</span>
+      <strong>{t("home.boarding.invite.title", { bonus: REFERRAL_BONUS })}</strong>
+      <span>{t("home.boarding.invite.body", { cap: REFERRAL_CAP, max: REFERRAL_CAP * REFERRAL_BONUS })}</span>
+      <span className="boarding-task-actions">
+        <button type="button" className="boarding-code boarding-command" onClick={() => void copy(link).then(setCopied)} title={t("home.boarding.discord.copy")}>
+          {link}
+          <span className="boarding-command-hint">{copied ? t("home.boarding.discord.copied") : t("home.boarding.discord.copy")}</span>
+        </button>
+      </span>
+      <span className="boarding-invite-count">
+        {t("home.boarding.invite.counted", { count: counted })}
+        {pending > 0 && ` · ${t("home.boarding.invite.pending", { count: pending })}`}
+        {capped && ` · ${t("home.boarding.invite.capped")}`}
+      </span>
+      <span className="boarding-task-actions">
+        <a className="btn btn-small btn-x" href={intentUrl("x", t("home.boarding.invite.post"), link)} target="_blank" rel="noreferrer">
+          <XLogo />
+          {t("home.boarding.invite.onX")}&nbsp;↗
+        </a>
+        {!card && (
+          <button type="button" className="btn btn-small btn-paper" onClick={() => void draw()} disabled={drawing} aria-busy={drawing}>
+            {drawing ? t("home.boarding.invite.drawing") : t("home.boarding.invite.card")}
+          </button>
+        )}
+      </span>
+      {card && (
+        <figure className="boarding-invite-card">
+          <img src={card.src} alt={t("home.boarding.invite.cardAlt", { handle: pass.handle ?? "" })} width={1200} height={675} />
+          <span className="boarding-task-actions">
+            <button type="button" className="btn btn-small btn-paper" onClick={() => download(card.file)}>
+              {t("home.boarding.invite.download")}
+            </button>
+            {canShareFiles(card.file) && (
+              <button type="button" className="btn btn-small" onClick={() => void share()}>
+                {t("home.boarding.invite.share")}
+              </button>
+            )}
+          </span>
+        </figure>
+      )}
+    </div>
   );
 }
 

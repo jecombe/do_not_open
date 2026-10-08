@@ -438,6 +438,15 @@ describe("X boarding passes", () => {
     expect((await call("POST", "/v1/xpass/task", token, { task: "dance" })).statusCode).toBe(400);
   });
 
+  it("starts a pass from a referral link, or names the referrer afterwards", async () => {
+    const referrer = (await call("POST", "/v1/xpass")).json().data.pass;
+    expect((await call("POST", "/v1/xpass", undefined, { ref: referrer.code })).json().data.pass).toMatchObject({ referredBy: referrer.code, referrals: { counted: 0, pending: 0 } });
+    const { token } = (await call("POST", "/v1/xpass", undefined, {})).json().data;
+    expect((await call("POST", "/v1/xpass/referrer", token, { code: "DNO-ZZZZZZ" })).json()).toMatchObject({ error: "bad-referral" });
+    expect((await call("POST", "/v1/xpass/referrer", token, { code: referrer.code })).json().data).toMatchObject({ referredBy: referrer.code });
+    expect((await call("POST", "/v1/xpass/referrer", token, { code: referrer.code })).statusCode).toBe(409);
+  });
+
   it("lists every pass only for whoever holds the token, without the token hashes", async () => {
     expect((await get("/v1/xpass/all")).status).toBe(401);
     const all = (await get(`/v1/xpass/all?token=${ADMIN}`)).body.data as Record<string, unknown>[];

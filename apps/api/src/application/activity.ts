@@ -12,6 +12,7 @@ export type Activity =
   | { kind: "seated"; handle: string | null; code: string }
   | { kind: "wallet"; handle: string; code: string }
   | { kind: "discord"; handle: string | null; code: string }
+  | { kind: "referred"; code: string; by: { handle: string | null; code: string } }
   | { kind: "claim"; handle: string | null; address: Address }
   | { kind: "idea"; handle: string | null; text: string; locale: string };
 
@@ -42,6 +43,8 @@ export function activityText(a: Activity): string {
       return `👛 ${who(a.handle)} linked a wallet to their pass.`;
     case "discord":
       return `🎮 ${who(a.handle, a.code)} joined the Discord server and ran /board.`;
+    case "referred":
+      return `🤝 pass ${a.code} started from ${who(a.by.handle, a.by.code)}'s referral link.`;
     case "claim":
       return `✍️ ${a.handle ? who(a.handle) : short(a.address)} claimed a place on the whitelist.`;
     case "idea": {

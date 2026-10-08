@@ -192,7 +192,7 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
     });
 
     it("keeps X boarding passes, each code, handle, tweet, wallet and Discord account on one pass only", async () => {
-      const p = { id: "h1", code: "DNO-AAAAAA", handle: null, xUserId: null, tweetId: null, tweetUrl: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, createdAt: 100, verifiedAt: null, updatedAt: 100 };
+      const p = { id: "h1", code: "DNO-AAAAAA", handle: null, xUserId: null, tweetId: null, tweetUrl: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, referredBy: null, createdAt: 100, verifiedAt: null, updatedAt: 100 };
       await store.saveXPass(p);
       const verified = { ...p, handle: "cat", xUserId: "9001", postedAt: 109, tweetId: "42", tweetUrl: "https://x.com/cat/status/42", followedAt: 110, likedAt: 111, repliedAt: 112, repostedAt: 113, address: ALICE, discordUserId: "7007", discordJoinedAt: 115, verifiedAt: 120, updatedAt: 120 };
       await store.saveXPass(verified);
@@ -210,6 +210,11 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       await expect(store.saveXPass({ ...p, id: "h3", code: "DNO-CCCCCC", handle: "cat" })).rejects.toThrow();
       await expect(store.saveXPass({ ...p, id: "h4", code: "DNO-DDDDDD", discordUserId: "7007" })).rejects.toThrow();
       expect((await store.xPasses()).map((x) => x.id)).toEqual(["h2", "h1"]);
+      // A referrer's code finds the passes that name it, oldest first.
+      await store.saveXPass({ ...p, id: "h5", code: "DNO-EEEEEE", referredBy: "DNO-AAAAAA", createdAt: 130 });
+      await store.saveXPass({ ...p, id: "h6", code: "DNO-FFFFFF", referredBy: "DNO-AAAAAA", createdAt: 125 });
+      expect((await store.xPassReferrals("DNO-AAAAAA")).map((x) => x.id)).toEqual(["h6", "h5"]);
+      expect(await store.xPassReferrals("DNO-BBBBBB")).toEqual([]);
       await store.deleteXPass("h1");
       expect(await store.xPassByHandle("cat")).toBeNull();
     });

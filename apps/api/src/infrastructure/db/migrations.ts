@@ -623,4 +623,17 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       update posts set key = 'v0x7b24:' || key where kind not in ('digest', 'lesson') and key not like 'v0x%';
     `,
   },
+  {
+    version: 26,
+    name: "boarding referrals",
+    sql: /* sql */ `
+      -- The code of the pass whose ?ref= link a pass started from: the referrer earns points for
+      -- each referral that takes a seat and links a wallet. A release that does not know the
+      -- column leaves it as it is. The testnet site's copy of the table gets it too.
+      alter table x_passes add column referred_by text;
+      create index x_passes_referred_by on x_passes (referred_by) where referred_by is not null;
+      alter table testnet.x_passes add column if not exists referred_by text;
+      create index if not exists x_passes_referred_by on testnet.x_passes (referred_by) where referred_by is not null;
+    `,
+  },
 ];

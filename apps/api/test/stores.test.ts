@@ -39,7 +39,7 @@ describe.skipIf(!url)("postgres", () => {
     const testnetPool = new pg.Pool({ connectionString: url, options: "-c search_path=testnet,public" });
     try {
       const testnet = new PgStore(testnetPool);
-      const pass = { id: "t1", code: "DNO-TESTNT", handle: "tester", xUserId: null, tweetId: null, tweetUrl: null, followedAt: 1, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, createdAt: 1, verifiedAt: null, updatedAt: 1 };
+      const pass = { id: "t1", code: "DNO-TESTNT", handle: "tester", xUserId: null, tweetId: null, tweetUrl: null, followedAt: 1, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, referredBy: null, createdAt: 1, verifiedAt: null, updatedAt: 1 };
       await testnet.saveXPass(pass);
       await testnet.saveAllowListClaim({ address: ALICE, points: 1, message: "m", signature: "s", claimedAt: 1, updatedAt: 1 });
       await testnet.saveIdea({ text: "only on the testnet", handle: null, locale: "en", createdAt: 1 });

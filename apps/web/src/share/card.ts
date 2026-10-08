@@ -154,7 +154,7 @@ function slip(g: CanvasRenderingContext2D, W: number, H: number, text: CardText,
 }
 
 /** A red rubber stamp, a bit crooked and a bit worn. Inked on its own sheet so the wear only takes ink. */
-function stamp(g: CanvasRenderingContext2D, cx: number, cy: number, word: string) {
+export function stamp(g: CanvasRenderingContext2D, cx: number, cy: number, word: string) {
   const sheet = document.createElement("canvas");
   sheet.width = 560;
   sheet.height = 160;
@@ -189,7 +189,7 @@ function stamp(g: CanvasRenderingContext2D, cx: number, cy: number, word: string
 }
 
 /** Shortens a line with an ellipsis until it fits. */
-function fit(g: CanvasRenderingContext2D, line: string, max: number): string {
+export function fit(g: CanvasRenderingContext2D, line: string, max: number): string {
   if (g.measureText(line).width <= max) return line;
   let s = line;
   while (s.length > 1 && g.measureText(`${s}…`).width > max) s = s.slice(0, -1);

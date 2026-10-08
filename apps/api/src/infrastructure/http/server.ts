@@ -359,6 +359,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       "sign-in-refused": 400,
       "list-full": 409,
       "discord-off": 503,
+      "bad-referral": 404,
+      "referral-locked": 409,
     };
     const passToken = (req: FastifyRequest) => {
       const h = req.headers.authorization;
@@ -375,7 +377,11 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     };
     const { passes } = xPasses;
 
-    app.post("/v1/xpass", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (_req, reply) => passed(reply, () => passes.start()));
+    const referral = z.string().trim().max(20);
+    app.post("/v1/xpass", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ ref: referral.optional() }).nullish().parse(req.body);
+      return passed(reply, () => passes.start(body?.ref || null));
+    });
     app.get("/v1/xpass", async (req, reply) => passed(reply, () => passes.status(passToken(req))));
     // Sign in with X: the site asks for the URL (the pass token stays out of any address bar),
     // X sends the player back to the callback, which sends them back to the site.
@@ -412,6 +418,11 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       return reply.redirect(back.toString(), 303);
     });
 
+    // The pass whose ?ref= link brought this one: once, before the X account is connected.
+    app.post("/v1/xpass/referrer", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const body = z.object({ code: referral.min(1) }).parse(req.body);
+      return passed(reply, () => passes.refer(passToken(req), body.code));
+    });
     app.post("/v1/xpass/follow", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => passed(reply, () => passes.follow(passToken(req))));
     app.post("/v1/xpass/task", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
       const body = z.object({ task: z.enum(X_TASKS) }).parse(req.body);

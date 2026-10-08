@@ -44,7 +44,7 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Done** on the mock and in the tests, not yet deployed on Sepolia |
 | Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 15) | **Done** |
 | Whitelist gifts | Each seated wallet collects its class's gift once (`WhitelistGifts`): an encrypted draw of cCROQ, a box minted free out of the 1,000 the sale leaves (`DoNotOpen.gift`), a free rat (`Rats.gift`), against a Merkle root of (wallet, tier) | **Done**, live on Sepolia since 2026-10-08 (root not set yet) |
-| Boarding page | `/apply`: a boarding gate in 3D (boxes on a baggage belt, a cat at the desk, a rat on the tarmac), Sign in with X, five quick tasks on X (declared), the mainnet list's points and a wallet bonus; linked from the home page's "Apply" button (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
+| Boarding page | `/apply`: a boarding gate in 3D (boxes on a baggage belt, a cat at the desk, a rat on the tarmac), Sign in with X, five quick tasks on X (declared), the mainnet list's points, a wallet bonus and a referral link with a printable boarding pass; linked from the home page's "Apply" button (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
 
 ## Layout
 

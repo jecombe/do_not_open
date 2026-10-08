@@ -1,4 +1,4 @@
-import { DISCORD_BONUS, X_PASS_BONUS } from "@dno/chain-adapter/standings";
+import { DISCORD_BONUS, REFERRAL_BONUS, REFERRAL_CAP, X_PASS_BONUS } from "@dno/chain-adapter/standings";
 import { normalizeAddress, type Address } from "../domain/types";
 import { noActivityFeed, type ActivityFeed } from "./activity";
 import type { Clock, SignatureVerifier } from "./auth";
@@ -11,6 +11,8 @@ import type { Store } from "./ports/store";
  * follows, likes and reposts cannot be read without a paid API, so the tasks are declared and
  * the team checks the list by hand before mainnet. Joining the Discord server is proved instead:
  * the player runs `/board` there with a one-time code from the site, and Discord says who ran it.
+ * A pass may name the pass that referred it (its code, from a `?ref=` link); the referrer earns
+ * points for each one that takes a seat and links a wallet.
  */
 export interface XPass {
   /** sha256 of the secret token the browser keeps: the token itself is never stored. */
@@ -35,6 +37,8 @@ export interface XPass {
   /** The Discord account that ran `/board` in the server with this pass's code. Private. */
   discordUserId: string | null;
   discordJoinedAt: number | null;
+  /** The code of the pass that referred this one, set before the X account is connected. */
+  referredBy: string | null;
   createdAt: number;
   verifiedAt: number | null;
   updatedAt: number;
@@ -54,6 +58,16 @@ export interface XPassView {
   discord: boolean;
   /** Bonus points the pass adds to its wallet on the allow list. */
   bonus: number;
+  /** The code of the pass that referred this one. */
+  referredBy: string | null;
+  /** The passes this one referred: those that count (seated, wallet linked) and the others. */
+  referrals: Referrals;
+}
+
+export interface Referrals {
+  /** Seated with a wallet linked: each earns REFERRAL_BONUS, up to REFERRAL_CAP. */
+  counted: number;
+  pending: number;
 }
 
 /** The tasks on X a pass asks for: follow the account, post a boarding tweet, like, reply to and
@@ -123,7 +137,9 @@ export type XPassRefusal =
   | "sign-in-expired"
   | "sign-in-refused"
   | "list-full"
-  | "discord-off";
+  | "discord-off"
+  | "bad-referral"
+  | "referral-locked";
 
 export class XPassRefused extends Error {
   constructor(
@@ -134,7 +150,9 @@ export class XPassRefused extends Error {
   }
 }
 
-export { DISCORD_BONUS, X_PASS_BONUS, xPassWalletMessage } from "@dno/chain-adapter/standings";
+export { DISCORD_BONUS, REFERRAL_BONUS, REFERRAL_CAP, X_PASS_BONUS, xPassWalletMessage } from "@dno/chain-adapter/standings";
+
+const CODE = /^DNO-[A-Z0-9]{6}$/;
 
 const TWEET_URL = /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d{1,25})(?:[/?#].*)?$/;
 
@@ -250,20 +268,44 @@ export class XPasses {
     return { returnTo, outcome: "ok" };
   }
 
-  /** A new, empty pass: the token goes to the browser, once. */
-  async start(): Promise<{ token: string; pass: XPassView }> {
+  /** A new, empty pass: the token goes to the browser, once. A referrer's code that names no
+   *  pass is dropped: a stale link never stops anyone from boarding. */
+  async start(ref: string | null = null): Promise<{ token: string; pass: XPassView }> {
     const { token, id } = this.secrets.token();
     let code = this.secrets.code();
     // Codes are short: draw again on the rare clash.
     for (let i = 0; i < 5 && (await this.store.xPassByCode(code)); i++) code = this.secrets.code();
     const now = this.clock.now();
-    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, xUserId: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, createdAt: now, verifiedAt: null, updatedAt: now };
+    const pass: XPass = { id, code, handle: null, tweetId: null, tweetUrl: null, xUserId: null, followedAt: null, postedAt: null, likedAt: null, repliedAt: null, repostedAt: null, address: null, discordUserId: null, discordJoinedAt: null, referredBy: null, createdAt: now, verifiedAt: null, updatedAt: now };
+    const referrer = ref ? await this.referrer(ref) : null;
+    if (referrer && referrer.code !== code) pass.referredBy = referrer.code;
     await this.store.saveXPass(pass);
-    return { token, pass: this.view(pass) };
+    if (pass.referredBy) this.feed.tell({ kind: "referred", code: pass.code, by: { handle: referrer!.handle, code: referrer!.code } });
+    return { token, pass: await this.view(pass) };
   }
 
   async status(token: string): Promise<XPassView> {
     return this.view(await this.find(token));
+  }
+
+  /**
+   * Names the pass that referred this one. Only once, and only before the X account is
+   * connected: a referral brings someone in, it is not handed out afterwards.
+   */
+  async refer(token: string, rawCode: string): Promise<XPassView> {
+    const pass = await this.find(token);
+    if (pass.referredBy || pass.handle) throw new XPassRefused("referral-locked", "a pass names its referrer once, before its X account is connected");
+    const referrer = await this.referrer(rawCode);
+    if (!referrer || referrer.id === pass.id) throw new XPassRefused("bad-referral", "no other boarding pass has this code");
+    const next = { ...pass, referredBy: referrer.code, updatedAt: this.clock.now() };
+    await this.store.saveXPass(next);
+    this.feed.tell({ kind: "referred", code: next.code, by: { handle: referrer.handle, code: referrer.code } });
+    return this.view(next);
+  }
+
+  private async referrer(rawCode: string): Promise<XPass | null> {
+    const code = rawCode.trim().toUpperCase();
+    return CODE.test(code) ? this.store.xPassByCode(code) : null;
   }
 
   /** Notes a task the player says they did on X. The first time counts; again is a no-op. */
@@ -337,13 +379,23 @@ export class XPasses {
         address: next.address ?? older.address,
         discordUserId: next.discordUserId ?? older.discordUserId,
         discordJoinedAt: next.discordUserId ? next.discordJoinedAt : older.discordJoinedAt,
+        referredBy: next.referredBy ?? older.referredBy,
         createdAt: Math.min(older.createdAt, next.createdAt),
       };
     }
+    const olderCodes = [...new Set([byId, byHandle].flatMap((o) => (o && o.id !== pass.id ? [o.code] : [])))];
+    // A pass never refers itself, even by way of an older pass of the same account.
+    if (next.referredBy && (next.referredBy === next.code || olderCodes.includes(next.referredBy))) next = { ...next, referredBy: null };
     // Someone who had no seat, on this pass or an older one of the same account, sits down now.
     const seated = await this.sitDown(pass, next, [byId, byHandle]);
     for (const older of [byId, byHandle]) if (older && older.id !== pass.id) await this.store.deleteXPass(older.id);
     await this.store.saveXPass(next);
+    // Those the older passes referred now count for this one: the code changed, not the person.
+    for (const old of olderCodes) {
+      for (const referee of await this.store.xPassReferrals(old)) {
+        if (referee.id !== next.id) await this.store.saveXPass({ ...referee, referredBy: next.code, updatedAt: now });
+      }
+    }
     // A handle new to this pass: an account signing in again on its own pass says nothing.
     if (pass.handle !== next.handle) this.feed.tell({ kind: "x-connected", handle: proof.handle, via, code: next.code });
     if (seated) this.feed.tell({ kind: "seated", handle: next.handle, code: next.code });
@@ -362,8 +414,13 @@ export class XPasses {
     return true;
   }
 
-  private view(p: XPass): XPassView {
-    return view(p, this.seats ? this.seats.passSeated(p) : !!p.handle);
+  private seated(p: XPass): boolean {
+    return this.seats ? this.seats.passSeated(p) : !!p.handle;
+  }
+
+  private async view(p: XPass): Promise<XPassView> {
+    const referrals = countReferrals(p, await this.store.xPassReferrals(p.code), (r) => this.seated(r));
+    return view(p, this.seated(p), referrals);
   }
 
   /** Links a wallet, signed by it. The pass needs its X account first. */
@@ -408,17 +465,36 @@ export class XPasses {
   }
 }
 
-/** What a pass adds to its wallet: the X bonus once it is verified and linked, and the Discord one on top. */
-export const passBonus = (p: XPass): number => (p.handle && p.address ? X_PASS_BONUS + (p.discordUserId ? DISCORD_BONUS : 0) : 0);
+/** What a pass adds to its wallet: the X bonus once it is verified and linked, the Discord one
+ *  on top, and REFERRAL_BONUS for each referral that counts, up to REFERRAL_CAP. */
+export const passBonus = (p: XPass, referrals = 0): number =>
+  p.handle && p.address ? X_PASS_BONUS + (p.discordUserId ? DISCORD_BONUS : 0) + Math.min(referrals, REFERRAL_CAP) * REFERRAL_BONUS : 0;
 
-/** The allow list bonus of each wallet linked to a verified pass. */
-export async function xPassBonuses(store: Store): Promise<Map<Address, number>> {
+/**
+ * The passes a pass referred, split: a referral counts once it holds a seat with a wallet linked
+ * (a seat alone costs nothing but an X account) and belongs to another X account.
+ */
+export function countReferrals(referrer: XPass, referees: readonly XPass[], seated: (p: XPass) => boolean): Referrals {
+  const mine = referees.filter((r) => r.referredBy === referrer.code && r.id !== referrer.id);
+  const counted = mine.filter((r) => seated(r) && !!r.address && r.handle !== referrer.handle).length;
+  return { counted, pending: mine.length - counted };
+}
+
+/** The allow list bonus of each wallet linked to a verified pass. `seated` says which referrals
+ *  hold a seat (by default, any with its X account connected). */
+export async function xPassBonuses(store: Store, seated: (p: XPass) => boolean = (p) => !!p.handle): Promise<Map<Address, number>> {
+  const passes = await store.xPasses();
+  const referees = new Map<string, XPass[]>();
+  for (const p of passes) if (p.referredBy) referees.set(p.referredBy, [...(referees.get(p.referredBy) ?? []), p]);
   const bonus = new Map<Address, number>();
-  for (const p of await store.xPasses()) if (p.address && passBonus(p) > 0) bonus.set(p.address, passBonus(p));
+  for (const p of passes) {
+    const points = passBonus(p, countReferrals(p, referees.get(p.code) ?? [], seated).counted);
+    if (p.address && points > 0) bonus.set(p.address, points);
+  }
   return bonus;
 }
 
-function view(p: XPass, seated: boolean): XPassView {
+function view(p: XPass, seated: boolean, referrals: Referrals): XPassView {
   const tasks = Object.fromEntries(X_TASKS.map((t) => [t, p[TASK_FIELD[t]] !== null])) as Record<XTask, boolean>;
-  return { code: p.code, seated, handle: p.handle, tweetUrl: p.tweetUrl, followed: tasks.follow, tasks, address: p.address, discord: p.discordUserId !== null, bonus: passBonus(p) };
+  return { code: p.code, seated, handle: p.handle, tweetUrl: p.tweetUrl, followed: tasks.follow, tasks, address: p.address, discord: p.discordUserId !== null, bonus: passBonus(p, referrals.counted), referredBy: p.referredBy, referrals };
 }

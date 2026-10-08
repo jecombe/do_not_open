@@ -124,3 +124,8 @@ export const X_PASS_BONUS = 5;
 
 /** Points a boarding pass adds on top, once its holder joined the Discord server (`/board`). */
 export const DISCORD_BONUS = 3;
+
+/** Points a boarding pass adds for each pass it referred (`?ref=<code>`) that took a seat and
+ *  linked a wallet, up to REFERRAL_CAP of them. */
+export const REFERRAL_BONUS = 2;
+export const REFERRAL_CAP = 10;
