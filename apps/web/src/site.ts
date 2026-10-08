@@ -7,8 +7,8 @@ export const SITE_URL = "https://do-not-open.app";
 /** The pages served once per language, as their path names them (prefix removed). */
 export type LocalizedPage = "home" | "project" | "docs" | "vaultDocs" | "studio" | "apply";
 
-/** Which part of the site each page belongs to: the game's manual on `game.`, the vault's docs on `vault.`. */
-const PART: Record<LocalizedPage, HostPart> = { home: "site", project: "site", docs: "game", vaultDocs: "vault", studio: "site", apply: "site" };
+/** Which part of the site each page belongs to: the game's manual and the studio on `game.`, the vault's docs on `vault.`. */
+const PART: Record<LocalizedPage, HostPart> = { home: "site", project: "site", docs: "game", vaultDocs: "vault", studio: "game", apply: "site" };
 
 /**
  * A page's path after its language prefix. On the site's domains every part has its docs at

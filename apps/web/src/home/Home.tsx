@@ -1,67 +1,27 @@
 import { DEFAULT_ALLOW_LIST_PLACES } from "@dno/chain-adapter/standings";
-import { useEffect, useId, useRef, useState } from "react";
-import { spec, studio } from "@dno/game-spec";
+import { useEffect, useRef, useState } from "react";
+import { spec } from "@dno/game-spec";
 import type { CatSpec } from "@dno/generator";
-import { CatParade } from "../docs/CatParade";
-import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD } from "../links";
 import { useLocale } from "../i18n/locale";
-import { applyPath, appPath, docsPath, projectDocsPath, studioPath, vaultDocsPath, vaultPath } from "../site";
-import { buildName, catNames } from "../i18n/names";
+import { applyPath, appPath, docsPath, vaultDocsPath, vaultPath } from "../site";
+import { catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
 import { FloatApply } from "./floatApply";
 import { HomeTop } from "./HomeTop";
 import { useT } from "./i18n";
 import { PopBoxScene, SHAKES_TO_OPEN } from "./popBox";
-import { RatsLeft } from "./RatsLeft";
-import { RatToy } from "./ratToy";
-import { Shipped } from "./Shipped";
 import { boxComplaint, pageSound, setMuted, startMusicOnFirstGesture, useSoundSettings } from "./sound";
+import { VaultBoxScene, type VaultStep } from "./vaultBox";
 
-/** One of the studio's free rats, sniffing about beside the studio's pitch. Click it for another. */
-function StudioRat() {
-  const t = useT();
-  const host = useRef<HTMLDivElement>(null);
-  const toy = useRef<RatToy | null>(null);
-  const [webgl, setWebgl] = useState(true);
+const VAULT_STEPS: readonly VaultStep[] = ["deposit", "seal", "encrypt", "shuffle", "list"];
+const WHY = ["1", "2", "3", "4"] as const;
+const STEPS = ["1", "2", "3", "4"] as const;
+const PUBLIC = ["1", "2", "3"] as const;
 
-  useEffect(() => {
-    if (!host.current) return;
-    let made: RatToy;
-    try {
-      made = new RatToy(host.current);
-    } catch {
-      setWebgl(false);
-      return;
-    }
-    toy.current = made;
-    return () => {
-      made.dispose();
-      toy.current = null;
-    };
-  }, []);
-
-  if (!webgl) return null;
-  return (
-    <figure className="studio-rat">
-      <div
-        ref={host}
-        className="stage studio-rat-stage"
-        role="button"
-        tabIndex={0}
-        aria-label={t("home.studio.ratAria")}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            toy.current?.poke();
-          }
-        }}
-      />
-      <figcaption>{t("home.studio.ratHint")}</figcaption>
-    </figure>
-  );
-}
+const INK = "#1c1814";
+const stroke = { stroke: INK, strokeWidth: 4, strokeLinejoin: "round", strokeLinecap: "round" } as const;
 
 /** The way to the boarding page, floating weightless in the hero with croquettes in orbit. */
 function FloatingApply() {
@@ -95,13 +55,18 @@ function FloatingApply() {
   );
 }
 
+/**
+ * The home page is the sealed vault's: what it does (the scene, why, how, what shows), then the
+ * game, the same encryption for fun, in one section with its toy box. The game's own corners (the
+ * studio, the flea market, the manual) are on game., the details of the vault in its docs.
+ */
 export function Home() {
   const t = useT();
   const locale = useLocale();
   const supply = spec.collection.maxSupply.toLocaleString(locale);
-  const APP = appPath(locale);
   const VAULT = vaultPath(locale);
-  const DOCS = docsPath(locale);
+  const VAULT_DOCS = vaultDocsPath(locale);
+  const APP = appPath(locale);
 
   useEffect(() => {
     document.title = t("home.title");
@@ -113,26 +78,25 @@ export function Home() {
     <div className="home">
       <HomeTop />
 
-      {/* The project first: confidential ownership on a public chain, and its two doors. */}
       <section className="home-hero">
         <div className="hero-text">
-          <p className="kicker">{t("home.intro.kicker")}</p>
-          <h1>{t("home.intro.title")}</h1>
-          <p className="hero-lede">{t("home.intro.lede")}</p>
+          <p className="kicker">{t("home.vault.kicker")}</p>
+          <h1>{t("home.vault.title")}</h1>
+          <p className="hero-lede">{t("home.vault.lede")}</p>
           <p className="hero-ctas">
             <a className="btn" href={VAULT}>
-              {t("home.intro.vault")}
+              {t("home.vault.open")}
             </a>
-            <a className="btn btn-paper" href={APP}>
-              {t("home.intro.game")}
+            <a className="btn btn-paper" href="#how">
+              {t("home.vault.how")}
             </a>
           </p>
-          <a className="hero-allow" href={projectDocsPath(locale)}>
-            {t("home.intro.docs")}&nbsp;→
+          <a className="hero-allow" href={VAULT}>
+            {t("home.vault.testnet")}&nbsp;→
           </a>
         </div>
         <Departures />
-        <Toy />
+        <VaultToy />
       </section>
 
       <div className="ticker" aria-hidden="true">
@@ -142,137 +106,85 @@ export function Home() {
         </div>
       </div>
 
-      <section id="ways" className="home-section ways">
-        <h2>{t("home.ways.title")}</h2>
-        <p className="section-lede">{t("home.ways.lede")}</p>
-        <div className="ways-cards">
-          <article className="way way-vault">
-            <p className="kicker">{t("home.ways.vault.kicker")}</p>
-            <h3>{t("home.ways.vault.title")}</h3>
-            <p>{t("home.ways.vault.p")}</p>
-            <ul>
-              <li>{t("home.ways.vault.b1")}</li>
-              <li>{t("home.ways.vault.b2")}</li>
-              <li>{t("home.ways.vault.b3")}</li>
-            </ul>
-            <p className="hero-ctas">
-              <a className="btn" href={VAULT}>
-                {t("home.ways.vault.cta")}
-              </a>
-              <a className="btn btn-paper" href={vaultDocsPath(locale)}>
-                {t("home.ways.vault.docs")}
-              </a>
-            </p>
-          </article>
-          <article id="game" className="way way-game">
-            <p className="kicker">{t("home.hero.kicker", { supply })}</p>
-            <h3>{t("home.hero.title")}</h3>
-            <p>{t("home.hero.lede")}</p>
-            <p className="hero-ctas">
-              <a className="btn" href={APP}>
-                {t("home.hero.play")}
-              </a>
-              <a className="btn btn-paper" href={`${DOCS}#box`}>
-                {t("home.hero.docs")}
-              </a>
-              <FloatingApply />
-            </p>
-            {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
-            <a className="hero-allow" href={applyPath(locale)}>
-              {t("home.hero.allowList", { places: (DEFAULT_ALLOW_LIST_PLACES ?? 0).toLocaleString(locale) })}&nbsp;→
-            </a>
-          </article>
-        </div>
+      <section id="why" className="home-section">
+        <h2>{t("home.why.title")}</h2>
+        <ul className="why-cards">
+          {WHY.map((n) => (
+            <li key={n} className="why-card">
+              <h3>{t(`home.why.${n}.title`)}</h3>
+              <p>{t(`home.why.${n}.body`)}</p>
+            </li>
+          ))}
+        </ul>
       </section>
-
-      <section className="home-section home-part">
-        <h2>{t("home.part.game")}</h2>
-        <p className="section-lede">{t("home.part.game.v")}</p>
-      </section>
-
-      <Shipped />
-
 
       <section id="how" className="home-section">
-        <h2>{t("home.how.title")}</h2>
-        <p className="section-lede">{t("home.how.lede")}</p>
+        <h2>{t("home.steps.title")}</h2>
+        <p className="section-lede">{t("home.steps.lede")}</p>
         <ol className="panels">
-          {STEPS.map(({ key, doodle, more }, i) => (
-            <li key={key} className="panel">
+          {STEPS.map((n, i) => (
+            <li key={n} className="panel">
               <span className="panel-n">{i + 1}</span>
-              {doodle}
-              <h3>{t(`home.how.${key}`)}</h3>
-              <p>{t(`home.how.${key}.v`)}</p>
-              <a href={`${DOCS}#${more}`}>{t("home.how.more")} →</a>
+              <h3>{t(`home.steps.${n}`)}</h3>
+              <p>{t(`home.steps.${n}.v`)}</p>
             </li>
           ))}
         </ol>
-      </section>
-
-      <section className="home-section secret">
-        <div className="secret-doodle" aria-hidden="true">
-          <span className="speech">{t("home.secret.bubble")}</span>
-          <VetDoodle />
-        </div>
-        <div>
-          <h2>{t("home.secret.title")}</h2>
-          <p>{t("home.secret.p1")}</p>
-          <p>{t("home.secret.p2")}</p>
-          <p>{t("home.secret.p3")}</p>
-          <a className="btn btn-paper" href={`${DOCS}#privacy`}>
-            {t("home.secret.link")} →
+        <p className="hero-ctas home-more">
+          <a className="btn" href={VAULT}>
+            {t("home.vault.open")}
           </a>
-        </div>
-      </section>
-
-      <Croquettes />
-
-      <section id="studio" className="home-section studio-teaser">
-        <div className="studio-card">
-          <p className="kicker">{t("home.studio.kicker")}</p>
-          <h2>{t("home.studio.title")}</h2>
-          <p className="section-lede">{t("home.studio.lede")}</p>
-          <ul className="studio-points">
-            <li>
-              <strong>{t("home.studio.free.title")}</strong> {t("home.studio.free.body")}
-            </li>
-            <li>
-              <strong>{t("home.studio.ai.title")}</strong> {t("home.studio.ai.body", { price: studio.packs[0]!.priceUsdc })}
-            </li>
-            <li>
-              <strong>{t("home.studio.next.title")}</strong> {t("home.studio.next.body", { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay })}
-            </li>
-          </ul>
-          <RatsLeft />
-          <a className="btn" href={studioPath(locale)}>
-            {t("home.studio.cta")}&nbsp;→
-          </a>
-        </div>
-        <StudioRat />
-      </section>
-
-      <section id="cats" className="home-section">
-        <h2>{t("home.cats.title")}</h2>
-        <p className="section-lede">{t("home.cats.lede")}</p>
-        <div className="parade-frame">
-          <CatParade />
-        </div>
-      </section>
-
-      <section className="home-section home-end">
-        <h2>{t("home.end.title")}</h2>
-        <p className="section-lede">{t("home.end.lede")}</p>
-        <p className="hero-ctas">
-          <a className="btn" href={APP}>
-            {t("home.end.play")}
-          </a>
-          <a className="btn btn-paper" href={VAULT}>
-            {t("home.end.vault")}
-          </a>
-          <a className="btn btn-paper" href={projectDocsPath(locale)}>
-            {t("home.end.docs")}
+          <a className="btn btn-paper" href={VAULT_DOCS}>
+            {t("home.steps.docs")}
           </a>
         </p>
+      </section>
+
+      <section id="leaks" className="home-section leaks">
+        <h2>{t("home.leaks.title")}</h2>
+        <div className="leaks-cols">
+          <div className="leaks-card">
+            <h3>{t("home.leaks.public")}</h3>
+            <ul>
+              {PUBLIC.map((n) => (
+                <li key={n}>{t(`home.leaks.public${n}`)}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="leaks-card leaks-hidden">
+            <h3>{t("home.leaks.hidden")}</h3>
+            <ul>
+              {PUBLIC.map((n) => (
+                <li key={n}>{t(`home.leaks.hidden${n}`)}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <a className="hero-allow" href={`${VAULT_DOCS}#leaks`}>
+          {t("home.leaks.more")}&nbsp;→
+        </a>
+      </section>
+
+      <section id="game" className="home-section game-corner">
+        <div className="game-card">
+          <p className="kicker">{t("home.game.kicker", { supply })}</p>
+          <h2>{t("home.game.title")}</h2>
+          <p className="section-lede">{t("home.game.lede")}</p>
+          <p className="hero-ctas">
+            <a className="btn" href={APP}>
+              {t("home.game.play")}
+            </a>
+            <a className="btn btn-paper" href={docsPath(locale)}>
+              {t("home.game.docs")}
+            </a>
+            <FloatingApply />
+          </p>
+          {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
+          <a className="hero-allow" href={applyPath(locale)}>
+            {t("home.game.allowList", { places: (DEFAULT_ALLOW_LIST_PLACES ?? 0).toLocaleString(locale) })}&nbsp;→
+          </a>
+        </div>
+        <Toy />
       </section>
 
       <footer className="home-foot">
@@ -287,57 +199,58 @@ export function Home() {
   );
 }
 
-const { weight: WEIGHT, meal: MEAL } = spec.economy;
-const HEAVIEST = WEIGHT.sick.minWeight + WEIGHT.sick.weightSpread;
-/** What the scales can say once a box is opened. The gauge is a square root, or chubby would not show. */
-const BUILDS = WEIGHT.builds.slice(2).map((b) => ({ key: b.key, from: b.minWeight, fill: Math.round(Math.sqrt(b.minWeight / HEAVIEST) * 100) }));
-
-/** The croquette economy in one panel: hidden meals, the scales at the end, the market. */
-function Croquettes() {
+/** The vault at work, on a loop, with a line under it for each step. A click starts it again. */
+function VaultToy() {
   const t = useT();
-  const locale = useLocale();
-  const { token, welcomeBag } = spec.economy;
-  const DOCS = docsPath(locale);
+  const host = useRef<HTMLDivElement>(null);
+  const scene = useRef<VaultBoxScene | null>(null);
+  const [step, setStep] = useState<VaultStep>("deposit");
+  const [webgl, setWebgl] = useState(true);
+  const labels = { holder: t("home.vault.scene.holder"), price: t("home.vault.scene.price", { price: "0.42" }), seller: t("home.vault.scene.seller") };
+  const first = useRef(labels);
 
+  useEffect(() => {
+    if (!host.current) return;
+    let made: VaultBoxScene;
+    try {
+      made = new VaultBoxScene(host.current, first.current);
+    } catch {
+      setWebgl(false);
+      return;
+    }
+    made.onStep = setStep;
+    scene.current = made;
+    return () => {
+      made.dispose();
+      scene.current = null;
+    };
+  }, []);
+
+  if (!webgl) return null;
   return (
-    <section id="croquettes" className="home-section croq">
-      <div>
-        <h2>{t("home.croq.title")}</h2>
-        <p className="section-lede">{t("home.croq.p1", { total: token.totalSupply.toLocaleString(locale) })}</p>
-        <div className="croq-board">
-          <div className="croq-doodle" aria-hidden="true">
-            <span className="speech">{t("home.croq.bubble")}</span>
-            <KibbleDoodle />
-          </div>
-          <div className="croq-card">
-            <h3>{t("home.croq.outcomes")}</h3>
-            <ul className="outcomes">
-              {BUILDS.map(({ key, from, fill }) => (
-                <li key={key} className={`outcome outcome-${key}`}>
-                  <span className="outcome-state">{buildName(key)}</span>
-                  <span className="outcome-bar outcome-scale" aria-hidden="true">
-                    <i style={{ width: `${fill}%` }} />
-                  </span>
-                  <span className="outcome-text">{t("home.croq.from", { n: from.toLocaleString(locale), days: Math.ceil(from / MEAL.maxEatenPerDay) })}</span>
-                </li>
-              ))}
-              <li className="outcome outcome-sick">
-                <span className="outcome-state">{t("home.croq.sick")}</span>
-                <span className="outcome-bar outcome-scale" aria-hidden="true">
-                  <i style={{ width: "100%" }} />
-                </span>
-                <span className="outcome-text">{t("home.croq.sickText", { min: WEIGHT.sick.minWeight.toLocaleString(locale), max: HEAVIEST.toLocaleString(locale) })}</span>
-              </li>
-            </ul>
-            <p>{t("home.croq.p2", { cap: MEAL.maxEatenPerDay.toLocaleString(locale), meals: MEAL.mealsPerDay, treasury: MEAL.treasuryBps / 100, reserve: (10_000 - MEAL.treasuryBps - MEAL.burnBps) / 100, burn: MEAL.burnBps / 100 })}</p>
-            <p>{t("home.croq.p3", { bag: welcomeBag.amount })}</p>
-            <a className="btn btn-paper" href={`${DOCS}#croquettes`}>
-              {t("home.croq.link")} →
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
+    <div className="toy vault-toy">
+      <div
+        ref={host}
+        className="stage vault-toy-stage"
+        role="button"
+        tabIndex={0}
+        aria-label={t("home.vault.scene.aria")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            scene.current?.restart();
+          }
+        }}
+      />
+      <p className="vault-toy-caption" aria-live="polite">
+        {t(`home.vault.step.${step}`)}
+      </p>
+      <ol className="vault-toy-steps" aria-hidden="true">
+        {VAULT_STEPS.map((s) => (
+          <li key={s} aria-current={s === step ? "step" : undefined} />
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -421,125 +334,5 @@ function Toy() {
         </button>
       </div>
     </div>
-  );
-}
-
-// ------------------------------------------------------------------ doodles
-
-const INK = "#1c1814";
-const stroke = { stroke: INK, strokeWidth: 4, strokeLinejoin: "round", strokeLinecap: "round" } as const;
-
-function BoxShape({ lid = true }: { lid?: boolean }) {
-  return (
-    <>
-      <path d="M22 44 L60 30 L98 44 L98 92 L60 106 L22 92 Z" fill="#b8895a" {...stroke} />
-      <path d="M60 58 L60 106 M22 44 L60 58 L98 44" fill="none" {...stroke} />
-      {lid && <path d="M22 44 L60 30 L98 44 L60 58 Z" fill="#cda070" {...stroke} />}
-      {lid && <path d="M41 37 L79 51" stroke="#d9c28a" strokeWidth="9" />}
-      <path d="M33 70 L50 76 L50 88 L33 82 Z" fill="#e9dfc8" stroke={INK} strokeWidth="2.5" />
-    </>
-  );
-}
-
-const STEPS = [
-  {
-    key: "s1",
-    more: "box",
-    doodle: (
-      <svg className="doodle" viewBox="0 0 120 120" aria-hidden="true">
-        <BoxShape />
-        <text x="78" y="28" fontSize="30" fontWeight="700" fill="#c2261d" transform="rotate(14 78 28)">?</text>
-      </svg>
-    ),
-  },
-  {
-    key: "s2",
-    more: "mechanics",
-    doodle: (
-      <svg className="doodle wobble" viewBox="0 0 120 120" aria-hidden="true">
-        <g transform="rotate(-10 60 70)">
-          <BoxShape />
-        </g>
-        <path d="M8 50 q6 8 0 16 M14 40 q8 12 0 26 M108 58 q6 8 0 16 M114 48 q8 12 0 26" fill="none" {...stroke} strokeWidth={3} />
-      </svg>
-    ),
-  },
-  {
-    key: "s3",
-    more: "flows",
-    doodle: (
-      <svg className="doodle" viewBox="0 0 120 120" aria-hidden="true">
-        <path d="M40 46 L46 22 L56 40 M64 40 L74 22 L80 46" fill="#e8893a" {...stroke} />
-        <ellipse cx="60" cy="50" rx="24" ry="16" fill="#e8893a" {...stroke} />
-        <circle cx="52" cy="48" r="4" fill={INK} />
-        <circle cx="68" cy="48" r="4" fill={INK} />
-        <path d="M22 50 L60 64 L98 50 L98 96 L60 110 L22 96 Z" fill="#b8895a" {...stroke} />
-        <path d="M22 50 L6 36 M98 50 L114 36" {...stroke} />
-        <path d="M60 64 L60 110" {...stroke} />
-        <path d="M14 18 l4 6 M104 12 l-3 7 M60 6 l0 8" {...stroke} stroke="#c2261d" />
-      </svg>
-    ),
-  },
-  {
-    key: "s4",
-    more: "mechanics",
-    doodle: (
-      <svg className="doodle" viewBox="0 0 120 120" aria-hidden="true">
-        <g transform="translate(-22 16) scale(0.62)">
-          <BoxShape />
-        </g>
-        <g transform="translate(52 16) scale(0.62)">
-          <BoxShape />
-        </g>
-        <path d="M62 30 L54 50 L66 50 L56 74" fill="none" {...stroke} stroke="#ffb454" strokeWidth={6} />
-        <path d="M62 30 L54 50 L66 50 L56 74" fill="none" {...stroke} strokeWidth={2} />
-        <path d="M30 104 q30 12 60 0" fill="none" {...stroke} strokeDasharray="2 8" />
-      </svg>
-    ),
-  },
-] as const;
-
-/** Croquettes raining into a sealed box, and a padlock on what piles up inside. */
-function KibbleDoodle() {
-  const kibble = [
-    [44, 30, 20],
-    [70, 20, -30],
-    [92, 36, 40],
-    [58, 46, 10],
-    [80, 54, -15],
-  ] as const;
-  return (
-    <svg className="doodle big kibble" viewBox="0 0 160 160" aria-hidden="true">
-      <g transform="translate(20 44)">
-        <BoxShape />
-      </g>
-      {kibble.map(([x, y, r], i) => (
-        <g key={i} transform={`translate(${x} ${y}) rotate(${r})`}>
-          <path d="M-7 -4 Q0 -10 7 -4 Q10 2 4 6 Q0 8 -4 6 Q-10 2 -7 -4 Z" fill="#a0612c" {...stroke} strokeWidth={3} />
-        </g>
-      ))}
-      <g transform="translate(116 104)">
-        <path d="M-9 -2 L-9 -10 Q0 -22 9 -10 L9 -2" fill="none" {...stroke} />
-        <rect x="-14" y="-3" width="28" height="22" rx="4" fill="#ffd66b" {...stroke} />
-        <text x="0" y="14" fontSize="15" fontWeight="700" textAnchor="middle" fill={INK}>?</text>
-      </g>
-    </svg>
-  );
-}
-
-function VetDoodle() {
-  return (
-    <svg className="doodle big" viewBox="0 0 160 150" aria-hidden="true">
-      <g transform="translate(20 30)">
-        <BoxShape />
-      </g>
-      {/* X-ray specs peering at the box */}
-      <circle cx="60" cy="26" r="17" fill="#7de3d0" {...stroke} />
-      <circle cx="100" cy="26" r="17" fill="#7de3d0" {...stroke} />
-      <path d="M77 26 L83 26 M43 22 L28 16 M117 22 L132 16" {...stroke} />
-      <circle cx="62" cy="28" r="5" fill={INK} />
-      <circle cx="102" cy="28" r="5" fill={INK} />
-      <path d="M52 8 l4 6 M108 6 l-4 7" {...stroke} strokeWidth={3} />
-    </svg>
   );
 }

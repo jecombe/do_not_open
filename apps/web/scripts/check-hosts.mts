@@ -35,7 +35,10 @@ assert.deepEqual(route("https://game.do-not-open.app/app?box=3"), { redirect: "/
 assert.deepEqual(route("https://game.testnet.do-not-open.app/vault"), { redirect: "https://vault.testnet.do-not-open.app/" });
 assert.deepEqual(route("https://game.do-not-open.app/apply"), { redirect: "https://do-not-open.app/apply" });
 assert.deepEqual(route("https://game.do-not-open.app/fr/"), { redirect: "https://do-not-open.app/fr/" });
-assert.deepEqual(route("https://game.do-not-open.app/it/studio"), { redirect: "https://do-not-open.app/it/studio" });
+assert.equal(route("https://game.do-not-open.app/it/studio"), null);
+assert.deepEqual(route("https://do-not-open.app/studio?x=1"), { redirect: "https://game.do-not-open.app/studio?x=1" });
+assert.deepEqual(route("https://testnet.do-not-open.app/fr/studio"), { redirect: "https://game.testnet.do-not-open.app/fr/studio" });
+assert.deepEqual(route("https://vault.do-not-open.app/studio"), { redirect: "https://game.do-not-open.app/studio" });
 
 // vault.: the vault at the root, its docs at /docs.
 assert.deepEqual(route("https://vault.testnet.do-not-open.app/"), { rewrite: "/vault" });
@@ -60,6 +63,7 @@ assert.equal(site.docsPath("fr"), "https://game.testnet.do-not-open.app/fr/docs"
 assert.equal(site.projectDocsPath("en"), "/docs");
 assert.equal(site.vaultDocsPath("es"), "https://vault.testnet.do-not-open.app/es/docs");
 assert.equal(site.applyPath("fr"), "/fr/apply");
+assert.equal(site.studioPath("fr"), "https://game.testnet.do-not-open.app/fr/studio");
 assert.equal(site.localizedPage("/fr/docs"), "project");
 
 site = await at("https://game.do-not-open.app/?lang=fr");
@@ -67,6 +71,7 @@ assert.equal(site.appPath("fr"), "/?lang=fr");
 assert.equal(site.marketPath("en"), "/?view=market");
 assert.equal(site.homePath("fr"), "https://do-not-open.app/fr/");
 assert.equal(site.docsPath("fr"), "/fr/docs");
+assert.equal(site.studioPath("es"), "/es/studio");
 assert.equal(site.localizedPage("/"), null);
 assert.equal(site.localizedPage("/docs"), "docs");
 assert.equal(site.pagePath("docs", "it"), "/it/docs");
@@ -87,5 +92,6 @@ assert.equal(site.localizedPage("/docs"), "docs");
 assert.equal(site.canonicalUrl("vaultDocs", "fr"), "https://vault.do-not-open.app/fr/docs");
 assert.equal(site.canonicalUrl("project", "en"), "https://do-not-open.app/docs");
 assert.equal(site.canonicalUrl("home", "it"), "https://do-not-open.app/it/");
+assert.equal(site.canonicalUrl("studio", "fr"), "https://game.do-not-open.app/fr/studio");
 
 console.log("hosts: routes and links check out");

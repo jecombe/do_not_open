@@ -3358,75 +3358,229 @@ p.pass-meter {
   }
 }
 
-/* --- The project's two doors: the sealed vault and the game, side by side --- */
-.ways-cards {
+/* --- The vault's scene on the home page: a holder tag over each box, a price tag over the listed one --- */
+.vault-toy-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.15;
+  cursor: pointer;
+}
+
+.vault-holder,
+.vault-price {
+  padding: 5px 10px 3px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  scale: 0.5;
+  transition:
+    opacity 0.2s,
+    scale 0.3s cubic-bezier(0.3, 1.8, 0.5, 1),
+    background 0.3s;
+}
+
+.vault-holder.on,
+.vault-price.on {
+  opacity: 1;
+  scale: 1;
+}
+
+.vault-holder.sealed {
+  background: var(--dock);
+  color: var(--mint);
+}
+
+.vault-price {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(20px, 3vw, 36px);
+  justify-items: center;
+  gap: 2px;
+  background: var(--sun);
+  font-family: var(--label);
+  font-size: 15px;
+  rotate: -3deg;
 }
 
-.way {
+.vault-price b {
+  font-family: var(--stencil);
+  font-size: 20px;
+}
+
+.vault-toy-caption {
+  min-height: 3.2em;
+  margin: 6px auto 0;
+  max-width: 34ch;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.vault-toy-steps {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 26px 26px 28px;
-  border: 4px solid var(--ink);
-  border-radius: 24px;
-  box-shadow: 10px 10px 0 var(--ink);
-  font-size: 19px;
-  line-height: 1.4;
+  justify-content: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.way-vault {
+.vault-toy-steps li {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.vault-toy-steps li[aria-current] {
+  background: var(--red);
+}
+
+/* --- Why seal it: four cards, a little crooked --- */
+.why-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.why-card {
+  padding: 20px 20px 18px;
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 8px 8px 0 var(--ink);
+  font-size: 19px;
+  line-height: 1.35;
+}
+
+.why-card:nth-child(1) {
   background: var(--sky);
+  transform: rotate(-1.2deg);
+}
+
+.why-card:nth-child(2) {
+  background: var(--mint);
+  transform: rotate(0.8deg);
+}
+
+.why-card:nth-child(3) {
+  background: var(--pink);
   transform: rotate(-0.6deg);
 }
 
-.way-game {
-  background: var(--sun);
-  transform: rotate(0.6deg);
+.why-card:nth-child(4) {
+  transform: rotate(1.2deg);
 }
 
-.way h3 {
-  margin: 0 0 6px;
+.why-card h3 {
+  margin: 0 0 8px;
   font-family: var(--stencil);
-  font-size: clamp(30px, 3.4vw, 46px);
-  line-height: 0.95;
+  font-size: 24px;
+  line-height: 1;
   text-transform: uppercase;
 }
 
-.way p {
-  margin: 0 0 10px;
+.why-card p {
+  margin: 0;
 }
 
-.way ul {
-  margin: 0 0 18px;
+.home-more {
+  margin-top: 30px;
+}
+
+/* --- What shows, what doesn't --- */
+.leaks-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 980px;
+}
+
+.leaks-card {
+  padding: 20px 24px;
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 8px 8px 0 var(--ink);
+  font-size: 19px;
+}
+
+.leaks-card h3 {
+  margin: 0 0 10px;
+  font-family: var(--stencil);
+  font-size: 26px;
+  text-transform: uppercase;
+}
+
+.leaks-card ul {
+  margin: 0;
   padding-left: 1.2em;
 }
 
-.way li + li {
-  margin-top: 4px;
+.leaks-card li + li {
+  margin-top: 6px;
 }
 
-.way .hero-ctas {
-  margin-top: auto;
+.leaks-hidden {
+  background: var(--dock);
+  color: var(--paper);
 }
 
-/* The game's sections follow under their own title. */
-.home-part {
+.leaks-hidden h3 {
+  color: var(--mint);
+}
+
+/* --- The game, the same encryption for fun: a card and the toy box --- */
+.game-corner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: 24px var(--gutter);
   margin-top: clamp(32px, 5vw, 64px);
-  border-top: 4px dashed var(--ink);
+}
+
+.game-card {
+  padding: 26px 26px 28px;
+  border: 4px solid var(--ink);
+  border-radius: 24px;
+  background: var(--orange);
+  box-shadow: 10px 10px 0 var(--ink);
+  transform: rotate(-0.6deg);
+}
+
+.game-card h2 {
+  font-size: clamp(32px, 4vw, 54px);
+}
+
+@media (max-width: 1000px) {
+  .why-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
-  .ways-cards {
+  .why-cards,
+  .leaks-cols,
+  .game-corner {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .way {
+  .why-card,
+  .game-card {
+    transform: none;
+  }
+
+  .game-card {
     padding: 22px 18px 24px;
     box-shadow: 6px 6px 0 var(--ink);
-    transform: none;
   }
 }

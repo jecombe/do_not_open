@@ -227,9 +227,9 @@ copied as they are). The testnet stack then keeps the current database, its Sepo
 
 | Name | Serves | DNS record |
 | --- | --- | --- |
-| `do-not-open.app` | the project's page and docs, boarding, the studio (Vercel), mainnet once it launches, Sepolia until then | `A 76.76.21.21` |
+| `do-not-open.app` | the home page (the sealed vault first, the game as its fun side), the project's docs, boarding (Vercel), mainnet once it launches, Sepolia until then | `A 76.76.21.21` |
 | `www.do-not-open.app` | redirects to `do-not-open.app` (Vercel) | `CNAME cname.vercel-dns.com` |
-| `game.do-not-open.app` | the game at `/`, its manual at `/docs` (Vercel, the same build) | `CNAME cname.vercel-dns.com` |
+| `game.do-not-open.app` | the game at `/` (its flea market inside), its manual at `/docs`, the studio at `/studio` (Vercel, the same build) | `CNAME cname.vercel-dns.com` |
 | `vault.do-not-open.app` | the sealed vault at `/`, its docs at `/docs` (Vercel, the same build) | `CNAME cname.vercel-dns.com` |
 | `testnet.do-not-open.app` | the site on Sepolia, the production build (Vercel), talking to `api.testnet` | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
 | `game.testnet.do-not-open.app`, `vault.testnet.do-not-open.app` | the testnet's game and vault, the same build, talking to `api.testnet` | `CNAME cname.vercel-dns.com` |
@@ -240,9 +240,9 @@ copied as they are). The testnet stack then keeps the current database, its Sepo
 
 One build serves every name, each added to the Vercel project. Which page a name shows is decided
 at the edge: `middleware.ts` (the repo root, Vercel's routing middleware, which runs before the
-static files) applies `apps/web/src/hosts.ts`: `game.` shows the game at `/` and the game's
-manual at `/docs`, `vault.` the vault and its docs, the bare domain the project's page and its
-docs; the old paths (`/app`, `/vault`, `/fr/app`, a shared box's `/app?box=`) redirect to the
+static files) applies `apps/web/src/hosts.ts`: `game.` shows the game at `/`, the game's
+manual at `/docs` and the studio at `/studio`, `vault.` the vault and its docs, the bare domain the project's page and its
+docs; the old paths (`/app`, `/vault`, `/studio`, `/fr/app`, a shared box's `/app?box=`) redirect to the
 subdomain, query kept, and the bare domain's pages asked on a subdomain go back to it. Off these
 names (localhost, a preview) nothing moves: the game is `/app`, the vault `/vault`, the
 project's docs `/project`, the vault's `/vault-docs`. The pages build their links the same way

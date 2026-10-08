@@ -37,8 +37,10 @@ export const partOrigin = (domain: SiteDomain, part: HostPart): string => `https
 /** What the edge does with a request: serve another page under the same URL, send the browser elsewhere, or nothing. */
 export type HostRoute = { rewrite: string } | { redirect: string } | null;
 
-/** The bare domain's own pages asked on a subdomain: its home in a language, the boarding page, the studio. */
-const SITE_PAGE = /^(?:\/(?:fr|es|it))?(?:\/(?:apply|studio))?\/?$/;
+/** The bare domain's own pages asked on a subdomain: its home in a language, the boarding page. */
+const SITE_PAGE = /^(?:\/(?:fr|es|it))?(?:\/apply)?\/?$/;
+/** The studio, where anyone draws a rat: part of the game, so on `game.`. */
+const STUDIO_PATH = /^(?:\/(?:fr|es|it))?\/studio\/?$/;
 /** The game and the vault under their old paths, in any language prefix (`/fr/app` is an old link too). */
 const GAME_PATH = /^(?:\/(fr|es|it))?\/app(?:\.html)?\/?$/;
 const VAULT_PATH = /^(?:\/(fr|es|it))?\/vault(?:\.html)?\/?$/;
@@ -72,6 +74,7 @@ export function hostRoute(url: URL): HostRoute {
 
   if (game && part !== "game") return { redirect: `${partOrigin(domain, "game")}/${withLang(url.search, game[1])}` };
   if (vault && part !== "vault") return { redirect: `${partOrigin(domain, "vault")}/${withLang(url.search, vault[1])}` };
+  if (STUDIO_PATH.test(path) && part !== "game") return { redirect: `${partOrigin(domain, "game")}${path}${url.search}` };
   if (docs) {
     const file = DOCS_FILE[part];
     return file ? { rewrite: `${docs[1] ?? ""}/${file}${url.search}` } : null;

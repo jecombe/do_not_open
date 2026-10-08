@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { applyPath, appPath, homePath, marketPath, projectDocsPath, studioPath, vaultPath } from "../site";
+import { applyPath, appPath, homePath, projectDocsPath, vaultPath } from "../site";
 import { useT } from "./i18n";
 import { SoundControl } from "./SoundControl";
 
 /**
- * The stamp, the site's links (the vault first, then the game and its corners, the docs, boarding), the sound and the languages, and the way into the game. On a
- * phone the links, the sound and the languages fold into a menu, so the stamp, "Play" and the menu button share one line.
+ * The stamp, the site's links (how the vault works, the game, the docs, boarding; the studio and the flea market are the game's), the sound and the languages, and the way into the vault (into the game on the vault's page). On a
+ * phone the links, the sound and the languages fold into a menu, so the stamp, the main button and the menu button share one line.
  */
 export function HomeTop({ here = "home" }: { here?: "home" | "apply" | "vault" }) {
   const t = useT();
@@ -45,14 +45,12 @@ export function HomeTop({ here = "home" }: { here?: "home" | "apply" | "vault" }
         Do not open
       </a>
       <nav id={navId} className={open ? "is-open" : undefined} aria-label={t("home.nav")}>
-        <a href={vaultPath(locale)} aria-current={here === "vault" ? "page" : undefined}>
-          {t("home.nav.vault")}
+        <a href={`${here === "home" ? "" : homePath(locale)}#how`} onClick={close}>
+          {t("home.nav.how")}
         </a>
         <a href={`${here === "home" ? "" : homePath(locale)}#game`} onClick={close}>
           {t("home.nav.game")}
         </a>
-        <a href={studioPath(locale)}>{t("home.nav.studio")}</a>
-        <a href={marketPath(locale)}>{t("home.nav.market")}</a>
         <a href={DOCS}>{t("home.nav.docs")}</a>
         <a href={applyPath(locale)} className="home-nav-apply" aria-current={here === "apply" ? "page" : undefined}>
           {t("home.nav.apply")}
@@ -61,9 +59,16 @@ export function HomeTop({ here = "home" }: { here?: "home" | "apply" | "vault" }
         <LangSwitch label={t("home.nav")} />
       </nav>
       <div className="home-top-actions">
-        <a className="btn btn-small" href={APP}>
-          {t("home.nav.play")}
-        </a>
+        {/* The vault is the site's main door; on the vault's own page the button leads to the game. */}
+        {here === "vault" ? (
+          <a className="btn btn-small" href={APP}>
+            {t("home.nav.play")}
+          </a>
+        ) : (
+          <a className="btn btn-small" href={vaultPath(locale)}>
+            {t("home.nav.open")}
+          </a>
+        )}
         <button type="button" ref={toggle} className="btn btn-small btn-paper home-menu" aria-expanded={open} aria-controls={navId} onClick={() => setOpen((o) => !o)}>
           <span className="home-menu-bars" aria-hidden="true" />
           <span className="home-menu-label">{t("home.nav.menu")}</span>
