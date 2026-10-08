@@ -50,8 +50,10 @@ function mint(externalEuint8 quantity, bytes proof, uint8 ids) returns (uint256 
   same seed draw, same storage.
 - The price is paid in cUSDC, encrypted: `quantity × mintPrice`. A cUSDC transfer moves all of
   it or nothing, so a buyer who holds too little gets 0 boxes and pays 0.
-- The sold count is an encrypted `euint16`. The cap is enforced under encryption: a mint that
-  would pass 10,000 gets nothing and pays nothing (all or nothing, never a partial mint).
+- The sold count is an encrypted `euint16`. The cap, the last milestone (9,000), is enforced
+  under encryption: a mint that would pass it gets nothing and pays nothing (all or nothing,
+  never a partial mint). The other 1,000 boxes of the 10,000 supply are the whitelist's gifts
+  (section 5c), never sold.
 - The buyer reads what they got from the `MintPlaced` event's encrypted `quantity` and from
   their `ConfidentialTransfer` receipts.
 
@@ -67,7 +69,9 @@ shielding a round amount ahead of time.
 ## 3. Milestones instead of a counter
 
 `spec.json` lists the only sold counts ever announced: 100, 500, 1,000, 2,500, 5,000, 7,500,
-9,000, 10,000. After each mint the contract makes one bit publicly decryptable: "the sold
+9,000. `DoNotOpenConfig` holds them (`milestones()`); the last one is the sale's cap, and what it
+leaves under `maxSupply` is the whitelist's gift boxes (`giftBoxes()`, 1,000), which count in no
+milestone. After each mint the contract makes one bit publicly decryptable: "the sold
 count reached the next milestone". Anyone proves it with `announceMilestone(cleartext, proof)`,
 which bumps `milestonesReached` and emits `MilestoneReached(index, sold)`. The app announces
 it right after the mint that crossed it. Reaching the last one means sold out.
@@ -155,9 +159,10 @@ Rats have public owners anyway; selling one shows nothing new.
 
 ## 5c. The whitelist's gifts
 
-`WhitelistGifts` buys a gift box from `DoNotOpen` like any buyer, one id, then sends it to the
-wallet. The wallet's tier is in its claim (`GiftClaimed`), so everyone knows the gift had a box
-and which id it is: **a gift box's first holder is public**, as if they had minted one box among
+`WhitelistGifts` has `DoNotOpen` mint a gift box for the wallet with `gift(wallet)`: free, out of
+the 1,000 boxes the sale leaves, only for the collection's `giver`, never in a milestone or the
+revenue. `BoxGifted(tokenId, wallet)` names the wallet, and its tier is in its claim
+(`GiftClaimed`): **a gift box's first holder is public**, as if they had minted one box among
 one id. The usual advice holds: send it on with decoys, or to a fresh address, to bring the
 doubt back. The rat is public anyway. The croquettes drawn are an encrypted cCROQ transfer:
 allowed to the wallet and the gifts contract only, never published.
@@ -206,7 +211,7 @@ right). See O34 in [AUDIT_CHECKLIST.md](AUDIT_CHECKLIST.md).
 | A studio pack (`StudioPacks.buy`, plain USDC) | the payer, the account and the pack. The studio never touches the boxes, so it says nothing about holdings; the API also sees the prompts and pictures of the account that signed in, and sends the prompts to the AI services |
 | The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
 | Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
-| A whitelist gift (`WhitelistGifts.claim`) | that the wallet is on the frozen list, its tier, the gift box's id (the wallet held it then) and its rat. Not how many croquettes it drew |
+| A whitelist gift (`WhitelistGifts.claim`) | that the wallet is on the frozen list, its tier, the gift box's id (the wallet held it then: `BoxGifted` names it) and its rat. Not how many croquettes it drew |
 | An X boarding pass (off-chain, filed by the API) | the boarding tweet itself, public on X: that this X account wants a place. The wallet a player chooses to link to it stays in the API, never shown; that link ties an X identity to the wallet's public facts (duels, openings), so the page says a game-only wallet keeps a player anonymous. The Discord account that ran `/board` is kept the same way, private: the server's members can see that someone ran a command, not the code nor the reply |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
@@ -258,8 +263,8 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | `FleaMarket.buy` + `finalizePurchase` (box) | 546,000 + 855,000 | 2,078,000 |
 | `FleaMarket.makeOffer` | 543,000 | 736,000 |
 | `FleaMarket.acceptOffer` (rat) | 677,000 | 2,414,000 |
-| `WhitelistGifts.claim`, first class (croquettes, box, rat and its power) | 1,847,000 | 3,656,000 |
-| `WhitelistGifts.claim`, economy (croquettes, rat and its power) | 741,000 | 1,571,000 |
+| `WhitelistGifts.claim`, first class (croquettes, a free box, rat and its power) | 1,010,000 | 1,678,000 |
+| `WhitelistGifts.claim`, economy (croquettes, rat and its power) | 740,000 | 1,571,000 |
 | `RatTricks.trick` | 881,000 to 1,063,000 | 2,245,000 to 2,270,000 |
 | `RatTricks.sniff` (a tricked box, power-1 rebate) | 1,789,000 | 4,269,000 |
 | `FleaMarket.list` (rat) | 139,000 | 0 |
@@ -270,6 +275,8 @@ at 1 gwei and 3,000 USD per ETH, 1,000,000 gas is 3 USD. On Ethereum mainnet a h
 a few dollars; on the cheaper chains Zama supports it is cents. Zama's protocol fees
 (input proofs, decryptions) come on top on mainnet.
 
-`DoNotOpen` is 24,553 bytes deployed, 23 under the 24,576 limit, compiled alone with the
-optimizer at 1 run (size over gas; the other contracts stay at 200). The next feature should
-move logic out (a library, or a second contract that is a trusted reader).
+`DoNotOpen` is 24,442 bytes deployed, 134 under the 24,576 limit, compiled alone with the
+optimizer at 1 run (size over gas; the other contracts stay at 200). The free gift path fit
+by moving the token URIs to `BoxMetadata` and the milestones, supply and batch size views to
+`DoNotOpenConfig`. The next feature should move logic out too (a library, or a second contract
+that is a trusted reader).

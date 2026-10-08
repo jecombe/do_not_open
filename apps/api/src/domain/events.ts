@@ -9,6 +9,7 @@ type Ev<N extends string, B> = ChainRef & { source: Source; name: N } & B;
 /** A decoded log of the collection, the Pantry, the USDC ramp, the decryption credits, the studio's packs, the rats and their pantry, or Zama's ACL about them. */
 export type ProtocolEvent =
   | Ev<"MintPlaced", { firstTokenId: number; buyer: Address; count: number }>
+  | Ev<"BoxGifted", { tokenId: number; to: Address }>
   | Ev<"MilestoneReached", { index: number; sold: number }>
   | Ev<"Shaken", { tokenId: number; viewer: Address; paid: boolean }>
   | Ev<"Fed", { tokenId: number; feeder: Address }>
@@ -134,6 +135,8 @@ export function actorsOf(e: ProtocolEvent): Address[] {
   switch (e.name) {
     case "MintPlaced":
       return [e.buyer];
+    case "BoxGifted":
+      return [e.to];
     case "Shaken":
       return [e.viewer];
     case "Fed":

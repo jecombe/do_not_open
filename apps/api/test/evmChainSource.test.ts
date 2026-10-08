@@ -10,6 +10,9 @@ import { RpcPool } from "../src/infrastructure/chain/RpcPool";
 const d = deploymentFor("sepolia");
 const collection = new Interface(d.collection.abi);
 const pantry = new Interface(d.pantry!.abi);
+/** The collection's config: its supply, batch size and milestones. */
+const config = new Interface(["function maxSupply() view returns (uint16)", "function maxPerTx() view returns (uint8)", "function milestones() view returns (uint16[])"]);
+const CONFIG_ADDRESS = "0x00000000000000000000000000000000000c0f16";
 const multicallAbi = new Interface([
   "function aggregate3((address target, bool allowFailure, bytes callData)[] calls) payable returns ((bool success, bytes returnData)[] returnData)",
 ]);
@@ -41,7 +44,8 @@ function node(logs: ReturnType<typeof log>[], views: (target: string, fn: string
         multicallCalls++;
         const [calls] = multicallAbi.decodeFunctionData("aggregate3", m.params[0].data);
         const results = (calls as { target: string; callData: string }[]).map((c) => {
-          const iface = c.target.toLowerCase() === d.collection.address.toLowerCase() ? collection : pantry;
+          const target = c.target.toLowerCase();
+          const iface = target === d.collection.address.toLowerCase() ? collection : target === CONFIG_ADDRESS ? config : pantry;
           const parsed = iface.parseTransaction({ data: c.callData })!;
           const out = views(c.target.toLowerCase(), parsed.name, [...parsed.args]);
           return out ? { success: true, returnData: iface.encodeFunctionResult(parsed.name, out) } : { success: false, returnData: "0x" };
@@ -178,7 +182,7 @@ describe("EvmChainState", () => {
   it("reads the collection's constants once, and batches claim times into one multicall", async () => {
     const views = (_t: string, fn: string, args: unknown[]) => {
       const constants: Record<string, unknown[]> = {
-        mintPrice: [5_000_000], observeFee: [1_000_000], feedFee: [500_000], paidShakeFee: [2_500_000],
+        config: [CONFIG_ADDRESS], mintPrice: [5_000_000], observeFee: [1_000_000], feedFee: [500_000], paidShakeFee: [2_500_000],
         maxSupply: [10000], maxPerTx: [10], milestones: [[100, 500]], feeBps: [30],
       };
       if (fn === "nextClaimAt") return [1_800_000_000 + Number(args[0])];
@@ -189,12 +193,13 @@ describe("EvmChainState", () => {
     const [a, b] = await Promise.all([state.collection(), state.collection()]);
     expect(a).toBe(b);
     expect(a).toMatchObject({ fees: { mint: "5000000" }, maxSupply: 10000, milestones: [100, 500], rampFeeBps: null });
-    expect(multicalls()).toBe(1);
+    // One for the config's address, one for the constants.
+    expect(multicalls()).toBe(2);
 
     const claims = await Promise.all([1, 2, 3, 2].map((id) => state.nextClaimAt(id)));
     expect(claims).toEqual([1_800_000_001, 1_800_000_002, 1_800_000_003, 1_800_000_002]);
-    expect(multicalls()).toBe(2);
+    expect(multicalls()).toBe(3);
     await state.nextClaimAt(3);
-    expect(multicalls()).toBe(2);
+    expect(multicalls()).toBe(3);
   });
 });

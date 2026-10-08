@@ -193,6 +193,12 @@ const POOL_ABI = [
 const POSITIONS_ABI = [
   "function positions(uint256 tokenId) view returns (uint96 nonce, address operator, address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)",
 ];
+/** The collection's rules: its supply, batch size and sale milestones. Read from `config()`. */
+const CONFIG_ABI = [
+  "function maxSupply() view returns (uint16)",
+  "function maxPerTx() view returns (uint8)",
+  "function milestones() view returns (uint16[])",
+];
 /** The collection's payment tokens. Their addresses are read from the collection itself. */
 const USDC_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -453,7 +459,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
 
   private async collectionFromChain(): Promise<CollectionInfo> {
     const c = this.contract;
-    this.constants ??= Promise.all([c.mintPrice!(), c.observeFee!(), c.feedFee!(), c.paidShakeFee!(), c.maxSupply!(), c.maxPerTx!(), c.milestones!()]).then(
+    // The supply and the milestones are rules: the collection's config holds them.
+    this.constants ??= (c.config!() as Promise<string>).then((address) => {
+      const config = this.at(address, CONFIG_ABI);
+      return Promise.all([c.mintPrice!(), c.observeFee!(), c.feedFee!(), c.paidShakeFee!(), config.maxSupply!(), config.maxPerTx!(), config.milestones!()]);
+    }).then(
       ([mint, observe, feed, paidShake, maxSupply, maxPerTx, milestones]) => ({
         fees: { mint, observe, feed, paidShake },
         maxSupply: Number(maxSupply),
@@ -733,12 +743,9 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const proof = await this.giftProof(account);
     if (!proof) throw new ChainError("reverted", "This wallet is not on the frozen whitelist.", "NotOnTheList");
     const tier = spec.whitelist.tiers[proof.tier];
-    // The box is bought by the gifts contract: its quantity (1) is encrypted for it, not for the wallet.
-    const input = tier?.box
-      ? await this.encrypt(this.opts.address, account, (b) => b.add8(1), "the box", opts, deployed.address)
-      : { handles: [ZERO_HANDLE], inputProof: "0x" };
+    // The box is minted free by the collection for the gifts; only the rat needs a seed.
     const seed = await this.freeRatSeed(!!tier?.rat);
-    await this.send(opts, () => this.writer(deployed).claim!(proof.tier, proof.proof, input.handles[0], input.inputProof, seed));
+    await this.send(opts, () => this.writer(deployed).claim!(proof.tier, proof.proof, seed));
     return (await this.whitelistGift())!;
   }
 

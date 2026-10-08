@@ -576,20 +576,21 @@ Deployment gas on Sepolia: `Croq` 536k, `ConfidentialCroq` 2.49M, `Pantry` 2.20M
 
 ## Deployed on Sepolia
 
-The economy of the current `DoNotOpen` (deployed 2026-10-07, block 11862305), started fresh with
-it: the old `Pantry`'s 11,000,000 CROQ reserve cannot leave it, and a new `DoNotOpen` needs a new
-`Pantry`.
+The economy of the current `DoNotOpen` (deployed 2026-10-08, block 11869550, for the
+whitelist's free gift boxes), started fresh with it: the old `Pantry`'s 11,000,000 CROQ reserve
+cannot leave it, a new `DoNotOpen` needs a new `Pantry`, and the deployer held only 4,075,000
+CROQ.
 
 | Contract | Address |
 | --- | --- |
-| `Croq` | [`0x176f24a7ab07210E8306C4331104BC9a0d145a53`](https://sepolia.etherscan.io/address/0x176f24a7ab07210E8306C4331104BC9a0d145a53) |
-| `ConfidentialCroq` | [`0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964`](https://sepolia.etherscan.io/address/0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964) |
-| `Pantry` | [`0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F`](https://sepolia.etherscan.io/address/0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F) |
-| `LiquidityLocker` | [`0x13B2636a1De5Ad3922aF6D499a290e8911F4e772`](https://sepolia.etherscan.io/address/0x13B2636a1De5Ad3922aF6D499a290e8911F4e772) |
-| `RatPantry` (the rats' croquettes, plain CROQ) | [`0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450`](https://sepolia.etherscan.io/address/0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450) |
-| `WhitelistGifts` (425,000 cCROQ for the whitelist's draws) | [`0xD244389bF81C38803c94957a1e6B5694eEeA678b`](https://sepolia.etherscan.io/address/0xD244389bF81C38803c94957a1e6B5694eEeA678b) |
-| CROQ/USDC pool (Uniswap V3, 1%) | [`0xC2EA76E3c3107512A229936FfbD91cD297D40847`](https://sepolia.etherscan.io/address/0xC2EA76E3c3107512A229936FfbD91cD297D40847) |
-| Position | #233286, ticks 69200 to 138200, 4,000,000 CROQ, 0 USDC |
+| `Croq` | [`0x765A56A1949baDd2Fc4c04c59c4eCfb464fFfB7C`](https://sepolia.etherscan.io/address/0x765A56A1949baDd2Fc4c04c59c4eCfb464fFfB7C) |
+| `ConfidentialCroq` | [`0xbC7704F737FC4492FC3964449c80b4D7c77479b9`](https://sepolia.etherscan.io/address/0xbC7704F737FC4492FC3964449c80b4D7c77479b9) |
+| `Pantry` | [`0xe867E3009C61B943776823a97b3C66A89Bb66a23`](https://sepolia.etherscan.io/address/0xe867E3009C61B943776823a97b3C66A89Bb66a23) |
+| `LiquidityLocker` | [`0x704811b4091C6A7E37dAb7a104A80300986Bf058`](https://sepolia.etherscan.io/address/0x704811b4091C6A7E37dAb7a104A80300986Bf058) |
+| `RatPantry` (the rats' croquettes, plain CROQ, 500,000) | [`0xa8C6850eB99f89aB1DA9714Cd073B454Bb6E1850`](https://sepolia.etherscan.io/address/0xa8C6850eB99f89aB1DA9714Cd073B454Bb6E1850) |
+| `WhitelistGifts` (425,000 cCROQ for the whitelist's draws) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
+| CROQ/USDC pool (Uniswap V3, 1%) | [`0x2A830D9F11D67B8Ac11Dc70AEbc34bEE750cC811`](https://sepolia.etherscan.io/address/0x2A830D9F11D67B8Ac11Dc70AEbc34bEE750cC811) |
+| Position | #233324, ticks 69200 to 138200, 4,000,000 CROQ, 0 USDC (0.001012 to 1.004 USDC per CROQ) |
 | Uniswap V3 factory | `0x0227628f3F023bb0B980b67D528571c95c6DaC1c` |
 | `NonfungiblePositionManager` | `0x1238536071E1c677A632429e3655c799b22cDA52` |
 | `SwapRouter02` | `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` |
@@ -599,6 +600,18 @@ The treasury, and the locker's beneficiary and owner, is the deployer
 `0x590891F269720001435004A1089cAB5b2c20029A` (until 2026-10-07 it was
 `0x6a18cFC3fAeef453B295B12246d40a82593b3208`). It holds what the split leaves: the treasury's
 5,000,000 CROQ, less the `RatPantry`'s 500,000 and the gifts' 425,000.
+
+The one that read the `DoNotOpen` of the rats' powers and tricks (2026-10-07, block 11862305), replaced:
+
+| Contract | Address |
+| --- | --- |
+| `Croq` | [`0x176f24a7ab07210E8306C4331104BC9a0d145a53`](https://sepolia.etherscan.io/address/0x176f24a7ab07210E8306C4331104BC9a0d145a53) |
+| `ConfidentialCroq` | [`0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964`](https://sepolia.etherscan.io/address/0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964) |
+| `Pantry` | [`0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F`](https://sepolia.etherscan.io/address/0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F) |
+| `LiquidityLocker` (position #233286) | [`0x13B2636a1De5Ad3922aF6D499a290e8911F4e772`](https://sepolia.etherscan.io/address/0x13B2636a1De5Ad3922aF6D499a290e8911F4e772) |
+| `RatPantry` | [`0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450`](https://sepolia.etherscan.io/address/0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450) |
+| `WhitelistGifts` | [`0xD244389bF81C38803c94957a1e6B5694eEeA678b`](https://sepolia.etherscan.io/address/0xD244389bF81C38803c94957a1e6B5694eEeA678b) |
+| CROQ/USDC pool (Uniswap V3, 1%) | [`0xC2EA76E3c3107512A229936FfbD91cD297D40847`](https://sepolia.etherscan.io/address/0xC2EA76E3c3107512A229936FfbD91cD297D40847) |
 
 The one that read the `DoNotOpen` of the security review (2026-10-03, block 11836238), replaced:
 

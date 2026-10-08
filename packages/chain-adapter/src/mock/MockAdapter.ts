@@ -81,6 +81,9 @@ const USD = 1_000_000n;
 const FEES = { mint: 5n * USD, observe: USD, feed: USD / 2n, paidShake: (5n * USD) / 2n };
 const MAX_PER_TX = Number(spec.mechanics.mint?.maxPerTx ?? 10);
 const MILESTONES = spec.collection.milestones;
+/** The sale stops at its last milestone; the rest of the supply is the whitelist's gift boxes. */
+const SALE_CAP = MILESTONES[MILESTONES.length - 1]!;
+const GIFT_BOXES = spec.collection.maxSupply - SALE_CAP;
 /** What you start the demo with, and what the faucet gives. */
 const START_USDC = 100n * USD;
 const START_CUSDC = 20n * USD;
@@ -265,6 +268,8 @@ export class MockAdapter implements ChainAdapter {
   private readonly proposals = new Map<string, Address>();
   /** Boxes sold: encrypted on a real chain. */
   private sold = 0;
+  /** Boxes the whitelist's gifts minted, out of the sale. */
+  private giftsMinted = 0;
   private milestonesReached = 0;
   /** Plain USDC, public. */
   private readonly usdc = new Map<Address, bigint>();
@@ -474,18 +479,18 @@ export class MockAdapter implements ChainAdapter {
     if (gift.status === "claimed") throw revert("AlreadyClaimed");
     if (gift.status !== "ready") throw revert(gift.status === "none" ? "NotOnTheList" : "NotOpen");
     const tier = spec.whitelist.tiers[gift.tier!]!;
-    if (tier.box) opts?.onStep?.("encrypting");
+    if (tier.box && this.giftsMinted >= GIFT_BOXES) throw revert("TooManyBoxes");
     await this.send(opts, "claim");
     // One encrypted 16-bit draw folded into the range, as the contract does.
     const croq = BigInt(tier.croqMin + (Math.floor(Math.random() * 65_536) % (tier.croqMax - tier.croqMin + 1)));
     this.credit(this.hidden, me, croq);
     this.hiddenMoves.set(me, (this.hiddenMoves.get(me) ?? 0) + 1);
     let box: number | null = null;
-    if (tier.box && this.sold < spec.collection.maxSupply) {
+    if (tier.box) {
+      // Minted free out of the boxes the sale leaves: no milestone counts it.
       box = this.boxes.length;
       this.boxes.push(this.newBox(me));
-      this.sold++;
-      this.settleMilestones();
+      this.giftsMinted++;
     }
     let rat: number | null = null;
     if (tier.rat) {
@@ -618,7 +623,7 @@ export class MockAdapter implements ChainAdapter {
     await this.send(opts, "mint");
     // As the contract: at most `ids`, all or nothing at the cap, nothing if the price did not arrive.
     let got = Math.min(quantity, ids);
-    if (this.sold + got > spec.collection.maxSupply) got = 0;
+    if (this.sold + got > SALE_CAP) got = 0;
     if (got && !this.pull(me, FEES.mint * BigInt(got))) got = 0;
     this.sold += got;
     const first = this.boxes.length;

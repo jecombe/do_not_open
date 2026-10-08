@@ -18,6 +18,8 @@ const POSITIONS = new Interface([
   "function positions(uint256 tokenId) view returns (uint96 nonce, address operator, address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)",
 ]);
 const RAMP = new Interface(["function feeBps() view returns (uint16)"]);
+/** The collection's rules (supply, batch size, sale milestones) live in its config. */
+const CONFIG = new Interface(["function maxSupply() view returns (uint16)", "function maxPerTx() view returns (uint8)", "function milestones() view returns (uint16[])"]);
 const BOX_STATUS: BoxStatus[] = ["sealed", "revealed"];
 const ALIVE_CHECK: AliveCheck[] = ["none", "alive", "notAlive"];
 const REQUEST_KINDS: RequestKind[] = ["open", "aliveCheck", "entangle"];
@@ -64,14 +66,17 @@ export class EvmChainState implements ChainState {
 
   private async readConstants(): Promise<CollectionConstants> {
     const c = { target: this.d.collection.address, iface: this.collectionIface };
+    const [config] = await multicall(this.rpc, [{ ...c, fn: "config", args: [] }]);
+    if (!config) throw new Error("the collection's config is unreadable");
+    const rules = { target: String(config[0]), iface: CONFIG };
     const r = await multicall(this.rpc, [
       { ...c, fn: "mintPrice", args: [] },
       { ...c, fn: "observeFee", args: [] },
       { ...c, fn: "feedFee", args: [] },
       { ...c, fn: "paidShakeFee", args: [] },
-      { ...c, fn: "maxSupply", args: [] },
-      { ...c, fn: "maxPerTx", args: [] },
-      { ...c, fn: "milestones", args: [] },
+      { ...rules, fn: "maxSupply", args: [] },
+      { ...rules, fn: "maxPerTx", args: [] },
+      { ...rules, fn: "milestones", args: [] },
       ...(this.d.ramp ? [{ target: this.d.ramp.address, iface: RAMP, fn: "feeBps", args: [] }] : []),
     ]);
     if (r.slice(0, 7).some((x) => x === null)) throw new Error("collection constants unreadable");

@@ -86,7 +86,7 @@ sequenceDiagram
   end
   App->>App: Relayer SDK: encrypt q for (DoNotOpen, buyer)
   App->>C: mint(encrypted q, proof, n)
-  C->>Co: q = min(q, n), q = 0 if sold + q > 10,000
+  C->>Co: q = min(q, n), q = 0 if sold + q > 9,000 (the last milestone, the sale's cap)
   C->>K: confidentialTransferFrom(buyer, DoNotOpen, q x price)
   K-->>C: paid: the whole price, or 0
   C->>Co: q = 0 unless paid == price, sold += q
@@ -487,24 +487,27 @@ sequenceDiagram
   App->>API: GET /v1/gifts/:address
   API-->>App: tier, proof (404 not-frozen / not-on-list)
   U->>App: Collect my gift
-  App->>App: encrypt quantity 1 for DoNotOpen, user = WhitelistGifts (box tiers only)
-  App->>G: claim(tier, proof, quantity, inputProof, ratSeed)
+  App->>App: draw an unadopted rat seed at random (rat tiers only)
+  App->>G: claim(tier, proof, ratSeed)
   G->>G: leaf (wallet, tier) in the root, not claimed, before closesAt
   G->>G: randEuint16 % (croqMax - croqMin + 1) + croqMin
   G->>C: confidentialTransfer(wallet, amount): allowed to the wallet and the gifts
-  G->>D: mint(quantity, inputProof, 1): paid with the gifts' cUSDC
-  G->>D: confidentialTransfer(wallet, box)
+  G->>D: gift(wallet): free, out of the 1,000 boxes the sale leaves (box tiers only)
+  D-->>App: ConfidentialTransfer(box, 0, wallet, moved), BoxGifted(box, wallet)
   G->>R: gift(wallet, ratSeed): free, outside the paid caps
   G-->>App: GiftClaimed(wallet, tier, box, rat)
   U->>App: Read my croquettes
   App->>App: user-decrypt the amount (one signature a session)
 ```
 
-The croquettes come from the treasury (at most 425,000 cCROQ for 1,500 seats), the boxes are
-bought at the mint price with cUSDC the owner sends the contract (the money comes back as the
-collection's revenue), the rats are free seed rats outside the 700 + 300 paid ones (at most
-`maxGiftRats`, 1,000). The owner can correct the root until the first claim, and takes back what
-is left with `sweep` once `claimDays` (30) are over.
+The croquettes come from the treasury (at most 425,000 cCROQ for 1,500 seats). The boxes are
+minted free by `DoNotOpen.gift`, which only the collection's `giver` (`WhitelistGifts`) may call:
+the sale stops at its last milestone, 9,000, and the 1,000 boxes between it and the 10,000 supply
+are the gifts' (as many as the First class and Business seats). Nobody advances their price, a
+sold-out sale never empties a gift, and they count in no milestone. The rats are free seed rats
+outside the 700 + 300 paid ones (at most `maxGiftRats`, 1,000). A gift nobody collects is never
+minted. The owner can correct the root until the first claim, and takes back the cCROQ left
+with `sweep` once `claimDays` (30) are over.
 
 ## X boarding pass
 

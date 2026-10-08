@@ -38,11 +38,15 @@ flowchart TB
   aff -- "observe, masked by ok" --> req
 ```
 
-Per collection: the number sold (`euint16`, nobody on the ACL, capped at 10,000 under
-encryption), the bit "the next milestone is reached" (publicly decryptable after each
+Per collection: the number sold (`euint16`, nobody on the ACL, capped under encryption at the
+last milestone, 9,000), the bit "the next milestone is reached" (publicly decryptable after each
 mint), the cUSDC revenue (`euint64`, nobody on the ACL, the owner included: it learns the
 revenue only as what `withdraw` pays, at most once a week). Public: `tokenCount` (ids
-created, empty ones included) and `milestonesReached`. See [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md).
+created, empty ones included), `milestonesReached`, `giver` (the whitelist's gifts contract) and
+`giftsMinted` (boxes it minted free, at most `maxSupply` minus the last milestone: 1,000), and
+`metadata` (the `BoxMetadata` contract that builds the token URIs). The rules (supply, batch
+size, milestones) are in `DoNotOpenConfig`, read through `config()`. See
+[HIDDEN_OWNERS.md](HIDDEN_OWNERS.md).
 
 The seed layout (from `game-spec`):
 
@@ -64,6 +68,7 @@ is public.
 | How many boxes an account holds | Yes, their own | No: an upper bound at most (ids it minted, transfers naming it) | There is no `balanceOf` |
 | How many boxes were sold | No | No | Encrypted counter; only milestones are announced |
 | How many boxes one mint bought | The buyer | No: at most the `ids` it created | Encrypted quantity in `MintPlaced` |
+| Who got a whitelist gift box | Yes | Yes | `BoxGifted(tokenId, to)`: one box, free, outside the sale; the tier is public anyway |
 | The seed, the state, the score | No | No | Only by opening the box, for everyone at once |
 | One trait per shake | Yes, free, unlimited | Yes, by paying (`paidShake`) | User decryption of a fresh ciphertext. A free shake by a non-holder reads `NOT_YOURS` |
 | Which trait a shake picked | The viewer only | No | The pick is encrypted too, and absent from the event |
@@ -311,7 +316,9 @@ freezes it into OpenZeppelin's standard Merkle tree of `(address, uint8 tier)`; 
 that file back (`WHITELIST_GIFTS_TREE`) to serve proofs. On chain, `WhitelistGifts` keeps the
 `root`, `closesAt`, the tiers (`croqMin`, `croqMax`, `box`, `rat`), `claimedCount` and per
 wallet a `Gift`: claimed, tier, box id, rat id, and the `euint64` croquettes it drew (allowed to
-the wallet and the contract only, by the cCROQ transfer).
+the wallet and the contract only, by the cCROQ transfer). It holds cCROQ only: the box comes from
+`DoNotOpen.gift` and the rat from `Rats.gift`, both free. The API indexes `BoxGifted` as a mint
+of one box for the wallet (a `mints` row with a count of 1, a box row).
 
 ### The suggestion box
 

@@ -264,10 +264,12 @@ const withAddress = (name: string, description: string) =>
 
 withAddress("dno:address", "Prints the deployed DoNotOpen address").setAction(async (args, hre) => {
   const { dno, address } = await connect(hre, args);
-  const milestones = await dno.milestones();
+  const config = await hre.ethers.getContractAt("DoNotOpenConfig", await dno.config());
+  const milestones = await config.milestones();
   const reached = Number(await dno.milestonesReached());
   const sold = reached ? `more than ${milestones[reached - 1]}` : `fewer than ${milestones[0]}`;
-  console.log(`DoNotOpen: ${address}  (${await dno.tokenCount()} ids, ${sold} of ${await dno.maxSupply()} boxes sold)`);
+  const gifts = `${await dno.giftsMinted()} of ${await config.giftBoxes()} gift boxes`;
+  console.log(`DoNotOpen: ${address}  (${await dno.tokenCount()} ids, ${sold} of ${milestones[milestones.length - 1]} boxes sold, ${gifts})`);
 });
 
 withAddress("dno:mint", "Buys sealed boxes, the quantity encrypted")

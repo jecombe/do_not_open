@@ -33,23 +33,22 @@ export const REQUEST = { None: 0, Pending: 1, Done: 2, Refused: 3 } as const;
 /**
  * DoNotOpen with local USDC and cUSDC. Signers 0-7 each hold `STARTING_CUSDC` and have made the
  * collection their cUSDC operator; signer 9 holds nothing. With a smaller `maxSupply` and no
- * `milestones`, the only milestone is the cap.
+ * `milestones`, the only milestone is the cap: no box is kept for gifts.
  */
 export async function deploy(overrides: Partial<ConfigParams> = {}, milestones?: number[]) {
   const [deployer] = await ethers.getSigners();
-  const params = configParamsFromSpec(overrides);
+  const steps = milestones ?? overrides.milestones ?? (overrides.maxSupply ? [overrides.maxSupply] : milestonesFromSpec());
+  const params = configParamsFromSpec({ ...overrides, milestones: steps });
   const config = (await (await ethers.getContractFactory("DoNotOpenConfig")).deploy(params)) as unknown as DoNotOpenConfig;
   const usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
   const cUsdc = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(
     await usdc.getAddress(),
   )) as unknown as TestConfidentialUSDC;
-  const steps = milestones ?? (overrides.maxSupply ? [overrides.maxSupply] : milestonesFromSpec());
   const dno = (await (await ethers.getContractFactory("DoNotOpen")).deploy(
     await config.getAddress(),
     FEES,
     await usdc.getAddress(),
     await cUsdc.getAddress(),
-    steps,
     deployer!.address,
   )) as unknown as DoNotOpen;
   for (const signer of (await ethers.getSigners()).slice(0, 8)) {
