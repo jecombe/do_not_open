@@ -211,7 +211,8 @@ describe("DoNotOpen", function () {
   describe("milestones", function () {
     it("announces each milestone once it is reached, and nothing in between", async function () {
       const small = await deploy({ maxSupply: 12 }, [4, 8, 12]);
-      expect(await small.dno.milestones()).to.deep.eq([4n, 8n, 12n]);
+      expect(await small.config.milestones()).to.deep.eq([4n, 8n, 12n]);
+      expect(await small.config.giftBoxes()).to.eq(0);
       await mintBoxes(small.dno, alice, 3);
       expect(await announce(small.dno, carol)).to.eq(false);
       await mintBoxes(small.dno, bob, 2);
@@ -229,7 +230,7 @@ describe("DoNotOpen", function () {
       expect((await mintBoxes(small.dno, bob, 1)).owned).to.deep.eq([]);
     });
 
-    it("rejects a forged answer and milestones that do not end at the cap", async function () {
+    it("rejects a forged answer and milestones past the supply or out of order", async function () {
       const small = await deploy({ maxSupply: 12 }, [4, 12]);
       await mintBoxes(small.dno, alice, 1);
       const r = await fhevm.publicDecrypt([await small.dno.milestoneHandle()]);
@@ -240,8 +241,24 @@ describe("DoNotOpen", function () {
         "NothingToAnnounce",
       );
 
-      await expect(deploy({ maxSupply: 12 }, [4, 10])).to.be.revertedWithCustomError(dno, "InvalidMilestones");
-      await expect(deploy({ maxSupply: 12 }, [8, 4, 12])).to.be.revertedWithCustomError(dno, "InvalidMilestones");
+      const config = await ethers.getContractFactory("DoNotOpenConfig");
+      await expect(deploy({ maxSupply: 12 }, [4, 13])).to.be.revertedWithCustomError(config, "InvalidMilestones");
+      await expect(deploy({ maxSupply: 12 }, [8, 4, 12])).to.be.revertedWithCustomError(config, "InvalidMilestones");
+      await expect(deploy({ maxSupply: 12 }, [])).to.be.revertedWithCustomError(config, "InvalidMilestones");
+    });
+
+    it("stops the sale at the last milestone and keeps the rest of the supply for the gifts", async function () {
+      const small = await deploy({ maxSupply: 12 }, [4, 10]);
+      expect(await small.config.giftBoxes()).to.eq(2);
+      await mintBoxes(small.dno, alice, 10);
+      expect((await mintBoxes(small.dno, bob, 1)).owned).to.deep.eq([]);
+      await small.dno.setGiver(carol.address);
+      const first = await small.dno.connect(carol).gift.staticCall(bob.address);
+      await expect(small.dno.connect(carol).gift(bob.address)).to.emit(small.dno, "BoxGifted").withArgs(first, bob.address);
+      expect(await ownerOf(small.dno, first)).to.eq(bob.address);
+      await small.dno.connect(carol).gift(alice.address);
+      await expect(small.dno.connect(carol).gift(alice.address)).to.be.revertedWithCustomError(small.dno, "TooManyBoxes");
+      expect(await small.dno.giftsMinted()).to.eq(2);
     });
   });
 
@@ -438,16 +455,22 @@ describe("DoNotOpen", function () {
   });
 
   describe("admin", function () {
-    it("lets only the owner withdraw the revenue, trust readers and set the base URI", async function () {
+    it("lets only the owner withdraw the revenue, trust readers and point the token URIs", async function () {
       await mintBoxes(dno, alice, 2);
       await open(dno, 0, alice, carol);
       await expect(dno.connect(alice).withdraw(alice.address)).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
       expect(await withdrawAll(dno, cUsdc, carol)).to.eq(2n * FEES.mint + FEES.observe);
 
       await expect(dno.connect(alice).setTrustedReader(alice.address, true)).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
-      await expect(dno.connect(alice).setBaseURI("ipfs://x/")).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
-      await dno.connect(deployer).setBaseURI("ipfs://boxes/");
+      expect(await dno.tokenURI(1)).to.eq("");
+      const metadata = await (await ethers.getContractFactory("BoxMetadata")).deploy("https://api.test/metadata/", deployer.address);
+      await expect(dno.connect(alice).setMetadata(await metadata.getAddress())).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
+      await dno.connect(deployer).setMetadata(await metadata.getAddress());
+      expect(await dno.tokenURI(1)).to.eq("https://api.test/metadata/1");
+      await expect(metadata.connect(alice).setBaseURI("ipfs://x/")).to.be.revertedWithCustomError(metadata, "OwnableUnauthorizedAccount");
+      await metadata.setBaseURI("ipfs://boxes/");
       expect(await dno.tokenURI(1)).to.eq("ipfs://boxes/1");
+      await expect(dno.tokenURI(99)).to.be.revertedWithCustomError(dno, "ConfidentialERC721NonexistentToken");
     });
   });
 });

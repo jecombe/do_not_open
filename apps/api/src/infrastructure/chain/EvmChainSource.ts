@@ -16,7 +16,7 @@ const DISEASES = ["diabetic", "arthritic", "fattyLiver"] as const;
 /** Events worth a row. Ownership changes of the contracts and decryption proofs are left out. */
 const INDEXED: Record<Source, string[]> = {
   collection: [
-    "MintPlaced", "MilestoneReached", "Shaken", "Fed", "RequestPlaced", "RequestSettled", "Observed", "AliveProven",
+    "MintPlaced", "BoxGifted", "MilestoneReached", "Shaken", "Fed", "RequestPlaced", "RequestSettled", "Observed", "AliveProven",
     "EntangleProposed", "Entangled", ...DUEL_EVENTS,
     "ConfidentialTransfer",
   ],
@@ -88,7 +88,8 @@ export class EvmChainSource implements ChainSource {
       ...(d.ratPantry ? [{ source: "ratPantry" as const, address: d.ratPantry.address, iface: new Interface(d.ratPantry.abi) }] : []),
       ...(d.ratTricks ? [{ source: "ratTricks" as const, address: d.ratTricks.address, iface: new Interface(d.ratTricks.abi) }] : []),
     ].map((c) => ({ ...c, address: c.address.toLowerCase() }));
-    this.topics = this.contracts.flatMap((c) => INDEXED[c.source].map((name) => c.iface.getEvent(name)!.topicHash));
+    // An event an older deployment's ABI lacks (BoxGifted before the free gifts) is simply not asked for.
+    this.topics = this.contracts.flatMap((c) => INDEXED[c.source].flatMap((name) => c.iface.getEvent(name)?.topicHash ?? []));
     this.aclFilter = aclFilterFor(d);
     this.contracts.push({ source: "acl", address: d.fhevm.acl.toLowerCase(), iface: ACL });
   }
@@ -283,6 +284,8 @@ function toBody(name: string, a: Result): Record<string, unknown> | null {
   switch (name) {
     case "MintPlaced":
       return { name, firstTokenId: num(a.firstTokenId), buyer: addr(a.buyer), count: num(a.count) };
+    case "BoxGifted":
+      return { name, tokenId: num(a.tokenId), to: addr(a.to) };
     case "MilestoneReached":
       return { name, index: num(a.index), sold: num(a.sold) };
     case "Shaken":

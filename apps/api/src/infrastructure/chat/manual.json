@@ -164,16 +164,22 @@
      "id": "holders-1",
      "section": "holders",
      "heading": null,
-     "text": "Minting works on the same idea. It is paid in cUSDC only, and your browser encrypts how many boxes you want. You also pick how many token ids to hide that number among, from 1 to 10, and that choice is public. The first ids, up to your quantity, are yours; the others are empty boxes owned by nobody, and from outside the two look the same. More ids hide the quantity better and cost more gas. A mint that would pass the cap, or that your cUSDC balance does not cover, gets nothing and pays nothing.\nThe number of boxes sold is an encrypted counter, capped at 10,000 under encryption. Only milestones are announced: 100, 500, 1,000, 2,500, 5,000, 7,500, 9,000, 10,000, the last one meaning sold out. Each mint makes public a single yes-or-no answer, whether the next milestone is reached, and anyone can announce it."
+     "text": "Minting works on the same idea. It is paid in cUSDC only, and your browser encrypts how many boxes you want. You also pick how many token ids to hide that number among, from 1 to 10, and that choice is public. The first ids, up to your quantity, are yours; the others are empty boxes owned by nobody, and from outside the two look the same. More ids hide the quantity better and cost more gas. A mint that would pass the cap, or that your cUSDC balance does not cover, gets nothing and pays nothing."
     },
     {
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Some things stay visible, by design. A mint shows the buyer's address and how many ids it created, which is an upper bound on what they bought. A transfer attempt shows who sent it and to whom, as a maybe. And an action that has to become public (an opening, an alive check, a box put up for a duel, or a duel or an entanglement that goes through) shows that its caller held that box at that moment. An attempt by someone who did not hold it settles as refused and shows nothing about the box. Croquettes add one more: the app only feeds boxes you hold, so a meal, whose event names the feeder, shows a box you hold, even though the contract treats a stranger's meal the same way. Claims do not: the app always claims for whole rows of ten box numbers, yours among others."
+     "text": "The number of boxes sold is an encrypted counter, capped at 9,000 under encryption: of the 10,000 boxes, the other 1,000 are kept for the whitelist's gifts, minted free when a seated wallet collects its gift, never sold. Only milestones of the sale are announced: 100, 500, 1,000, 2,500, 5,000, 7,500, 9,000, the last one meaning sold out. The gift boxes count in none of them. Each mint makes public a single yes-or-no answer, whether the next milestone is reached, and anyone can announce it."
     },
     {
      "id": "holders-3",
+     "section": "holders",
+     "heading": null,
+     "text": "Some things stay visible, by design. A mint shows the buyer's address and how many ids it created, which is an upper bound on what they bought. A transfer attempt shows who sent it and to whom, as a maybe. And an action that has to become public (an opening, an alive check, a box put up for a duel, or a duel or an entanglement that goes through) shows that its caller held that box at that moment. An attempt by someone who did not hold it settles as refused and shows nothing about the box. Croquettes add one more: the app only feeds boxes you hold, so a meal, whose event names the feeder, shows a box you hold, even though the contract treats a stranger's meal the same way. Claims do not: the app always claims for whole rows of ten box numbers, yours among others."
+    },
+    {
+     "id": "holders-4",
      "section": "holders",
      "heading": null,
      "text": "This is also why the leaderboard ranks only opened cats, and the players who opened them: an opening publishes its opener, while who holds a sealed box stays hidden.\nOne of those public facts reaches further. Once an action has shown that an address held a box, the next transfer of that box from that address is certainly real, not a maybe, so the box can be followed to its next holder, and from there onwards. When you give a box away, you can tick \"Send 3 decoys with it\": three more transfers of the same box to random addresses, which move nothing but look like the real one, sent in a random order with it. Then nobody can tell which one moved the box, or whether any did. Each costs gas. Without decoys, keep a box out of sight by receiving it, or moving it, at a fresh address you never use to prove anything."
@@ -482,13 +488,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Every seat comes with a gift, set by your rank among the seated players when the list closes. Ranks 1 to 500 fly First class: 100 to 500 cCROQ, a sealed box and a rat. Up to rank 1,000, Business: 50 to 250 cCROQ and a box. Up to rank 1,500, Economy: 20 to 100 cCROQ and a rat. The croquettes are drawn at random under encryption: only your wallet can read how many. The box and the rat are public, like any box's first holder after a mint of one. The gift is collected on mainnet, in one transaction from the same Duels tab, within 30 days of the list closing, by a wallet that claimed its place: a seat held only by an X account has no wallet to send it to.\nThe contracts on Sepolia:\nThe boxes (DoNotOpen) 0x7b24…2d52\nThe Pantry (croquettes, meals, weigh-ins) 0x4e62…B72F\nCROQ, the plain croquette 0x176f…5a53\ncCROQ, the encrypted croquette 0xa9de…9964\nCROQ / USDC pool 0xC2EA…0847"
+     "text": "Every seat comes with a gift, set by your rank among the seated players when the list closes. Ranks 1 to 500 fly First class: 100 to 500 cCROQ, a sealed box and a rat. Up to rank 1,000, Business: 50 to 250 cCROQ and a box. Up to rank 1,500, Economy: 20 to 100 cCROQ and a rat. The croquettes are drawn at random under encryption: only your wallet can read how many. The box is minted free for you out of the boxes kept outside the sale, so a sold-out sale never empties a gift; the rat is a free one, its seed drawn at random. Both are public, like any box's first holder after a mint of one. A gift nobody collects is never minted. The gift is collected on mainnet, in one transaction from the same Duels tab, within 30 days of the list closing, by a wallet that claimed its place: a seat held only by an X account has no wallet to send it to.\nThe contracts on Sepolia:"
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "Liquidity locker 0x13B2…e772\nThe USDC ramp (ETH to USDC) 0x0238…5638\nDecryption credits 0x1d18…6511\nStudio packs (StudioPacks) 0x4159…B5f6\nThe rats (Rats, ERC-721) 0x441F…2cF6\nThe rats' pantry (RatPantry) 0xC134…E450\nThe rats' tricks (RatTricks) 0x44B2…2d0D\nThe flea market (FleaMarket) 0x4E9f…81C1\nThe whitelist's gifts (WhitelistGifts) 0xD244…678b"
+     "text": "The boxes (DoNotOpen) 0x6e3B…54d1\nThe Pantry (croquettes, meals, weigh-ins) 0xe867…6a23\nCROQ, the plain croquette 0x765A…fB7C\ncCROQ, the encrypted croquette 0xbC77…79b9\nCROQ / USDC pool 0x2A83…C811\nLiquidity locker 0x7048…f058\nThe USDC ramp (ETH to USDC) 0x0238…5638\nDecryption credits 0x1d18…6511\nStudio packs (StudioPacks) 0x4159…B5f6\nThe rats (Rats, ERC-721) 0x441F…2cF6\nThe rats' pantry (RatPantry) 0xa8C6…1850\nThe rats' tricks (RatTricks) 0x1E72…765f\nThe flea market (FleaMarket) 0xF16b…6F92\nThe whitelist's gifts (WhitelistGifts) 0x09D2…405a"
     },
     {
      "id": "more-0",
@@ -667,22 +673,28 @@
      "id": "holders-1",
      "section": "holders",
      "heading": null,
-     "text": "Le mint repose sur la même idée. Il se paie uniquement en cUSDC, et votre navigateur chiffre le nombre de boîtes voulu. Vous choisissez aussi parmi combien d'ids de token cacher ce nombre, de 1 à 10, et ce choix est public. Les premiers ids, jusqu'à votre quantité, sont à vous ; les autres sont des boîtes vides qui n'appartiennent à personne, et de l'extérieur les deux se ressemblent. Plus d'ids cachent mieux la quantité et coûtent plus de gas. Un mint qui dépasserait le plafond, ou que votre solde cUSDC ne couvre pas, n'obtient rien et ne paie rien.\nLe nombre de boîtes vendues est un compteur chiffré, plafonné à 10 000 sous chiffrement. Seuls des paliers sont annoncés : 100, 500, 1 000, 2 500, 5 000, 7 500, 9 000, 10 000, le dernier voulant dire épuisé. Chaque mint rend publique une seule réponse, oui ou non : le palier suivant est-il atteint ? Et n'importe qui peut l'annoncer."
+     "text": "Le mint repose sur la même idée. Il se paie uniquement en cUSDC, et votre navigateur chiffre le nombre de boîtes voulu. Vous choisissez aussi parmi combien d'ids de token cacher ce nombre, de 1 à 10, et ce choix est public. Les premiers ids, jusqu'à votre quantité, sont à vous ; les autres sont des boîtes vides qui n'appartiennent à personne, et de l'extérieur les deux se ressemblent. Plus d'ids cachent mieux la quantité et coûtent plus de gas. Un mint qui dépasserait le plafond, ou que votre solde cUSDC ne couvre pas, n'obtient rien et ne paie rien."
     },
     {
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Certaines choses restent visibles, c'est voulu. Un mint montre l'adresse de l'acheteur et combien d'ids il a créés, ce qui borne par le haut ce qu'il a acheté. Une tentative de transfert montre qui l'a envoyée et à qui, comme un peut-être. Et une action qui doit devenir publique (une ouverture, une vérification de vie, une boîte mise en duel, ou un duel ou une intrication qui aboutit) montre que celui qui l'a lancée détenait cette boîte à ce moment-là. Une tentative de quelqu'un qui ne la détenait pas se solde par un refus et ne montre rien de la boîte. Les croquettes en ajoutent une : l'app ne nourrit que les boîtes que vous détenez, donc un repas, dont l'événement nomme celui qui nourrit, montre une boîte que vous détenez, même si le contrat traite de la même façon le repas d'un inconnu. Les réclamations, non : l'app réclame toujours pour des rangées entières de dix numéros de boîte, les vôtres parmi d'autres."
+     "text": "Le nombre de boîtes vendues est un compteur chiffré, plafonné à 9 000 sous chiffrement : sur les 10 000 boîtes, les 1 000 autres sont gardées pour les cadeaux de la whitelist, mintées gratuitement quand un wallet assis récupère son cadeau, jamais vendues. Seuls des paliers de la vente sont annoncés : 100, 500, 1 000, 2 500, 5 000, 7 500, 9 000, le dernier voulant dire épuisé. Les boîtes offertes ne comptent dans aucun. Chaque mint rend publique une seule réponse, oui ou non : le palier suivant est-il atteint ? Et n'importe qui peut l'annoncer."
     },
     {
      "id": "holders-3",
      "section": "holders",
      "heading": null,
-     "text": "C'est aussi pour ça que le classement ne range que les chats ouverts, et les joueurs qui les ont ouverts : une ouverture publie qui l'a faite, alors que qui détient une boîte scellée reste caché."
+     "text": "Certaines choses restent visibles, c'est voulu. Un mint montre l'adresse de l'acheteur et combien d'ids il a créés, ce qui borne par le haut ce qu'il a acheté. Une tentative de transfert montre qui l'a envoyée et à qui, comme un peut-être. Et une action qui doit devenir publique (une ouverture, une vérification de vie, une boîte mise en duel, ou un duel ou une intrication qui aboutit) montre que celui qui l'a lancée détenait cette boîte à ce moment-là. Une tentative de quelqu'un qui ne la détenait pas se solde par un refus et ne montre rien de la boîte. Les croquettes en ajoutent une : l'app ne nourrit que les boîtes que vous détenez, donc un repas, dont l'événement nomme celui qui nourrit, montre une boîte que vous détenez, même si le contrat traite de la même façon le repas d'un inconnu. Les réclamations, non : l'app réclame toujours pour des rangées entières de dix numéros de boîte, les vôtres parmi d'autres."
     },
     {
      "id": "holders-4",
+     "section": "holders",
+     "heading": null,
+     "text": "C'est aussi pour ça que le classement ne range que les chats ouverts, et les joueurs qui les ont ouverts : une ouverture publie qui l'a faite, alors que qui détient une boîte scellée reste caché."
+    },
+    {
+     "id": "holders-5",
      "section": "holders",
      "heading": null,
      "text": "L'un de ces faits publics va plus loin. Une fois qu'une action a montré qu'une adresse détenait une boîte, le transfert suivant de cette boîte depuis cette adresse est forcément réel, pas un peut-être : on peut donc suivre la boîte jusqu'à son détenteur suivant, et de là plus loin encore. Quand vous donnez une boîte, vous pouvez cocher « Envoyer 3 leurres avec » : trois transferts de plus de la même boîte vers des adresses au hasard, qui ne déplacent rien mais ressemblent au vrai, envoyés dans un ordre aléatoire avec lui. Personne ne peut alors dire lequel a déplacé la boîte, ni même si l'un l'a fait. Chacun coûte du gas. Sans leurres, gardez une boîte hors de vue en la recevant, ou en la déplaçant, sur une adresse neuve dont vous ne vous servez jamais pour prouver quoi que ce soit."
@@ -1039,13 +1051,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Chaque place vient avec un cadeau, fixé par votre rang parmi les joueurs assis quand la liste ferme. Les rangs 1 à 500 voyagent en Première classe : 100 à 500 cCROQ, une boîte scellée et un rat. Jusqu'au rang 1 000, Business : 50 à 250 cCROQ et une boîte. Jusqu'au rang 1 500, Économie : 20 à 100 cCROQ et un rat. Les croquettes sont tirées au sort sous chiffrement : seul votre wallet peut lire combien. La boîte et le rat sont publics, comme le premier détenteur d'une boîte après un mint d'une seule. Le cadeau se récupère sur le mainnet, en une transaction depuis le même onglet Duels, dans les 30 jours qui suivent la fermeture de la liste, avec un wallet qui a réclamé sa place : une place tenue seulement par un compte X n'a pas de wallet où l'envoyer.\nLes contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x7b24…2d52\nLe Garde-manger (croquettes, repas, pesées) 0x4e62…B72F"
+     "text": "Chaque place vient avec un cadeau, fixé par votre rang parmi les joueurs assis quand la liste ferme. Les rangs 1 à 500 voyagent en Première classe : 100 à 500 cCROQ, une boîte scellée et un rat. Jusqu'au rang 1 000, Business : 50 à 250 cCROQ et une boîte. Jusqu'au rang 1 500, Économie : 20 à 100 cCROQ et un rat. Les croquettes sont tirées au sort sous chiffrement : seul votre wallet peut lire combien. La boîte est mintée gratuitement pour vous parmi les boîtes gardées hors de la vente : une vente épuisée ne vide donc jamais un cadeau ; le rat est un rat gratuit, sa graine tirée au hasard. Les deux sont publics, comme le premier détenteur d'une boîte après un mint d'une seule. Un cadeau que personne ne récupère n'est jamais minté. Le cadeau se récupère sur le mainnet, en une transaction depuis le même onglet Duels, dans les 30 jours qui suivent la fermeture de la liste, avec un wallet qui a réclamé sa place : une place tenue seulement par un compte X n'a pas de wallet où l'envoyer."
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "CROQ, la croquette ordinaire 0x176f…5a53\ncCROQ, la croquette chiffrée 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCoffre de liquidité 0x13B2…e772\nLa rampe USDC (de l'ETH vers l'USDC) 0x0238…5638\nCrédits de déchiffrement 0x1d18…6511\nLes packs du studio (StudioPacks) 0x4159…B5f6\nLes rats (Rats, ERC-721) 0x441F…2cF6\nLe garde-manger des rats (RatPantry) 0xC134…E450\nLes tours des rats (RatTricks) 0x44B2…2d0D\nLe marché aux puces (FleaMarket) 0x4E9f…81C1\nLes cadeaux de la whitelist (WhitelistGifts) 0xD244…678b"
+     "text": "Les contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x6e3B…54d1\nLe Garde-manger (croquettes, repas, pesées) 0xe867…6a23\nCROQ, la croquette ordinaire 0x765A…fB7C\ncCROQ, la croquette chiffrée 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCoffre de liquidité 0x7048…f058\nLa rampe USDC (de l'ETH vers l'USDC) 0x0238…5638\nCrédits de déchiffrement 0x1d18…6511\nLes packs du studio (StudioPacks) 0x4159…B5f6\nLes rats (Rats, ERC-721) 0x441F…2cF6\nLe garde-manger des rats (RatPantry) 0xa8C6…1850\nLes tours des rats (RatTricks) 0x1E72…765f\nLe marché aux puces (FleaMarket) 0xF16b…6F92\nLes cadeaux de la whitelist (WhitelistGifts) 0x09D2…405a"
     },
     {
      "id": "more-0",
@@ -1224,22 +1236,28 @@
      "id": "holders-1",
      "section": "holders",
      "heading": null,
-     "text": "El minteo se basa en la misma idea. Se paga solo en cUSDC, y tu navegador cifra cuántas cajas quieres. También eliges entre cuántos ids de token esconder ese número, de 1 a 10, y esa elección es pública. Los primeros ids, hasta tu cantidad, son tuyos; los demás son cajas vacías que no son de nadie, y desde fuera unas y otras se ven iguales. Más ids esconden mejor la cantidad y cuestan más gas. Un minteo que superaría el tope, o que tu saldo de cUSDC no cubre, no consigue nada y no paga nada.\nEl número de cajas vendidas es un contador cifrado, con un tope de 10.000 bajo cifrado. Solo se anuncian hitos: 100, 500, 1000, 2500, 5000, 7500, 9000, 10.000, y el último significa agotado. Cada minteo hace pública una sola respuesta de sí o no, si se alcanzó el siguiente hito, y cualquiera puede anunciarlo."
+     "text": "El minteo se basa en la misma idea. Se paga solo en cUSDC, y tu navegador cifra cuántas cajas quieres. También eliges entre cuántos ids de token esconder ese número, de 1 a 10, y esa elección es pública. Los primeros ids, hasta tu cantidad, son tuyos; los demás son cajas vacías que no son de nadie, y desde fuera unas y otras se ven iguales. Más ids esconden mejor la cantidad y cuestan más gas. Un minteo que superaría el tope, o que tu saldo de cUSDC no cubre, no consigue nada y no paga nada."
     },
     {
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Algunas cosas siguen a la vista, a propósito. Un minteo muestra la dirección del comprador y cuántos ids creó, lo que pone un límite superior a lo que compró. Un intento de transferencia muestra quién la envió y a quién, como un quizás. Y una acción que tiene que hacerse pública (una apertura, una comprobación de vida, una caja puesta en duelo, o un duelo o un entrelazado que sale adelante) muestra que quien la lanzó tenía esa caja en ese momento. Un intento de alguien que no la tenía se resuelve como rechazado y no muestra nada de la caja. Las croquetas añaden una más: la app solo alimenta a las cajas que tienes, así que una comida, cuyo evento nombra a quien la sirve, muestra una caja que tienes, aunque el contrato trate igual la comida de un desconocido. Las reclamaciones no: la app siempre reclama por filas enteras de diez números de caja, los tuyos entre otros."
+     "text": "El número de cajas vendidas es un contador cifrado, con un tope de 9000 bajo cifrado: de las 10.000 cajas, las otras 1000 se guardan para los regalos de la whitelist, minteadas gratis cuando un wallet sentado recoge su regalo, nunca vendidas. Solo se anuncian hitos de la venta: 100, 500, 1000, 2500, 5000, 7500, 9000, y el último significa agotado. Las cajas regaladas no cuentan en ninguno. Cada minteo hace pública una sola respuesta de sí o no, si se alcanzó el siguiente hito, y cualquiera puede anunciarlo."
     },
     {
      "id": "holders-3",
      "section": "holders",
      "heading": null,
-     "text": "Por eso también la clasificación solo ordena gatos abiertos, y a los jugadores que los abrieron: una apertura publica quién la hizo, mientras que quién tiene una caja sellada sigue oculto."
+     "text": "Algunas cosas siguen a la vista, a propósito. Un minteo muestra la dirección del comprador y cuántos ids creó, lo que pone un límite superior a lo que compró. Un intento de transferencia muestra quién la envió y a quién, como un quizás. Y una acción que tiene que hacerse pública (una apertura, una comprobación de vida, una caja puesta en duelo, o un duelo o un entrelazado que sale adelante) muestra que quien la lanzó tenía esa caja en ese momento. Un intento de alguien que no la tenía se resuelve como rechazado y no muestra nada de la caja. Las croquetas añaden una más: la app solo alimenta a las cajas que tienes, así que una comida, cuyo evento nombra a quien la sirve, muestra una caja que tienes, aunque el contrato trate igual la comida de un desconocido. Las reclamaciones no: la app siempre reclama por filas enteras de diez números de caja, los tuyos entre otros."
     },
     {
      "id": "holders-4",
+     "section": "holders",
+     "heading": null,
+     "text": "Por eso también la clasificación solo ordena gatos abiertos, y a los jugadores que los abrieron: una apertura publica quién la hizo, mientras que quién tiene una caja sellada sigue oculto."
+    },
+    {
+     "id": "holders-5",
      "section": "holders",
      "heading": null,
      "text": "Uno de esos hechos públicos llega más lejos. Una vez que una acción ha mostrado que una dirección tenía una caja, la siguiente transferencia de esa caja desde esa dirección es real con seguridad, no un quizás, así que se puede seguir la caja hasta su siguiente titular, y desde ahí más allá. Cuando regalas una caja, puedes marcar «Enviar 3 señuelos con ella»: tres transferencias más de la misma caja a direcciones al azar, que no mueven nada pero parecen la real, enviadas en un orden aleatorio con ella. Así nadie puede saber cuál movió la caja, ni si alguna lo hizo. Cada una cuesta gas. Sin señuelos, mantén una caja fuera de la vista recibiéndola, o moviéndola, en una dirección nueva que nunca uses para probar nada."
@@ -1572,13 +1590,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Cada lugar viene con un regalo, fijado por tu puesto entre los jugadores sentados cuando la lista cierra. Los puestos 1 a 500 viajan en Primera clase: 100 a 500 cCROQ, una caja sellada y una rata. Hasta el puesto 1000, Business: 50 a 250 cCROQ y una caja. Hasta el puesto 1500, Turista: 20 a 100 cCROQ y una rata. Las croquetas se sortean bajo cifrado: solo tu wallet puede leer cuántas. La caja y la rata son públicas, como el primer titular de una caja tras un mint de una sola. El regalo se recoge en mainnet, en una transacción desde la misma pestaña Duelos, en los 30 días siguientes al cierre de la lista, con un wallet que reclamó su lugar: un lugar que solo tiene una cuenta de X no tiene wallet al que enviarlo.\nLos contratos en Sepolia:\nLas cajas (DoNotOpen) 0x7b24…2d52\nLa Despensa (croquetas, comidas, pesajes) 0x4e62…B72F\nCROQ, la croqueta sin cifrar 0x176f…5a53"
+     "text": "Cada lugar viene con un regalo, fijado por tu puesto entre los jugadores sentados cuando la lista cierra. Los puestos 1 a 500 viajan en Primera clase: 100 a 500 cCROQ, una caja sellada y una rata. Hasta el puesto 1000, Business: 50 a 250 cCROQ y una caja. Hasta el puesto 1500, Turista: 20 a 100 cCROQ y una rata. Las croquetas se sortean bajo cifrado: solo tu wallet puede leer cuántas. La caja se mintea gratis para ti entre las cajas guardadas fuera de la venta, así que una venta agotada nunca vacía un regalo; la rata es gratuita, con su semilla sorteada. Ambas son públicas, como el primer titular de una caja tras un mint de una sola. Un regalo que nadie recoge nunca se mintea. El regalo se recoge en mainnet, en una transacción desde la misma pestaña Duelos, en los 30 días siguientes al cierre de la lista, con un wallet que reclamó su lugar: un lugar que solo tiene una cuenta de X no tiene wallet al que enviarlo."
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "cCROQ, la croqueta cifrada 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCofre de liquidez 0x13B2…e772\nLa rampa USDC (de ETH a USDC) 0x0238…5638\nCréditos de descifrado 0x1d18…6511\nLos packs del estudio (StudioPacks) 0x4159…B5f6\nLas ratas (Rats, ERC-721) 0x441F…2cF6\nLa despensa de las ratas (RatPantry) 0xC134…E450\nLos trucos de las ratas (RatTricks) 0x44B2…2d0D\nEl mercadillo (FleaMarket) 0x4E9f…81C1\nLos regalos de la whitelist (WhitelistGifts) 0xD244…678b"
+     "text": "Los contratos en Sepolia:\nLas cajas (DoNotOpen) 0x6e3B…54d1\nLa Despensa (croquetas, comidas, pesajes) 0xe867…6a23\nCROQ, la croqueta sin cifrar 0x765A…fB7C\ncCROQ, la croqueta cifrada 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCofre de liquidez 0x7048…f058\nLa rampa USDC (de ETH a USDC) 0x0238…5638\nCréditos de descifrado 0x1d18…6511\nLos packs del estudio (StudioPacks) 0x4159…B5f6\nLas ratas (Rats, ERC-721) 0x441F…2cF6\nLa despensa de las ratas (RatPantry) 0xa8C6…1850\nLos trucos de las ratas (RatTricks) 0x1E72…765f\nEl mercadillo (FleaMarket) 0xF16b…6F92\nLos regalos de la whitelist (WhitelistGifts) 0x09D2…405a"
     },
     {
      "id": "more-0",
@@ -1757,22 +1775,28 @@
      "id": "holders-1",
      "section": "holders",
      "heading": null,
-     "text": "Il mint si basa sulla stessa idea. Si paga solo in cUSDC, e il tuo browser cifra quante scatole vuoi. Scegli anche tra quanti id di token nascondere quel numero, da 1 a 10, e questa scelta è pubblica. I primi id, fino alla tua quantità, sono tuoi; gli altri sono scatole vuote che non appartengono a nessuno, e da fuori le due cose sembrano uguali. Più id nascondono meglio la quantità e costano più gas. Un mint che supererebbe il tetto, o che il tuo saldo in cUSDC non copre, non ottiene niente e non paga niente.\nIl numero di scatole vendute è un contatore cifrato, con un tetto di 10.000 sotto cifratura. Vengono annunciate solo delle soglie: 100, 500, 1000, 2500, 5000, 7500, 9000, 10.000, e l'ultima significa esaurito. Ogni mint rende pubblica una sola risposta, sì o no, se la soglia successiva è raggiunta, e chiunque può annunciarla."
+     "text": "Il mint si basa sulla stessa idea. Si paga solo in cUSDC, e il tuo browser cifra quante scatole vuoi. Scegli anche tra quanti id di token nascondere quel numero, da 1 a 10, e questa scelta è pubblica. I primi id, fino alla tua quantità, sono tuoi; gli altri sono scatole vuote che non appartengono a nessuno, e da fuori le due cose sembrano uguali. Più id nascondono meglio la quantità e costano più gas. Un mint che supererebbe il tetto, o che il tuo saldo in cUSDC non copre, non ottiene niente e non paga niente."
     },
     {
      "id": "holders-2",
      "section": "holders",
      "heading": null,
-     "text": "Alcune cose restano visibili, per scelta. Un mint mostra l'indirizzo di chi compra e quanti id ha creato, che è un limite superiore a quanto ha comprato. Un tentativo di trasferimento mostra chi l'ha inviato e a chi, come un forse. E un'azione che deve diventare pubblica (un'apertura, un controllo di vita, una scatola messa in duello, o un duello o un intreccio che va a buon fine) mostra che chi l'ha lanciata deteneva quella scatola in quel momento. Un tentativo di chi non la deteneva si chiude con un rifiuto e non mostra niente della scatola. Le crocchette ne aggiungono una: l'app nutre solo le scatole che detieni, quindi un pasto, il cui evento nomina chi lo serve, mostra una scatola che detieni, anche se il contratto tratta allo stesso modo il pasto di uno sconosciuto. I reclami no: l'app reclama sempre per file intere di dieci numeri di scatola, i tuoi tra altri."
+     "text": "Il numero di scatole vendute è un contatore cifrato, con un tetto di 9000 sotto cifratura: delle 10.000 scatole, le altre 1000 sono tenute per i regali della whitelist, mintate gratis quando un wallet seduto ritira il suo regalo, mai vendute. Vengono annunciate solo delle soglie della vendita: 100, 500, 1000, 2500, 5000, 7500, 9000, e l'ultima significa esaurito. Le scatole regalate non contano in nessuna. Ogni mint rende pubblica una sola risposta, sì o no, se la soglia successiva è raggiunta, e chiunque può annunciarla."
     },
     {
      "id": "holders-3",
      "section": "holders",
      "heading": null,
-     "text": "Per questo anche la classifica ordina solo i gatti aperti, e i giocatori che li hanno aperti: un'apertura pubblica chi l'ha fatta, mentre chi detiene una scatola sigillata resta nascosto."
+     "text": "Alcune cose restano visibili, per scelta. Un mint mostra l'indirizzo di chi compra e quanti id ha creato, che è un limite superiore a quanto ha comprato. Un tentativo di trasferimento mostra chi l'ha inviato e a chi, come un forse. E un'azione che deve diventare pubblica (un'apertura, un controllo di vita, una scatola messa in duello, o un duello o un intreccio che va a buon fine) mostra che chi l'ha lanciata deteneva quella scatola in quel momento. Un tentativo di chi non la deteneva si chiude con un rifiuto e non mostra niente della scatola. Le crocchette ne aggiungono una: l'app nutre solo le scatole che detieni, quindi un pasto, il cui evento nomina chi lo serve, mostra una scatola che detieni, anche se il contratto tratta allo stesso modo il pasto di uno sconosciuto. I reclami no: l'app reclama sempre per file intere di dieci numeri di scatola, i tuoi tra altri."
     },
     {
      "id": "holders-4",
+     "section": "holders",
+     "heading": null,
+     "text": "Per questo anche la classifica ordina solo i gatti aperti, e i giocatori che li hanno aperti: un'apertura pubblica chi l'ha fatta, mentre chi detiene una scatola sigillata resta nascosto."
+    },
+    {
+     "id": "holders-5",
      "section": "holders",
      "heading": null,
      "text": "Uno di questi fatti pubblici arriva più lontano. Una volta che un'azione ha mostrato che un indirizzo deteneva una scatola, il trasferimento successivo di quella scatola da quell'indirizzo è di sicuro reale, non un forse, quindi si può seguire la scatola fino al suo detentore successivo, e da lì oltre. Quando regali una scatola, puoi spuntare «Manda 3 esche insieme»: tre trasferimenti in più della stessa scatola verso indirizzi a caso, che non spostano nulla ma sembrano quello vero, mandati in ordine casuale con lui. Così nessuno può dire quale abbia spostato la scatola, né se qualcuno l'abbia fatto. Ognuno costa gas. Senza esche, tieni una scatola fuori vista ricevendola, o spostandola, su un indirizzo nuovo che non usi mai per provare niente."
@@ -2117,13 +2141,13 @@
      "id": "testnet-2",
      "section": "testnet",
      "heading": null,
-     "text": "Ogni posto arriva con un regalo, fissato dalla tua posizione tra i giocatori seduti quando la lista chiude. Le posizioni da 1 a 500 viaggiano in Prima classe: da 100 a 500 cCROQ, una scatola sigillata e un ratto. Fino alla posizione 1000, Business: da 50 a 250 cCROQ e una scatola. Fino alla posizione 1500, Economy: da 20 a 100 cCROQ e un ratto. Le crocchette sono estratte a sorte sotto cifratura: solo il tuo wallet può leggere quante. La scatola e il ratto sono pubblici, come il primo detentore di una scatola dopo un mint di una sola. Il regalo si ritira su mainnet, in una transazione dalla stessa scheda Duelli, entro 30 giorni dalla chiusura della lista, con un wallet che ha reclamato il suo posto: un posto tenuto solo da un account X non ha un wallet a cui inviarlo.\nI contratti su Sepolia:\nLe scatole (DoNotOpen) 0x7b24…2d52\nLa Dispensa (crocchette, pasti, pesate) 0x4e62…B72F"
+     "text": "Ogni posto arriva con un regalo, fissato dalla tua posizione tra i giocatori seduti quando la lista chiude. Le posizioni da 1 a 500 viaggiano in Prima classe: da 100 a 500 cCROQ, una scatola sigillata e un ratto. Fino alla posizione 1000, Business: da 50 a 250 cCROQ e una scatola. Fino alla posizione 1500, Economy: da 20 a 100 cCROQ e un ratto. Le crocchette sono estratte a sorte sotto cifratura: solo il tuo wallet può leggere quante. La scatola è mintata gratis per te tra quelle tenute fuori dalla vendita, quindi una vendita esaurita non svuota mai un regalo; il ratto è gratuito, con il seme estratto a sorte. Entrambi sono pubblici, come il primo detentore di una scatola dopo un mint di una sola. Un regalo che nessuno ritira non viene mai mintato. Il regalo si ritira su mainnet, in una transazione dalla stessa scheda Duelli, entro 30 giorni dalla chiusura della lista, con un wallet che ha reclamato il suo posto: un posto tenuto solo da un account X non ha un wallet a cui inviarlo."
     },
     {
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "CROQ, la crocchetta normale 0x176f…5a53\ncCROQ, la crocchetta cifrata 0xa9de…9964\nPool CROQ / USDC 0xC2EA…0847\nCassaforte della liquidità 0x13B2…e772\nLa rampa USDC (da ETH a USDC) 0x0238…5638\nCrediti di decifratura 0x1d18…6511\nI pacchetti dello studio (StudioPacks) 0x4159…B5f6\nI ratti (Rats, ERC-721) 0x441F…2cF6\nLa dispensa dei ratti (RatPantry) 0xC134…E450\nGli scherzi dei ratti (RatTricks) 0x44B2…2d0D\nIl mercatino delle pulci (FleaMarket) 0x4E9f…81C1\nI regali della whitelist (WhitelistGifts) 0xD244…678b"
+     "text": "I contratti su Sepolia:\nLe scatole (DoNotOpen) 0x6e3B…54d1\nLa Dispensa (crocchette, pasti, pesate) 0xe867…6a23\nCROQ, la crocchetta normale 0x765A…fB7C\ncCROQ, la crocchetta cifrata 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCassaforte della liquidità 0x7048…f058\nLa rampa USDC (da ETH a USDC) 0x0238…5638\nCrediti di decifratura 0x1d18…6511\nI pacchetti dello studio (StudioPacks) 0x4159…B5f6\nI ratti (Rats, ERC-721) 0x441F…2cF6\nLa dispensa dei ratti (RatPantry) 0xa8C6…1850\nGli scherzi dei ratti (RatTricks) 0x1E72…765f\nIl mercatino delle pulci (FleaMarket) 0xF16b…6F92\nI regali della whitelist (WhitelistGifts) 0x09D2…405a"
     },
     {
      "id": "more-0",

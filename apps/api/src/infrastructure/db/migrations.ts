@@ -598,4 +598,29 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       create table if not exists testnet.ideas (like public.ideas including all);
     `,
   },
+  {
+    version: 25,
+    name: "free gift boxes redeploy",
+    sql: /* sql */ `
+      -- DoNotOpen (the whitelist's free gift boxes), its config, its Pantry, a new CROQ economy,
+      -- RatPantry, RatTricks, the flea market and WhitelistGifts were deployed again on Sepolia;
+      -- Rats, the decryption credits, the studio's packs and the ramp were kept. As in migration
+      -- 21, the allow list's public facts are carried over before the index is emptied and
+      -- rebuilt from the oldest live contract on (the rats' events come back with it). Sign-ins,
+      -- claims, X passes, ideas, the decryption cache and the relayer proxy's counts are kept.
+      insert into carried_duels
+        select token_a, token_b, challenger, accepter, winner, loser from duels
+        where status = 'resolved' and challenger is not null and accepter is not null and winner is not null and loser is not null;
+      insert into carried_openers select opened_by from boxes where status = 'revealed' and opened_by is not null;
+      insert into carried_minters select distinct buyer from mints on conflict do nothing;
+
+      truncate events, boxes, duels, requests, entangle_proposals, mints, milestones, transfers, sync_state, indexed_ranges,
+        published_handles, credit_accounts, studio_accounts, rats, rat_sniffers;
+      delete from users where registered_at is null;
+      update users set first_block = null, last_block = null, first_seen_at = null, last_seen_at = null, actions = 0;
+      -- Posts are keyed by the fact they tell (mint:0, opening:0...): the new collection's own
+      -- would read as already posted. The old collections' ones keep their text under a prefix.
+      update posts set key = 'v0x7b24:' || key where kind not in ('digest', 'lesson') and key not like 'v0x%';
+    `,
+  },
 ];

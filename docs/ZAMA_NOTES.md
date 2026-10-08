@@ -205,10 +205,10 @@ who holds the box.
 
 ### Contract size
 
-`DoNotOpen` is 24,553 bytes of deployed bytecode against the 24,576 limit, since the
-duel shelf, the 2026-10-03 security fixes and decoy transfers (see the hidden owners' "Contract size" below for how it was brought back
-under). The next feature must move logic to a library or a second contract that is a
-trusted reader.
+`DoNotOpen` is 24,442 bytes of deployed bytecode against the 24,576 limit (24,553 before the
+whitelist's free gift boxes, which fit by moving the token URIs and the rules' views out; see
+the hidden owners' "Contract size" and "Free gift boxes" below). The next feature must move
+logic to a library or a second contract that is a trusted reader.
 
 ### Sepolia deployment (2026-10-01): prices in USDC and cUSDC
 
@@ -554,10 +554,12 @@ owner `address(0)`, the same seed draw and the same events. Token ids therefore 
 ### Milestones instead of a counter
 
 A public supply counter would give every mint's quantity away. The sold count is an
-`euint16`, capped at 10,000 under encryption (a mint past the cap gets nothing and pays
-nothing). After each mint one bit, "the next milestone is reached", is publicly
+`euint16`, capped under encryption at the last milestone, 9,000 (a mint past the cap gets
+nothing and pays nothing). After each mint one bit, "the next milestone is reached", is publicly
 decryptable, and `announceMilestone` proves it. The milestones are in `spec.json`
-(`collection.milestones`): 100, 500, 1,000, 2,500, 5,000, 7,500, 9,000, 10,000.
+(`collection.milestones`): 100, 500, 1,000, 2,500, 5,000, 7,500, 9,000, held by
+`DoNotOpenConfig` (`milestones()`) since 2026-10-08. The 1,000 boxes left under the 10,000
+supply are the whitelist's gifts, never sold and never counted in a milestone.
 
 ### A public decryption refuses the same handle twice
 
@@ -576,7 +578,7 @@ never to make what it learns public: its holder checks only mask amounts.
 
 ### Contract size
 
-`DoNotOpen` is 24,553 bytes deployed, 23 under the limit (24,512 before the rats' shake guard). The duel shelf took it past the
+`DoNotOpen` is 24,442 bytes deployed, 134 under the limit (24,553 before the free gift boxes, 24,512 before the rats' shake guard). The duel shelf took it past the
 limit; two changes brought it back: the `onlySealed` modifier calls `_requireSealed`
 instead of carrying the check, so its body is not copied into every function using it,
 and the optimizer runs at 200 instead of 800 (`hardhat.config.ts`), which favours size
@@ -585,8 +587,8 @@ over the gas of each call. The 2026-10-03 security fixes then fit by dropping
 private. Decoy transfers (`confidentialTransferIf`, 217 bytes) fit by compiling
 `DoNotOpen` alone with the optimizer at 1 run (a per-file override in `hardhat.config.ts`;
 the other contracts stay at 200): gas per call barely moves, as FHE operations dominate.
-The next feature has to move logic out: the whitelist's gifts (below) are their own contract
-and reach `DoNotOpen` only as a buyer.
+The next feature has to move logic out: the whitelist's gifts (below) are their own contract,
+and the free gift boxes fit only once the token URIs and the rules' views left `DoNotOpen`.
 
 ### The studio's packs stay off FHE (2026-10-04)
 
@@ -634,11 +636,10 @@ rats. The API forgot them (migration 14), since its `rats` table is keyed by tok
 number of cCROQ drawn in the tier's range, a box, a rat, or both (`whitelist` in `spec.json`).
 Not deployed yet: it opens on mainnet. Decisions:
 
-- **Its own contract, no privilege in `DoNotOpen`.** `DoNotOpen` had 64 bytes left, so the gift
-  box is bought with `mint` like any buyer, paid with the cUSDC the owner sends the gifts
-  contract (it comes back as the collection's revenue), then sent with `confidentialTransfer`.
-  `mint` takes only an `externalEuint8`: the wallet encrypts the quantity (1) for `DoNotOpen`
-  with the gifts contract as the input's user, since that contract is `msg.sender` of `mint`.
+- **Its own contract.** At first `DoNotOpen` had 64 bytes left, so the gift box was bought with
+  `mint` like any buyer, paid with cUSDC the owner advanced. Since 2026-10-08 it is minted free
+  by `DoNotOpen.gift` (see "Free gift boxes" below): the gifts contract holds cCROQ only, and
+  `claim(tier, proof, ratSeed)` takes no encrypted input.
 - **The draw.** One `FHE.randEuint16()`, `rem` by the span (`croqMax - croqMin + 1`, at most 401),
   plus `croqMin`: the bias is under span / 65,536, a fraction of a percent, accepted like the
   purr's. The constructor refuses a span that does not fit 16 bits.
@@ -655,8 +656,32 @@ Not deployed yet: it opens on mainnet. Decisions:
   argument, so `Rats` is deployed again with the gifts).
 
 What becomes public: who is on the list (their claim), their tier, the gift box's id and the
-rat. Never public: the croquettes drawn. About 3.7M HCU for the biggest gift (first class), its
-rat's power included.
+rat. Never public: the croquettes drawn. About 1.7M HCU for the biggest gift (first class), its
+rat's power included (3.7M while the box was bought).
+
+### Free gift boxes (2026-10-08)
+
+The owner should not advance a mint price per gift box, and a box bought from the sale could
+come back empty: a sold-out sale, or too little cUSDC, makes `mint` give nothing without
+reverting, and the claim would be spent. So the gift boxes are kept out of the sale:
+
+- **The sale stops at its last milestone.** `collection.milestones` ends at 9,000; the 1,000
+  boxes between it and `maxSupply` are the gifts' (`DoNotOpenConfig.giftBoxes()`, as many as the
+  First class and Business seats: `milestonesFromSpec` refuses a spec where they differ).
+- **`DoNotOpen.gift(to)`**, for the `giver` only (`setGiver`, the owner's; `WhitelistGifts`):
+  one box, owner `to` encrypted as usual, a fresh encrypted seed, `BoxGifted(tokenId, to)`.
+  `giftsMinted` is public and capped at `maxSupply - saleCap` (`TooManyBoxes`). No payment, no
+  revenue, `_sold` untouched, so no milestone counts it. A gift nobody collects is never
+  minted. The owner could point the giver at itself and mint the reserve, the same trust as
+  setting the list's root: ownership should be a multisig before mainnet.
+- **Contract size.** The path cost 678 bytes (25,231). It fit by moving the token URIs to
+  `BoxMetadata` (`ITokenURIs`; `DoNotOpen.setMetadata`, `tokenURI` delegates, about 490
+  bytes), the `milestones`, `maxSupply` and `maxPerTx` views to `DoNotOpenConfig` (about 320
+  bytes; the API and the adapter read them through `config()`), and one `_mintBox` helper
+  shared by `mint` and `gift`: 24,442 bytes, 134 to spare.
+
+The first-class claim fell from ~1.85M gas and ~3.66M HCU to ~1.01M and ~1.68M. Deployed on
+Sepolia the same day with everything that reads the collection (see the deployment below).
 
 ### The rats' powers and tricks (2026-10-07)
 
@@ -756,9 +781,61 @@ could pay. Never public: balances, offer amounts, the price of a sale by offer, 
 a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
 `acceptOffer`, is about 2.41M HCU.
 
+### Sepolia deployment (2026-10-08): free gift boxes
+
+Current. Deployed at blocks 11869530 to 11869590 (`DoNotOpen` at 11869550) by
+`0x590891F269720001435004A1089cAB5b2c20029A`, which owns every contract and is the treasury and
+the rebater of power-1 sniffs. Spec hash `0xb1f5a395c86750b152b3e6f1d66686cafc0517d93fdf2dc20dba85d5fd77ff2b`.
+`DoNotOpen` changed (the free `gift` path, the views moved out, `tokenURI` through `BoxMetadata`)
+and so did `DoNotOpenConfig` (the milestones, now ending at the sale's cap of 9,000): everything
+bound to them was deployed again, plus the new `BoxMetadata`. The old `Pantry` cannot hand back
+its 11,000,000 CROQ reserve and the deployer held only 4,075,000, so the croquette economy
+started fresh again (CROQ, cCROQ, the locker, a new pool and `RatPantry`). `Rats`,
+`DecryptionCredits`, `StudioPacks` and `UsdcRamp` kept their addresses (their arguments did not
+change): the rats stay with their owners. `WhitelistGifts` is the giver of both `DoNotOpen` and
+`Rats`, holds 425,000 cCROQ and no cUSDC.
+
+| Contract | Address |
+| --- | --- |
+| `DoNotOpen` (Confidential ERC-721, 10,000 boxes: 9,000 for sale, 1,000 gifts; guard `RatTricks`, giver `WhitelistGifts`) | [`0x6e3B93f16D108a6a4A415D119d8374C2490954d1`](https://sepolia.etherscan.io/address/0x6e3B93f16D108a6a4A415D119d8374C2490954d1) |
+| `DoNotOpenConfig` (rules, milestones) | [`0xAA0932bf78b00f051EDA275f433C3E5269F36683`](https://sepolia.etherscan.io/address/0xAA0932bf78b00f051EDA275f433C3E5269F36683) |
+| `BoxMetadata` (token URIs, `https://api.do-not-open.app/metadata/`) | [`0x2Be2563562f0e6Fb5B31a85322ab4E0411df2645`](https://sepolia.etherscan.io/address/0x2Be2563562f0e6Fb5B31a85322ab4E0411df2645) |
+| `DoNotOpenHooks` (rules for the confidential marketplace) | [`0x4E39e95F2129E10Dd615ff4D8e1fE753BBb7c485`](https://sepolia.etherscan.io/address/0x4E39e95F2129E10Dd615ff4D8e1fE753BBb7c485) |
+| `Croq` (CROQ) | [`0x765A56A1949baDd2Fc4c04c59c4eCfb464fFfB7C`](https://sepolia.etherscan.io/address/0x765A56A1949baDd2Fc4c04c59c4eCfb464fFfB7C) |
+| `ConfidentialCroq` (cCROQ) | [`0xbC7704F737FC4492FC3964449c80b4D7c77479b9`](https://sepolia.etherscan.io/address/0xbC7704F737FC4492FC3964449c80b4D7c77479b9) |
+| `Pantry` | [`0xe867E3009C61B943776823a97b3C66A89Bb66a23`](https://sepolia.etherscan.io/address/0xe867E3009C61B943776823a97b3C66A89Bb66a23) |
+| `LiquidityLocker` (holds position #233324) | [`0x704811b4091C6A7E37dAb7a104A80300986Bf058`](https://sepolia.etherscan.io/address/0x704811b4091C6A7E37dAb7a104A80300986Bf058) |
+| CROQ/USDC pool, Uniswap V3, 1% fee | [`0x2A830D9F11D67B8Ac11Dc70AEbc34bEE750cC811`](https://sepolia.etherscan.io/address/0x2A830D9F11D67B8Ac11Dc70AEbc34bEE750cC811) |
+| USDC (Zama's `USDCMock`, anyone can mint) | [`0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF`](https://sepolia.etherscan.io/address/0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF) |
+| cUSDC (Zama's `cUSDCMock`) | [`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`](https://sepolia.etherscan.io/address/0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639) |
+| `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x02382AC8a24462FD830753Ca7e49E12486A65638`](https://sepolia.etherscan.io/address/0x02382AC8a24462FD830753Ca7e49E12486A65638) |
+| `DecryptionCredits` (0.01 USDC a credit) | [`0x1d1848a72Ffd06e71161537472BFD6D903616511`](https://sepolia.etherscan.io/address/0x1d1848a72Ffd06e71161537472BFD6D903616511) |
+| `StudioPacks` (Starter 2 USDC, Litter 8 USDC) | [`0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6`](https://sepolia.etherscan.io/address/0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6) |
+| `Rats` (ERC-721, each rat with an encrypted power) | [`0x441F9fe3B8333515Bc7B295E06C14948057b2cF6`](https://sepolia.etherscan.io/address/0x441F9fe3B8333515Bc7B295E06C14948057b2cF6) |
+| `RatPantry` (3 CROQ a rat a day, 7 days at most) | [`0xa8C6850eB99f89aB1DA9714Cd073B454Bb6E1850`](https://sepolia.etherscan.io/address/0xa8C6850eB99f89aB1DA9714Cd073B454Bb6E1850) |
+| `RatTricks` (sniffs, shields, jams) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
+| `WhitelistGifts` (root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
+| `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
+
+Deploying took `SEPOLIA_GAS_PRICE=20000000` and `--maxfee 50000000 --priorityfee 2000000`: a
+0.3 gwei cap asked 0.0144 ETH up front for `DoNotOpen`'s ~40M gas (39,600,324 used) while the
+deployer held 0.0107. The public RPC's nonce lag interrupted it once at `RatTricks`; running it
+again resumed it. The position took 4,000,000 CROQ and 0 USDC, ticks 69200 to 138200, 0.001012
+to 1.004 USDC per CROQ.
+
+The smoke tests passed against it. `smoke:sepolia` ran end to end: mints, shakes, an alive
+check, a duel, an entanglement and an opening matching the generator. `smoke:croq` passed
+through the ramp, the welcome bag, a meal, an opening with its weigh-in and a Uniswap buy.
+Twice a check right after a transaction read a balance from a public-RPC node still behind
+(the meal and the wrap's allowance), so the meal, the wrap, the unwrap, a transfer to self and
+the sale were checked again by hand, all exact. `smoke:rats` reuses the rats the account
+already holds, since `Rats` outlived the redeploy and the wallet had reached its limit. It
+passed with a sniff (2.5 cUSDC for a power-2 rat), a shield, `Recharging` on a resting rat,
+and a power-2 jam scrambling one of a second wallet's six shakes.
+
 ### Sepolia deployment (2026-10-07): the rats' powers and tricks
 
-Current. Deployed at blocks 11862300 to 11862351 by `0x590891F269720001435004A1089cAB5b2c20029A`,
+Replaced by the one above, except `Rats`, `DecryptionCredits`, `StudioPacks` and `UsdcRamp`, still current. Deployed at blocks 11862300 to 11862351 by `0x590891F269720001435004A1089cAB5b2c20029A`,
 which owns every contract and is the treasury, and the rebater whose cUSDC pays power-1 sniffs
 back (until this deployment the owner was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`, whose
 key the deploy did not have). `DoNotOpen` changed (its guard, the removed views), so did the

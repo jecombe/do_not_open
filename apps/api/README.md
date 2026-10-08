@@ -189,6 +189,13 @@ index as migration 10 did (`rats` and `rat_sniffers` and `studio_accounts` inclu
 contracts' units staying with them), keeping sign-ins, claims, X passes, ideas, release forms,
 the decryption cache and the relayer's counts.
 
+Migration 25 is for the redeploy of 2026-10-08 (`DoNotOpen` `0x6e3B…54d1`, block 11869550, the
+whitelist's free gift boxes, with a new config, a new economy, `RatPantry`, `RatTricks`, the
+flea market and `WhitelistGifts`; `Rats`, the credits, the studio's packs and the ramp kept).
+It adds the live allow list facts to the `carried_*` tables, empties the index as migration 21
+did (the kept rats' events come back with the replay, from `indexFrom`), and moves the herald's
+post keys of the old collections aside under `v0x7b24:`.
+
 Migration 23 adds what several API replicas share (see [Several replicas](#several-replicas)):
 `tickets` (short-lived secrets by kind and key, with an optional owner, dropped once expired) and
 `daily_quotas` (uses of a quota by name and UTC day). Neither is a read model: a replay keeps them.
@@ -253,7 +260,11 @@ spec, 500 a tier); a claimant without a seat gets none and moves nobody down. Wh
 closes, `GET /v1/allowlist/gifts?token=` freezes it into a Merkle tree (`application/whitelistGifts.ts`);
 the API reads the same file back from `WHITELIST_GIFTS_TREE` at start and serves each wallet its
 proof (`GET /v1/gifts/:address`). The gift rats are indexed with `gift` true (a `RatMinted` with
-nothing paid, migration 20): `GET /v1/rats/supply` and the wallet limit count paid rats only.
+nothing paid, migration 20): `GET /v1/rats/supply` and the wallet limit count paid rats only. A gift box is
+the collection's `BoxGifted(tokenId, to)`, indexed as a mint of one box for the wallet (a `mints`
+row, a box row; the wallet counts as an address seen acting); an older deployment's ABI without
+the event is simply not asked for it. `GET /v1/collection` reads the supply, the batch size and
+the milestones from the collection's config (`config()`).
 
 The team's own wallets (`TEAM_WALLETS`, the deployer by default) and X accounts (`TEAM_X_HANDLES`)
 test the protocol and never take a place: a claim from a team wallet is refused, team wallets are
@@ -353,7 +364,8 @@ For mainnet:
 - Check before launch that Turbo still stores data items under 100 KiB for free. If not, nothing
   breaks (the pictures stay on the API) and permanence costs little: 20,000 SVGs are about 60 MB,
   paid in Turbo credits.
-- Point the contract's base URI at `https://<mainnet api>/metadata/` (`setBaseURI`). The JSON
+- Point the boxes' base URI at `https://<mainnet api>/metadata/` (`BoxMetadata.setBaseURI`, or
+  `BOXES_BASE_URI` at deploy; `DoNotOpen.setMetadata` points the collection at `BoxMetadata`). The JSON
   itself stays repointable (O6) and marketplaces still get no `MetadataUpdate` on an opening (O7).
 
 ## Relayer proxy

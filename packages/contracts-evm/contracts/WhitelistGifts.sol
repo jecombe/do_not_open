@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {FHE, ebool, euint8, euint16, euint64, externalEuint8} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, euint64} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-/// @dev The slice of DoNotOpen the gifts use: they buy a box like anyone, then hand it over.
+/// @dev The slice of DoNotOpen the gifts use: a free box out of the ones the sale leaves, for
+///      the gifts' contract only.
 interface IGiftBoxes {
-    function mint(externalEuint8 encryptedQuantity, bytes calldata inputProof, uint8 ids) external returns (uint256 firstTokenId);
-    function confidentialTransfer(address to, uint256 tokenId) external returns (ebool moved);
+    function gift(address to) external returns (uint256 tokenId);
 }
 
 /// @dev The slice of Rats the gifts use: a free seed rat, for the gifts' contract only.
@@ -23,19 +23,19 @@ interface IGiftRats {
 ///         an encrypted number of croquettes drawn at random in its tier's range, which only the
 ///         wallet can read, plus a free box, a free rat, or both. The list is frozen into a
 ///         Merkle root of (wallet, tier) when it closes; the API serves each wallet its proof.
-/// @dev Unrelated to the game's rules: DoNotOpen and Rats see an ordinary buyer and their giver.
+/// @dev Unrelated to the game's rules: DoNotOpen and Rats only see their giver.
 ///
 ///  1. Croquettes: one encrypted 16-bit draw, folded into [croqMin, croqMax]. The modulo bias is
 ///     below span / 65,536, a fraction of a percent for the spec's ranges. The amount moves from
 ///     this contract's cCROQ (funded from the treasury) and is readable by the wallet and by this
 ///     contract only. If the contract runs short, the wallet gets 0, silently, like any cCROQ
 ///     transfer.
-///  2. Box: bought from DoNotOpen at its price with this contract's cUSDC (the money comes back
-///     to the collection as revenue), one id, then sent on to the wallet. The wallet encrypts the
-///     quantity (1) for DoNotOpen and this contract, as `mint` asks of any buyer. LEAK: the
-///     tier is public, so whoever reads the claim knows that box went to that wallet.
-///  3. Rat: the free rat of a seed the wallet picks in the studio, outside the paid rats' cap.
-///     Rats are public anyway.
+///  2. Box: minted free for the wallet by `DoNotOpen.gift`, out of the boxes the sale leaves
+///     (maxSupply minus the last milestone), so a sold-out sale never empties a gift and nobody
+///     advances its price. Not a sale: it counts in no milestone. LEAK: the tier is public, so
+///     whoever reads the claim knows that box went to that wallet.
+///  3. Rat: a free seed rat, outside the paid rats' cap; the app draws an unadopted seed at
+///     random. Rats are public anyway.
 ///
 ///  HCU per claim (protocol limit 20,000,000 per transaction), measured in tests:
 ///    first class   ~3,410,000   the draw, the fold, one cCROQ transfer, one box mint and transfer
@@ -61,7 +61,6 @@ contract WhitelistGifts is ZamaEthereumConfig, Ownable {
     IGiftBoxes public immutable boxes;
     IGiftRats public immutable rats;
     IERC7984 public immutable cCroq;
-    IERC7984 public immutable cUsdc;
 
     /// @notice (wallet, tier) leaves, OpenZeppelin's standard tree. Zero until the list closes.
     bytes32 public root;
@@ -83,8 +82,8 @@ contract WhitelistGifts is ZamaEthereumConfig, Ownable {
     event GiftClaimed(address indexed account, uint8 tier, bool hasBox, uint256 box, bool hasRat, uint256 rat);
     event Swept(address to);
 
-    constructor(IGiftBoxes boxes_, IGiftRats rats_, IERC7984 cCroq_, IERC7984 cUsdc_, Tier[] memory tiers_, address owner_) Ownable(owner_) {
-        if (address(boxes_) == address(0) || address(rats_) == address(0) || address(cCroq_) == address(0) || address(cUsdc_) == address(0)) revert ZeroAddress();
+    constructor(IGiftBoxes boxes_, IGiftRats rats_, IERC7984 cCroq_, Tier[] memory tiers_, address owner_) Ownable(owner_) {
+        if (address(boxes_) == address(0) || address(rats_) == address(0) || address(cCroq_) == address(0)) revert ZeroAddress();
         if (tiers_.length == 0 || tiers_.length > type(uint8).max) revert BadTier();
         for (uint256 i = 0; i < tiers_.length; i++) {
             Tier memory t = tiers_[i];
@@ -95,9 +94,6 @@ contract WhitelistGifts is ZamaEthereumConfig, Ownable {
         boxes = boxes_;
         rats = rats_;
         cCroq = cCroq_;
-        cUsdc = cUsdc_;
-        // DoNotOpen pulls each box's price from here.
-        cUsdc_.setOperator(address(boxes_), type(uint48).max);
     }
 
     /// @notice Freezes the list: the root of its (wallet, tier) tree and when claims end. It can be
@@ -110,10 +106,9 @@ contract WhitelistGifts is ZamaEthereumConfig, Ownable {
         emit RootSet(root_, closesAt_);
     }
 
-    /// @notice Collects the caller's gift. `quantity` (1) and `inputProof` are encrypted for
-    ///         DoNotOpen and this contract, and ignored by tiers without a box; `ratSeed` is the
-    ///         free rat to adopt, ignored by tiers without a rat.
-    function claim(uint8 tier, bytes32[] calldata proof, externalEuint8 quantity, bytes calldata inputProof, uint64 ratSeed) external {
+    /// @notice Collects the caller's gift. `ratSeed` is the free rat to adopt, ignored by tiers
+    ///         without a rat.
+    function claim(uint8 tier, bytes32[] calldata proof, uint64 ratSeed) external {
         if (root == bytes32(0) || block.timestamp >= closesAt) revert NotOpen();
         Gift storage g = _gifts[msg.sender];
         if (g.claimed) revert AlreadyClaimed();
@@ -132,10 +127,8 @@ contract WhitelistGifts is ZamaEthereumConfig, Ownable {
         g.croq = cCroq.confidentialTransfer(msg.sender, amount);
 
         if (t.box) {
-            uint256 id = boxes.mint(quantity, inputProof, 1);
-            boxes.confidentialTransfer(msg.sender, id);
             g.hasBox = true;
-            g.box = id;
+            g.box = boxes.gift(msg.sender);
         }
         if (t.rat) {
             g.hasRat = true;
@@ -155,19 +148,16 @@ contract WhitelistGifts is ZamaEthereumConfig, Ownable {
         return _tiers;
     }
 
-    /// @notice Once claims are over, sends the cCROQ and cUSDC left here to `to`.
+    /// @notice Once claims are over, sends the cCROQ left here to `to`. The boxes and rats nobody
+    ///         collected were never minted.
     function sweep(address to) external onlyOwner {
         if (to == address(0)) revert ZeroAddress();
         if (root == bytes32(0) || block.timestamp < closesAt) revert StillOpen();
-        _sendAll(cCroq, to);
-        _sendAll(cUsdc, to);
+        euint64 left = cCroq.confidentialBalanceOf(address(this));
+        if (FHE.isInitialized(left)) {
+            FHE.allowTransient(left, address(cCroq));
+            cCroq.confidentialTransfer(to, left);
+        }
         emit Swept(to);
-    }
-
-    function _sendAll(IERC7984 token, address to) private {
-        euint64 left = token.confidentialBalanceOf(address(this));
-        if (!FHE.isInitialized(left)) return;
-        FHE.allowTransient(left, address(token));
-        token.confidentialTransfer(to, left);
     }
 }

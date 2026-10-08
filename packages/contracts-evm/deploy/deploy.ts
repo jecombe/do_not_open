@@ -1,7 +1,7 @@
 import { parseUnits } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { configParamsFromSpec, milestonesFromSpec } from "../lib/specParams";
+import { configParamsFromSpec } from "../lib/specParams";
 
 /** USDC and its confidential ERC-7984 wrapper, per network. From Zama's list of testnet tokens. */
 export const PAYMENT_TOKENS: Record<string, { usdc: string; cUsdc: string }> = {
@@ -39,9 +39,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const dno = await deploy("DoNotOpen", {
     from: deployer,
-    args: [config.address, fees, payment.usdc, payment.cUsdc, milestonesFromSpec(), owner],
+    args: [config.address, fees, payment.usdc, payment.cUsdc, owner],
     log: true,
   });
+
+  // The token URIs, out of the collection: the API's metadata route unless BOXES_BASE_URI says otherwise.
+  const baseURI = process.env.BOXES_BASE_URI || "https://api.do-not-open.app/metadata/";
+  const metadata = await deploy("BoxMetadata", { from: deployer, args: [baseURI, owner], log: true });
+  const { read, execute } = hre.deployments;
+  if (((await read("DoNotOpen", "metadata")) as string).toLowerCase() !== metadata.address.toLowerCase()) {
+    if (owner.toLowerCase() === deployer.toLowerCase()) await execute("DoNotOpen", { from: deployer, log: true }, "setMetadata", metadata.address);
+    else console.log(`!! The collection's owner ${owner} must call DoNotOpen.setMetadata(${metadata.address})`);
+  }
 
   // The confidential marketplace's hooks: refuse a sale whose box changed while in escrow.
   const hooks = await deploy("DoNotOpenHooks", { from: deployer, args: [dno.address], log: true });
@@ -50,6 +59,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(`DoNotOpenConfig : ${config.address}`);
   console.log(`USDC / cUSDC    : ${payment.usdc} / ${payment.cUsdc}`);
   console.log(`DoNotOpen       : ${dno.address}`);
+  console.log(`BoxMetadata     : ${metadata.address} (${baseURI})`);
   console.log(`DoNotOpenHooks  : ${hooks.address}`);
 };
 export default func;

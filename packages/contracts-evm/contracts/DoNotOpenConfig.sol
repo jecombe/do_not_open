@@ -30,6 +30,9 @@ contract DoNotOpenConfig {
         uint8 feedBound;
         /// Share of a paid shake that goes to the holder, in basis points.
         uint16 paidShakeHolderBps;
+        /// The sold counts announced, increasing. The last one is the sale's cap; the boxes
+        /// between it and maxSupply are the whitelist's gifts.
+        uint16[] milestones;
     }
 
     error InvalidStateThresholds();
@@ -38,6 +41,7 @@ contract DoNotOpenConfig {
     error UnknownTrait(uint8 trait);
     error InvalidFeedBound();
     error InvalidShare();
+    error InvalidMilestones();
 
     bytes32 public immutable specHash;
     uint16 public immutable maxSupply;
@@ -52,6 +56,7 @@ contract DoNotOpenConfig {
     uint8[5] private _traitOffset;
     uint8[5] private _traitWeight;
     bytes[5] private _variantWidths;
+    uint16[] private _milestones;
 
     constructor(Params memory p) {
         if (p.stateRollBelow[0] == 0 || p.stateRollBelow[0] >= p.stateRollBelow[1] || p.stateRollBelow[1] >= p.stateRollBelow[2]) {
@@ -68,6 +73,11 @@ contract DoNotOpenConfig {
 
         if (p.feedBound < 2 || (p.feedBound & (p.feedBound - 1)) != 0) revert InvalidFeedBound();
         if (p.paidShakeHolderBps > 10_000) revert InvalidShare();
+        uint256 n = p.milestones.length;
+        if (n == 0 || p.milestones[n - 1] > p.maxSupply) revert InvalidMilestones();
+        for (uint256 i = 0; i < n; i++) {
+            if (p.milestones[i] == 0 || (i > 0 && p.milestones[i] <= p.milestones[i - 1])) revert InvalidMilestones();
+        }
 
         specHash = p.specHash;
         maxSupply = p.maxSupply;
@@ -81,6 +91,17 @@ contract DoNotOpenConfig {
         _traitOffset = p.traitOffset;
         _traitWeight = p.traitWeight;
         _variantWidths = p.variantWidths;
+        _milestones = p.milestones;
+    }
+
+    /// @notice The sold counts DoNotOpen announces; the last one is the sale's cap.
+    function milestones() external view returns (uint16[] memory) {
+        return _milestones;
+    }
+
+    /// @notice The boxes kept for the whitelist's gifts: maxSupply minus the sale's cap.
+    function giftBoxes() external view returns (uint16) {
+        return maxSupply - _milestones[_milestones.length - 1];
     }
 
     /// @notice State rolls below this value mean "alive".

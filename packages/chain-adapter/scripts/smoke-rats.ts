@@ -26,16 +26,38 @@ async function ready(chain: ReturnType<typeof createSepoliaNodeAdapter>, me: str
   if ((await chain.confidentialUsdcBalance({ onStep })) < 10_000_000n) await chain.shieldUsdc(20_000_000n, { onStep });
 }
 
-/** Adopts free rats until one has `wanted` or better, at most `tries`. Returns the best one. */
-async function adopt(chain: ReturnType<typeof createSepoliaNodeAdapter>, wanted: number, tries: number) {
+/** Rats this run already used: a rat that played rests for days. */
+const used = new Set<number>();
+
+/**
+ * Finds a rat with `wanted` power or better: first among the rats the account already holds
+ * (Rats outlives a redeploy, and each wallet adopts at most a few), then by adopting free rats,
+ * at most `tries`, while the wallet limit allows. Returns the best one.
+ */
+async function adopt(chain: ReturnType<typeof createSepoliaNodeAdapter>, me: string, wanted: number, tries: number) {
   let best = { id: 0, power: 0 };
-  for (let i = 0; i < tries && best.power < wanted; i++) {
-    const seed = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
-    const id = await chain.mintSeedRat(seed, { onStep });
-    const power = await chain.ratPower(id, { onStep });
+  const pick = (id: number, power: number) => {
     console.log(`  rat #${id}: power ${power}`);
     if (power > best.power) best = { id, power };
+  };
+  const held = (await chain.ratsOf(me as `0x${string}`)).filter((r) => r.minter.toLowerCase() === me.toLowerCase() && !used.has(r.id));
+  for (const rat of held) {
+    if (best.power >= wanted) break;
+    pick(rat.id, await chain.ratPower(rat.id, { onStep }));
   }
+  for (let i = 0; i < tries && best.power < wanted; i++) {
+    const seed = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
+    let id: number;
+    try {
+      id = await chain.mintSeedRat(seed, { onStep });
+    } catch (error) {
+      if (error instanceof ChainError && error.reason === "WalletLimit") break;
+      throw error;
+    }
+    pick(id, await chain.ratPower(id, { onStep }));
+  }
+  if (!best.id) throw new Error("no rat to play with: the wallet holds none it can read and may adopt no more");
+  used.add(best.id);
   return best;
 }
 
@@ -56,7 +78,7 @@ async function main() {
   console.log(`  boxes ${a}, ${b}`);
 
   console.log("adopt a rat and read its power");
-  const sniffer = await adopt(chain, 1, 1);
+  const sniffer = await adopt(chain, me, 1, 1);
   console.log(`sniff box ${b} with rat #${sniffer.id}`);
   const before = await chain.confidentialUsdcBalance({ onStep });
   console.log(`  ${trait(await chain.sniffWithRat(sniffer.id, b, { onStep }))}`);
@@ -84,7 +106,7 @@ async function main() {
   await ready(victim, them);
   const [v] = (await victim.mint(1, { onStep, ids: 1 })) as [number];
   console.log(`  their box ${v}`);
-  const jammer = await adopt(chain, 3, 4);
+  const jammer = await adopt(chain, me, 3, 4);
   console.log(`jam box ${v} with rat #${jammer.id} (power ${jammer.power}), trait 0`);
   await chain.playTrick(jammer.id, v, 0, { onStep });
   let scrambled = 0;

@@ -52,20 +52,20 @@ const SECTIONS = PARTS.flatMap((p) => p.sections);
 
 /** The contracts on Sepolia, as `dno:export` last wrote them. */
 const CONTRACTS = [
-  { key: "collection", address: "0x7b246695614Cc49A500bC8057345181689c82d52" },
-  { key: "pantry", address: "0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F" },
-  { key: "croq", address: "0x176f24a7ab07210E8306C4331104BC9a0d145a53" },
-  { key: "ccroq", address: "0xa9de609cC7FD4D264cb5B30Ef2c41e4297bC9964" },
-  { key: "pool", address: "0xC2EA76E3c3107512A229936FfbD91cD297D40847" },
-  { key: "locker", address: "0x13B2636a1De5Ad3922aF6D499a290e8911F4e772" },
+  { key: "collection", address: "0x6e3B93f16D108a6a4A415D119d8374C2490954d1" },
+  { key: "pantry", address: "0xe867E3009C61B943776823a97b3C66A89Bb66a23" },
+  { key: "croq", address: "0x765A56A1949baDd2Fc4c04c59c4eCfb464fFfB7C" },
+  { key: "ccroq", address: "0xbC7704F737FC4492FC3964449c80b4D7c77479b9" },
+  { key: "pool", address: "0x2A830D9F11D67B8Ac11Dc70AEbc34bEE750cC811" },
+  { key: "locker", address: "0x704811b4091C6A7E37dAb7a104A80300986Bf058" },
   { key: "ramp", address: "0x02382AC8a24462FD830753Ca7e49E12486A65638" },
   { key: "credits", address: "0x1d1848a72Ffd06e71161537472BFD6D903616511" },
   { key: "studio", address: "0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6" },
   { key: "rats", address: "0x441F9fe3B8333515Bc7B295E06C14948057b2cF6" },
-  { key: "ratPantry", address: "0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450" },
-  { key: "ratTricks", address: "0x44B2006E63Af469e5470eD5Fc2A6307117d22d0D" },
-  { key: "market", address: "0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1" },
-  { key: "whitelistGifts", address: "0xD244389bF81C38803c94957a1e6B5694eEeA678b" },
+  { key: "ratPantry", address: "0xa8C6850eB99f89aB1DA9714Cd073B454Bb6E1850" },
+  { key: "ratTricks", address: "0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f" },
+  { key: "market", address: "0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92" },
+  { key: "whitelistGifts", address: "0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a" },
 ] as const;
 
 /** `part-boxes` reads as that part's first chapter; a chapter as itself. */
@@ -235,6 +235,10 @@ export function Manual() {
   const rats = { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay, maxDays: studio.rats.croquettes.maxDays, maxSeed: studio.rats.mint.maxSeedRats, maxModel: studio.rats.mint.maxModelRats, perWallet: studio.rats.mint.maxPerWallet, fund: studio.rats.croquettes.fund.toLocaleString(locale) };
   const market = { fee: spec.market.feeBps / 100, max: spec.market.maxFeeBps / 100, pct: 70 };
   const milestones = spec.collection.milestones.map((m) => m.toLocaleString(locale)).join(", ");
+  // The sale stops at its last milestone; the rest of the supply is the whitelist's gift boxes.
+  const saleCapNumber = spec.collection.milestones[spec.collection.milestones.length - 1]!;
+  const saleCap = saleCapNumber.toLocaleString(locale);
+  const giftBoxes = (spec.collection.maxSupply - saleCapNumber).toLocaleString(locale);
 
   // The tab title and description follow the language too.
   useEffect(() => {
@@ -333,7 +337,7 @@ export function Manual() {
               <p>{t("docs.holders.p1")}</p>
               <p>{t("docs.holders.p2")}</p>
               <p>{t("docs.holders.p3", { n: maxPerTx })}</p>
-              <p>{t("docs.holders.p4", { supply, list: milestones })}</p>
+              <p>{t("docs.holders.p4", { supply, saleCap, gifts: giftBoxes, list: milestones })}</p>
               <p>{t("docs.holders.p5")}</p>
               <p>{t("docs.holders.p6")}</p>
               <p>{t("docs.holders.p7")}</p>
