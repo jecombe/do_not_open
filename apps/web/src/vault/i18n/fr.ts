@@ -12,6 +12,7 @@ export const vaultFr: Record<VaultKey, string> = {
   "vault.why2.body": "Ton annonce monte sur Seaport au nom du coffre. Les acheteurs voient le NFT et le prix, jamais le vendeur.",
   "vault.why3.title": "Le sortir n'importe où.",
   "vault.why3.body": "Envoie le NFT, ou l'ETH d'une vente, vers une adresse sans historique. Un relayer envoie la demande : ton adresse n'apparaît nulle part.",
+  "vault.docs": "Comment marche le coffre, et ce qui fuite",
   "vault.connect": "Connecter un wallet",
   "vault.network.mock": "Démo : un coffre en mémoire, avec des NFT de test. Rien ici n'est sur une chaîne.",
   "vault.network.sepolia": "Testnet Sepolia : NFT de test, ETH de test, le vrai Seaport.",

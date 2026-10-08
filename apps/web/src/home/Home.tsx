@@ -6,7 +6,7 @@ import { CatParade } from "../docs/CatParade";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { DISCORD } from "../links";
 import { useLocale } from "../i18n/locale";
-import { applyPath, appPath, docsPath, homePath, marketPath, studioPath } from "../site";
+import { applyPath, appPath, docsPath, projectDocsPath, studioPath, vaultDocsPath, vaultPath } from "../site";
 import { buildName, catNames } from "../i18n/names";
 import { ClerkBell } from "./ClerkBell";
 import { Departures } from "./Departures";
@@ -100,6 +100,7 @@ export function Home() {
   const locale = useLocale();
   const supply = spec.collection.maxSupply.toLocaleString(locale);
   const APP = appPath(locale);
+  const VAULT = vaultPath(locale);
   const DOCS = docsPath(locale);
 
   useEffect(() => {
@@ -112,23 +113,22 @@ export function Home() {
     <div className="home">
       <HomeTop />
 
+      {/* The project first: confidential ownership on a public chain, and its two doors. */}
       <section className="home-hero">
         <div className="hero-text">
-          <p className="kicker">{t("home.hero.kicker", { supply })}</p>
-          <h1>{t("home.hero.title")}</h1>
-          <p className="hero-lede">{t("home.hero.lede")}</p>
+          <p className="kicker">{t("home.intro.kicker")}</p>
+          <h1>{t("home.intro.title")}</h1>
+          <p className="hero-lede">{t("home.intro.lede")}</p>
           <p className="hero-ctas">
-            <a className="btn" href={APP}>
-              {t("home.hero.play")}
+            <a className="btn" href={VAULT}>
+              {t("home.intro.vault")}
             </a>
-            <a className="btn btn-paper" href={`${DOCS}#box`}>
-              {t("home.hero.docs")}
+            <a className="btn btn-paper" href={APP}>
+              {t("home.intro.game")}
             </a>
-            <FloatingApply />
           </p>
-          {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
-          <a className="hero-allow" href={applyPath(locale)}>
-            {t("home.hero.allowList", { places: (DEFAULT_ALLOW_LIST_PLACES ?? 0).toLocaleString(locale) })}&nbsp;→
+          <a className="hero-allow" href={projectDocsPath(locale)}>
+            {t("home.intro.docs")}&nbsp;→
           </a>
         </div>
         <Departures />
@@ -141,6 +141,54 @@ export function Home() {
           <span>{t("home.ticker")}</span>
         </div>
       </div>
+
+      <section id="ways" className="home-section ways">
+        <h2>{t("home.ways.title")}</h2>
+        <p className="section-lede">{t("home.ways.lede")}</p>
+        <div className="ways-cards">
+          <article className="way way-vault">
+            <p className="kicker">{t("home.ways.vault.kicker")}</p>
+            <h3>{t("home.ways.vault.title")}</h3>
+            <p>{t("home.ways.vault.p")}</p>
+            <ul>
+              <li>{t("home.ways.vault.b1")}</li>
+              <li>{t("home.ways.vault.b2")}</li>
+              <li>{t("home.ways.vault.b3")}</li>
+            </ul>
+            <p className="hero-ctas">
+              <a className="btn" href={VAULT}>
+                {t("home.ways.vault.cta")}
+              </a>
+              <a className="btn btn-paper" href={vaultDocsPath(locale)}>
+                {t("home.ways.vault.docs")}
+              </a>
+            </p>
+          </article>
+          <article id="game" className="way way-game">
+            <p className="kicker">{t("home.hero.kicker", { supply })}</p>
+            <h3>{t("home.hero.title")}</h3>
+            <p>{t("home.hero.lede")}</p>
+            <p className="hero-ctas">
+              <a className="btn" href={APP}>
+                {t("home.hero.play")}
+              </a>
+              <a className="btn btn-paper" href={`${DOCS}#box`}>
+                {t("home.hero.docs")}
+              </a>
+              <FloatingApply />
+            </p>
+            {/* Until mainnet: the testnet's best players get a place there. Goes with the testnet. */}
+            <a className="hero-allow" href={applyPath(locale)}>
+              {t("home.hero.allowList", { places: (DEFAULT_ALLOW_LIST_PLACES ?? 0).toLocaleString(locale) })}&nbsp;→
+            </a>
+          </article>
+        </div>
+      </section>
+
+      <section className="home-section home-part">
+        <h2>{t("home.part.game")}</h2>
+        <p className="section-lede">{t("home.part.game.v")}</p>
+      </section>
 
       <Shipped />
 
@@ -218,7 +266,10 @@ export function Home() {
           <a className="btn" href={APP}>
             {t("home.end.play")}
           </a>
-          <a className="btn btn-paper" href={DOCS}>
+          <a className="btn btn-paper" href={VAULT}>
+            {t("home.end.vault")}
+          </a>
+          <a className="btn btn-paper" href={projectDocsPath(locale)}>
             {t("home.end.docs")}
           </a>
         </p>

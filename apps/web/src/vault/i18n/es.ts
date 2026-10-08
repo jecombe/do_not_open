@@ -12,6 +12,7 @@ export const vaultEs: Record<VaultKey, string> = {
   "vault.why2.body": "Tu anuncio sale en Seaport a nombre de la bóveda. Los compradores ven el NFT y el precio, nunca al vendedor.",
   "vault.why3.title": "Sácalo donde quieras.",
   "vault.why3.body": "Envía el NFT, o el ETH de una venta, a una dirección sin historial. Un relayer envía la solicitud: tu dirección no aparece en ninguna parte.",
+  "vault.docs": "Cómo funciona la bóveda, y lo que se filtra",
   "vault.connect": "Conectar un wallet",
   "vault.network.mock": "Demo: una bóveda en memoria, con NFT de prueba. Nada aquí está en una cadena.",
   "vault.network.sepolia": "Testnet Sepolia: NFT de prueba, ETH de prueba, el Seaport real.",

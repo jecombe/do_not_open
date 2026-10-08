@@ -5,6 +5,7 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.description": "Cómo DO NOT OPEN mantiene {supply} gatos en secreto en una cadena pública con el FHE de Zama: titulares cifrados, revelaciones en la cadena, comisiones, croquetas, las ratas del estudio, el mercadillo y la bóveda sellada.",
   "docs.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN y, dentro, un gato que nadie ve",
   "docs.home": "Inicio",
+  "docs.about": "Sobre DO NOT OPEN",
   "docs.homeAria": "DO NOT OPEN, inicio",
   "docs.site": "Sitio",
   "docs.back": "Volver al depósito",
@@ -676,7 +677,6 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.testnet.c.ratPantry": "La despensa de las ratas (RatPantry)",
   "docs.testnet.c.ratTricks": "Los trucos de las ratas (RatTricks)",
   "docs.testnet.c.market": "El mercadillo (FleaMarket)",
-  "docs.testnet.c.vault": "La bóveda sellada (SealedVault)",
   "docs.testnet.c.whitelistGifts": "Los regalos de la whitelist (WhitelistGifts)",
 
   // --- el mercadillo
@@ -750,18 +750,6 @@ export const docsEs: Record<DocsKey, string> = {
   "flow.offer.s7": "Vendido, a un precio secreto",
   "flow.offer.s7.v": "El artículo es tuyo, el vendedor recibe lo custodiado menos la parte del depósito, y el evento de venta muestra un precio de cero. Nadie más sabrá nunca lo que pagaste.",
 
-  // --- the sealed vault
-  "docs.group.vault": "La bóveda sellada",
-  "docs.group.vault.v": "Junto al juego, el mismo cifrado para cualquier NFT: mételo en una caja sellada y nadie puede saber quién la tiene. Se sigue vendiendo en Seaport, o en privado por un precio secreto.",
-  "docs.section.vault": "Cualquier NFT, sellado",
-  "docs.vault.p1": "La bóveda sellada no forma parte del juego: presta el cifrado del juego a los NFT que ya tienes. Mete en ella un NFT de una colección que la bóveda acepte (en la testnet, un NFT de prueba gratuito) y recibes a cambio una caja sellada, un NFT propio cuyo titular está cifrado, como las cajas del juego. Desde entonces nadie puede saber quién la tiene: ni los marketplaces, ni los rastreadores, ni el depósito. El NFT se queda en la bóveda hasta que el titular de la caja lo saca, lo vende en Seaport o vende la caja en privado. Se abre desde la cabecera del sitio: Bóveda.",
-  "docs.vault.p2": "Todo lo que sale de la bóveda se pide con la llave de la caja, nunca con tu dirección. La llave es un secreto que tu wallet saca de una firma gratuita, la primera vez que usas la bóveda en una sesión; no se guarda nada, y el mismo wallet rehace la misma llave en cualquier dispositivo. Viaja cifrada y atada a la petición exacta: quien la lleva no puede leerla, ni cambiar adónde va el NFT, ni volver a usarla. La bóveda la compara con la llave de la caja sin descifrar ninguna de las dos, y solo un bit se hace público: la llave coincide, o no. Una llave equivocada no hace nada. Como cualquier wallet puede llevar una petición, el relayer del sitio envía las tuyas: tu dirección no aparece en ninguna. Sin relayer, las envía tu wallet, y su dirección se ve. Firma ese mensaje solo en DO NOT OPEN: quien tenga la firma puede sacar tus NFT. La figura de Cómo salen las cosas reproduce una petición, paso a paso.",
-  "docs.vault.p3": "Para vender en público, Poner en venta en Seaport publica una orden real de Seaport, el protocolo sobre el que funciona OpenSea, con la bóveda como vendedora. Los compradores ven el NFT y el precio, nunca quién vende, y cualquier marketplace de Seaport puede ejecutarla. Mientras está en venta, la caja no se mueve. Cuando un comprador paga, el ETH espera en la caja a quien tenga su llave; Cobrar el ETH lo envía a cualquier dirección, una nueva si quieres. Retira el anuncio, o deja que caduque, y la caja vuelve a estar sellada. En la testnet, la propia web de OpenSea puede no mostrar estos anuncios; las órdenes son reales igualmente.",
-  "docs.vault.p4": "Para vender a una sola persona, Vender en privado nombra a un comprador y un precio en cUSDC que solo leen el comprador y tú. Si el comprador lo paga entero mientras sigues teniendo la caja, la caja, su llave y el dinero cambian de manos de una vez; si no, nada se mueve y el comprador lo recupera todo. Nada se descifra en público, así que nadie más puede saber si salió bien. Regalar la caja la envía como cualquier regalo; llega con una llave aleatoria que nadie conoce, y quien la recibe la hace suya con Quedarme la llave, una firma, antes de que nada pueda salir de ella. Una venta en Seaport y una venta privada dejan cada una el {fee} % al depósito; el contrato nunca puede quedarse más del {max} %.",
-  "docs.vault.h.leaks": "Lo que se ve, y lo que no",
-  "docs.vault.p5": "Público: quién metió cada NFT (sellar es una transferencia de NFT corriente), el NFT de cada caja, los anuncios en Seaport y sus compradores, y la dirección a la que va un NFT o el ETH de una venta. Nunca público: quién tiene una caja, su llave, el precio de una venta privada, y si una venta privada o un regalo movió algo. Hasta que la caja cambie de manos una vez, quien la selló es su titular evidente. Sacar un NFT o ETH a una dirección sin historial no muestra ningún vínculo contigo, aunque el momento todavía pueda hacerlo.",
-  "docs.vault.p6": "La bóveda está en Sepolia, con NFT de prueba gratis para mintear y el Seaport real. En la demo funciona en memoria: el turno de noche guarda en ella dos cajas, una en Seaport, compra lo que pongas a la venta al cabo de un rato, y acepta cualquier venta privada que le ofrezcas.",
-  "docs.vault.open": "Abrir la bóveda",
   "station.contract.vault": "Contrato SealedVault",
   "station.other.vault": "Relayer de la bóveda",
   "flow.vault.name": "Sacar un NFT",

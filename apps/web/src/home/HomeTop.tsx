@@ -1,19 +1,19 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { applyPath, appPath, docsPath, homePath, marketPath, studioPath, vaultPath } from "../site";
+import { applyPath, appPath, homePath, marketPath, projectDocsPath, studioPath, vaultPath } from "../site";
 import { useT } from "./i18n";
 import { SoundControl } from "./SoundControl";
 
 /**
- * The stamp, the site's links, the sound and the languages, and the way into the game. On a
+ * The stamp, the site's links (the vault first, then the game and its corners, the docs, boarding), the sound and the languages, and the way into the game. On a
  * phone the links, the sound and the languages fold into a menu, so the stamp, "Play" and the menu button share one line.
  */
 export function HomeTop({ here = "home" }: { here?: "home" | "apply" | "vault" }) {
   const t = useT();
   const locale = useLocale();
   const APP = appPath(locale);
-  const DOCS = docsPath(locale);
+  const DOCS = projectDocsPath(locale);
   const [open, setOpen] = useState(false);
   const navId = useId();
   const root = useRef<HTMLElement>(null);
@@ -45,17 +45,14 @@ export function HomeTop({ here = "home" }: { here?: "home" | "apply" | "vault" }
         Do not open
       </a>
       <nav id={navId} className={open ? "is-open" : undefined} aria-label={t("home.nav")}>
-        <a href={`${here === "home" ? "" : homePath(locale)}#how`} onClick={close}>
-          {t("home.nav.how")}
-        </a>
-        <a href={`${here === "home" ? "" : homePath(locale)}#croquettes`} onClick={close}>
-          {t("home.nav.croq")}
-        </a>
-        <a href={studioPath(locale)}>{t("home.nav.studio")}</a>
-        <a href={marketPath(locale)}>{t("home.nav.market")}</a>
         <a href={vaultPath(locale)} aria-current={here === "vault" ? "page" : undefined}>
           {t("home.nav.vault")}
         </a>
+        <a href={`${here === "home" ? "" : homePath(locale)}#game`} onClick={close}>
+          {t("home.nav.game")}
+        </a>
+        <a href={studioPath(locale)}>{t("home.nav.studio")}</a>
+        <a href={marketPath(locale)}>{t("home.nav.market")}</a>
         <a href={DOCS}>{t("home.nav.docs")}</a>
         <a href={applyPath(locale)} className="home-nav-apply" aria-current={here === "apply" ? "page" : undefined}>
           {t("home.nav.apply")}

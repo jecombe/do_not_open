@@ -16,6 +16,21 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     },
     {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "game.testnet.do-not-open.app" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "vault.testnet.do-not-open.app" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "game.do-not-open.app" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
       "source": "/(app|render|catalog)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     },

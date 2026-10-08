@@ -5,7 +5,9 @@ collection goes into a box whose holder is encrypted: the box is a Confidential 
 own ("DO NOT OPEN Vault", `SEALED`), built on the same `ConfidentialERC721` base as the boxes of
 the game. The NFT stays in the vault until the box's holder takes it out, sells it on Seaport
 (OpenSea's protocol) with the vault as the seller, or sells the box privately for an encrypted
-cUSDC price. The page is `/vault` in the web app.
+cUSDC price. The page is `vault.do-not-open.app` (`/vault` off the site's domains), and its
+docs for holders, in four languages, are `vault.do-not-open.app/docs` (`apps/web/src/vault/docs`):
+they follow this file, so a change here goes there too.
 
 The contracts are the source of truth, especially the design notes at the top of
 [`SealedVault.sol`](../packages/contracts-evm/contracts/SealedVault.sol). This file explains

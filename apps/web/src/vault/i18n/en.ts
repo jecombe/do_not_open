@@ -11,6 +11,7 @@ export const vaultEn = {
   "vault.why2.body": "Your listing goes up on Seaport in the vault's name. Buyers see the NFT and the price, never the seller.",
   "vault.why3.title": "Take it out anywhere.",
   "vault.why3.body": "Send the NFT, or the ETH of a sale, to an address with no history. A relayer sends the request: your address shows nowhere.",
+  "vault.docs": "How the vault works, and what leaks",
   "vault.connect": "Connect a wallet",
   "vault.network.mock": "Demo: a vault in memory, with test NFTs. Nothing here is on a chain.",
   "vault.network.sepolia": "Sepolia testnet: test NFTs, test ETH, the real Seaport.",

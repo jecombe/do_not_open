@@ -19,7 +19,7 @@ const whitelistGifts = {
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { REPO } from "../links";
-import { appPath, homePath, vaultPath } from "../site";
+import { appPath, homePath, projectDocsPath } from "../site";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
 import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY, PUBLIC_UNITS, RAMP_PCT } from "./fees";
@@ -34,11 +34,11 @@ const DOCS = `${REPO}/blob/dev/docs`;
 const EXPLORER = "https://sepolia.etherscan.io/address/";
 
 /**
- * Six parts for players and anyone curious, with no code in them: a start, the boxes, the money,
- * the studio and its rats, the flea market, and the sealed vault next to the game. Then two bare
+ * Five parts for players and anyone curious, with no code in them: a start, the boxes, the money,
+ * the studio and its rats, and the flea market (the sealed vault has docs of its own). Then two bare
  * chapters with no part title: the testnet, which goes away at mainnet, and the references.
  * `audience` is what the API's chatbot and lessons know a chapter by: "manual" for the players'
- * six parts.
+ * five parts.
  */
 export const PARTS = [
   { key: "start", audience: "manual", sections: ["box", "map", "cats", "terms"] },
@@ -46,7 +46,6 @@ export const PARTS = [
   { key: "money", audience: "manual", sections: ["fees", "exchange", "croquettes"] },
   { key: "rats", audience: "manual", sections: ["studio", "rats"] },
   { key: "market", audience: "manual", sections: ["market", "stall"] },
-  { key: "vault", audience: "manual", sections: ["vault"] },
   { key: "testnet", audience: "testnet", sections: ["testnet"], bare: true },
   { key: "dev", audience: "dev", sections: ["more"], bare: true },
 ] as const;
@@ -68,7 +67,6 @@ const CONTRACTS = [
   { key: "ratTricks", address: "0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f" },
   { key: "market", address: "0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92" },
   { key: "whitelistGifts", address: "0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a" },
-  { key: "vault", address: "0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18" },
 ] as const;
 
 /** `part-boxes` reads as that part's first chapter; a chapter as itself. */
@@ -164,7 +162,7 @@ function PartHead({ part }: { part: PartKey }) {
 }
 
 /**
- * The routing slip. On a wide screen, the six parts and the bare chapters stay listed and only the one being read
+ * The routing slip. On a wide screen, the five parts and the bare chapters stay listed and only the one being read
  * shows its chapters, so the slip never needs scrolling. On a phone, one bar names the chapter
  * being read and unfolds the whole list.
  */
@@ -237,9 +235,6 @@ export function Manual() {
   const tricks = { days: studio.rats.powers.trickDays, rest: studio.rats.powers.rechargeDays };
   const rats = { seed: studio.rats.mint.seedPriceUsdc, model: studio.rats.mint.modelPriceUsdc, perDay: studio.rats.croquettes.perDay, maxDays: studio.rats.croquettes.maxDays, maxSeed: studio.rats.mint.maxSeedRats, maxModel: studio.rats.mint.maxModelRats, perWallet: studio.rats.mint.maxPerWallet, fund: studio.rats.croquettes.fund.toLocaleString(locale) };
   const market = { fee: spec.market.feeBps / 100, max: spec.market.maxFeeBps / 100, pct: 70 };
-  // The sealed vault's fee is a deployment setting (VAULT_FEE_BPS, 250 by default), capped by
-  // SealedVault's MAX_FEE_BPS (1,000): it is not in the game's spec.
-  const vault = { fee: 2.5, max: 10 };
   const milestones = spec.collection.milestones.map((m) => m.toLocaleString(locale)).join(", ");
   // The sale stops at its last milestone; the rest of the supply is the whitelist's gift boxes.
   const saleCapNumber = spec.collection.milestones[spec.collection.milestones.length - 1]!;
@@ -260,6 +255,7 @@ export function Manual() {
         </a>
         <nav className="views" aria-label={t("docs.site")}>
           <a href={homePath(locale)}>{t("docs.home")}</a>
+          <a href={projectDocsPath(locale)}>{t("docs.about")}</a>
           <a href={appPath(locale)}>{t("docs.back")}</a>
           <LangSwitch label={t("nav.language")} />
         </nav>
@@ -609,26 +605,6 @@ export function Manual() {
               <p>{t("docs.stall.p3")}</p>
               <p>{t("docs.stall.p4")}</p>
               <p>{t("docs.stall.p5", market)}</p>
-            </div>
-          </section>
-
-          <PartHead part="vault" />
-
-          <section id="vault">
-            <h2>{t("docs.section.vault")}</h2>
-            <div className="prose">
-              <p>{t("docs.vault.p1")}</p>
-              <p>{t("docs.vault.p2")}</p>
-              <p>{t("docs.vault.p3")}</p>
-              <p>{t("docs.vault.p4", vault)}</p>
-            </div>
-            <h3>{t("docs.vault.h.leaks")}</h3>
-            <div className="prose">
-              <p>{t("docs.vault.p5")}</p>
-              <p>{t("docs.vault.p6")}</p>
-              <p>
-                <a href={vaultPath(locale)}>{t("docs.vault.open")}</a>
-              </p>
             </div>
           </section>
 

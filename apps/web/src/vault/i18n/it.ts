@@ -12,6 +12,7 @@ export const vaultIt: Record<VaultKey, string> = {
   "vault.why2.body": "Il tuo annuncio va su Seaport a nome del caveau. Chi compra vede l'NFT e il prezzo, mai il venditore.",
   "vault.why3.title": "Tiralo fuori dove vuoi.",
   "vault.why3.body": "Manda l'NFT, o l'ETH di una vendita, a un indirizzo senza storia. Un relayer invia la richiesta: il tuo indirizzo non compare da nessuna parte.",
+  "vault.docs": "Come funziona il caveau, e cosa trapela",
   "vault.connect": "Collega un wallet",
   "vault.network.mock": "Demo: un caveau in memoria, con NFT di prova. Niente qui è su una chain.",
   "vault.network.sepolia": "Testnet Sepolia: NFT di prova, ETH di prova, il vero Seaport.",

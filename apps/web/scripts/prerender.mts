@@ -1,10 +1,12 @@
 /**
- * Writes the home page, the manual and the studio once per language after `vite build`, with their text
+ * Writes the home page, the three docs (the project's, the game's manual, the vault's), the studio and the boarding page once per language after `vite build`, with their text
  * already in the page and a full <head> (canonical, hreflang, Open Graph, Twitter, JSON-LD), so
  * a crawler or a link preview reads them without running any script:
  *
  *   dist/index.html  dist/fr/index.html  dist/es/index.html  dist/it/index.html   →  /  /fr/  /es/  /it/
- *   dist/docs.html   dist/fr/docs.html   dist/es/docs.html   dist/it/docs.html    →  /docs  /fr/docs ...
+ *   dist/docs.html   dist/fr/docs.html   dist/es/docs.html   dist/it/docs.html    →  /docs  /fr/docs ...  (game.)
+ *   dist/project.html    dist/fr/project.html ...                                  →  /docs  /fr/docs ...  (the bare domain)
+ *   dist/vault-docs.html dist/fr/vault-docs.html ...                               →  /docs  /fr/docs ...  (vault.)
  *   dist/studio.html dist/fr/studio.html ...                                       →  /studio  /fr/studio ...
  *   dist/apply.html  dist/fr/apply.html ...                                        →  /apply  /fr/apply ...
  *
@@ -23,7 +25,7 @@ const LOCALES = ["en", "fr", "es", "it"] as const;
 type Locale = (typeof LOCALES)[number];
 const OG_LOCALE: Record<Locale, string> = { en: "en_US", fr: "fr_FR", es: "es_ES", it: "it_IT" };
 /** Below this much visible text, the page did not really render: the build fails. */
-const MIN_TEXT = { home: 2_000, docs: 20_000, studio: 600, apply: 600 } as const;
+const MIN_TEXT = { home: 2_000, docs: 20_000, project: 3_000, vaultDocs: 4_000, studio: 600, apply: 600 } as const;
 
 // The pages read a few browser globals while rendering: enough of them to render once. Effects
 // (three.js, observers, timers) never run on the server.
@@ -64,6 +66,10 @@ try {
   const { spec } = await vite.ssrLoadModule("@dno/game-spec");
   const { Home } = await vite.ssrLoadModule("/src/home/Home.tsx");
   const { Manual } = await vite.ssrLoadModule("/src/docs/Manual.tsx");
+  const { ProjectDocs } = await vite.ssrLoadModule("/src/project/ProjectDocs.tsx");
+  const { VaultDocs } = await vite.ssrLoadModule("/src/vault/docs/VaultDocs.tsx");
+  const project = await vite.ssrLoadModule("/src/project/i18n.ts");
+  const vaultDocs = await vite.ssrLoadModule("/src/vault/docs/i18n.ts");
   const home = await vite.ssrLoadModule("/src/home/i18n.ts");
   const docs = await vite.ssrLoadModule("/src/docs/i18n.ts");
   const { StudioPage } = await vite.ssrLoadModule("/src/studio/StudioPage.tsx");
@@ -72,9 +78,12 @@ try {
 
   const SITE: string = site.SITE_URL;
   const IMAGE = `${SITE}/og.png`;
+  const GAME: string = (await vite.ssrLoadModule("/src/hosts.ts")).partOrigin("do-not-open.app", "game");
   const PAGES = {
     home: { file: "index.html", component: Home, t: home.t, prefix: "home", path: site.homePath as (l: Locale) => string },
     docs: { file: "docs.html", component: Manual, t: docs.t, prefix: "docs", path: site.docsPath as (l: Locale) => string },
+    project: { file: "project.html", component: ProjectDocs, t: project.t, prefix: "project", path: site.projectDocsPath as (l: Locale) => string },
+    vaultDocs: { file: "vault-docs.html", component: VaultDocs, t: vaultDocs.t, prefix: "vaultDocs", path: site.vaultDocsPath as (l: Locale) => string },
     studio: { file: "studio.html", component: StudioPage, t: app.t, prefix: "studio", path: site.studioPath as (l: Locale) => string },
     apply: { file: "apply.html", component: ApplyPage, t: home.t, prefix: "apply", path: site.applyPath as (l: Locale) => string },
   } as const;
@@ -95,8 +104,10 @@ try {
   const written: string[] = [];
   for (const [page, { file, component, t, prefix, path }] of Object.entries(PAGES) as [keyof typeof PAGES, (typeof PAGES)[keyof typeof PAGES]][]) {
     for (const locale of LOCALES) {
-      const url = `${SITE}${path(locale)}`;
-      Object.assign(location, { href: url, pathname: path(locale) });
+      // Where the page lives on the site (the docs are on three hosts), and the path the file answers on.
+      const canonical = (l: Locale): string => site.canonicalUrl(page, l);
+      const url = canonical(locale);
+      Object.assign(location, { href: `${SITE}${path(locale)}`, pathname: path(locale) });
       setLocale(locale);
 
       const markup: string = renderToStaticMarkup(createElement(component));
@@ -117,7 +128,8 @@ try {
                 "@type": "VideoGame",
                 "@id": `${SITE}/#game`,
                 name: "DO NOT OPEN",
-                url,
+                // The game lives on game. since the home page became the project's.
+                url: `${GAME}/${locale === "en" ? "" : `?lang=${locale}`}`,
                 description,
                 inLanguage: locale,
                 image: IMAGE,
@@ -127,7 +139,7 @@ try {
                 sameAs: [REPO, DISCORD],
               },
             ]
-          : page === "studio" || page === "apply"
+          : page === "studio" || page === "apply" || page === "project" || page === "vaultDocs"
             ? [
                 website,
                 { "@type": "WebPage", "@id": `${url}#page`, name: title, description, url, inLanguage: locale, image: IMAGE, isPartOf: { "@id": `${SITE}/#website` } },
@@ -151,8 +163,8 @@ try {
         `<title>${escapeHtml(title)}</title>`,
         `<meta name="description" content="${escapeHtml(description)}" />`,
         `<link rel="canonical" href="${url}" />`,
-        ...LOCALES.map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${path(l)}" />`),
-        `<link rel="alternate" hreflang="x-default" href="${SITE}${path("en")}" />`,
+        ...LOCALES.map((l) => `<link rel="alternate" hreflang="${l}" href="${canonical(l)}" />`),
+        `<link rel="alternate" hreflang="x-default" href="${canonical("en")}" />`,
         `<meta property="og:type" content="website" />`,
         `<meta property="og:site_name" content="DO NOT OPEN" />`,
         `<meta property="og:title" content="${escapeHtml(title)}" />`,

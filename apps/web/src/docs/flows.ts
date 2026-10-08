@@ -30,7 +30,7 @@ export interface Flow {
 export const stationName = (id: StationId, cast?: string): string => (cast && lookup(`station.${id}.${cast}`)) || t(`station.${id}`);
 export const packetName = (kind: PacketKind): string => t(`packet.${kind}`);
 
-type FlowKey = "mint" | "shake" | "open" | "duel" | "transfer" | "buy" | "offer" | "vault";
+export type FlowKey = "mint" | "shake" | "open" | "duel" | "transfer" | "buy" | "offer" | "vault";
 type Route = [from: StationId, to: StationId, kind: PacketKind];
 
 /** Who talks to whom, per step. The words for each step live in the dictionaries. */
@@ -117,9 +117,12 @@ const ROUTES: Record<FlowKey, Route[]> = {
 /** The flows with other parties on the dock: the flea market's contract and a seller, the sealed vault and its relayer. */
 const CAST: Partial<Record<FlowKey, string>> = { buy: "market", offer: "market", vault: "vault" };
 
+/** The game's flows, for its manual; the vault's is in the vault's docs. */
+export const GAME_FLOWS: readonly FlowKey[] = ["mint", "shake", "open", "duel", "transfer", "buy", "offer"];
+
 /** The flows in the current language. Call it again after a language change. */
-export function flows(): Flow[] {
-  return (Object.keys(ROUTES) as FlowKey[]).map((key) => ({
+export function flows(keys: readonly FlowKey[] = GAME_FLOWS): Flow[] {
+  return keys.map((key) => ({
     key,
     name: t(`flow.${key}.name`),
     summary: t(`flow.${key}.summary`),

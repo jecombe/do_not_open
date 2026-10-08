@@ -1,3 +1,5 @@
+import { appPath } from "../site";
+
 /** Where a box can be sent, and how each network wants a post handed to it. */
 export type Network = "x" | "farcaster" | "bluesky" | "telegram" | "whatsapp" | "reddit";
 
@@ -37,7 +39,7 @@ export function intentUrl(network: Network, text: string, url: string): string {
  * it, so the link lands on the same boxes; the language does not: whoever clicks gets theirs.
  */
 export function boxUrl(tokenId: number): string {
-  const url = new URL("app.html", window.location.href);
+  const url = new URL(appPath("en"), window.location.href);
   url.search = "";
   url.hash = "";
   url.searchParams.set("box", String(tokenId));

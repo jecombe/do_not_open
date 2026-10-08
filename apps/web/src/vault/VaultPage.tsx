@@ -4,7 +4,7 @@ import { useAction, useChain } from "../chain/ChainProvider";
 import { HomeTop } from "../home/HomeTop";
 import { useLocale } from "../i18n/locale";
 import { DISCORD } from "../links";
-import { appPath } from "../site";
+import { appPath, vaultDocsPath } from "../site";
 import { useT } from "./i18n";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
@@ -42,6 +42,9 @@ export function VaultPage() {
             </li>
           ))}
         </ol>
+        <a className="hero-allow" href={vaultDocsPath(locale)}>
+          {t("vault.docs")}&nbsp;→
+        </a>
         <p className="vault-network">{vault ? t(mode === "mock" ? "vault.network.mock" : "vault.network.sepolia") : t("vault.network.missing")}</p>
         {!account && (
           <p className="hero-ctas">
