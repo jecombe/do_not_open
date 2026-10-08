@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { formatAmount, sameAddress, shortAddress, type ActionOptions, type Address, type VaultAdapter, type VaultBox, type VaultInfo, type VaultSale } from "@dno/chain-adapter";
 import { useAction, useChain } from "../chain/ChainProvider";
-import { HomeTop } from "../home/HomeTop";
 import { useLocale } from "../i18n/locale";
 import { DISCORD } from "../links";
 import { vaultDocsPath } from "../site";
+import { SecureTop } from "../secure/SecureTop";
 import { useT } from "./i18n";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
@@ -28,13 +28,13 @@ export function VaultPage() {
   }, [t]);
 
   return (
-    <div className="home vault">
-      <HomeTop here="vault" />
+    <div className="sec vault">
+      <SecureTop here="vault" />
 
       <section className="vault-hero">
-        <p className="kicker">{t("vault.kicker")}</p>
+        <p className="sec-kicker">{t("vault.kicker")}</p>
         <h1>{t("vault.h1")}</h1>
-        <p className="hero-lede">{t("vault.lede")}</p>
+        <p className="sec-lede">{t("vault.lede")}</p>
         <ol className="vault-why">
           {(["1", "2", "3"] as const).map((n) => (
             <li key={n}>
@@ -42,13 +42,13 @@ export function VaultPage() {
             </li>
           ))}
         </ol>
-        <a className="hero-allow" href={vaultDocsPath(locale)}>
+        <a className="sec-link" href={vaultDocsPath(locale)}>
           {t("vault.docs")}&nbsp;→
         </a>
         <p className="vault-network">{vault ? t(mode === "mock" ? "vault.network.mock" : "vault.network.sepolia") : t("vault.network.missing")}</p>
         {!account && (
-          <p className="hero-ctas">
-            <button type="button" className="btn" onClick={() => void connect()}>
+          <p className="sec-ctas">
+            <button type="button" className="sec-btn" onClick={() => void connect()}>
               {t("vault.connect")}
             </button>
           </p>
@@ -61,7 +61,7 @@ export function VaultPage() {
       <Leaks />
 
 
-      <footer className="home-foot">
+      <footer className="sec-foot">
         <span>DO NOT OPEN</span>
         <a href={DISCORD} target="_blank" rel="noreferrer">
           Discord
@@ -169,7 +169,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
                 <p className="vault-card-name">{t("vault.nft", { collection: n.name, id: String(n.id) })}</p>
                 <button
                   type="button"
-                  className="btn btn-small"
+                  className="sec-btn sec-btn-small"
                   disabled={!!action.busy}
                   onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, o), (box) => t("vault.done.deposit", { box }))}
                 >
@@ -184,7 +184,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
               <button
                 key={c.address}
                 type="button"
-                className="btn btn-paper btn-small"
+                className="sec-btn sec-btn-ghost sec-btn-small"
                 disabled={!!action.busy}
                 onClick={() => void act("mint", (o) => vault.mintTestNft(c.address, o), (id) => t("vault.done.mint", { id: String(id) }))}
               >
@@ -199,7 +199,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
           <h2>{t("vault.mine.title")}</h2>
           <p className="vault-lede">{t("vault.mine.lede")}</p>
           {mine === null ? (
-            <button type="button" className="btn btn-small" disabled={!!action.busy} onClick={() => void act("find", () => vault.myBoxes()).then((m) => m && setMine(m))}>
+            <button type="button" className="sec-btn sec-btn-small" disabled={!!action.busy} onClick={() => void act("find", () => vault.myBoxes()).then((m) => m && setMine(m))}>
               {t("vault.mine.find")}
             </button>
           ) : myBoxes.length === 0 ? (
@@ -230,7 +230,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
                   <span className="vault-chip">{t("vault.market.yours")}</span>
                 ) : (
                   account && (
-                    <button type="button" className="btn btn-small" disabled={!!action.busy} onClick={() => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy"))}>
+                    <button type="button" className="sec-btn sec-btn-small" disabled={!!action.busy} onClick={() => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy"))}>
                       {t("vault.action.buy")}
                     </button>
                   )
@@ -260,7 +260,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
                       {s.status === "open" && toMe && (
                         <button
                           type="button"
-                          className="btn btn-small"
+                          className="sec-btn sec-btn-small"
                           disabled={!!action.busy}
                           onClick={() =>
                             void act("accept", (o) => vault.acceptSale(s.saleId, o), (moved) => (moved ? t("vault.sale.moved") : t("vault.sale.notMoved"))).then(async (moved) => {
@@ -272,7 +272,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
                         </button>
                       )}
                       {s.status === "open" && !toMe && (
-                        <button type="button" className="btn btn-paper btn-small" disabled={!!action.busy} onClick={() => void act("cancelSale", (o) => vault.cancelSale(s.saleId, o))}>
+                        <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" disabled={!!action.busy} onClick={() => void act("cancelSale", (o) => vault.cancelSale(s.saleId, o))}>
                           {t("vault.action.cancel")}
                         </button>
                       )}
@@ -282,7 +282,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
               </ul>
               <button
                 type="button"
-                className="btn btn-paper btn-small"
+                className="sec-btn sec-btn-ghost sec-btn-small"
                 disabled={!!action.busy}
                 onClick={() => void act("prices", (o) => vault.salePrices(sales.map((s) => s.saleId), o)).then((p) => p && setPrices(p))}
               >
@@ -334,11 +334,11 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
           .filter((a) => a.when)
           .map((a) =>
             a.key === "unlist" ? (
-              <button key={a.key} type="button" className="btn btn-paper btn-small" disabled={busy} onClick={() => void run("unlist", (o) => vault.unlist(box.boxId, o), () => t("vault.done.unlist"))}>
+              <button key={a.key} type="button" className="sec-btn sec-btn-ghost sec-btn-small" disabled={busy} onClick={() => void run("unlist", (o) => vault.unlist(box.boxId, o), () => t("vault.done.unlist"))}>
                 {t("vault.action.unlist")}
               </button>
             ) : (
-              <button key={a.key} type="button" className="btn btn-paper btn-small" aria-expanded={open === a.key} disabled={busy} onClick={() => toggle(a.key as typeof open)}>
+              <button key={a.key} type="button" className="sec-btn sec-btn-ghost sec-btn-small" aria-expanded={open === a.key} disabled={busy} onClick={() => toggle(a.key as typeof open)}>
                 {t(`vault.action.${a.key}`)}
               </button>
             ),
@@ -381,7 +381,7 @@ function Form({ busy, hint, onSubmit, children }: { busy: boolean; hint?: string
     >
       {children}
       {hint && <p className="vault-hint">{hint}</p>}
-      <button type="submit" className="btn btn-small" disabled={busy}>
+      <button type="submit" className="sec-btn sec-btn-small" disabled={busy}>
         {t("vault.action.go")}
       </button>
     </form>
@@ -407,7 +407,7 @@ function AddressForm({ account, hint, busy, onSubmit }: { account: Address | nul
         <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="0x…" spellCheck={false} autoComplete="off" />
       </label>
       {account && (
-        <button type="button" className="link" onClick={() => setTo(account)}>
+        <button type="button" className="sec-link" onClick={() => setTo(account)}>
           {t("vault.form.toMe")}
         </button>
       )}

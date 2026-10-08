@@ -64,13 +64,14 @@ try {
   const site = await vite.ssrLoadModule("/src/site.ts");
   const { DISCORD, REPO } = await vite.ssrLoadModule("/src/links.ts");
   const { spec } = await vite.ssrLoadModule("@dno/game-spec");
-  const { Home } = await vite.ssrLoadModule("/src/home/Home.tsx");
+  const { SecureHome } = await vite.ssrLoadModule("/src/secure/SecureHome.tsx");
   const { Manual } = await vite.ssrLoadModule("/src/docs/Manual.tsx");
   const { ProjectDocs } = await vite.ssrLoadModule("/src/project/ProjectDocs.tsx");
   const { VaultDocs } = await vite.ssrLoadModule("/src/vault/docs/VaultDocs.tsx");
   const project = await vite.ssrLoadModule("/src/project/i18n.ts");
   const vaultDocs = await vite.ssrLoadModule("/src/vault/docs/i18n.ts");
   const home = await vite.ssrLoadModule("/src/home/i18n.ts");
+  const secure = await vite.ssrLoadModule("/src/secure/i18n.ts");
   const docs = await vite.ssrLoadModule("/src/docs/i18n.ts");
   const { StudioPage } = await vite.ssrLoadModule("/src/studio/StudioPage.tsx");
   const { ApplyPage } = await vite.ssrLoadModule("/src/apply/ApplyPage.tsx");
@@ -80,7 +81,7 @@ try {
   const IMAGE = `${SITE}/og.png`;
   const GAME: string = (await vite.ssrLoadModule("/src/hosts.ts")).partOrigin("do-not-open.app", "game");
   const PAGES = {
-    home: { file: "index.html", component: Home, t: home.t, prefix: "home", path: site.homePath as (l: Locale) => string },
+    home: { file: "index.html", component: SecureHome, t: secure.t, prefix: "secure", path: site.homePath as (l: Locale) => string },
     docs: { file: "docs.html", component: Manual, t: docs.t, prefix: "docs", path: site.docsPath as (l: Locale) => string },
     project: { file: "project.html", component: ProjectDocs, t: project.t, prefix: "project", path: site.projectDocsPath as (l: Locale) => string },
     vaultDocs: { file: "vault-docs.html", component: VaultDocs, t: vaultDocs.t, prefix: "vaultDocs", path: site.vaultDocsPath as (l: Locale) => string },
