@@ -4,7 +4,6 @@ export const docsEn = {
   "docs.description": "How DO NOT OPEN keeps {supply} cats secret on a public chain with Zama's FHE: encrypted holders, on-chain reveals, fees, croquettes, the studio's rats, the flea market and the sealed vault.",
   "docs.imageAlt": "A sealed cardboard box stamped DO NOT OPEN, with a cat inside that nobody can see",
   "docs.home": "Home",
-  "docs.about": "About DO NOT OPEN",
   "docs.homeAria": "DO NOT OPEN, home",
   "docs.site": "Site",
   "docs.back": "Back to the depot",

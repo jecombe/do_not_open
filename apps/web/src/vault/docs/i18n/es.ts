@@ -9,7 +9,6 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.language": "Idioma",
   "vaultDocs.contents": "Contenido",
   "vaultDocs.nav.home": "Inicio",
-  "vaultDocs.nav.project": "Sobre DO NOT OPEN",
   "vaultDocs.nav.vault": "Abrir la bóveda",
 
   "vaultDocs.h1": "La bóveda sellada",

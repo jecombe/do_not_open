@@ -4,7 +4,7 @@ import { useAction, useChain } from "../chain/ChainProvider";
 import { HomeTop } from "../home/HomeTop";
 import { useLocale } from "../i18n/locale";
 import { DISCORD } from "../links";
-import { appPath, vaultDocsPath } from "../site";
+import { vaultDocsPath } from "../site";
 import { useT } from "./i18n";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
@@ -60,12 +60,6 @@ export function VaultPage() {
 
       <Leaks />
 
-      <section className="vault-game">
-        <p>{t("vault.game")}</p>
-        <a className="btn btn-paper" href={appPath(locale)}>
-          {t("vault.game.cta")}
-        </a>
-      </section>
 
       <footer className="home-foot">
         <span>DO NOT OPEN</span>
@@ -517,7 +511,7 @@ function parseUnits(value: string, decimals: number): bigint | null {
 function Leaks() {
   const t = useT();
   return (
-    <section className="vault-panel vault-leaks">
+    <section className="vault-panel vault-leaks" id="leaks">
       <h2>{t("vault.leaks.title")}</h2>
       <div className="vault-leaks-cols">
         <div>

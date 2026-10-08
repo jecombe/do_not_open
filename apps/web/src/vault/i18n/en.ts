@@ -115,8 +115,6 @@ export const vaultEn = {
   "vault.step.decrypting": "Checking the key, under encryption",
   "vault.step.proving": "Sending the proof",
 
-  "vault.game": "The same encryption runs the game: 10,000 sealed boxes, a cat in each.",
-  "vault.game.cta": "Play DO NOT OPEN",
 } as const satisfies Record<string, string>;
 
 export type VaultKey = keyof typeof vaultEn;

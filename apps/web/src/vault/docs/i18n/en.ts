@@ -8,7 +8,6 @@ export const vaultDocsEn = {
   "vaultDocs.language": "Language",
   "vaultDocs.contents": "Contents",
   "vaultDocs.nav.home": "Home",
-  "vaultDocs.nav.project": "About DO NOT OPEN",
   "vaultDocs.nav.vault": "Open the vault",
 
   "vaultDocs.h1": "The sealed vault",

@@ -116,6 +116,4 @@ export const vaultFr: Record<VaultKey, string> = {
   "vault.step.decrypting": "Vérification de la clé, sous chiffrement",
   "vault.step.proving": "Envoi de la preuve",
 
-  "vault.game": "Le même chiffrement fait tourner le jeu : 10 000 boîtes scellées, un chat dans chacune.",
-  "vault.game.cta": "Jouer à DO NOT OPEN",
 };

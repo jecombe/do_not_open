@@ -1,19 +1,20 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { applyPath, appPath, homePath, projectDocsPath, vaultPath } from "../site";
+import { applyPath, homePath, projectDocsPath, vaultDocsPath, vaultPath } from "../site";
 import { useT } from "./i18n";
 import { SoundControl } from "./SoundControl";
 
 /**
- * The stamp, the site's links (how the vault works, the game, the docs, boarding; the studio and the flea market are the game's), the sound and the languages, and the way into the vault (into the game on the vault's page). On a
- * phone the links, the sound and the languages fold into a menu, so the stamp, the main button and the menu button share one line.
+ * The stamp, the links of the part the page belongs to, the sound and the languages. Each part
+ * keeps to itself: the home page's links (how the vault works, the docs, boarding) and its way
+ * into the vault; on the vault's page, what shows, the vault's docs and the way home, never the
+ * game (the game's own masthead leads home only too). On a phone the links, the sound and the
+ * languages fold into a menu, so the stamp, the main button and the menu button share one line.
  */
 export function HomeTop({ here = "home" }: { here?: "home" | "apply" | "vault" }) {
   const t = useT();
   const locale = useLocale();
-  const APP = appPath(locale);
-  const DOCS = projectDocsPath(locale);
   const [open, setOpen] = useState(false);
   const navId = useId();
   const root = useRef<HTMLElement>(null);
@@ -45,26 +46,31 @@ export function HomeTop({ here = "home" }: { here?: "home" | "apply" | "vault" }
         Do not open
       </a>
       <nav id={navId} className={open ? "is-open" : undefined} aria-label={t("home.nav")}>
-        <a href={`${here === "home" ? "" : homePath(locale)}#how`} onClick={close}>
-          {t("home.nav.how")}
-        </a>
-        <a href={`${here === "home" ? "" : homePath(locale)}#game`} onClick={close}>
-          {t("home.nav.game")}
-        </a>
-        <a href={DOCS}>{t("home.nav.docs")}</a>
-        <a href={applyPath(locale)} className="home-nav-apply" aria-current={here === "apply" ? "page" : undefined}>
-          {t("home.nav.apply")}
-        </a>
+        {here === "vault" ? (
+          <>
+            <a href="#leaks" onClick={close}>
+              {t("home.nav.leaks")}
+            </a>
+            <a href={vaultDocsPath(locale)}>{t("home.nav.docs")}</a>
+            <a href={homePath(locale)}>{t("home.nav.home")}</a>
+          </>
+        ) : (
+          <>
+            <a href={`${here === "home" ? "" : homePath(locale)}#how`} onClick={close}>
+              {t("home.nav.how")}
+            </a>
+            <a href={projectDocsPath(locale)}>{t("home.nav.docs")}</a>
+            <a href={applyPath(locale)} className="home-nav-apply" aria-current={here === "apply" ? "page" : undefined}>
+              {t("home.nav.apply")}
+            </a>
+          </>
+        )}
         <SoundControl labels={{ group: t("home.nav.sound"), mute: t("home.nav.soundMute"), unmute: t("home.nav.soundUnmute"), volume: t("home.nav.musicVolume") }} />
         <LangSwitch label={t("home.nav")} />
       </nav>
       <div className="home-top-actions">
-        {/* The vault is the site's main door; on the vault's own page the button leads to the game. */}
-        {here === "vault" ? (
-          <a className="btn btn-small" href={APP}>
-            {t("home.nav.play")}
-          </a>
-        ) : (
+        {/* The vault is the site's main door; on the vault's own page there is none to show. */}
+        {here !== "vault" && (
           <a className="btn btn-small" href={vaultPath(locale)}>
             {t("home.nav.open")}
           </a>

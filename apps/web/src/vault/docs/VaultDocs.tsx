@@ -119,7 +119,6 @@ export function VaultDocs() {
       contentsLabel={t("vaultDocs.contents")}
       nav={[
         { href: homePath(locale), label: t("vaultDocs.nav.home") },
-        { href: projectDocsPath(locale), label: t("vaultDocs.nav.project") },
         { href: vaultPath(locale), label: t("vaultDocs.nav.vault") },
       ]}
       title={t("vaultDocs.h1")}

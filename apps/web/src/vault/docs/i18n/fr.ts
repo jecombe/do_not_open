@@ -9,7 +9,6 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.language": "Langue",
   "vaultDocs.contents": "Sommaire",
   "vaultDocs.nav.home": "Accueil",
-  "vaultDocs.nav.project": "À propos de DO NOT OPEN",
   "vaultDocs.nav.vault": "Ouvrir le coffre",
 
   "vaultDocs.h1": "Le coffre scellé",

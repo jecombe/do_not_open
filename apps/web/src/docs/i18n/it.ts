@@ -5,7 +5,6 @@ export const docsIt: Record<DocsKey, string> = {
   "docs.description": "Come DO NOT OPEN tiene segreti {supply} gatti su una catena pubblica con l'FHE di Zama: detentori cifrati, rivelazioni sulla catena, commissioni, crocchette, i ratti dello studio, il mercatino e il caveau sigillato.",
   "docs.imageAlt": "Una scatola di cartone sigillata col timbro DO NOT OPEN e, dentro, un gatto che nessuno vede",
   "docs.home": "Home",
-  "docs.about": "Su DO NOT OPEN",
   "docs.homeAria": "DO NOT OPEN, home",
   "docs.site": "Sito",
   "docs.back": "Torna al deposito",

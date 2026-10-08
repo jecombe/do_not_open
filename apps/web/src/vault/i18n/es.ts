@@ -116,6 +116,4 @@ export const vaultEs: Record<VaultKey, string> = {
   "vault.step.decrypting": "Comprobando la llave, bajo cifrado",
   "vault.step.proving": "Enviando la prueba",
 
-  "vault.game": "El mismo cifrado mueve el juego: 10.000 cajas selladas, un gato en cada una.",
-  "vault.game.cta": "Jugar a DO NOT OPEN",
 };

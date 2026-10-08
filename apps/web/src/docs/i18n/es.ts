@@ -5,7 +5,6 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.description": "Cómo DO NOT OPEN mantiene {supply} gatos en secreto en una cadena pública con el FHE de Zama: titulares cifrados, revelaciones en la cadena, comisiones, croquetas, las ratas del estudio, el mercadillo y la bóveda sellada.",
   "docs.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN y, dentro, un gato que nadie ve",
   "docs.home": "Inicio",
-  "docs.about": "Sobre DO NOT OPEN",
   "docs.homeAria": "DO NOT OPEN, inicio",
   "docs.site": "Sitio",
   "docs.back": "Volver al depósito",

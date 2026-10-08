@@ -19,7 +19,7 @@ const whitelistGifts = {
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
 import { REPO } from "../links";
-import { appPath, homePath, projectDocsPath } from "../site";
+import { appPath, homePath } from "../site";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
 import { FeesFigure, FeeTable, FREE_PER_DAY, INPUT_UNITS, NEWCOMER_PER_DAY, PUBLIC_UNITS, RAMP_PCT } from "./fees";
@@ -255,7 +255,6 @@ export function Manual() {
         </a>
         <nav className="views" aria-label={t("docs.site")}>
           <a href={homePath(locale)}>{t("docs.home")}</a>
-          <a href={projectDocsPath(locale)}>{t("docs.about")}</a>
           <a href={appPath(locale)}>{t("docs.back")}</a>
           <LangSwitch label={t("nav.language")} />
         </nav>
