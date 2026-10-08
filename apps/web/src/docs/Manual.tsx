@@ -255,7 +255,6 @@ export function Manual() {
         <nav className="views" aria-label={t("docs.site")}>
           <a href={homePath(locale)}>{t("docs.home")}</a>
           <a href={appPath(locale)}>{t("docs.back")}</a>
-          <a href={REPO}>{t("docs.source")}</a>
           <LangSwitch label={t("nav.language")} />
         </nav>
       </header>

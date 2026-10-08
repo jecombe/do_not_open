@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DISCORD, REPO } from "../links";
+import { DISCORD } from "../links";
 import { useSeats, useXPass } from "../xpass";
 import { Boarding } from "../home/Boarding";
 import { HomeTop } from "../home/HomeTop";
@@ -65,7 +65,6 @@ export function ApplyPage() {
         <a href={DISCORD} target="_blank" rel="noreferrer">
           {t("home.foot.discord")}
         </a>
-        <a href={REPO}>{t("home.foot.source")}</a>
       </footer>
     </div>
   );
