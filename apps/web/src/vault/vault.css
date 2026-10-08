@@ -1,0 +1,334 @@
+/* The sealed vault: the home page's cartoon, cards stamped like cartons on a shelf. */
+.vault-hero {
+  max-width: 900px;
+  padding: clamp(8px, 2vw, 24px) 0 clamp(16px, 2vw, 28px);
+}
+
+.vault-hero h1 {
+  margin: 0 0 14px;
+  font-family: var(--stencil);
+  font-size: clamp(40px, 6vw, 84px);
+  line-height: 0.92;
+  text-transform: uppercase;
+  color: var(--paper);
+  -webkit-text-stroke: 3px var(--ink);
+  text-shadow: 6px 6px 0 var(--ink);
+}
+
+.vault-why {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 22px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-why li {
+  padding: 14px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 5px 5px 0 var(--ink);
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.vault-why strong {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--stencil);
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.vault-network,
+.vault-relayer {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 4px 12px;
+  border: 2px dashed var(--ink);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.45);
+  font-size: 17px;
+}
+
+/* Where an action stands, pinned to the bottom of the screen while it runs and after. */
+.vault-status {
+  position: fixed;
+  right: var(--gutter);
+  bottom: 16px;
+  left: var(--gutter);
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.vault-status p {
+  margin: 0;
+}
+
+.vault-step,
+.vault-done,
+.vault-error {
+  padding: 10px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--ink);
+  font-size: 18px;
+}
+
+.vault-step {
+  background: var(--sky);
+}
+
+.vault-done {
+  background: var(--mint);
+}
+
+.vault-error {
+  background: var(--pink);
+}
+
+.vault-panel {
+  margin: 0 0 clamp(20px, 3vw, 36px);
+  padding: clamp(16px, 2.4vw, 28px);
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: 7px 7px 0 var(--ink);
+}
+
+.vault-panel h2 {
+  margin: 0 0 6px;
+  font-family: var(--stencil);
+  font-size: clamp(26px, 3vw, 38px);
+  text-transform: uppercase;
+}
+
+.vault-lede {
+  max-width: 70ch;
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.vault-empty {
+  margin: 0 0 14px;
+  font-style: italic;
+}
+
+.vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--manifest);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.vault-card p {
+  margin: 0;
+}
+
+.vault-card-mine {
+  grid-column: span 1;
+}
+
+.vault-art {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.vault-art-blank {
+  display: grid;
+  place-items: center;
+  font-family: var(--stencil);
+  font-size: 28px;
+}
+
+.vault-card-name {
+  font-weight: 700;
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+
+.vault-price {
+  font-family: var(--stencil);
+  font-size: 20px;
+}
+
+.vault-meta,
+.vault-hint {
+  font-size: 15px;
+  opacity: 0.8;
+}
+
+.vault-state,
+.vault-chip {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--sun);
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.vault-state-listed {
+  background: var(--sky);
+}
+
+.vault-state-sold {
+  background: var(--mint);
+}
+
+.vault-state-withdrawn,
+.vault-state-claimed {
+  background: var(--tape);
+}
+
+.vault-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.vault-actions .btn-small {
+  padding: 6px 10px 4px;
+  font-size: 14px;
+}
+
+.vault-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px;
+  border: 2px dashed var(--ink);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.5);
+}
+
+.vault-form label {
+  display: grid;
+  gap: 2px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.vault-form input,
+.vault-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+}
+
+.vault-form .link {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--red);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.vault-form p {
+  margin: 0;
+}
+
+.vault-sales {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-sales li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--manifest);
+}
+
+.vault-leaks-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.vault-leaks h3 {
+  margin: 0 0 8px;
+  font-family: var(--stencil);
+  font-size: 22px;
+  text-transform: uppercase;
+}
+
+.vault-leaks ul {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 18px;
+}
+
+.vault-leaks-cols > div:last-child h3 {
+  color: var(--red);
+}
+
+.vault-game {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 clamp(20px, 3vw, 36px);
+  padding: 18px 22px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: var(--orange);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.vault-game p {
+  margin: 0;
+  max-width: 60ch;
+}
+
+@media (max-width: 560px) {
+  .vault-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .vault-hero h1 {
+    -webkit-text-stroke: 2px var(--ink);
+    text-shadow: 4px 4px 0 var(--ink);
+  }
+}

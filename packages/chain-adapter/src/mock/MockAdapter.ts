@@ -60,6 +60,8 @@ import {
   type OfferStatus,
 } from "../types";
 import { MockPool } from "./pool";
+import { MockVault } from "./MockVault";
+import type { VaultAdapter } from "../vault";
 import {
   allowListMessage,
   byClaimRank,
@@ -312,6 +314,8 @@ export class MockAdapter implements ChainAdapter {
   private readonly nightShiftTrades: boolean;
   /** The approvals a real wallet gives the market once: the mock asks once too. */
   private marketMayMove = new Set<string>();
+  /** The sealed vault, next to the game, with its own ETH book. */
+  private readonly vault_: MockVault;
 
   constructor(opts: MockOptions = {}) {
     this.ratStore = opts.ratStore;
@@ -335,6 +339,26 @@ export class MockAdapter implements ChainAdapter {
     }
     this.nightShiftTrades = !!opts.fleaMarket;
     if (opts.fleaMarket) this.openNightShiftStalls();
+    this.vault_ = new MockVault({
+      account: () => this.me,
+      nightShift: MOCK_NIGHT_SHIFT,
+      now: this.now,
+      send: (o, call) => this.send(o, call),
+      publish: (o, call) => this.publish(o, call),
+      decrypting: (o) => this.decrypting(o),
+      cUsdcOf: (who) => this.cUsdc.get(who) ?? 0n,
+      moveCusdc: (from, to, amount) => {
+        this.credit(this.cUsdc, from, -amount);
+        this.credit(this.cUsdc, to, amount);
+      },
+    });
+    this.vault_.giveEth(MOCK_YOU, 10n ** 18n);
+    // What the night shift pays for the boxes you sell it privately in the vault.
+    this.credit(this.cUsdc, MOCK_NIGHT_SHIFT, 1_000n * USD);
+  }
+
+  vault(): VaultAdapter {
+    return this.vault_;
   }
 
   // --- account ---
@@ -523,8 +547,8 @@ export class MockAdapter implements ChainAdapter {
   }
 
   /** Gas is free in the mock: every account holds a round 1 ETH. */
-  async balance(): Promise<bigint> {
-    return 10n ** 18n;
+  async balance(owner: Address): Promise<bigint> {
+    return this.vault_.ethOf(owner);
   }
 
   async usdcBalance(owner: Address): Promise<bigint> {

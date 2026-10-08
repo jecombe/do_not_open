@@ -781,6 +781,48 @@ could pay. Never public: balances, offer amounts, the price of a sale by offer, 
 a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
 `acceptOffer`, is about 2.41M HCU.
 
+### The sealed vault (2026-10-08)
+
+`SealedVault` puts any NFT of an allowed collection in a box whose holder is encrypted: a
+second `ConfidentialERC721`, next to the game and linked to none of its contracts. It lists on
+Seaport 1.5 with the vault as the offerer and sells privately in cUSDC. 20,833 bytes deployed,
+compiled with the default optimizer (200 runs): it needs none of `DoNotOpen`'s size tricks. Not
+deployed on Sepolia yet. The design is in [VAULT.md](VAULT.md); what is specific to the protocol:
+
+- **A key compared, never decrypted.** Each box has a `euint256` key, allowed to the vault alone
+  (`allowThis`). A request carries `key XOR requestHash(terms, nonce)` as an `externalEuint256`;
+  the vault computes `eq(xor(input, hash), key)` and makes only that `ebool` publicly
+  decryptable. A wrong key, a changed term or a replay settles `Refused` after the usual
+  request, `publicDecrypt`, `finalize(requestId, cleartexts, proof)` (see 1.). The proof is
+  checked against the handle stored at the request, once (`RequestNotPending`).
+- **No ACL on the key, for anyone.** Grants cannot be revoked (see 2.): a holder allowed on the
+  key would keep it after the box left. The app derives the key from a wallet signature instead
+  (keccak256 of the signature, then of the NFT), so it never needs to read it back.
+- **`randEuint256` on transfer.** `_transfer` sets `key = select(moved, randEuint256(), key)`,
+  so the old key stops working without revealing whether the box moved; `setKey` is
+  `select(isOwner(caller), new, old)`. A transfer costs ~338k HCU instead of ~200k.
+- **An input is bound to its sender.** `FHE.fromExternal` checks the input proof against
+  `msg.sender`, so when the API's relayer sends a request the page encrypts the bound key for
+  the relayer's address (`createEncryptedInput(vault, relayer)`), and the relayer can still
+  read nothing: only the vault is allowed on what it decrypts to.
+- **The private sale never decrypts in public.** `acceptSale` pulls an encrypted price
+  (all-or-nothing, ERC-7984), moves the box if "paid" (a `select` inside `_transfer`, which also
+  requires the seller to hold it), sets the buyer's key, and pays the seller, the treasury and
+  the buyer's refund with `select`s on `moved`. The price is capped with `FHE.min(price,
+  MAX_SALE_PRICE)` (10^12) at the offer, so `pulled * MAX_FEE_BPS` (1,000) never wraps 64 bits.
+  The price is allowed to the vault, the seller and the buyer; `moved` to the two sides once
+  settled. The heaviest call of the vault: ~4.34M HCU (2.31M depth).
+- **The relayer proxy decrypts for it.** The API's relayer proxy lets user decryptions and
+  inputs name the vault (`EvmChainState.decryptable`: receipts, private sale prices, box keys as
+  inputs), and the index follows the vault's `AllowedForDecryption` events
+  (`EvmChainSource.aclFilterFor`), so the "key matched" bits go through it like the game's.
+
+What becomes public: each deposit (the depositor), the NFT in each box, Seaport listings and
+their prices, a request's sender, action, terms and whether its key matched, where an NFT or a
+sale's ETH goes, `setKey`'s caller, a private sale's two sides. Never public: who holds a box,
+the key, a private sale's price, and whether a private sale or a transfer moved anything. HCU
+per call is in [VAULT.md](VAULT.md#cost): ~83k a deposit, ~191k a request, ~225k a `setKey`.
+
 ### Sepolia deployment (2026-10-08): free gift boxes
 
 Current. Deployed at blocks 11869530 to 11869590 (`DoNotOpen` at 11869550) by
@@ -816,6 +858,8 @@ change): the rats stay with their owners. `WhitelistGifts` is the giver of both 
 | `RatTricks` (sniffs, shields, jams) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
 | `WhitelistGifts` (root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
 | `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
+| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, 2.5% fee) | [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18) |
+| `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
 
 Deploying took `SEPOLIA_GAS_PRICE=20000000` and `--maxfee 50000000 --priorityfee 2000000`: a
 0.3 gwei cap asked 0.0144 ETH up front for `DoNotOpen`'s ~40M gas (39,600,324 used) while the

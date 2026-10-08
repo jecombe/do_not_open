@@ -1,7 +1,7 @@
 /** English is the reference for the manual: every other dictionary must hold exactly these keys. */
 export const docsEn = {
   "docs.title": "DO NOT OPEN, the manual: encrypted NFTs with Zama's FHE",
-  "docs.description": "How DO NOT OPEN keeps {supply} cats secret on a public chain with Zama's FHE: encrypted holders, on-chain reveals, fees, croquettes, the studio's rats and the flea market.",
+  "docs.description": "How DO NOT OPEN keeps {supply} cats secret on a public chain with Zama's FHE: encrypted holders, on-chain reveals, fees, croquettes, the studio's rats, the flea market and the sealed vault.",
   "docs.imageAlt": "A sealed cardboard box stamped DO NOT OPEN, with a cat inside that nobody can see",
   "docs.home": "Home",
   "docs.homeAria": "DO NOT OPEN, home",
@@ -679,6 +679,7 @@ export const docsEn = {
   "docs.testnet.c.ratPantry": "The rats' pantry (RatPantry)",
   "docs.testnet.c.ratTricks": "The rats' tricks (RatTricks)",
   "docs.testnet.c.market": "The flea market (FleaMarket)",
+  "docs.testnet.c.vault": "The sealed vault (SealedVault)",
   "docs.testnet.c.whitelistGifts": "The whitelist's gifts (WhitelistGifts)",
 
   // --- the flea market
@@ -751,6 +752,39 @@ export const docsEn = {
   "flow.offer.s6.v": "Nothing is decrypted: the contract moves the escrow as it is. It cannot tell the seller whether the offer is worth it, which is why they read it first.",
   "flow.offer.s7": "Sold, at a secret price",
   "flow.offer.s7.v": "The item is yours, the seller gets the escrow minus the depot's cut, and the sale event shows a price of zero. Nobody else ever learns what you paid.",
+
+  // --- the sealed vault
+  "docs.group.vault": "The sealed vault",
+  "docs.group.vault.v": "Next to the game, the same encryption for any NFT: put it in a sealed box and nobody can tell who holds it. It still sells on Seaport, or privately for a secret price.",
+  "docs.section.vault": "Any NFT, sealed",
+  "docs.vault.p1": "The sealed vault is not part of the game: it lends the game's encryption to NFTs you already own. Put in an NFT of a collection the vault takes (on the testnet, a free test NFT) and you get a sealed box in exchange, an NFT of its own whose holder is encrypted, like the game's boxes. From then on nobody can tell who holds it: not the marketplaces, not the trackers, not the depot. The NFT stays in the vault until the box's holder takes it out, sells it on Seaport, or sells the box privately. Open it from the site's header: Vault.",
+  "docs.vault.p2": "Everything that leaves the vault is asked with the box's key, never with your address. The key is a secret your wallet makes from one free signature, the first time you use the vault in a session; nothing is stored, and the same wallet makes the same key on any device. It travels encrypted and tied to the exact request, so whoever carries it can neither read it, change where the NFT goes, nor use it again. The vault compares it with the box's key without decrypting either, and only one bit becomes public: the key matched, or not. A wrong key does nothing. Since any wallet can carry a request, the site's relayer sends yours: your address appears in none of them. Without a relayer, your wallet sends them, and its address shows. Sign that message only on DO NOT OPEN: whoever has the signature can take your NFTs out. The figure in How things come out plays a request step by step.",
+  "docs.vault.p3": "To sell in public, List on Seaport puts up a real Seaport order, the protocol OpenSea runs on, with the vault as the seller. Buyers see the NFT and the price, never who is selling, and any Seaport marketplace can fill it. While it is listed, the box stays put. Once a buyer pays, the ETH waits in the box for whoever holds its key; Collect the ETH sends it to any address, a fresh one if you like. Take the listing down, or let it run out, and the box is sealed again. On the testnet, OpenSea's own website may not show these listings; the orders are real all the same.",
+  "docs.vault.p4": "To sell to one person, Sell privately names a buyer and a price in cUSDC that only the buyer and you can read. If the buyer pays it in full while you still hold the box, the box, its key and the money change hands in one go; if not, nothing moves and the buyer gets everything back. Nothing about it is decrypted in public, so nobody else can tell whether it went through. Give the box sends it like any gift; it arrives with a random key nobody knows, and the receiver makes it theirs with Make the key mine, one signature, before anything can leave it. A Seaport sale and a private sale each leave {fee}% to the depot; the contract can never take more than {max}%.",
+  "docs.vault.h.leaks": "What shows, and what does not",
+  "docs.vault.p5": "Public: who put each NFT in (sealing is an ordinary NFT transfer), the NFT inside each box, the Seaport listings and their buyers, and the address an NFT or a sale's ETH is sent to. Never public: who holds a box, its key, a private sale's price, and whether a private sale or a gift moved anything. Until the box changes hands once, whoever sealed it is its obvious holder. Taking an NFT or ETH out to an address with no history shows no link to you, though the timing still can.",
+  "docs.vault.p6": "The vault is on Sepolia, with free test NFTs to mint and the real Seaport. In the demo it runs in memory: the night shift keeps two boxes in it, one of them on Seaport, buys whatever you list after a short while, and takes any private sale you offer it.",
+  "docs.vault.open": "Open the vault",
+  "station.contract.vault": "SealedVault contract",
+  "station.other.vault": "Vault relayer",
+  "flow.vault.name": "Take an NFT out",
+  "flow.vault.summary": "At the sealed vault. The relayer carries your request, the key is checked blind, and the NFT goes where you said. Your address appears nowhere.",
+  "flow.vault.s1": "Your page binds the key",
+  "flow.vault.s1.v": "It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches.",
+  "flow.vault.s2": "Handed to the relayer",
+  "flow.vault.s2.v": "The ciphertext and the request's terms go to the site's relayer. It cannot read the key, nor change a term without breaking it.",
+  "flow.vault.s3": "The relayer sends the request",
+  "flow.vault.s3.v": "The transaction names the relayer, not you. The box holds still until the request is settled.",
+  "flow.vault.s4": "Compared blind",
+  "flow.vault.s4.v": "Under encryption, the vault unmixes the key with the same fingerprint and compares it with the box's. One bit, matched or not, becomes publicly decryptable. Nobody learns the key.",
+  "flow.vault.s5": "Anyone may ask for that bit",
+  "flow.vault.s5.v": "The app asks Zama's relayer to decrypt it. Nothing else is decrypted.",
+  "flow.vault.s6": "Yes or no, signed",
+  "flow.vault.s6.v": "The bit comes back with signatures from the parties that hold the key shares.",
+  "flow.vault.s7": "The relayer sends the proof",
+  "flow.vault.s7.v": "Anyone may: if you close the tab, someone else can finish. A wrong key settles as refused, and nothing happens.",
+  "flow.vault.s8": "The NFT is out",
+  "flow.vault.s8.v": "It goes to the address you named, a fresh one if you like. That address is public; who held the box is not.",
 } as const satisfies Record<string, string>;
 
 export type DocsKey = keyof typeof docsEn;

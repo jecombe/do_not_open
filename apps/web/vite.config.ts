@@ -25,5 +25,5 @@ export default defineConfig({
   plugins: [react(), localizedPaths()],
   envDir: "../..",
   server: { port: 5173 },
-  build: { rollupOptions: { input: { home: "index.html", app: "app.html", docs: "docs.html", studio: "studio.html", apply: "apply.html", render: "render.html" } } },
+  build: { rollupOptions: { input: { home: "index.html", app: "app.html", docs: "docs.html", studio: "studio.html", apply: "apply.html", vault: "vault.html", render: "render.html" } } },
 });

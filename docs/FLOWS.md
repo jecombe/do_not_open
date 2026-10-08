@@ -9,6 +9,7 @@ Participants used throughout:
 - **Relayer / KMS**: Zama's relayer in front of the threshold key management service.
 - **cUSDC**: Zama's confidential USDC (ERC-7984), the only way to pay.
 - **Market**: the flea market, `FleaMarket` (see [The flea market](#the-flea-market)).
+- **Vault**: the sealed vault, `SealedVault`, next to the game (see [The sealed vault](#the-sealed-vault)).
 
 Two things differ from the original brief in every flow:
 
@@ -1183,6 +1184,71 @@ the asking price, the buyer of a sale, and for each purchase at the asking price
 buyer could pay. Never public: balances, offer amounts, the price of a sale by offer, what is
 inside a sealed box.
 
+## The sealed vault
+
+`SealedVault` is not part of the game: any NFT of an allowed collection goes into a box whose
+holder is encrypted, a Confidential ERC-721 of its own. Every box has an encrypted key; what
+leaves the vault (the NFT, a Seaport listing, a sale's ETH) is asked with the key, bound to the
+request's terms, so any wallet can carry the request: the API's vault relayer, when there is
+one. The deposit, Seaport (list, fill, sync, collect), giving a box and making its key yours,
+the state diagram, what leaks and why are in [VAULT.md](VAULT.md). The two flows below are the
+ones with encryption in them.
+
+### A request: take out, list, take down, collect
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder
+  participant Rl as Relayer (API)
+  participant V as Vault
+  participant R as Relayer / KMS
+  H->>H: encrypt key XOR requestHash(boxId, nonce, action, to, price, endTime)
+  H->>Rl: POST /v1/vault/relay {call: "request", args}
+  Rl->>V: request(boxId, action, to, price, endTime, boundKey, proof)
+  V->>V: not busy, sync, state allows it (else revert)
+  V->>V: ok = (boundKey XOR requestHash(terms, nonce++)) == key, publicly decryptable, busy
+  V-->>H: RequestPlaced(requestId, boxId, action, relayer)
+  H->>R: publicDecrypt(requestInfo(requestId).ok)
+  R-->>H: ok + KMS proof
+  H->>Rl: POST /v1/vault/relay {call: "finalize", args}
+  Rl->>V: finalize(requestId, ok, proof) (anyone may)
+  alt not ok
+    V->>V: Refused: nothing happens
+  else ok, but the box changed first
+    V->>V: Stale: nothing happens
+  else ok
+    V->>V: withdraw, list on Seaport, take down, or send the ETH: Done
+  end
+  V-->>H: RequestSettled(requestId, status)
+```
+
+A relayer that changed a term, or replayed the input, makes the vault compare against another
+hash: `Refused`. Without a relayer the wallet sends both, and its address shows. In the adapter:
+`withdraw`, `list`, `unlist`, `claim` (throw `not-yours` when refused, `missed` when stale).
+
+### Private sale
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor S as Seller
+  participant V as Vault
+  participant U as cUSDC
+  actor B as Buyer
+  S->>V: offerSale(boxId, buyer, encrypted price)
+  V->>V: p = min(price, MAX_SALE_PRICE), allowed to the seller and the buyer only
+  V-->>B: SaleOffered(saleId, boxId, seller, buyer) (no price)
+  B->>B: userDecrypt the price, make the vault their cUSDC operator
+  B->>V: acceptSale(saleId, buyer's key)
+  V->>U: pull p from the buyer, all or nothing
+  V->>V: moved = paid AND the seller holds the box: the box and the key go to the buyer
+  V->>U: select(moved): price - fee to the seller, fee to the treasury, or everything back to the buyer
+  V-->>B: SaleSettled(saleId) (moved readable by the two sides only)
+```
+
+Nothing is decrypted in public: a sale that went through and one that did not look the same.
+
 ## Where the money goes
 
 | Fee | Paid in | Goes to |
@@ -1193,6 +1259,7 @@ inside a sealed box.
 | Studio packs (Starter 2, Litter 8) | plain USDC | the treasury address set in `StudioPacks`, at once; the AI services are paid from it |
 | Adopting a rat (1 a free rat, 3 an AI rat) | plain USDC | the treasury address set in `Rats`, at once; Arweave storage of AI rats is paid from it |
 | A flea market sale (2.5%, at most 10%) | cUSDC | the treasury address set in `FleaMarket`, at the sale; the rest to the seller. For a sale by offer the fee is computed encrypted and stays secret |
+| A sealed vault sale (2.5%, at most 10%) | ETH on Seaport; cUSDC privately | Seaport: kept in `SealedVault` (`feesOwed`) and sent to its treasury by `sendFees`, which anyone may call; the rest waits in the box for the key's holder. Private: to the treasury at the sale, computed encrypted |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 
@@ -1209,6 +1276,7 @@ flowchart LR
   P -- "flea market sale" --> F{split}
   F -- "2.5%" --> T
   F -- "the rest" --> SE[Seller]
+  V[Sealed vault sales] -- "2.5%, ETH or cUSDC" --> T
   T -- "free daily decryptions" --> Z[Zama]
   T --> I[Indexer and API servers]
   T -- "sketches and 3D models" --> AI[AI services]
@@ -1426,6 +1494,7 @@ Every two-step action can be picked up later, by anyone:
 | Weigh-in pending | "Weigh the cat" | `weigh` (picks up the pending one: `finalizeWeigh`) |
 | Flea market: a box listing `Pending` | The seller's stall marks it as on its way | `finishListing(listingId)` (throws `not-yours` when refused) |
 | Flea market: a purchase `Pending` | Not shown yet | `finishPurchase(purchaseId)`; `pendingPurchases(account)` lists them |
+| Sealed vault: a request `Pending` (the box is busy) | The box shows "A request waits for its proof" | None yet: anyone may send `finalize(requestId, …)` with the public decryption of `requestInfo(requestId).ok` |
 
 When the step after the first transaction fails (the decryption service is slow, the
 user declines the proof's signature), the adapter marks the `ChainError` `resumable`,

@@ -175,6 +175,30 @@ contract:
 - **Re-entrancy** does not apply (see above); account validation does: the listing's token
   account, the seller and buyer token accounts, the treasury.
 
+### The sealed vault
+
+`SealedVault` ports as its own program too, sharing only the confidential-token base with the
+box program:
+
+- **Boxes and keys.** A box account per NFT (collection, token, state, listing, busy, proceeds,
+  nonce) with an encrypted owner and an encrypted 256-bit key. If the SVM has no 256-bit
+  encrypted integer with `xor` and `eq` (open question 9), the key becomes four 64-bit words,
+  compared word by word and `and`ed. A transfer still draws a fresh random key.
+- **Custody.** The NFT goes to a token account owned by a vault PDA; a withdrawal is a transfer
+  signed by the PDA's seeds.
+- **Requests.** `request` and a permissionless `finalize` with the public decryption of "the key
+  matched", as everywhere else. The request hash is a hash of the program id, the box, the nonce
+  and the terms; the bound key is an encrypted input, which must be bound to the transaction's
+  signer as on the EVM, or carry its own binding. The relayer is native on Solana: a request
+  needs no signer but the fee payer, which can be the API's key, so the holder signs nothing on
+  chain.
+- **Marketplace.** There is no Seaport on Solana. The vault PDA would list the NFT on a Solana
+  marketplace program that lets a PDA be the seller (a Tensor or Magic Eden listing, or an
+  escrowless order the program validates itself), and `sync` would read that listing's account.
+  This is the part to design from scratch.
+- **Private sale.** Unchanged: the confidential token program's all-or-nothing transfer, a
+  `select` on "paid and the seller held it", the price and the outcome granted to the two sides.
+
 ## What to write in `packages/chain-adapter/src/solana`
 
 `SolanaAdapter implements ChainAdapter`, with the same shape as `EvmFhevmAdapter`:
@@ -190,6 +214,7 @@ contract:
 | `buyUsdc`, `trade` with `slippageBps`; `shieldUsdc`, `unshieldUsdc`, `wrap`, `unwrap` | `trade`: Uniswap V3 `QuoterV2` and `SwapRouter02` with a minimum out (`buyUsdc`: the ramp, over a V2 pool); ERC-7984 `wrap`, and `unwrap` + public decryption + `finalizeUnwrap` | a Solana AMM swap with a minimum out (a concentrated-liquidity pool such as Orca Whirlpools or Raydium CLMM takes the same CROQ-only range); the confidential token program's deposit and withdraw, the withdrawn amount made public the same way |
 | `signTerms` (the release form) | EIP-191 `personal_sign` (secp256k1), then `POST /v1/terms` | the Wallet Standard's `signMessage` (ed25519) on the same text naming the base58 address; the API's `AcceptTerms` verifies EIP-191 only, so it needs an ed25519 path and an address format check for Solana keys |
 | `allowList`, `claimAllowList` (the mainnet allow list) | EIP-191 `personal_sign` on `allowListMessage`, then `POST /v1/allowlist` | the same as `signTerms`: `signMessage` on the same text, and an ed25519 path in the API's `AllowList`, whose message names a 0x address today. `playerPoints` compares addresses lower-cased, which base58 must not be |
+| `vault()` (`VaultAdapter`, the sealed vault) | `EvmVault`: `SealedVault` and Seaport through ethers; the box keys from one EIP-191 signature (wallets sign deterministically, RFC 6979, so the same wallet makes the same keys); requests through the API's relayer | a vault over the vault program and a Solana marketplace; the keys from `signMessage` (ed25519 is deterministic too); the API's key as the fee payer |
 | steps `wallet`, `confirming`, `decrypting`, `proving` | as is | as is |
 | `ChainError.reason` | Solidity custom error name | Anchor error name, kept identical |
 | `ChainError.detail` | `held`/`needed` from a dry run (`estimateGas`) and the balances; `resumable`/`landed` after the first transaction | `simulateTransaction` for the dry run and the fee; the same flags |
@@ -214,7 +239,9 @@ Sepolia one. Nothing in `apps/web` changes except the wallet button's label.
    concentrated-liquidity pool, whose position NFT (or position account) goes to a program
    with no withdraw instruction and a fee collect that pays the treasury.
    The flea market comes last (see "The flea market" above): it needs only the box
-   program's transfer and the confidential token.
+   program's transfer and the confidential token. The sealed vault is independent of the
+   game and can come at any point after the confidential token, once a marketplace is chosen
+   (see "The sealed vault" above).
 7. `SolanaAdapter`, then run the app in a third mode.
 8. Port the test suite: the 95 contract tests are written against behaviour, not against
    Solidity, and their names read as a specification.
@@ -230,3 +257,5 @@ Sepolia one. Nothing in `apps/web` changes except the wallet button's label.
 7. Is there an encrypted address type, with equality and `select`? (Used by every
    ownership check.)
 8. Does a public decryption refuse a handle listed twice, as on the EVM?
+9. Is there a 256-bit encrypted integer with `xor` and `eq`, and a random 256-bit draw? (Used by
+   the sealed vault's keys.)

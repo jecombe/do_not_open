@@ -26,11 +26,11 @@ export interface Flow {
   steps: FlowStep[];
 }
 
-/** A station's name; a `cast` (the market's flows) may rename it, `station.contract.market`. */
+/** A station's name; a `cast` (the market's flows, the vault's) may rename it, `station.contract.market`. */
 export const stationName = (id: StationId, cast?: string): string => (cast && lookup(`station.${id}.${cast}`)) || t(`station.${id}`);
 export const packetName = (kind: PacketKind): string => t(`packet.${kind}`);
 
-type FlowKey = "mint" | "shake" | "open" | "duel" | "transfer" | "buy" | "offer";
+type FlowKey = "mint" | "shake" | "open" | "duel" | "transfer" | "buy" | "offer" | "vault";
 type Route = [from: StationId, to: StationId, kind: PacketKind];
 
 /** Who talks to whom, per step. The words for each step live in the dictionaries. */
@@ -102,10 +102,20 @@ const ROUTES: Record<FlowKey, Route[]> = {
     ["other", "contract", "tx"],
     ["contract", "you", "plain"],
   ],
+  vault: [
+    ["you", "you", "cipher"],
+    ["you", "other", "cipher"],
+    ["other", "contract", "tx"],
+    ["contract", "copro", "cipher"],
+    ["you", "kms", "cipher"],
+    ["kms", "you", "proof"],
+    ["other", "contract", "proof"],
+    ["contract", "you", "plain"],
+  ],
 };
 
-/** The flows that happen at the flea market: its contract and a seller stand on the dock. */
-const CAST: Partial<Record<FlowKey, string>> = { buy: "market", offer: "market" };
+/** The flows with other parties on the dock: the flea market's contract and a seller, the sealed vault and its relayer. */
+const CAST: Partial<Record<FlowKey, string>> = { buy: "market", offer: "market", vault: "vault" };
 
 /** The flows in the current language. Call it again after a language change. */
 export function flows(): Flow[] {

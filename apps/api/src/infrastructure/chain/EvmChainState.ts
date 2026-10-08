@@ -98,8 +98,8 @@ export class EvmChainState implements ChainState {
 
   /**
    * The contracts the relayer proxy decrypts for and makes inputs for, lowercase: the
-   * collection and the cUSDC it is paid in, the Pantry, cCROQ, the flea market and, with the
-   * rats' tricks, the Rats contract (a rat's power) and RatTricks (a trick's trait). Read once.
+   * collection and the cUSDC it is paid in, the Pantry, cCROQ, the flea market, with the rats'
+   * tricks the Rats contract (a rat's power) and RatTricks (a trick's trait), and the sealed vault. Read once.
    */
   decryptable(): Promise<string[]> {
     this.contracts ??= multicall(this.rpc, [{ target: this.d.collection.address, iface: this.collectionIface, fn: "confidentialUsdc", args: [] }]).then((r) => {
@@ -107,7 +107,9 @@ export class EvmChainState implements ChainState {
       return [this.d.collection.address, String(r[0][0]), this.d.pantry?.address, this.d.cCroq?.address, this.d.fleaMarket?.address,
         // A rat's power is a handle of the Rats contract, read with the same permit as the boxes;
         // a trick's trait is an encrypted input for RatTricks.
-        this.d.ratTricks ? this.d.rats?.address : undefined, this.d.ratTricks?.address].filter((a): a is string => !!a).map(normalizeAddress);
+        this.d.ratTricks ? this.d.rats?.address : undefined, this.d.ratTricks?.address,
+        // The sealed vault: its receipts, private sale prices and box keys.
+        this.d.vault?.address].filter((a): a is string => !!a).map(normalizeAddress);
     });
     this.contracts.catch(() => (this.contracts = null));
     return this.contracts;

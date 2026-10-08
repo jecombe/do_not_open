@@ -6,6 +6,7 @@ export const homeIt: Record<HomeKey, string> = {
   "home.imageAlt": "Una scatola di cartone sigillata col timbro DO NOT OPEN e, dentro, un gatto che nessuno vede",
   "home.nav": "Sito",
   "home.nav.market": "Mercatino",
+  "home.nav.vault": "Caveau",
   "home.nav.how": "Come si gioca",
   "home.nav.docs": "Manuale",
   "home.nav.studio": "Studio",

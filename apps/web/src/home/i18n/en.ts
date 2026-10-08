@@ -5,6 +5,7 @@ export const homeEn = {
   "home.imageAlt": "A sealed cardboard box stamped DO NOT OPEN, with a cat inside that nobody can see",
   "home.nav": "Site",
   "home.nav.market": "Flea market",
+  "home.nav.vault": "Vault",
   "home.nav.how": "How to play",
   "home.nav.docs": "Manual",
   "home.nav.studio": "Studio",

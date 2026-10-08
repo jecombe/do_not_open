@@ -89,6 +89,11 @@
      "part": "manual"
     },
     {
+     "id": "vault",
+     "title": "Any NFT, sealed",
+     "part": "manual"
+    },
+    {
      "id": "testnet",
      "title": "While on the testnet",
      "part": "testnet"
@@ -230,13 +235,13 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Shake Open Duel Transfer Buy Secret offer A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing. You ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here. Holder and fee, checked blind Anyone may now ask for it The values, signed The proof goes on-chain Checked against its own records The box opens Play Next step Transaction Ciphertext Value with proof Clear value\nYou ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here.\nHolder and fee, checked blind\nAnyone may now ask for it\nThe values, signed"
+     "text": "Mint Shake Open Duel Transfer Buy Secret offer Take an NFT out A request, a decryption, and a second transaction. A request from someone who does not hold the box opens nothing and shows nothing. You ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here. Holder and fee, checked blind Anyone may now ask for it The values, signed The proof goes on-chain Checked against its own records The box opens Play Next step Transaction Ciphertext Value with proof Clear value\nYou ask to open the box Only a holder is charged the 1 cUSDC fee. It is held until the opening settles, and comes back to you if the box's entangled partner opened it first. Otherwise there is no way back from here.\nHolder and fee, checked blind\nAnyone may now ask for it"
     },
     {
      "id": "flows-2",
      "section": "flows",
      "heading": null,
-     "text": "The proof goes on-chain\nChecked against its own records\nThe box opens\nTransaction\nCiphertext\nValue with proof\nClear value"
+     "text": "The values, signed\nThe proof goes on-chain\nChecked against its own records\nThe box opens\nTransaction\nCiphertext\nValue with proof\nClear value"
     },
     {
      "id": "transfer-0",
@@ -473,6 +478,36 @@
      "text": "Selling is a public act: selling a box shows everyone that you held it. What is inside stays sealed, for you as for the buyer. The seller of each listing, its asking price, the buyer of each sale, and whether each buyer at the asking price could pay are public. Balances, offer amounts and the price of a sale by offer never are.\nWhile an item is on sale, Retag changes its price (purchases pending at the old price are refunded), and Take it back brings it home. Buyers keep their sealed offers to take back.\nThe flea market is open on Sepolia, with test dollars. In the demo, the night shift keeps a few stalls, slips a secret offer onto whatever you put on sale, and takes any offer worth at least 70% of your asking price."
     },
     {
+     "id": "vault-0",
+     "section": "vault",
+     "heading": null,
+     "text": "The sealed vault is not part of the game: it lends the game's encryption to NFTs you already own. Put in an NFT of a collection the vault takes (on the testnet, a free test NFT) and you get a sealed box in exchange, an NFT of its own whose holder is encrypted, like the game's boxes. From then on nobody can tell who holds it: not the marketplaces, not the trackers, not the depot. The NFT stays in the vault until the box's holder takes it out, sells it on Seaport, or sells the box privately. Open it from the site's header: Vault."
+    },
+    {
+     "id": "vault-1",
+     "section": "vault",
+     "heading": null,
+     "text": "Everything that leaves the vault is asked with the box's key, never with your address. The key is a secret your wallet makes from one free signature, the first time you use the vault in a session; nothing is stored, and the same wallet makes the same key on any device. It travels encrypted and tied to the exact request, so whoever carries it can neither read it, change where the NFT goes, nor use it again. The vault compares it with the box's key without decrypting either, and only one bit becomes public: the key matched, or not. A wrong key does nothing. Since any wallet can carry a request, the site's relayer sends yours: your address appears in none of them. Without a relayer, your wallet sends them, and its address shows. Sign that message only on DO NOT OPEN: whoever has the signature can take your NFTs out. The figure in How things come out plays a request step by step."
+    },
+    {
+     "id": "vault-2",
+     "section": "vault",
+     "heading": null,
+     "text": "To sell in public, List on Seaport puts up a real Seaport order, the protocol OpenSea runs on, with the vault as the seller. Buyers see the NFT and the price, never who is selling, and any Seaport marketplace can fill it. While it is listed, the box stays put. Once a buyer pays, the ETH waits in the box for whoever holds its key; Collect the ETH sends it to any address, a fresh one if you like. Take the listing down, or let it run out, and the box is sealed again. On the testnet, OpenSea's own website may not show these listings; the orders are real all the same."
+    },
+    {
+     "id": "vault-3",
+     "section": "vault",
+     "heading": null,
+     "text": "To sell to one person, Sell privately names a buyer and a price in cUSDC that only the buyer and you can read. If the buyer pays it in full while you still hold the box, the box, its key and the money change hands in one go; if not, nothing moves and the buyer gets everything back. Nothing about it is decrypted in public, so nobody else can tell whether it went through. Give the box sends it like any gift; it arrives with a random key nobody knows, and the receiver makes it theirs with Make the key mine, one signature, before anything can leave it. A Seaport sale and a private sale each leave 2.5% to the depot; the contract can never take more than 10%."
+    },
+    {
+     "id": "vault-4",
+     "section": "vault",
+     "heading": "What shows, and what does not",
+     "text": "Public: who put each NFT in (sealing is an ordinary NFT transfer), the NFT inside each box, the Seaport listings and their buyers, and the address an NFT or a sale's ETH is sent to. Never public: who holds a box, its key, a private sale's price, and whether a private sale or a gift moved anything. Until the box changes hands once, whoever sealed it is its obvious holder. Taking an NFT or ETH out to an address with no history shows no link to you, though the timing still can.\nThe vault is on Sepolia, with free test NFTs to mint and the real Seaport. In the demo it runs in memory: the night shift keeps two boxes in it, one of them on Seaport, buys whatever you list after a short while, and takes any private sale you offer it.\nOpen the vault"
+    },
+    {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
@@ -494,7 +529,7 @@
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "The boxes (DoNotOpen) 0x6e3B…54d1\nThe Pantry (croquettes, meals, weigh-ins) 0xe867…6a23\nCROQ, the plain croquette 0x765A…fB7C\ncCROQ, the encrypted croquette 0xbC77…79b9\nCROQ / USDC pool 0x2A83…C811\nLiquidity locker 0x7048…f058\nThe USDC ramp (ETH to USDC) 0x0238…5638\nDecryption credits 0x1d18…6511\nStudio packs (StudioPacks) 0x4159…B5f6\nThe rats (Rats, ERC-721) 0x441F…2cF6\nThe rats' pantry (RatPantry) 0xa8C6…1850\nThe rats' tricks (RatTricks) 0x1E72…765f\nThe flea market (FleaMarket) 0xF16b…6F92\nThe whitelist's gifts (WhitelistGifts) 0x09D2…405a"
+     "text": "The boxes (DoNotOpen) 0x6e3B…54d1\nThe Pantry (croquettes, meals, weigh-ins) 0xe867…6a23\nCROQ, the plain croquette 0x765A…fB7C\ncCROQ, the encrypted croquette 0xbC77…79b9\nCROQ / USDC pool 0x2A83…C811\nLiquidity locker 0x7048…f058\nThe USDC ramp (ETH to USDC) 0x0238…5638\nDecryption credits 0x1d18…6511\nStudio packs (StudioPacks) 0x4159…B5f6\nThe rats (Rats, ERC-721) 0x441F…2cF6\nThe rats' pantry (RatPantry) 0xa8C6…1850\nThe rats' tricks (RatTricks) 0x1E72…765f\nThe flea market (FleaMarket) 0xF16b…6F92\nThe whitelist's gifts (WhitelistGifts) 0x09D2…405a\nThe sealed vault (SealedVault) 0x8B07…fb18"
     },
     {
      "id": "more-0",
@@ -589,6 +624,11 @@
     {
      "id": "stall",
      "title": "Monter son étal",
+     "part": "manual"
+    },
+    {
+     "id": "vault",
+     "title": "N'importe quel NFT, scellé",
      "part": "manual"
     },
     {
@@ -751,7 +791,7 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Secouer Ouvrir Duel Transfert Acheter Offre secrète Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien. Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. Ils sont gardés jusqu'au règlement de l'ouverture, et vous reviennent si la boîte intriquée avec celle-ci l'a ouverte d'abord. Sinon, à partir d'ici, pas de retour en arrière. Détenteur et frais, vérifiés à l'aveugle N'importe qui peut maintenant la demander Les valeurs, signées La preuve part sur la chaîne Vérifiée contre ses propres registres La boîte s'ouvre Lecture Étape suivante Transaction Chiffré Valeur avec preuve Valeur en clair"
+     "text": "Mint Secouer Ouvrir Duel Transfert Acheter Offre secrète Sortir un NFT Une demande, un déchiffrement, et une seconde transaction. Une demande de quelqu'un qui ne détient pas la boîte n'ouvre rien et ne montre rien. Vous demandez à ouvrir la boîte Seul un détenteur paie les frais de 1 cUSDC. Ils sont gardés jusqu'au règlement de l'ouverture, et vous reviennent si la boîte intriquée avec celle-ci l'a ouverte d'abord. Sinon, à partir d'ici, pas de retour en arrière. Détenteur et frais, vérifiés à l'aveugle N'importe qui peut maintenant la demander Les valeurs, signées La preuve part sur la chaîne Vérifiée contre ses propres registres La boîte s'ouvre Lecture Étape suivante Transaction Chiffré Valeur avec preuve Valeur en clair"
     },
     {
      "id": "flows-2",
@@ -1036,6 +1076,36 @@
      "text": "Vendre est un acte public : vendre une boîte montre à tous que vous la déteniez. Son contenu reste scellé, pour vous comme pour l'acheteur. Le vendeur de chaque annonce, son prix demandé, l'acheteur de chaque vente, et si chaque acheteur au prix affiché pouvait payer sont publics. Les soldes, les montants des offres et le prix d'une vente sur offre ne le sont jamais.\nPendant qu'un article est en vente, Réétiqueter change son prix (les achats en attente à l'ancien prix sont remboursés), et Le reprendre le ramène chez vous. Les acheteurs gardent leurs offres scellées, à reprendre quand ils veulent.\nLe marché aux puces est ouvert sur Sepolia, avec des dollars de test. Dans la démo, l'équipe de nuit tient quelques étals, glisse une offre secrète sur tout ce que vous mettez en vente, et accepte toute offre d'au moins 70 % de votre prix demandé."
     },
     {
+     "id": "vault-0",
+     "section": "vault",
+     "heading": null,
+     "text": "Le coffre scellé ne fait pas partie du jeu : il prête le chiffrement du jeu aux NFT que vous possédez déjà. Déposez-y un NFT d'une collection que le coffre accepte (sur le testnet, un NFT de test gratuit) et vous recevez en échange une boîte scellée, un NFT à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Dès lors, personne ne peut dire qui la détient : ni les places de marché, ni les traqueurs, ni le dépôt. Le NFT reste dans le coffre jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport ou vende la boîte en privé. On l'ouvre depuis l'en-tête du site : Coffre."
+    },
+    {
+     "id": "vault-1",
+     "section": "vault",
+     "heading": null,
+     "text": "Tout ce qui sort du coffre se demande avec la clé de la boîte, jamais avec votre adresse. La clé est un secret que votre wallet tire d'une signature gratuite, la première fois que vous utilisez le coffre dans une session ; rien n'est stocké, et le même wallet refait la même clé sur n'importe quel appareil. Elle voyage chiffrée et liée à la demande exacte : qui la transporte ne peut ni la lire, ni changer l'adresse où part le NFT, ni la réutiliser. Le coffre la compare à la clé de la boîte sans déchiffrer ni l'une ni l'autre, et un seul bit devient public : la clé correspond, ou non. Une mauvaise clé ne fait rien. Comme n'importe quel wallet peut porter une demande, le relayer du site envoie les vôtres : votre adresse n'apparaît dans aucune. Sans relayer, c'est votre wallet qui les envoie, et son adresse se voit. Ne signez ce message que sur DO NOT OPEN : qui détient la signature peut sortir vos NFT. La figure de Comment les choses sortent joue une demande, pas à pas."
+    },
+    {
+     "id": "vault-2",
+     "section": "vault",
+     "heading": null,
+     "text": "Pour vendre en public, Mettre en vente sur Seaport publie un vrai ordre Seaport, le protocole sur lequel tourne OpenSea, avec le coffre comme vendeur. Les acheteurs voient le NFT et le prix, jamais qui vend, et n'importe quelle place de marché Seaport peut l'exécuter. Tant qu'elle est en vente, la boîte ne bouge pas. Une fois qu'un acheteur a payé, l'ETH attend dans la boîte celui qui détient sa clé ; Récupérer l'ETH l'envoie à n'importe quelle adresse, une adresse neuve si vous voulez. Retirez l'annonce, ou laissez-la expirer, et la boîte est de nouveau scellée. Sur le testnet, le site d'OpenSea lui-même peut ne pas afficher ces annonces ; les ordres n'en sont pas moins réels."
+    },
+    {
+     "id": "vault-3",
+     "section": "vault",
+     "heading": null,
+     "text": "Pour vendre à une seule personne, Vendre en privé désigne un acheteur et un prix en cUSDC que seuls l'acheteur et vous pouvez lire. Si l'acheteur le paie en entier alors que vous détenez toujours la boîte, la boîte, sa clé et l'argent changent de mains d'un coup ; sinon rien ne bouge et l'acheteur récupère tout. Rien n'en est déchiffré en public : personne d'autre ne peut dire si la vente a eu lieu. Donner la boîte l'envoie comme n'importe quel cadeau ; elle arrive avec une clé aléatoire que personne ne connaît, et celui qui la reçoit la fait sienne avec Prendre la clé, une signature, avant que quoi que ce soit puisse en sortir. Une vente sur Seaport comme une vente privée laisse 2,5 % au dépôt ; le contrat ne peut jamais prendre plus de 10 %."
+    },
+    {
+     "id": "vault-4",
+     "section": "vault",
+     "heading": "Ce qui se voit, et ce qui ne se voit pas",
+     "text": "Public : qui a déposé chaque NFT (sceller est un transfert de NFT ordinaire), le NFT dans chaque boîte, les annonces Seaport et leurs acheteurs, et l'adresse où part un NFT ou l'ETH d'une vente. Jamais public : qui détient une boîte, sa clé, le prix d'une vente privée, et si une vente privée ou un cadeau a déplacé quoi que ce soit. Tant que la boîte n'a pas changé de mains une fois, celui qui l'a scellée en est le détenteur évident. Sortir un NFT ou de l'ETH vers une adresse sans historique ne montre aucun lien avec vous, même si le moment choisi le peut encore.\nLe coffre est sur Sepolia, avec des NFT de test gratuits à minter et le vrai Seaport. Dans la démo, il tourne en mémoire : l'équipe de nuit y garde deux boîtes, dont une sur Seaport, achète ce que vous mettez en vente au bout d'un moment, et accepte toute vente privée que vous lui proposez.\nOuvrir le coffre"
+    },
+    {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
@@ -1057,7 +1127,7 @@
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "Les contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x6e3B…54d1\nLe Garde-manger (croquettes, repas, pesées) 0xe867…6a23\nCROQ, la croquette ordinaire 0x765A…fB7C\ncCROQ, la croquette chiffrée 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCoffre de liquidité 0x7048…f058\nLa rampe USDC (de l'ETH vers l'USDC) 0x0238…5638\nCrédits de déchiffrement 0x1d18…6511\nLes packs du studio (StudioPacks) 0x4159…B5f6\nLes rats (Rats, ERC-721) 0x441F…2cF6\nLe garde-manger des rats (RatPantry) 0xa8C6…1850\nLes tours des rats (RatTricks) 0x1E72…765f\nLe marché aux puces (FleaMarket) 0xF16b…6F92\nLes cadeaux de la whitelist (WhitelistGifts) 0x09D2…405a"
+     "text": "Les contrats sur Sepolia :\nLes boîtes (DoNotOpen) 0x6e3B…54d1\nLe Garde-manger (croquettes, repas, pesées) 0xe867…6a23\nCROQ, la croquette ordinaire 0x765A…fB7C\ncCROQ, la croquette chiffrée 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCoffre de liquidité 0x7048…f058\nLa rampe USDC (de l'ETH vers l'USDC) 0x0238…5638\nCrédits de déchiffrement 0x1d18…6511\nLes packs du studio (StudioPacks) 0x4159…B5f6\nLes rats (Rats, ERC-721) 0x441F…2cF6\nLe garde-manger des rats (RatPantry) 0xa8C6…1850\nLes tours des rats (RatTricks) 0x1E72…765f\nLe marché aux puces (FleaMarket) 0xF16b…6F92\nLes cadeaux de la whitelist (WhitelistGifts) 0x09D2…405a\nLe coffre scellé (SealedVault) 0x8B07…fb18"
     },
     {
      "id": "more-0",
@@ -1152,6 +1222,11 @@
     {
      "id": "stall",
      "title": "Montar un puesto",
+     "part": "manual"
+    },
+    {
+     "id": "vault",
+     "title": "Cualquier NFT, sellado",
      "part": "manual"
     },
     {
@@ -1314,13 +1389,13 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mintear Agitar Abrir Duelo Transferir Comprar Oferta secreta Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro\nPides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás."
+     "text": "Mintear Agitar Abrir Duelo Transferir Comprar Oferta secreta Sacar un NFT Una petición, un descifrado y una segunda transacción. Una petición de alguien que no tiene la caja no abre nada ni muestra nada. Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás. Titular y tarifa, comprobados a ciegas Cualquiera puede pedirla ahora Los valores, firmados La prueba va a la cadena Comprobada contra sus propios registros La caja se abre Reproducir Siguiente paso Transacción Texto cifrado Valor con prueba Valor en claro"
     },
     {
      "id": "flows-2",
      "section": "flows",
      "heading": null,
-     "text": "Titular y tarifa, comprobados a ciegas\nCualquiera puede pedirla ahora\nLos valores, firmados\nLa prueba va a la cadena\nComprobada contra sus propios registros\nLa caja se abre\nTransacción\nTexto cifrado\nValor con prueba\nValor en claro"
+     "text": "Pides abrir la caja Solo a un titular se le cobra la tarifa de 1 cUSDC. Se guarda hasta que la apertura se resuelve, y te vuelve si la caja entrelazada con esta la abrió antes. Si no, a partir de aquí no hay vuelta atrás.\nTitular y tarifa, comprobados a ciegas\nCualquiera puede pedirla ahora\nLos valores, firmados\nLa prueba va a la cadena\nComprobada contra sus propios registros\nLa caja se abre\nTransacción\nTexto cifrado\nValor con prueba\nValor en claro"
     },
     {
      "id": "transfer-0",
@@ -1575,6 +1650,36 @@
      "text": "Vender es un acto público: vender una caja muestra a todos que la tenías. Lo que hay dentro sigue sellado, para ti y para el comprador. Son públicos el vendedor de cada anuncio, su precio, el comprador de cada venta, y si cada comprador al precio de la etiqueta podía pagar. Los saldos, las cantidades de las ofertas y el precio de una venta por oferta nunca lo son.\nMientras un artículo está a la venta, Reetiquetar cambia su precio (las compras pendientes al precio anterior se reembolsan), y Recuperarlo lo trae de vuelta. Los compradores conservan sus ofertas selladas para retirarlas.\nEl mercadillo está abierto en Sepolia, con dólares de prueba. En la demo, el turno de noche tiene unos cuantos puestos, desliza una oferta secreta en todo lo que pongas a la venta, y acepta cualquier oferta de al menos el 70 % de tu precio."
     },
     {
+     "id": "vault-0",
+     "section": "vault",
+     "heading": null,
+     "text": "La bóveda sellada no forma parte del juego: presta el cifrado del juego a los NFT que ya tienes. Mete en ella un NFT de una colección que la bóveda acepte (en la testnet, un NFT de prueba gratuito) y recibes a cambio una caja sellada, un NFT propio cuyo titular está cifrado, como las cajas del juego. Desde entonces nadie puede saber quién la tiene: ni los marketplaces, ni los rastreadores, ni el depósito. El NFT se queda en la bóveda hasta que el titular de la caja lo saca, lo vende en Seaport o vende la caja en privado. Se abre desde la cabecera del sitio: Bóveda."
+    },
+    {
+     "id": "vault-1",
+     "section": "vault",
+     "heading": null,
+     "text": "Todo lo que sale de la bóveda se pide con la llave de la caja, nunca con tu dirección. La llave es un secreto que tu wallet saca de una firma gratuita, la primera vez que usas la bóveda en una sesión; no se guarda nada, y el mismo wallet rehace la misma llave en cualquier dispositivo. Viaja cifrada y atada a la petición exacta: quien la lleva no puede leerla, ni cambiar adónde va el NFT, ni volver a usarla. La bóveda la compara con la llave de la caja sin descifrar ninguna de las dos, y solo un bit se hace público: la llave coincide, o no. Una llave equivocada no hace nada. Como cualquier wallet puede llevar una petición, el relayer del sitio envía las tuyas: tu dirección no aparece en ninguna. Sin relayer, las envía tu wallet, y su dirección se ve. Firma ese mensaje solo en DO NOT OPEN: quien tenga la firma puede sacar tus NFT. La figura de Cómo salen las cosas reproduce una petición, paso a paso."
+    },
+    {
+     "id": "vault-2",
+     "section": "vault",
+     "heading": null,
+     "text": "Para vender en público, Poner en venta en Seaport publica una orden real de Seaport, el protocolo sobre el que funciona OpenSea, con la bóveda como vendedora. Los compradores ven el NFT y el precio, nunca quién vende, y cualquier marketplace de Seaport puede ejecutarla. Mientras está en venta, la caja no se mueve. Cuando un comprador paga, el ETH espera en la caja a quien tenga su llave; Cobrar el ETH lo envía a cualquier dirección, una nueva si quieres. Retira el anuncio, o deja que caduque, y la caja vuelve a estar sellada. En la testnet, la propia web de OpenSea puede no mostrar estos anuncios; las órdenes son reales igualmente."
+    },
+    {
+     "id": "vault-3",
+     "section": "vault",
+     "heading": null,
+     "text": "Para vender a una sola persona, Vender en privado nombra a un comprador y un precio en cUSDC que solo leen el comprador y tú. Si el comprador lo paga entero mientras sigues teniendo la caja, la caja, su llave y el dinero cambian de manos de una vez; si no, nada se mueve y el comprador lo recupera todo. Nada se descifra en público, así que nadie más puede saber si salió bien. Regalar la caja la envía como cualquier regalo; llega con una llave aleatoria que nadie conoce, y quien la recibe la hace suya con Quedarme la llave, una firma, antes de que nada pueda salir de ella. Una venta en Seaport y una venta privada dejan cada una el 2,5 % al depósito; el contrato nunca puede quedarse más del 10 %."
+    },
+    {
+     "id": "vault-4",
+     "section": "vault",
+     "heading": "Lo que se ve, y lo que no",
+     "text": "Público: quién metió cada NFT (sellar es una transferencia de NFT corriente), el NFT de cada caja, los anuncios en Seaport y sus compradores, y la dirección a la que va un NFT o el ETH de una venta. Nunca público: quién tiene una caja, su llave, el precio de una venta privada, y si una venta privada o un regalo movió algo. Hasta que la caja cambie de manos una vez, quien la selló es su titular evidente. Sacar un NFT o ETH a una dirección sin historial no muestra ningún vínculo contigo, aunque el momento todavía pueda hacerlo.\nLa bóveda está en Sepolia, con NFT de prueba gratis para mintear y el Seaport real. En la demo funciona en memoria: el turno de noche guarda en ella dos cajas, una en Seaport, compra lo que pongas a la venta al cabo de un rato, y acepta cualquier venta privada que le ofrezcas.\nAbrir la bóveda"
+    },
+    {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
@@ -1596,7 +1701,7 @@
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "Los contratos en Sepolia:\nLas cajas (DoNotOpen) 0x6e3B…54d1\nLa Despensa (croquetas, comidas, pesajes) 0xe867…6a23\nCROQ, la croqueta sin cifrar 0x765A…fB7C\ncCROQ, la croqueta cifrada 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCofre de liquidez 0x7048…f058\nLa rampa USDC (de ETH a USDC) 0x0238…5638\nCréditos de descifrado 0x1d18…6511\nLos packs del estudio (StudioPacks) 0x4159…B5f6\nLas ratas (Rats, ERC-721) 0x441F…2cF6\nLa despensa de las ratas (RatPantry) 0xa8C6…1850\nLos trucos de las ratas (RatTricks) 0x1E72…765f\nEl mercadillo (FleaMarket) 0xF16b…6F92\nLos regalos de la whitelist (WhitelistGifts) 0x09D2…405a"
+     "text": "Los contratos en Sepolia:\nLas cajas (DoNotOpen) 0x6e3B…54d1\nLa Despensa (croquetas, comidas, pesajes) 0xe867…6a23\nCROQ, la croqueta sin cifrar 0x765A…fB7C\ncCROQ, la croqueta cifrada 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCofre de liquidez 0x7048…f058\nLa rampa USDC (de ETH a USDC) 0x0238…5638\nCréditos de descifrado 0x1d18…6511\nLos packs del estudio (StudioPacks) 0x4159…B5f6\nLas ratas (Rats, ERC-721) 0x441F…2cF6\nLa despensa de las ratas (RatPantry) 0xa8C6…1850\nLos trucos de las ratas (RatTricks) 0x1E72…765f\nEl mercadillo (FleaMarket) 0xF16b…6F92\nLos regalos de la whitelist (WhitelistGifts) 0x09D2…405a\nLa bóveda sellada (SealedVault) 0x8B07…fb18"
     },
     {
      "id": "more-0",
@@ -1691,6 +1796,11 @@
     {
      "id": "stall",
      "title": "Montare una bancarella",
+     "part": "manual"
+    },
+    {
+     "id": "vault",
+     "title": "Qualsiasi NFT, sigillato",
      "part": "manual"
     },
     {
@@ -1853,7 +1963,7 @@
      "id": "flows-1",
      "section": "flows",
      "heading": null,
-     "text": "Mint Scuotere Aprire Duello Trasferire Comprare Offerta segreta Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro"
+     "text": "Mint Scuotere Aprire Duello Trasferire Comprare Offerta segreta Tirare fuori un NFT Una richiesta, una decifratura e una seconda transazione. Una richiesta di chi non detiene la scatola non apre niente e non mostra niente. Chiedi di aprire la scatola Solo a un detentore viene addebitata la tariffa di 1 cUSDC. Resta in sospeso finché l'apertura non si chiude, e ti torna se la scatola intrecciata con questa l'ha aperta prima. Altrimenti da qui non si torna indietro. Detentore e tariffa, controllati alla cieca Chiunque può ora chiederlo I valori, firmati La prova va on-chain Controllata contro i suoi stessi registri La scatola si apre Riproduci Passo successivo Transazione Testo cifrato Valore con prova Valore in chiaro"
     },
     {
      "id": "flows-2",
@@ -2126,6 +2236,36 @@
      "text": "Vendere è un atto pubblico: vendere una scatola mostra a tutti che la detenevi. Quello che c'è dentro resta sigillato, per te come per chi compra. Sono pubblici il venditore di ogni annuncio, il prezzo richiesto, chi compra in ogni vendita, e se ogni compratore al prezzo del cartellino poteva pagare. I saldi, le cifre delle offerte e il prezzo di una vendita su offerta non lo sono mai.\nMentre un articolo è in vendita, Rietichetta cambia il suo prezzo (gli acquisti in sospeso al vecchio prezzo vengono rimborsati), e Riprendilo lo riporta a casa. Chi ha fatto offerte sigillate le tiene, da ritirare quando vuole.\nIl mercatino è aperto su Sepolia, con dollari di prova. Nella demo, il turno di notte tiene qualche bancarella, fa scivolare un'offerta segreta su tutto quello che metti in vendita, e accetta qualsiasi offerta di almeno il 70% del tuo prezzo."
     },
     {
+     "id": "vault-0",
+     "section": "vault",
+     "heading": null,
+     "text": "Il caveau sigillato non fa parte del gioco: presta la cifratura del gioco agli NFT che hai già. Mettici un NFT di una collezione che il caveau accetta (sulla testnet, un NFT di prova gratuito) e ricevi in cambio una scatola sigillata, un NFT a sé il cui detentore è cifrato, come le scatole del gioco. Da quel momento nessuno può dire chi la detiene: né i marketplace, né i tracker, né il deposito. L'NFT resta nel caveau finché il detentore della scatola non lo tira fuori, lo vende su Seaport o vende la scatola in privato. Si apre dall'intestazione del sito: Caveau."
+    },
+    {
+     "id": "vault-1",
+     "section": "vault",
+     "heading": null,
+     "text": "Tutto ciò che esce dal caveau si chiede con la chiave della scatola, mai con il tuo indirizzo. La chiave è un segreto che il tuo wallet ricava da una firma gratuita, la prima volta che usi il caveau in una sessione; non si salva niente, e lo stesso wallet rifà la stessa chiave su qualsiasi dispositivo. Viaggia cifrata e legata alla richiesta esatta: chi la trasporta non può leggerla, né cambiare dove va l'NFT, né riusarla. Il caveau la confronta con la chiave della scatola senza decifrare né l'una né l'altra, e un solo bit diventa pubblico: la chiave corrisponde, o no. Una chiave sbagliata non fa niente. Siccome qualsiasi wallet può portare una richiesta, il relayer del sito invia le tue: il tuo indirizzo non compare in nessuna. Senza relayer le invia il tuo wallet, e il suo indirizzo si vede. Firma quel messaggio solo su DO NOT OPEN: chi ha la firma può tirare fuori i tuoi NFT. La figura di Come escono le cose mostra una richiesta, passo per passo."
+    },
+    {
+     "id": "vault-2",
+     "section": "vault",
+     "heading": null,
+     "text": "Per vendere in pubblico, Metti in vendita su Seaport pubblica un vero ordine Seaport, il protocollo su cui gira OpenSea, con il caveau come venditore. I compratori vedono l'NFT e il prezzo, mai chi vende, e qualsiasi marketplace Seaport può eseguirlo. Finché è in vendita, la scatola resta ferma. Quando un compratore paga, l'ETH aspetta nella scatola chi ne detiene la chiave; Incassa l'ETH lo invia a qualsiasi indirizzo, anche uno nuovo. Ritira l'annuncio, o lascialo scadere, e la scatola torna sigillata. Sulla testnet il sito di OpenSea potrebbe non mostrare questi annunci; gli ordini sono veri comunque."
+    },
+    {
+     "id": "vault-3",
+     "section": "vault",
+     "heading": null,
+     "text": "Per vendere a una sola persona, Vendi in privato indica un compratore e un prezzo in cUSDC che solo voi due potete leggere. Se il compratore lo paga per intero mentre detieni ancora la scatola, la scatola, la sua chiave e il denaro passano di mano in un colpo solo; altrimenti non si muove niente e il compratore riprende tutto. Niente viene decifrato in pubblico, quindi nessun altro può dire se la vendita è andata a buon fine. Regala la scatola la invia come un qualsiasi regalo; arriva con una chiave casuale che nessuno conosce, e chi la riceve la fa sua con Prendi la chiave, una firma, prima che qualcosa possa uscirne. Una vendita su Seaport e una vendita privata lasciano entrambe il 2,5% al deposito; il contratto non può mai prenderne più del 10%."
+    },
+    {
+     "id": "vault-4",
+     "section": "vault",
+     "heading": "Cosa si vede, e cosa no",
+     "text": "Pubblico: chi ha messo dentro ogni NFT (sigillare è un normale trasferimento di NFT), l'NFT in ogni scatola, gli annunci su Seaport e chi li compra, e l'indirizzo dove va un NFT o l'ETH di una vendita. Mai pubblico: chi detiene una scatola, la sua chiave, il prezzo di una vendita privata, e se una vendita privata o un regalo ha spostato qualcosa. Finché la scatola non è passata di mano almeno una volta, chi l'ha sigillata ne è il detentore evidente. Tirare fuori un NFT o dell'ETH verso un indirizzo senza storia non mostra alcun legame con te, anche se il momento scelto può ancora farlo.\nIl caveau è su Sepolia, con NFT di prova gratis da mintare e il vero Seaport. Nella demo gira in memoria: il turno di notte ci tiene due scatole, una su Seaport, compra quello che metti in vendita dopo un po', e accetta qualsiasi vendita privata gli proponi.\nApri il caveau"
+    },
+    {
      "id": "testnet-0",
      "section": "testnet",
      "heading": null,
@@ -2147,7 +2287,7 @@
      "id": "testnet-3",
      "section": "testnet",
      "heading": null,
-     "text": "I contratti su Sepolia:\nLe scatole (DoNotOpen) 0x6e3B…54d1\nLa Dispensa (crocchette, pasti, pesate) 0xe867…6a23\nCROQ, la crocchetta normale 0x765A…fB7C\ncCROQ, la crocchetta cifrata 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCassaforte della liquidità 0x7048…f058\nLa rampa USDC (da ETH a USDC) 0x0238…5638\nCrediti di decifratura 0x1d18…6511\nI pacchetti dello studio (StudioPacks) 0x4159…B5f6\nI ratti (Rats, ERC-721) 0x441F…2cF6\nLa dispensa dei ratti (RatPantry) 0xa8C6…1850\nGli scherzi dei ratti (RatTricks) 0x1E72…765f\nIl mercatino delle pulci (FleaMarket) 0xF16b…6F92\nI regali della whitelist (WhitelistGifts) 0x09D2…405a"
+     "text": "I contratti su Sepolia:\nLe scatole (DoNotOpen) 0x6e3B…54d1\nLa Dispensa (crocchette, pasti, pesate) 0xe867…6a23\nCROQ, la crocchetta normale 0x765A…fB7C\ncCROQ, la crocchetta cifrata 0xbC77…79b9\nPool CROQ / USDC 0x2A83…C811\nCassaforte della liquidità 0x7048…f058\nLa rampa USDC (da ETH a USDC) 0x0238…5638\nCrediti di decifratura 0x1d18…6511\nI pacchetti dello studio (StudioPacks) 0x4159…B5f6\nI ratti (Rats, ERC-721) 0x441F…2cF6\nLa dispensa dei ratti (RatPantry) 0xa8C6…1850\nGli scherzi dei ratti (RatTricks) 0x1E72…765f\nIl mercatino delle pulci (FleaMarket) 0xF16b…6F92\nI regali della whitelist (WhitelistGifts) 0x09D2…405a\nIl caveau sigillato (SealedVault) 0x8B07…fb18"
     },
     {
      "id": "more-0",

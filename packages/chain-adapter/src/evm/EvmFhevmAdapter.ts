@@ -93,6 +93,9 @@ import { decodeClear, encodeClear, MemoryDecryptCache, type Clear, type DecryptC
 import { gateRefusal, toChainError } from "./errors";
 import { rangePerThousand, virtualReserves } from "./uniswapV3";
 import type { IndexedTransfer, IndexerClient } from "./indexer";
+import { EvmVault, type VaultDeployment } from "./EvmVault";
+import type { VaultRelay } from "./vaultRelay";
+import type { VaultAdapter } from "../vault";
 import type { ChainParams, WalletSource } from "./wallet";
 
 /** The part of the Relayer SDK instance this adapter uses. */
@@ -175,6 +178,10 @@ export interface EvmAdapterOptions {
   whitelistGifts?: Deployed;
   /** The rats' tricks: sniffs, shields and jams. Without it, rats only earn croquettes. */
   ratTricks?: Deployed;
+  /** The sealed vault. Without it, `vault()` is null. */
+  vault?: VaultDeployment;
+  /** Finds the API's vault relayer, which sends holders' requests from its own wallet. */
+  vaultRelay?: () => Promise<VaultRelay | null>;
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -375,6 +382,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   /** Studio packs bought by this account that the API may not have indexed yet, by block. */
   private boughtPacks: { account: Address; block: number; sketches: number; models: number }[] = [];
   private readonly decryptCache: DecryptCache;
+  private vault_: EvmVault | null = null;
+  private vaultRelay_: Promise<VaultRelay | null> | null = null;
 
   constructor(private readonly opts: EvmAdapterOptions) {
     this.decryptCache = opts.decryptCache ?? new MemoryDecryptCache();
@@ -384,7 +393,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const e = opts.economy;
     this.ifaces = [
       this.iface,
-      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : []), ...(opts.whitelistGifts ? [opts.whitelistGifts.abi] : []), ...(opts.ratTricks ? [opts.ratTricks.abi] : [])].map((abi) => new Interface(abi)),
+      ...[USDC_ABI, CUSDC_ABI, ...(opts.ramp ? [opts.ramp.abi] : []), ...(opts.credits ? [opts.credits.abi] : []), ...(opts.studio ? [opts.studio.abi] : []), ...(opts.rats ? [opts.rats.abi] : []), ...(opts.ratPantry ? [opts.ratPantry.abi] : []), ...(opts.market ? [opts.market.abi] : []), ...(opts.whitelistGifts ? [opts.whitelistGifts.abi] : []), ...(opts.ratTricks ? [opts.ratTricks.abi] : []), ...(opts.vault ? [opts.vault.abi] : [])].map((abi) => new Interface(abi)),
       ...(e ? [e.croq.abi, e.cCroq.abi, e.pantry.abi, ROUTER_ABI, QUOTER_ABI].map((abi) => new Interface(abi)) : []),
     ];
     opts.wallet.onChange((signer) => void this.adopt(signer));
@@ -1733,6 +1742,34 @@ export class EvmFhevmAdapter implements ChainAdapter {
     return out;
   }
 
+  // --- sealed vault ---
+
+  vault(): VaultAdapter | null {
+    const deployed = this.opts.vault;
+    if (!deployed) return null;
+    this.vault_ ??= new EvmVault(deployed, {
+      chainId: this.opts.chain.chainId,
+      explorerUrl: this.opts.chain.explorerUrl ?? null,
+      readProvider: this.opts.readProvider,
+      account: async () => (await this.signer().getAddress()) as Address,
+      send: (opts, call) => this.send(opts, () => call()),
+      writer: (d) => this.writer(d),
+      reading: (read) => this.reading(read),
+      encrypt: (contract, account, fill, what, opts, inputUser) => this.encrypt(contract, account, fill as never, what, opts, inputUser) as never,
+      publicDecrypt: (handles, opts) => this.publicDecrypt(handles, opts) as never,
+      userDecrypt: (handles, contractAddress, opts) => this.userDecrypt(handles, contractAddress, opts),
+      signText: (message) => this.signText(message),
+      ensureOperator: (token, account, operator, opts) => this.ensureOperator(token, account, operator, opts),
+      cUsdc: async () => (await this.payment()).cUsdc,
+      relay: () => {
+        if (!this.opts.vaultRelay) return Promise.resolve(null);
+        this.vaultRelay_ ??= this.opts.vaultRelay();
+        return this.vaultRelay_;
+      },
+    });
+    return this.vault_;
+  }
+
   /** A box left or reached the account through the market: its receipts tell it, read them again. */
   private async refreshHoldings(): Promise<void> {
     const account = this.opts.wallet.current() ? await this.signer().getAddress() : null;
@@ -2135,6 +2172,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
       cUsdc.address,
       ...(e ? [e.cCroq.address, e.pantry.address] : []),
       ...(this.opts.market ? [this.opts.market.address] : []),
+      // The vault's receipts and private sale prices.
+      ...(this.opts.vault ? [this.opts.vault.address] : []),
       // A rat's power is the Rats contract's handle.
       ...(this.opts.ratTricks && this.opts.rats ? [this.opts.rats.address] : []),
     ];

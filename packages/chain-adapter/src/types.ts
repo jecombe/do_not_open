@@ -5,6 +5,7 @@
  */
 
 import type { DuelStanding, PlayerPoints } from "./standings";
+import type { VaultAdapter } from "./vault";
 
 export type Address = string;
 
@@ -969,6 +970,10 @@ export interface ChainAdapter {
   /** Decrypts the amounts of offers the connected account made or received, for its eyes only.
    *  Offers it may not read are left out. */
   offerAmounts(offerIds: number[], opts?: ActionOptions): Promise<Record<number, bigint>>;
+
+  // --- sealed vault ---
+  /** The sealed vault, where any NFT can sit with its holder hidden. Null where none is deployed. */
+  vault(): VaultAdapter | null;
 }
 
 /** "0.002" for 2000000000000000n at 18 decimals. No trailing zeros. */

@@ -40,11 +40,12 @@ Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing on mainnet, filed by the API (`POST /v1/terms`); on Sepolia a notice says what a redeployment keeps instead | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
 | Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
-| Rat powers | Each rat draws a secret power at its mint (1 cheaper sniffs, 2 blocks one trait, 3 all five); a rat set on a box for 3 days shields it from strangers or jams its holder, decided under encryption (`RatTricks`, the collection's shake guard) | **Done** on the mock and in the tests, not yet deployed on Sepolia |
+| Rat powers | Each rat draws a secret power at its mint (1 cheaper sniffs, 2 blocks one trait, 3 all five); a rat set on a box for 3 days shields it from strangers or jams its holder, decided under encryption (`RatTricks`, the collection's shake guard) | **Live** on Sepolia since 2026-10-08 (`SealedVault` and its test NFT) |
 | Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Done** on the mock and in the tests, not yet deployed on Sepolia |
 | Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 15) | **Done** |
 | Whitelist gifts | Each seated wallet collects its class's gift once (`WhitelistGifts`): an encrypted draw of cCROQ, a box minted free out of the 1,000 the sale leaves (`DoNotOpen.gift`), a free rat (`Rats.gift`), against a Merkle root of (wallet, tier) | **Done**, live on Sepolia since 2026-10-08 (root not set yet) |
 | Boarding page | `/apply`: a boarding gate in 3D (boxes on a baggage belt, a cat at the desk, a rat on the tarmac), Sign in with X, five quick tasks on X (declared), the mainnet list's points, a wallet bonus and a referral link with a printable boarding pass; linked from the home page's "Apply" button (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
+| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, or sold privately for an encrypted cUSDC price, every request asked with a key and sent by the API's relayer; 2.5% to the treasury | **Done** on the mock and in the tests, not yet deployed on Sepolia |
 
 ## Layout
 
@@ -54,7 +55,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
   api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
@@ -80,7 +81,7 @@ Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
 
 ```bash
 pnpm install
-pnpm test        # generator, chain adapter, and 95 contract tests on the FHEVM mock
+pnpm test        # generator, chain adapter, API, and 250 contract tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173: home page; the game is at /app (mock mode, no chain)
 ```
@@ -236,6 +237,21 @@ the sale is refused and a pending payment comes back. Public: the seller of an a
 balances, offer amounts, the price of a sale by offer, what is inside a sealed box. The flows
 are in [`docs/FLOWS.md`](docs/FLOWS.md#the-flea-market).
 
+## The sealed vault
+
+Next to the game, the same encryption hides who holds any NFT. `SealedVault` takes an NFT of
+an allowed collection (a free test collection on test networks) and gives its depositor a box,
+a Confidential ERC-721 of its own whose holder is encrypted. Every box has an encrypted key the
+holder's wallet derives from one signature; taking the NFT out, listing it, taking the listing
+down or collecting a sale's ETH is asked with that key, not with an address, so the API's
+relayer can send the request and the holder's address shows on none. A listing is a real
+Seaport 1.5 order with the vault as the seller, which any Seaport marketplace can fill. A box
+can also change hands privately, for a cUSDC price only the two sides read, settled under
+encryption. Public: the deposit, the NFT in each box, Seaport listings, where an NFT or a sale's
+ETH goes. Never public: who holds a box, its key, a private sale's price and whether it went
+through. 2.5% of each sale goes to the treasury. The page is `/vault`; the design, the flows and
+the limits are in [`docs/VAULT.md`](docs/VAULT.md).
+
 ## On Sepolia
 
 The current contracts, deployed on 2026-10-08 (blocks 11869530 to 11869590, `DoNotOpen` at
@@ -270,6 +286,8 @@ owner was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`):
 | `RatTricks` (sniffs, shields and jams; DoNotOpen's guard) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
 | `WhitelistGifts` (the whitelist's gifts, DoNotOpen's and Rats' giver, 425,000 cCROQ; root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
 | `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
+| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, 2.5% fee) | [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18) |
+| `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
 
 Deployed with `SEPOLIA_GAS_PRICE=20000000 pnpm --filter @dno/contracts-evm exec hardhat deploy
 --network sepolia --maxfee 50000000 --priorityfee 2000000`, then `export:sepolia`: a 0.3 gwei
@@ -402,6 +420,7 @@ For the reference documents, start at [`docs/README.md`](docs/README.md). In sho
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md): what is encrypted, who can read what, ACL on transfer
 - [`docs/FLOWS.md`](docs/FLOWS.md): sequence diagrams for every mechanic
 - [`docs/CROQ.md`](docs/CROQ.md): the croquette economy, its two tokens and its market
+- [`docs/VAULT.md`](docs/VAULT.md): the sealed vault, any NFT with its holder hidden
 - [`docs/SOLANA_PORTING.md`](docs/SOLANA_PORTING.md): the porting map
 - [`docs/AUDIT_CHECKLIST.md`](docs/AUDIT_CHECKLIST.md): checks done and findings open
 - [`docs/DESIGN.md`](docs/DESIGN.md): art direction, effect catalogue, performance budget

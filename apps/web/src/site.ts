@@ -15,6 +15,9 @@ export const studioPath = (locale: Locale): string => (locale === "en" ? "/studi
 /** The boarding page: Sign in with X, the tasks on X, the mainnet list. */
 export const applyPath = (locale: Locale): string => (locale === "en" ? "/apply" : `/${locale}/apply`);
 
+/** The sealed vault: one page for every language, which it reads from `?lang=`, as the game does. */
+export const vaultPath = (locale: Locale): string => (locale === "en" ? "/vault" : `/vault?lang=${locale}`);
+
 /** The game: one page for every language, which it reads from `?lang=`. */
 export const appPath = (locale: Locale): string => (locale === "en" ? "/app" : `/app?lang=${locale}`);
 
