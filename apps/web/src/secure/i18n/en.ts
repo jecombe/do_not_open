@@ -11,6 +11,9 @@ export const secureEn = {
   "secure.nav.apply": "Apply",
   "secure.nav.open": "Open the vault",
   "secure.nav.home": "Home",
+  "secure.nav.boarding": "Boarding pass",
+  "secure.nav.gifts": "Gifts",
+  "secure.nav.list": "Mainnet list",
   "secure.nav.menu": "Menu",
   "secure.status": "Sepolia · live",
 

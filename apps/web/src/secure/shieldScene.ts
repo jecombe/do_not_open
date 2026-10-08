@@ -49,7 +49,8 @@ interface Probe {
  * The secure home page's picture: a sealed box inside an encryption shield. Probes fly at it
  * from every side, trying to read who holds it; each one hits the shield, which ripples where it
  * landed, and a "refused" tag flashes there. The holder's tag above the box only ever shows
- * ciphertext. A click sends a probe at once. Under reduced motion it holds still.
+ * ciphertext, unless the page reveals it to its holder. A click sends a probe at once. Under
+ * reduced motion it holds still.
  */
 export class ShieldScene {
   private readonly stage: Stage;
@@ -66,6 +67,8 @@ export class ShieldScene {
   private time = 0;
   private next = 0.6;
   private scrambleAt = 0;
+  /** Once set, the holder's tag shows it instead of ciphertext. */
+  private known: string | null = null;
 
   constructor(host: HTMLElement, labels: { holder: string; denied: string }) {
     const stage = (this.stage = new Stage(host));
@@ -188,6 +191,14 @@ export class ShieldScene {
     this.stage.wake();
   }
 
+  /** Shows who holds the box to its holder, or goes back to ciphertext with null. */
+  reveal(text: string | null): void {
+    this.known = text;
+    this.holder.classList.toggle("is-known", text !== null);
+    this.holder.textContent = text ?? `${this.holder.dataset.label} ${scramble(10)}`;
+    this.stage.wake();
+  }
+
   dispose(): void {
     this.box.group.removeFromParent();
     this.box.dispose();
@@ -206,7 +217,7 @@ export class ShieldScene {
     this.shell.rotation.y = t * 0.08;
     this.rings.children.forEach((ring, i) => (ring.rotation.z = t * (i ? -0.5 : 0.35)));
 
-    if (t > this.scrambleAt) {
+    if (this.known === null && t > this.scrambleAt) {
       this.scrambleAt = t + 0.09;
       this.holder.textContent = `${this.holder.dataset.label} ${scramble(10)}`;
     }

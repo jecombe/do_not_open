@@ -13,6 +13,9 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.nav.apply": "Embarcar",
   "secure.nav.open": "Abrir la bóveda",
   "secure.nav.home": "Inicio",
+  "secure.nav.boarding": "Tarjeta de embarque",
+  "secure.nav.gifts": "Regalos",
+  "secure.nav.list": "Lista mainnet",
   "secure.nav.menu": "Menú",
   "secure.status": "Sepolia · en servicio",
 

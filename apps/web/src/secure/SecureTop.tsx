@@ -7,10 +7,11 @@ import { useT } from "./i18n";
 /**
  * The bar of the secure theme: the stamp, the links of the part the page belongs to, the network,
  * the languages. The home page leads to its anchors, the docs, boarding and the vault; the vault's
- * page to what leaks, its docs and home, never to the game. Below a laptop's width the home page's
- * links fold into a menu; the vault's three stay in the bar.
+ * page to what leaks, its docs and home, never to the game; the boarding page to its own parts and
+ * home. Below a laptop's width the home page's and boarding's links fold into a menu; the vault's
+ * three stay in the bar.
  */
-export function SecureTop({ here = "home" }: { here?: "home" | "vault" }) {
+export function SecureTop({ here = "home" }: { here?: "home" | "vault" | "apply" }) {
   const t = useT();
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -50,6 +51,16 @@ export function SecureTop({ here = "home" }: { here?: "home" | "vault" }) {
               <LangSwitch label={t("secure.nav")} />
             </div>
           </>
+        ) : here === "apply" ? (
+          <>
+            <a href="#boarding">{t("secure.nav.boarding")}</a>
+            <a href="#gifts">{t("secure.nav.gifts")}</a>
+            <a href="#pass">{t("secure.nav.list")}</a>
+            <a href={homePath(locale)}>{t("secure.nav.home")}</a>
+            <div className="sec-nav-lang">
+              <LangSwitch label={t("secure.nav")} />
+            </div>
+          </>
         ) : (
           <>
             <a href="#leaks">{t("secure.nav.leaks")}</a>
@@ -69,7 +80,7 @@ export function SecureTop({ here = "home" }: { here?: "home" | "vault" }) {
             {t("secure.nav.open")}
           </a>
         )}
-        {here === "home" && (
+        {here !== "vault" && (
           <button type="button" className="sec-menu" aria-expanded={open} aria-controls={navId} aria-label={t("secure.nav.menu")} onClick={() => setOpen((o) => !o)}>
             <span aria-hidden="true" />
           </button>

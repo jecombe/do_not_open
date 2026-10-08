@@ -1,252 +1,1201 @@
-/* The boarding page: the home page's cartoon, a gate in 3D at the top. */
-.apply-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  align-items: center;
-  gap: 16px var(--gutter);
-  padding: clamp(8px, 2vw, 24px) 0 clamp(16px, 2vw, 28px);
+/* The boarding page, in the secure theme (../secure/secure.css): the pass, the gifts, the list and the
+   idea box as dark panels, one teal accent, red only for what is still missing. */
+
+.apply .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
-.apply-text h1 {
+/* --- The page's own buttons, chips and headings, on the theme's --- */
+.apply .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border: 1px solid var(--teal);
+  border-radius: 10px;
+  background: var(--teal);
+  color: #04110d;
+  font: 600 15px var(--sans);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+
+.apply .btn:hover {
+  box-shadow: 0 0 0 4px var(--teal-dim), 0 8px 30px rgb(91 227 194 / 0.25);
+  transform: translateY(-1px);
+}
+
+.apply .btn:disabled {
+  opacity: 0.45;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+}
+
+.apply .btn-small {
+  padding: 7px 13px;
+  font-size: 13px;
+}
+
+.apply .btn-paper {
+  border-color: var(--line-2);
+  background: transparent;
+  color: var(--text);
+}
+
+.apply .btn-paper:hover {
+  border-color: var(--teal);
+  box-shadow: none;
+}
+
+.apply .btn-x {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.apply .btn-x:hover {
+  box-shadow: 0 0 0 4px rgb(230 237 243 / 0.12);
+}
+
+.apply .btn-discord {
+  border-color: #5865f2;
+  background: #5865f2;
+  color: #fff;
+}
+
+.apply .btn-discord:hover {
+  box-shadow: 0 0 0 4px rgb(88 101 242 / 0.25);
+}
+
+.apply .btn.is-soon,
+.apply .btn.is-waiting {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.apply .x-logo {
+  width: 0.95em;
+  height: 0.95em;
+  fill: currentColor;
+}
+
+.apply .kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 14px;
-  font-family: var(--stencil);
-  font-size: clamp(36px, 4.4vw, 66px);
-  line-height: 0.92;
+  color: var(--teal);
+  font: 500 12px var(--mono);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--paper);
-  -webkit-text-stroke: 3px var(--ink);
-  text-shadow: 6px 6px 0 var(--ink);
+}
+
+.apply .section-lede {
+  max-width: 62ch;
+  margin: 0 0 28px;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.apply .home-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(56px, 8vw, 104px) clamp(16px, 4vw, 48px) 0;
+}
+
+.apply .home-section h2 {
+  max-width: 24ch;
+  margin: 0 0 14px;
+  font: 700 clamp(30px, 3.6vw, 46px) / 1.08 var(--sans);
+  letter-spacing: -0.03em;
+}
+
+.apply input,
+.apply textarea {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 var(--mono);
+}
+
+.apply input:focus,
+.apply textarea:focus {
+  border-color: var(--teal);
+  outline: 2px solid var(--teal-dim);
+}
+
+.apply input:disabled {
+  opacity: 0.5;
+}
+
+/* --- The hero: what boarding is, the seats, the shield --- */
+.apply-hero h1 {
+  max-width: 16ch;
+  min-height: 0;
+  margin: 0 0 20px;
+  font: 700 clamp(38px, 5vw, 68px) / 1.04 var(--sans);
+  letter-spacing: -0.035em;
 }
 
 .apply-why {
   display: grid;
-  gap: 8px;
-  max-width: 36ch;
-  margin: 0 0 22px;
+  gap: 1px;
+  margin: 28px 0 0;
   padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--line);
+  overflow: hidden;
   list-style: none;
   counter-reset: why;
 }
 
 .apply-why li {
   position: relative;
-  padding-left: 42px;
-  font-size: 19px;
-  line-height: 1.3;
+  padding: 14px 16px 14px 52px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 15px;
   counter-increment: why;
 }
 
 .apply-why li::before {
-  content: counter(why);
+  content: "0" counter(why);
   position: absolute;
-  top: -2px;
-  left: 0;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 3px solid var(--ink);
-  border-radius: 50%;
-  background: var(--paper);
-  font-family: var(--stencil);
-  font-size: 16px;
+  top: 15px;
+  left: 16px;
+  color: var(--teal);
+  font: 12px var(--mono);
 }
 
 .apply-why strong {
-  font-family: var(--stencil);
-  font-weight: 400;
+  color: var(--text);
+}
+
+.apply .sec-shield figcaption {
+  justify-content: center;
+}
+
+.shield-holder.is-known {
+  border-color: var(--teal);
+  background: rgb(91 227 194 / 0.14);
+  font-weight: 600;
+}
+
+/* --- Seats on the mainnet list: a count, a thin gauge that fills, how many are left --- */
+.seat-meter {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.seat-meter-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  font-family: var(--mono);
+  line-height: 1;
+}
+
+.seat-meter-count strong {
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.seat-meter-count span {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.seat-meter-count small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.apply-gate {
-  margin: 0;
-}
-
-.apply-stage {
-  position: relative;
-  aspect-ratio: 16 / 10.5;
-  border: 4px solid var(--ink);
-  border-radius: 26px;
-  background:
-    radial-gradient(ellipse at 50% 85%, rgb(255 214 107 / 0.55), transparent 60%),
-    repeating-linear-gradient(90deg, rgb(28 24 20 / 0.06) 0 2px, transparent 2px 48px),
-    linear-gradient(#9cc7f0, #cfe4f7 55%, #f6eedb 56%);
-  box-shadow: 12px 12px 0 var(--ink);
+.seat-meter-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
   overflow: hidden;
-  cursor: pointer;
-  transform: rotate(0.6deg);
 }
 
-.apply-stage canvas {
+.seat-meter-bar i {
   display: block;
-  width: 100%;
   height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgb(91 227 194 / 0.4), var(--teal));
+  box-shadow: 0 0 12px rgb(91 227 194 / 0.6);
 }
 
-.apply-gate figcaption {
-  margin-top: 14px;
+.seat-meter-left {
+  margin: 0;
+  color: var(--teal);
+  font: 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.seat-meter.is-hot .seat-meter-bar i {
+  background: linear-gradient(90deg, rgb(255 77 61 / 0.4), var(--red));
+  box-shadow: 0 0 12px rgb(255 77 61 / 0.6);
+}
+
+.seat-meter.is-hot .seat-meter-left,
+.seat-meter.is-full .seat-meter-left {
+  color: var(--red);
+  animation: apply-blink 1s steps(2, jump-none) infinite;
+}
+
+.seat-meter.is-big {
+  max-width: 460px;
+  margin: 28px 0 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.seat-meter.is-big .seat-meter-count strong {
+  color: var(--teal);
+  font-size: 36px;
+}
+
+@keyframes apply-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* --- The boarding pass: a stub with the gate, then X first, the wallet as a bonus --- */
+.apply-boarding {
+  padding-top: clamp(32px, 5vw, 64px);
+}
+
+.boarding {
+  position: relative;
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  border: 1px solid var(--line-2);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  overflow: hidden;
+}
+
+.boarding-stub {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  padding: 18px 10px;
+  border-right: 1px dashed var(--line-2);
+  background: repeating-linear-gradient(0deg, rgb(91 227 194 / 0.04) 0 1px, transparent 1px 4px), var(--bg);
+  color: var(--muted);
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+
+.boarding-gate {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.boarding-stub strong {
+  align-self: center;
+  color: var(--text);
+  font: 700 56px/1 var(--sans);
+}
+
+.boarding-barcode {
+  width: 64px;
+  height: 24px;
+  background: repeating-linear-gradient(90deg, var(--muted) 0 2px, transparent 2px 4px, var(--muted) 4px 7px, transparent 7px 9px, var(--muted) 9px 10px, transparent 10px 13px);
+  opacity: 0.6;
+}
+
+.boarding.is-boarded .boarding-stub strong {
+  color: var(--teal);
+  text-shadow: 0 0 24px rgb(91 227 194 / 0.6);
+}
+
+.boarding.is-boarded .boarding-barcode {
+  background: repeating-linear-gradient(90deg, var(--teal) 0 2px, transparent 2px 4px, var(--teal) 4px 7px, transparent 7px 9px, var(--teal) 9px 10px, transparent 10px 13px);
+}
+
+.boarding-main {
+  min-width: 0;
+  padding: 24px 28px 26px;
+}
+
+.boarding-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0 0 10px;
+  color: var(--teal);
+  font: 500 12px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.boarding-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 10px var(--red);
+  animation: apply-blink 1.2s steps(2, jump-none) infinite;
+}
+
+.boarding-count {
+  padding: 2px 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+.boarding-main h2 {
+  margin: 0 0 12px;
+  font: 700 clamp(26px, 3vw, 38px) / 1.1 var(--sans);
+  letter-spacing: -0.025em;
+}
+
+/* Whether the player's seat is booked: red until it is, teal once it is. */
+.boarding-seat {
+  width: fit-content;
+  margin: 0 0 22px;
+  padding: 4px 10px;
+  border: 1px dashed rgb(255 77 61 / 0.6);
+  border-radius: 6px;
+  color: #ff8a7d;
+  font: 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.boarding-seat.is-seated {
+  border-style: solid;
+  border-color: rgb(91 227 194 / 0.6);
+  background: var(--teal-dim);
+  color: var(--teal);
+}
+
+/* Two halves: the X account on the left, the four tasks on the right. */
+.boarding-body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 22px 32px;
+}
+
+.boarding-part h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.boarding-part-n {
+  color: var(--teal);
+  font: 12px var(--mono);
+}
+
+.boarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boarding-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.boarding-post {
+  align-items: flex-start !important;
+}
+
+.boarding-n {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  color: var(--muted);
+  font: 12px/1 var(--mono);
+}
+
+.boarding-steps li.is-done .boarding-n {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+  color: var(--teal);
+}
+
+.btn.boarding-signin {
+  padding: 13px 22px;
+  font-size: 16px;
+}
+
+.boarding-code {
+  padding: 4px 10px;
+  border: 1px dashed var(--teal);
+  border-radius: 8px;
+  background: var(--teal-dim);
+  color: var(--teal);
+  font: 600 15px/1.3 var(--mono);
+  letter-spacing: 0.06em;
+  user-select: all;
+}
+
+.boarding-command {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  max-width: 100%;
+  font-size: 13px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: copy;
+}
+
+.boarding-command-hint {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.boarding-verify {
+  flex: 1 1 100%;
+}
+
+.boarding-verify form {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+}
+
+.boarding-verify input {
+  flex: 1;
+}
+
+.boarding-proof {
+  padding: 4px 12px;
+  border: 1px solid rgb(91 227 194 / 0.6);
+  border-radius: 999px;
+  background: var(--teal-dim);
+  color: var(--teal);
+  font: 600 13px var(--mono);
+  text-decoration: none;
+}
+
+.boarding-tasks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boarding-tasks-one {
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.boarding-task {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 14px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  background: rgb(7 9 12 / 0.5);
+  transition: border-color 0.2s;
+}
+
+.boarding-task:hover {
+  border-color: rgb(91 227 194 / 0.4);
+}
+
+.boarding-task.is-done {
+  border-style: solid;
+  border-color: rgb(91 227 194 / 0.5);
+  background: linear-gradient(180deg, rgb(91 227 194 / 0.08), transparent);
+}
+
+.boarding-task strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.boarding-task.is-done strong {
+  color: var(--teal);
+}
+
+.boarding-task-why {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.boarding-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+
+.boarding-task-open {
+  color: var(--teal);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.boarding-task-open:hover {
+  text-decoration: underline;
+}
+
+.boarding-task-mark {
+  padding: 5px 11px;
+  border: 1px solid var(--teal);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--teal);
+  font: 600 12px var(--mono);
+  cursor: pointer;
+  box-shadow: 0 0 0 0 rgb(91 227 194 / 0.6);
+}
+
+/* Once it can be clicked, it pulls the eye: an unclicked task does not count. */
+.boarding-task-mark:not(:disabled) {
+  animation: apply-pulse 1.4s ease-out infinite;
+}
+
+.boarding-task-mark:disabled {
+  border-color: var(--line-2);
+  color: var(--muted);
+  cursor: default;
+}
+
+@keyframes apply-pulse {
+  to {
+    box-shadow: 0 0 0 10px rgb(91 227 194 / 0);
+  }
+}
+
+.boarding-fine {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.boarding-error {
+  margin: 14px 0 0;
+  color: #ff8a7d;
+  font: 13px var(--mono);
+}
+
+.boarding-error:empty {
+  display: none;
+}
+
+/* The bonus, Discord and referrals: three panels inside the pass, each with its points tag. */
+.boarding-bonus,
+.boarding-discord,
+.boarding-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.boarding-bonus {
+  transition: border-color 0.2s;
+}
+
+.boarding-bonus:hover,
+.boarding-bonus:focus-visible {
+  border-color: rgb(91 227 194 / 0.5);
+}
+
+.boarding-discord.is-done {
+  border-color: rgb(91 227 194 / 0.4);
+}
+
+.boarding-bonus strong,
+.boarding-discord strong,
+.boarding-invite strong {
+  color: var(--text);
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.boarding-bonus-tag {
+  width: fit-content;
+  padding: 2px 8px;
+  border: 1px solid rgb(91 227 194 / 0.5);
+  border-radius: 6px;
+  color: var(--teal);
+  font: 600 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.boarding-bonus-go {
+  color: var(--teal);
+  font-weight: 600;
+}
+
+.boarding-invite-count {
+  color: var(--text);
+  font: 12px var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.boarding-invite-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 0;
+}
+
+.boarding-invite-card img {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+}
+
+/* --- The whitelist's gifts: one ticket per class, a stub with the seats --- */
+.gift-tickets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.gift-ticket {
+  --band: var(--teal);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--band);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.gift-ticket:hover {
+  border-color: var(--band);
+  transform: translateY(-2px);
+}
+
+.gift-ticket.is-first {
+  --band: #ffc46b;
+}
+
+.gift-ticket.is-business {
+  --band: #a9bcff;
+}
+
+.gift-main {
+  min-width: 0;
+  padding: 20px;
+}
+
+.gift-class {
+  margin: 0 0 4px;
+  color: var(--band);
+  font: 700 22px/1.1 var(--sans);
+  letter-spacing: -0.01em;
+}
+
+.gift-ranks {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font: 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gift-items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gift-items li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.gift-items strong {
+  font-weight: 600;
+}
+
+.gift-items small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.gift-croq {
+  border-color: rgb(91 227 194 / 0.35) !important;
+}
+
+.gift-stub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  border-left: 1px dashed var(--line-2);
+  background: var(--bg);
   text-align: center;
-  opacity: 0.75;
 }
 
-.gate-bubble {
-  max-width: 260px;
-  font-size: 20px;
-  line-height: 1.1;
+.gift-stub span {
+  color: var(--muted);
+  font: 10px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gift-stub b {
+  color: var(--band);
+  font: 600 16px/1 var(--mono);
+  white-space: nowrap;
+}
+
+.gift-stub i {
+  color: var(--muted);
+  font-style: normal;
+  line-height: 1;
+}
+
+.gifts-fine {
+  max-width: 860px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* --- The mainnet list as a passport: a cover, three visas to stamp, an address to check --- */
+.pass-book {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-areas:
+    "cover stamps"
+    "cover check"
+    "fine fine";
+  border: 1px solid var(--line-2);
+  border-radius: 20px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.pass-cover {
+  grid-area: cover;
+  padding: 32px 30px 28px;
+  border-right: 1px solid var(--line);
+  background: radial-gradient(ellipse at 30% 0%, rgb(91 227 194 / 0.12), transparent 60%), repeating-linear-gradient(45deg, rgb(255 255 255 / 0.015) 0 6px, transparent 6px 14px), var(--panel-2);
+}
+
+.pass-cover h2 {
+  margin: 0 0 12px;
+  font: 700 clamp(30px, 3.6vw, 46px) / 1.05 var(--sans);
+  letter-spacing: -0.03em;
+}
+
+.pass-cover .section-lede {
+  margin-bottom: 22px;
+}
+
+.pass-photo {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 0 0 22px;
+}
+
+.pass-photo-art {
+  flex: none;
+  width: 112px;
+  height: 112px;
+}
+
+.pass-photo .speech {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px 8px 8px 0;
+  background: var(--bg);
+  color: var(--muted);
+  font: 12px/1.4 var(--mono);
+}
+
+.pass-eye {
+  animation: pass-blink 4.5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes pass-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+.pass-stamps {
+  grid-area: stamps;
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 30px 28px 10px;
+  list-style: none;
+}
+
+.pass-slot {
+  position: relative;
+  padding: 18px 140px 18px 56px;
+  border: 1px dashed var(--line-2);
+  border-radius: 14px;
+  background: rgb(7 9 12 / 0.4);
+  transition: border-color 0.2s;
+}
+
+.pass-slot:hover {
+  border-color: rgb(91 227 194 / 0.4);
+}
+
+.pass-n {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  color: var(--muted);
+  font: 12px/1 var(--mono);
+}
+
+.pass-slot h3 {
+  margin: 1px 0 6px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.pass-slot p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.pass-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.pass-chips li {
+  padding: 2px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  color: var(--text);
+  font: 12px var(--mono);
+}
+
+/* The stamp: a ghost ring while the visa is empty, pressed in teal once it is earned. */
+.pass-ink {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  display: grid;
+  place-items: center;
+  width: 100px;
+  height: 100px;
+  margin-top: -50px;
+  border: 3px double var(--line-2);
+  border-radius: 50%;
+  color: var(--muted);
+  font: 600 12px/1.15 var(--mono);
+  letter-spacing: 0.08em;
   text-align: center;
-  white-space: normal;
+  text-transform: uppercase;
+  opacity: 0.35;
+  transform: rotate(-12deg);
+  pointer-events: none;
 }
 
-.apply .home-section {
-  padding-top: clamp(28px, 4vw, 56px);
+.pass-slot:nth-child(2) .pass-ink {
+  border-radius: 14px;
+  transform: rotate(8deg);
 }
 
-.home-nav-apply[aria-current="page"] {
-  text-decoration: underline wavy 2px;
+.pass-slot.is-stamped {
+  border-style: solid;
+  border-color: rgb(91 227 194 / 0.5);
 }
 
+.pass-slot.is-stamped .pass-n {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+  color: var(--teal);
+}
 
-@media (max-width: 860px) {
-  .apply-hero {
-    grid-template-columns: minmax(0, 1fr);
+.pass-slot.is-stamped .pass-ink {
+  border-color: var(--teal);
+  color: var(--teal);
+  opacity: 1;
+  box-shadow: 0 0 24px rgb(91 227 194 / 0.25), inset 0 0 18px rgb(91 227 194 / 0.15);
+  animation: pass-slam 0.45s cubic-bezier(0.2, 1.8, 0.4, 1) both;
+}
+
+@keyframes pass-slam {
+  0% {
+    opacity: 0;
+    transform: scale(2.2) rotate(-30deg);
   }
-
-  .apply-stage {
-    aspect-ratio: 4 / 3.4;
-    transform: none;
+  60% {
+    opacity: 0.95;
+    transform: scale(0.94) rotate(-12deg);
+  }
+  100% {
+    opacity: 1;
   }
 }
 
-/* --- The suggestion box: a cardboard crate with a slot, and a slip to write on --- */
+.pass-check {
+  grid-area: check;
+  padding: 10px 28px 28px;
+}
+
+.pass-check label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font: 12px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pass-check-row {
+  display: flex;
+  gap: 10px;
+}
+
+.pass-check input {
+  flex: 1;
+}
+
+.pass-check-out {
+  min-height: 1.4em;
+  margin: 10px 0 0;
+  color: var(--teal);
+  font-size: 15px;
+}
+
+.pass-fine {
+  grid-area: fine;
+  margin: 0;
+  padding: 14px 28px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* --- The idea box: a sealed drop slot, and a slip to write on --- */
 .idea-box {
   display: grid;
-  grid-template-columns: minmax(160px, 0.45fr) minmax(0, 1fr);
+  grid-template-columns: minmax(160px, 0.4fr) minmax(0, 1fr);
   align-items: center;
-  gap: 18px var(--gutter);
+  gap: 24px clamp(24px, 4vw, 64px);
 }
 
 .idea-crate {
   position: relative;
-  aspect-ratio: 1.15;
-  max-width: 260px;
   justify-self: center;
   width: 100%;
-  border: 4px solid var(--ink);
-  border-radius: 10px;
-  background:
-    linear-gradient(90deg, transparent 47%, rgb(217 194 138 / 0.9) 47% 53%, transparent 53%),
-    linear-gradient(#c79b6a, var(--kraft));
-  box-shadow: 10px 10px 0 var(--ink);
-  transform: rotate(-3deg);
+  max-width: 240px;
+  aspect-ratio: 1.1;
+  border: 1px solid var(--line-2);
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 30%, rgb(91 227 194 / 0.1), transparent 60%), linear-gradient(180deg, var(--panel-2), var(--panel));
+  overflow: hidden;
 }
 
 .idea-slot {
   position: absolute;
-  top: 18%;
-  left: 22%;
-  right: 22%;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--ink);
-  box-shadow: inset 0 3px 0 rgb(0 0 0 / 0.6);
+  top: 24%;
+  left: 20%;
+  right: 20%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--line-2), 0 0 18px rgb(91 227 194 / 0.35);
 }
 
 .idea-label {
   position: absolute;
-  left: 50%;
-  bottom: 18%;
-  padding: 4px 10px 2px;
-  border: 3px solid var(--red);
-  color: var(--red);
-  font-family: var(--stencil);
-  font-size: 18px;
-  white-space: nowrap;
+  bottom: 20%;
+  left: 0;
+  right: 0;
+  color: var(--teal);
+  font: 600 12px var(--mono);
+  letter-spacing: 0.2em;
+  text-align: center;
   text-transform: uppercase;
-  transform: translateX(-50%) rotate(-4deg);
 }
 
-/* A slip slides down into the slot once an idea is posted. */
 .idea-slip-in {
   position: absolute;
-  top: calc(18% - 70px);
+  top: calc(24% - 48px);
   left: 30%;
   right: 30%;
-  height: 76px;
-  border: 2px solid var(--ink);
-  background: repeating-linear-gradient(0deg, transparent 0 9px, rgb(28 24 20 / 0.15) 9px 10px), #fff;
-  clip-path: inset(0 0 0 0);
-  animation: idea-post 1.1s cubic-bezier(0.5, 0, 0.7, 1) forwards;
+  height: 52px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: repeating-linear-gradient(180deg, transparent 0 8px, rgb(139 151 166 / 0.4) 8px 9px), var(--panel-2);
+  animation: idea-post 0.9s ease-in both;
 }
 
 @keyframes idea-post {
   0% {
-    transform: translateY(-30px) rotate(-4deg);
+    transform: translateY(-20px);
     opacity: 0;
   }
-  25% {
-    transform: translateY(0) rotate(0);
+  30% {
+    transform: translateY(0);
     opacity: 1;
-    clip-path: inset(0 0 0 0);
   }
   100% {
-    transform: translateY(76px);
-    clip-path: inset(0 0 100% 0);
-    opacity: 1;
+    transform: translateY(56px);
+    opacity: 0;
   }
 }
 
-.idea-desk h2 {
-  margin: 0 0 8px;
-  font-family: var(--stencil);
-  font-size: clamp(30px, 3.6vw, 48px);
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.idea-desk h2::after {
-  content: none;
+.idea-form {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
 }
 
 .idea-slip {
-  display: block;
   width: 100%;
-  min-height: 120px;
-  padding: 12px 14px;
-  border: 3px solid var(--ink);
-  border-radius: 4px;
-  background: repeating-linear-gradient(0deg, transparent 0 27px, rgb(28 24 20 / 0.1) 27px 28px), #fffdf6;
-  background-attachment: local;
-  box-shadow: 6px 6px 0 var(--ink);
-  color: var(--ink);
-  font: 500 19px/28px var(--label);
   resize: vertical;
 }
 
 .idea-foot {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin: 14px 0 0;
-  font-size: 16px;
-  font-weight: 700;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted);
+  font: 12px var(--mono);
 }
 
 .idea-foot .is-short {
-  color: var(--red);
+  color: #ff8a7d;
 }
 
 .idea-out {
   min-height: 1.4em;
-  margin: 8px 0 0;
-  font-size: 18px;
-  font-weight: 700;
+  margin: 0;
+  color: var(--teal);
+  font-size: 14px;
 }
 
-@media (max-width: 760px) {
+/* --- Narrow screens --- */
+@media (max-width: 1000px) {
+  .boarding-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .gift-tickets {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 560px;
+  }
+}
+
+@media (max-width: 860px) {
+  .pass-book {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "cover"
+      "stamps"
+      "check"
+      "fine";
+  }
+
+  .pass-cover {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
   .idea-box {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -256,9 +1205,94 @@
   }
 }
 
+@media (max-width: 620px) {
+  .boarding {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .boarding-stub {
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: none;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-right: 0;
+    border-bottom: 1px dashed var(--line-2);
+  }
+
+  .boarding-stub strong {
+    justify-self: start;
+    font-size: 28px;
+  }
+
+  .boarding-main {
+    padding: 18px 16px 20px;
+  }
+
+  .boarding-verify form {
+    flex-direction: column;
+  }
+
+  .boarding-steps li .btn {
+    flex: 1;
+  }
+
+  .pass-stamps,
+  .pass-check {
+    padding-inline: 16px;
+  }
+
+  .pass-cover {
+    padding: 24px 18px;
+  }
+
+  .pass-slot {
+    padding: 16px 16px 104px 52px;
+  }
+
+  .pass-ink {
+    top: auto;
+    bottom: 12px;
+    right: 14px;
+    width: 80px;
+    height: 80px;
+    margin-top: 0;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .boarding-tasks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pass-check-row {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 400px) {
+  .gift-ticket {
+    grid-template-columns: minmax(0, 1fr) 60px;
+  }
+
+  .gift-stub b {
+    font-size: 13px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .boarding-live,
+  .boarding-task-mark:not(:disabled),
+  .seat-meter-left,
+  .pass-eye,
+  .pass-slot.is-stamped .pass-ink,
   .idea-slip-in {
-    animation: none;
-    display: none;
+    animation: none !important;
+  }
+
+  .gift-ticket,
+  .boarding-task {
+    transition: none;
   }
 }
