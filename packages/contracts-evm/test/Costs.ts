@@ -119,20 +119,17 @@ describe("Costs", function () {
 
     // The whitelist's gifts: first class (croquettes, a box, a rat) and economy (croquettes, a rat).
     const gifts = await (await ethers.getContractFactory("WhitelistGifts")).deploy(
-      address, await rats.getAddress(), await cCroq.getAddress(), await cUsdc.getAddress(), whitelistParamsFromSpec().tiers, alice.address,
+      address, await rats.getAddress(), await cCroq.getAddress(), whitelistParamsFromSpec().tiers, alice.address,
     );
     const giftsAddress = await gifts.getAddress();
+    await (await dno.setGiver(giftsAddress)).wait();
     await (await rats.connect(alice).setGiver(giftsAddress)).wait();
     await (await croq.approve(await cCroq.getAddress(), 1_000)).wait();
     await (await cCroq.wrap(giftsAddress, 1_000)).wait();
-    await (await usdc.mint(alice.address, 10_000_000)).wait();
-    await (await usdc.connect(alice).approve(await cUsdc.getAddress(), 10_000_000)).wait();
-    await (await cUsdc.connect(alice).wrap(giftsAddress, 10_000_000)).wait();
     const tree = StandardMerkleTree.of<[string, number]>([[bob.address, 0], [carol.address, 2]], ["address", "uint8"]);
     await (await gifts.connect(alice).setRoot(tree.root, (await time.latest()) + 86_400)).wait();
-    const box = await fhevm.createEncryptedInput(address, giftsAddress).add8(1).encrypt();
-    await measure("WhitelistGifts.claim (first class)", gifts.connect(bob).claim(0, tree.getProof(0), box.handles[0]!, box.inputProof, 77n));
-    await measure("WhitelistGifts.claim (economy)", gifts.connect(carol).claim(2, tree.getProof(1), ethers.ZeroHash, "0x", 78n));
+    await measure("WhitelistGifts.claim (first class)", gifts.connect(bob).claim(0, tree.getProof(0), 77n));
+    await measure("WhitelistGifts.claim (economy)", gifts.connect(carol).claim(2, tree.getProof(1), 78n));
 
     // The rats' tricks: a shield, a jam, a sniff with its rebate, and shakes through the guard.
     const tricks = await (await ethers.getContractFactory("RatTricks")).deploy(

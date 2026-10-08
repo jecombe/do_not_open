@@ -200,7 +200,8 @@ export const holderCopy = (mine: boolean) => (mine ? t("holder.you") : t("holder
 /** How many boxes are sold, as far as the milestones say. */
 export function saleCopy(c: CollectionInfo): string {
   const { milestones, reached, soldOut } = c.sale;
-  if (soldOut) return t("sale.soldOut", { max: c.maxSupply });
+  // The sale stops at its last milestone: the rest of the supply is the whitelist's gifts.
+  if (soldOut) return t("sale.soldOut", { max: milestones[milestones.length - 1] ?? c.maxSupply });
   if (reached === 0) return t("sale.fewerThan", { n: milestones[0] ?? c.maxSupply });
   return t("sale.moreThan", { n: milestones[reached - 1]! });
 }

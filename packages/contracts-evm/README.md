@@ -1,19 +1,28 @@
 # @dno/contracts-evm
 
-Hardhat project built on the official Zama template. Eleven contracts, and a reusable base:
+Hardhat project built on the official Zama template. Its contracts, and a reusable base:
 
 - **`DoNotOpenConfig`** — the game's numbers, read from `packages/game-spec/spec.json`
   at deploy (`lib/specParams.ts`), plus the plaintext rule that turns a revealed seed
-  into state, traits and score. Stores the keccak256 of the spec it was built from.
+  into state, traits and score. Stores the keccak256 of the spec it was built from, and the
+  sale's milestones (`milestones()`: the last one is the sale's cap; `giftBoxes()`, what it
+  leaves under `maxSupply`, the whitelist's gift boxes). `DoNotOpen` reads its supply, batch
+  size and milestones here (`config()`).
 - **`ConfidentialERC721`** (`contracts/confidential/`) — the base of a Confidential ERC-721:
   encrypted owners, transfers that never revert on ownership, discovery through the
   holder's own receipts. Any collection can inherit it. See
   [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNERS.md).
-- **`DoNotOpen`** — a Confidential ERC-721 and all FHE logic of the boxes. 10,000 boxes; who
-  holds them and how many were sold are encrypted. Paid in cUSDC. Nobody may read the
-  revenue, the owner included; `withdraw` pays it out at most once a week. Every shake passes
-  its encrypted pick and roll through the `guard` the owner sets (`setGuard`, an `IShakeGuard`:
-  `RatTricks`), allowed to it for the transaction only.
+- **`DoNotOpen`** — a Confidential ERC-721 and all FHE logic of the boxes. 10,000 boxes: 9,000
+  for sale (the last milestone), 1,000 for the whitelist's gifts; who holds them and how many
+  were sold are encrypted. Paid in cUSDC. Nobody may read the revenue, the owner included;
+  `withdraw` pays it out at most once a week. Every shake passes its encrypted pick and roll
+  through the `guard` the owner sets (`setGuard`, an `IShakeGuard`: `RatTricks`), allowed to it
+  for the transaction only. `gift(to)` mints one box free for `to`, for the `giver` only
+  (`setGiver`: `WhitelistGifts`), out of the boxes the sale leaves (`giftsMinted`,
+  `BoxGifted`); no payment, no milestone. `tokenURI` asks the `metadata` contract the owner
+  sets (`setMetadata`, an `ITokenURIs`).
+- **`BoxMetadata`** — the boxes' token URIs, out of `DoNotOpen` for size: `baseURI` plus the
+  token id, the base set by its owner (`setBaseURI`).
 - **`UsdcRamp`** — ETH in, USDC or cUSDC out, through a public pool, for a small fee.
 - **`Croq`** — CROQ, a plain ERC-20 with 0 decimals. 20,000,000 minted once in the
   constructor; no mint function, no owner.
@@ -86,14 +95,14 @@ Hardhat project built on the official Zama template. Eleven contracts, and a reu
 
 - **`WhitelistGifts`** — the whitelist's gifts, collected once per wallet on the frozen list.
   The owner sets a Merkle `root` of (wallet, tier) and `closesAt` with `setRoot` (correctable
-  until the first claim); `claim(tier, proof, quantity, inputProof, ratSeed)` sends the wallet
-  an encrypted draw of cCROQ in its tier's range (`rem(randEuint16, span) + croqMin`, readable by
-  the wallet only), buys it a box from `DoNotOpen` with the contract's cUSDC (one id, `quantity`
-  encrypted by the wallet for `DoNotOpen` with this contract as the input's user) and sends it
-  on, and adopts its rat through `Rats.gift`. `giftOf(account)` returns what it got, the
-  croquettes as a handle. `sweep` returns what is left once `closesAt` passed. Tiers from the
-  spec's `whitelist` section (`whitelistParamsFromSpec`, which checks they cover ranks 1 to
-  `places`). Never writes to `DoNotOpen` beyond buying and sending its gift boxes.
+  until the first claim); `claim(tier, proof, ratSeed)` sends the wallet an encrypted draw of
+  cCROQ in its tier's range (`rem(randEuint16, span) + croqMin`, readable by the wallet only),
+  has `DoNotOpen.gift` mint it a box free, and adopts its rat through `Rats.gift` (the app draws
+  an unadopted seed at random). `giftOf(account)` returns what it got, the croquettes as a
+  handle. `sweep` returns the cCROQ left once `closesAt` passed. Tiers from the spec's
+  `whitelist` section (`whitelistParamsFromSpec`, which checks they cover ranks 1 to `places`;
+  `milestonesFromSpec` checks the boxes the sale leaves match the box tiers' seats). Never
+  writes to `DoNotOpen` beyond `gift`.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -141,8 +150,8 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `FleaMarket.buy` + `finalizePurchase` (box) | ~546k + ~855k | ~0.71M + ~1.37M |
 | `FleaMarket.makeOffer` | ~543k | ~0.74M |
 | `FleaMarket.acceptOffer` (rat) | ~677k | ~2.41M |
-| `WhitelistGifts.claim`, first class (croquettes, box, rat and its power) | ~1.85M | ~3.66M |
-| `WhitelistGifts.claim`, economy (croquettes, rat and its power) | ~741k | ~1.57M |
+| `WhitelistGifts.claim`, first class (croquettes, a free box, rat and its power) | ~1.01M | ~1.68M |
+| `WhitelistGifts.claim`, economy (croquettes, rat and its power) | ~740k | ~1.57M |
 | `RatTricks.trick` (first on a box / box already tricked) | ~1.06M / ~881k | ~2.27M / ~2.25M |
 | `RatTricks.sniff` (tricked box, power-1 rebate) | ~1.79M | ~4.27M |
 
@@ -152,7 +161,7 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 `StudioPacks` has no FHE either: `buy` takes ~115k gas the first time (~63k after), and the
 contract ~641k to deploy (Hardhat).
 
-Deployed size: `DoNotOpen` 24,553 bytes (limit 24,576), `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
+Deployed size: `DoNotOpen` 24,442 bytes (limit 24,576; the token URIs live in `BoxMetadata`, 1,861, and the rules' views in `DoNotOpenConfig`, 2,968), `WhitelistGifts` 4,876, `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
 12,377. To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
@@ -187,8 +196,10 @@ through Hardhat's provider, and `hardhat deploy --maxfee` / `--priorityfee` the 
 midway; running it again resumes it, since every step checks what is already done (but a
 `Pantry` deployed in an interrupted run is not funded again: `Pantry.fund` it by hand).
 
-`pnpm deploy:<net>` runs three scripts. `deploy/deploy.ts` deploys the config and
-`DoNotOpen` (with the spec's milestones), paid in Zama's USDCMock / cUSDCMock on Sepolia and
+`pnpm deploy:<net>` runs three scripts. `deploy/deploy.ts` deploys the config (with the spec's
+milestones), `DoNotOpen` and `BoxMetadata` (base URI `BOXES_BASE_URI`, by default
+`https://api.do-not-open.app/metadata/`, set on the collection with `setMetadata`, or the call
+printed when the collection owner is another key), paid in Zama's USDCMock / cUSDCMock on Sepolia and
 in local test tokens elsewhere. `deploy/economy.ts` then deploys `Croq`, `ConfidentialCroq`
 and `Pantry`, makes the Pantry a trusted reader of `DoNotOpen` (or prints the call when the
 collection owner is another key), approves and calls `Pantry.fund` with the game reserve
@@ -234,10 +245,10 @@ market their operator on the boxes (`setOperator(market, until)`) or approves it
 needed (a year for the boxes).
 
 `deploy/whitelist.ts` deploys `WhitelistGifts` with the spec's tiers, owned by
-`COLLECTION_OWNER` (or the deployer), makes it the rats' `giver` (or prints the call), and funds
-it: the most the tiers can draw (425,000 cCROQ, wrapped from the deployer's CROQ when it holds
-them) and one mint price per gift box (1,000 boxes: test USDC minted and wrapped on a test
-network, printed as a to-do on mainnet). It runs after `rats.ts`. When the list closes, save
+`COLLECTION_OWNER` (or the deployer), makes it the `giver` of `DoNotOpen` and of `Rats` (or prints
+the calls), and funds it with the most the tiers can draw (425,000 cCROQ, wrapped from the
+deployer's CROQ when it holds them). The boxes and the rats cost nothing: both are minted free.
+It runs after `rats.ts`. When the list closes, save
 the API's `GET /v1/allowlist/gifts?token=` answer and run
 `npx hardhat --network <net> dno:whitelist-root --tree <file>`: it checks the tree, sets the root
 with `closesAt` `claimDays` (30) from now, and the same file goes to the API

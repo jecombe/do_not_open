@@ -7,24 +7,32 @@ contract, and it must not go to mainnet before one has.**
 Scope: `ConfidentialERC721.sol`, `DoNotOpen.sol` and `DoNotOpenConfig.sol` in this
 repository, the hidden-owner version (10,000 boxes, owners and sold count encrypted; see
 [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)), deployed on Sepolia at
-`0x7b246695614Cc49A500bC8057345181689c82d52` (with the shake guard, redeployed on 2026-10-07
-at block 11862305; the version before it, with the security fixes and decoy transfers, at
-`0x816a39b04e0672B4746A5B696E14145F4F852d37`, 2026-10-03, block 11836238); the croquette
-contracts `Croq.sol`, `ConfidentialCroq.sol` and `Pantry.sol` (section 9, a fresh economy on
-2026-10-07: `Pantry` at `0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F`) and `LiquidityLocker.sol`,
+`0x6e3B93f16D108a6a4A415D119d8374C2490954d1` (with the whitelist's free gift boxes and its
+token URIs in `BoxMetadata.sol` at `0x2Be2563562f0e6Fb5B31a85322ab4E0411df2645`, redeployed on
+2026-10-08 at block 11869550; before it, with the shake guard,
+`0x7b246695614Cc49A500bC8057345181689c82d52`, 2026-10-07, block 11862305; and the version with
+the security fixes and decoy transfers, `0x816a39b04e0672B4746A5B696E14145F4F852d37`,
+2026-10-03, block 11836238); the croquette contracts `Croq.sol`, `ConfidentialCroq.sol` and
+`Pantry.sol` (section 9, a fresh economy on 2026-10-08: `Pantry` at
+`0xe867E3009C61B943776823a97b3C66A89Bb66a23`; on 2026-10-07 it was
+`0x4e62259E4FFb05224b8Ef64dD4E45826651EB72F`) and `LiquidityLocker.sol`,
 which holds the CROQ market's Uniswap V3 position (section 10); `Rats.sol` and `RatPantry.sol`,
 the studio's adopted rats and their croquettes (at `0x441F9fe3B8333515Bc7B295E06C14948057b2cF6`
-and `0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450` since 2026-10-07, with the encrypted powers;
-before them `0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264` and
+since 2026-10-07, with the encrypted powers, and `0xa8C6850eB99f89aB1DA9714Cd073B454Bb6E1850`,
+the `RatPantry` of the 2026-10-08 economy, `0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450` on
+2026-10-07; before them `0x138f8F6aae87f3762C9d03Cbad3048Bb3EF31264` and
 `0x1334d72fC60cBedcF409d6583F0Ec009c285E75B` on 2026-10-05, block 11845258, with the caps, and
 the first pair, without them, at `0xd4f8Df0F14Ced442077762cb81e843656BAc3856` and
 `0x9c83C67e690CF8fb6CFaFE8f1DA5221D20520a0A` on 2026-10-04); `RatTricks.sol` and
 `IShakeGuard.sol`, the rats' sniffs, shields and jams (section 14, at
+`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f` since 2026-10-08, before it
 `0x44B2006E63Af469e5470eD5Fc2A6307117d22d0D`); `WhitelistGifts.sol` (section 13, at
+`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a` since 2026-10-08, before it, buying its boxes,
 `0xD244389bF81C38803c94957a1e6B5694eEeA678b`); `StudioPacks.sol` (at
 `0x41596e7311A7408BC1871B9b93be82ef6DDfB5f6`; before it `0x672cf76a68d4f181387B59caA1813eC425c1354C`
 on 2026-10-04, block 11842636); `FleaMarket.sol`, the players' marketplace for boxes, cats and
-rats (section 12; at `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` since 2026-10-07, before it
+rats (section 12; at `0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92` since 2026-10-08, before it
+`0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` on 2026-10-07 and
 `0xb5c799bF626e70DcE6804BDef06199661cDc8665` on 2026-10-05, block 11849253); plus the parts of
 the adapter and the metadata pipeline that could leak or mislead. Since 2026-10-07 the deployer
 `0x590891F269720001435004A1089cAB5b2c20029A` owns every contract (before, the collection's owner
@@ -45,7 +53,7 @@ mainnet), **Not done** (a check nobody has run).
 | O3 | `DoNotOpenConfig` does not check that the maximum score fits 16 bits | Low (deploy-time) | constructor |
 | O4 | `DoNotOpenConfig` does not check that trait offsets are distinct and byte-aligned | Low (deploy-time) | constructor |
 | O5 | Single-step `Ownable`; the owner is an externally owned account on Sepolia | Low on testnet, High on mainnet | admin |
-| O6 | `setBaseURI` can repoint every token's metadata, with no freeze (the images are on Arweave for good) | Medium (trust) | admin |
+| O6 | `BoxMetadata.setBaseURI` (and `DoNotOpen.setMetadata`, which swaps the whole token URI contract) can repoint every token's metadata, with no freeze (the images are on Arweave for good) | Medium (trust) | admin |
 | O7 | No ERC-4906 `MetadataUpdate` on reveal: marketplaces keep the sealed image | Low | `finalize` |
 | O8 | Anyone can take up an open duel with a box they do not hold: it is held up until the proof sends it back to the shelf | Low (griefing) | `acceptDuel`, `finalizeDuel` |
 | O9 | Mainnet relayer needs an API key behind a proxy: built (`apps/api`), the key and Zama's plan are not set yet | Blocker for mainnet | `apps/api` relayer proxy |
@@ -57,7 +65,7 @@ mainnet), **Not done** (a check nobody has run).
 | O15 | The owner can make any contract a trusted reader, and a malicious one could publish who holds a box | Medium (trust) | `setTrustedReader` |
 | O16 | `IConfidentialERC721` is a draft standard written here; no third party has reviewed it | Medium | `ConfidentialERC721` |
 | O17 | Anyone can send decoy transfers naming an address: its holder's discovery must decrypt every one | Low (UX) | `confidentialTransfer`, adapter `boxesOf` |
-| O18 | `DoNotOpen` is 24,553 bytes, 23 under the limit, compiled for size: the next feature does not fit | Low (maintenance) | build |
+| O18 | `DoNotOpen` is 24,442 bytes, 134 under the limit, compiled for size: the next feature has to move logic out first | Low (maintenance) | build |
 | O19 | One public proof of holding lets anyone follow a box to its next holders, unless its holder sends decoys (optional) | Low (privacy, opt-in fix) | `ConfidentialERC721` transfers |
 | O20 | The app feeds only boxes the caller holds: the calldata and `MealServed` name them (claims are fixed: they name whole windows of ten ids) | Medium (privacy) | app, `Pantry.feed` |
 | O21 | Anyone can overwrite an entanglement proposal and keep a pair from being linked | Low (griefing) | `proposeEntangle` |
@@ -69,12 +77,13 @@ mainnet), **Not done** (a check nobody has run).
 | O28 | The `RatPantry` has no owner and no refill but a transfer: once its 500,000 CROQ are paid out (about 167 days with all 1,000 rats claiming 3 a day), rats earn nothing (`claim` reverts `PantryEmpty` while it is empty, so earned days wait; it pays what is left when low) | Low (UX) | `RatPantry.claim` |
 | O29 | A box with a pending opening can be listed and sold on the flea market as sealed, its seed already public (extends O24) | Low | `FleaMarket.list`, `DoNotOpenHooks` |
 | O30 | X boarding passes: the follow, like, reply and repost are declared, not checked, and anyone can make many X accounts (Discord accounts too, past 30 days; a member can leave after boarding); the pass token is a bearer kept in the browser (lost with it, moved by a new post) | Low (fairness) | `apps/api` `XPasses` |
-| O31 | A whitelist gift box's first holder is public (the claim names the tier, the box id goes to the wallet) | Low (privacy) | `WhitelistGifts.claim` |
+| O31 | A whitelist gift box's first holder is public (the claim names the tier, `BoxGifted` names the wallet) | Low (privacy) | `WhitelistGifts.claim`, `DoNotOpen.gift` |
 | O32 | The whitelist is frozen off-chain: the operator builds the Merkle tree from the API's ranking, and players trust it to match the published rules (the root can be corrected until the first claim) | Medium (trust) | `WhitelistGifts.setRoot`, `GET /v1/allowlist/gifts` |
 | O33 | `Rats.giver` adopts free rats outside the paid caps, up to `maxGiftRats` (1,000): with the 1,000 paid rats, the `RatPantry`'s 500,000 CROQ last about half as long | Low (economy) | `Rats.gift`, `RatPantry` |
 | O34 | The owner sets `DoNotOpen.guard`: a malicious guard could rewrite every shake's result, or be made a trusted reader and publish holders | Medium (trust) | `setGuard`, `RatTricks.filter` |
 | O35 | Rat tricks leak a little: `TrickPlayed` and `Sniffed` name the rat, the box and the player; a jammed holder learns it; a sniffer who compares a shielded trait before and after the shield ends sees it changed | Low (privacy) | `RatTricks` |
 | O36 | A rat's seller keeps reading its power after the sale (an ACL grant is never taken back) | Low (game) | `Rats.allowPower` |
+| O37 | The owner sets `DoNotOpen.giver`: pointed at itself, it could mint the boxes kept for the gifts (at most `maxSupply` minus the last milestone, 1,000) free. The same trust as setting the whitelist's root (O32); ownership should be a multisig before mainnet (O5) | Medium (trust) | `setGiver`, `DoNotOpen.gift` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -214,15 +223,15 @@ clear values and a KMS proof.
 | Unbounded loops | Pass | Mint loops at most `maxPerTx` (10) ids; `claimEarnings` at most `MAX_CLAIM` (10) boxes; score loops are fixed at 3 and 5 |
 | Casts | Pass | Token ids run past 10,000 (empty ids) and are stored as `uint32` in requests and duels: 4 billion ids, 400 million mints. `buildBoxSpec` accepts any 32-bit id |
 | HCU stays under the limit | Pass | Largest in `DoNotOpen`: a 10-id mint ~3.3M and `acceptDuel` ~2.8M of 20M. Tests pin the budgets |
-| **O18. Contract size** | Open | 24,553 bytes deployed, limit 24,576 (2026-10-07: the shake guard fit by dropping the `revealed` and `vetCertified` shortcuts, making `NOT_YOURS`, `MAX_CLAIM` and `DUEL_LIFETIME` private and folding the four `_publish` overloads into one on `bytes32`), after moving the `onlySealed` check into `_requireSealed`, dropping `revenueHandle` and the public withdrawal clock for the 2026-10-03 fixes, and compiling `DoNotOpen` alone with the optimizer at 1 run (size over gas) to fit `confidentialTransferIf`. The other contracts stay at 200 runs. Move logic to a library or a trusted-reader contract before the next feature |
+| **O18. Contract size** | Open | 24,442 bytes deployed, limit 24,576 (2026-10-08: the free gift path, 678 bytes, fit by moving the token URIs to `BoxMetadata`, the `milestones`, `maxSupply` and `maxPerTx` views to `DoNotOpenConfig`, and sharing one `_mintBox` helper between `mint` and `gift`; 2026-10-07: the shake guard fit by dropping the `revealed` and `vetCertified` shortcuts, making `NOT_YOURS`, `MAX_CLAIM` and `DUEL_LIFETIME` private and folding the four `_publish` overloads into one on `bytes32`), after moving the `onlySealed` check into `_requireSealed`, dropping `revenueHandle` and the public withdrawal clock for the 2026-10-03 fixes, and compiling `DoNotOpen` alone with the optimizer at 1 run (size over gas) to fit `confidentialTransferIf`. The other contracts stay at 200 runs. Move logic to a library or a trusted-reader contract before the next feature |
 
 ## 6. Administration and trust
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Owner powers are limited to `withdraw`, `setTrustedReader` and `setBaseURI` | Pass | Test: "lets only the owner withdraw the revenue, trust readers and set the base URI". The owner cannot mint for free, change rules, pause, or read a seed, an owner or the revenue; it learns the revenue only as what `withdraw` pays, at most once a week. `setTrustedReader` is a confidentiality power: see O15 |
+| Owner powers are limited to `withdraw`, `setTrustedReader`, `setGuard`, `setMetadata` and `setGiver` | Pass | Test: "lets only the owner withdraw the revenue, trust readers and point the token URIs". The owner cannot mint for free itself (only the `giver` it sets can, up to the boxes the sale leaves: O37), change rules, pause, or read a seed, an owner or the revenue; it learns the revenue only as what `withdraw` pays, at most once a week. `setTrustedReader` is a confidentiality power: see O15 |
 | **O5. Ownership** | Open | `Ownable` is single-step, and on Sepolia the owner is the deployer's hot key. For mainnet: `Ownable2Step` and a multisig |
-| **O6. Metadata control** | Partly mitigated | `setBaseURI` can be called at any time. The images are content-addressed: the API stores each sealed box and each opened cat on Arweave (`ArchiveImages`, free through Turbo, signed by the collection's `ARWEAVE_KEY`) and the metadata links them there, so a repointed JSON cannot change a stored picture, and anyone can redraw it from public facts with `@dno/generator`. The JSON stays live on the API because it changes (opening, duels, vet, entanglement). Left: a one-way freeze of the base URI |
+| **O6. Metadata control** | Partly mitigated | `BoxMetadata.setBaseURI` and `DoNotOpen.setMetadata` can be called at any time. The images are content-addressed: the API stores each sealed box and each opened cat on Arweave (`ArchiveImages`, free through Turbo, signed by the collection's `ARWEAVE_KEY`) and the metadata links them there, so a repointed JSON cannot change a stored picture, and anyone can redraw it from public facts with `@dno/generator`. The JSON stays live on the API because it changes (opening, duels, vet, entanglement). Left: a one-way freeze of the base URI |
 | **O7. Metadata refresh** | Open | Emit ERC-4906 `MetadataUpdate(tokenId)` when an opening is finalised so marketplaces re-fetch the image |
 | The contract is not upgradeable | Accepted | A bug cannot be patched, and seeds in a broken deployment stay sealed forever. The config is immutable too |
 | Rules are verifiable | Pass | `specHash` on-chain equals `keccak256(spec.json)`. Test: "records the hash of the spec it was built from" |
@@ -398,9 +407,10 @@ Sepolia yet. 31 tests in `test/FleaMarket.ts`, on the FHEVM mock, against the re
 ## 13. The whitelist's gifts: WhitelistGifts and Rats.gift
 
 `WhitelistGifts.sol` gives each wallet on the frozen whitelist its tier's gift once (see
-[FLOWS.md](FLOWS.md#whitelist-gifts)). Not deployed yet: it opens on mainnet. 8 tests in
+[FLOWS.md](FLOWS.md#whitelist-gifts)). Not deployed yet: it opens on mainnet. 10 tests in
 `test/WhitelistGifts.ts`, on the FHEVM mock, against the real `DoNotOpen`, `ConfidentialCroq`
-and `Rats`; the giver role in `test/Rats.ts`.
+and `Rats`; the giver roles in `test/Rats.ts` and `test/DoNotOpen.ts` ("stops the sale at the
+last milestone and keeps the rest of the supply for the gifts").
 
 | Check | Status | Evidence |
 | --- | --- | --- |
@@ -408,12 +418,13 @@ and `Rats`; the giver role in `test/Rats.ts`.
 | Claims only between the root and `closesAt` | Pass | `NotOpen` before the root and after `closesAt`. Same test |
 | The root cannot change once someone claimed | Pass | `setRoot` reverts `RootAlreadySet` once `claimedCount` is not 0; owner only. Tests: "waits for the root, and lets the owner correct it until the first claim", and the refusals test |
 | The croquettes stay in the tier's range and readable by the wallet only | Pass | `rem(randEuint16, span) + croqMin`; the constructor refuses a span over 16 bits. The amount is allowed by the cCROQ transfer to the wallet and the contract only. Tests: "gives first class an encrypted draw…", "gives business a box and no rat…", "refuses tiers whose range does not fit the draw" |
-| The gift box is paid for, and lands with the wallet | Pass | `DoNotOpen.mint` pulls the price from the contract's cUSDC (operator set in the constructor), then `confidentialTransfer` to the wallet. Test: "gives first class…" checks the owner and the wallet's untouched cUSDC |
+| The gift box is minted free, out of the sale's cap, and lands with the wallet | Pass | `DoNotOpen.gift(wallet)`: owner the wallet, a fresh encrypted seed, no payment, no revenue, `_sold` and the milestones untouched, `BoxGifted`. Tests: "gives first class…" checks the owner and the wallet's untouched cUSDC; "mints the boxes out of the ones the sale leaves, even once the sale is sold out" |
+| Only the giver mints gift boxes, never past `maxSupply` minus the last milestone | Pass | `NotGiver`, `TooManyBoxes` (`giftsMinted`, public); `setGiver` owner only; the config refuses milestones past `maxSupply`, the deploy refuses a spec whose gift boxes differ from the tiers' seats. Tests: "never mints more boxes than the sale leaves, and only for its giver", "stops the sale at the last milestone…" |
 | Only the giver adopts free rats, outside the paid caps and the wallet limit, up to `maxGiftRats` | Pass | `NotGiver`, `SoldOut`, `AlreadyAdopted`; `setGiver` owner only. Test: "lets only the giver adopt free rats…" |
 | Re-entrancy | Pass | `claimed` is set before the calls; the callees are the collection's own contracts (`ConfidentialCroq`, `DoNotOpen`, `Rats`, which mints with `_mint`, no receiver hook) |
 | The owner takes back what is left only once claims are over | Pass | `sweep` reverts `StillOpen` before `closesAt`. Test: "gives back what is left to the owner once claims are over" |
-| A short contract gives 0 croquettes or no box, silently | Accepted | ERC-7984 semantics. The deploy script funds the most the tiers can draw (425,000 cCROQ) and one mint price per box |
-| HCU | Pass | First class (draw, cCROQ transfer, box mint and transfer, rat): ~3.4M of 20M. Test: "stays under the HCU limit for the biggest gift" |
+| A short contract gives 0 croquettes, silently | Accepted | ERC-7984 semantics. The deploy script funds the most the tiers can draw (425,000 cCROQ). The box can no longer come back empty: it is not bought |
+| HCU | Pass | First class (draw, cCROQ transfer, free box, rat and its power): ~1.7M of 20M. Test: "stays under the HCU limit for the biggest gift" |
 | The gift box's first holder is public (O31) | Accepted | Documented in `HIDDEN_OWNERS.md` §5c |
 | Static analysis, fuzzing | Not done | |
 

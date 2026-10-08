@@ -28,6 +28,11 @@ export async function project(e: ProtocolEvent, snapshots: Snapshots, tx: Projec
         if (!(await tx.box(id))) await tx.saveBox(B.minted(id, e.block));
       }
       return;
+    case "BoxGifted":
+      // A whitelist gift: one box, free, out of the sale. Counted with the mints, never in a milestone.
+      await tx.saveMint({ firstTokenId: e.tokenId, count: 1, buyer: e.to, block: e.block, txHash: e.txHash });
+      if (!(await tx.box(e.tokenId))) await tx.saveBox(B.minted(e.tokenId, e.block));
+      return;
     case "MilestoneReached":
       return tx.saveMilestone({ index: e.index, sold: e.sold, block: e.block });
     case "ConfidentialTransfer":

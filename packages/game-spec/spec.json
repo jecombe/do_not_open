@@ -4,8 +4,8 @@
     "name": "DO NOT OPEN",
     "symbol": "DNO",
     "maxSupply": 10000,
-    "milestones": [100, 500, 1000, 2500, 5000, 7500, 9000, 10000],
-    "milestonesRule": "Who holds which box and how many boxes were sold are encrypted. Only these milestones of the sold count are announced, one by one; the last one is the cap and means sold out."
+    "milestones": [100, 500, 1000, 2500, 5000, 7500, 9000],
+    "milestonesRule": "Who holds which box and how many boxes were sold are encrypted. Only these milestones of the sold count are announced, one by one; the last one is the sale's cap and means sold out. The boxes between it and maxSupply are kept for the whitelist's gifts, minted free by WhitelistGifts and never sold: as many as the tiers with a box have seats."
   },
   "seed": {
     "bits": 64,
@@ -245,7 +245,7 @@
   },
   "whitelist": {
     "places": 1500,
-    "rule": "The mainnet whitelist has `places` seats, first come, first served. When it closes, the seated wallets that claimed a place are ranked by points (then by who claimed first) and frozen, with their tier, into a Merkle root in WhitelistGifts. Each wallet collects its tier's gift once, within claimDays: an encrypted number of cCROQ drawn at random in [croqMin, croqMax], which only that wallet can read, plus a free box, a free rat, or both. A seat held by an X account whose wallet never claimed a place gets no gift. The croquettes come from the treasury; the boxes are bought from the collection at the mint price; the rats are free seed rats outside the paid rats' cap.",
+    "rule": "The mainnet whitelist has `places` seats, first come, first served. When it closes, the seated wallets that claimed a place are ranked by points (then by who claimed first) and frozen, with their tier, into a Merkle root in WhitelistGifts. Each wallet collects its tier's gift once, within claimDays: an encrypted number of cCROQ drawn at random in [croqMin, croqMax], which only that wallet can read, plus a free box, a free rat, or both. A seat held by an X account whose wallet never claimed a place gets no gift. The croquettes come from the treasury; the boxes are minted free out of the ones the sale leaves (maxSupply minus the last milestone), so a sold-out sale never empties a gift and they count in no milestone; the rats are free seed rats outside the paid rats' cap. A gift nobody collects is never minted.",
     "claimDays": 30,
     "tiers": [
       { "key": "first", "name": "First class", "fromRank": 1, "toRank": 500, "croqMin": 100, "croqMax": 500, "box": true, "rat": true },
@@ -256,6 +256,7 @@
   },
   "events": {
     "MintPlaced": { "fields": ["firstTokenId", "buyer", "count", "quantity"], "note": "count ids are created; how many the buyer holds is the encrypted quantity, readable by the buyer only." },
+    "BoxGifted": { "fields": ["tokenId", "to"], "note": "DoNotOpen. A whitelist gift box, minted free by WhitelistGifts out of the boxes the sale leaves; counted in no milestone. Names its first holder, like the gift's public tier." },
     "ConfidentialTransfer": { "fields": ["tokenId", "from", "to", "moved"], "note": "moved is an encrypted bool readable by from and to: a transfer from a non-holder, or a decoy, moves nothing and looks the same." },
     "MilestoneReached": { "fields": ["index", "sold"] },
     "Shaken": { "fields": ["tokenId", "viewer", "paid"], "note": "The trait index is NOT emitted; it stays encrypted-side knowledge of the viewer." },

@@ -1,7 +1,7 @@
 {
   "chainId": 11155111,
-  "address": "0x7b246695614Cc49A500bC8057345181689c82d52",
-  "deployBlock": 11862305,
+  "address": "0x6e3B93f16D108a6a4A415D119d8374C2490954d1",
+  "deployBlock": 11869550,
   "abi": [
     {
       "inputs": [
@@ -46,11 +46,6 @@
           "internalType": "contract IERC7984",
           "name": "confidentialUsdc_",
           "type": "address"
-        },
-        {
-          "internalType": "uint16[]",
-          "name": "milestones_",
-          "type": "uint16[]"
         },
         {
           "internalType": "address",
@@ -137,17 +132,17 @@
     },
     {
       "inputs": [],
-      "name": "InvalidMilestones",
-      "type": "error"
-    },
-    {
-      "inputs": [],
       "name": "NoSuchProposal",
       "type": "error"
     },
     {
       "inputs": [],
       "name": "NotChallenger",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotGiver",
       "type": "error"
     },
     {
@@ -250,6 +245,25 @@
         }
       ],
       "name": "AliveProven",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "BoxGifted",
       "type": "event"
     },
     {
@@ -501,6 +515,19 @@
         }
       ],
       "name": "Fed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "giver",
+          "type": "address"
+        }
+      ],
+      "name": "GiverSet",
       "type": "event"
     },
     {
@@ -1213,6 +1240,51 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "gift",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "giftsMinted",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "giver",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "guard",
       "outputs": [
@@ -1304,25 +1376,12 @@
     },
     {
       "inputs": [],
-      "name": "maxPerTx",
+      "name": "metadata",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "contract ITokenURIs",
           "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "maxSupply",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
+          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -1336,19 +1395,6 @@
           "internalType": "bytes32",
           "name": "",
           "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "milestones",
-      "outputs": [
-        {
-          "internalType": "uint16[]",
-          "name": "",
-          "type": "uint16[]"
         }
       ],
       "stateMutability": "view",
@@ -1704,12 +1750,12 @@
     {
       "inputs": [
         {
-          "internalType": "string",
-          "name": "baseURI_",
-          "type": "string"
+          "internalType": "address",
+          "name": "giver_",
+          "type": "address"
         }
       ],
-      "name": "setBaseURI",
+      "name": "setGiver",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1723,6 +1769,19 @@
         }
       ],
       "name": "setGuard",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract ITokenURIs",
+          "name": "metadata_",
+          "type": "address"
+        }
+      ],
+      "name": "setMetadata",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -4467,7 +4526,7 @@
     "deployBlock": 11862331
   },
   "ratPantry": {
-    "address": "0xC13432AF43dDC738fa0a591CE3499BaF0DA5E450",
+    "address": "0xa8C6850eB99f89aB1DA9714Cd073B454Bb6E1850",
     "abi": [
       {
         "inputs": [
@@ -4675,10 +4734,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11862332
+    "deployBlock": 11869566
   },
   "market": {
-    "address": "0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1",
+    "address": "0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92",
     "abi": [
       {
         "inputs": [
@@ -5740,10 +5799,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11862351
+    "deployBlock": 11869583
   },
   "ratTricks": {
-    "address": "0x44B2006E63Af469e5470eD5Fc2A6307117d22d0D",
+    "address": "0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f",
     "abi": [
       {
         "inputs": [
@@ -6290,10 +6349,10 @@
         "type": "function"
       }
     ],
-    "deployBlock": 11862335
+    "deployBlock": 11869573
   },
   "whitelistGifts": {
-    "address": "0xD244389bF81C38803c94957a1e6B5694eEeA678b",
+    "address": "0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a",
     "abi": [
       {
         "inputs": [
@@ -6310,11 +6369,6 @@
           {
             "internalType": "contract IERC7984",
             "name": "cCroq_",
-            "type": "address"
-          },
-          {
-            "internalType": "contract IERC7984",
-            "name": "cUsdc_",
             "type": "address"
           },
           {
@@ -6536,19 +6590,6 @@
         "type": "function"
       },
       {
-        "inputs": [],
-        "name": "cUsdc",
-        "outputs": [
-          {
-            "internalType": "contract IERC7984",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
         "inputs": [
           {
             "internalType": "uint8",
@@ -6559,16 +6600,6 @@
             "internalType": "bytes32[]",
             "name": "proof",
             "type": "bytes32[]"
-          },
-          {
-            "internalType": "externalEuint8",
-            "name": "quantity",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes",
-            "name": "inputProof",
-            "type": "bytes"
           },
           {
             "internalType": "uint64",

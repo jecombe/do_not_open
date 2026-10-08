@@ -10,6 +10,7 @@ import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984
 import {ConfidentialERC721} from "./confidential/ConfidentialERC721.sol";
 import {DoNotOpenConfig} from "./DoNotOpenConfig.sol";
 import {IShakeGuard} from "./IShakeGuard.sol";
+import {ITokenURIs} from "./ITokenURIs.sol";
 
 /// @title DO NOT OPEN
 /// @notice 10,000 sealed boxes. Each holds one encrypted 64-bit seed drawn at mint; the cat
@@ -163,13 +164,15 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     error NotChallenger();
     error NotThisBox();
     error DuelExpired();
-    error InvalidMilestones();
     error InvalidIdCount();
     error WithdrawTooSoon();
+    error NotGiver();
 
     /// @notice A mint created `count` token ids from `firstTokenId`. How many are owned is the
     ///         encrypted `quantity`, readable by the buyer.
     event MintPlaced(uint256 indexed firstTokenId, address indexed buyer, uint256 count, euint8 quantity);
+    event BoxGifted(uint256 indexed tokenId, address indexed to);
+    event GiverSet(address giver);
     event MilestoneReached(uint256 indexed index, uint256 sold);
     /// @dev Which trait was picked is deliberately absent: only the viewer can decrypt it.
     event Shaken(uint256 indexed tokenId, address indexed viewer, bool paid);
@@ -222,6 +225,9 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     uint64 public immutable paidShakeFee;
 
     uint16 private immutable _maxSupply;
+    /// @dev The sale's cap, the last milestone. The boxes above it, up to `_maxSupply`, are the
+    ///      whitelist's gifts.
+    uint16 private immutable _saleCap;
     uint8 private immutable _maxPerTx;
     uint16 private immutable _aliveBelow;
     uint32 private immutable _goldenThreshold;
@@ -246,9 +252,8 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     uint256 public milestonesReached;
     uint256 public duelCount;
     uint256 public requestCount;
-    string private _baseTokenURI;
 
-    /// @dev Boxes sold, never more than `_maxSupply`. Nobody is allowed on it.
+    /// @dev Boxes sold, never more than `_saleCap`. Nobody is allowed on it.
     euint16 private _sold;
     /// @dev "The sold count reached the next milestone", publicly decryptable after each mint.
     ebool private _milestoneBit;
@@ -257,6 +262,13 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
     euint64 private _revenue;
     /// @dev When the revenue was last withdrawn (the deployment counts as one).
     uint64 private _lastWithdrawal;
+
+    /// @notice Builds each box's token URI, so it can move without touching this contract.
+    ITokenURIs public metadata;
+    /// @notice The whitelist's gifts contract, the only one that mints boxes for free. Zero: none.
+    address public giver;
+    /// @notice Boxes the giver minted, never more than `maxSupply` minus the sale's cap.
+    uint16 public giftsMinted;
 
     /// @notice Passes every shake through the rats' shields and jams. Zero: none.
     IShakeGuard public guard;
@@ -289,7 +301,6 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         Fees memory fees,
         IERC20 usdc_,
         IERC7984 confidentialUsdc_,
-        uint16[] memory milestones_,
         address owner_
     ) ConfidentialERC721("DO NOT OPEN", "DNO") Ownable(owner_) {
         config = config_;
@@ -313,11 +324,10 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         _offset3 = offsets[3];
         _offset4 = offsets[4];
 
-        // Increasing, the last one is the cap: reaching it means sold out.
-        for (uint256 i = 0; i < milestones_.length; i++) {
-            if (milestones_[i] == 0 || (i > 0 && milestones_[i] <= milestones_[i - 1])) revert InvalidMilestones();
-        }
-        if (milestones_.length == 0 || milestones_[milestones_.length - 1] != _maxSupply) revert InvalidMilestones();
+        // Checked by the config: increasing, the last one is the sale's cap (reaching it means
+        // sold out), and what it leaves under the supply is kept for the whitelist's gifts.
+        uint16[] memory milestones_ = config_.milestones();
+        _saleCap = milestones_[milestones_.length - 1];
         _milestones = milestones_;
 
         _sold = FHE.asEuint16(0);
@@ -352,7 +362,7 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         euint8 quantity = FHE.min(FHE.fromExternal(encryptedQuantity, inputProof), ids);
         // All or nothing: past the cap, the whole mint is empty.
         euint16 after_ = FHE.add(_sold, FHE.asEuint16(quantity));
-        quantity = FHE.select(FHE.le(after_, _maxSupply), quantity, FHE.asEuint8(0));
+        quantity = FHE.select(FHE.le(after_, _saleCap), quantity, FHE.asEuint8(0));
 
         euint64 price = FHE.mul(FHE.asEuint64(quantity), mintPrice);
         euint64 paid = _pull(price);
@@ -369,14 +379,28 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         eaddress buyer = FHE.asEaddress(msg.sender);
         eaddress nobody = FHE.asEaddress(address(0));
         for (uint256 i = 0; i < ids; i++) {
-            uint256 tokenId = _mint(msg.sender, FHE.gt(quantity, uint8(i)), buyer, nobody);
-            euint64 seed = FHE.randEuint64();
-            FHE.allowThis(seed);
-            _seed[tokenId] = seed;
+            _mintBox(msg.sender, FHE.gt(quantity, uint8(i)), buyer, nobody);
         }
         FHE.allowThis(quantity);
         FHE.allow(quantity, msg.sender);
         emit MintPlaced(firstTokenId, msg.sender, ids, quantity);
+    }
+
+    /// @notice The giver mints one box for `to`, free, out of the boxes the sale leaves. Not a
+    ///         sale: it counts in no milestone and pays no revenue. Public, like the gift's tier.
+    function gift(address to) external returns (uint256 tokenId) {
+        if (msg.sender != giver || giver == address(0)) revert NotGiver();
+        if (++giftsMinted > _maxSupply - _saleCap) revert TooManyBoxes();
+        tokenId = _mintBox(to, FHE.asEbool(true), FHE.asEaddress(to), FHE.asEaddress(address(0)));
+        emit BoxGifted(tokenId, to);
+    }
+
+    /// @dev A new token id, owned by `to` if `real`, with its cat's encrypted seed.
+    function _mintBox(address to, ebool real, eaddress encryptedTo, eaddress nobody) internal returns (uint256 tokenId) {
+        tokenId = _mint(to, real, encryptedTo, nobody);
+        euint64 seed = FHE.randEuint64();
+        FHE.allowThis(seed);
+        _seed[tokenId] = seed;
     }
 
     /// @dev One bit per mint: has the sold count reached the next milestone?
@@ -410,9 +434,6 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         return FHE.toBytes32(_milestoneBit);
     }
 
-    function milestones() external view returns (uint16[] memory) {
-        return _milestones;
-    }
 
     // ----------------------------------------------------------------- shake
 
@@ -971,12 +992,22 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         trustedReader[reader] = trusted;
     }
 
-    function setGuard(IShakeGuard guard_) external onlyOwner {
-        guard = guard_;
+    function setMetadata(ITokenURIs metadata_) external onlyOwner {
+        metadata = metadata_;
     }
 
-    function setBaseURI(string calldata baseURI_) external onlyOwner {
-        _baseTokenURI = baseURI_;
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        _requireExists(tokenId);
+        return address(metadata) == address(0) ? "" : metadata.tokenURI(tokenId);
+    }
+
+    function setGiver(address giver_) external onlyOwner {
+        giver = giver_;
+        emit GiverSet(giver_);
+    }
+
+    function setGuard(IShakeGuard guard_) external onlyOwner {
+        guard = guard_;
     }
 
     /// @notice Sends the cUSDC revenue to `to`, at most once per `WITHDRAW_INTERVAL`.
@@ -990,19 +1021,9 @@ contract DoNotOpen is ConfidentialERC721, Ownable, ZamaEthereumConfig {
         _pay(to, amount);
     }
 
-    function maxSupply() external view returns (uint256) {
-        return _maxSupply;
-    }
 
-    function maxPerTx() external view returns (uint256) {
-        return _maxPerTx;
-    }
 
     function _isTrustedReader(address reader) internal view override returns (bool) {
         return trustedReader[reader];
-    }
-
-    function _baseURI() internal view override returns (string memory) {
-        return _baseTokenURI;
     }
 }

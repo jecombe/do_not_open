@@ -8,7 +8,7 @@ import { ethers, fhevm } from "hardhat";
 import { spec } from "@dno/game-spec";
 import { whitelistParamsFromSpec } from "../lib/specParams";
 import { ConfidentialCroq, Croq, DoNotOpen, Rats, TestConfidentialUSDC, TestUSDC, WhitelistGifts } from "../types";
-import { balanceOf, confidentialUsdcOf, deploy, deployEconomy, expectDenied, FEES, ownerOf, usd } from "./helpers";
+import { announce, balanceOf, confidentialUsdcOf, deploy, deployEconomy, expectDenied, mintBoxes, ownerOf, usd } from "./helpers";
 
 const RAT_POWERS = ratParamsFromSpec().powerBelow;
 
@@ -36,11 +36,7 @@ describe("WhitelistGifts", function () {
     return [];
   };
 
-  /** Claims `who`'s gift the way the app does: the box's quantity encrypted for DoNotOpen and the gifts. */
-  async function claim(who: HardhatEthersSigner, tier: number, ratSeed: bigint, proof = proofOf(who)) {
-    const input = await fhevm.createEncryptedInput(await dno.getAddress(), giftsAddress).add8(1).encrypt();
-    return gifts.connect(who).claim(tier, proof, input.handles[0]!, input.inputProof, ratSeed);
-  }
+  const claim = (who: HardhatEthersSigner, tier: number, ratSeed: bigint, proof = proofOf(who)) => gifts.connect(who).claim(tier, proof, ratSeed);
 
   const croqOf = async (who: HardhatEthersSigner) => {
     const g = await gifts.giftOf(who.address);
@@ -49,22 +45,21 @@ describe("WhitelistGifts", function () {
 
   beforeEach(async function () {
     [deployer, alice, bob, carol, dave] = (await ethers.getSigners()) as HardhatEthersSigner[] as [HardhatEthersSigner, HardhatEthersSigner, HardhatEthersSigner, HardhatEthersSigner, HardhatEthersSigner];
-    ({ dno, usdc, cUsdc } = await deploy({ maxSupply: 100 }));
+    // The sale stops at 98: two boxes are kept for the gifts.
+    ({ dno, usdc, cUsdc } = await deploy({ maxSupply: 100 }, [50, 98]));
     ({ croq, cCroq } = await deployEconomy(dno, {}, 0n));
     rats = (await (await ethers.getContractFactory("Rats")).deploy(
       await usdc.getAddress(), deployer.address, deployer.address, deployer.address, usd("1"), usd("3"), "", [10, 10, 5, 10], RAT_POWERS,
     )) as unknown as Rats;
     gifts = (await (await ethers.getContractFactory("WhitelistGifts")).deploy(
-      await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress(), await cUsdc.getAddress(), TIERS, deployer.address,
+      await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress(), TIERS, deployer.address,
     )) as unknown as WhitelistGifts;
     giftsAddress = await gifts.getAddress();
+    await dno.setGiver(giftsAddress);
     await rats.setGiver(giftsAddress);
-    // Funded as the deploy script does: croquettes wrapped to it, and one mint price per box.
+    // Funded as the deploy script does: croquettes wrapped to it. The boxes and rats cost nothing.
     await croq.approve(await cCroq.getAddress(), 10_000);
     await cCroq.wrap(giftsAddress, 10_000);
-    await usdc.mint(deployer.address, FEES.mint * 2n);
-    await usdc.approve(await cUsdc.getAddress(), FEES.mint * 2n);
-    await cUsdc.wrap(giftsAddress, FEES.mint * 2n);
 
     tree = StandardMerkleTree.of<[string, number]>([[alice.address, 0], [bob.address, 1], [carol.address, 2]], ["address", "uint8"]);
     await gifts.setRoot(tree.root, (await time.latest()) + 30 * DAY);
@@ -90,8 +85,10 @@ describe("WhitelistGifts", function () {
     expect(await ownerOf(dno, g.box)).to.eq(alice.address);
     expect(await rats.ownerOf(g.rat)).to.eq(alice.address);
     expect(await rats.tokenOfSeed(4242n)).to.eq(g.rat);
-    // The box was paid for: its price is the collection's revenue, and nobody else can read the draw.
+    // Free, outside the sale, and nobody else can read the draw.
     expect(await confidentialUsdcOf(cUsdc, alice)).to.eq(usd("1000"));
+    await expect(receipt).to.emit(dno, "BoxGifted").withArgs(g.box, alice.address);
+    expect(await dno.giftsMinted()).to.eq(1);
     await expectDenied(fhevm.userDecryptEuint(FhevmType.euint64, g.croq, await cCroq.getAddress(), bob));
   });
 
@@ -123,10 +120,9 @@ describe("WhitelistGifts", function () {
 
   it("waits for the root, and lets the owner correct it until the first claim", async function () {
     const fresh = (await (await ethers.getContractFactory("WhitelistGifts")).deploy(
-      await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress(), await cUsdc.getAddress(), TIERS, deployer.address,
+      await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress(), TIERS, deployer.address,
     )) as unknown as WhitelistGifts;
-    const input = await fhevm.createEncryptedInput(await dno.getAddress(), await fresh.getAddress()).add8(1).encrypt();
-    await expect(fresh.connect(alice).claim(0, proofOf(alice), input.handles[0]!, input.inputProof, 1n)).to.be.revertedWithCustomError(fresh, "NotOpen");
+    await expect(fresh.connect(alice).claim(0, proofOf(alice), 1n)).to.be.revertedWithCustomError(fresh, "NotOpen");
     await expect(fresh.connect(alice).setRoot(tree.root, (await time.latest()) + DAY)).to.be.revertedWithCustomError(fresh, "OwnableUnauthorizedAccount");
     await fresh.setRoot(ethers.id("wrong"), (await time.latest()) + DAY);
     await expect(fresh.setRoot(tree.root, (await time.latest()) + DAY)).to.emit(fresh, "RootSet");
@@ -135,7 +131,7 @@ describe("WhitelistGifts", function () {
 
   it("refuses tiers whose range does not fit the draw", async function () {
     const Gifts = await ethers.getContractFactory("WhitelistGifts");
-    const args = [await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress(), await cUsdc.getAddress()] as const;
+    const args = [await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress()] as const;
     await expect(Gifts.deploy(...args, [{ croqMin: 10, croqMax: 5, box: false, rat: false }], deployer.address)).to.be.revertedWithCustomError(gifts, "BadTier");
     await expect(Gifts.deploy(...args, [{ croqMin: 0, croqMax: 70_000, box: false, rat: false }], deployer.address)).to.be.revertedWithCustomError(gifts, "BadTier");
     await expect(Gifts.deploy(...args, [], deployer.address)).to.be.revertedWithCustomError(gifts, "BadTier");
@@ -149,7 +145,40 @@ describe("WhitelistGifts", function () {
     await expect(gifts.connect(alice).sweep(alice.address)).to.be.revertedWithCustomError(gifts, "OwnableUnauthorizedAccount");
     await gifts.sweep(dave.address);
     expect(await balanceOf(cCroq, dave)).to.eq(10_000n - drawn);
-    expect(await confidentialUsdcOf(cUsdc, dave)).to.eq(usd("1000") + FEES.mint);
+  });
+
+  it("mints the boxes out of the ones the sale leaves, even once the sale is sold out", async function () {
+    // The sale stops at its cap and announces it as sold out; the gifts don't count.
+    await mintBoxes(dno, carol, 10);
+    for (let sold = 10; sold < 98; sold += 10) await mintBoxes(dno, dave, Math.min(10, 98 - sold));
+    expect(await announce(dno, carol)).to.eq(true);
+    expect(await announce(dno, carol)).to.eq(false);
+    await mintBoxes(dno, carol, 1);
+    expect(await announce(dno, carol)).to.eq(true);
+    expect(await dno.milestonesReached()).to.eq(2);
+    expect((await mintBoxes(dno, bob, 1)).owned).to.deep.eq([]);
+
+    await claim(alice, 0, 21n);
+    await claim(bob, 1, 22n);
+    expect(await ownerOf(dno, (await gifts.giftOf(alice.address)).box)).to.eq(alice.address);
+    expect(await ownerOf(dno, (await gifts.giftOf(bob.address)).box)).to.eq(bob.address);
+    expect(await dno.giftsMinted()).to.eq(2);
+  });
+
+  it("never mints more boxes than the sale leaves, and only for its giver", async function () {
+    const more = StandardMerkleTree.of<[string, number]>([[alice.address, 0], [bob.address, 1], [dave.address, 0]], ["address", "uint8"]);
+    const fresh = (await (await ethers.getContractFactory("WhitelistGifts")).deploy(
+      await dno.getAddress(), await rats.getAddress(), await cCroq.getAddress(), TIERS, deployer.address,
+    )) as unknown as WhitelistGifts;
+    await expect(dno.connect(alice).setGiver(alice.address)).to.be.revertedWithCustomError(dno, "OwnableUnauthorizedAccount");
+    await expect(dno.connect(alice).gift(alice.address)).to.be.revertedWithCustomError(dno, "NotGiver");
+    await dno.setGiver(await fresh.getAddress());
+    await rats.setGiver(await fresh.getAddress());
+    await fresh.setRoot(more.root, (await time.latest()) + DAY);
+    const proof = (who: HardhatEthersSigner) => more.getProof([...more.entries()].find(([, [a]]) => a === who.address)![0]);
+    await fresh.connect(alice).claim(0, proof(alice), 31n);
+    await fresh.connect(bob).claim(1, proof(bob), 0n);
+    await expect(fresh.connect(dave).claim(0, proof(dave), 33n)).to.be.revertedWithCustomError(dno, "TooManyBoxes");
   });
 
   it("stays under the HCU limit for the biggest gift", async function () {

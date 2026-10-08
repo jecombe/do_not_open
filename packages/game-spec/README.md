@@ -8,7 +8,9 @@ knows what a blockchain is.
 
 `collection.maxSupply` is 10,000 boxes. Who holds them and how many were sold are
 encrypted on-chain, so `collection.milestones` lists the only sold counts ever announced:
-100, 500, 1,000, 2,500, 5,000, 7,500, 9,000 and 10,000, the last one the cap. Token ids
+100, 500, 1,000, 2,500, 5,000, 7,500 and 9,000, the last one the sale's cap. The 1,000
+boxes it leaves under `maxSupply` are the whitelist's gifts, minted free and never sold: as many
+as the seats of the `whitelist.tiers` with a box (the deploy checks they match). Token ids
 run past `maxSupply`, because a mint hides its quantity among empty ids; any 32-bit id is
 valid. See [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNERS.md).
 

@@ -27,6 +27,8 @@ export interface ConfigParams {
   goldenScoreBonus: number;
   feedBound: number;
   paidShakeHolderBps: number;
+  /** The sold counts announced; the last one is the sale's cap. */
+  milestones: number[];
 }
 
 export function loadSpec() {
@@ -63,15 +65,22 @@ export function configParamsFromSpec(overrides: Partial<ConfigParams> = {}): Con
     goldenScoreBonus: spec.affection.goldenScoreBonus,
     feedBound: spec.affection.perFeedMax + 1,
     paidShakeHolderBps: spec.mechanics.paidShake.holderShareBps,
+    milestones: milestonesFromSpec(),
     ...overrides,
   };
 }
 
-/** The sold counts DoNotOpen announces, checked to end at the cap. */
+/**
+ * The sold counts DoNotOpen announces. The last one is the sale's cap; the boxes it leaves under
+ * maxSupply are the whitelist's gifts, so they must match the seats of the tiers with a box.
+ */
 export function milestonesFromSpec(): number[] {
   const { spec } = loadSpec();
   const m: number[] = spec.collection.milestones;
-  if (!m?.length || m[m.length - 1] !== spec.collection.maxSupply) throw new Error("collection.milestones must end at maxSupply");
+  if (!m?.length || m[m.length - 1]! > spec.collection.maxSupply) throw new Error("collection.milestones must end at or under maxSupply");
+  const gifts = spec.collection.maxSupply - m[m.length - 1]!;
+  const { boxes } = whitelistParamsFromSpec();
+  if (gifts !== boxes) throw new Error(`the sale leaves ${gifts} boxes under maxSupply, the whitelist's tiers give ${boxes}`);
   return m;
 }
 

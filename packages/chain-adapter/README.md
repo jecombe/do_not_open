@@ -269,12 +269,13 @@ none is deployed or nobody is connected, else a `WhitelistGift`: `status` (`wait
 root is set, `none` when the frozen list does not have the wallet, `ready`, `claimed`, `closed`),
 `tier`, `closesAt`, and the `box` and `rat` once collected. The proof comes from the API
 (`GET /v1/gifts/:address`; a 404 is an answer, not the API being down). `claimWhitelistGift`
-encrypts the box's quantity (1) for `DoNotOpen` with the gifts contract as the input's user,
-draws a rat seed nobody adopted, and sends `claim`; it throws `reverted` (`NotOnTheList`,
+draws a rat seed nobody adopted (rat tiers only) and sends `claim(tier, proof, ratSeed)`: nothing
+is encrypted, since the box is minted free by `DoNotOpen.gift`; it throws `reverted` (`NotOnTheList`,
 `AlreadyClaimed`, `NotOpen`). `whitelistGiftCroq` user-decrypts the croquettes drawn (null
 before the claim). The mock (`MockOptions.whitelistGifts`: `open` by default, `waiting`, `off`)
 treats its list as frozen as it stands, so a claimant collects their rank's gift; its gift
-rats stay out of `ratSupply`.
+boxes come out of the 1,000 the sale leaves (never sold, in no milestone) and its gift rats stay
+out of `ratSupply`.
 
 `signText(message)` has the connected wallet sign any text (EIP-191, free) and returns the
 signature, filed nowhere: the app sends it where it belongs, such as linking a wallet to an X
