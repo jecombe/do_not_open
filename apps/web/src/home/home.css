@@ -2797,11 +2797,34 @@ h2 {
   background: var(--sun);
   font-size: 15px;
   font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 0 0 rgb(255 214 107 / 0.8);
+}
+
+/* Once it can be clicked, it pulls the eye: an unclicked task does not count. */
+.boarding-task-mark:not(:disabled) {
+  animation: mark-pulse 1.4s ease-out infinite;
+}
+
+.boarding-task-mark:not(:disabled):hover {
+  transform: translateY(-1px);
 }
 
 .boarding-task-mark:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+@keyframes mark-pulse {
+  to {
+    box-shadow: 0 0 0 10px rgb(255 214 107 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boarding-task-mark:not(:disabled) {
+    animation: none;
+  }
 }
 
 .boarding-fine {
