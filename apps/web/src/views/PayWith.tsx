@@ -5,6 +5,7 @@ import { setPayment, usePayment } from "../chain/payment";
 import { useShielded } from "../chain/shielded";
 import { useT } from "../i18n/app";
 import { openExchange } from "./exchangeLink";
+import { TokenIcon } from "../brand/logos";
 
 interface Props {
   /** The parent's running action: balances are read again once it is over. */
@@ -50,10 +51,12 @@ export function PayWith({ busy, need }: Props) {
   return (
     <div className="pay-with">
       <div className="picker" role="group" aria-label={t("pay.label")}>
-        <button type="button" aria-pressed={pay === "usdc"} onClick={() => setPayment("usdc")} disabled={!!busy}>
+        <button type="button" className="with-logo" aria-pressed={pay === "usdc"} onClick={() => setPayment("usdc")} disabled={!!busy}>
+          <TokenIcon symbol={payment.symbol} />
           {payment.symbol}
         </button>
-        <button type="button" aria-pressed={pay === "cusdc"} onClick={() => setPayment("cusdc")} disabled={!!busy}>
+        <button type="button" className="with-logo" aria-pressed={pay === "cusdc"} onClick={() => setPayment("cusdc")} disabled={!!busy}>
+          <TokenIcon symbol={cSymbol} />
           {cSymbol}
         </button>
       </div>
@@ -120,7 +123,9 @@ export function PayLine({ busy, need }: Props) {
                 setChanging(false);
               }}
               disabled={!!busy}
+              className="with-logo"
             >
+              <TokenIcon symbol={symbol(p)} />
               {symbol(p)}
             </button>
           ))}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { spec } from "@dno/game-spec";
+import { BrandLink } from "../brand/logos";
 import { DISCORD, SOURCE } from "../links";
 import { useLocale } from "../i18n/locale";
 import { applyPath, appPath, docsPath, projectDocsPath, vaultDocsPath, vaultPath } from "../site";
@@ -498,12 +499,10 @@ export function SecureHome() {
 
       <footer className="sec-foot">
         <span>{t("secure.foot")}</span>
-        <a href={SOURCE} target="_blank" rel="noreferrer">
-          {t("secure.source")}
-        </a>
-        <a href={DISCORD} target="_blank" rel="noreferrer">
-          Discord
-        </a>
+        <span className="brand-links">
+          <BrandLink brand="gitlab" href={SOURCE} label={t("secure.source")} />
+          <BrandLink brand="discord" href={DISCORD} />
+        </span>
       </footer>
       <Warden />
     </div>

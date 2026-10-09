@@ -31,6 +31,7 @@ import { spec } from "@dno/game-spec";
 import { buildBoxSpec } from "@dno/generator";
 import { BOX_SIZE, createBox, type BoxObject } from "@dno/scene";
 import { Stage } from "../docs/three/stage";
+import { tokenLogoUrl } from "../brand/logos";
 import { scramble, shieldGlow } from "./shieldScene";
 
 /** Seconds each step plays, and the whole loop. */
@@ -53,6 +54,9 @@ const FRESH = new Vector3(1.85, -0.5, 0.2);
 /** The ways out in step three, on a slow orbit: a listing, a buyer's offer, a private sale, a gift, and the NFT's perks lent to a delegate. */
 const ORBIT = 2.05;
 const ROUTES = ["seaport", "offer", "private", "gift", "delegate"] as const;
+/** The coins a loop seals instead of the NFT, back to front, and where each sits in the fan. */
+const COINS = ["ETH", "WETH", "cUSDC"] as const;
+const COIN_FAN = [new Vector3(-0.3, 0.1, -0.16), new Vector3(0.3, 0.1, -0.16), new Vector3(0, -0.08, 0.08)];
 /** The same orbit when the loop seals tokens: where a pocket's cUSDC goes. */
 const TOKEN_ROUTES = ["toPocket", "payBox", "paidIn", "saleCash", "hiddenBalance"] as const;
 /** When the first way out lights up in step three, and how far apart the next ones do. */
@@ -99,6 +103,31 @@ const easeIn = (x: number) => x * x;
 const window4 = (t: number, a: number, b: number, c: number, d: number) => span(t, a, b) * (1 - span(t, c, d));
 
 /** A little pixel portrait, mirrored like an identicon, on a card: some NFT, any NFT. */
+/** A coin's face: its token's official logo, painted on a canvas once the SVG has loaded. */
+function coinFaceMaterial(symbol: string): MeshStandardMaterial {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+
+  const url = tokenLogoUrl(symbol);
+  if (url) {
+    const img = new Image();
+    img.onload = () => {
+      const g = canvas.getContext("2d");
+      if (!g) return;
+      // The cylinder's cap shows the canvas a quarter turn clockwise once the coin faces the viewer:
+      // draw it a quarter turn the other way.
+      g.translate(0, 256);
+      g.rotate(-Math.PI / 2);
+      g.drawImage(img, 0, 0, 256, 256);
+      texture.needsUpdate = true;
+    };
+    img.src = url;
+  }
+  return new MeshStandardMaterial({ map: texture, emissive: new Color("#ffffff"), emissiveMap: texture, emissiveIntensity: 0.45, metalness: 0.25, roughness: 0.45 });
+}
+
 function drawArt(canvas: HTMLCanvasElement, token: number): void {
   const g = canvas.getContext("2d")!;
   const S = canvas.width;
@@ -163,7 +192,7 @@ export class VaultStoryScene {
   private readonly lattice: LineSegments;
   private readonly glow: ShaderMaterial;
   private readonly card = new Group();
-  /** The tokens a loop seals instead of the NFT: three cUSDC coins, stacked. */
+  /** The tokens a loop seals instead of the NFT: ETH, WETH and cUSDC coins, fanned out. */
   private readonly coins = new Group();
   /** Whether this loop seals tokens rather than an NFT. */
   private tokens = false;
@@ -249,14 +278,16 @@ export class VaultStoryScene {
     this.card.add(slab, rim, this.cardLight);
     stage.scene.add(this.card);
 
-    // The tokens: three coins, a little apart, with the same light.
-    const coinFace = new MeshStandardMaterial({ color: "#2E8C78", emissive: TEAL, emissiveIntensity: 0.35, metalness: 0.7, roughness: 0.35 });
+    // The tokens: three coins fanned out, each wearing its token's logo (cUSDC in front), the
+    // edge in the vault's metal and light.
+    const coinSide = new MeshStandardMaterial({ color: "#2E8C78", emissive: TEAL, emissiveIntensity: 0.35, metalness: 0.7, roughness: 0.35 });
     const coinEdge = new LineBasicMaterial({ color: TEAL, transparent: true, opacity: 0.9 });
-    const coinGeometry = new CylinderGeometry(0.3, 0.3, 0.07, 40);
+    const coinGeometry = new CylinderGeometry(0.3, 0.3, 0.07, 48);
     const coinRim = new EdgesGeometry(coinGeometry, 30);
-    [-0.13, 0, 0.13].forEach((y, i) => {
-      const coin = new Mesh(coinGeometry, coinFace);
-      coin.position.set(i === 1 ? 0.05 : -0.03 * i, y, 0);
+    COINS.forEach((symbol, i) => {
+      const face = coinFaceMaterial(symbol);
+      const coin = new Mesh(coinGeometry, [coinSide, face, face]);
+      coin.position.set(COIN_FAN[i]!.x, COIN_FAN[i]!.y, COIN_FAN[i]!.z);
       coin.rotation.x = Math.PI / 2 - 0.25;
       coin.add(new LineSegments(coinRim, coinEdge));
       this.coins.add(coin);
