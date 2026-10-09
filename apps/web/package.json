@@ -12,7 +12,7 @@
     "render:metadata": "tsx scripts/render-metadata.cts",
     "render:og": "tsx scripts/render-og.cts",
     "export:manual": "tsx scripts/export-manual.mts",
-    "test": "tsx scripts/export-manual.mts --check"
+    "test": "tsx scripts/check-hosts.mts && tsx scripts/export-manual.mts --check"
   },
   "dependencies": {
     "@dno/chain-adapter": "workspace:*",

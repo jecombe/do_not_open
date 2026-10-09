@@ -6,7 +6,8 @@ was made. The contracts are the source of truth:
 [`IConfidentialERC721.sol`](../packages/contracts-evm/contracts/confidential/IConfidentialERC721.sol),
 [`ConfidentialERC721.sol`](../packages/contracts-evm/contracts/confidential/ConfidentialERC721.sol),
 [`DoNotOpen.sol`](../packages/contracts-evm/contracts/DoNotOpen.sol),
-[`Pantry.sol`](../packages/contracts-evm/contracts/Pantry.sol).
+[`Pantry.sol`](../packages/contracts-evm/contracts/Pantry.sol), and for the sealed vault
+[`SealedVault.sol`](../packages/contracts-evm/contracts/SealedVault.sol).
 
 ## 1. The standard: Confidential ERC-721
 
@@ -191,6 +192,24 @@ The guard is trusted: the owner sets it (`setGuard`) and it sees every shake's h
 transiently. A malicious guard could falsify shakes; it cannot read them (it has no decryption
 right). See O34 in [AUDIT_CHECKLIST.md](AUDIT_CHECKLIST.md).
 
+## 5e. The sealed vault
+
+`SealedVault` uses the same base for any NFT: a box per NFT of an allowed collection, its owner
+an `eaddress`, transfers that never revert on ownership, and holders who find their boxes in
+their own receipts. What it adds is a way to act **without sending anything from the holder's
+address**. Each box has an encrypted key (`euint256`) that nobody may decrypt; a request to take
+the NFT out, list it on Seaport, take the listing down or collect a sale's ETH carries the key,
+XORed with a hash of the request's terms and a per-box nonce, and the vault publishes only "the
+key matched". Any wallet can send it: the API's relayer, so the holder's address shows on none.
+A box that moves gets a random key, and its new holder sets theirs with `setKey`, a "maybe".
+
+What it leaks, on top of what any `ConfidentialERC721` leaks: the deposit names the depositor
+(a plain NFT transfer); the address an NFT or a sale's ETH is sent to; a request's sender when
+it is not the relayer; `setKey`'s caller (not whether it took effect); a private sale's seller
+and buyer (not its price, not whether the box moved: that is decided under encryption, readable
+by the two sides only). A Seaport listing shows the NFT and the price with the vault as the
+seller. See [VAULT.md](VAULT.md).
+
 ## 6. What still leaks
 
 | Fact | Visible to everyone |
@@ -212,6 +231,7 @@ right). See O34 in [AUDIT_CHECKLIST.md](AUDIT_CHECKLIST.md).
 | The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
 | Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
 | A whitelist gift (`WhitelistGifts.claim`) | that the wallet is on the frozen list, its tier, the gift box's id (the wallet held it then: `BoxGifted` names it) and its rat. Not how many croquettes it drew |
+| The sealed vault (`SealedVault`) | the depositor of each NFT, the NFT in each box, Seaport listings and their buyers, a request's sender (the relayer, or the wallet without one), action and terms, whether its key matched, where an NFT or a sale's ETH went, `setKey`'s caller, a private sale's seller and buyer. Not who holds a box, its key, a private sale's price, nor whether a private sale or a transfer moved it |
 | An X boarding pass (off-chain, filed by the API) | the boarding tweet itself, public on X: that this X account wants a place. The wallet a player chooses to link to it stays in the API, never shown; that link ties an X identity to the wallet's public facts (duels, openings), so the page says a game-only wallet keeps a player anonymous. The Discord account that ran `/board` is kept the same way, private: the server's members can see that someone ran a command, not the code nor the reply. The pass whose referral link a pass started from is kept by the API too, never public (the code itself is, in the boarding tweet), and no route ranks the referrers |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
@@ -268,6 +288,16 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | `RatTricks.trick` | 881,000 to 1,063,000 | 2,245,000 to 2,270,000 |
 | `RatTricks.sniff` (a tricked box, power-1 rebate) | 1,789,000 | 4,269,000 |
 | `FleaMarket.list` (rat) | 139,000 | 0 |
+| `SealedVault.deposit` | 392,000 to 469,000 | 83,000 |
+| `SealedVault.request` + `finalize` (withdraw) | 323,000 + 152,000 | 191,000 |
+| `SealedVault.request` + `finalize` (list on Seaport) | 349,000 + 317,000 to 334,000 | 191,000 |
+| `SealedVault.confidentialTransfer` (a new random key) | 209,000 to 266,000 | 338,000 |
+| `SealedVault.setKey` | 185,000 | 225,000 |
+| `SealedVault.acceptSale` (private sale) | 1,660,000 | 4,342,000 |
+
+The `SealedVault` rows are not in `test/Costs.ts` yet: they were measured on the same local
+FHEVM, against Seaport 1.5's bytecode, with `fhevm.computeTransactionHCU` (the rest in
+[VAULT.md](VAULT.md#cost)).
 
 Every transaction stays well under the protocol limits (20M HCU, 5M depth); a full 10-box
 `Pantry.claim` measures about 14.8M HCU. The price in dollars is gas × gas price × ETH price:

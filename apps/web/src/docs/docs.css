@@ -1757,3 +1757,41 @@ main h3 {
     scrollbar-width: thin;
   }
 }
+
+/* --- The project's and the vault's docs (DocShell): a hero without a figure, two lists side by side --- */
+.doc-hero {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.doc-leaks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 32px;
+  max-width: var(--measure);
+  margin: 0 0 24px;
+}
+
+.doc-leaks h3 {
+  margin: 0 0 8px;
+  font-family: var(--stencil);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--manifest);
+}
+
+.doc-leaks > div:last-child h3 {
+  color: var(--stamp-red);
+}
+
+.doc-leaks ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.doc-leaks li + li {
+  margin-top: 6px;
+}
+
+.doc-hero .lede {
+  max-width: 52ch;
+}

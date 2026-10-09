@@ -170,15 +170,15 @@ export function Passport() {
 /** A box's passport photo: two ears, two eyes, and nothing else anybody can tell. */
 function PassPhoto() {
   return (
-    <svg className="doodle pass-photo-art" viewBox="0 0 120 120">
-      <rect x="6" y="6" width="108" height="108" rx="10" fill="#fff" stroke="var(--ink)" strokeWidth="4" />
-      <path d="M34 60 L42 34 L54 54 M66 54 L78 34 L86 60" fill="var(--kraft)" stroke="var(--ink)" strokeWidth="4" strokeLinejoin="round" />
-      <rect x="24" y="56" width="72" height="48" rx="4" fill="var(--kraft)" stroke="var(--ink)" strokeWidth="4" />
-      <path d="M24 70 H96" stroke="var(--ink)" strokeWidth="3" />
-      <circle className="pass-eye" cx="48" cy="64" r="3.5" fill="var(--ink)" />
-      <circle className="pass-eye" cx="72" cy="64" r="3.5" fill="var(--ink)" />
-      <text x="60" y="94" textAnchor="middle" fontFamily="var(--stencil)" fontSize="15" fill="var(--red)">
-        ???
+    <svg className="pass-photo-art" viewBox="0 0 120 120">
+      <rect x="6" y="6" width="108" height="108" rx="10" fill="var(--panel-2)" stroke="var(--line-2)" strokeWidth="2" />
+      <path d="M34 60 L42 34 L54 54 M66 54 L78 34 L86 60" fill="var(--kraft)" stroke="var(--bg)" strokeWidth="3" strokeLinejoin="round" />
+      <rect x="24" y="56" width="72" height="48" rx="4" fill="var(--kraft)" stroke="var(--bg)" strokeWidth="3" />
+      <path d="M24 70 H96" stroke="var(--bg)" strokeWidth="2" />
+      <circle className="pass-eye" cx="48" cy="64" r="3.5" fill="var(--bg)" />
+      <circle className="pass-eye" cx="72" cy="64" r="3.5" fill="var(--bg)" />
+      <text x="60" y="94" textAnchor="middle" fontFamily="var(--mono)" fontSize="13" fill="var(--bg)">
+        0x??
       </text>
     </svg>
   );

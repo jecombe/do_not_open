@@ -1,7 +1,7 @@
 /** English is the reference for the manual: every other dictionary must hold exactly these keys. */
 export const docsEn = {
   "docs.title": "DO NOT OPEN, the manual: encrypted NFTs with Zama's FHE",
-  "docs.description": "How DO NOT OPEN keeps {supply} cats secret on a public chain with Zama's FHE: encrypted holders, on-chain reveals, fees, croquettes, the studio's rats and the flea market.",
+  "docs.description": "How DO NOT OPEN keeps {supply} cats secret on a public chain with Zama's FHE: encrypted holders, on-chain reveals, fees, croquettes, the studio's rats, the flea market and the sealed vault.",
   "docs.imageAlt": "A sealed cardboard box stamped DO NOT OPEN, with a cat inside that nobody can see",
   "docs.home": "Home",
   "docs.homeAria": "DO NOT OPEN, home",
@@ -751,6 +751,27 @@ export const docsEn = {
   "flow.offer.s6.v": "Nothing is decrypted: the contract moves the escrow as it is. It cannot tell the seller whether the offer is worth it, which is why they read it first.",
   "flow.offer.s7": "Sold, at a secret price",
   "flow.offer.s7.v": "The item is yours, the seller gets the escrow minus the depot's cut, and the sale event shows a price of zero. Nobody else ever learns what you paid.",
+
+  "station.contract.vault": "SealedVault contract",
+  "station.other.vault": "Vault relayer",
+  "flow.vault.name": "Take an NFT out",
+  "flow.vault.summary": "At the sealed vault. The relayer carries your request, the key is checked blind, and the NFT goes where you said. Your address appears nowhere.",
+  "flow.vault.s1": "Your page binds the key",
+  "flow.vault.s1.v": "It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches.",
+  "flow.vault.s2": "Handed to the relayer",
+  "flow.vault.s2.v": "The ciphertext and the request's terms go to the site's relayer. It cannot read the key, nor change a term without breaking it.",
+  "flow.vault.s3": "The relayer sends the request",
+  "flow.vault.s3.v": "The transaction names the relayer, not you. The box holds still until the request is settled.",
+  "flow.vault.s4": "Compared blind",
+  "flow.vault.s4.v": "Under encryption, the vault unmixes the key with the same fingerprint and compares it with the box's. One bit, matched or not, becomes publicly decryptable. Nobody learns the key.",
+  "flow.vault.s5": "Anyone may ask for that bit",
+  "flow.vault.s5.v": "The app asks Zama's relayer to decrypt it. Nothing else is decrypted.",
+  "flow.vault.s6": "Yes or no, signed",
+  "flow.vault.s6.v": "The bit comes back with signatures from the parties that hold the key shares.",
+  "flow.vault.s7": "The relayer sends the proof",
+  "flow.vault.s7.v": "Anyone may: if you close the tab, someone else can finish. A wrong key settles as refused, and nothing happens.",
+  "flow.vault.s8": "The NFT is out",
+  "flow.vault.s8.v": "It goes to the address you named, a fresh one if you like. That address is public; who held the box is not.",
 } as const satisfies Record<string, string>;
 
 export type DocsKey = keyof typeof docsEn;

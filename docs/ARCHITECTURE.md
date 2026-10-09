@@ -10,7 +10,7 @@ flowchart TB
     scene["scene<br/>three.js builders, effects, sound"]
   end
   subgraph chain["Chain-specific"]
-    evm["contracts-evm<br/>ConfidentialERC721.sol, DoNotOpen.sol, DoNotOpenConfig.sol<br/>Croq.sol, ConfidentialCroq.sol, Pantry.sol<br/>Rats.sol, RatPantry.sol, FleaMarket.sol"]
+    evm["contracts-evm<br/>ConfidentialERC721.sol, DoNotOpen.sol, DoNotOpenConfig.sol<br/>Croq.sol, ConfidentialCroq.sol, Pantry.sol<br/>Rats.sol, RatPantry.sol, FleaMarket.sol<br/>SealedVault.sol"]
     impl["chain-adapter / evm<br/>ethers + Relayer SDK"]
     sol["chain-adapter / solana<br/>not started"]
   end
@@ -79,6 +79,9 @@ flowchart LR
   hooks -- "reads" --> dno
   flea -- "transferFrom (approved)" --> rats["Rats<br/>ERC-721"]
   flea -- "pulls and pays" --> cusdc
+  base -- "inherited by" --> vault["SealedVault<br/>any NFT in a box, encrypted keys,<br/>requests, private sales"]
+  vault -- "validate, cancel (vault as offerer)" --> seaport["Seaport 1.5"]
+  vault -- "pulls and pays (private sales)" --> cusdc
 ```
 
 `DoNotOpen` knows the Pantry only as a trusted reader: the owner's `setTrustedReader`
@@ -95,6 +98,12 @@ its seller named (`setOperator`), and only to itself; then it holds the box in e
 anyone else, through its encrypted owner slot. It reads the box's public state through
 `DoNotOpenHooks` and nothing else, and has no special role in `DoNotOpen` or `Rats`. See
 [FLOWS.md](FLOWS.md#the-flea-market).
+
+`SealedVault` is a second Confidential ERC-721, next to the game and linked to none of its
+contracts: it inherits `ConfidentialERC721`, holds the NFTs of the collections its owner allows,
+lists them on Seaport 1.5 as their seller, and settles private sales in the same cUSDC. Each box
+has an encrypted key, compared under encryption, so a request can come from any wallet. See
+[VAULT.md](VAULT.md).
 
 ## Data flow at run time
 
@@ -194,6 +203,11 @@ flowchart TB
 `VITE_CHAIN_MODE` (or `?chain=` in the URL) picks the adapter. The menu's network tags (`chain/NetworkSwitch.tsx`) set `?chain=` and reload: an adapter belongs to one chain for the life of the page. In mock mode the EVM
 adapter, ethers and the Relayer SDK are never downloaded: they sit behind a dynamic import.
 
+The sealed vault has a page of its own, `vault.html` at `/vault` (`src/vault/VaultPage.tsx`,
+its language from `?lang=` as in the game). It reaches the vault through the same adapter:
+`ChainAdapter.vault()` returns a `VaultAdapter` (`MockVault` in mock mode, `EvmVault` on
+Sepolia), or null where no vault is deployed.
+
 The leaderboard ranks only what is public: opened cats by rarity score, and the players
 who opened them (`Observed` names the opener, the only holder that is ever public). It
 reads every `Observed` event through `openedCats()`, served by the backend's index
@@ -231,6 +245,13 @@ signs the adoption with the attester key.
 
 The API does not index the flea market yet: the EVM adapter reads its listings in pages
 (`listings(from, count)`) and its offers (`offerInfo`) straight from the chain.
+
+Nor does it index the sealed vault: the vault's adapter (`EvmVault`) reads its boxes and logs
+from the RPC. The API's part there is the vault relayer (`POST /v1/vault/relay`, with
+`VAULT_RELAYER_KEY`): it sends holders' requests and proofs from a wallet of its own, so the
+holder's address shows on none, and learns nothing the chain does not show, since the key comes
+encrypted and bound to the request's terms. Its relayer proxy decrypts for the vault too. See
+[VAULT.md](VAULT.md#the-relayer).
 
 It also runs the manual's chatbot, the depot clerk (`POST /v1/chat`): Google's Gemini, on
 its free tier, answers from the whole manual of the player's language, with the key kept on

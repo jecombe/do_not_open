@@ -103,6 +103,26 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   `whitelist` section (`whitelistParamsFromSpec`, which checks they cover ranks 1 to `places`;
   `milestonesFromSpec` checks the boxes the sale leaves match the box tiers' seats). Never
   writes to `DoNotOpen` beyond `gift`.
+- **`SealedVault`** — the sealed vault, a product next to the game: any NFT of a collection the
+  owner allows (`setCollection`) goes into a box, a `ConfidentialERC721` of its own ("DO NOT OPEN
+  Vault", `SEALED`) whose holder is encrypted. `deposit(collection, tokenId, key, proof)` pulls
+  the NFT (public) and stores the box's key, a `euint256` nobody may decrypt. Taking the NFT out,
+  listing it on Seaport, taking the listing down and collecting a sale's ETH go through
+  `request(boxId, action, to, price, endTime, boundKey, proof)`, where `boundKey` is the key XOR
+  `requestHash(...)` of those terms and the box's nonce, so any wallet (the API's relayer) can
+  send it; only "the key matched" is made publicly decryptable, and `finalize` (anyone) runs it,
+  or settles it `Refused` or `Stale`. A box with a pending request cannot move (`busy`). A
+  listing is a Seaport 1.5 order with the vault as offerer, validated on-chain (no signature, no
+  ERC-1271), Seaport approved for that token only; `sync` (anyone, and every request) marks it
+  sold or expired. A transfer gives the box a random key; `setKey` sets the holder's (a "maybe").
+  `offerSale` / `acceptSale` / `cancelSale` sell a box privately for an encrypted cUSDC price,
+  settled under encryption. Fee `feeBps` (250 by default, at most `MAX_FEE_BPS`, 1,000) on both:
+  ETH kept in `feesOwed` and sent by `sendFees` (anyone), cUSDC at the sale. `receive` takes ETH
+  from Seaport only. The owner (`Ownable`) can only `setCollection`, `setFee` and `setTreasury`.
+  `vault/ISeaport.sol` is the slice of Seaport 1.5 it uses. See
+  [`docs/VAULT.md`](../../docs/VAULT.md).
+- **`VaultTestNFT`** (`contracts/mocks/`) — test networks only: an ERC-721 anyone mints for free,
+  its picture an SVG drawn on-chain, to try the vault with.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -124,6 +144,10 @@ The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 | A secret offer on the flea market | `euint64` escrowed in `FleaMarket` | Its buyer and the listing's seller |
 | A rat's power | `euint8` in `Rats` | Its minter and whoever held it and asked (`allowPower`) |
 | A rat's shield or jam on a box | `euint64` masks, fake rolls and end times in `RatTricks` | Nobody; only selected under encryption |
+| A vault box's owner | `eaddress` in `SealedVault` | Nobody; the holder finds their boxes in their own receipts |
+| A vault box's key | `euint256` in `SealedVault` | Nobody, the holder included; only compared under encryption |
+| A vault request's "key matched" | `ebool` | Everyone, once requested |
+| A vault private sale's price, and whether it moved the box | `euint64`, `ebool` in `SealedVault` | Its seller and its buyer |
 
 ## Cost per function
 
@@ -154,15 +178,27 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `WhitelistGifts.claim`, economy (croquettes, rat and its power) | ~740k | ~1.57M |
 | `RatTricks.trick` (first on a box / box already tricked) | ~1.06M / ~881k | ~2.27M / ~2.25M |
 | `RatTricks.sniff` (tricked box, power-1 rebate) | ~1.79M | ~4.27M |
+| `SealedVault.deposit` | ~392k to ~469k | ~83k |
+| `SealedVault.request` + `finalize` (withdraw / list / unlist / claim) | ~323k + ~152k / ~349k + ~317k / ~321k + ~153k / ~309k + ~122k | ~191k |
+| `SealedVault.request` + `finalize`, a wrong key (`Refused`) | ~326k + ~101k | ~191k |
+| `SealedVault.sync` (sold / expired) | ~92k / ~51k | 0 |
+| `SealedVault.confidentialTransfer` (with a new random key) | ~209k to ~266k | ~338k |
+| `SealedVault.setKey` | ~185k | ~225k |
+| `SealedVault.offerSale` | ~304k to ~324k | ~150k |
+| `SealedVault.acceptSale` | ~1.66M | ~4.34M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
 `Rats` and `RatPantry` have no FHE: `mintSeed` ~248k gas (~163k after the first), `mintModel`
 ~190k, `RatPantry.claim` ~90k for one rat (~103k for two); ~2.30M and ~554k to deploy (Hardhat).
 `StudioPacks` has no FHE either: `buy` takes ~115k gas the first time (~63k after), and the
 contract ~641k to deploy (Hardhat).
+The `SealedVault` rows are not in `test/Costs.ts` yet: gas from `REPORT_GAS=1 pnpm test
+test/SealedVault.ts`, HCU from `fhevm.computeTransactionHCU` on the same calls, against Seaport
+1.5's bytecode. A buyer's Seaport `fulfillOrder` of a vault listing takes ~97k gas; the vault
+~4.77M to deploy.
 
 Deployed size: `DoNotOpen` 24,442 bytes (limit 24,576; the token URIs live in `BoxMetadata`, 1,861, and the rules' views in `DoNotOpenConfig`, 2,968), `WhitelistGifts` 4,876, `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
-12,377. To stay under
+12,377, `SealedVault` 20,833. To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
@@ -171,13 +207,14 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 194 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market
+pnpm test                 # 250 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's bytecode)
 
 # Local walkthrough
 pnpm chain                # terminal 1
 pnpm deploy:localhost     # terminal 2
 pnpm demo:localhost       # buy a hidden box, shake twice, prove alive, observe
 pnpm demo2:localhost      # mint 3, feed, duel, entangle, observe one and see both open
+npx hardhat --network localhost dno:vault-demo   # the sealed vault: seal, list on Seaport, buy, collect, take out
 
 # Sepolia (fill MNEMONIC or PRIVATE_KEY in the repo-root .env first)
 pnpm deploy:sepolia
@@ -254,6 +291,19 @@ the API's `GET /v1/allowlist/gifts?token=` answer and run
 with `closesAt` `claimDays` (30) from now, and the same file goes to the API
 (`WHITELIST_GIFTS_TREE`). `dno:export` writes the contract under `whitelistGifts`.
 
+`deploy/vault.ts` (tag `Vault`) deploys `SealedVault` against Seaport 1.5
+(`0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC`, OpenSea's deployment on Sepolia and mainnet; 1.6
+is not on Sepolia) and the network's cUSDC, with `VAULT_FEE_BPS` (250) paid to
+`STUDIO_TREASURY` (or the owner), owned by `COLLECTION_OWNER` (or the deployer). On a test network
+it also deploys `VaultTestNFT` and allows it. On a local node (`pnpm chain`) it first puts
+Seaport's Sepolia runtime code at its address (`test/fixtures/seaport-1.5.json`, with storage
+slot 0, the reentrancy guard, set to 1); elsewhere it stops if Seaport is missing. It runs at the
+end and redeploys nothing else (locally it reuses the test cUSDC of `deploy.ts`), so `npx hardhat deploy --network sepolia --tags Vault` adds it next to
+a live collection; `dno:export` writes it under `vault` (address, ABI, deploy block, Seaport,
+the allowed collections). `npx hardhat --network <localhost|sepolia> dno:vault-demo` runs it end
+to end; on Sepolia its fresh addresses are the kept test wallets `vault-proceeds` and
+`vault-withdrawals`.
+
 `deploy/tricks.ts` (tag `Tricks`) deploys `RatTricks` with the paid shake's fee, the spec's
 rebate (30%), trick and rest days (`studio.json` `rats.powers`, `lib/ratParams.ts`), then makes it
 `DoNotOpen`'s guard (`setGuard`) and trusted reader, and the rats' `tricks` (`setTricks`), or
@@ -295,5 +345,6 @@ twice: once on "the challenger holds A" after `postDuel`, which puts the box on 
 shelf for 7 days or voids the duel, and once on the outcome after `acceptDuel`, which
 resolves it, voids it (A no longer held) or puts it back on the shelf (B not held). A
 milestone has `announceMilestone`. `FleaMarket` follows the same shape with
-`finalizeListing` ("the box arrived") and `finalizePurchase` ("the buyer paid"). The CLI tasks and the app do both steps in one go. A
+`finalizeListing` ("the box arrived") and `finalizePurchase` ("the buyer paid"), and
+`SealedVault` with `request` and `finalize` ("the key matched"). The CLI tasks and the app do both steps in one go. A
 request whose second step was never sent stays pending; anyone can finish it.

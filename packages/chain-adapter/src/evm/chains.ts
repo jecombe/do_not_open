@@ -2,6 +2,7 @@ import type { InterfaceAbi } from "ethers";
 import sepoliaDeployment from "./deployments/sepolia.json";
 import sepoliaEconomy from "./deployments/sepolia-economy.json";
 import type { EconomyDeployment } from "./EvmFhevmAdapter";
+import type { VaultDeployment } from "./EvmVault";
 import type { ChainParams } from "./wallet";
 
 export interface Deployment {
@@ -25,6 +26,8 @@ export interface Deployment {
   whitelistGifts?: { address: string; abi: InterfaceAbi } | null;
   /** The rats' tricks. Absent until deployed. */
   ratTricks?: { address: string; abi: InterfaceAbi; deployBlock?: number | null } | null;
+  /** The sealed vault, where any NFT can sit with its holder hidden. Absent until deployed. */
+  vault?: VaultDeployment | null;
 }
 
 export const SEPOLIA: ChainParams = {
