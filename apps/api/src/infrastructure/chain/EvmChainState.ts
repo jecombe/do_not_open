@@ -110,7 +110,9 @@ export class EvmChainState implements ChainState {
         this.d.ratTricks ? this.d.rats?.address : undefined, this.d.ratTricks?.address,
         // The sealed vault: its receipts, private sale prices and box keys; its pockets (balances,
         // spends) and the desk that buys from them (asks, the boxes a pocket bought).
-        this.d.vault?.address, this.d.vault?.pockets?.address, this.d.vault?.pockets?.desk.address].filter((a): a is string => !!a).map(normalizeAddress);
+        this.d.vault?.address, this.d.vault?.pockets?.address, this.d.vault?.pockets?.desk?.address,
+        // The other tokens' pockets (cUSDT, cWETH, cZAMA): balances and spends, like the cUSDC ones.
+        ...(this.d.vault?.otherPockets ?? []).map((p) => p.address)].filter((a): a is string => !!a).map(normalizeAddress);
     });
     this.contracts.catch(() => (this.contracts = null));
     return this.contracts;

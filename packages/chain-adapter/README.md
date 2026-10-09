@@ -318,18 +318,27 @@ tokenId))`, the same on any device. The EVM vault reads its boxes and logs from 
 indexes only its counts, for the team. Every action reports the usual steps (`wallet` also for the key
 signature).
 
-`vault.pockets()` returns the vault's `PocketsAdapter`, or null where the pockets are not deployed
-(`sepolia.json`'s `vault.pockets`, with its `desk`). A pocket holds cUSDC under a key, not an
+`vault.pocketTokens()` lists the tokens pockets hold where they are deployed (`PocketToken`:
+`symbol`, `name`, `address`, `decimals`, `rate`, `underlying`, `desk`, `faucet`), the vault's cUSDC
+first, then cUSDT, cWETH and cZAMA on Sepolia (`sepolia.json`'s `vault.pockets.token` and
+`vault.otherPockets`). `vault.pockets(symbol?)` returns that token's `PocketsAdapter` (cUSDC's when
+left out), or null where it is not deployed. A pocket holds its token under a key, not an
 address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
 
-- `info()`: `address`, `desk`, `count` (pockets opened, the decoys' pool), `maxSet` (5).
+- `token`: the `PocketToken` it holds. `info()`: `address`, `desk` (null but for cUSDC), `count`
+  (pockets opened, the decoys' pool), `maxSet` (5).
 - `mine()` finds the wallet's pocket (null before it is opened); `open()` opens it (relayed when
-  there is a relayer). The wallet signs `pocketKeyMessage(pockets, chainId)` once a session:
-  `keccak256(signature, "key")` is the key, `keccak256(signature, "viewer")` the private key of
-  the viewer, a wallet that only signs decryption permits.
+  there is a relayer). The wallet signs `pocketKeyMessage(pockets, chainId)` once a session
+  (naming the cUSDC pockets, for every token): `keccak256(signature, "key")` is the key,
+  `keccak256(signature, "viewer")` the private key of the viewer, a wallet that only signs
+  decryption permits; another token's pocket adds `":" + its pockets' address` to both labels.
+  A relayed open, send or withdraw names another token's pockets (`pockets`).
+- `plainBalance()` reads the wallet's underlying ERC-20; `faucet()` mints `token.faucet` of it
+  (test networks); `shield(amount)` wraps enough of it (`amount × rate`) into the confidential
+  token before a deposit.
 - `balance()` user-decrypts the pocket's balance as its viewer (`userDecryptAs`: the adapter
   keeps a permit per account).
-- `deposit(amount, { to?, decoys? })` pulls the wallet's cUSDC (making the pockets its operator
+- `deposit(amount, { to?, decoys? })` pulls the wallet's confidential token (making the pockets its operator
   if needed) into pocket `to` (the wallet's own by default) among decoys; `send(to, amount, {
   decoys? })` and `withdraw(address, amount, { decoys? })` encrypt the amount and target, then
   the key XOR `spendHash(...)` in a second input, and go through the relayer. A short balance
@@ -342,10 +351,13 @@ address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
   with the desk as user), waits for the public "ok", then buys: throws `not-yours` when the key
   or the balance did not hold (the sale stays open), else returns whether the box moved.
   `boxes()` lists the boxes the wallet's pocket bought (`ownerOf` on the desk, decrypted as the
-  viewer); the vault's own requests work on them with the usual box key.
+  viewer); the vault's own requests work on them with the usual box key. These are cUSDC's only:
+  elsewhere `sales()` and `boxes()` are empty and `offerSale`, `buy` throw.
 
-The mock (`MockVault`) has four strangers' pockets and the night shift's, which buys any box
-offered to it; opening a pocket brings an offer of one of the night shift's boxes for 5 cUSDC.
+The mock (`MockVault`) has the four tokens, each with four strangers' pockets and the night
+shift's, which buys any box offered to it; opening a cUSDC pocket brings an offer of one of the
+night shift's boxes for 5 cUSDC. `POCKET_TOKEN=cUSDT|cWETH|cZAMA pnpm smoke:pockets` runs the
+Sepolia smoke test on another token's pockets.
 
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its
 account picker again (EIP-2255 `wallet_requestPermissions`) rather than handing back the

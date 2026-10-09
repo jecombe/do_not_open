@@ -351,6 +351,9 @@ export class MockAdapter implements ChainAdapter {
         this.credit(this.cUsdc, from, -amount);
         this.credit(this.cUsdc, to, amount);
       },
+      usdcOf: (who) => this.usdc.get(who) ?? 0n,
+      faucetUsdc: (o) => this.faucetUsdc(o),
+      shieldUsdc: (amount, o) => this.shieldUsdc(amount, o),
     });
     this.vault_.giveEth(MOCK_YOU, 10n ** 18n);
     // What the night shift pays for the boxes you sell it privately in the vault.

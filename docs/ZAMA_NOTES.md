@@ -870,6 +870,22 @@ specific to the protocol:
 - **HCU.** A send between two full sets of five is ~6.5M HCU (depth ~2M), a deposit into five
   ~3.5M, a withdrawal from five ~4.3M; a desk purchase ~6.3M (depth ~3.3M), most of it the
   vault's own `acceptSale`. All under the 20M limit; see [VAULT.md](VAULT.md#cost).
+- **Other confidential tokens.** cUSDT, cWETH and cZAMA, Zama's ERC-7984 wrappers from its
+  Confidential Token Wrappers Registry (`0x2f0750Bbb0A246059d80e94c454586a7F27a128e` on
+  Sepolia), each have a `SealedPockets` of their own, without a desk: `SealedPockets_cUSDT`
+  `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`, `SealedPockets_cWETH`
+  `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350`, `SealedPockets_cZAMA`
+  `0x6D1585c58238DaADF748558051BF368DAA3eceE2` (2026-10-09, blocks 11878756 to 11878758). Every
+  wrapper has 6 decimals, so amounts fit the pockets' `euint64`; cWETH and cZAMA wrap 18-decimal
+  ERC-20s at a rate of 10^12. One signature derives every token's pocket, each with its own
+  viewer (`"key:"`/`"viewer:"` + the pockets' address for any token but cUSDC). Which token an
+  action moves is public, and its decoys come from that token's pockets only
+  ([VAULT.md](VAULT.md#other-tokens)).
+- **Ten contracts per permit.** Zama's relayer refuses a user-decryption permit naming more than
+  10 contracts (`MAX_USER_DECRYPT_CONTRACT_ADDRESSES`), and the wallet's permit already names nine
+  (the collection, cUSDC, cCROQ, the Pantry, the flea market, the vault, the pockets, the desk,
+  the Rats). A pocket viewer's permit now names only the vault's contracts (the vault, every
+  token's pockets, the desk): the viewer reads nothing else.
 
 ### Sepolia deployment (2026-10-08): free gift boxes
 

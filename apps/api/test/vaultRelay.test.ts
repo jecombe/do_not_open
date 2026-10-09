@@ -118,6 +118,15 @@ describe("vault relay routes", () => {
     }
   });
 
+  it("passes on which token's pockets a call names, and checks it is an address", async () => {
+    const pockets = "0x6d1585c58238daadf748558051bf368daa3ecee2";
+    const payload = { call: "pocketWithdraw", args: { from: [3], to: RELAYER, input: spend, pockets } };
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload })).statusCode).toBe(200);
+    expect(sender.sent.at(-1)).toMatchObject({ call: "pocketWithdraw", tx: { pockets: expect.stringMatching(/^0x6d1585c58238daadf748558051bf368daa3ecee2$/i) } });
+    const bad = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { ...payload, args: { ...payload.args, pockets: "cZAMA" } } });
+    expect(bad.statusCode).toBe(400);
+  });
+
   it("relays the desk's ask and purchase", async () => {
     const ask = { saleId: 5, handle: HANDLE, keyProof: "0xdead", boxKey: HANDLE };
     expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "deskAsk", args: ask } })).statusCode).toBe(200);

@@ -33,10 +33,11 @@ export interface PocketSpendInput {
 
 /** The pockets' and the desk's calls the relayer sends, by name. */
 export interface PocketTxs {
-  /** Opens a pocket: its key encrypted for the pockets, and the address that reads its balance. */
-  pocketOpen: { handle: string; inputProof: string; viewer: Address };
-  pocketSend: { from: number[]; to: number[]; input: PocketSpendInput };
-  pocketWithdraw: { from: number[]; to: Address; input: PocketSpendInput };
+  /** Opens a pocket: its key encrypted for the pockets, and the address that reads its balance.
+   *  `pockets` names another token's pockets contract (cUSDT, cWETH, cZAMA); the cUSDC ones when left out. */
+  pocketOpen: { handle: string; inputProof: string; viewer: Address; pockets?: Address };
+  pocketSend: { from: number[]; to: number[]; input: PocketSpendInput; pockets?: Address };
+  pocketWithdraw: { from: number[]; to: Address; input: PocketSpendInput; pockets?: Address };
   /** Step 1 of a purchase out of a pocket: the pocket's bound key, and the box key's handle. */
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   /** Step 2: the proof of the "ok" bit and the box's new key. */

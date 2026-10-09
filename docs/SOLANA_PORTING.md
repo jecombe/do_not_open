@@ -213,7 +213,9 @@ box program:
   encrypted key, an encrypted balance and a viewer pubkey, with the pool's confidential tokens in
   a PDA's token account. A spend names its sets as remaining accounts; the key bound to the terms
   and the spent-handle list carry over as they are (a bound key's ciphertext account can be
-  marked spent). The viewer is an ed25519 keypair derived from the same `signMessage`. The desk
+  marked spent). The viewer is an ed25519 keypair derived from the same `signMessage`. Other
+  confidential tokens (cUSDT, cWETH, cZAMA on Sepolia) are one pool each, as on EVM, their key
+  and viewer derived with the pool's address mixed in. The desk
   becomes an instruction of that program calling the vault program's private-sale accept, its
   public "ok" bit read the same way as the vault's requests.
 

@@ -268,7 +268,9 @@ async function main() {
             config.VAULT_RELAYER_KEY,
             deployment.vault.address,
             new JsonRpcProvider(config.RPC_URLS[0], deployment.chainId, { staticNetwork: true }),
-            deployment.vault.pockets ? { address: deployment.vault.pockets.address, desk: deployment.vault.pockets.desk.address } : null,
+            deployment.vault.pockets
+              ? { address: deployment.vault.pockets.address, desk: deployment.vault.pockets.desk?.address ?? null, others: (deployment.vault.otherPockets ?? []).map((p) => p.address) }
+              : null,
           ), clock, config.VAULT_RELAY_PER_DAY)
       : undefined;
   if (vaultRelay) log.info({ address: vaultRelay.address }, "the vault relayer sends holders' requests");

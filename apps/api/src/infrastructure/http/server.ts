@@ -563,9 +563,10 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       }),
       z.object({ call: z.literal("finalize"), args: z.object({ requestId: id, cleartexts: hex, proof: hex, offer: hex.optional() }) }),
       // The pockets and their desk.
-      z.object({ call: z.literal("pocketOpen"), args: z.object({ handle: bytes32, inputProof: hex, viewer: address }) }),
-      z.object({ call: z.literal("pocketSend"), args: z.object({ from: pocketSet, to: pocketSet, input: spendInput }) }),
-      z.object({ call: z.literal("pocketWithdraw"), args: z.object({ from: pocketSet, to: address, input: spendInput }) }),
+      // `pockets` names another token's pockets (cUSDT, cWETH, cZAMA); the cUSDC ones when left out.
+      z.object({ call: z.literal("pocketOpen"), args: z.object({ handle: bytes32, inputProof: hex, viewer: address, pockets: address.optional() }) }),
+      z.object({ call: z.literal("pocketSend"), args: z.object({ from: pocketSet, to: pocketSet, input: spendInput, pockets: address.optional() }) }),
+      z.object({ call: z.literal("pocketWithdraw"), args: z.object({ from: pocketSet, to: address, input: spendInput, pockets: address.optional() }) }),
       z.object({ call: z.literal("deskAsk"), args: z.object({ saleId: id, handle: bytes32, keyProof: hex, boxKey: bytes32 }) }),
       z.object({ call: z.literal("deskBuy"), args: z.object({ askId: id, cleartexts: hex, proof: hex, boxKey: bytes32, boxKeyProof: hex }) }),
     ]);

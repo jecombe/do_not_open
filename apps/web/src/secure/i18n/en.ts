@@ -1,7 +1,7 @@
 /** The secure home page's own messages; the rest (why, how, what shows, the game) are the home page's. */
 export const secureEn = {
   "secure.title": "DO NOT OPEN, the sealed vault: own assets nobody can see you hold, NFTs and tokens alike",
-  "secure.description": "Put your assets in the sealed vault, an NFT in a box or your cUSDC in a pocket, their holder encrypted on Ethereum with Zama's FHE. NFTs still sell on Seaport; tokens still pay anyone, without showing who paid whom.",
+  "secure.description": "Put your assets in the sealed vault, an NFT in a box or your cUSDC, cUSDT, cWETH or cZAMA in a pocket, their holder encrypted on Ethereum with Zama's FHE. NFTs still sell on Seaport; tokens still pay anyone, without showing who paid whom.",
   "secure.imageAlt": "A sealed cardboard box stamped DO NOT OPEN inside a glowing encryption shield",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocol",

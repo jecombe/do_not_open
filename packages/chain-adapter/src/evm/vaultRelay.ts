@@ -36,9 +36,10 @@ export interface PocketSpendInput {
 
 /** What the relayer sends for the pockets and their desk, by call. */
 export interface PocketRelayCalls {
-  pocketOpen: { handle: string; inputProof: string; viewer: string };
-  pocketSend: { from: number[]; to: number[]; input: PocketSpendInput };
-  pocketWithdraw: { from: number[]; to: string; input: PocketSpendInput };
+  /** `pockets`: another token's pockets contract; the cUSDC ones when left out. */
+  pocketOpen: { handle: string; inputProof: string; viewer: string; pockets?: string };
+  pocketSend: { from: number[]; to: number[]; input: PocketSpendInput; pockets?: string };
+  pocketWithdraw: { from: number[]; to: string; input: PocketSpendInput; pockets?: string };
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
 }

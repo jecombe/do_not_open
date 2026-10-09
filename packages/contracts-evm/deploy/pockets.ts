@@ -1,9 +1,12 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { POCKET_TOKENS, pocketsDeployment } from "../lib/pocketTokens";
 
 /**
  * The vault's pockets: cUSDC in pockets locked by a key, not an address (SealedPockets), and the
  * desk that buys the vault's private sales out of them (PocketDesk, which needs the vault).
+ * Then one SealedPockets for each of Zama's other confidential tokens on the network
+ * (lib/pocketTokens.ts: cUSDT, cWETH, cZAMA on Sepolia), without a desk.
  * Runs after the vault and redeploys nothing else: `--tags Pockets` adds them next to a live vault.
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -23,6 +26,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await execute("SealedPockets", { from: deployer!, log: true }, "transferOwnership", owner);
   }
   console.log(`SealedPockets: ${pockets.address} (cUSDC ${cUsdc}), PocketDesk: ${desk.address} (vault ${vault.address})`);
+
+  for (const { symbol, token } of POCKET_TOKENS[hre.network.name] ?? []) {
+    const more = await deploy(pocketsDeployment(symbol), { contract: "SealedPockets", from: deployer!, args: [token, owner], log: true });
+    console.log(`SealedPockets (${symbol}): ${more.address} (token ${token})`);
+  }
 };
 export default func;
 func.id = "deploy_pockets";

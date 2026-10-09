@@ -5,6 +5,7 @@ import type {
   PocketSale,
   PocketsAdapter,
   PocketsInfo,
+  PocketToken,
   VaultAdapter,
   VaultBox,
   VaultCollection,
@@ -27,6 +28,56 @@ export const MOCK_POCKETS: Address = "0x00000000000000000000000000000000000b0c55
 /** The desk: buys private sales out of pockets and holds the boxes it bought. */
 export const MOCK_DESK: Address = "0x0000000000000000000000000000000000000de5";
 const POCKETS_MAX_SET = 5;
+/** Plain units per confidential unit, for an 18-decimal token wrapped to 6. */
+const RATE_18 = 10n ** 12n;
+
+/** The tokens the demo's pockets hold, as on Sepolia: cUSDC (with the desk), cUSDT, cWETH, cZAMA. */
+const MOCK_POCKET_TOKENS: (PocketToken & { pockets: Address })[] = [
+  {
+    symbol: "cUSDC",
+    name: "Confidential USDC",
+    address: "0x00000000000000000000000000000000000c05dc",
+    decimals: 6,
+    rate: 1n,
+    underlying: { address: "0x000000000000000000000000000000000000005d", symbol: "USDC", decimals: 6 },
+    desk: true,
+    faucet: 100_000_000n,
+    pockets: MOCK_POCKETS,
+  },
+  {
+    symbol: "cUSDT",
+    name: "Confidential USDT",
+    address: "0x00000000000000000000000000000000000c05d7",
+    decimals: 6,
+    rate: 1n,
+    underlying: { address: "0x00000000000000000000000000000000000005d7", symbol: "USDT", decimals: 6 },
+    desk: false,
+    faucet: 100_000_000n,
+    pockets: "0x00000000000000000000000000000000000b0c56",
+  },
+  {
+    symbol: "cWETH",
+    name: "Confidential WETH",
+    address: "0x00000000000000000000000000000000000c0e7a",
+    decimals: 6,
+    rate: RATE_18,
+    underlying: { address: "0x0000000000000000000000000000000000000e7a", symbol: "WETH", decimals: 18 },
+    desk: false,
+    faucet: 10n ** 18n,
+    pockets: "0x00000000000000000000000000000000000b0c57",
+  },
+  {
+    symbol: "cZAMA",
+    name: "Confidential ZAMA",
+    address: "0x00000000000000000000000000000000000c0a3a",
+    decimals: 6,
+    rate: RATE_18,
+    underlying: { address: "0x0000000000000000000000000000000000000a3a", symbol: "ZAMA", decimals: 18 },
+    desk: false,
+    faucet: 1_000n * 10n ** 18n,
+    pockets: "0x00000000000000000000000000000000000b0c58",
+  },
+];
 const USD = 1_000_000n;
 /** What the night shift asks your pocket for the box it offers it, in cUSDC. */
 const NIGHT_POCKET_PRICE = 5n * USD;
@@ -48,6 +99,22 @@ export interface MockVaultHost {
   decrypting(opts: ActionOptions | undefined): Promise<void>;
   cUsdcOf(who: Address): bigint;
   moveCusdc(from: Address, to: Address, amount: bigint): void;
+  /** Plain USDC, its faucet and its wrapping, for the cUSDC pockets. */
+  usdcOf(who: Address): bigint;
+  faucetUsdc(opts?: ActionOptions): Promise<void>;
+  shieldUsdc(amount: bigint, opts?: ActionOptions): Promise<void>;
+}
+
+/** One token's pockets and the wallets' balances of it. */
+interface MockPocketBook {
+  token: PocketToken & { pockets: Address };
+  list: MockPocket[];
+  sealedOf(who: Address): bigint;
+  move(from: Address, to: Address, amount: bigint): void;
+  plainOf(who: Address): bigint;
+  faucet(who: Address, opts?: ActionOptions): Promise<void>;
+  /** Wraps `amount` (confidential units) of the wallet's plain token. */
+  shield(who: Address, amount: bigint, opts?: ActionOptions): Promise<void>;
 }
 
 interface MockVaultBox extends Omit<VaultBox, "busy"> {
@@ -94,8 +161,8 @@ export class MockVault implements VaultAdapter {
   private nextNft = 1;
   /** Mock milliseconds when each of your listings finds its buyer. */
   private readonly buyerAt = new Map<number, number>();
-  private readonly pocketList: MockPocket[] = [];
-  private pockets_: PocketsAdapter | null = null;
+  private readonly books: MockPocketBook[] = [];
+  private readonly pocketsBy = new Map<string, PocketsAdapter>();
 
   constructor(private readonly host: MockVaultHost) {
     const night = host.nightShift;
@@ -106,14 +173,75 @@ export class MockVault implements VaultAdapter {
     }
     this.eth.set(night, 50n * ETH);
     this.listBox(this.all[0]!, ETH / 20n, Math.floor(host.now() / 1000) + 7 * 86_400);
+    for (const token of MOCK_POCKET_TOKENS) this.books.push(token.desk ? this.cUsdcBook(token) : this.plainBook(token));
     // Strangers' pockets, so yours hides among others from the start, one of them the night shift's.
-    for (let i = 0; i < 4; i++) this.pocketList.push({ owner: `0x00000000000000000000000000000000000c0c${i.toString(16).padStart(2, "0")}` as Address, balance: 0n });
-    this.pocketList.push({ owner: night, balance: 500n * USD });
+    for (const book of this.books) {
+      for (let i = 0; i < 4; i++) book.list.push({ owner: `0x00000000000000000000000000000000000c0c${i.toString(16).padStart(2, "0")}` as Address, balance: 0n });
+      book.list.push({ owner: night, balance: 500n * USD });
+    }
   }
 
-  pockets(): PocketsAdapter {
-    this.pockets_ ??= this.makePockets();
-    return this.pockets_;
+  /** The cUSDC pockets' book: the demo's own USDC and cUSDC. */
+  private cUsdcBook(token: PocketToken & { pockets: Address }): MockPocketBook {
+    const host = this.host;
+    return {
+      token,
+      list: [],
+      sealedOf: (who) => host.cUsdcOf(who),
+      move: (from, to, amount) => host.moveCusdc(from, to, amount),
+      plainOf: (who) => host.usdcOf(who),
+      faucet: (_who, opts) => host.faucetUsdc(opts),
+      shield: (_who, amount, opts) => host.shieldUsdc(amount, opts),
+    };
+  }
+
+  /** Another token's book, kept here: plain and sealed balances by wallet. */
+  private plainBook(token: PocketToken & { pockets: Address }): MockPocketBook {
+    const plain = new Map<Address, bigint>();
+    const sealed = new Map<Address, bigint>();
+    const add = (m: Map<Address, bigint>, who: Address, v: bigint) => m.set(who, (m.get(who) ?? 0n) + v);
+    return {
+      token,
+      list: [],
+      sealedOf: (who) => sealed.get(who) ?? 0n,
+      move: (from, to, amount) => {
+        add(sealed, from, -amount);
+        add(sealed, to, amount);
+      },
+      plainOf: (who) => plain.get(who) ?? 0n,
+      faucet: async (who, opts) => {
+        await this.host.send(opts, "mint");
+        add(plain, who, token.faucet ?? 0n);
+      },
+      shield: async (who, amount, opts) => {
+        const needed = amount * token.rate;
+        if ((plain.get(who) ?? 0n) < needed) throw new ChainError("unknown", `This wallet does not hold enough ${token.underlying.symbol}.`);
+        await this.host.send(opts, "approve");
+        await this.host.send(opts, "wrap");
+        add(plain, who, -needed);
+        add(sealed, who, amount);
+      },
+    };
+  }
+
+  pocketTokens(): PocketToken[] {
+    return this.books.map(({ token: { pockets: _pockets, ...t } }) => t);
+  }
+
+  pockets(symbol?: string): PocketsAdapter | null {
+    const book = symbol ? this.books.find((b) => b.token.symbol.toLowerCase() === symbol.toLowerCase()) : this.books[0];
+    if (!book) return null;
+    let p = this.pocketsBy.get(book.token.symbol);
+    if (!p) {
+      p = this.makePockets(book);
+      this.pocketsBy.set(book.token.symbol, p);
+    }
+    return p;
+  }
+
+  /** The cUSDC pockets, the only ones the desk buys with. */
+  private get pocketList(): MockPocket[] {
+    return this.books[0]!.list;
   }
 
   async info(): Promise<VaultInfo> {
@@ -367,9 +495,11 @@ export class MockVault implements VaultAdapter {
   }
 
   /** The pockets in memory, with the contract's rules: a short balance or a wrong key moves nothing, without an error. */
-  private makePockets(): PocketsAdapter {
+  private makePockets(book: MockPocketBook): PocketsAdapter {
     const host = this.host;
-    const list = this.pocketList;
+    const { list, token } = book;
+    const address = token.pockets;
+    const noDesk = () => new ChainError("unknown", `${token.symbol} pockets do not buy the vault's private sales: those are paid in cUSDC.`);
     const mineOf = (who: Address | null) => (who ? list.findIndex((p) => p.owner === who) : -1);
     const myPocket = () => {
       const id = mineOf(this.signer());
@@ -377,12 +507,15 @@ export class MockVault implements VaultAdapter {
       return id;
     };
     const set = (real: number, opts?: PocketOptions, avoid: number[] = []) => pocketSet(real, list.length, opts?.decoys ?? DEFAULT_POCKET_DECOYS, POCKETS_MAX_SET, avoid);
-    const info = async (): Promise<PocketsInfo> => ({ address: MOCK_POCKETS, desk: MOCK_DESK, count: list.length, maxSet: POCKETS_MAX_SET });
+    const info = async (): Promise<PocketsInfo> => ({ address, desk: token.desk ? MOCK_DESK : null, count: list.length, maxSet: POCKETS_MAX_SET });
     const pocketSales = (): (MockSale & { pocketId: number })[] => {
+      if (!token.desk) return [];
       const id = mineOf(host.account());
       return this.saleList.filter((s): s is MockSale & { pocketId: number } => s.pocketId !== undefined && s.pocketId === id && id >= 0);
     };
+    const { pockets: _pockets, ...publicToken } = token;
     return {
+      token: publicToken,
       info,
       mine: async () => {
         const id = mineOf(host.account());
@@ -398,7 +531,7 @@ export class MockVault implements VaultAdapter {
         list.push({ owner: me, balance: 0n });
         const id = list.length - 1;
         // The night shift offers your new pocket one of its boxes, so buying with a pocket can be played alone.
-        const theirs = this.all.findIndex((b) => b.holder === host.nightShift && b.state === "sealed");
+        const theirs = !token.desk ? -1 : this.all.findIndex((b) => b.holder === host.nightShift && b.state === "sealed");
         if (theirs >= 0) {
           this.saleList.push({ saleId: this.saleList.length, boxId: theirs, seller: host.nightShift, buyer: MOCK_DESK, status: "open", price: NIGHT_POCKET_PRICE, pocketId: id });
         }
@@ -418,8 +551,8 @@ export class MockVault implements VaultAdapter {
         await host.send(opts, "setOperator");
         await host.send(opts, "deposit");
         // The pockets pull it all or nothing.
-        if (host.cUsdcOf(me) >= amount) {
-          host.moveCusdc(me, MOCK_POCKETS, amount);
+        if (book.sealedOf(me) >= amount) {
+          book.move(me, address, amount);
           list[to]!.balance += amount;
         }
       },
@@ -444,10 +577,17 @@ export class MockVault implements VaultAdapter {
         await host.send(opts, "withdraw");
         if (list[id]!.balance >= amount) {
           list[id]!.balance -= amount;
-          host.moveCusdc(MOCK_POCKETS, to, amount);
+          book.move(address, to, amount);
         }
       },
+      plainBalance: async () => book.plainOf(this.signer()),
+      faucet: async (opts) => {
+        if (token.faucet === null) throw new ChainError("unknown", `There is no ${token.underlying.symbol} faucet here.`);
+        await book.faucet(this.signer(), opts);
+      },
+      shield: (amount, opts) => book.shield(this.signer(), amount, opts),
       offerSale: async (boxId, pocketId, price, opts) => {
+        if (!token.desk) throw noDesk();
         const me = this.signer();
         const b = this.get(boxId);
         if (b.state !== "sealed") throw revert("WrongState");
@@ -469,6 +609,7 @@ export class MockVault implements VaultAdapter {
         return out;
       },
       buy: async (saleId, opts) => {
+        if (!token.desk) throw noDesk();
         const id = myPocket();
         const s = this.sale(saleId);
         if (s.pocketId !== id) throw revert("NotReserved");
@@ -482,6 +623,7 @@ export class MockVault implements VaultAdapter {
         return this.buyForPocket(s, id);
       },
       boxes: async () => {
+        if (!token.desk) return [];
         const id = mineOf(host.account());
         return this.all.flatMap((b, boxId) => (id >= 0 && b.holder === MOCK_DESK && b.pocket === id && !gone(b) ? [boxId] : []));
       },

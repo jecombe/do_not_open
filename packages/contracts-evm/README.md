@@ -152,7 +152,9 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   input)` take a `SpendInput` (amount and target under one proof, the key XOR `spendHash(...)`
   under another) and move `select(key matches and balance covers, amount, 0)`, with no
   decryption. Sets of 1 to 5 pockets, increasing; a bound key's handle is `spent` once. `desk`
-  (set once by the owner) may `deskCheck`, `deskTake` and `deskGive`. See
+  (set once by the owner) may `deskCheck`, `deskTake` and `deskGive`. The same contract also
+  holds Zama's other confidential tokens, one instance each and no desk (`SealedPockets_cUSDT`,
+  `_cWETH`, `_cZAMA` on Sepolia, from `lib/pocketTokens.ts`). See
   [`docs/VAULT.md`](../../docs/VAULT.md#pockets).
 - **`PocketDesk`** (`contracts/vault/`) — buys the vault's private sales out of pockets
   (constructor `(pockets, vault)`; it makes the vault its cUSDC operator). The seller offers a
@@ -263,7 +265,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 335 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's and delegate.xyz's bytecode) and its pockets
+pnpm test                 # 336 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's and delegate.xyz's bytecode) and its pockets
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -364,6 +366,16 @@ a live collection; `dno:export` writes it under `vault` (address, ABI, deploy bl
 to end; its fresh addresses are the kept test wallets `vault-proceeds`, `vault-withdrawals` and
 `vault-delegate`. On Sepolia it stops at the first `finalize` while Zama's gateway answers
 "ciphertext not ready"; the whole run (offer and delegation included) passes on a local node.
+
+`deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys `SealedPockets` on the vault's cUSDC
+and `PocketDesk`, sets the desk and hands the pockets to `COLLECTION_OWNER`; then one more
+`SealedPockets` per token of `lib/pocketTokens.ts` on that network (cUSDT, cWETH, cZAMA on
+Sepolia: Zama's ERC-7984 wrappers from its Confidential Token Wrappers Registry), deployed as
+`SealedPockets_<symbol>`, without a desk. It runs the vault's script first: check its constructor
+arguments (`STUDIO_TREASURY`, `COLLECTION_OWNER`) match the live ones, or `SealedVault` is
+redeployed. `dno:export` writes the cUSDC pockets under `vault.pockets` (with `token`: the
+confidential token, its ERC-20, decimals and rate, read from the chain) and the others under
+`vault.otherPockets` (address, deploy block, token; they share the cUSDC pockets' ABI).
 
 `deploy/tricks.ts` (tag `Tricks`) deploys `RatTricks` with the paid shake's fee, the spec's
 rebate (30%), trick and rest days (`studio.json` `rats.powers`, `lib/ratParams.ts`), then makes it

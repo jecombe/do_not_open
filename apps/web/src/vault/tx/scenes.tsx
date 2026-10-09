@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { tokenLogoUrl } from "../../brand/logos";
 
 /**
  * A small animated scene for each kind of vault action, drawn in SVG and moved by CSS (tx.css):
@@ -82,6 +83,18 @@ function Coin({ className }: { className?: string }) {
     <g className={className}>
       <circle r="11" fill="#5be3c2" stroke="#07090c" strokeWidth="1.5" />
       <path d="M0 -7 L5 0 L0 3 L-5 0 Z M0 4.5 L5 1.5 L0 8 L-5 1.5 Z" fill="#07090c" />
+    </g>
+  );
+}
+
+/** A token's coin, centred on the origin: its logo when it has one (cZAMA, cUSDT…), else the ETH coin. */
+function TokenCoin({ token, className }: { token?: string | null; className?: string }) {
+  const src = token ? tokenLogoUrl(token) : null;
+  if (!src) return <Coin className={className} />;
+  return (
+    <g className={className}>
+      <circle r="11.5" fill="#07090c" />
+      <image href={src} x="-11" y="-11" width="22" height="22" />
     </g>
   );
 }
@@ -300,24 +313,25 @@ function KeyLock() {
 }
 
 /** A drawstring pouch, centred on the origin, about 60 wide. */
-function PouchShape({ className, mark = true }: { className?: string; mark?: boolean }) {
+function PouchShape({ className, mark = true, token }: { className?: string; mark?: boolean; token?: string | null }) {
+  const logo = token ? tokenLogoUrl(token) : null;
   return (
     <g className={className}>
       <path d="M-26 -10 Q-30 30 0 34 Q30 30 26 -10 Z" fill="#c99a63" stroke="#07090c" strokeWidth="1.5" />
       <path d="M-20 -10 Q0 -24 20 -10" fill="none" stroke="#07090c" strokeWidth="1.5" />
       <rect x="-28" y="-15" width="56" height="9" rx="4" fill="#e8d3a2" stroke="#07090c" strokeWidth="1.2" />
-      {mark && <circle cx="0" cy="12" r="8" fill="#ff4d3d" />}
+      {mark && (logo ? <image href={logo} x="-9" y="3" width="18" height="18" /> : <circle cx="0" cy="12" r="8" fill="#ff4d3d" />)}
     </g>
   );
 }
 
 /** Coins drop into the pouch (out of it, reversed); opening, its seam is stitched and it locks. */
-function Pouch({ sewing }: { sewing: boolean }) {
+function Pouch({ sewing, token }: { sewing: boolean; token?: string | null }) {
   return (
     <>
       <rect x="40" y="122" width="160" height="4" rx="2" fill="#2a3644" />
       <g transform="translate(120 84)">
-        <PouchShape className="vx-pouch" />
+        <PouchShape className="vx-pouch" token={token} />
       </g>
       {sewing ? (
         <g className="vx-stitch">
@@ -327,7 +341,7 @@ function Pouch({ sewing }: { sewing: boolean }) {
         [0, 1, 2].map((i) => (
           <g key={i} transform={`translate(${112 + i * 8} 0)`}>
             <g className={`vx-coin vx-coin-${i}`}>
-              <Coin />
+              <TokenCoin token={token} />
             </g>
           </g>
         ))
@@ -337,24 +351,41 @@ function Pouch({ sewing }: { sewing: boolean }) {
 }
 
 /** A coin hops from one pouch to another among four, the others twitching: which one paid? */
-function Pouches() {
+function Pouches({ token }: { token?: string | null }) {
   return (
     <>
       <rect x="10" y="122" width="220" height="4" rx="2" fill="#2a3644" />
       {[34, 92, 150, 208].map((x, i) => (
         <g key={x} transform={`translate(${x} 96) scale(0.72)`}>
-          <PouchShape className={`vx-twitch vx-twitch-${i}`} mark={i === 0 || i === 2} />
+          <PouchShape className={`vx-twitch vx-twitch-${i}`} mark={i === 0 || i === 2} token={token} />
         </g>
       ))}
       <g className="vx-hop">
-        <Coin />
+        <TokenCoin token={token} />
       </g>
     </>
   );
 }
 
-/** The scene of an action, looping while `live`, frozen under `stamp` once it ended. */
-export function TxScene({ name, decoys = 0, live, stamp, failed = false, small = false }: { name: string; decoys?: number; live: boolean; stamp?: string | null; failed?: boolean; small?: boolean }) {
+/** The scene of an action, looping while `live`, frozen under `stamp` once it ended. A pocket's
+ *  scenes wear `token`'s logo: on the pouch, and on the coins going in, out or across. */
+export function TxScene({
+  name,
+  decoys = 0,
+  token = null,
+  live,
+  stamp,
+  failed = false,
+  small = false,
+}: {
+  name: string;
+  decoys?: number;
+  token?: string | null;
+  live: boolean;
+  stamp?: string | null;
+  failed?: boolean;
+  small?: boolean;
+}) {
   const kind = SCENE_OF[name] ?? "door";
   const classes = ["vx-scene", `vx-${kind}`, live ? "is-live" : "is-still", REVERSED.has(name) && "is-reversed", failed && "is-failed", small && "is-small"].filter(Boolean).join(" ");
   return (
@@ -371,8 +402,8 @@ export function TxScene({ name, decoys = 0, live, stamp, failed = false, small =
         {kind === "envelope" && <Envelope />}
         {kind === "scan" && <Scan />}
         {kind === "key" && <KeyLock />}
-        {kind === "pouch" && <Pouch sewing={SEWING.has(name)} />}
-        {kind === "pouches" && <Pouches />}
+        {kind === "pouch" && <Pouch sewing={SEWING.has(name)} token={token} />}
+        {kind === "pouches" && <Pouches token={token} />}
       </svg>
       {stamp && !small && <span className="vx-stamp">{stamp}</span>}
     </div>

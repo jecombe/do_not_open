@@ -336,7 +336,8 @@ decryptions.
 
 ### Pockets
 
-`SealedPockets` holds cUSDC in pockets, each locked by a key rather than an address
+`SealedPockets` holds one confidential token in pockets (cUSDC; one more instance each, without a
+desk, for cUSDT, cWETH and cZAMA), each locked by a key rather than an address
 ([VAULT.md](VAULT.md#pockets)). A public counter (`pocketCount`), `pocketOf(viewer)` (the
 pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views `balanceOf`,
 `viewerOf`, `spendHash`. Its `desk` is set once.
@@ -344,7 +345,7 @@ pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views
 | Struct | Field | Type | Who can read it | Meaning |
 | --- | --- | --- | --- | --- |
 | `Pocket` | `key` | `euint256` | the pockets only | The holder's 256-bit secret, from one signature. Nobody is allowed on it |
-| | `balance` | `euint64` | the pockets, the pocket's viewer | cUSDC in it. Every pocket named by an action gets a new handle, moved or not |
+| | `balance` | `euint64` | the pockets, the pocket's viewer | The token in it (6 decimals for every wrapper). Every pocket named by an action gets a new handle, moved or not |
 | | `viewer` | `address` | public | The address the holder's page derives to read the balance; tied to no wallet, holds nothing |
 
 `PocketDesk` keeps `reservedFor(saleId)` (the pocket a sale offered to the desk is reserved for,

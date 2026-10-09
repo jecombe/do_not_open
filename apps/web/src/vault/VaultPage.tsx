@@ -196,8 +196,8 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
    * Runs an action on the stage, its steps and transactions recorded for the dock of any page,
    * then reads everything again, the account's boxes included once found.
    */
-  const act: Act = async (name, task, message) => {
-    const id = startRun(name, { box: opened ?? undefined, decoys: name === "deposit" ? decoys : undefined });
+  const act: Act = async (name, task, message, extra) => {
+    const id = startRun(name, { box: opened ?? undefined, decoys: name === "deposit" ? decoys : undefined, token: extra?.token });
     setStage(true);
     let failed = false;
     // Many actions resolve to nothing: whether the task itself went through is what tells done.
@@ -633,7 +633,9 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                               onClick={() => {
                                 const paid = prices[s.saleId]!;
                                 const net = paid - (paid * BigInt(info.feeBps)) / 10_000n;
-                                void act("pocketDeposit", (o) => pockets.deposit(net, o), () => t("vault.done.pocketDeposit"));
+                                void act("pocketDeposit", (o) => pockets.deposit(net, o), () => t("vault.done.pocketDeposit", { symbol: pockets.token.symbol }), {
+                                  token: pockets.token.symbol,
+                                });
                               }}
                             >
                               {t("vault.pocket.intoPocket")}
@@ -654,7 +656,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               <Empty title={t("vault.pocket.missing")} />
             ) : (
               <PocketTab
-                pockets={pockets}
+                vault={vault}
                 account={account}
                 act={act}
                 busy={!!action.busy}
@@ -708,7 +710,8 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
 }
 
 /** Runs one action with its steps shown, then says how it went. */
-type Act = <T>(name: string, run: (opts: ActionOptions) => Promise<T>, message?: (r: T) => string) => Promise<T | undefined>;
+/** `extra.token`: the token a pocket's action moves, whose logo its scene wears. */
+type Act = <T>(name: string, run: (opts: ActionOptions) => Promise<T>, message?: (r: T) => string, extra?: { token?: string }) => Promise<T | undefined>;
 
 /** One NFT of the grid, as on a marketplace: its art under the vault's tape, its price, a button that slides up. */
 function BoxCard({

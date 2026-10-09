@@ -96,6 +96,7 @@ mainnet), **Not done** (a check nobody has run).
 | O46 | A pocket's key and viewer come from one wallet signature of a fixed message: a site that gets that signature can spend the pocket and read its balance | Medium (keys) | `EvmPockets.keys`, `pocketKeyMessage` |
 | O47 | A box bought from a pocket is held by `PocketDesk`: it can be taken out, listed, sold to an offer and delegated with its key, but not given or sold privately again, and the reserved pocket of a desk sale is public | Low (UX, privacy) | `PocketDesk.reserve`, `buy` |
 | O48 | The free decryptions a day follow the network (`FREE_UNITS` in `apps/api/src/config.ts`): Sepolia gives 200 (100 to a newcomer), since Zama's testnet relayer costs the collection nothing; the mainnet row keeps 25 and 16, the figures the credit price was worked out for. Before mainnet: add the mainnet network to `NETWORK` with its row checked against Zama's plan and the credit price (on pay-as-you-go, newcomer 0 and fewer free units, see `docs/ZAMA_NOTES.md`), and change the manual's figures (`apps/web/src/docs/fees.tsx`), which show Sepolia's | Blocker for mainnet | `apps/api` config, relayer proxy |
+| O49 | Each token's pockets are a contract of their own (cUSDT, cWETH, cZAMA beside cUSDC): which token an action moves is public, and its decoys come only from that token's pockets, so a little-used token hides its pockets among few. The tokens are Zama's wrappers, trusted as the cUSDC is (on Sepolia, mocks anyone may mint) | Medium (privacy, trust) | `lib/pocketTokens.ts`, `SealedPockets_<symbol>` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -522,6 +523,10 @@ FHEVM mock, against Seaport 1.5's runtime bytecode read from Sepolia (`test/seap
 `SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
 buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). On Sepolia at
 `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
+The same contract, unchanged and without a desk, holds cUSDT, cWETH and cZAMA
+([VAULT.md](VAULT.md#other-tokens)): `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`,
+`0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`
+since 2026-10-09.
 45 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
 (itself on Seaport 1.5's and delegate.xyz's bytecode); the relayer's routes in
 `apps/api/test/vaultRelay.test.ts`; the adapter's `EvmPockets` (what the page runs) against the contracts in `test/PocketsAdapter.ts`.
@@ -541,6 +546,7 @@ buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). O
 | A purchase follows the seller's reservation, its box key, its proof | Pass | `buy` re-checks `reservedFor`, compares the box key's handle with the ask's, checks the proof with `FHE.checkSignatures`, settles once. Tests: "follows the seller's latest reservation", "refuses a box key other than the one the ask named", "rejects a forged decryption proof", "only lets the seller reserve…", "stops a purchase whose sale the seller cancelled after the ask" |
 | The bought box answers to the buyer's key | Pass | The box key is encrypted for the vault with the desk as user and becomes the box's key at `acceptSale`. Test: "buys a private sale with a pocket…" takes the NFT out with that key |
 | Every call fits the HCU limits | Pass | A send between two sets of five ~6.5M HCU, a desk purchase ~6.3M. Tests under "limits and costs" and "buys within the HCU limits" |
+| Another token's pockets are apart from the cUSDC ones | Pass | Its pocket's key and viewer hash the pockets' address in (`EvmPockets.keys`), so its viewer differs; it has no desk (`buy`, `offerSale` refuse); the relayer sends only to this vault's pockets (`EthersVaultSender.pocketsFor`). Test: "opens another token's pockets (no desk) from the same signature, with their own pocket and viewer" (`test/PocketsAdapter.ts`) |
 
 ## Before mainnet
 

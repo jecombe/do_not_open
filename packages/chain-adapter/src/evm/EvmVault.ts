@@ -14,9 +14,10 @@ import {
 } from "ethers";
 import { ChainError, sameAddress, type ActionOptions, type Address, type TxRecord } from "../types";
 import { decoySends } from "../decoys";
-import { EvmPockets, type PocketsDeployment } from "./EvmPockets";
+import { EvmPockets, pocketKeyMessage, pocketTokenOf, type PocketsDeployment, type PocketTokenDeployment } from "./EvmPockets";
 import type {
   PocketsAdapter,
+  PocketToken,
   VaultAdapter,
   VaultBox,
   VaultBoxState,
@@ -46,6 +47,8 @@ export interface VaultDeployment extends Deployed {
   collections: VaultCollection[];
   /** The pockets and their desk, where they are deployed. */
   pockets?: PocketsDeployment | null;
+  /** Pockets of Zama's other confidential tokens: the same contract and ABI, without a desk. */
+  otherPockets?: { address: string; deployBlock?: number | null; token: PocketTokenDeployment }[];
 }
 
 type InputBuilder = { addBool(v: boolean): InputBuilder; add32(v: number): InputBuilder; add64(v: bigint): InputBuilder; add256(v: bigint): InputBuilder };
@@ -70,6 +73,8 @@ export interface EvmVaultTools {
   signTypedData(domain: TypedDataDomain, types: Record<string, TypedDataField[]>, value: Record<string, unknown>): Promise<string>;
   ensureOperator(token: Deployed, account: Address, operator: string, opts?: ActionOptions): Promise<void>;
   cUsdc(): Promise<Deployed>;
+  /** Test networks: whether the pockets' underlying ERC-20s may be minted (Zama's mocks). */
+  faucets?: boolean;
   /** The API's relayer, when it has one: requests are sent from its wallet. */
   relay(): Promise<VaultRelay | null>;
 }
@@ -173,7 +178,9 @@ export class EvmVault implements VaultAdapter {
   private readonly read: Contract;
   private readonly board: Contract;
   private master: { account: Address; secret: string } | null = null;
-  private pockets_: EvmPockets | null = null;
+  private readonly pocketsBy = new Map<string, EvmPockets>();
+  /** The signature every token's pocket keys come from, once a session. */
+  private pocketSig: { account: Address; signature: Promise<string> } | null = null;
   private holdings: { account: Address; block: number; held: Set<number>; seen: Set<string> } | null = null;
 
   constructor(
@@ -184,15 +191,49 @@ export class EvmVault implements VaultAdapter {
     this.board = new Contract(deployed.offers.address, deployed.offers.abi, t.readProvider);
   }
 
-  pockets(): PocketsAdapter | null {
-    const deployed = this.deployed.pockets;
+  /** Every token's pockets, the vault's cUSDC first. */
+  private pocketDeployments(): PocketsDeployment[] {
+    const main = this.deployed.pockets;
+    if (!main) return [];
+    return [main, ...(this.deployed.otherPockets ?? []).map((o) => ({ ...o, abi: main.abi }))];
+  }
+
+  pocketTokens(): PocketToken[] {
+    return this.pocketDeployments().map((d) => pocketTokenOf(d, !!this.t.faucets));
+  }
+
+  pockets(symbol?: string): PocketsAdapter | null {
+    const all = this.pocketDeployments();
+    const deployed = symbol ? all.find((d) => pocketTokenOf(d, false).symbol.toLowerCase() === symbol.toLowerCase()) : all[0];
     if (!deployed) return null;
-    this.pockets_ ??= new EvmPockets(
-      deployed,
-      { vault: this.deployed, box: (boxId) => this.box(boxId), keyFor: (collection, tokenId, opts) => this.keyFor(collection, tokenId, opts) },
-      { ...this.t, relayed: (opts, call, sendIt, announce) => this.relayed(opts, call, sendIt, announce) },
-    );
-    return this.pockets_;
+    let p = this.pocketsBy.get(deployed.address);
+    if (!p) {
+      p = new EvmPockets(
+        deployed,
+        { vault: this.deployed, box: (boxId) => this.box(boxId), keyFor: (collection, tokenId, opts) => this.keyFor(collection, tokenId, opts) },
+        {
+          ...this.t,
+          relayed: (opts, call, sendIt, announce) => this.relayed(opts, call, sendIt, announce),
+          pocketSignature: (opts) => this.pocketSignature(opts),
+        },
+      );
+      this.pocketsBy.set(deployed.address, p);
+    }
+    return p;
+  }
+
+  /** One signature for every token's pocket: the message names the cUSDC pockets, as it always did. */
+  private async pocketSignature(opts?: ActionOptions): Promise<string> {
+    const account = await this.t.account();
+    if (this.pocketSig?.account !== account) {
+      opts?.onStep?.("wallet");
+      const signature = this.t.signText(pocketKeyMessage(this.deployed.pockets!.address, this.t.chainId));
+      this.pocketSig = { account, signature };
+      signature.catch(() => {
+        if (this.pocketSig?.signature === signature) this.pocketSig = null;
+      });
+    }
+    return this.pocketSig.signature;
   }
 
   async info(): Promise<VaultInfo> {
