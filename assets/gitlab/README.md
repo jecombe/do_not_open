@@ -24,12 +24,12 @@ Pasted in the same settings pages (Group description, Project description), unde
 
 **Group** (`do-not-open`):
 
-> Confidential assets on Ethereum, built on Zama's FHEVM. DO NOT OPEN is a sealed vault where NFTs and tokens are held with their owner encrypted on-chain, and a game of 10,000 sealed boxes with a cat in each. The Solidity contracts are published here from the main repository; the apps live at do-not-open.app.
+> 🔐 Confidential assets on Ethereum, built on Zama's FHEVM. 📦 DO NOT OPEN is a sealed vault where NFTs 🖼️ and tokens 🪙 are held with their owner encrypted on-chain, and a game of 10,000 sealed boxes with a cat in each 🐈‍⬛. 📜 The Solidity contracts are published here from the main repository; the apps live at do-not-open.app 🌐
 
 **`do-not-open-vault`**:
 
-> The sealed vault's contracts: any NFT in a box whose holder is encrypted on-chain, still sold on Seaport with the vault as the seller, privately for a cUSDC price only the buyer reads, or lent through delegate.xyz; and cUSDC in pockets locked by a key, not an address, paid without showing who paid whom. Zama FHEVM, Sepolia.
+> 🔐 The sealed vault's contracts: 🖼️ any NFT in a box whose holder is encrypted on-chain, still sold on Seaport ⛵ with the vault as the seller, privately for a cUSDC price only the buyer reads 🤫, or lent through delegate.xyz 🤝; and 🪙 cUSDC in pockets locked by a key 🔑, not an address, paid without showing who paid whom 👻. Zama FHEVM · Sepolia 🧪
 
 **`do-not-open-game`**:
 
-> The game's contracts: 10,000 confidential boxes, each with a cat nobody can see, owners, balances and sale count encrypted on-chain. Open a box to meet its cat, shake it, duel on the shelf, feed the cats with CROQ, a confidential ERC-7984 token, and send rats to play tricks. Zama FHEVM, Sepolia.
+> 📦 The game's contracts: 10,000 confidential boxes, each with a cat 🐈 nobody can see, owners, balances and sale count encrypted on-chain 🔐. Open a box to meet its cat 👀, shake it 🫨, duel on the shelf ⚔️, feed the cats with CROQ 🍖, a confidential ERC-7984 token, and send rats 🐀 to play tricks. Zama FHEVM · Sepolia 🧪
