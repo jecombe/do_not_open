@@ -1,0 +1,10 @@
+# Compiles the contracts and runs their tests on Zama's FHEVM mock, on every push.
+test:
+  image: node:24
+  cache:
+    key: npm
+    paths: [.npm/]
+  script:
+    - npm install --no-audit --no-fund --cache .npm
+    - npm run compile
+    - npm test

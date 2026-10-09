@@ -1,0 +1,36 @@
+name: Publish contracts
+
+# Copies the game's and the vault's contracts, with their tests and deployed addresses, to their
+# own GitLab repositories (packages/contracts-evm/publish). Only on pushes to main that touch them:
+# what is published is what is deployed. Each repository gets a commit only when its own files
+# changed, and nothing is pushed unless it compiles and passes its tests alone.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/contracts-evm/**"
+      - "packages/game-spec/**"
+      - "packages/generator/**"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-contracts
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to GitLab
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      # The published package.json pins the versions the monorepo resolves.
+      - run: pnpm install --frozen-lockfile
+      - run: node packages/contracts-evm/publish/publish.mjs
+        env:
+          GITLAB_VAULT_SSH_KEY: ${{ secrets.GITLAB_VAULT_SSH_KEY }}
+          GITLAB_GAME_SSH_KEY: ${{ secrets.GITLAB_GAME_SSH_KEY }}

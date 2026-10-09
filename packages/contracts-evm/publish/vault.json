@@ -1,0 +1,34 @@
+{
+  "name": "vault",
+  "title": "DO NOT OPEN: the sealed vault",
+  "remote": "git@gitlab.com:do-not-open/do-not-open-vault.git",
+  "keyEnv": "GITLAB_VAULT_SSH_KEY",
+  "files": [
+    "contracts/SealedVault.sol",
+    "contracts/SealedPockets.sol",
+    "contracts/vault/**",
+    "contracts/confidential/**",
+    "contracts/mocks/TestConfidentialUSDC.sol",
+    "contracts/mocks/TestERC721.sol",
+    "contracts/mocks/TestUSDC.sol",
+    "contracts/mocks/TestWETH.sol",
+    "contracts/mocks/VaultTestNFT.sol",
+    "test/SealedVault.ts",
+    "test/SealedPockets.ts",
+    "test/seaport.ts",
+    "test/tokens.ts",
+    "test/fixtures/**",
+    "deploy/vault.ts",
+    "deploy/pockets.ts",
+    "lib/paymentTokens.ts"
+  ],
+  "deployments": ["SealedVault", "VaultOffers", "VaultTestNFT", "SealedPockets", "PocketDesk"],
+  "dependencies": ["@fhevm/solidity", "@openzeppelin/confidential-contracts", "@openzeppelin/contracts", "encrypted-types"],
+  "devDependencies": [
+    "@fhevm/hardhat-plugin", "@fhevm/mock-utils", "@nomicfoundation/hardhat-chai-matchers", "@nomicfoundation/hardhat-ethers",
+    "@nomicfoundation/hardhat-network-helpers", "@nomicfoundation/hardhat-verify", "@typechain/ethers-v6", "@typechain/hardhat",
+    "@types/chai", "@types/mocha", "@types/node", "chai", "cross-env", "dotenv", "ethers", "hardhat", "hardhat-deploy",
+    "hardhat-gas-reporter", "mocha", "ts-node", "typechain", "typescript"
+  ],
+  "deployTags": "Vault"
+}

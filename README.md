@@ -86,6 +86,7 @@ The protocol's details are in [`docs/ZAMA_NOTES.md`](docs/ZAMA_NOTES.md).
 | --- | --- | --- |
 | Chain adapter and frontend | EVM chain adapter, full frontend on Sepolia, offscreen metadata render | **Done** |
 | Docs | Full docs, Solana porting map, audit checklist | **Done** |
+| Contracts on GitLab | The vault's and the game's contracts, tests and Sepolia addresses as two standalone repositories ([vault](https://gitlab.com/do-not-open/do-not-open-vault), [game](https://gitlab.com/do-not-open/do-not-open-game)), published from `main` by `publish-contracts.yml` once they compile and pass their tests alone ([how](packages/contracts-evm/README.md#published-to-gitlab)) | **Done**; the workflow waits for its two deploy keys in the repo's secrets |
 | Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
 | Boarding page | `/apply`, in the home page's dark theme: a sealed box behind its encryption shield (probes cannot read the passenger; once boarded, the player sees their own handle), Sign in with X, five quick tasks on X (declared), the mainnet list's points, a wallet bonus and a referral link with a printable boarding pass; linked from the home page's bar (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
 
