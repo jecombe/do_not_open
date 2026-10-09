@@ -12,7 +12,7 @@ offer, or sells the box privately for an encrypted cUSDC price. Meanwhile the ho
 the NFT's rights (airdrops, holder-only access) to a wallet of theirs through delegate.xyz.
 Tokens go in too: cUSDC in a [pocket](#pockets) locked by a key rather than an address, sent to
 another pocket, used to buy a box, or taken out anywhere, without anything public saying who paid
-whom or how much. The page (its "My pocket" tab for the tokens) is `vault.do-not-open.app` (`/vault` off the site's domains), and its
+whom or how much. The page (a switch at its top picks a side: NFTs, non-fungible, in boxes, or tokens, fungible, in "My pocket"; `#tokens` opens the second) is `vault.do-not-open.app` (`/vault` off the site's domains), and its
 docs for holders, in four languages, are `vault.do-not-open.app/docs` (`apps/web/src/vault/docs`):
 they follow this file, so a change here goes there too.
 
