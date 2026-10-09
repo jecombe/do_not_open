@@ -9,6 +9,8 @@ import { useT } from "./i18n";
 import { Icon } from "./Icon";
 import { SecureTop } from "./SecureTop";
 import { Warden } from "./Warden";
+import { LockCursor } from "./LockCursor";
+import { CipherField } from "./cipherField";
 import { STEPS, VaultStoryScene, type StoryLabels } from "./vaultStory";
 import { glyphs, hex, reduced, useDecrypt } from "./cipher";
 
@@ -277,6 +279,59 @@ function GameCorner() {
   );
 }
 
+/** Cards that catch the pointer's light, and sections that come up as they reach the screen. */
+const GLOWING = ".sec-cards li, .sec-steps li, .sec-leaks > div, .sec-trust > div, .sec-ledger, .sec-specs";
+
+/**
+ * The page's ambience: the cipher field behind everything, the pointer's light on the cards,
+ * and the sections below the fold rising into view.
+ */
+function useAmbience(root: React.RefObject<HTMLDivElement | null>, field: React.RefObject<HTMLCanvasElement | null>) {
+  useEffect(() => {
+    const page = root.current;
+    if (!page) return;
+    let cipher: CipherField | null = null;
+    try {
+      if (field.current) cipher = new CipherField(field.current);
+    } catch {
+      cipher = null;
+    }
+
+    for (const el of page.querySelectorAll(GLOWING)) el.classList.add("sec-glow");
+    const light = (e: PointerEvent) => {
+      const card = e.target instanceof Element ? e.target.closest<HTMLElement>(".sec-glow") : null;
+      if (!card) return;
+      const box = card.getBoundingClientRect();
+      card.style.setProperty("--mx", `${e.clientX - box.left}px`);
+      card.style.setProperty("--my", `${e.clientY - box.top}px`);
+    };
+    page.addEventListener("pointermove", light, { passive: true });
+
+    // Only what starts below the fold: what is already in view stays put.
+    const below = [...page.querySelectorAll<HTMLElement>(".sec-section")].filter((el) => el.getBoundingClientRect().top > window.innerHeight);
+    const watch = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add("is-in");
+          watch.unobserve(entry.target);
+        }
+      },
+      { rootMargin: "0px 0px -10% 0px" }
+    );
+    for (const el of below) {
+      el.classList.add("sec-reveal");
+      watch.observe(el);
+    }
+
+    return () => {
+      cipher?.dispose();
+      page.removeEventListener("pointermove", light);
+      watch.disconnect();
+    };
+  }, [root, field]);
+}
+
 /**
  * A proposal for the home page, in a security mood rather than a cartoon one: the vault first
  * (its four steps played by a sealed box in an encryption shield, a ledger seen by the public and by the
@@ -287,6 +342,9 @@ export function SecureHome() {
   const h = useHomeT();
   const locale = useLocale();
   const title = useDecrypt(t("secure.h1"), 1400);
+  const root = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLCanvasElement>(null);
+  useAmbience(root, field);
   // Handles to stream along the band: random, but fixed for the visit.
   const band = useMemo(() => Array.from({ length: 14 }, (_, i) => (i % 3 === 1 ? "euint64" : i % 3 === 2 ? "ebool" : `0x${hex(4)}…${hex(4)}`)).join("  ·  "), []);
 
@@ -296,7 +354,9 @@ export function SecureHome() {
   }, [t]);
 
   return (
-    <div className="sec" id="top">
+    <div className="sec" id="top" ref={root}>
+      <canvas ref={field} className="sec-field" aria-hidden="true" />
+      <LockCursor />
       <SecureTop />
 
       <section className="sec-hero">
