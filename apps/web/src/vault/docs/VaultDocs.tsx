@@ -55,7 +55,7 @@ export function VaultDocs() {
     key: <Prose>{[t("vaultDocs.key.p1"), t("vaultDocs.key.p2"), t("vaultDocs.key.p3"), t("vaultDocs.key.p4")]}</Prose>,
     requests: (
       <>
-        <Prose>{[t("vaultDocs.requests.p1"), t("vaultDocs.requests.p2"), t("vaultDocs.requests.p3")]}</Prose>
+        <Prose>{[t("vaultDocs.requests.p1"), t("vaultDocs.requests.p2"), t("vaultDocs.requests.p3"), t("vaultDocs.requests.p4")]}</Prose>
         <FlowFigure keys={VAULT_FLOW} />
       </>
     ),

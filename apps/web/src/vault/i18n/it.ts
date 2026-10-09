@@ -71,9 +71,6 @@ export const vaultIt: Record<VaultKey, string> = {
   "vault.item.notListed": "Non è su Seaport. Fai un'offerta: chi la possiede può accettarla senza mai mostrare chi è.",
   "vault.item.close": "Chiudi",
   "vault.item.encrypted": "cifrato",
-  "vault.stamp.listed": "In vendita",
-  "vault.stamp.bought": "Comprato",
-  "vault.stamp.sold": "Venduto",
 
   "vault.mine.lede": "Chi possiede una scatola è cifrato: la tua pagina trova le tue decifrando le tue ricevute. Una firma.",
   "vault.mine.find": "Trova le mie scatole",
@@ -170,10 +167,5 @@ export const vaultIt: Record<VaultKey, string> = {
   "vault.done.delegate": "{address} ora agisce per l'NFT su delegate.xyz.",
   "vault.done.clearDelegate": "L'NFT non ha più un delegato.",
 
-  "vault.step.encrypting": "Cifratura della chiave",
-  "vault.step.wallet": "In attesa del wallet",
-  "vault.step.confirming": "In attesa del blocco",
-  "vault.step.decrypting": "Verifica della chiave, sotto cifratura",
-  "vault.step.proving": "Invio della prova",
 
 };

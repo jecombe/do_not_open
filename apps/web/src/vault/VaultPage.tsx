@@ -19,7 +19,8 @@ import { vaultDocsPath } from "../site";
 import { SecureTop } from "../secure/SecureTop";
 import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
-import type { VaultKey } from "./i18n/en";
+import { dismissRun, dropRun, endRun, isOwnRun, runStep, runTx, startRun } from "./tx/runStore";
+import { TxDock, TxStage, useVaultRun } from "./tx/VaultTx";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
 const POLL_MS = 15_000;
@@ -31,13 +32,10 @@ const TABS = ["explore", "mine", "wallet", "sales", "leaks"] as const;
 type Tab = (typeof TABS)[number];
 type Status = "all" | "listed" | "unlisted";
 type Sort = "recent" | "low" | "high";
-/** The big stamp a few actions end on, and what it says. */
-const STAMPS: Partial<Record<string, VaultKey>> = {
-  deposit: "vault.state.sealed",
-  list: "vault.stamp.listed",
-  buy: "vault.stamp.bought",
-  acceptOffer: "vault.stamp.sold",
-  withdraw: "vault.state.withdrawn",
+/** The box a `?box=` link opens. */
+const linkedBox = (): number | null => {
+  const box = new URLSearchParams(location.search).get("box");
+  return box && /^\d+$/.test(box) ? Number(box) : null;
 };
 
 /**
@@ -86,10 +84,11 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   const [nfts, setNfts] = useState<{ collection: Address; name: string; id: bigint }[]>([]);
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
-  const [done, setDone] = useState<string | null>(null);
-  const [stamp, setStamp] = useState<{ text: string; key: number } | null>(null);
+  /** The action's stage is in front; folded away, the dock at the foot shows the action. */
+  const [stage, setStage] = useState(false);
+  const run = useVaultRun();
   const [decoys, setDecoys] = useState(DEFAULT_DECOYS);
-  const [opened, setOpened] = useState<number | null>(null);
+  const [opened, setOpened] = useState<number | null>(linkedBox);
   const [status, setStatus] = useState<Status>("all");
   const [hidden, setHidden] = useState<Address[]>([]);
   const [sort, setSort] = useState<Sort>("recent");
@@ -147,22 +146,47 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
     if (demo && account && mine === null) void vault.myBoxes().then(setMine);
   }, [demo, account, mine, vault]);
 
-  // The stamp lands, stays a moment, and goes.
-  useEffect(() => {
-    if (!stamp) return;
-    const id = setTimeout(() => setStamp(null), 1700);
-    return () => clearTimeout(id);
-  }, [stamp]);
-
-  /** Runs an action, then reads everything again, the account's boxes included once found. */
-  const act: Act = async (name, run, message) => {
-    setDone(null);
-    const result = await action.run(name, run);
+  /**
+   * Runs an action on the stage, its steps and transactions recorded for the dock of any page,
+   * then reads everything again, the account's boxes included once found.
+   */
+  const act: Act = async (name, task, message) => {
+    const id = startRun(name, { box: opened ?? undefined, decoys: name === "deposit" ? decoys : undefined });
+    setStage(true);
+    let failed = false;
+    // Many actions resolve to nothing: whether the task itself went through is what tells done.
+    let ok = false;
+    const result = await action.run(
+      name,
+      async (o) => {
+        const value = await task({
+          ...o,
+          onStep: (step) => {
+            o.onStep?.(step);
+            runStep(id, step);
+          },
+          onTx: (tx) => {
+            o.onTx?.(tx);
+            runTx(id, tx);
+          },
+        });
+        ok = true;
+        return value;
+      },
+      undefined,
+      (problem) => {
+        failed = true;
+        endRun(id, "failed", [problem.text, problem.hints[0]].filter(Boolean).join(" "));
+      },
+    );
+    if (ok) endRun(id, "done", message?.(result as Awaited<ReturnType<typeof task>>));
+    // Neither done nor failed: the action never started (the release form came first).
+    else if (!failed) {
+      dropRun(id);
+      setStage(false);
+    }
     const i = await readPublic().catch(() => info);
     await readAccount(i, mine !== null).catch(() => undefined);
-    if (result !== undefined && message) setDone(message(result));
-    const said = STAMPS[name];
-    if (result !== undefined && said) setStamp({ text: t(said), key: Date.now() });
     return result;
   };
 
@@ -523,26 +547,17 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
         />
       )}
 
-      <div className="vault-status" aria-live="polite">
-        {action.busy && <p className="vault-step">{t(`vault.step.${action.step ?? "wallet"}`)}…</p>}
-        {action.error && (
-          <p className="vault-error">
-            {action.error.text} {action.error.hints[0]}
-          </p>
-        )}
-        {done && (
-          <p className="vault-done">
-            {done}
-            <button type="button" aria-label={t("vault.item.close")} onClick={() => setDone(null)}>
-              ×
-            </button>
-          </p>
-        )}
-      </div>
-      {stamp && (
-        <div key={stamp.key} className="vault-stampfx" aria-hidden="true">
-          <span>{stamp.text}</span>
-        </div>
+      {stage && run && isOwnRun(run) ? (
+        <TxStage
+          run={run}
+          onMinimize={() => setStage(false)}
+          onClose={() => {
+            setStage(false);
+            dismissRun();
+          }}
+        />
+      ) : (
+        <TxDock onShow={() => setStage(true)} />
       )}
     </>
   );
@@ -727,8 +742,17 @@ function HolderTools({ box, coin, account, busy, act, vault }: { box: VaultBox; 
   const toggle = (what: typeof open) => setOpen((cur) => (cur === what ? null : what));
   /** The box's own actions fold their form away once they went through. */
   const run: Act = async (name, task, message) => {
-    const result = await act(name, task, message);
-    if (result !== undefined) setOpen(null);
+    let ok = false;
+    const result = await act(
+      name,
+      async (o) => {
+        const value = await task(o);
+        ok = true;
+        return value;
+      },
+      message,
+    );
+    if (ok) setOpen(null);
     return result;
   };
   const actions: { key: NonNullable<typeof open> | "unlist"; when: boolean }[] = [
