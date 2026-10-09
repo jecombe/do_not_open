@@ -149,16 +149,22 @@
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "Requests do not lock each other out: a stranger who sends requests with a wrong key cannot stop you taking your NFT out, listing it or collecting. Each is decided on its own, and the counter the key is mixed with moves on only when a key matched, so a stranger's try spoils nothing you prepared. While any request waits for its proof, the box cannot change hands; the page settles the waiting ones first (anyone may), and one whose proof never comes can be expired by anyone after a day. No box stays stuck.\nWhat the parcels are"
+     "text": "Requests do not lock each other out: a stranger who sends requests with a wrong key cannot stop you taking your NFT out, listing it or collecting. Each is decided on its own, and the counter the key is mixed with moves on only when a key matched, so a stranger's try spoils nothing you prepared. While any request waits for its proof, the box cannot change hands; the page settles the waiting ones first (anyone may), and one whose proof never comes can be expired by anyone after a day. No box stays stuck."
     },
     {
      "id": "vault-requests-2",
      "section": "vault-requests",
      "heading": null,
-     "text": "At the sealed vault. The relayer carries your request, the key is checked blind, and the NFT goes where you said. Your address appears nowhere. Your page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches. Handed to the relayer The relayer sends the request Compared blind Anyone may ask for that bit Yes or no, signed The relayer sends the proof The NFT is out Play Next step Ciphertext Transaction Value with proof Clear value\nYour page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches.\nHanded to the relayer\nThe relayer sends the request\nCompared blind\nAnyone may ask for that bit\nYes or no, signed"
+     "text": "While an action runs, the page shows it step by step: what it waits for, and every transaction with its block, its gas and a link to the explorer. \"Keep browsing\" folds it to the foot of the screen. The last steps, the proof, run in your browser: if you close the page or go elsewhere on the site, the foot of that page says where it stopped, and the vault settles the box's waiting requests the next time you open it.\nWhat the parcels are"
     },
     {
      "id": "vault-requests-3",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "At the sealed vault. The relayer carries your request, the key is checked blind, and the NFT goes where you said. Your address appears nowhere. Your page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches. Handed to the relayer The relayer sends the request Compared blind Anyone may ask for that bit Yes or no, signed The relayer sends the proof The NFT is out Play Next step Ciphertext Transaction Value with proof Clear value\nYour page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches.\nHanded to the relayer\nThe relayer sends the request\nCompared blind\nAnyone may ask for that bit\nYes or no, signed"
+    },
+    {
+     "id": "vault-requests-4",
      "section": "vault-requests",
      "heading": null,
      "text": "The relayer sends the proof\nThe NFT is out\nCiphertext\nTransaction\nValue with proof\nClear value"
@@ -439,16 +445,22 @@
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "Les demandes ne se bloquent pas entre elles : un inconnu qui envoie des demandes avec une mauvaise clé ne peut pas t'empêcher de sortir ton NFT, de le mettre en vente ou d'encaisser. Chacune est décidée pour elle-même, et le compteur mêlé à la clé n'avance que quand une clé correspondait : l'essai d'un inconnu ne gâche rien de ce que tu as préparé. Tant qu'une demande attend sa preuve, la boîte ne peut pas changer de mains ; la page règle d'abord celles qui attendent (n'importe qui le peut), et une demande dont la preuve ne vient jamais peut être expirée par n'importe qui au bout d'un jour. Aucune boîte ne reste bloquée.\nCe que sont les colis"
+     "text": "Les demandes ne se bloquent pas entre elles : un inconnu qui envoie des demandes avec une mauvaise clé ne peut pas t'empêcher de sortir ton NFT, de le mettre en vente ou d'encaisser. Chacune est décidée pour elle-même, et le compteur mêlé à la clé n'avance que quand une clé correspondait : l'essai d'un inconnu ne gâche rien de ce que tu as préparé. Tant qu'une demande attend sa preuve, la boîte ne peut pas changer de mains ; la page règle d'abord celles qui attendent (n'importe qui le peut), et une demande dont la preuve ne vient jamais peut être expirée par n'importe qui au bout d'un jour. Aucune boîte ne reste bloquée."
     },
     {
      "id": "vault-requests-2",
      "section": "vault-requests",
      "heading": null,
-     "text": "Au coffre scellé. Le relayer porte votre demande, la clé est vérifiée à l'aveugle, et le NFT part où vous l'avez dit. Votre adresse n'apparaît nulle part. Votre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus. Confiée au relayer Le relayer envoie la demande Comparée à l'aveugle N'importe qui peut demander ce bit Oui ou non, signé Le relayer envoie la preuve Le NFT est sorti Lecture Étape suivante Chiffré Transaction Valeur avec preuve Valeur en clair\nVotre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus.\nConfiée au relayer\nLe relayer envoie la demande\nComparée à l'aveugle"
+     "text": "Pendant qu'une action tourne, la page la montre étape par étape : ce qu'elle attend, et chaque transaction avec son bloc, son gas et un lien vers l'explorateur. « Continuer à naviguer » la range en bas de l'écran. Les dernières étapes, la preuve, tournent dans ton navigateur : si tu fermes la page ou vas ailleurs sur le site, le bas de cette page dit où elle s'est arrêtée, et le coffre règle les demandes en attente de la boîte la prochaine fois que tu l'ouvres.\nCe que sont les colis"
     },
     {
      "id": "vault-requests-3",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Au coffre scellé. Le relayer porte votre demande, la clé est vérifiée à l'aveugle, et le NFT part où vous l'avez dit. Votre adresse n'apparaît nulle part. Votre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus. Confiée au relayer Le relayer envoie la demande Comparée à l'aveugle N'importe qui peut demander ce bit Oui ou non, signé Le relayer envoie la preuve Le NFT est sorti Lecture Étape suivante Chiffré Transaction Valeur avec preuve Valeur en clair\nVotre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus.\nConfiée au relayer\nLe relayer envoie la demande\nComparée à l'aveugle"
+    },
+    {
+     "id": "vault-requests-4",
      "section": "vault-requests",
      "heading": null,
      "text": "N'importe qui peut demander ce bit\nOui ou non, signé\nLe relayer envoie la preuve\nLe NFT est sorti\nChiffré\nTransaction\nValeur avec preuve\nValeur en clair"
@@ -735,16 +747,22 @@
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "Las solicitudes no se bloquean entre sí: un desconocido que envía solicitudes con una llave equivocada no puede impedirte sacar tu NFT, ponerlo en venta o cobrar. Cada una se decide por separado, y el contador que se mezcla con la llave solo avanza cuando una llave coincidió: el intento de un desconocido no estropea nada de lo que preparaste. Mientras una solicitud espera su prueba, la caja no puede cambiar de manos; la página resuelve primero las que esperan (cualquiera puede), y una cuya prueba nunca llega puede expirarla cualquiera al cabo de un día. Ninguna caja se queda bloqueada.\nQué son los paquetes"
+     "text": "Las solicitudes no se bloquean entre sí: un desconocido que envía solicitudes con una llave equivocada no puede impedirte sacar tu NFT, ponerlo en venta o cobrar. Cada una se decide por separado, y el contador que se mezcla con la llave solo avanza cuando una llave coincidió: el intento de un desconocido no estropea nada de lo que preparaste. Mientras una solicitud espera su prueba, la caja no puede cambiar de manos; la página resuelve primero las que esperan (cualquiera puede), y una cuya prueba nunca llega puede expirarla cualquiera al cabo de un día. Ninguna caja se queda bloqueada."
     },
     {
      "id": "vault-requests-2",
      "section": "vault-requests",
      "heading": null,
-     "text": "En la bóveda sellada. El relayer lleva tu petición, la llave se comprueba a ciegas, y el NFT va adonde dijiste. Tu dirección no aparece en ninguna parte. Tu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide. Entregada al relayer El relayer envía la petición Comparada a ciegas Cualquiera puede pedir ese bit Sí o no, firmado El relayer envía la prueba El NFT ha salido Reproducir Siguiente paso Texto cifrado Transacción Valor con prueba Valor en claro\nTu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide.\nEntregada al relayer\nEl relayer envía la petición\nComparada a ciegas\nCualquiera puede pedir ese bit"
+     "text": "Mientras una acción está en curso, la página la muestra paso a paso: lo que espera, y cada transacción con su bloque, su gas y un enlace al explorador. «Seguir navegando» la guarda al pie de la pantalla. Los últimos pasos, la prueba, corren en tu navegador: si cierras la página o vas a otra parte del sitio, el pie de esa página dice dónde se detuvo, y la bóveda resuelve las solicitudes pendientes de la caja la próxima vez que la abras.\nQué son los paquetes"
     },
     {
      "id": "vault-requests-3",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "En la bóveda sellada. El relayer lleva tu petición, la llave se comprueba a ciegas, y el NFT va adonde dijiste. Tu dirección no aparece en ninguna parte. Tu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide. Entregada al relayer El relayer envía la petición Comparada a ciegas Cualquiera puede pedir ese bit Sí o no, firmado El relayer envía la prueba El NFT ha salido Reproducir Siguiente paso Texto cifrado Transacción Valor con prueba Valor en claro\nTu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide.\nEntregada al relayer\nEl relayer envía la petición\nComparada a ciegas\nCualquiera puede pedir ese bit"
+    },
+    {
+     "id": "vault-requests-4",
      "section": "vault-requests",
      "heading": null,
      "text": "Sí o no, firmado\nEl relayer envía la prueba\nEl NFT ha salido\nTexto cifrado\nTransacción\nValor con prueba\nValor en claro"
@@ -1025,16 +1043,22 @@
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "Le richieste non si bloccano a vicenda: un estraneo che invia richieste con una chiave sbagliata non può impedirti di ritirare il tuo NFT, metterlo in vendita o incassare. Ognuna è decisa per conto suo, e il contatore mescolato alla chiave avanza solo quando una chiave corrispondeva: il tentativo di un estraneo non rovina nulla di ciò che hai preparato. Finché una richiesta aspetta la sua prova, la scatola non può cambiare mano; la pagina risolve prima quelle in attesa (chiunque può), e una la cui prova non arriva mai può essere fatta scadere da chiunque dopo un giorno. Nessuna scatola resta bloccata.\nCosa sono i pacchi"
+     "text": "Le richieste non si bloccano a vicenda: un estraneo che invia richieste con una chiave sbagliata non può impedirti di ritirare il tuo NFT, metterlo in vendita o incassare. Ognuna è decisa per conto suo, e il contatore mescolato alla chiave avanza solo quando una chiave corrispondeva: il tentativo di un estraneo non rovina nulla di ciò che hai preparato. Finché una richiesta aspetta la sua prova, la scatola non può cambiare mano; la pagina risolve prima quelle in attesa (chiunque può), e una la cui prova non arriva mai può essere fatta scadere da chiunque dopo un giorno. Nessuna scatola resta bloccata."
     },
     {
      "id": "vault-requests-2",
      "section": "vault-requests",
      "heading": null,
-     "text": "Al caveau sigillato. Il relayer porta la tua richiesta, la chiave viene verificata alla cieca, e l'NFT va dove hai detto. Il tuo indirizzo non compare da nessuna parte. La tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più. Affidata al relayer Il relayer invia la richiesta Confrontata alla cieca Chiunque può chiedere quel bit Sì o no, firmato Il relayer invia la prova L'NFT è fuori Riproduci Passo successivo Testo cifrato Transazione Valore con prova Valore in chiaro\nLa tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più.\nAffidata al relayer\nIl relayer invia la richiesta"
+     "text": "Mentre un'azione è in corso, la pagina la mostra passo per passo: cosa aspetta, e ogni transazione con il suo blocco, il suo gas e un link all'explorer. «Continua a navigare» la sposta in fondo allo schermo. Gli ultimi passaggi, la prova, girano nel tuo browser: se chiudi la pagina o vai altrove sul sito, il fondo di quella pagina dice dove si è fermata, e il caveau risolve le richieste in attesa della scatola la prossima volta che lo apri.\nCosa sono i pacchi"
     },
     {
      "id": "vault-requests-3",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Al caveau sigillato. Il relayer porta la tua richiesta, la chiave viene verificata alla cieca, e l'NFT va dove hai detto. Il tuo indirizzo non compare da nessuna parte. La tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più. Affidata al relayer Il relayer invia la richiesta Confrontata alla cieca Chiunque può chiedere quel bit Sì o no, firmato Il relayer invia la prova L'NFT è fuori Riproduci Passo successivo Testo cifrato Transazione Valore con prova Valore in chiaro\nLa tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più.\nAffidata al relayer\nIl relayer invia la richiesta"
+    },
+    {
+     "id": "vault-requests-4",
      "section": "vault-requests",
      "heading": null,
      "text": "Confrontata alla cieca\nChiunque può chiedere quel bit\nSì o no, firmato\nIl relayer invia la prova\nL'NFT è fuori\nTesto cifrato\nTransazione\nValore con prova\nValore in chiaro"

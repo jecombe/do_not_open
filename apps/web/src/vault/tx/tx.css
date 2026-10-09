@@ -1,0 +1,1144 @@
+/* The vault's transaction stage (centre of the vault's page) and dock (foot of any secure page),
+   with the scenes they show. Every moving part's resting style is its last pose: a scene that
+   ended simply stops moving and shows how it ended. */
+
+/* --- the stage --- */
+
+.vx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(4 6 9 / 0.72);
+  backdrop-filter: blur(6px);
+  animation: vx-fade 0.2s ease-out;
+}
+
+.vx-stage {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 22px 22px 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  color: var(--text);
+  outline: none;
+  animation: vx-rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.vx-stage-done {
+  border-color: rgb(91 227 194 / 0.5);
+}
+
+.vx-stage-failed {
+  border-color: rgb(255 77 61 / 0.5);
+}
+
+.vx-kicker {
+  margin: 0;
+  color: var(--teal);
+  font: 600 13px/1.2 var(--cond);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vx-stage-failed .vx-kicker {
+  color: var(--red);
+}
+
+.vx-stage h2 {
+  margin: 4px 0 10px;
+  font: 700 clamp(22px, 4vw, 28px) / 1.1 var(--stencil);
+  letter-spacing: 0.02em;
+}
+
+.vx-cipher {
+  height: 1.2em;
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--teal);
+  font: 12px/1.2 var(--mono);
+  letter-spacing: 0.18em;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.vx-cipher.is-on {
+  opacity: 0.8;
+}
+
+.vx-detail {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.vx-steps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.vx-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.vx-steps li.now {
+  color: var(--text);
+}
+
+.vx-tick {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid var(--line-2);
+  border-radius: 50%;
+}
+
+.vx-steps .done .vx-tick {
+  border-color: var(--teal);
+  background: var(--teal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 7.2l2.3 2.3 4.7-5' fill='none' stroke='%2307090c' stroke-width='2'/%3E%3C/svg%3E") center / 100% no-repeat;
+}
+
+.vx-steps .now .vx-tick {
+  border-color: var(--teal) transparent var(--teal) transparent;
+  animation: vx-spin 0.9s linear infinite;
+}
+
+.vx-secs {
+  margin-left: auto;
+  color: var(--muted);
+  font: 12px var(--mono);
+}
+
+.vx-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.vx-note-done {
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+.vx-note-failed {
+  background: rgb(255 77 61 / 0.12);
+  color: #ffb4ab;
+}
+
+.vx-txs h3 {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font: 600 12px/1.2 var(--cond);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vx-txs ol {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vx-tx {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.02);
+  font-size: 13px;
+  animation: vx-rise 0.25s ease-out;
+}
+
+.vx-tx-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.vx-tx-sent .vx-tx-dot {
+  background: #f5c451;
+  animation: vx-pulse 1s ease-in-out infinite;
+}
+
+.vx-tx-confirmed .vx-tx-dot {
+  background: var(--teal);
+}
+
+.vx-tx-failed .vx-tx-dot {
+  background: var(--red);
+}
+
+.vx-tx-call {
+  color: var(--text);
+  font: 12px var(--mono);
+}
+
+.vx-tx-status,
+.vx-tx-gas {
+  color: var(--muted);
+}
+
+.vx-tx-hash {
+  margin-left: auto;
+  color: var(--teal);
+  font: 12px var(--mono);
+  text-decoration: none;
+}
+
+a.vx-tx-hash:hover {
+  text-decoration: underline;
+}
+
+.vx-fine {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.vx-buttons {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+/* --- the dock --- */
+
+/* Bottom left: the Warden's button holds the bottom right corner. */
+.vx-dock {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(480px, calc(100vw - 32px));
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: rgb(13 17 23 / 0.96);
+  box-shadow: 0 16px 50px rgb(0 0 0 / 0.55);
+  color: var(--text);
+  font-family: var(--sans);
+  animation: vx-dock-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.vx-dock-running {
+  border-color: rgb(91 227 194 / 0.45);
+}
+
+.vx-dock-stale,
+.vx-dock-failed {
+  border-color: rgb(255 77 61 / 0.45);
+}
+
+.vx-dock-text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.vx-dock-text strong {
+  font: 700 15px/1.1 var(--stencil);
+}
+
+.vx-dock-text > span {
+  color: var(--muted);
+}
+
+.vx-dock-txs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.vx-dock-txs a,
+.vx-dock-txs code {
+  color: var(--teal);
+  font: 12px var(--mono);
+}
+
+.vx-dock-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.vx-dock-x {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.vx-dock-x:hover {
+  background: rgb(255 255 255 / 0.06);
+  color: var(--text);
+}
+
+/* --- the scenes --- */
+
+.vx-scene {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 60%, rgb(91 227 194 / 0.1), transparent 65%),
+    repeating-linear-gradient(0deg, transparent 0 19px, rgb(255 255 255 / 0.025) 19px 20px),
+    #090c11;
+}
+
+.vx-scene svg {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  aspect-ratio: 240 / 140;
+}
+
+.vx-scene.is-small {
+  width: 74px;
+  flex: none;
+  border-radius: 10px;
+}
+
+.vx-scene.is-failed svg {
+  filter: grayscale(0.9);
+  opacity: 0.55;
+}
+
+/* The parts that turn or grow do it around their own centre (or edge); the rest move in the scene's units. */
+.vx-pop,
+.vx-lid-l,
+.vx-lid-r,
+.vx-tape,
+.vx-wheel,
+.vx-door .vx-door,
+.vx-bob,
+.vx-fly,
+.vx-wallet,
+.vx-env,
+.vx-wax,
+.vx-key .vx-key {
+  transform-box: fill-box;
+}
+
+.vx-stencil {
+  font-family: var(--stencil);
+  font-weight: 700;
+}
+
+.vx-stamp {
+  position: absolute;
+  padding: 4px 16px 2px;
+  border: 4px solid var(--red);
+  border-radius: 6px;
+  color: var(--red);
+  font: 700 clamp(28px, 7vw, 42px) / 1 var(--stencil);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgb(9 12 17 / 0.55);
+  rotate: -12deg;
+  animation: vx-slam 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.vx-scene:not(.is-failed) .vx-stamp {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+/* Stopped: whatever moved rests in its last pose. */
+.vx-scene.is-still * {
+  animation: none !important;
+}
+
+/* The press stamps a fresh card. */
+.vx-press.is-live .vx-press {
+  animation: vx-press 1.2s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+}
+
+.vx-press .vx-pop {
+  transform-origin: center;
+}
+
+.vx-press.is-live .vx-pop {
+  animation: vx-pop 1.2s ease-out infinite;
+}
+
+.vx-press .vx-sparks {
+  opacity: 0;
+}
+
+.vx-press.is-live .vx-sparks {
+  animation: vx-sparks 1.2s ease-out infinite;
+}
+
+/* The card drops in, the lids close, the tape slaps on, the decoys slide out. */
+.vx-seal .vx-drop {
+  opacity: 0;
+}
+
+.vx-seal.is-live .vx-drop {
+  animation: vx-drop 3.2s cubic-bezier(0.5, 0, 0.7, 1) infinite;
+}
+
+.vx-seal .vx-lid-l {
+  transform-origin: left center;
+}
+
+.vx-seal .vx-lid-r {
+  transform-origin: right center;
+}
+
+.vx-seal.is-live .vx-lid-l {
+  animation: vx-lid-l 3.2s ease-in-out infinite;
+}
+
+.vx-seal.is-live .vx-lid-r {
+  animation: vx-lid-r 3.2s ease-in-out infinite;
+}
+
+.vx-seal .vx-tape {
+  transform-origin: left center;
+}
+
+.vx-seal.is-live .vx-tape {
+  animation: vx-tape 3.2s ease-out infinite;
+}
+
+.vx-seal .vx-ghost {
+  opacity: 0.5;
+}
+
+.vx-seal.is-live .vx-ghost {
+  animation: vx-decoy 3.2s ease-out infinite;
+}
+
+.vx-decoy-0 .vx-ghost {
+  --dx: 48px;
+}
+
+.vx-decoy-1 .vx-ghost {
+  --dx: -48px;
+}
+
+.vx-decoy-2 .vx-ghost {
+  --dx: 94px;
+}
+
+.vx-decoy-3 .vx-ghost {
+  --dx: -94px;
+}
+
+.vx-ghost rect:first-child {
+  fill: transparent;
+  stroke: #c99a63;
+  stroke-dasharray: 4 3;
+}
+
+/* The wheel spins, the door swings, the NFT (or the ETH) comes out. */
+.vx-door .vx-wheel {
+  transform-origin: center;
+}
+
+.vx-door.is-live .vx-wheel {
+  animation: vx-wheel 3s ease-in-out infinite;
+}
+
+.vx-door .vx-door {
+  transform-origin: left center;
+  transform: perspective(300px) rotateY(-62deg);
+}
+
+.vx-door.is-live .vx-door {
+  animation: vx-swing 3s ease-in-out infinite;
+}
+
+.vx-door .vx-out {
+  transform: translateX(62px);
+}
+
+.vx-door.is-live .vx-out {
+  animation: vx-out 3s ease-in-out infinite;
+}
+
+/* The ship sails across to Seaport, bobbing on the waves (home again when reversed). */
+.vx-ship .vx-sail {
+  transform: translate(120px, 100px);
+}
+
+.vx-ship.is-live .vx-sail {
+  animation: vx-sail 4.2s linear infinite;
+}
+
+.vx-ship.is-live.is-reversed .vx-sail {
+  animation-direction: reverse;
+}
+
+/* Too small to sail across: the dock's ship bobs in place. */
+.vx-ship.is-small.is-live .vx-sail {
+  animation: none;
+}
+
+.vx-ship .vx-bob {
+  transform-origin: center bottom;
+}
+
+.vx-ship.is-live .vx-bob {
+  animation: vx-bob 1.4s ease-in-out infinite;
+}
+
+.vx-ship.is-live .vx-waves {
+  animation: vx-waves 1.6s linear infinite;
+}
+
+/* The NFT and the ETH cross over each other. */
+.vx-trade .vx-swap-a {
+  transform: translate(180px, 96px);
+}
+
+.vx-trade .vx-swap-b {
+  transform: translate(60px, 110px);
+}
+
+.vx-trade.is-live .vx-swap-a {
+  animation: vx-swap-a 2.6s ease-in-out infinite;
+}
+
+.vx-trade.is-live .vx-swap-b {
+  animation: vx-swap-b 2.6s ease-in-out infinite;
+}
+
+.vx-trade.is-live.is-reversed .vx-swap-a,
+.vx-trade.is-live.is-reversed .vx-swap-b {
+  animation-direction: reverse;
+}
+
+.vx-trade.is-live .vx-dash {
+  animation: vx-dash 0.8s linear infinite;
+}
+
+/* The badge flies from the box to the delegate's wallet, which lights up. */
+.vx-badge .vx-fly {
+  transform: translate(190px, 62px) rotate(0deg);
+}
+
+.vx-badge.is-live .vx-fly {
+  animation: vx-fly 2.4s ease-in-out infinite;
+}
+
+.vx-badge .vx-wallet {
+  transform-origin: center;
+}
+
+.vx-badge.is-live .vx-wallet {
+  animation: vx-glow 2.4s ease-out infinite;
+}
+
+/* Three boxes, one of them the real one, shuffled like cups. */
+.vx-shuffle .vx-shell-0 {
+  transform: translate(36px, 88px);
+}
+
+.vx-shuffle .vx-shell-1 {
+  transform: translate(98px, 88px);
+}
+
+.vx-shuffle .vx-shell-2 {
+  transform: translate(160px, 88px);
+}
+
+.vx-shuffle.is-live .vx-shell-0 {
+  animation: vx-shell-0 2.4s ease-in-out infinite;
+}
+
+.vx-shuffle.is-live .vx-shell-1 {
+  animation: vx-shell-1 2.4s ease-in-out infinite;
+}
+
+.vx-shuffle.is-live .vx-shell-2 {
+  animation: vx-shell-2 2.4s ease-in-out infinite;
+}
+
+.vx-shuffle .vx-q {
+  opacity: 0;
+}
+
+.vx-shuffle.is-live .vx-q {
+  animation: vx-blink 2.4s steps(1) infinite;
+}
+
+/* The sealed envelope floats, its wax pulsing. */
+.vx-envelope.is-live .vx-env {
+  animation: vx-float 2.2s ease-in-out infinite;
+}
+
+.vx-envelope .vx-wax {
+  transform-origin: center;
+}
+
+.vx-envelope.is-live .vx-wax {
+  animation: vx-wax 1.1s ease-in-out infinite;
+}
+
+.vx-envelope.is-live.is-reversed .vx-env {
+  animation: vx-tear 1.6s ease-in-out infinite;
+}
+
+/* The lens sweeps the receipts and finds the ones that are yours. */
+.vx-scan .vx-lens {
+  transform: translate(121px, 72px);
+}
+
+.vx-scan.is-live .vx-lens {
+  animation: vx-lens 3s ease-in-out infinite;
+}
+
+.vx-scan.is-live .vx-hit {
+  opacity: 0;
+}
+
+.vx-scan.is-live .vx-hit-0 {
+  animation: vx-hit 3s infinite;
+  animation-delay: 0.4s;
+}
+
+.vx-scan.is-live .vx-hit-2 {
+  animation: vx-hit 3s infinite;
+  animation-delay: 1.9s;
+}
+
+.vx-scan .vx-hit-1 {
+  opacity: 0;
+}
+
+/* The key goes in and turns; the shackle clicks. */
+.vx-key .vx-key {
+  transform-origin: center top;
+  transform: translateY(-34px);
+}
+
+.vx-key.is-live .vx-key {
+  animation: vx-key 2.6s ease-in-out infinite;
+}
+
+.vx-key.is-live .vx-shackle {
+  animation: vx-shackle 2.6s ease-in-out infinite;
+}
+
+/* --- keyframes --- */
+
+@keyframes vx-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes vx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+@keyframes vx-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+}
+
+@keyframes vx-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes vx-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes vx-slam {
+  from {
+    opacity: 0;
+    scale: 2.4;
+  }
+}
+
+@keyframes vx-press {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  42%,
+  52% {
+    transform: translateY(22px);
+  }
+}
+
+@keyframes vx-pop {
+  0%,
+  40% {
+    transform: scale(0.92);
+    opacity: 0.4;
+  }
+  52% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes vx-sparks {
+  0%,
+  44% {
+    opacity: 0;
+  }
+  52% {
+    opacity: 1;
+  }
+  75%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes vx-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  8% {
+    opacity: 1;
+  }
+  32% {
+    opacity: 1;
+    transform: translateY(62px);
+  }
+  38%,
+  100% {
+    opacity: 0;
+    transform: translateY(62px);
+  }
+}
+
+@keyframes vx-lid-l {
+  0%,
+  34% {
+    transform: rotate(-70deg);
+  }
+  44%,
+  92% {
+    transform: rotate(0);
+  }
+  100% {
+    transform: rotate(-70deg);
+  }
+}
+
+@keyframes vx-lid-r {
+  0%,
+  34% {
+    transform: rotate(70deg);
+  }
+  44%,
+  92% {
+    transform: rotate(0);
+  }
+  100% {
+    transform: rotate(70deg);
+  }
+}
+
+@keyframes vx-tape {
+  0%,
+  46% {
+    transform: scaleX(0);
+  }
+  54%,
+  92% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes vx-decoy {
+  0%,
+  58% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+  74%,
+  92% {
+    opacity: 0.6;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+}
+
+@keyframes vx-wheel {
+  0% {
+    transform: rotate(0);
+  }
+  45%,
+  100% {
+    transform: rotate(540deg);
+  }
+}
+
+@keyframes vx-swing {
+  0%,
+  45% {
+    transform: perspective(300px) rotateY(0);
+  }
+  65%,
+  90% {
+    transform: perspective(300px) rotateY(-62deg);
+  }
+  100% {
+    transform: perspective(300px) rotateY(0);
+  }
+}
+
+@keyframes vx-out {
+  0%,
+  55% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  85%,
+  100% {
+    transform: translateX(62px);
+    opacity: 1;
+  }
+}
+
+@keyframes vx-sail {
+  from {
+    transform: translate(-50px, 100px);
+  }
+  to {
+    transform: translate(290px, 100px);
+  }
+}
+
+@keyframes vx-bob {
+  0%,
+  100% {
+    transform: rotate(-5deg) translateY(0);
+  }
+  50% {
+    transform: rotate(5deg) translateY(3px);
+  }
+}
+
+@keyframes vx-waves {
+  to {
+    transform: translateX(-60px);
+  }
+}
+
+@keyframes vx-swap-a {
+  0%,
+  10% {
+    transform: translate(60px, 96px);
+  }
+  50%,
+  60% {
+    transform: translate(180px, 96px);
+  }
+  100% {
+    transform: translate(60px, 96px);
+  }
+}
+
+@keyframes vx-swap-b {
+  0%,
+  10% {
+    transform: translate(180px, 110px);
+  }
+  50%,
+  60% {
+    transform: translate(60px, 110px);
+  }
+  100% {
+    transform: translate(180px, 110px);
+  }
+}
+
+@keyframes vx-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+@keyframes vx-fly {
+  0% {
+    transform: translate(50px, 66px) rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(120px, 26px) rotate(-14deg) scale(1.1);
+  }
+  80%,
+  100% {
+    transform: translate(190px, 62px) rotate(0deg) scale(0.8);
+    opacity: 1;
+  }
+}
+
+@keyframes vx-glow {
+  0%,
+  78% {
+    transform: scale(1);
+    filter: none;
+  }
+  86% {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 8px #5be3c2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes vx-shell-0 {
+  0%,
+  10% {
+    transform: translate(36px, 88px);
+  }
+  30%,
+  45% {
+    transform: translate(98px, 70px);
+  }
+  65%,
+  80% {
+    transform: translate(160px, 88px);
+  }
+  100% {
+    transform: translate(36px, 88px);
+  }
+}
+
+@keyframes vx-shell-1 {
+  0%,
+  10% {
+    transform: translate(98px, 88px);
+  }
+  30%,
+  45% {
+    transform: translate(36px, 100px);
+  }
+  65%,
+  80% {
+    transform: translate(98px, 88px);
+  }
+  100% {
+    transform: translate(98px, 88px);
+  }
+}
+
+@keyframes vx-shell-2 {
+  0%,
+  10% {
+    transform: translate(160px, 88px);
+  }
+  30%,
+  45% {
+    transform: translate(160px, 88px);
+  }
+  65%,
+  80% {
+    transform: translate(36px, 70px);
+  }
+  100% {
+    transform: translate(160px, 88px);
+  }
+}
+
+@keyframes vx-blink {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  85% {
+    opacity: 1;
+  }
+}
+
+@keyframes vx-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(2deg);
+  }
+}
+
+@keyframes vx-wax {
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes vx-tear {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-6deg) translateX(-4px);
+  }
+  75% {
+    transform: rotate(6deg) translateX(4px);
+  }
+}
+
+@keyframes vx-lens {
+  0%,
+  100% {
+    transform: translate(70px, 60px);
+  }
+  33% {
+    transform: translate(122px, 76px);
+  }
+  66% {
+    transform: translate(170px, 60px);
+  }
+}
+
+@keyframes vx-hit {
+  0%,
+  10% {
+    opacity: 0;
+  }
+  15%,
+  60% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes vx-key {
+  0% {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  45% {
+    transform: translateY(-34px) rotate(0);
+  }
+  65%,
+  100% {
+    transform: translateY(-34px) rotate(90deg);
+  }
+}
+
+@keyframes vx-shackle {
+  0%,
+  62% {
+    transform: translateY(0);
+  }
+  72%,
+  90% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-scene *,
+  .vx-overlay,
+  .vx-stage,
+  .vx-dock,
+  .vx-tx,
+  .vx-stamp {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .vx-stage {
+    padding: 18px 14px 14px;
+  }
+
+  /* Above the Warden's button, its buttons under the text. */
+  .vx-dock {
+    bottom: 80px;
+    left: 8px;
+    flex-wrap: wrap;
+    width: calc(100vw - 16px);
+  }
+
+  .vx-dock-text {
+    flex-basis: calc(100% - 70px);
+  }
+
+  .vx-dock-actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+
+  .vx-dock .vx-scene.is-small {
+    width: 56px;
+  }
+}

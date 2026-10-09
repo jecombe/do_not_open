@@ -231,7 +231,12 @@ export function useAction() {
   const [state, setState] = useState<ActionState>(IDLE);
   const { collection, account, mode } = useChain();
 
-  const run = useCallback(async <T,>(name: string, action: (opts: ActionOptions) => Promise<T>, context?: Omit<ProblemContext, "collection">): Promise<T | undefined> => {
+  const run = useCallback(async <T,>(
+    name: string,
+    action: (opts: ActionOptions) => Promise<T>,
+    context?: Omit<ProblemContext, "collection">,
+    onProblem?: (problem: Problem) => void,
+  ): Promise<T | undefined> => {
     // On mainnet a wallet plays once it has signed the release form: until then, asking brings
     // the form back. The test network asks for nothing.
     if (account && termsRequired(mode) && !hasSigned(account)) {
@@ -245,7 +250,9 @@ export function useAction() {
       return result;
     } catch (error) {
       console.error(`[chain] ${name} failed`, error);
-      setState({ busy: null, step: null, error: problemOf(error, { ...context, collection }) });
+      const problem = problemOf(error, { ...context, collection });
+      setState({ busy: null, step: null, error: problem });
+      onProblem?.(problem);
       return undefined;
     } finally {
       bumpLedger();

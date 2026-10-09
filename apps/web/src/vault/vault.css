@@ -1149,128 +1149,18 @@ li.vault-card-open {
   overflow-y: auto;
 }
 
-/* Where an action stands, pinned to the bottom of the screen while it runs and after. */
-.vault-status {
-  position: fixed;
-  right: var(--gutter);
-  bottom: 16px;
-  left: var(--gutter);
-  z-index: 40;
-  display: grid;
-  gap: 6px;
-  max-width: 640px;
-  margin: 0 auto;
-  pointer-events: none;
-}
-
-.vault-status p {
-  margin: 0;
-  pointer-events: auto;
-}
-
-.vault-step,
-.vault-done,
+/* A problem said in the page (the wallet would not connect). */
 .vault-error {
   padding: 12px 16px;
-  border: 1px solid var(--line-2);
+  border: 1px solid rgb(255 77 61 / 0.6);
   border-radius: 12px;
   background: rgb(13 17 23 / 0.94);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5);
-  font-size: 15px;
-}
-
-.vault-step {
-  font-family: var(--mono);
-}
-
-.vault-step::before {
-  content: "";
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 10px;
-  border: 2px solid var(--teal);
-  border-right-color: transparent;
-  border-radius: 50%;
-  vertical-align: -1px;
-  animation: vault-spin 0.8s linear infinite;
-}
-
-@keyframes vault-spin {
-  to {
-    rotate: 360deg;
-  }
-}
-
-.vault-done {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-color: rgb(91 227 194 / 0.6);
-  color: var(--teal);
-}
-
-.vault-done button {
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.vault-error {
-  border-color: rgb(255 77 61 / 0.6);
   color: #ffb4ab;
+  font-size: 15px;
 }
 
 .vault-main > .vault-error {
   margin: 0 0 14px;
-}
-
-/* The stamp a seal, a sale or a purchase ends on: it slams onto the screen and fades. */
-.vault-stampfx {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  animation: vault-stamp-out 1.7s forwards;
-}
-
-.vault-stampfx span {
-  padding: 10px 28px 4px;
-  border: 6px solid var(--red);
-  border-radius: 10px;
-  background: rgb(7 9 12 / 0.55);
-  color: var(--red);
-  font: 700 clamp(48px, 10vw, 120px) / 1 var(--stencil);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  rotate: -12deg;
-  mix-blend-mode: screen;
-  animation: vault-stamp-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
-}
-
-@keyframes vault-stamp-in {
-  from {
-    opacity: 0;
-    transform: scale(2.6);
-  }
-}
-
-@keyframes vault-stamp-out {
-  0%,
-  75% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1279,7 +1169,6 @@ li.vault-card-open {
   .vault-tape,
   .vault-carton,
   .vault-skeleton,
-  .vault-stampfx span,
   .vault-dialog {
     animation: none;
     transition: none;
@@ -1431,11 +1320,6 @@ li.vault-card-open {
 
   .vault-why {
     grid-template-columns: 1fr;
-  }
-
-  /* Above the Warden's button in the corner. */
-  .vault-status {
-    bottom: 72px;
   }
 
   .vault .sec-top nav {

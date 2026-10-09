@@ -14,6 +14,15 @@ page is `vault.do-not-open.app` (`/vault` off the site's domains), and its
 docs for holders, in four languages, are `vault.do-not-open.app/docs` (`apps/web/src/vault/docs`):
 they follow this file, so a change here goes there too.
 
+Every action on the page runs on a stage (`apps/web/src/vault/tx`): an animated scene for its kind
+(the NFT sealed in a box among its decoys, the vault door opening, a ship sailing to Seaport, the
+NFT and the ETH crossing, a badge flying to the delegate...), its steps as they come, and every
+transaction it sent with its block, its gas and a link to the explorer. Folded away, it sits at the
+foot of the screen. It is also written to a cookie shared by the site's hosts, so the home page,
+boarding and both docs show it at their foot when the visitor left the vault mid-way: the steps
+that run in the browser (the decryption and the proof) stop with the page, and the next visit
+settles the box's waiting requests.
+
 The contracts are the source of truth, especially the design notes at the top of
 [`SealedVault.sol`](../packages/contracts-evm/contracts/SealedVault.sol). This file explains
 them, what leaks, what it costs, and why each choice was made.
