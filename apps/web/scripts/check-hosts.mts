@@ -1,5 +1,5 @@
 /**
- * Checks the site's routing by host (src/hosts.ts, what the edge middleware does) and the links
+ * Checks the site's routing by host (src/hosts/index.ts, what the edge middleware does) and the links
  * the pages build from each host (src/site.ts). Part of `pnpm --filter @dno/web test`.
  */
 import assert from "node:assert/strict";

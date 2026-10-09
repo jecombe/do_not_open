@@ -4,7 +4,8 @@
  * a Vercel preview) everything stays on one host under its path: `/vault`, `/app`.
  *
  * Read by the pages (site.ts, apiUrl.ts) and by the edge middleware (middleware.ts at the repo
- * root), so it touches no browser global and no `import.meta`.
+ * root), so it touches no browser global and no `import.meta`. Its folder is CommonJS
+ * (package.json): the middleware is compiled to CommonJS and require()s it.
  */
 
 /** The bare domains, the testnet first: `game.testnet.do-not-open.app` must not match the mainnet's. */
