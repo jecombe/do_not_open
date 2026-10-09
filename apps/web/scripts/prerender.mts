@@ -10,6 +10,8 @@
  *   dist/studio.html dist/fr/studio.html ...                                       →  /studio  /fr/studio ...
  *   dist/apply.html  dist/fr/apply.html ...                                        →  /apply  /fr/apply ...
  *
+ * It also writes dist/sitemap.xml from the same canonical URLs (every host, every language).
+ *
  * The browser then renders the page again from scratch once the fonts are in (createRoot, no
  * hydration): what is drawn on a canvas (the box, the cats) only exists from then on.
  *
@@ -78,7 +80,9 @@ try {
   const app = await vite.ssrLoadModule("/src/i18n/app.ts");
 
   const SITE: string = site.SITE_URL;
-  const IMAGE = `${SITE}/og.png`;
+  // The sharing card: the vault's (dark, the shield) for the project's pages, the game's for its manual and the studio.
+  const VAULT_CARD = new Set(["home", "project", "vaultDocs", "apply"]);
+  const cardFor = (page: string): string => `${SITE}/${VAULT_CARD.has(page) ? "og-vault.png" : "og.png"}`;
   const GAME: string = (await vite.ssrLoadModule("/src/hosts/index.ts")).partOrigin("do-not-open.app", "game");
   const PAGES = {
     home: { file: "index.html", component: SecureHome, t: secure.t, prefix: "secure", path: site.homePath as (l: Locale) => string },
@@ -116,6 +120,7 @@ try {
       if (text.length < MIN_TEXT[page] || !/<h1\b/.test(markup))
         throw new Error(`prerender: ${page} in ${locale} rendered only ${text.length} characters of text (expected ${MIN_TEXT[page]}+ and an <h1>)`);
 
+      const IMAGE = cardFor(page);
       const supply = Number(spec.collection.maxSupply).toLocaleString(locale);
       const title: string = t(`${prefix}.title`);
       const description: string = t(`${prefix}.description`, { supply });
@@ -203,6 +208,25 @@ try {
     }
   }
   console.log(`prerendered ${written.length} pages:\n  ${written.join("\n  ")}`);
+
+  // The sitemap, from the same canonical URLs: every page above in every language, on the host it
+  // lives on, plus the vault's page (one page for every language). One file on the bare domain lists
+  // the subdomains too, which search engines accept once the whole domain is verified with them.
+  const VAULT: string = (await vite.ssrLoadModule("/src/hosts/index.ts")).partOrigin("do-not-open.app", "vault");
+  const entry = (loc: string, alternates: string[]) => ["  <url>", `    <loc>${loc}</loc>`, ...alternates.map((a) => `    ${a}`), "  </url>"].join("\n");
+  const urls = (Object.keys(PAGES) as (keyof typeof PAGES)[]).flatMap((page) => {
+    const alternates = [
+      ...LOCALES.map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${site.canonicalUrl(page, l)}"/>`),
+      `<xhtml:link rel="alternate" hreflang="x-default" href="${site.canonicalUrl(page, "en")}"/>`,
+    ];
+    return LOCALES.map((l) => entry(site.canonicalUrl(page, l), alternates));
+  });
+  urls.push(entry(`${VAULT}/`, []));
+  writeFileSync(
+    resolve(DIST, "sitemap.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join("\n")}\n</urlset>\n`,
+  );
+  console.log(`sitemap: ${urls.length} URLs`);
 } finally {
   await vite.close();
 }
