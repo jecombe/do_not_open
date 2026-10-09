@@ -1,6 +1,11 @@
 /** The code, open source. */
 export const REPO = "https://github.com/jecombe/do_not_open";
 
+/** The contracts, with their tests and deployed addresses, published from the main repository. */
+export const SOURCE = "https://gitlab.com/do-not-open";
+export const SOURCE_GAME = `${SOURCE}/do-not-open-game`;
+export const SOURCE_VAULT = `${SOURCE}/do-not-open-vault`;
+
 /** The collection's Discord server, linked from the home page and the game's footer. */
 export const DISCORD = "https://discord.gg/vYSzwM8Rmn";
 

@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { DocShell, Prose } from "../../docs/DocShell";
 import { FlowFigure } from "../../docs/figures";
 import { useLocale } from "../../i18n/locale";
-import { REPO } from "../../links";
+import { REPO, SOURCE_VAULT } from "../../links";
 import { homePath, projectDocsPath, vaultPath } from "../../site";
 import { useT } from "./i18n";
 
@@ -48,7 +48,8 @@ export function VaultDocs() {
   const refs = [
     { key: "project", href: projectDocsPath(locale) },
     { key: "design", href: `${REPO}/blob/dev/docs/VAULT.md` },
-    { key: "contract", href: `${REPO}/blob/dev/packages/contracts-evm/contracts/SealedVault.sol` },
+    { key: "code", href: SOURCE_VAULT },
+    { key: "contract", href: `${SOURCE_VAULT}/-/blob/main/contracts/SealedVault.sol` },
   ] as const;
 
   const body: Record<(typeof SECTIONS)[number], ReactNode> = {

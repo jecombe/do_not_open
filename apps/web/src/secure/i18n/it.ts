@@ -85,6 +85,7 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.game.kicker": "Fuori servizio",
   "secure.game.experimental": "Sperimentale: un prototipo di cui regole, numeri e schermate cambiano ancora, sulla rete di test.",
   "secure.foot": "DO NOT OPEN gira su una rete di prova. Qui niente vale ancora denaro.",
+  "secure.source": "Codice sorgente",
   "warden.name": "Il Guardiano",
   "warden.open": "Chiedi al Guardiano",
   "warden.title": "Il Guardiano del caveau",

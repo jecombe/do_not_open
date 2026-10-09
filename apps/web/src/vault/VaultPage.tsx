@@ -16,7 +16,7 @@ import {
 } from "@dno/chain-adapter";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { useLocale } from "../i18n/locale";
-import { DISCORD } from "../links";
+import { DISCORD, SOURCE_VAULT } from "../links";
 import { vaultDocsPath } from "../site";
 import { SecureTop } from "../secure/SecureTop";
 import { Warden } from "../secure/Warden";
@@ -362,6 +362,9 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
             )}
             <a className="sec-link" href={vaultDocsPath(locale)}>
               {t("vault.docs")}&nbsp;→
+            </a>
+            <a className="sec-link" href={SOURCE_VAULT} target="_blank" rel="noreferrer">
+              {t("vault.link.source")}&nbsp;↗
             </a>
             <a className="sec-link" href={DISCORD} target="_blank" rel="noreferrer">
               Discord&nbsp;↗

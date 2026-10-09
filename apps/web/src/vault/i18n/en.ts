@@ -16,6 +16,7 @@ export const vaultEn = {
   "vault.why4.body": "Airdrops and holder-only access still reach you: lend the NFT's rights to a fresh wallet through delegate.xyz.",
   "vault.docs": "How the vault works, and what leaks",
   "vault.link.contract": "The vault's contract on Etherscan",
+  "vault.link.source": "The contracts' code",
   "vault.link.explorer": "Etherscan",
   "vault.link.marketplace": "OpenSea",
   "vault.balances.label": "Your balances",

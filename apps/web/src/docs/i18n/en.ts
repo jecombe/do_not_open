@@ -154,6 +154,8 @@ export const docsEn = {
   "docs.more.r5.v": "Art direction, effects, performance budget",
   "docs.more.r6": "Contracts",
   "docs.more.r6.v": "Cost of each function, deploy, command line",
+  "docs.more.code": "The contracts' code",
+  "docs.more.code.v": "Every contract of the game, its tests and its Sepolia addresses, open source on GitLab",
 
   // --- the seed figure
   "fig.field.stateRoll": "State roll",

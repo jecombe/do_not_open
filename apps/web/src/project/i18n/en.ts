@@ -59,7 +59,7 @@ export const projectEn = {
   "project.more.game": "The game's manual",
   "project.more.game.v": "Boxes, cats, croquettes, rats, the flea market, the testnet.",
   "project.more.repo": "The code",
-  "project.more.repo.v": "Contracts, app and API, all open source.",
+  "project.more.repo.v": "The game's and the vault's contracts, their tests and their addresses, open source on GitLab.",
   "project.more.zama": "Zama's FHEVM",
   "project.more.zama.v": "The encryption the contracts run on.",
 

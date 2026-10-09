@@ -18,7 +18,7 @@ const whitelistGifts = {
 };
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { REPO } from "../links";
+import { REPO, SOURCE_GAME } from "../links";
 import { appPath, homePath } from "../site";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
@@ -128,6 +128,7 @@ const MECHANICS = [
 ] as const;
 
 const REFS = [
+  { key: "code", href: SOURCE_GAME },
   { key: "r1", href: `${DOCS}/ARCHITECTURE.md` },
   { key: "r2", href: `${DOCS}/DATA_MODEL.md` },
   { key: "r3", href: `${DOCS}/FLOWS.md` },

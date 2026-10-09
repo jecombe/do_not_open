@@ -85,6 +85,7 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.game.kicker": "Après le service",
   "secure.game.experimental": "Expérimental : un prototype dont les règles, les chiffres et les écrans changent encore, sur le réseau de test.",
   "secure.foot": "DO NOT OPEN tourne sur un réseau de test. Rien ici ne vaut encore de l'argent.",
+  "secure.source": "Code source",
   "warden.name": "Le Gardien",
   "warden.open": "Demander au Gardien",
   "warden.title": "Le Gardien du coffre",

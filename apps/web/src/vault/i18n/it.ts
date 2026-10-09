@@ -15,6 +15,7 @@ export const vaultIt: Record<VaultKey, string> = {
   "vault.why4.body": "Airdrop e accessi riservati ai possessori ti arrivano lo stesso: presta i diritti dell'NFT a un wallet nuovo con delegate.xyz.",
   "vault.docs": "Come funziona il caveau, e cosa trapela",
   "vault.link.contract": "Il contratto del caveau su Etherscan",
+  "vault.link.source": "Il codice dei contratti",
   "vault.link.explorer": "Etherscan",
   "vault.link.marketplace": "OpenSea",
   "vault.balances.label": "I tuoi saldi",

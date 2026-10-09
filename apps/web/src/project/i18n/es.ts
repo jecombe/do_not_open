@@ -60,7 +60,7 @@ export const projectEs: Record<ProjectKey, string> = {
   "project.more.game": "El manual del juego",
   "project.more.game.v": "Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.",
   "project.more.repo": "El código",
-  "project.more.repo.v": "Contratos, app y API, todo de código abierto.",
+  "project.more.repo.v": "Los contratos del juego y de la bóveda, sus pruebas y sus direcciones, de código abierto en GitLab.",
   "project.more.zama": "El FHEVM de Zama",
   "project.more.zama.v": "El cifrado sobre el que funcionan los contratos.",
 
