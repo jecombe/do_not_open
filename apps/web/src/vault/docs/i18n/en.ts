@@ -116,6 +116,8 @@ export const vaultDocsEn = {
   "vaultDocs.more.project.v": "The idea, the encryption, who you trust.",
   "vaultDocs.more.design": "The design notes",
   "vaultDocs.more.design.v": "Every flow, every check, every leak, for developers.",
+  "vaultDocs.more.code": "The contracts' code",
+  "vaultDocs.more.code.v": "The vault's contracts, their tests and their Sepolia addresses, open source on GitLab",
   "vaultDocs.more.contract": "The contract",
   "vaultDocs.more.contract.v": "SealedVault.sol, open source.",
 

@@ -274,7 +274,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "About DO NOT OPEN The idea, the encryption, who you trust.\nThe design notes Every flow, every check, every leak, for developers.\nThe contract SealedVault.sol, open source."
+     "text": "About DO NOT OPEN The idea, the encryption, who you trust.\nThe design notes Every flow, every check, every leak, for developers.\nThe contracts' code The vault's contracts, their tests and their Sepolia addresses, open source on GitLab\nThe contract SealedVault.sol, open source."
     },
     {
      "id": "project-what-0",
@@ -322,7 +322,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "The vault's documentation Depositing, the key, Seaport, private sales, pockets, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code Contracts, app and API, all open source.\nZama's FHEVM The encryption the contracts run on."
+     "text": "The vault's documentation Depositing, the key, Seaport, private sales, pockets, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code The game's and the vault's contracts, their tests and their addresses, open source on GitLab.\nZama's FHEVM The encryption the contracts run on."
     }
    ]
   },
@@ -611,7 +611,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "À propos de DO NOT OPEN L'idée, le chiffrement, à qui tu fais confiance.\nLes notes de conception Chaque flux, chaque vérification, chaque fuite, pour les développeurs.\nLe contrat SealedVault.sol, open source."
+     "text": "À propos de DO NOT OPEN L'idée, le chiffrement, à qui tu fais confiance.\nLes notes de conception Chaque flux, chaque vérification, chaque fuite, pour les développeurs.\nLe code des contrats Les contrats du coffre, leurs tests et leurs adresses sur Sepolia, open source sur GitLab\nLe contrat SealedVault.sol, open source."
     },
     {
      "id": "project-what-0",
@@ -659,7 +659,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, les poches, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Contrats, app et API, tout est open source.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
+     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, les poches, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Les contrats du jeu et du coffre, leurs tests et leurs adresses, open source sur GitLab.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
     }
    ]
   },
@@ -936,7 +936,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "Sobre DO NOT OPEN La idea, el cifrado, en quién confías.\nLas notas de diseño Cada flujo, cada comprobación, cada filtración, para desarrolladores.\nEl contrato SealedVault.sol, de código abierto."
+     "text": "Sobre DO NOT OPEN La idea, el cifrado, en quién confías.\nLas notas de diseño Cada flujo, cada comprobación, cada filtración, para desarrolladores.\nEl código de los contratos Los contratos de la bóveda, sus pruebas y sus direcciones en Sepolia, de código abierto en GitLab\nEl contrato SealedVault.sol, de código abierto."
     },
     {
      "id": "project-what-0",
@@ -990,7 +990,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentación de la bóveda El depósito, la llave, Seaport, las ventas privadas, los bolsillos, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Contratos, app y API, todo de código abierto.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
+     "text": "La documentación de la bóveda El depósito, la llave, Seaport, las ventas privadas, los bolsillos, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Los contratos del juego y de la bóveda, sus pruebas y sus direcciones, de código abierto en GitLab.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
     }
    ]
   },
@@ -1273,7 +1273,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "Su DO NOT OPEN L'idea, la cifratura, di chi ti fidi.\nLe note di progetto Ogni flusso, ogni controllo, ogni fuga, per sviluppatori.\nIl contratto SealedVault.sol, open source."
+     "text": "Su DO NOT OPEN L'idea, la cifratura, di chi ti fidi.\nLe note di progetto Ogni flusso, ogni controllo, ogni fuga, per sviluppatori.\nIl codice dei contratti I contratti del caveau, i loro test e i loro indirizzi su Sepolia, open source su GitLab\nIl contratto SealedVault.sol, open source."
     },
     {
      "id": "project-what-0",
@@ -1321,7 +1321,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, le tasche, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice Contratti, app e API, tutto open source.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
+     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, le tasche, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice I contratti del gioco e del caveau, i loro test e i loro indirizzi, open source su GitLab.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
     }
    ]
   }

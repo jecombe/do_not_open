@@ -500,7 +500,7 @@
      "id": "more-0",
      "section": "more",
      "heading": null,
-     "text": "Architecture Packages, data flow, the 3D pipeline\nData model What is encrypted, per token, and the access lists\nFlows Sequence diagrams for every mechanic\nZama notes Verified versions, and where the protocol differs from the first brief\nDesign Art direction, effects, performance budget\nContracts Cost of each function, deploy, command line\nCroquettes The two tokens, the Pantry, every number and what leaks\nHidden owners The confidential ERC-721, what still leaks, what it costs\nRelayer proxy How decryptions are metered, the free allowance and the credits"
+     "text": "The contracts' code Every contract of the game, its tests and its Sepolia addresses, open source on GitLab\nArchitecture Packages, data flow, the 3D pipeline\nData model What is encrypted, per token, and the access lists\nFlows Sequence diagrams for every mechanic\nZama notes Verified versions, and where the protocol differs from the first brief\nDesign Art direction, effects, performance budget\nContracts Cost of each function, deploy, command line\nCroquettes The two tokens, the Pantry, every number and what leaks\nHidden owners The confidential ERC-721, what still leaks, what it costs\nRelayer proxy How decryptions are metered, the free allowance and the credits"
     }
    ]
   },
@@ -1063,7 +1063,7 @@
      "id": "more-0",
      "section": "more",
      "heading": null,
-     "text": "Architecture Packages, flux de données, la chaîne 3D\nModèle de données Ce qui est chiffré, par token, et les listes d'accès\nFlux Diagrammes de séquence pour chaque mécanique\nNotes Zama Versions vérifiées, et où le protocole diffère du premier brief\nDesign Direction artistique, effets, budget de performance\nContrats Coût de chaque fonction, déploiement, ligne de commande\nCroquettes Les deux jetons, le Garde-manger, tous les chiffres et ce qui fuit\nPropriétaires cachés L'ERC-721 confidentiel, ce qui fuit encore, ce que ça coûte\nProxy du relayer Comment les déchiffrements sont comptés, le quota gratuit et les crédits"
+     "text": "Le code des contrats Tous les contrats du jeu, leurs tests et leurs adresses sur Sepolia, open source sur GitLab\nArchitecture Packages, flux de données, la chaîne 3D\nModèle de données Ce qui est chiffré, par token, et les listes d'accès\nFlux Diagrammes de séquence pour chaque mécanique\nNotes Zama Versions vérifiées, et où le protocole diffère du premier brief\nDesign Direction artistique, effets, budget de performance\nContrats Coût de chaque fonction, déploiement, ligne de commande\nCroquettes Les deux jetons, le Garde-manger, tous les chiffres et ce qui fuit\nPropriétaires cachés L'ERC-721 confidentiel, ce qui fuit encore, ce que ça coûte\nProxy du relayer Comment les déchiffrements sont comptés, le quota gratuit et les crédits"
     }
    ]
   },
@@ -1602,7 +1602,7 @@
      "id": "more-0",
      "section": "more",
      "heading": null,
-     "text": "Arquitectura Paquetes, flujo de datos, la cadena 3D\nModelo de datos Qué está cifrado, por token, y las listas de acceso\nFlujos Diagramas de secuencia para cada mecánica\nNotas sobre Zama Versiones verificadas, y dónde el protocolo difiere del primer brief\nDiseño Dirección de arte, efectos, presupuesto de rendimiento\nContratos Coste de cada función, despliegue, línea de comandos\nCroquetas Los dos tokens, la Despensa, cada cifra y lo que se filtra\nPropietarios ocultos El ERC-721 confidencial, lo que aún se filtra, lo que cuesta\nProxy del relayer Cómo se cuentan los descifrados, la cuota gratuita y los créditos"
+     "text": "El código de los contratos Todos los contratos del juego, sus pruebas y sus direcciones en Sepolia, de código abierto en GitLab\nArquitectura Paquetes, flujo de datos, la cadena 3D\nModelo de datos Qué está cifrado, por token, y las listas de acceso\nFlujos Diagramas de secuencia para cada mecánica\nNotas sobre Zama Versiones verificadas, y dónde el protocolo difiere del primer brief\nDiseño Dirección de arte, efectos, presupuesto de rendimiento\nContratos Coste de cada función, despliegue, línea de comandos\nCroquetas Los dos tokens, la Despensa, cada cifra y lo que se filtra\nPropietarios ocultos El ERC-721 confidencial, lo que aún se filtra, lo que cuesta\nProxy del relayer Cómo se cuentan los descifrados, la cuota gratuita y los créditos"
     }
    ]
   },
@@ -2153,7 +2153,7 @@
      "id": "more-0",
      "section": "more",
      "heading": null,
-     "text": "Architettura Pacchetti, flusso dei dati, la pipeline 3D\nModello dei dati Cosa è cifrato, per token, e le liste di accesso\nFlussi Diagrammi di sequenza per ogni meccanica\nNote su Zama Versioni verificate, e dove il protocollo differisce dal primo brief\nDesign Direzione artistica, effetti, budget di prestazioni\nContratti Costo di ogni funzione, deploy, riga di comando\nCrocchette I due token, la Dispensa, ogni numero e cosa trapela\nProprietari nascosti L'ERC-721 confidenziale, cosa trapela ancora, quanto costa\nProxy del relayer Come vengono contate le decifrature, la quota gratuita e i crediti"
+     "text": "Il codice dei contratti Tutti i contratti del gioco, i loro test e i loro indirizzi su Sepolia, open source su GitLab\nArchitettura Pacchetti, flusso dei dati, la pipeline 3D\nModello dei dati Cosa è cifrato, per token, e le liste di accesso\nFlussi Diagrammi di sequenza per ogni meccanica\nNote su Zama Versioni verificate, e dove il protocollo differisce dal primo brief\nDesign Direzione artistica, effetti, budget di prestazioni\nContratti Costo di ogni funzione, deploy, riga di comando\nCrocchette I due token, la Dispensa, ogni numero e cosa trapela\nProprietari nascosti L'ERC-721 confidenziale, cosa trapela ancora, quanto costa\nProxy del relayer Come vengono contate le decifrature, la quota gratuita e i crediti"
     }
    ]
   }

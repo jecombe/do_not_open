@@ -117,6 +117,8 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.more.project.v": "L'idée, le chiffrement, à qui tu fais confiance.",
   "vaultDocs.more.design": "Les notes de conception",
   "vaultDocs.more.design.v": "Chaque flux, chaque vérification, chaque fuite, pour les développeurs.",
+  "vaultDocs.more.code": "Le code des contrats",
+  "vaultDocs.more.code.v": "Les contrats du coffre, leurs tests et leurs adresses sur Sepolia, open source sur GitLab",
   "vaultDocs.more.contract": "Le contrat",
   "vaultDocs.more.contract.v": "SealedVault.sol, open source.",
 

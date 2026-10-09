@@ -4,7 +4,7 @@ import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
 import { Clerk } from "./chat/Clerk";
 import { setMuted, startMusicOnFirstGesture, useSoundSettings } from "./home/sound";
-import { DISCORD } from "./links";
+import { DISCORD, SOURCE_GAME } from "./links";
 import { useT } from "./i18n/app";
 import { isMenuView, Masthead, type View } from "./Masthead";
 import { TermsGate } from "./terms/TermsGate";
@@ -156,6 +156,9 @@ export function App() {
           <Clerk newTab inline />
           <a className="link" href={DISCORD} target="_blank" rel="noreferrer">
             {t("footer.discord")}
+          </a>
+          <a className="link" href={SOURCE_GAME} target="_blank" rel="noreferrer">
+            {t("footer.source")}
           </a>
           <button
             type="button"

@@ -46,6 +46,7 @@ export const en = {
   "footer.reading": "Reading the chain…",
   "footer.experimental": "Experimental game",
   "footer.discord": "Discord",
+  "footer.source": "Contracts",
   "footer.soundOn": "Sound is on",
   "footer.soundOff": "Sound is off",
 

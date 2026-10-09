@@ -15,6 +15,7 @@ export const vaultFr: Record<VaultKey, string> = {
   "vault.why4.body": "Les airdrops et les accès réservés aux détenteurs te parviennent toujours : prête les droits du NFT à un wallet neuf via delegate.xyz.",
   "vault.docs": "Comment marche le coffre, et ce qui fuite",
   "vault.link.contract": "Le contrat du coffre sur Etherscan",
+  "vault.link.source": "Le code des contrats",
   "vault.link.explorer": "Etherscan",
   "vault.link.marketplace": "OpenSea",
   "vault.balances.label": "Tes soldes",

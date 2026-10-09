@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { spec } from "@dno/game-spec";
-import { DISCORD } from "../links";
+import { DISCORD, SOURCE } from "../links";
 import { useLocale } from "../i18n/locale";
 import { applyPath, appPath, docsPath, projectDocsPath, vaultDocsPath, vaultPath } from "../site";
 import { useT as useHomeT } from "../home/i18n";
@@ -498,6 +498,9 @@ export function SecureHome() {
 
       <footer className="sec-foot">
         <span>{t("secure.foot")}</span>
+        <a href={SOURCE} target="_blank" rel="noreferrer">
+          {t("secure.source")}
+        </a>
         <a href={DISCORD} target="_blank" rel="noreferrer">
           Discord
         </a>

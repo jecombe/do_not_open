@@ -46,6 +46,7 @@ export const it: Record<AppKey, string> = {
   "footer.reading": "Lettura della chain…",
   "footer.experimental": "Gioco sperimentale",
   "footer.discord": "Discord",
+  "footer.source": "Contratti",
   "footer.soundOn": "Audio attivo",
   "footer.soundOff": "Audio spento",
 
