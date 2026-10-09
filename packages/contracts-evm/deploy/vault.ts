@@ -2,7 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import registryFixture from "../test/fixtures/delegate-registry-v2.json";
 import seaportFixture from "../test/fixtures/seaport-1.5.json";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /** Seaport 1.5, where OpenSea deployed it on every chain it supports. */
 export const SEAPORT = "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC";

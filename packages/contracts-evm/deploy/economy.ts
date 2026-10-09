@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ratParamsFromSpec } from "../lib/ratParams";
 import { economyFromSpec, pantryParamsFromSpec } from "../lib/specParams";
 import { croqPriceAtTick, planSingleSided, seedSingleSided } from "../lib/uniswapV3";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /**
  * Uniswap V3 on Sepolia, from Uniswap's deployment list. Checked on-chain before use: the position

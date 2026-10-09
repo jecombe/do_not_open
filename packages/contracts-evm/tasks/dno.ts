@@ -455,7 +455,7 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
     const pool = await hre.deployments.getOrNull("CroqUsdcPool");
     const locker = await hre.deployments.getOrNull("LiquidityLocker");
     const { UNISWAP_V3 } = await import("../deploy/economy");
-    const { PAYMENT_TOKENS } = await import("../deploy/deploy");
+    const { PAYMENT_TOKENS } = await import("../lib/paymentTokens");
     const uniswap = UNISWAP_V3[hre.network.name];
     const usdc = PAYMENT_TOKENS[hre.network.name]?.usdc;
     const economyOut = resolve(__dirname, `../../chain-adapter/src/evm/deployments/${hre.network.name}-economy.json`);

@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { marketParamsFromSpec } from "../lib/marketParams";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /**
  * The flea market: boxes, cats and rats sold between players, in cUSDC, with the fee of

@@ -361,6 +361,29 @@ Single steps: `npx hardhat --network <net> dno:mint --quantity <n> --ids <n>`,
 `dno:shake|dno:feed|dno:paid-shake|dno:prove-alive|dno:observe|dno:status --token <id>`,
 `dno:entangle --a <id> --b <id>`, `dno:duel --a <id> --b <id>`.
 
+## Published to GitLab
+
+The contracts are also published, with their tests and their Sepolia addresses, as two standalone
+Hardhat projects: [`do-not-open-vault`](https://gitlab.com/do-not-open/do-not-open-vault) and
+[`do-not-open-game`](https://gitlab.com/do-not-open/do-not-open-game). `publish/publish.mjs`
+rebuilds each from the committed tree, from a whitelist (`publish/vault.json`, `publish/game.json`)
+plus `publish/templates/`, with the addresses only from `deployments/sepolia` (no bytecode, no
+compiler input, which holds the other contracts' sources). The game's also carries `game-spec` and
+`generator` under `vendor/`, which its tests and deploy read. Before a push it refuses any secret
+or reference to the rest of the monorepo, and installs, compiles and runs the tests on its own;
+it pushes one commit per repository whose files changed, with the subject of the last commit that
+touched them. `.github/workflows/publish-contracts.yml` runs it on pushes to `main` that touch
+these packages, with one GitLab deploy key per repository (`GITLAB_VAULT_SSH_KEY`,
+`GITLAB_GAME_SSH_KEY`).
+
+```bash
+node publish/publish.mjs --dry-run              # builds both, checks them, pushes nothing
+node publish/publish.mjs --dry-run --only vault
+```
+
+A new contract, test or deploy script reaches GitLab only once its manifest lists it (the game's
+takes `contracts/*.sol`, `test/*.ts` and `deploy/*.ts` but the vault's files).
+
 ## Two-step public decryption
 
 What must become public goes through a request. The first transaction computes the
