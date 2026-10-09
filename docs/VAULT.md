@@ -4,8 +4,10 @@ The sealed vault is a product next to the game, not a part of it. Any NFT of an 
 collection goes into a box whose holder is encrypted: the box is a Confidential ERC-721 of its
 own ("DO NOT OPEN Vault", `SEALED`), built on the same `ConfidentialERC721` base as the boxes of
 the game. The NFT stays in the vault until the box's holder takes it out, sells it on Seaport
-(OpenSea's protocol) with the vault as the seller, or sells the box privately for an encrypted
-cUSDC price. The page is `vault.do-not-open.app` (`/vault` off the site's domains), and its
+(OpenSea's protocol) with the vault as the seller, by a listing or by accepting a buyer's WETH
+offer, or sells the box privately for an encrypted cUSDC price. Meanwhile the holder may lend
+the NFT's rights (airdrops, holder-only access) to a wallet of theirs through delegate.xyz. The
+page is `vault.do-not-open.app` (`/vault` off the site's domains), and its
 docs for holders, in four languages, are `vault.do-not-open.app/docs` (`apps/web/src/vault/docs`):
 they follow this file, so a change here goes there too.
 
@@ -13,38 +15,55 @@ The contracts are the source of truth, especially the design notes at the top of
 [`SealedVault.sol`](../packages/contracts-evm/contracts/SealedVault.sol). This file explains
 them, what leaks, what it costs, and why each choice was made.
 
-**Status.** Done on the mock and in the tests (27 contract tests in `test/SealedVault.ts`,
-against Seaport 1.5's real bytecode), and on Sepolia since 2026-10-08: `SealedVault` at
-`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (block 11872753), its free test collection `VaultTestNFT` at
-`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`, listing on OpenSea's Seaport 1.5.
+**Status.** Done on the mock and in the tests (62 contract tests in `test/SealedVault.ts`,
+against the real bytecode of Seaport 1.5 and of delegate.xyz's registry), and on Sepolia since
+2026-10-08: `SealedVault` at `0xE22509e741233072aFF4e0c6B56d5e3De8018262` and `VaultOffers` at
+`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2` since 2026-10-09 (blocks 11876575 and 11876574;
+owner and treasury `0x590891F269720001435004A1089cAB5b2c20029A`), its free test collection
+`VaultTestNFT` at `0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`, on OpenSea's Seaport 1.5, the
+WETH OpenSea uses on Sepolia (`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`) and delegate.xyz's
+registry. Earlier deployments are left as they were: `0x27CA3698A34b53900047cD1D0856B954a695C79D`
+(2026-10-09, block 11876345) took no offers and no delegation; the first,
+`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (2026-10-08, block 11872753), took one request per
+box and moved the nonce on with every request (see Decisions).
 
 ## Contracts
 
 | Contract | What it is |
 | --- | --- |
-| `SealedVault` | The vault. `ConfidentialERC721` (encrypted owners, transfers that never revert on ownership), `ZamaEthereumConfig`, `Ownable`, `ReentrancyGuard`. 20,833 bytes deployed, compiled with the default optimizer (200 runs) |
-| `vault/ISeaport.sol` | The slice of Seaport 1.5 the vault uses (`validate`, `cancel`, `getOrderHash`, `getOrderStatus`, `getCounter`, `fulfillOrder`) and its structs, as Seaport defines them. Seaport 1.5 is at `0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC` on Sepolia and mainnet; Seaport 1.6 is not on Sepolia |
+| `SealedVault` | The vault. `ConfidentialERC721` (encrypted owners, transfers that never revert on ownership), `ZamaEthereumConfig`, `Ownable`, `ReentrancyGuard`. 24,322 bytes deployed, 254 under the 24,576-byte limit, compiled with the default optimizer (200 runs): a new feature has to move logic out first, as accepting offers did into `VaultOffers` |
+| `vault/VaultOffers.sol` | Fills the buyers' offers the vault accepts, and is the board buyers post them to. Stateless and open to anyone: the vault hands it one NFT for one call (`fill`), so an order can only ever take that NFT. `inspect` says whether an offer can still fill one token for at least a price; `post` validates a buyer's signed offer on Seaport and logs it by NFT (`OfferPosted`). 6,517 bytes |
+| `vault/ISeaport.sol` | The slice of Seaport 1.5 the vault and `VaultOffers` use (`validate`, `cancel`, `getOrderHash`, `getOrderStatus`, `getCounter`, `fulfillOrder`, `fulfillAdvancedOrder`) and its structs, as Seaport defines them. Seaport 1.5 is at `0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC` on Sepolia and mainnet; Seaport 1.6 is not on Sepolia |
+| `vault/IDelegateRegistry.sol` | The slice of delegate.xyz's Delegate Registry v2 the vault uses (`delegateERC721`, `checkDelegateForERC721`). The registry is at `0x00000000000000447e69651d841bD8D104Bed493` on Ethereum, Sepolia and most other chains |
+| `vault/IWETH.sol` | Wrapped ether (`deposit`, `withdraw`): what offers pay in |
+| `mocks/TestWETH.sol` | Local networks only: WETH as WETH9 does it |
 | `mocks/VaultTestNFT.sol` | Test networks only: "Sealed Vault Test NFT" (`VTEST`), free to mint for anyone, its picture an SVG drawn on-chain from its id, so a marketplace shows something |
 
 ```mermaid
 flowchart LR
   holder(("Holder")) -- "deposit (public)" --> vault["SealedVault<br/>boxes, encrypted owners and keys,<br/>requests, listings, private sales"]
-  relayer["API relayer<br/>(optional)"] -- "request, finalize<br/>from its own wallet" --> vault
+  relayer["API relayer<br/>(optional)"] -- "request, finalize, finalizeOffer<br/>from its own wallet" --> vault
   vault -- "transferFrom, approve one token" --> nft["Allowed ERC-721<br/>(VaultTestNFT on test networks)"]
   vault -- "validate, cancel, getOrderStatus" --> seaport["Seaport 1.5"]
   buyer(("Any Seaport buyer")) -- "fulfillOrder, ETH" --> seaport
   seaport -- "ETH (receive)" --> vault
+  bidder(("A buyer making an offer")) -- "post (a signed WETH offer)" --> offers["VaultOffers<br/>offer board, fills offers"]
+  offers -- "validate, fulfillAdvancedOrder" --> seaport
+  vault -- "one NFT for one fill; ETH back" --> offers
+  vault -- "delegateERC721" --> registry["delegate.xyz<br/>Delegate Registry v2"]
   vault -- "pulls and pays (private sales)" --> cusdc["cUSDC<br/>ERC-7984"]
   vault -- "sendFees (ETH)" --> treasury["Treasury"]
 ```
 
 `SealedVault` has no link to `DoNotOpen`, the Pantry or any other contract of the game: it only
-shares the base contract and the cUSDC.
+shares the base contract and the cUSDC. `VaultOffers` knows nothing of the vault either: it
+sells whatever NFT its caller hands it.
 
 ## A box and its key
 
 Each box stores, in public, the NFT it holds (`collection`, `tokenId`), its state, its listing,
-a pending request, the ETH a Seaport sale left in it, and a request nonce. Two things are
+how many requests wait on it, the ETH a Seaport sale left in it, a request nonce, and its
+delegate in delegate.xyz. Two things are
 encrypted: its owner (an `eaddress`, as in every `ConfidentialERC721`) and its **key**, a
 256-bit secret (`euint256`) its holder picks. Only the vault is allowed on the key
 (`allowThis`): nobody can decrypt it, the holder included. It is only ever compared.
@@ -55,6 +74,9 @@ stateDiagram-v2
   Sealed --> Listed: request(List), finalized with the right key
   Listed --> Sealed: request(Unlist), or the listing ran out (sync)
   Listed --> Sold: the Seaport order filled (sync, or any request)
+  Sealed --> Claimed: request(AcceptOffer): sold to a buyer's offer, the ETH paid out
+  Listed --> Claimed: request(AcceptOffer): the listing is taken down first
+  Sealed --> Sold: request(AcceptOffer), the payout address refused the ETH
   Sealed --> Withdrawn: request(Withdraw)
   Listed --> Withdrawn: request(Withdraw): the listing is taken down first
   Sold --> Claimed: request(Claim)
@@ -62,7 +84,7 @@ stateDiagram-v2
   Claimed --> [*]
 ```
 
-A box moves (transfer, private sale) only while `Sealed` and not busy. `Withdrawn` and
+A box moves (transfer, private sale) only while `Sealed` and no request waits on it. `Withdrawn` and
 `Claimed` are final: a box id is never reused, and an NFT taken out and put back gets a new box.
 
 **What the app uses as the key.** `EvmVault` never stores a key. The wallet signs one fixed
@@ -73,17 +95,24 @@ device. Anyone who gets that signature can take the wallet's NFTs out: the messa
 says to sign it only on DO NOT OPEN.
 
 **Binding a key to a request.** The key is never sent as is. For a request, the holder encrypts
-`key XOR requestHash(boxId, nonce, action, to, price, endTime)`, where
+`key XOR requestHash(boxId, nonce, action, to, price, endTime, ref)`, where
 
 ```
-requestHash = keccak256(abi.encode(block.chainid, vault, boxId, nonce, action, to, price, endTime))
+requestHash = keccak256(abi.encode(block.chainid, vault, boxId, nonce, action, to, price, endTime, ref))
 ```
 
-and `nonce` is the box's request count, bumped by each request. The vault computes the same
-hash from the terms it was actually given and compares `input XOR hash` with the stored key,
-under encryption. A relayer that changed a term (the recipient, say) or replayed the input later
-makes the vault compare against another hash: the key does not match and the request settles
-`Refused`. An encrypted input is bound to the address that sends it, so the page encrypts it for
+and `ref` is the Seaport order hash of the offer an `AcceptOffer` names (zero otherwise),
+
+`nonce` is how many requests on the box matched its key: `finalize` moves it on when the key
+matched (the request `Done` or `Stale`), and `expire` does too; a wrong key leaves it where it
+was. The vault computes the same hash from the terms it was actually given and compares
+`input XOR hash` with the stored key, under encryption. A relayer that changed a term (the
+recipient, say) makes the vault compare against another hash: the key does not match and the
+request settles `Refused`. One that sends a used input again, once its request settled, finds
+the nonce moved on: `Refused` too. One that sends it twice while the first still waits places
+the holder's own request twice; the second finds the box changed (withdrawn, listed, sealed
+again or claimed) and settles `Stale`. And a stranger's wrong key never moves the nonce, so it spoils no input the holder
+already prepared. An encrypted input is bound to the address that sends it, so the page encrypts it for
 the relayer's address when the relayer sends (`inputUser` in `EvmVault`), and for the wallet's
 otherwise.
 
@@ -111,19 +140,31 @@ sequenceDiagram
   participant V as Vault
   H->>H: key = keccak256(secret, collection, tokenId), encrypted for the vault
   H->>N: approve(vault, tokenId)
-  H->>V: deposit(collection, tokenId, key, proof)
-  V->>V: allowedCollection[collection], else CollectionNotAllowed
+  H->>H: decoys: up to 5 fresh random addresses, really = false for each, encrypted with the key
+  H->>V: deposit(collection, tokenId, key, to[], really[], proof)
+  V->>V: allowedCollection[collection], else CollectionNotAllowed; to and really pair up, 5 at most, else BadSends
   V->>N: transferFrom(holder, vault, tokenId)
   V->>V: mint box: owner = holder (moved = true), key stored, allowThis only
   V-->>H: Deposited(boxId, collection, tokenId, depositor), ConfidentialTransfer(boxId, 0x0, holder, moved)
+  loop each of to[]
+    V->>V: _transfer(holder, to[i], boxId, really[i]): moves only if really and the holder still holds it
+    V-->>H: ConfidentialTransfer(boxId, holder, to[i], moved)
+  end
 ```
 
 The deposit is public: it is a plain NFT transfer, and `Deposited` names the depositor. What
-happens to the box next is not. The holder finds their boxes the way a player finds theirs:
+happens to the box next is not, and it can start in the same transaction: `deposit` sends the
+new box on to each of `to`, for real only where the encrypted `really` is true. The page lets
+the holder pick how many decoys, 0 to 5, three by default (`decoys` in the adapter, `decoySends`): fresh random addresses nobody
+holds a key of, `really` false for each, so the depositor keeps the box, but to anyone else each
+transfer is a "maybe" and the depositor is no longer its obvious holder. One of them may be real
+(a gift, or the holder's own fresh wallet): the box then moves and gets a random key, as on any
+transfer, and its receiver sets theirs with `setKey`. Each send costs a transfer's gas and HCU
+(Cost, below). The holder finds their boxes the way a player finds theirs:
 by replaying their own `ConfidentialTransfer` receipts and user-decrypting the "moved" bits
 (`myBoxes`, one signature), see [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md#finding-your-boxes).
 
-### A request: take out, list, take down, collect
+### A request: take out, list, take down, collect, accept an offer, delegate
 
 Everything that leaves the vault is asked with the key, never with the caller's address, in
 two steps like every reveal in this repository: `request`, a public decryption of one bit ("the
@@ -136,19 +177,19 @@ sequenceDiagram
   participant Rl as Relayer (API)
   participant V as Vault
   participant R as Relayer / KMS
-  H->>V: boxInfo(boxId).nonce, requestHash(boxId, nonce, action, to, price, endTime)
+  H->>V: boxInfo(boxId).nonce, requestHash(boxId, nonce, action, to, price, endTime, ref)
   H->>H: encrypt key XOR hash, for the vault and the relayer's address
   H->>Rl: POST /v1/vault/relay {call: "request", args}
-  Rl->>V: request(boxId, action, to, price, endTime, boundKey, proof) (gas estimated first)
-  V->>V: not busy, sync, state allows the action, price and end time sane (else revert)
-  V->>V: ok = (boundKey XOR requestHash(terms, nonce++)) == key, publicly decryptable
-  V->>V: busy = requestId + 1
+  Rl->>V: request(boxId, action, to, price, endTime, ref, boundKey, proof) (gas estimated first)
+  V->>V: sync, state allows the action, price and end time sane (else revert); other waiting requests do not matter
+  V->>V: ok = (boundKey XOR requestHash(terms, nonce)) == key, publicly decryptable
+  V->>V: pending += 1, placedAt = now
   V-->>H: RequestPlaced(requestId, boxId, action, relayer)
   H->>R: publicDecrypt(requestInfo(requestId).ok)
   R-->>H: ok + KMS proof
   H->>Rl: POST /v1/vault/relay {call: "finalize", args}
-  Rl->>V: finalize(requestId, ok, proof) (anyone may)
-  V->>V: checkSignatures on the stored handle, busy = 0, sync
+  Rl->>V: finalize(requestId, ok, proof) (anyone may; finalizeOffer for an offer, below)
+  V->>V: checkSignatures on the stored handle, sync
   alt not ok
     V->>V: Refused: nothing happens
   else ok, but the box changed first (sold, expired, listed)
@@ -156,6 +197,7 @@ sequenceDiagram
   else ok
     V->>V: run the action (below), Done
   end
+  V->>V: pending -= 1 (only now: the box cannot move while the action runs), if ok: nonce += 1
   V-->>H: RequestSettled(requestId, status)
 ```
 
@@ -165,12 +207,39 @@ sequenceDiagram
 | `List` | `Sealed` | unused | A Seaport order is validated (below), `Listed` |
 | `Unlist` | `Listed` | unused | `seaport.cancel`, the approval cleared, `Sealed`, `Unlisted` |
 | `Claim` | `Sold` | where the ETH goes, not zero | `Claimed`, the proceeds sent, `Claimed(boxId, to, amount)`. If the send fails (a contract that refuses ETH), the request settles `Stale` and the ETH stays in the box |
+| `AcceptOffer` | `Sealed`, `Listed` | where the ETH goes, not zero; `price` is the least WETH the offer must net, `ref` its order hash | Only through `finalizeOffer`, with the order: see [Accepting an offer](#accepting-an-offer) |
+| `Delegate` | `Sealed`, `Listed` | the delegate, or zero to clear it | The old delegate revoked and the new one named in delegate.xyz's registry, `Delegated(boxId, delegate)`: see [Delegation](#delegation) |
 
-`request` reverts only on what is public: `NotABox`, `BoxBusy`, `WrongState`, `BadPrice`,
-`BadEndTime` (a listing ends after now and within 180 days), `ZeroAddress`. A wrong key is never
-a revert. Without a relayer the page sends both transactions from the wallet, whose address then
+`request` reverts only on what is public: `NotABox`, `WrongState`, `BadPrice` (a listing's price,
+or an offer's least price or order hash, zero), `BadEndTime` (a listing ends after now and
+within 180 days), `ZeroAddress`. A wrong key is never a revert, and
+neither is another request waiting on the box: requests do not lock each other out, each is
+decided on its own at `finalize`, and one that can no longer run settles `Stale` (two of the
+holder's own withdrawals at once: the first runs, the second finds the box `Withdrawn`). Without a relayer the page sends both transactions from the wallet, whose address then
 shows on the request. In the adapter a `Refused` request throws `not-yours` and a `Stale` one
 `missed`.
+
+**No box stays stuck.** While any request waits (`pending > 0`), the box cannot move: a request
+decided for one holder must never run for the next. Anyone may `finalize` a request as soon as
+the KMS answers, and the page does it for every waiting request of a box before it sends the
+box or accepts a private sale for it (`settlePending` in `EvmVault`, through the relayer when
+there is one). A request whose proof never comes (the gateway down, say) can be settled by
+anyone with `expire(requestId)` once `REQUEST_TIMEOUT` (one day) has passed since it was placed:
+it settles `Expired`, runs nothing, and moves the nonce on, so its input cannot be sent again
+later.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending: request (pending += 1)
+  Pending --> Done: finalize, key matched, action ran (nonce += 1)
+  Pending --> Stale: finalize, key matched, the box changed first (nonce += 1)
+  Pending --> Refused: finalize, wrong key (nonce unchanged)
+  Pending --> Expired: expire, a day after with no proof (nonce += 1)
+  Done --> [*]
+  Stale --> [*]
+  Refused --> [*]
+  Expired --> [*]
+```
 
 ### Seaport: list, fill, sync, collect
 
@@ -218,6 +287,103 @@ withdrawal beaten by a Seaport buyer settles `Stale`, and the ETH waits for the 
 The fee (`feeBps`, 2.5% by default, never more than `MAX_FEE_BPS`, 10%) is taken at `sync`, at
 the rate of that moment, and kept in `feesOwed`; `sendFees` (anyone) sends it to the treasury.
 
+### Accepting an offer
+
+A buyer offers WETH for a box's NFT the way they would on any marketplace: a Seaport order whose
+offer is WETH and whose consideration is the NFT (to the buyer) and, if any, the order's own
+fees in WETH. The holder accepts it with a request like any other; the vault fills it with the
+vault as the fulfiller, through `VaultOffers`, and the ETH goes straight to the address the
+holder named.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor B as Buyer
+  participant W as WETH
+  participant O as VaultOffers
+  participant S as Seaport 1.5
+  actor H as Holder
+  participant V as Vault
+  participant N as NFT collection
+  B->>W: deposit (wrap ETH), approve(Seaport, amount)
+  B->>B: sign the Seaport order (EIP-712): offer WETH, consideration the NFT
+  B->>O: post(order, signature) (anyone may send it)
+  O->>S: validate([order, signature]): fills with no signature from now on
+  O-->>H: OfferPosted(collection, tokenId or ANY_TOKEN, orderHash, order)
+  H->>O: inspect(offer, collection, tokenId, 0): alive, and what it nets
+  H->>V: request(AcceptOffer, to, least = net, ref = orderHash) ... publicDecrypt (as above)
+  H->>V: finalizeOffer(requestId, ok, proof, abi.encode(order, criteriaProof))
+  V->>O: inspect(offer, collection, tokenId, least): orderHash must be ref (else WrongOrder)
+  alt not ok
+    V->>V: Refused
+  else the order is dead: cancelled, filled, ended, or worth less than least
+    V->>V: Stale: the box stays
+  else
+    V->>V: a listed box is taken down first
+    V->>N: transferFrom(vault, VaultOffers, tokenId)
+    V->>O: fill(offer, collection, tokenId)
+    O->>S: fulfillAdvancedOrder(order, 1/units, resolver to tokenId, recipient VaultOffers)
+    S->>W: WETH from the buyer to VaultOffers
+    S->>N: the NFT from VaultOffers to the buyer
+    S->>W: the order's fees from VaultOffers
+    O->>W: withdraw (unwrap)
+    O->>V: ETH (receive: from Seaport or VaultOffers only)
+    V->>V: at least least, else revert; proceeds = amount - fee, feesOwed += fee, delegate cleared
+    V-->>H: OfferAccepted(boxId, orderHash, buyer, amount)
+    V->>V: send proceeds to `to`: Claimed; if it refuses ETH, the box stays Sold for a Claim
+  end
+```
+
+- **Only the box's NFT can go.** The vault hands `VaultOffers` the one NFT for the one call; it
+  holds nothing else, so an order that asked for another box's NFT (even a listed one Seaport is
+  approved for) cannot take it. `inspect` also turns away anything but WETH paid, WETH fees and
+  that NFT, with fixed amounts and no tips. An offer on any NFT of a collection (an item "with
+  criteria", root 0) is resolved by `VaultOffers` to the box's own token.
+- **One token's share.** An offer for several NFTs (`units`) is filled for one: `VaultOffers`
+  sets the fraction to 1/units. What the request's `price` must cover is one share, net of the
+  order's own fees: `(paid - fees) / units`.
+- **Dead or not yet.** An order that is cancelled, filled, ended or worth less than asked will
+  never fill: `finalizeOffer` settles `Stale`. One that only cannot fill now (the buyer's WETH or
+  allowance short, the order not yet validated) reverts and leaves the request waiting: someone
+  who finalizes with bad data cannot spoil it. It fills on a later try, or anyone expires it
+  after a day. Plain `finalize` settles a wrong key `Refused` without the order, and reverts with
+  `NeedsOrder` when the key matched.
+- **The offer board.** Buyers post their offers to `VaultOffers.post`, which validates them on
+  Seaport with the buyer's signature and logs them by NFT, so the page finds the offers on a box
+  without a marketplace's API. Any signed Seaport 1.5 offer for an NFT of an allowed collection
+  can be posted there, from any marketplace or script. An offer the vault accepts does not have
+  to be on the board: the holder can name any Seaport 1.5 order that fits.
+
+### Delegation
+
+The vault owns every NFT it holds, so it is the vault that delegate.xyz's registry is asked
+about. A `Delegate` request names one wallet per box (`delegateERC721(delegate, collection,
+tokenId, rights 0, true)`, every right), revoking the one before; zero clears it. Airdrop claims,
+token gates and claim sites that read the registry let that wallet act for the NFT without
+holding it.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder
+  participant V as Vault
+  participant D as delegate.xyz registry
+  actor C as Claim site
+  H->>V: request(Delegate, to = a fresh wallet) ... finalize
+  V->>D: delegateERC721(old, collection, tokenId, 0, false) (if any)
+  V->>D: delegateERC721(fresh, collection, tokenId, 0, true)
+  V-->>H: Delegated(boxId, fresh)
+  C->>D: checkDelegateForERC721(fresh, vault, collection, tokenId, 0)
+  D-->>C: true: the fresh wallet may claim for the NFT
+```
+
+The delegate is public (`boxInfo`, `Delegated`, the registry): a fresh wallet keeps the holder
+unlinked, their main wallet would not. A box keeps its delegate when it changes hands, since
+whether a transfer moved it is secret and anyone may send a transfer that moves nothing: its new
+holder names their own (the page shows the box's delegate). Taking the NFT out, a Seaport sale
+and an accepted offer clear it. The game's own collection is not concerned: only the vault's
+boxes are.
+
 ### Private sale
 
 The holder names a buyer and an encrypted cUSDC price only the two of them can read. Nothing is
@@ -255,7 +421,8 @@ Anyone may offer any box: unless the caller holds it when the buyer accepts, not
 the buyer gets their cUSDC back, so an offer proves nothing about who holds the box. The seller
 may `cancelSale` while it is open; only the named buyer may accept, once. A box offered to two
 buyers moves to the first who accepts; the second's acceptance moves nothing and refunds them.
-`acceptSale` reverts (and so takes nothing) when the box is listed or busy. The price is capped
+`acceptSale` reverts (and so takes nothing) when the box is listed or a request waits on it (the
+page settles those first). The price is capped
 at `MAX_SALE_PRICE` (1,000,000 USDC) under encryption, so `pulled * MAX_FEE_BPS` stays under
 2^64 and the encrypted fee cannot wrap. In the adapter: `offerSale`, `sales`, `salePrices` (one
 user decryption), `acceptSale` (returns whether it moved, decrypted for the buyer), `cancelSale`.
@@ -269,7 +436,7 @@ sequenceDiagram
   participant V as Vault
   actor C as Receiver
   A->>V: confidentialTransfer(receiver, boxId)
-  V->>V: Sealed and not busy (else revert), moved = owner == holder
+  V->>V: Sealed and no request waiting (else revert), moved = owner == holder
   V->>V: key = select(moved, randEuint256(), key)
   V-->>C: ConfidentialTransfer(boxId, holder, receiver, moved)
   C->>C: finds the box in their receipts (one signature)
@@ -286,12 +453,15 @@ game's boxes. In the adapter: `send`, `adopt`.
 
 | Fact | Visible to everyone | How |
 | --- | --- | --- |
-| A deposit | the depositor, the collection and the token id | `Deposited`, and the NFT's own `Transfer` to the vault |
+| A deposit | the depositor, the collection and the token id, and the addresses its decoys went to, not whether any moved the box | `Deposited`, `ConfidentialTransfer`, and the NFT's own `Transfer` to the vault |
 | The NFT inside each box | yes | `boxInfo`, `boxOf`, `tokenURI` (the NFT's own metadata) |
 | A box's state, its listing, its pending request, its unclaimed ETH | yes | `boxInfo`, `listingInfo`, `requestInfo` |
 | A Seaport listing | its price, end time and order hash; the seller is the vault | `Listed`, and Seaport is public |
 | A Seaport purchase | the buyer and the price, as any Seaport fill | Seaport's `OrderFulfilled`, `SoldOnSeaport` |
-| A request | the sender, the box, the action and its terms (`to`, price, end time), and whether it settled `Done`, `Refused` or `Stale` | `RequestPlaced`, `RequestSettled`, calldata. With the relayer, the sender is the relayer |
+| An offer | the buyer, the NFT, the WETH and its end time, as on any marketplace | `OfferPosted`, Seaport's `OrderValidated` |
+| An accepted offer | the buyer, the box, what it netted, where the ETH went | `OfferAccepted`, `Claimed`, Seaport's `OrderFulfilled` |
+| A box's delegate | the wallet, and when it was set or cleared | `boxInfo`, `Delegated`, the registry's own events |
+| A request | the sender, the box, the action and its terms (`to`, price, end time, an offer's order hash), and whether it settled `Done`, `Refused`, `Stale` or `Expired` | `RequestPlaced`, `RequestSettled`, calldata. With the relayer, the sender is the relayer |
 | Where an NFT or a sale's ETH goes | the address and the amount | `Withdrawn`, `Claimed`, the transfers themselves |
 | A transfer | the sender and the recipient addresses, not whether it moved | `ConfidentialTransfer` |
 | A `setKey` | the caller, not whether it took effect | `KeySet` |
@@ -302,12 +472,19 @@ or a transfer moved anything, a buyer's or seller's cUSDC balance.
 
 What that means in practice:
 
-- **The deposit names the depositor**, and until the box moves the depositor is its obvious
-  holder. The doubt comes back with a transfer (decoys help, as in the game), not before.
+- **The deposit names the depositor.** With its decoys (the page's default) the depositor is not
+  its obvious holder: any of the transfers may have moved the box. Without them, they are until
+  the box moves. Decoys are only as good as the doubt they leave: someone who sees a "Make the
+  key mine" (`KeySet`) from none of the decoy addresses may bet the box stayed; a real send among
+  them, followed by a `setKey`, names its receiver.
 - **A request hides its sender only when the relayer sends it.** Sent from the holder's wallet,
   it ties that wallet to the box (it held the key).
 - **The exit is public**: the address an NFT or a sale's ETH goes to, and the amount. An address
   with no history shows no link to the holder; timing still can.
+- **A delegate is public.** The wallet named for the NFT shows in the registry: a fresh one says
+  nothing about the holder, their main wallet would name them.
+- **Accepting an offer is a Seaport sale**: the buyer, the price and the payout address show,
+  the holder does not.
 - **`setKey` names its caller.** A `setKey` right after a transfer to the same address is a
   strong hint, though anyone may call `setKey` on any box and it looks the same.
 - **A private sale names both sides**, not who held the box nor whether it moved.
@@ -317,7 +494,8 @@ What that means in practice:
 `apps/api` can send holders' requests and their proofs from a wallet of its own, so the holder's
 address appears in no transaction. `GET /v1/vault/relayer` answers `{ address }` (null without
 one); `POST /v1/vault/relay` takes `{ call: "request" | "finalize", args }` and answers the
-transaction hash. Details and settings: [`apps/api/README.md`](../apps/api/README.md#the-sealed-vaults-relayer).
+transaction hash. A request carries `ref` (an offer's order hash, zero otherwise); a `finalize`
+with `offer` (the encoded order) is sent as `finalizeOffer`. Details and settings: [`apps/api/README.md`](../apps/api/README.md#the-sealed-vaults-relayer).
 
 - **It learns nothing a chain observer would not.** The key arrives encrypted for the vault and
   bound to the request's terms and nonce: the relayer can neither read it, change the terms, nor
@@ -325,7 +503,7 @@ transaction hash. Details and settings: [`apps/api/README.md`](../apps/api/READM
   memory for the rate limit.
 - **It pays the gas**, so it is capped: `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP, and
   `VAULT_RELAY_PER_DAY` (500) transactions a day per replica. Every call is estimated first, so
-  a request the vault would refuse (busy, wrong state, bad price) costs nothing and answers
+  a request the vault would refuse (wrong state, bad price) costs nothing and answers
   `400` with the contract's reason.
 - **It can refuse, not cheat.** A relayer that is down, capped or censoring leaves the holder
   their wallet: the page sends the request itself, and says the address then shows.
@@ -337,8 +515,8 @@ transaction hash. Details and settings: [`apps/api/README.md`](../apps/api/READM
 The API's index reads the vault's events and keeps their counts, never an address that could
 name a holder: the depositor, a withdrawal's or a claim's recipient, a private sale's parties and
 a request's sender are public on-chain but dropped when the logs are decoded. The admin site's
-"Coffre" tab shows boxes by state, deposits per collection, Seaport listings, sales and volume,
-private sales offered and settled (their price stays encrypted, to the team too), requests by
+"Coffre" tab shows boxes by state, deposits per collection, Seaport listings, sales (accepted
+offers among them) and volume, delegations set or cleared, private sales offered and settled (their price stays encrypted, to the team too), requests by
 action and outcome, and the latest events. Grafana's "The sealed vault" row shows the same
 counts and the relayer's wallet, its day against its cap and what it sent or refused; Discord
 gets an alert when the relayer runs low (`VaultRelayerLow` under 0.05 ETH, `VaultRelayerEmpty`),
@@ -359,13 +537,44 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   of reading it back.
 - **A transfer gives the box a random key.** The old key must not open the box for the next
   holder; a fresh `randEuint256` selected by `moved` does it without revealing whether it moved.
-- **One request per box, and the box holds still meanwhile.** A request decided for one holder
-  must never run for the next: while `busy`, transfers, private sales and other requests revert,
-  and `busy` is public anyway.
+- **Requests do not lock each other out; transfers wait for them.** A first version took one
+  request per box and refused the others while it waited (`busy`), and moved the nonce on with
+  every request: a stranger could send wrong-key requests in a loop, about 323k gas each, keep
+  the holder from taking the NFT out, listing it, taking a listing down or collecting, and spoil
+  every request the holder prepared. Now any number may wait; each is decided alone, `_canRun`
+  turns a request the box outgrew into `Stale`, and only a matched key moves the nonce on. A
+  request decided for one holder must still never run for the next, so transfers and private
+  sales wait until no request does (`pending` is public anyway). A stranger can still delay a
+  transfer, never an exit, and anyone can clear the way: `finalize` as soon as the KMS answers,
+  `expire` after a day.
+- **Decoys at the deposit, not an encrypted recipient.** Minting the box to an encrypted address
+  would hide who it went to, but the receiver could not find it: receipts are how a holder finds
+  their boxes, and a receipt names its address. Transfers in the same transaction, each real or
+  not under encryption, leave the same doubt as the game's decoys and keep the receipts working.
 - **Seaport, with the vault as the offerer, validated on-chain.** No signature to forge and no
   ERC-1271 to get wrong; Seaport is approved for one token at a time and only while it is listed;
   no conduit; the ETH comes to the vault, which takes it from Seaport only (`receive`). Seaport
   1.5, because it is OpenSea's deployment on Sepolia and mainnet and 1.6 is not on Sepolia.
+- **Offers are filled through a helper that holds one NFT.** The vault, as the fulfiller, would
+  hand Seaport any NFT it approved (a listed box's included) that an order asked for; checking
+  every item in the vault cost more than the 254 bytes left. `VaultOffers` is handed the box's
+  NFT for one call and holds nothing else, so what an order can take is bounded by what it holds,
+  and the item checks (`inspect`) live there too. The order travels as bytes the vault never
+  decodes, for the same reason.
+- **An on-chain offer board, not a marketplace's API.** OpenSea's API needs a key and lists its
+  own orders; a log on `VaultOffers`, indexed by collection and token, is read by the page like
+  any other event, and anyone can post to it. The orders themselves are plain Seaport 1.5 orders,
+  validated on Seaport.
+- **WETH only, fixed amounts.** That is what Seaport offers pay in; other tokens, auctions
+  (amounts that change over time) and tips are refused, so what an offer nets is known before it
+  fills.
+- **A failed fill keeps the request.** Anyone may send `finalizeOffer`, with any data: if a fill
+  that only failed this time settled `Stale`, a stranger could spoil the holder's request with a
+  bad order or proof. Only facts read from Seaport (cancelled, filled, ended) or the order's
+  own terms settle it.
+- **A delegate survives a transfer.** Clearing it on every transfer would let anyone clear any
+  box's delegate with a transfer that moves nothing (a "maybe" anyone may send). The new holder
+  replaces it with one request; withdrawals and sales clear it, as the NFT leaves.
 - **`sync` is lazy and permissionless.** Seaport does not call back. Any request syncs first, and
   `finalize` checks again (`_canRun`), so a sale that landed between the two settles `Stale`.
 - **The private sale is decided under encryption, in one transaction.** A public decryption would
@@ -377,21 +586,31 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   `tokenURI` (the latter called through `try/catch`): a malicious ERC-721 could mint boxes backed
   by nothing. Disallowing a collection stops new deposits only; its boxes still come out.
 - **Its own contract, at the default optimizer.** It shares nothing with `DoNotOpen` but the
-  base and needs no privilege in it; at 20,833 bytes it is under the limit without the size
-  tricks `DoNotOpen` needs.
+  base and needs no privilege in it; at 24,322 bytes it is under the limit without the size
+  tricks `DoNotOpen` needs (an optimizer at 1 run saved 440 bytes only). The next feature moves
+  logic out first, as offers did.
 
 ## Limits
 
-- On Sepolia the first public decryptions waited on Zama's gateway ("ciphertext not ready" for
-  every new handle, the vault's and a probe's alike, on 2026-10-08): the end-to-end demo is to run
-  again once it answers. Request 0 (box 0, a listing) waits for its proof meanwhile.
+- On Sepolia the public decryptions wait on Zama's gateway ("ciphertext not ready" for every new
+  handle, the vault's and a probe's alike, on 2026-10-08, and again on 2026-10-09 with both
+  redeployed vaults, after 90 seconds): the end-to-end demo is to run again once it answers. It
+  runs whole on a local node (offer and delegation included). On the current vault, requests 0
+  and 1 (boxes 0 and 1, listings, placed 2026-10-09 around 10:30 UTC) wait for their proof;
+  anyone may `expire` them a day later, and the boxes take other requests meanwhile.
+- The vault accepts Seaport 1.5 offers only. OpenSea makes its offers on Seaport 1.6 on mainnet,
+  through its own zone and API: those cannot be filled by this vault. Offers come from the
+  vault's board, or any Seaport 1.5 order that pays WETH.
+- Offers on some of a collection's tokens (a criteria root other than 0, as for trait offers)
+  are refused by the board; the vault would fill one only with its Merkle proof.
 - OpenSea's own website lists orders posted to its API; an order validated on-chain may not show
   there, and its testnet site may not show Sepolia orders at all. Not checked. The orders are
   real Seaport orders: any Seaport marketplace, aggregator or script can fill them.
-- Anyone can make a box busy with a request carrying a wrong key, and keep it from moving until
-  someone finalizes, which anyone may do as soon as the KMS answers. Each try costs the griefer a
-  request's gas (~323k) and bumps the box's nonce, so a holder's request prepared before it
-  settles `Refused` and must be sent again.
+- A stranger's wrong-key requests can still hold a box's transfers and private sales back until
+  someone finalizes them (anyone may, as soon as the KMS answers; the page does) or, after a day
+  without a proof, expires them. Each try costs the stranger a request's gas (~290k to 375k). A
+  transfer sent in the same block as such a request reverts and must be sent again. Exits
+  (withdraw, list, unlist, claim) are never held back.
 - The deposit, the exit and the request's sender without the relayer are public (above).
 - The relayer is one hot key on the API; its daily cap is per replica, so the stack's is
   `VAULT_RELAY_PER_DAY` times the replicas.
@@ -401,7 +620,8 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   or their cUSDC balance.
 - The fee is read when a Seaport sale is synced, not when it is listed: the owner can change it
   in between (at most 10%).
-- ERC-721 only (no ERC-1155), ETH listings only, one NFT per box.
+- ERC-721 only (no ERC-1155), ETH listings and WETH offers only, one NFT per box, one delegate
+  per box (every right).
 
 ## Cost
 
@@ -410,9 +630,14 @@ Measured on the local FHEVM with Seaport 1.5's Sepolia bytecode (gas from
 
 | Action | Gas | HCU |
 | --- | --- | --- |
-| `deposit` | 392,000 to 469,000 | 83,000 |
-| `request` (any action) | 289,000 to 363,000 | 191,000 |
-| `finalize`: refused / withdraw / list / unlist / claim | 101,000 / 152,000 / 317,000 to 334,000 / 153,000 / 122,000 | 0 |
+| `deposit`, no decoy | 450,000 to 470,000 | 83,000 |
+| `deposit`, each decoy (or real send) more | about 230,000 | about 363,000 (with 5: 1,898,000, depth 1,233,000) |
+| `request` (any action) | 289,000 to 375,000 | 191,000 |
+| `finalize`: refused / withdraw / list / unlist / claim | 101,000 / 152,000 (168,000 with a delegate to clear) / 317,000 to 341,000 / 153,000 / 122,000 | 0 |
+| `finalizeOffer` (one WETH offer filled, a fee paid, ETH sent) | 399,000 | 0 |
+| `finalize`: delegate (first / replacing one) | 294,000 / 269,000 | 0 |
+| `VaultOffers.post` (the buyer's offer validated and logged) | 102,000 | 0 |
+| `expire` | 56,000 | 0 |
 | Seaport `fulfillOrder` (the buyer) | 97,000 | 0 |
 | `sync` (sold / expired) | 92,000 / 51,000 | 0 |
 | `confidentialTransfer` | 209,000 to 266,000 | 338,000 |
@@ -421,13 +646,13 @@ Measured on the local FHEVM with Seaport 1.5's Sepolia bytecode (gas from
 | `acceptSale` | 1,660,000 | 4,342,000 (depth 2,307,000) |
 | `cancelSale`, `sendFees` | 30,000, 36,000 | 0 |
 
-Deploying the vault takes about 4.77M gas. Every call is far under the protocol's 20M HCU (5M
+Deploying the vault takes about 5.5M gas, `VaultOffers` about 1.9M. Every call is far under the protocol's 20M HCU (5M
 depth) a transaction.
 
 ## Run it
 
 ```bash
-pnpm --filter @dno/contracts-evm test test/SealedVault.ts   # 27 tests, Seaport 1.5's real bytecode
+pnpm --filter @dno/contracts-evm test test/SealedVault.ts   # 62 tests, Seaport 1.5's and delegate.xyz's real bytecode
 pnpm --filter @dno/chain-adapter exec vitest run test/vault.test.ts   # the mock vault
 pnpm --filter @dno/api exec vitest run test/vaultRelay.test.ts        # the relayer and its routes
 pnpm dev                                                    # http://localhost:5173/vault, on the mock
@@ -436,14 +661,17 @@ pnpm dev                                                    # http://localhost:5
 The tests put Seaport 1.5's runtime code, read from Sepolia with `eth_getCode`
 (`test/fixtures/seaport-1.5.json`, with its conduit controller), at its usual address with
 `hardhat_setCode`, and set storage slot 0 to 1, its reentrancy guard (`test/seaport.ts`): the
-vault is tested against Seaport itself, not a stand-in. In the mock (`MockVault`) the night
-shift holds two boxes, one listed on Seaport; a listing of yours finds a buyer after 20 mock
-seconds, and the night shift accepts any private sale offered to it.
+vault is tested against Seaport itself, not a stand-in. delegate.xyz's registry is put the same
+way (`test/fixtures/delegate-registry-v2.json`, no constructor state), and WETH is `TestWETH`.
+In the mock (`MockVault`) the night shift holds two boxes, one listed on Seaport; a listing of
+yours finds a buyer after 20 mock seconds, the night shift offers 0.03 WETH for every NFT you
+seal, and it accepts any private sale offered to it.
 
 End to end, on a local node or on Sepolia (`dno:vault-demo`: mints a test NFT, seals it, lists
 it, buys it the way any Seaport buyer would, sends the ETH to a fresh address, shows a wrong key
-refused, and takes a second NFT out to another fresh address; the fresh addresses are the team's
-kept test wallets `vault-proceeds` and `vault-withdrawals`):
+refused, takes a second NFT out to another fresh address, then names a fresh wallet a third
+NFT's delegate and sells it by accepting a WETH offer posted to the board; the fresh addresses
+are the team's kept test wallets `vault-proceeds`, `vault-withdrawals` and `vault-delegate`):
 
 ```bash
 pnpm chain                                        # terminal 1, in packages/contracts-evm
@@ -458,8 +686,10 @@ npx hardhat --network sepolia dno:vault-demo
 `deploy/vault.ts` (tag `Vault`, run at the end, redeploys nothing else; `pnpm deploy:<net>` runs
 it with every other script) takes `VAULT_FEE_BPS`
 (250), `STUDIO_TREASURY` (or the owner) for the fee, and `COLLECTION_OWNER` (or the deployer) as
-the owner. On a test network it deploys `VaultTestNFT` and allows it; on a local node it first
-puts Seaport's Sepolia code at its address. Payments are in the network's cUSDC (Zama's on
-Sepolia, a test one locally). `dno:export` writes `vault` (address, ABI, deploy block, Seaport,
-the allowed collections) for the adapter and the API. Set `VAULT_RELAYER_KEY` on the API, and
+the owner. It deploys `VaultOffers` first, with the network's WETH (`WETH` in `deploy/vault.ts`,
+OpenSea's; a `TestWETH` locally). On a test network it deploys `VaultTestNFT` and allows it; on
+a local node it first puts Seaport's and delegate.xyz's Sepolia code at their addresses.
+Payments are in the network's cUSDC (Zama's on Sepolia, a test one locally). `dno:export`
+writes `vault` (address, ABI, deploy block, Seaport, `offers` with its ABI and deploy block,
+WETH, the registry, the allowed collections) for the adapter and the API. Set `VAULT_RELAYER_KEY` on the API, and
 fund that address with a little ETH, for the relayer.

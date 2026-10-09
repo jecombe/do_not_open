@@ -7,6 +7,8 @@ export interface VaultRequestTx {
   to: Address;
   price: bigint;
   endTime: number;
+  /** Accepting an offer: its Seaport order hash. Zero otherwise. */
+  ref: string;
   handle: string;
   inputProof: string;
 }
@@ -16,6 +18,8 @@ export interface VaultFinalizeTx {
   requestId: number;
   cleartexts: string;
   proof: string;
+  /** Accepting an offer: abi.encode(AdvancedOrder, bytes32[] criteriaProof), sent with `finalizeOffer`. */
+  offer?: string;
 }
 
 /** Sends the vault's transactions from the relayer's own wallet. */

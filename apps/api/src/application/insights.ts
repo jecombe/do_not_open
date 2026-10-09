@@ -93,7 +93,7 @@ export interface VaultDashboard {
 const VAULT_SERIES = {
   deposits: ["VaultDeposited"],
   listings: ["VaultListed"],
-  seaportSales: ["VaultSoldOnSeaport"],
+  seaportSales: ["VaultSoldOnSeaport", "VaultOfferAccepted"],
   privateSales: ["VaultSaleSettled"],
   withdrawals: ["VaultWithdrawn"],
   requests: ["VaultRequestPlaced"],

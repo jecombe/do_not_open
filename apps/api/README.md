@@ -422,7 +422,7 @@ is stored.
 | Route | Answer |
 | --- | --- |
 | `GET /v1/vault/relayer` | `{ data: { address } }`, the relayer's address or null (no key, or no vault in the deployment). Always served, cached 60 s: the vault page asks it to know whether to send from the wallet |
-| `POST /v1/vault/relay` | Only with `VAULT_RELAYER_KEY`. `{ call: "request", args: { boxId, action (0 to 3), to, price (decimal string, wei), endTime, handle, inputProof } }` or `{ call: "finalize", args: { requestId, cleartexts, proof } }` → `{ hash }`. Each call is estimated first, so what the vault would refuse is never sent: `400 { code: "reverted" }` with the contract's reason (`BoxBusy`, `WrongState`, `BadEndTime`...); `400` for a malformed body; `429 { code: "daily-cap" }` past `VAULT_RELAY_PER_DAY` (500) transactions a day on this replica. `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP; bodies up to 64 KB (an input carries its proof) |
+| `POST /v1/vault/relay` | Only with `VAULT_RELAYER_KEY`. `{ call: "request", args: { boxId, action (0 to 5: withdraw, list, unlist, claim, acceptOffer, delegate), to, price (decimal string, wei), endTime, ref (bytes32, an offer's order hash; zero when left out), handle, inputProof } }` or `{ call: "finalize", args: { requestId, cleartexts, proof, offer? } }` → `{ hash }`; a `finalize` with `offer` (hex, the encoded order) is sent as `finalizeOffer`. Each call is estimated first, so what the vault would refuse is never sent: `400 { code: "reverted" }` with the contract's reason (`WrongState`, `BadEndTime`, `RequestNotPending`, `NeedsOrder`, `WrongOrder`, `OfferShort`...); `400` for a malformed body; `429 { code: "daily-cap" }` past `VAULT_RELAY_PER_DAY` (500) transactions a day on this replica. `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP; bodies up to 64 KB (an input carries its proof) |
 
 The encrypted input must be made for the relayer's address (an input is bound to the address
 that sends it), which the page reads from `GET /v1/vault/relayer`. Replicas share the key, so a
@@ -436,14 +436,19 @@ caller), so the "key matched" bits go through the proxy like the game's.
 The indexer reads the vault's own events too (source `vault`, names prefixed so they never mix
 with the game's `RequestPlaced` or `Claimed`): `VaultDeposited` (box, collection, the NFT's token
 id), `VaultWithdrawn`, `VaultListed` / `VaultUnlisted` / `VaultListingExpired` /
-`VaultSoldOnSeaport` (listing, box, price in wei), `VaultClaimed` (the ETH collected),
+`VaultSoldOnSeaport` (listing, box, price in wei), `VaultOfferAccepted` (box, the WETH a buyer's
+offer netted), `VaultDelegated` (box only), `VaultClaimed` (the ETH collected),
 `VaultSaleOffered` / `VaultSaleSettled` / `VaultSaleCancelled`, `VaultRequestPlaced` (action) and
-`VaultRequestSettled` (done, refused, stale). The addresses these logs carry (the depositor, a
-withdrawal's or a claim's recipient, a private sale's seller and buyer, who sent a request) are
+`VaultRequestSettled` (done, refused, stale, expired). The addresses these logs carry (the depositor, a
+withdrawal's or a claim's recipient, an offer's buyer, a box's delegate, a private sale's seller
+and buyer, who sent a request) are
 public on-chain but dropped at decoding: the index keeps what the team counts, never who. They
 stay in `events` only, out of the game's feeds (`activity` leaves `source = 'vault'` out), and are
 folded on read by `summarizeVault` (`src/domain/vault.ts`) for the admin site's vault tab and the
-`dno_vault_*` metrics. Migration 27 moves the cursor back to the vault's deployment block on
+`dno_vault_*` metrics: an accepted offer counts as a Seaport sale (`seaportSales`,
+`seaportVolume`) and in `offersAccepted` (`dno_vault_offers_accepted`), a delegate set or cleared
+in `delegations` (`dno_vault_delegations`). The offer board's `OfferPosted` is not indexed: the
+page reads it from the RPC. Migration 27 moves the cursor back to the vault's deployment block on
 Sepolia (11,872,753) so the indexer reads those blocks again: what it recorded already is
 skipped, only the vault's events are added.
 
@@ -696,7 +701,7 @@ routes under `/admin/api` (`infrastructure/http/admin.ts`, read from `applicatio
 | `GET /admin/api/players` | every pass: handle, tasks with their times, seat, whether a wallet is linked, claimed, `/board` |
 | `GET /admin/api/players/:code/wallet` | the wallet linked to one pass (logged) |
 | `GET /admin/api/ideas` | the suggestion box |
-| `GET /admin/api/vault?days=30` | the sealed vault from its public events: boxes by state, deposits, Seaport listings, sales and volume, ETH collected, private sales offered, settled and cancelled (never their price), requests by action and outcome, deposits per collection, a daily line per series and the latest events. No address but the collections' |
+| `GET /admin/api/vault?days=30` | the sealed vault from its public events: boxes by state, deposits, Seaport listings, sales (accepted offers among them) and volume, delegations set or cleared, ETH collected, private sales offered, settled and cancelled (never their price), requests by action and outcome, deposits per collection, a daily line per series and the latest events. No address but the collections' |
 
 The session is a signed expiry, its key derived from the password: no table, any replica checks
 it, a new password ends every session. Nothing lists a wallet next to a handle. The chain's daily

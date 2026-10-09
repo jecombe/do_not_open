@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { formatAmount, sameAddress, shortAddress, type ActionOptions, type Address, type VaultAdapter, type VaultBox, type VaultInfo, type VaultSale } from "@dno/chain-adapter";
+import {
+  formatAmount,
+  MAX_DECOYS,
+  sameAddress,
+  shortAddress,
+  type ActionOptions,
+  type Address,
+  type VaultAdapter,
+  type VaultBox,
+  type VaultInfo,
+  type VaultOffer,
+  type VaultSale,
+} from "@dno/chain-adapter";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { useLocale } from "../i18n/locale";
 import { DISCORD } from "../links";
@@ -12,10 +24,13 @@ import { useT } from "./i18n";
 const POLL_MS = 15_000;
 const LIST_DAYS = [1, 7, 30];
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+/** Decoys a deposit sends the new box to unless the holder picks another count (0 to MAX_DECOYS). */
+const DEFAULT_DECOYS = 3;
 
 /**
  * The sealed vault: NFTs in boxes whose holder is encrypted, sold on Seaport with the vault as
- * the seller, or privately for a secret cUSDC price. Reads go through the chain adapter only.
+ * the seller (a listing, or a buyer's WETH offer accepted), or privately for a secret cUSDC
+ * price, and lent to a wallet through delegate.xyz. Reads go through the chain adapter only.
  */
 export function VaultPage() {
   const t = useT();
@@ -37,7 +52,7 @@ export function VaultPage() {
         <h1>{t("vault.h1")}</h1>
         <p className="sec-lede">{t("vault.lede")}</p>
         <ol className="vault-why">
-          {(["1", "2", "3"] as const).map((n) => (
+          {(["1", "2", "3", "4"] as const).map((n) => (
             <li key={n}>
               <strong>{t(`vault.why${n}.title`)}</strong> {t(`vault.why${n}.body`)}
             </li>
@@ -100,6 +115,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
   const [done, setDone] = useState<string | null>(null);
+  const [decoys, setDecoys] = useState(DEFAULT_DECOYS);
 
   const readPublic = useCallback(async () => {
     const [i, b] = await Promise.all([vault.info(), vault.boxes()]);
@@ -161,6 +177,8 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
   const nameOf = (collection: Address) => info?.collections.find((c) => sameAddress(c.address, collection))?.name ?? shortAddress(collection);
   const listed = boxes.filter((b) => b.state === "listed" && b.listing);
   const myBoxes = (mine ?? []).flatMap((id) => (byId.get(id) ? [byId.get(id)!] : []));
+  // Every NFT still in the vault takes offers; the account's own boxes take them in "Your boxes".
+  const offerable = boxes.filter((b) => (b.state === "sealed" || b.state === "listed") && !mine?.includes(b.boxId));
 
   return (
     <>
@@ -180,6 +198,19 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
           <h2>{t("vault.wallet.title")}</h2>
           <p className="vault-lede">{t("vault.wallet.lede")}</p>
           {nfts.length === 0 && <p className="vault-empty">{t("vault.wallet.empty")}</p>}
+          {nfts.length > 0 && (
+            <>
+              <div className="vault-decoys" role="radiogroup" aria-label={t("vault.wallet.decoys")}>
+                <span>{t("vault.wallet.decoys")}</span>
+                {Array.from({ length: MAX_DECOYS + 1 }, (_, n) => (
+                  <button key={n} type="button" role="radio" aria-checked={decoys === n} className={decoys === n ? "on" : undefined} disabled={!!action.busy} onClick={() => setDecoys(n)}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <p className="vault-meta">{decoys > 0 ? t("vault.wallet.decoysOn", { n: decoys }) : t("vault.wallet.decoysOff")}</p>
+            </>
+          )}
           <ul className="vault-grid">
             {nfts.map((n) => (
               <li key={`${n.collection}:${n.id}`} className="vault-card">
@@ -189,7 +220,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
                   type="button"
                   className="sec-btn sec-btn-small"
                   disabled={!!action.busy}
-                  onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, o), (box) => t("vault.done.deposit", { box }))}
+                  onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, { ...o, decoys }), (box) => t("vault.done.deposit", { box }))}
                 >
                   {t("vault.wallet.seal")}
                 </button>
@@ -259,6 +290,19 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
         </section>
       )}
 
+      {info && (
+        <section className="vault-panel">
+          <h2>{t("vault.offer.title")}</h2>
+          <p className="vault-lede">{t("vault.offer.lede")}</p>
+          {offerable.length === 0 && <p className="vault-empty">{t("vault.offer.empty")}</p>}
+          <ul className="vault-grid">
+            {offerable.map((b) => (
+              <OfferCard key={b.boxId} box={b} coin={coin} name={nameOf(b.collection)} account={account} busy={!!action.busy} act={act} vault={vault} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {account && info && (
         <section className="vault-panel">
           <h2>{t("vault.sales.title")}</h2>
@@ -320,7 +364,7 @@ type Act = <T>(name: string, run: (opts: ActionOptions) => Promise<T>, message?:
 /** One of the account's boxes, with what its holder can do. */
 function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; coin: string; name: string; account: Address; busy: boolean; act: Act; vault: VaultAdapter }) {
   const t = useT();
-  const [open, setOpen] = useState<"withdraw" | "list" | "claim" | "send" | "sell" | "adopt" | null>(null);
+  const [open, setOpen] = useState<"withdraw" | "list" | "claim" | "offers" | "delegate" | "send" | "sell" | "adopt" | null>(null);
   const label = t("vault.nft", { collection: name, id: String(box.tokenId) });
   const toggle = (what: typeof open) => setOpen((cur) => (cur === what ? null : what));
   /** The box's own actions fold their form away once they went through. */
@@ -334,6 +378,8 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
     { key: "list", when: box.state === "sealed" },
     { key: "unlist", when: box.state === "listed" },
     { key: "claim", when: box.state === "sold" },
+    { key: "offers", when: box.state === "sealed" || box.state === "listed" },
+    { key: "delegate", when: box.state === "sealed" || box.state === "listed" },
     { key: "sell", when: box.state === "sealed" },
     { key: "send", when: box.state === "sealed" },
     { key: "adopt", when: box.state === "sealed" },
@@ -346,6 +392,7 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
       <p className={`vault-state vault-state-${box.state}`}>{t(`vault.state.${box.state}`)}</p>
       {box.listing && box.state === "listed" && <p className="vault-price">{t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}</p>}
       {box.state === "sold" && <p className="vault-price">{t("vault.box.proceeds", { amount: formatAmount(box.proceeds, 18), coin })}</p>}
+      {box.delegate && <p className="vault-meta">{t("vault.box.delegate", { address: shortAddress(box.delegate) })}</p>}
       {box.busy && <p className="vault-meta">{t("vault.box.busy")}</p>}
       <div className="vault-actions">
         {actions
@@ -373,6 +420,22 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
           onSubmit={(to) => void run("claim", (o) => vault.claim(box.boxId, to, o), (amount) => t("vault.done.claim", { amount: formatAmount(amount, 18), coin, address: shortAddress(to) }))}
         />
       )}
+      {open === "offers" && <Offers box={box} coin={coin} account={account} busy={busy} act={run} vault={vault} holder />}
+      {open === "delegate" && (
+        <>
+          <AddressForm
+            account={null}
+            hint={t("vault.form.delegateHint")}
+            busy={busy}
+            onSubmit={(to) => void run("delegate", (o) => vault.delegate(box.boxId, to, o), () => t("vault.done.delegate", { address: shortAddress(to) }))}
+          />
+          {box.delegate && (
+            <button type="button" className="sec-link" disabled={busy} onClick={() => void run("delegate", (o) => vault.delegate(box.boxId, null, o), () => t("vault.done.clearDelegate"))}>
+              {t("vault.action.clearDelegate")}
+            </button>
+          )}
+        </>
+      )}
       {open === "send" && (
         <AddressForm account={null} hint={t("vault.form.sendHint")} busy={busy} onSubmit={(to) => void run("send", (o) => vault.send(box.boxId, to, o), () => t("vault.done.send"))} />
       )}
@@ -384,6 +447,118 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
         </Form>
       )}
     </li>
+  );
+}
+
+/** Someone else's box, or one nobody has found to be the account's: anyone may offer on it. */
+function OfferCard({ box, coin, name, account, busy, act, vault }: { box: VaultBox; coin: string; name: string; account: Address | null; busy: boolean; act: Act; vault: VaultAdapter }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const label = t("vault.nft", { collection: name, id: String(box.tokenId) });
+  return (
+    <li className="vault-card">
+      <NftArt label={label} uri={box.tokenUri} seed={box.tokenId} />
+      <p className="vault-card-name">{label}</p>
+      {box.listing && box.state === "listed" && <p className="vault-meta">{t("vault.offer.listedAt", { price: formatAmount(box.listing.price, 18), coin })}</p>}
+      <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" aria-expanded={open} disabled={busy} onClick={() => setOpen((o) => !o)}>
+        {t("vault.action.offer")}
+      </button>
+      {open && <Offers box={box} coin={coin} account={account} busy={busy} act={act} vault={vault} holder={false} />}
+    </li>
+  );
+}
+
+/**
+ * The offers on one box, read when it opens. Its holder picks one and where the ETH goes; anyone
+ * else sees them, cancels their own, and makes one.
+ */
+function Offers({ box, coin, account, busy, act, vault, holder }: { box: VaultBox; coin: string; account: Address | null; busy: boolean; act: Act; vault: VaultAdapter; holder: boolean }) {
+  const t = useT();
+  const [offers, setOffers] = useState<VaultOffer[] | null>(null);
+  const [chosen, setChosen] = useState<VaultOffer | null>(null);
+  const read = useCallback(() => void vault.offers(box.boxId).then(setOffers, () => setOffers([])), [vault, box.boxId]);
+  useEffect(read, [read]);
+  const date = (s: number) => new Date(s * 1000).toLocaleDateString();
+  return (
+    <div className="vault-offers">
+      {offers === null ? (
+        <p className="vault-meta">{t("vault.offers.loading")}</p>
+      ) : offers.length === 0 ? (
+        <p className="vault-meta">{t("vault.offers.empty")}</p>
+      ) : (
+        <ul>
+          {offers.map((o) => (
+            <li key={o.orderHash} className={chosen?.orderHash === o.orderHash ? "on" : undefined}>
+              <span>
+                {t("vault.offers.row", { amount: formatAmount(o.amount, 18), coin, buyer: shortAddress(o.buyer), date: date(o.endTime) })}
+                {o.anyToken && <span className="vault-chip">{t("vault.offers.any")}</span>}
+              </span>
+              {holder && (
+                <button type="button" className="sec-btn sec-btn-small" aria-pressed={chosen?.orderHash === o.orderHash} disabled={busy} onClick={() => setChosen(o)}>
+                  {t("vault.action.acceptOffer")}
+                </button>
+              )}
+              {!holder && account && sameAddress(o.buyer, account) && (
+                <button
+                  type="button"
+                  className="sec-btn sec-btn-ghost sec-btn-small"
+                  disabled={busy}
+                  onClick={() => void act("cancelOffer", (opts) => vault.cancelOffer(o.orderHash, opts), () => t("vault.done.cancelOffer")).then(read)}
+                >
+                  {t("vault.action.cancel")}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {holder && chosen && account && (
+        <AddressForm
+          account={account}
+          hint={t("vault.offers.acceptHint", { amount: formatAmount(chosen.amount, 18), coin })}
+          busy={busy}
+          onSubmit={(to) =>
+            void act("acceptOffer", (opts) => vault.acceptOffer(box.boxId, chosen.orderHash, to, opts), (amount) =>
+              t("vault.done.acceptOffer", { amount: formatAmount(amount, 18), coin, address: shortAddress(to) }),
+            )
+          }
+        />
+      )}
+      {!holder && account && <OfferForm busy={busy} onSubmit={(amount, endTime) => void act("offer", (opts) => vault.makeOffer(box.boxId, amount, endTime, opts), () => t("vault.done.offer")).then(read)} />}
+    </div>
+  );
+}
+
+function OfferForm({ busy, onSubmit }: { busy: boolean; onSubmit: (amount: bigint, endTime: number) => void }) {
+  const t = useT();
+  const [amount, setAmount] = useState("0.01");
+  const [days, setDays] = useState(7);
+  const [bad, setBad] = useState(false);
+  return (
+    <Form
+      busy={busy}
+      hint={bad ? t("vault.form.bad") : t("vault.form.offerHint")}
+      onSubmit={() => {
+        const wei = parseUnits(amount, 18);
+        setBad(!wei);
+        if (wei) onSubmit(wei, Math.floor(Date.now() / 1000) + days * 86_400);
+      }}
+    >
+      <label>
+        {t("vault.form.offer")}
+        <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+      </label>
+      <label>
+        {t("vault.form.days")}
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
+          {LIST_DAYS.map((d) => (
+            <option key={d} value={d}>
+              {t("vault.form.days", { count: d })}
+            </option>
+          ))}
+        </select>
+      </label>
+    </Form>
   );
 }
 
@@ -535,7 +710,7 @@ function Leaks() {
         <div>
           <h3>{t("vault.leaks.public")}</h3>
           <ul>
-            {(["1", "2", "3", "4"] as const).map((n) => (
+            {(["1", "2", "3", "4", "5"] as const).map((n) => (
               <li key={n}>{t(`vault.leaks.public${n}`)}</li>
             ))}
           </ul>

@@ -59,6 +59,10 @@ export type ProtocolEvent =
   | Ev<"VaultListingExpired", { listingId: number; boxId: number }>
   | Ev<"VaultSoldOnSeaport", { listingId: number; boxId: number; price: string }>
   | Ev<"VaultClaimed", { boxId: number; amount: string }>
+  /** A buyer's Seaport offer filled by the vault: the WETH it netted. The buyer is public on Seaport, not indexed here. */
+  | Ev<"VaultOfferAccepted", { boxId: number; amount: string }>
+  /** A box's delegate set or cleared in delegate.xyz: who it is could name the holder, so it is left out. */
+  | Ev<"VaultDelegated", { boxId: number }>
   | Ev<"VaultSaleOffered", { saleId: number; boxId: number }>
   | Ev<"VaultSaleCancelled", { saleId: number }>
   | Ev<"VaultSaleSettled", { saleId: number }>

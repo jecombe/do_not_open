@@ -79,6 +79,44 @@ describe("MockVault", () => {
     expect((await vault.box(listed.boxId)).state).toBe("sold");
   });
 
+  it("the night shift offers WETH for a sealed NFT; accepting it pays out at once", async () => {
+    const { chain, vault } = await fresh();
+    const boxId = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));
+    const [offer] = await vault.offers(boxId);
+    expect(offer).toMatchObject({ buyer: MOCK_NIGHT_SHIFT, anyToken: false });
+    const before = await chain.balance(FRESH);
+    const paid = await vault.acceptOffer(boxId, offer!.orderHash, FRESH);
+    expect(paid).toBe(offer!.amount - (offer!.amount * 250n) / 10_000n);
+    expect((await chain.balance(FRESH)) - before).toBe(paid);
+    expect((await vault.box(boxId)).state).toBe("claimed");
+    expect(await vault.offers(boxId)).toEqual([]);
+    expect(await code(vault.acceptOffer(boxId, offer!.orderHash, FRESH))).toBe("WrongState");
+  });
+
+  it("anyone may offer on someone else's box, and only its holder accepts", async () => {
+    const { vault } = await fresh();
+    const theirs = (await vault.boxes()).find((b) => b.state === "sealed")!;
+    const orderHash = await vault.makeOffer(theirs.boxId, ETH / 50n, Math.floor(Date.now() / 1000) + 86_400);
+    expect((await vault.offers(theirs.boxId)).map((o) => o.orderHash)).toContain(orderHash);
+    expect(await code(vault.acceptOffer(theirs.boxId, orderHash, MOCK_YOU))).toBe("not-yours");
+    await vault.cancelOffer(orderHash);
+    expect((await vault.offers(theirs.boxId)).map((o) => o.orderHash)).not.toContain(orderHash);
+  });
+
+  it("delegates a box's NFT, and taking it out clears the delegate", async () => {
+    const { vault } = await fresh();
+    const boxId = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));
+    await vault.delegate(boxId, FRESH);
+    expect((await vault.box(boxId)).delegate).toBe(FRESH);
+    await vault.delegate(boxId, null);
+    expect((await vault.box(boxId)).delegate).toBe(null);
+    await vault.delegate(boxId, FRESH);
+    await vault.withdraw(boxId, FRESH);
+    expect((await vault.box(boxId)).delegate).toBe(null);
+    const theirs = (await vault.boxes()).find((b) => b.state === "sealed" && b.boxId !== boxId)!;
+    expect(await code(vault.delegate(theirs.boxId, MOCK_YOU))).toBe("not-yours");
+  });
+
   it("a box given away needs its new holder's key", async () => {
     const { vault } = await fresh();
     const boxId = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));

@@ -142,7 +142,7 @@ Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they 
 Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
 indexer, RPC pool, API replicas (up, traffic and p95 per replica, CPU, memory, event loop lag,
 restarts, the image each runs), API traffic, Zama relayer calls, Arweave, Gemini, herald, the mainnet whitelist
-(seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the sealed vault (boxes by state, deposits, Seaport and private sales, requests, the relayer's wallet, day and outcomes), the studio) and "Server and
+(seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the sealed vault (boxes by state, deposits, Seaport sales (accepted offers among them, `dno_vault_offers_accepted`) and private sales, delegations (`dno_vault_delegations`), requests, the relayer's wallet, day and outcomes), the studio) and "Server and
 URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
 each titled with its network: a replica down (`ApiReplicaDown`, the others carry its traffic),
 none left (`ApiNoReplica`), the indexer down (`IndexerDown`), a process restarting over and over

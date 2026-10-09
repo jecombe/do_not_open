@@ -244,7 +244,9 @@ export class Metrics {
         g.set({ kind: "unlisted" }, v.unlisted);
         g.set({ kind: "expired" }, v.expired);
       }, ["kind"]);
-      gauge("dno_vault_seaport_sales", "Vault boxes sold on Seaport", async (g) => g.set((await summary()).seaportSales));
+      gauge("dno_vault_seaport_sales", "Vault boxes sold on Seaport: listings filled and buyers' offers accepted", async (g) => g.set((await summary()).seaportSales));
+      gauge("dno_vault_offers_accepted", "Buyers' Seaport offers the vault accepted", async (g) => g.set((await summary()).offersAccepted));
+      gauge("dno_vault_delegations", "Times a vault box's delegate (delegate.xyz) was set or cleared", async (g) => g.set((await summary()).delegations));
       gauge("dno_vault_seaport_volume_eth", "ETH Seaport buyers paid for vault boxes", async (g) => g.set(eth((await summary()).seaportVolume)));
       gauge("dno_vault_claimed_eth", "ETH holders collected from Seaport sales, the fee taken", async (g) => g.set(eth((await summary()).claimed)));
       gauge("dno_vault_private_sales", "Private sales by status: offered, settled, cancelled, open (prices and outcomes stay encrypted)", async (g) => {
@@ -255,9 +257,9 @@ export class Metrics {
         const r = (await summary()).requests;
         for (const action of VAULT_ACTIONS) g.set({ action }, r.placed[action]);
       }, ["action"]);
-      gauge("dno_vault_requests_settled", "Vault requests settled, by outcome (done, refused: a wrong key, stale: the box changed first)", async (g) => {
+      gauge("dno_vault_requests_settled", "Vault requests settled, by outcome (done, refused: a wrong key, stale: the box changed first, expired: no proof within a day)", async (g) => {
         const r = (await summary()).requests;
-        for (const status of ["done", "refused", "stale"] as const) g.set({ status }, r.settled[status]);
+        for (const status of ["done", "refused", "stale", "expired"] as const) g.set({ status }, r.settled[status]);
       }, ["status"]);
       gauge("dno_vault_requests_pending", "Vault requests waiting for their proof", async (g) => g.set((await summary()).requests.pending));
     }

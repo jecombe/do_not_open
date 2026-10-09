@@ -424,16 +424,22 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
         .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
       // The whitelist's gifts, collected once per seated wallet.
       whitelistGifts: await hre.deployments.getOrNull("WhitelistGifts").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
-      // The sealed vault, with the Seaport it lists on and the collections it takes.
+      // The sealed vault, with the Seaport it lists on, the offer board and the WETH buyers'
+      // offers pay in, delegate.xyz's registry, and the collections it takes.
       vault: await hre.deployments.getOrNull("SealedVault").then(async (r) => {
         if (!r) return null;
-        const { SEAPORT } = await import("../deploy/vault");
+        const { SEAPORT, DELEGATE_REGISTRY, WETH } = await import("../deploy/vault");
         const testNft = await hre.deployments.getOrNull("VaultTestNFT");
+        const offers = await hre.deployments.get("VaultOffers");
+        const weth = WETH[hre.network.name] ?? (await hre.deployments.get("TestWETH")).address;
         return {
           address: r.address,
           abi: r.abi,
           deployBlock: r.receipt?.blockNumber ?? null,
           seaport: SEAPORT,
+          offers: { address: offers.address, abi: offers.abi, deployBlock: offers.receipt?.blockNumber ?? null },
+          weth,
+          delegateRegistry: DELEGATE_REGISTRY,
           collections: testNft ? [{ address: testNft.address, name: "Sealed Vault Test NFT", mintable: true }] : [],
         };
       }),

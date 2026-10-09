@@ -4,8 +4,9 @@ import type { VaultFinalizeTx, VaultRequestTx, VaultSender } from "../../applica
 import { normalizeAddress, type Address } from "../../domain/types";
 
 const VAULT_ABI = [
-  "function request(uint256 boxId, uint8 action, address to, uint256 price, uint64 endTime, bytes32 boundKey, bytes inputProof) returns (uint256)",
+  "function request(uint256 boxId, uint8 action, address to, uint256 price, uint64 endTime, bytes32 ref, bytes32 boundKey, bytes inputProof) returns (uint256)",
   "function finalize(uint256 requestId, bytes abiEncodedCleartexts, bytes decryptionProof)",
+  "function finalizeOffer(uint256 requestId, bytes abiEncodedCleartexts, bytes decryptionProof, bytes offer)",
   "error BoxBusy(uint256 boxId)",
   "error WrongState(uint256 boxId, uint8 state)",
   "error NotABox(uint256 boxId)",
@@ -13,6 +14,10 @@ const VAULT_ABI = [
   "error BadEndTime()",
   "error ZeroAddress()",
   "error RequestNotPending()",
+  "error NeedsOrder()",
+  "error NotAnOffer()",
+  "error WrongOrder()",
+  "error OfferShort()",
 ];
 
 /**
@@ -35,10 +40,11 @@ export class EthersVaultSender implements VaultSender {
   }
 
   request(tx: VaultRequestTx): Promise<string> {
-    return this.send("request", [tx.boxId, tx.action, tx.to, tx.price, tx.endTime, tx.handle, tx.inputProof]);
+    return this.send("request", [tx.boxId, tx.action, tx.to, tx.price, tx.endTime, tx.ref, tx.handle, tx.inputProof]);
   }
 
   finalize(tx: VaultFinalizeTx): Promise<string> {
+    if (tx.offer) return this.send("finalizeOffer", [tx.requestId, tx.cleartexts, tx.proof, tx.offer]);
     return this.send("finalize", [tx.requestId, tx.cleartexts, tx.proof]);
   }
 
@@ -46,7 +52,7 @@ export class EthersVaultSender implements VaultSender {
     return this.provider.getBalance(this.address);
   }
 
-  private async send(method: "request" | "finalize", args: unknown[]): Promise<string> {
+  private async send(method: "request" | "finalize" | "finalizeOffer", args: unknown[]): Promise<string> {
     const fn = this.vault.getFunction(method);
     try {
       await fn.estimateGas(...args);

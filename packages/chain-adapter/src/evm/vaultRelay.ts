@@ -10,6 +10,8 @@ export interface VaultRequestArgs {
   to: string;
   price: string;
   endTime: number;
+  /** Accepting an offer: its Seaport order hash. */
+  ref: string;
   handle: string;
   inputProof: string;
 }
@@ -18,6 +20,8 @@ export interface VaultFinalizeArgs {
   requestId: number;
   cleartexts: string;
   proof: string;
+  /** Accepting an offer: abi.encode(AdvancedOrder, bytes32[] criteriaProof), sent with `finalizeOffer`. */
+  offer?: string;
 }
 
 export class VaultRelay {

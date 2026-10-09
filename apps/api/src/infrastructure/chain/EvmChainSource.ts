@@ -29,7 +29,7 @@ const INDEXED: Record<Source, string[]> = {
   ratTricks: ["Sniffed", "TrickPlayed"],
   vault: [
     "Deposited", "Withdrawn", "Listed", "Unlisted", "ListingExpired", "SoldOnSeaport", "Claimed",
-    "SaleOffered", "SaleCancelled", "SaleSettled", "RequestPlaced", "RequestSettled",
+    "OfferAccepted", "Delegated", "SaleOffered", "SaleCancelled", "SaleSettled", "RequestPlaced", "RequestSettled",
   ],
   acl: ["AllowedForDecryption"],
 };
@@ -285,8 +285,8 @@ function contentsFrom(c: Result): RevealedContents {
   };
 }
 
-const VAULT_ACTIONS = ["withdraw", "list", "unlist", "claim"] as const;
-const VAULT_OUTCOMES: Record<number, "done" | "refused" | "stale"> = { 2: "done", 3: "refused", 4: "stale" };
+const VAULT_ACTIONS = ["withdraw", "list", "unlist", "claim", "acceptOffer", "delegate"] as const;
+const VAULT_OUTCOMES: Record<number, "done" | "refused" | "stale" | "expired"> = { 2: "done", 3: "refused", 4: "stale", 5: "expired" };
 
 /**
  * A sealed vault event, its name prefixed. The addresses that could name a holder (the
@@ -310,6 +310,10 @@ function vaultBody(name: string, a: Result): Record<string, unknown> | null {
       return { name: "VaultSoldOnSeaport", listingId: num(a.listingId), boxId: num(a.boxId), price: String(a.price) };
     case "Claimed":
       return { name: "VaultClaimed", boxId: num(a.boxId), amount: String(a.amount) };
+    case "OfferAccepted":
+      return { name: "VaultOfferAccepted", boxId: num(a.boxId), amount: String(a.amount) };
+    case "Delegated":
+      return { name: "VaultDelegated", boxId: num(a.boxId) };
     case "SaleOffered":
       return { name: "VaultSaleOffered", saleId: num(a.saleId), boxId: num(a.boxId) };
     case "SaleCancelled":

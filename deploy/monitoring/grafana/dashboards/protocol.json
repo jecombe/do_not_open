@@ -3099,7 +3099,7 @@
         "graphMode": "area",
         "textMode": "auto"
       },
-      "description": "ETH Seaport buyers paid for vault boxes (test ETH on Sepolia)."
+      "description": "ETH Seaport buyers paid for vault boxes, listings and accepted offers (test ETH on Sepolia)."
     },
     {
       "id": 59,
@@ -3330,12 +3330,32 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "expr": "increase(dno_vault_offers_accepted{network=\"$network\"}[1h])",
+          "legendFormat": "offers accepted",
+          "instant": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(dno_vault_delegations{network=\"$network\"}[1h])",
+          "legendFormat": "delegations",
+          "instant": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "increase(dno_vault_private_sales{network=\"$network\",status=\"settled\"}[1h])",
           "legendFormat": "private sales",
           "instant": false
         },
         {
-          "refId": "E",
+          "refId": "G",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -3428,7 +3448,7 @@
           "sort": "desc"
         }
       },
-      "description": "Withdrawals, listings, unlistings and claims asked with a box's key; pending ones wait for their KMS proof."
+      "description": "Withdrawals, listings, unlistings, claims, accepted offers and delegations asked with a box's key; pending ones wait for their KMS proof."
     },
     {
       "id": 64,
@@ -3479,7 +3499,7 @@
           "sort": "desc"
         }
       },
-      "description": "refused: a wrong key, nothing happened; stale: the box changed first (its listing filled or expired)."
+      "description": "refused: a wrong key, nothing happened; stale: the box changed first (its listing filled or expired); expired: no proof within a day, expired by anyone."
     },
     {
       "id": 65,
