@@ -824,6 +824,32 @@ button.sec-btn {
   font-size: 14px;
 }
 
+/* The game, at the end of the bar: dashed, warm, smaller than the vault's links. */
+.sec-top nav a.sec-nav-fun {
+  padding: 2px 10px;
+  border: 1px dashed rgb(201 154 99 / 0.6);
+  border-radius: 999px;
+  color: var(--kraft);
+  font-size: 0.9em;
+}
+
+.sec-top nav a.sec-nav-fun:hover {
+  border-style: solid;
+  color: #e3b884;
+}
+
+/* The game corner says it is a prototype. */
+.sec-experimental {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 6px 10px;
+  border: 1px solid rgb(255 77 61 / 0.45);
+  border-radius: 8px;
+  background: rgb(255 77 61 / 0.08);
+  color: #ffb4ab;
+  font: 12px/1.5 var(--mono);
+}
+
 .sec-nav-lang {
   display: none;
 }
@@ -903,6 +929,12 @@ button.sec-btn {
   .sec-top nav.is-open a {
     padding: 12px 0;
     border-bottom: 1px solid var(--line);
+  }
+  .sec-top nav.is-open a.sec-nav-fun {
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    font-size: 1em;
   }
   .sec-cards {
     grid-template-columns: repeat(2, 1fr);

@@ -16,6 +16,7 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.nav.boarding": "Carte d'embarquement",
   "secure.nav.gifts": "Cadeaux",
   "secure.nav.list": "Liste mainnet",
+  "secure.nav.fun": "Pour le fun",
   "secure.nav.menu": "Menu",
   "secure.status": "Sepolia · en service",
 
@@ -65,5 +66,6 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.trust.3.v": "le maximum que les frais du coffre pourront jamais atteindre, écrit dans le contrat. 2,5 % aujourd'hui.",
 
   "secure.game.kicker": "Après le service",
+  "secure.game.experimental": "Expérimental : un prototype dont les règles, les chiffres et les écrans changent encore, sur le réseau de test.",
   "secure.foot": "DO NOT OPEN tourne sur un réseau de test. Rien ici ne vaut encore de l'argent.",
 };

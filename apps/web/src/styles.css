@@ -407,6 +407,21 @@ button {
   pointer-events: none;
 }
 
+/* Always there: the game is a prototype. */
+.notice-experimental {
+  margin-right: 10px;
+  padding: 1px 8px;
+  border: 2px solid var(--ink-red);
+  border-radius: 4px;
+  color: #ff8a7d;
+  font-family: var(--stencil);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .notice-actions {
   display: flex;
   gap: 16px;
