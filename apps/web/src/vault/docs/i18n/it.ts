@@ -49,7 +49,7 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.offers.p5": "Si possono accettare solo offerte Seaport 1.5 pagate in WETH. Le offerte fatte sul sito di OpenSea sulla rete principale usano un Seaport più recente e passano dal servizio di OpenSea: il caveau non può ancora accettarle. Non si accettano nemmeno offerte solo per una parte degli NFT di una collezione (per tratto, per esempio).",
 
   "vaultDocs.section.bid": "Fare un'offerta",
-  "vaultDocs.bid.p1": "«Fai un'offerta», nella pagina del caveau, elenca tutti gli altri NFT del caveau, ognuno con le sue offerte. Scegli un importo e quanto dura l'offerta (1, 7 o 30 giorni). Non sai chi detiene la scatola, e non ti serve: l'offerta è per l'NFT, e solo il suo detentore può accettarla.",
+  "vaultDocs.bid.p1": "Ogni NFT nella griglia del caveau apre la sua scheda, con le sue offerte e un pulsante «Fai un'offerta», che sia in vendita o no. Scegli un importo e quanto dura l'offerta (1, 7 o 30 giorni). Non sai chi detiene la scatola, e non ti serve: l'offerta è per l'NFT, e solo il suo detentore può accettarla.",
   "vaultDocs.bid.p2": "La pagina avvolge il tuo ETH in WETH, lascia che Seaport prenda quel WETH e ti fa firmare l'offerta, poi la pubblica sulla bacheca. Il WETH resta nel tuo wallet: Seaport lo prende solo se il detentore accetta, e l'NFT ti arriva nello stesso movimento. Il WETH che non ti serve più resta tuo, e torna ETH quando vuoi.",
   "vaultDocs.bid.p3": "Il tuo indirizzo si vede con l'offerta, come su qualsiasi marketplace. Puoi annullarla in qualsiasi momento, con una transazione; e finisce da sola alla sua data.",
 

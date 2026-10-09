@@ -19,6 +19,7 @@ import { vaultDocsPath } from "../site";
 import { SecureTop } from "../secure/SecureTop";
 import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
+import type { VaultKey } from "./i18n/en";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
 const POLL_MS = 15_000;
@@ -26,16 +27,29 @@ const LIST_DAYS = [1, 7, 30];
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 /** Decoys a deposit sends the new box to unless the holder picks another count (0 to MAX_DECOYS). */
 const DEFAULT_DECOYS = 3;
+const TABS = ["explore", "mine", "wallet", "sales", "leaks"] as const;
+type Tab = (typeof TABS)[number];
+type Status = "all" | "listed" | "unlisted";
+type Sort = "recent" | "low" | "high";
+/** The big stamp a few actions end on, and what it says. */
+const STAMPS: Partial<Record<string, VaultKey>> = {
+  deposit: "vault.state.sealed",
+  list: "vault.stamp.listed",
+  buy: "vault.stamp.bought",
+  acceptOffer: "vault.stamp.sold",
+  withdraw: "vault.state.withdrawn",
+};
 
 /**
- * The sealed vault: NFTs in boxes whose holder is encrypted, sold on Seaport with the vault as
- * the seller (a listing, or a buyer's WETH offer accepted), or privately for a secret cUSDC
+ * The sealed vault, laid out as a marketplace that fits the screen: the collection's header and
+ * numbers, tabs, filters on the side, a grid of NFTs that scrolls on its own, and each box's
+ * page in a dialog. NFTs sit in boxes whose holder is encrypted, sold on Seaport with the vault
+ * as the seller (a listing, or a buyer's WETH offer accepted), or privately for a secret cUSDC
  * price, and lent to a wallet through delegate.xyz. Reads go through the chain adapter only.
  */
 export function VaultPage() {
   const t = useT();
-  const locale = useLocale();
-  const { adapter, mode, account, connect, connectError, picking, closePicker } = useChain();
+  const { adapter, mode } = useChain();
   const vault = useMemo(() => adapter.vault(), [adapter]);
 
   useEffect(() => {
@@ -46,68 +60,26 @@ export function VaultPage() {
   return (
     <div className="sec vault">
       <SecureTop here="vault" />
-
-      <section className="vault-hero">
-        <p className="sec-kicker">{t("vault.kicker")}</p>
-        <h1>{t("vault.h1")}</h1>
-        <p className="sec-lede">{t("vault.lede")}</p>
-        <ol className="vault-why">
-          {(["1", "2", "3", "4"] as const).map((n) => (
-            <li key={n}>
-              <strong>{t(`vault.why${n}.title`)}</strong> {t(`vault.why${n}.body`)}
-            </li>
-          ))}
-        </ol>
-        <a className="sec-link" href={vaultDocsPath(locale)}>
-          {t("vault.docs")}&nbsp;→
-        </a>
-        <p className="vault-network">{vault ? t(mode === "mock" ? "vault.network.mock" : "vault.network.sepolia") : t("vault.network.missing")}</p>
-        {!account && (
-          <p className="sec-ctas">
-            <button type="button" className="sec-btn" onClick={() => (picking ? closePicker() : void connect())} aria-expanded={!!picking}>
-              {t("vault.connect")}
-            </button>
-          </p>
-        )}
-        {/* Several wallets in the browser: connect() lists them here instead of picking one. */}
-        {!account && picking && (
-          <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
-            <p>{t("vault.pickWallet")}</p>
-            <ul>
-              {picking.map((w) => (
-                <li key={w.id}>
-                  <button type="button" className="sec-btn sec-btn-ghost" onClick={() => void connect(w.id)}>
-                    {w.icon ? <img src={w.icon} alt="" width={20} height={20} /> : <span className="vault-wallet-blank" aria-hidden="true" />}
-                    {w.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {connectError && <p className="vault-error">{connectError}</p>}
-      </section>
-
-      {vault && <VaultDesk vault={vault} account={account} demo={mode === "mock"} />}
-
-      <Leaks />
-
-
-      <footer className="sec-foot">
-        <span>DO NOT OPEN</span>
-        <a href={DISCORD} target="_blank" rel="noreferrer">
-          Discord
-        </a>
-      </footer>
+      {vault ? (
+        <VaultMarket vault={vault} demo={mode === "mock"} />
+      ) : (
+        <div className="vault-missing">
+          <p className="vault-network">{t("vault.network.missing")}</p>
+          <Leaks />
+        </div>
+      )}
       <Warden />
     </div>
   );
 }
 
-/** Everything that needs the vault: the wallet's NFTs, the account's boxes, Seaport, private sales. */
-function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Address | null; demo: boolean }) {
+/** The whole market: header, tabs, side filters, the grid, a box's dialog, and how actions go. */
+function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   const t = useT();
+  const locale = useLocale();
   const action = useAction();
+  const { account, connect, connectError, picking, closePicker } = useChain();
+  const [tab, setTab] = useState<Tab>(() => (location.hash === "#leaks" ? "leaks" : "explore"));
   const [info, setInfo] = useState<VaultInfo | null>(null);
   const [boxes, setBoxes] = useState<VaultBox[]>([]);
   const [mine, setMine] = useState<number[] | null>(null);
@@ -115,7 +87,20 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
   const [done, setDone] = useState<string | null>(null);
+  const [stamp, setStamp] = useState<{ text: string; key: number } | null>(null);
   const [decoys, setDecoys] = useState(DEFAULT_DECOYS);
+  const [opened, setOpened] = useState<number | null>(null);
+  const [status, setStatus] = useState<Status>("all");
+  const [hidden, setHidden] = useState<Address[]>([]);
+  const [sort, setSort] = useState<Sort>("recent");
+  const [search, setSearch] = useState("");
+
+  // The bar's "What leaks" link opens its tab.
+  useEffect(() => {
+    const onHash = () => location.hash === "#leaks" && setTab("leaks");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   const readPublic = useCallback(async () => {
     const [i, b] = await Promise.all([vault.info(), vault.boxes()]);
@@ -162,6 +147,13 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
     if (demo && account && mine === null) void vault.myBoxes().then(setMine);
   }, [demo, account, mine, vault]);
 
+  // The stamp lands, stays a moment, and goes.
+  useEffect(() => {
+    if (!stamp) return;
+    const id = setTimeout(() => setStamp(null), 1700);
+    return () => clearTimeout(id);
+  }, [stamp]);
+
   /** Runs an action, then reads everything again, the account's boxes included once found. */
   const act: Act = async (name, run, message) => {
     setDone(null);
@@ -169,20 +161,368 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
     const i = await readPublic().catch(() => info);
     await readAccount(i, mine !== null).catch(() => undefined);
     if (result !== undefined && message) setDone(message(result));
+    const said = STAMPS[name];
+    if (result !== undefined && said) setStamp({ text: t(said), key: Date.now() });
     return result;
   };
 
+  const findMine = () => void act("find", () => vault.myBoxes()).then((m) => m && setMine(m));
+
   const coin = info?.coin ?? "ETH";
-  const byId = new Map(boxes.map((b) => [b.boxId, b]));
   const nameOf = (collection: Address) => info?.collections.find((c) => sameAddress(c.address, collection))?.name ?? shortAddress(collection);
-  const listed = boxes.filter((b) => b.state === "listed" && b.listing);
-  const myBoxes = (mine ?? []).flatMap((id) => (byId.get(id) ? [byId.get(id)!] : []));
-  // Every NFT still in the vault takes offers; the account's own boxes take them in "Your boxes".
-  const offerable = boxes.filter((b) => (b.state === "sealed" || b.state === "listed") && !mine?.includes(b.boxId));
+  const labelOf = (b: VaultBox) => t("vault.nft", { collection: nameOf(b.collection), id: String(b.tokenId) });
+  const inVault = boxes.filter((b) => b.state === "sealed" || b.state === "listed");
+  const listed = inVault.filter((b) => b.listing && b.state === "listed");
+  const floor = listed.reduce<bigint | null>((min, b) => (min === null || b.listing!.price < min ? b.listing!.price : min), null);
+  const myBoxes = boxes.filter((b) => mine?.includes(b.boxId));
+  const box = opened === null ? null : (boxes.find((b) => b.boxId === opened) ?? null);
+
+  const explore = useMemo(() => {
+    const q = search.trim().replace(/^#/, "");
+    const shown = inVault.filter(
+      (b) =>
+        (status === "all" || (status === "listed") === (b.state === "listed")) &&
+        !hidden.some((c) => sameAddress(c, b.collection)) &&
+        (!q || String(b.tokenId).includes(q) || String(b.boxId) === q),
+    );
+    if (sort === "recent") return shown;
+    // Unlisted boxes have no price: they go last either way.
+    const price = (b: VaultBox) => (b.state === "listed" && b.listing ? b.listing.price : null);
+    return [...shown].sort((a, b) => {
+      const pa = price(a);
+      const pb = price(b);
+      if (pa === null || pb === null) return pa === null ? (pb === null ? 0 : 1) : -1;
+      return (sort === "low" ? pa < pb : pa > pb) ? -1 : pa === pb ? 0 : 1;
+    });
+  }, [inVault, status, hidden, sort, search]);
+
+  const counts: Record<Tab, number | null> = {
+    explore: inVault.length,
+    mine: mine === null ? null : myBoxes.length,
+    wallet: account ? nfts.length : null,
+    sales: account ? sales.length : null,
+    leaks: null,
+  };
+
+  const connectButton = (
+    <button type="button" className="sec-btn sec-btn-small" onClick={() => (picking ? closePicker() : void connect())} aria-expanded={!!picking}>
+      {t("vault.connect")}
+    </button>
+  );
 
   return (
     <>
-      {info && <p className="vault-relayer">{info.relayer ? t("vault.relayer.on") : t("vault.relayer.off")}</p>}
+      <header className="vault-head">
+        <div className="vault-badge" aria-hidden="true">
+          <span>DNO</span>
+        </div>
+        <div className="vault-id">
+          <h1>
+            {t("vault.h1")} <span className="vault-verified" title={t("vault.network.sepolia")} aria-hidden="true" />
+          </h1>
+          <p>{t("vault.tagline")}</p>
+        </div>
+        <dl className="vault-stats">
+          <div>
+            <dt>{t("vault.stat.boxes")}</dt>
+            <dd>{info ? inVault.length : "…"}</dd>
+          </div>
+          <div>
+            <dt>{t("vault.stat.listed")}</dt>
+            <dd>{info ? listed.length : "…"}</dd>
+          </div>
+          <div>
+            <dt>{t("vault.stat.floor")}</dt>
+            <dd>{floor === null ? "—" : `${formatAmount(floor, 18)} ${coin}`}</dd>
+          </div>
+          <div>
+            <dt>{t("vault.stat.owners")}</dt>
+            <dd>
+              <Cipher length={4} />
+            </dd>
+          </div>
+          <div>
+            <dt>{t("vault.stat.fee")}</dt>
+            <dd>{info ? `${info.feeBps / 100}%` : "…"}</dd>
+          </div>
+        </dl>
+        <div className="vault-account">
+          {account ? <span className="vault-me">{shortAddress(account)}</span> : connectButton}
+          {!account && picking && (
+            <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
+              <p>{t("vault.pickWallet")}</p>
+              <ul>
+                {picking.map((w) => (
+                  <li key={w.id}>
+                    <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" onClick={() => void connect(w.id)}>
+                      {w.icon ? <img src={w.icon} alt="" width={20} height={20} /> : <span className="vault-wallet-blank" aria-hidden="true" />}
+                      {w.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <nav className="vault-tabs" role="tablist" aria-label={t("vault.h1")}>
+        {TABS.map((k) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : undefined} onClick={() => setTab(k)}>
+            {t(`vault.tab.${k}`)}
+            {counts[k] !== null && <span className="vault-count">{counts[k]}</span>}
+          </button>
+        ))}
+      </nav>
+
+      <div className="vault-body">
+        <aside className="vault-side">
+          {tab === "explore" && (
+            <>
+              <fieldset>
+                <legend>{t("vault.filter.status")}</legend>
+                {(["all", "listed", "unlisted"] as const).map((s) => (
+                  <button key={s} type="button" aria-pressed={status === s} className={status === s ? "on" : undefined} onClick={() => setStatus(s)}>
+                    {t(`vault.filter.${s}`)}
+                  </button>
+                ))}
+              </fieldset>
+              {info && info.collections.length > 0 && (
+                <fieldset>
+                  <legend>{t("vault.filter.collections")}</legend>
+                  {info.collections.map((c) => {
+                    const on = !hidden.some((h) => sameAddress(h, c.address));
+                    return (
+                      <label key={c.address} className="vault-check">
+                        <input type="checkbox" checked={on} onChange={() => setHidden((h) => (on ? [...h, c.address] : h.filter((x) => !sameAddress(x, c.address))))} />
+                        <span>{c.name}</span>
+                        <span className="vault-count">{inVault.filter((b) => sameAddress(b.collection, c.address)).length}</span>
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              )}
+            </>
+          )}
+          <div className="vault-side-foot">
+            <p className="vault-network">{t(demo ? "vault.network.mock" : "vault.network.sepolia")}</p>
+            {info && <p className="vault-network">{info.relayer ? t("vault.relayer.on") : t("vault.relayer.off")}</p>}
+            <a className="sec-link" href={vaultDocsPath(locale)}>
+              {t("vault.docs")}&nbsp;→
+            </a>
+            <a className="sec-link" href={DISCORD} target="_blank" rel="noreferrer">
+              Discord&nbsp;↗
+            </a>
+          </div>
+        </aside>
+
+        <main className="vault-main">
+          {connectError && <p className="vault-error">{connectError}</p>}
+
+          {tab === "explore" && (
+            <>
+              <div className="vault-toolbar">
+                <input className="vault-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("vault.search")} aria-label={t("vault.search")} />
+                <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label={t("vault.sort")}>
+                  {(["recent", "low", "high"] as const).map((s) => (
+                    <option key={s} value={s}>
+                      {t(`vault.sort.${s}`)}
+                    </option>
+                  ))}
+                </select>
+                <span className="vault-results">{t("vault.results", { count: explore.length })}</span>
+              </div>
+              {!info ? (
+                <Skeletons />
+              ) : inVault.length === 0 ? (
+                <Empty title={t("vault.empty.title")} body={t("vault.empty.body")}>
+                  <button type="button" className="sec-btn sec-btn-small" onClick={() => setTab("wallet")}>
+                    {t("vault.empty.cta")}
+                  </button>
+                </Empty>
+              ) : explore.length === 0 ? (
+                <Empty title={t("vault.filtered.empty")} />
+              ) : (
+                <ul className="vault-grid">
+                  {explore.map((b) => (
+                    <BoxCard
+                      key={b.boxId}
+                      box={b}
+                      label={labelOf(b)}
+                      coin={coin}
+                      mine={!!mine?.includes(b.boxId)}
+                      onOpen={() => setOpened(b.boxId)}
+                      onBuy={account && !mine?.includes(b.boxId) && b.state === "listed" ? () => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy")) : null}
+                      busy={!!action.busy}
+                    />
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+
+          {tab === "mine" &&
+            (!account ? (
+              <Empty title={t("vault.connectFirst")}>{connectButton}</Empty>
+            ) : mine === null ? (
+              <Empty title={t("vault.mine.lede")}>
+                <button type="button" className="sec-btn sec-btn-small" disabled={!!action.busy} onClick={findMine}>
+                  {t("vault.mine.find")}
+                </button>
+              </Empty>
+            ) : myBoxes.length === 0 ? (
+              <Empty title={t("vault.mine.empty")}>
+                <button type="button" className="sec-btn sec-btn-small" onClick={() => setTab("wallet")}>
+                  {t("vault.empty.cta")}
+                </button>
+              </Empty>
+            ) : (
+              <ul className="vault-grid">
+                {myBoxes.map((b) => (
+                  <BoxCard key={b.boxId} box={b} label={labelOf(b)} coin={coin} mine onOpen={() => setOpened(b.boxId)} onBuy={null} busy={!!action.busy} />
+                ))}
+              </ul>
+            ))}
+
+          {tab === "wallet" &&
+            (!account || !info ? (
+              <Empty title={t("vault.connectFirst")}>{!account && connectButton}</Empty>
+            ) : (
+              <>
+                <div className="vault-toolbar vault-toolbar-wallet">
+                  <div className="vault-decoys" role="radiogroup" aria-label={t("vault.wallet.decoys")}>
+                    <span>{t("vault.wallet.decoys")}</span>
+                    {Array.from({ length: MAX_DECOYS + 1 }, (_, n) => (
+                      <button key={n} type="button" role="radio" aria-checked={decoys === n} className={decoys === n ? "on" : undefined} disabled={!!action.busy} onClick={() => setDecoys(n)}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="vault-meta">{decoys > 0 ? t("vault.wallet.decoysOn", { n: decoys }) : t("vault.wallet.decoysOff")}</p>
+                </div>
+                <ul className="vault-grid">
+                  {info.collections
+                    .filter((c) => c.mintable)
+                    .map((c) => (
+                      <li key={c.address} className="vault-card vault-card-mint">
+                        <button type="button" disabled={!!action.busy} onClick={() => void act("mint", (o) => vault.mintTestNft(c.address, o), (id) => t("vault.done.mint", { id: String(id) }))}>
+                          <span className="vault-plus" aria-hidden="true">
+                            +
+                          </span>
+                          {t("vault.wallet.mint")}
+                          <small>{c.name}</small>
+                        </button>
+                      </li>
+                    ))}
+                  {nfts.map((n) => {
+                    const label = t("vault.nft", { collection: n.name, id: String(n.id) });
+                    return (
+                      <li key={`${n.collection}:${n.id}`} className="vault-card vault-card-open">
+                        <div className="vault-art-wrap">
+                          <NftArt label={label} uri={null} seed={n.id} />
+                        </div>
+                        <div className="vault-card-body">
+                          <p className="vault-card-coll">{n.name}</p>
+                          <p className="vault-card-name">#{String(n.id)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="vault-card-cta vault-card-cta-seal"
+                          disabled={!!action.busy}
+                          onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, { ...o, decoys }), (box) => t("vault.done.deposit", { box }))}
+                        >
+                          {t("vault.wallet.seal")}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {nfts.length === 0 && <p className="vault-empty">{t("vault.wallet.empty")}</p>}
+              </>
+            ))}
+
+          {tab === "sales" &&
+            (!account ? (
+              <Empty title={t("vault.connectFirst")}>{connectButton}</Empty>
+            ) : (
+              <>
+                <div className="vault-toolbar">
+                  <p className="vault-meta">{t("vault.sales.lede")}</p>
+                  {sales.length > 0 && (
+                    <button
+                      type="button"
+                      className="sec-btn sec-btn-ghost sec-btn-small"
+                      disabled={!!action.busy}
+                      onClick={() => void act("prices", (o) => vault.salePrices(sales.map((s) => s.saleId), o)).then((p) => p && setPrices(p))}
+                    >
+                      {t("vault.sales.readPrices")}
+                    </button>
+                  )}
+                </div>
+                {sales.length === 0 ? (
+                  <Empty title={t("vault.sales.empty")} />
+                ) : (
+                  <ul className="vault-sales">
+                    {sales.map((s) => {
+                      const toMe = sameAddress(s.buyer, account);
+                      const b = boxes.find((x) => x.boxId === s.boxId);
+                      return (
+                        <li key={s.saleId}>
+                          {b && (
+                            <button type="button" className="vault-sale-art" onClick={() => setOpened(b.boxId)} aria-label={labelOf(b)}>
+                              <NftArt label={labelOf(b)} uri={b.tokenUri} seed={b.tokenId} />
+                            </button>
+                          )}
+                          <span className="vault-sale-what">{toMe ? t("vault.sales.toYou", { box: s.boxId }) : t("vault.sales.byYou", { box: s.boxId, buyer: shortAddress(s.buyer) })}</span>
+                          <span className="vault-chip">{t(`vault.sale.${s.status}`)}</span>
+                          <span className="vault-price">{prices[s.saleId] !== undefined ? t("vault.sales.price", { price: formatAmount(prices[s.saleId]!, 6) }) : <Cipher length={3} />}</span>
+                          {s.status === "open" && toMe && (
+                            <button
+                              type="button"
+                              className="sec-btn sec-btn-small"
+                              disabled={!!action.busy}
+                              onClick={() =>
+                                void act("accept", (o) => vault.acceptSale(s.saleId, o), (moved) => (moved ? t("vault.sale.moved") : t("vault.sale.notMoved"))).then(async (moved) => {
+                                  if (moved) setMine(await vault.myBoxes());
+                                })
+                              }
+                            >
+                              {t("vault.action.accept")}
+                            </button>
+                          )}
+                          {s.status === "open" && !toMe && (
+                            <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" disabled={!!action.busy} onClick={() => void act("cancelSale", (o) => vault.cancelSale(s.saleId, o))}>
+                              {t("vault.action.cancel")}
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </>
+            ))}
+
+          {tab === "leaks" && <Leaks />}
+        </main>
+      </div>
+
+      {box && (
+        <BoxDialog
+          box={box}
+          label={labelOf(box)}
+          collection={nameOf(box.collection)}
+          coin={coin}
+          account={account}
+          holder={!!mine?.includes(box.boxId)}
+          busy={!!action.busy}
+          act={act}
+          vault={vault}
+          connect={connectButton}
+          onClose={() => setOpened(null)}
+        />
+      )}
+
       <div className="vault-status" aria-live="polite">
         {action.busy && <p className="vault-step">{t(`vault.step.${action.step ?? "wallet"}`)}…</p>}
         {action.error && (
@@ -190,169 +530,19 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
             {action.error.text} {action.error.hints[0]}
           </p>
         )}
-        {done && <p className="vault-done">{done}</p>}
-      </div>
-
-      {account && info && (
-        <section className="vault-panel">
-          <h2>{t("vault.wallet.title")}</h2>
-          <p className="vault-lede">{t("vault.wallet.lede")}</p>
-          {nfts.length === 0 && <p className="vault-empty">{t("vault.wallet.empty")}</p>}
-          {nfts.length > 0 && (
-            <>
-              <div className="vault-decoys" role="radiogroup" aria-label={t("vault.wallet.decoys")}>
-                <span>{t("vault.wallet.decoys")}</span>
-                {Array.from({ length: MAX_DECOYS + 1 }, (_, n) => (
-                  <button key={n} type="button" role="radio" aria-checked={decoys === n} className={decoys === n ? "on" : undefined} disabled={!!action.busy} onClick={() => setDecoys(n)}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <p className="vault-meta">{decoys > 0 ? t("vault.wallet.decoysOn", { n: decoys }) : t("vault.wallet.decoysOff")}</p>
-            </>
-          )}
-          <ul className="vault-grid">
-            {nfts.map((n) => (
-              <li key={`${n.collection}:${n.id}`} className="vault-card">
-                <NftArt label={t("vault.nft", { collection: n.name, id: String(n.id) })} uri={null} seed={n.id} />
-                <p className="vault-card-name">{t("vault.nft", { collection: n.name, id: String(n.id) })}</p>
-                <button
-                  type="button"
-                  className="sec-btn sec-btn-small"
-                  disabled={!!action.busy}
-                  onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, { ...o, decoys }), (box) => t("vault.done.deposit", { box }))}
-                >
-                  {t("vault.wallet.seal")}
-                </button>
-              </li>
-            ))}
-          </ul>
-          {info.collections
-            .filter((c) => c.mintable)
-            .map((c) => (
-              <button
-                key={c.address}
-                type="button"
-                className="sec-btn sec-btn-ghost sec-btn-small"
-                disabled={!!action.busy}
-                onClick={() => void act("mint", (o) => vault.mintTestNft(c.address, o), (id) => t("vault.done.mint", { id: String(id) }))}
-              >
-                {t("vault.wallet.mint")}
-              </button>
-            ))}
-        </section>
-      )}
-
-      {account && info && (
-        <section className="vault-panel">
-          <h2>{t("vault.mine.title")}</h2>
-          <p className="vault-lede">{t("vault.mine.lede")}</p>
-          {mine === null ? (
-            <button type="button" className="sec-btn sec-btn-small" disabled={!!action.busy} onClick={() => void act("find", () => vault.myBoxes()).then((m) => m && setMine(m))}>
-              {t("vault.mine.find")}
+        {done && (
+          <p className="vault-done">
+            {done}
+            <button type="button" aria-label={t("vault.item.close")} onClick={() => setDone(null)}>
+              ×
             </button>
-          ) : myBoxes.length === 0 ? (
-            <p className="vault-empty">{t("vault.mine.empty")}</p>
-          ) : (
-            <ul className="vault-grid">
-              {myBoxes.map((b) => (
-                <MyBox key={b.boxId} box={b} coin={coin} name={nameOf(b.collection)} account={account} busy={!!action.busy} act={act} vault={vault} />
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-
-      {info && (
-        <section className="vault-panel">
-          <h2>{t("vault.market.title")}</h2>
-          <p className="vault-lede">{t("vault.market.lede")}</p>
-          {listed.length === 0 && <p className="vault-empty">{t("vault.market.empty")}</p>}
-          <ul className="vault-grid">
-            {listed.map((b) => (
-              <li key={b.boxId} className="vault-card">
-                <NftArt label={t("vault.nft", { collection: nameOf(b.collection), id: String(b.tokenId) })} uri={b.tokenUri} seed={b.tokenId} />
-                <p className="vault-card-name">{t("vault.nft", { collection: nameOf(b.collection), id: String(b.tokenId) })}</p>
-                <p className="vault-price">{t("vault.box.price", { price: formatAmount(b.listing!.price, 18), coin })}</p>
-                <p className="vault-meta">{t("vault.box.until", { date: new Date(b.listing!.endTime * 1000).toLocaleDateString() })}</p>
-                {mine?.includes(b.boxId) ? (
-                  <span className="vault-chip">{t("vault.market.yours")}</span>
-                ) : (
-                  account && (
-                    <button type="button" className="sec-btn sec-btn-small" disabled={!!action.busy} onClick={() => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy"))}>
-                      {t("vault.action.buy")}
-                    </button>
-                  )
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {info && (
-        <section className="vault-panel">
-          <h2>{t("vault.offer.title")}</h2>
-          <p className="vault-lede">{t("vault.offer.lede")}</p>
-          {offerable.length === 0 && <p className="vault-empty">{t("vault.offer.empty")}</p>}
-          <ul className="vault-grid">
-            {offerable.map((b) => (
-              <OfferCard key={b.boxId} box={b} coin={coin} name={nameOf(b.collection)} account={account} busy={!!action.busy} act={act} vault={vault} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {account && info && (
-        <section className="vault-panel">
-          <h2>{t("vault.sales.title")}</h2>
-          <p className="vault-lede">{t("vault.sales.lede")}</p>
-          {sales.length === 0 ? (
-            <p className="vault-empty">{t("vault.sales.empty")}</p>
-          ) : (
-            <>
-              <ul className="vault-sales">
-                {sales.map((s) => {
-                  const toMe = sameAddress(s.buyer, account);
-                  return (
-                    <li key={s.saleId}>
-                      <span>{toMe ? t("vault.sales.toYou", { box: s.boxId }) : t("vault.sales.byYou", { box: s.boxId, buyer: shortAddress(s.buyer) })}</span>
-                      <span className="vault-chip">{t(`vault.sale.${s.status}`)}</span>
-                      {prices[s.saleId] !== undefined && <span className="vault-price">{t("vault.sales.price", { price: formatAmount(prices[s.saleId]!, 6) })}</span>}
-                      {s.status === "open" && toMe && (
-                        <button
-                          type="button"
-                          className="sec-btn sec-btn-small"
-                          disabled={!!action.busy}
-                          onClick={() =>
-                            void act("accept", (o) => vault.acceptSale(s.saleId, o), (moved) => (moved ? t("vault.sale.moved") : t("vault.sale.notMoved"))).then(async (moved) => {
-                              if (moved) setMine(await vault.myBoxes());
-                            })
-                          }
-                        >
-                          {t("vault.action.accept")}
-                        </button>
-                      )}
-                      {s.status === "open" && !toMe && (
-                        <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" disabled={!!action.busy} onClick={() => void act("cancelSale", (o) => vault.cancelSale(s.saleId, o))}>
-                          {t("vault.action.cancel")}
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-              <button
-                type="button"
-                className="sec-btn sec-btn-ghost sec-btn-small"
-                disabled={!!action.busy}
-                onClick={() => void act("prices", (o) => vault.salePrices(sales.map((s) => s.saleId), o)).then((p) => p && setPrices(p))}
-              >
-                {t("vault.sales.readPrices")}
-              </button>
-            </>
-          )}
-        </section>
+          </p>
+        )}
+      </div>
+      {stamp && (
+        <div key={stamp.key} className="vault-stampfx" aria-hidden="true">
+          <span>{stamp.text}</span>
+        </div>
       )}
     </>
   );
@@ -361,11 +551,179 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
 /** Runs one action with its steps shown, then says how it went. */
 type Act = <T>(name: string, run: (opts: ActionOptions) => Promise<T>, message?: (r: T) => string) => Promise<T | undefined>;
 
-/** One of the account's boxes, with what its holder can do. */
-function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; coin: string; name: string; account: Address; busy: boolean; act: Act; vault: VaultAdapter }) {
+/** One NFT of the grid, as on a marketplace: its art under the vault's tape, its price, a button that slides up. */
+function BoxCard({ box, label, coin, mine, onOpen, onBuy, busy }: { box: VaultBox; label: string; coin: string; mine: boolean; onOpen: () => void; onBuy: (() => void) | null; busy: boolean }) {
   const t = useT();
-  const [open, setOpen] = useState<"withdraw" | "list" | "claim" | "offers" | "delegate" | "send" | "sell" | "adopt" | null>(null);
-  const label = t("vault.nft", { collection: name, id: String(box.tokenId) });
+  const [collection, id] = splitLabel(label);
+  return (
+    <li className={`vault-card${mine ? " vault-card-mine" : ""}`}>
+      <button type="button" className="vault-card-open" onClick={onOpen} aria-label={label}>
+        <div className="vault-art-wrap">
+          <NftArt label={label} uri={box.tokenUri} seed={box.tokenId} />
+          {(box.state === "sealed" || box.state === "listed") && (
+            <span className="vault-tape" aria-hidden="true">
+              Do not open
+            </span>
+          )}
+          {mine && <span className="vault-yours">{t("vault.market.yours")}</span>}
+        </div>
+        <div className="vault-card-body">
+          <p className="vault-card-coll">{collection}</p>
+          <p className="vault-card-name">{id}</p>
+          {box.state === "listed" && box.listing ? (
+            <p className="vault-price">{t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}</p>
+          ) : (
+            <p className={`vault-state vault-state-${box.state}`}>{box.state === "sealed" ? t("vault.card.notListed") : t(`vault.state.${box.state}`)}</p>
+          )}
+        </div>
+      </button>
+      {onBuy ? (
+        <button type="button" className="vault-card-cta" disabled={busy} onClick={onBuy}>
+          {t("vault.action.buyNow")}
+        </button>
+      ) : (
+        <button type="button" className="vault-card-cta vault-card-cta-ghost" tabIndex={-1} onClick={onOpen}>
+          {t("vault.card.view")}
+        </button>
+      )}
+    </li>
+  );
+}
+
+/** "Mock Kittens #12" → ["Mock Kittens", "#12"]. */
+function splitLabel(label: string): [string, string] {
+  const at = label.lastIndexOf(" #");
+  return at < 0 ? [label, ""] : [label.slice(0, at), label.slice(at + 1)];
+}
+
+/** One box's page, as a dialog: its art large on one side; its price, its holder's tools and its offers on the other. */
+function BoxDialog({
+  box,
+  label,
+  collection,
+  coin,
+  account,
+  holder,
+  busy,
+  act,
+  vault,
+  connect,
+  onClose,
+}: {
+  box: VaultBox;
+  label: string;
+  collection: string;
+  coin: string;
+  account: Address | null;
+  holder: boolean;
+  busy: boolean;
+  act: Act;
+  vault: VaultAdapter;
+  connect: ReactNode;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const [offering, setOffering] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const inVault = box.state === "sealed" || box.state === "listed";
+  return (
+    <div className="vault-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="vault-dialog" role="dialog" aria-modal="true" aria-label={label}>
+        <button type="button" className="vault-close" onClick={onClose} aria-label={t("vault.item.close")}>
+          ×
+        </button>
+        <div className="vault-dialog-art">
+          <div className="vault-art-wrap">
+            <NftArt label={label} uri={box.tokenUri} seed={box.tokenId} />
+            {inVault && (
+              <span className="vault-tape" aria-hidden="true">
+                Do not open
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="vault-dialog-info">
+          <p className="vault-card-coll">{collection}</p>
+          <h2>{splitLabel(label)[1] || label}</h2>
+          <dl className="vault-facts">
+            <div>
+              <dt>{t("vault.item.owner")}</dt>
+              <dd>{holder ? <strong className="vault-you">{t("vault.item.you")}</strong> : <Cipher length={4} />}</dd>
+            </div>
+            <div>
+              <dt>{t("vault.item.box")}</dt>
+              <dd>#{box.boxId}</dd>
+            </div>
+            <div>
+              <dt>{t("vault.item.sealedBy")}</dt>
+              <dd>{shortAddress(box.depositor)}</dd>
+            </div>
+            {box.delegate && (
+              <div>
+                <dt>delegate.xyz</dt>
+                <dd>{shortAddress(box.delegate)}</dd>
+              </div>
+            )}
+          </dl>
+          <p className="vault-meta">{holder ? t("vault.item.ownerYou") : t("vault.item.ownerHidden")}</p>
+
+          <div className="vault-buybox">
+            <p className={`vault-state vault-state-${box.state}`}>{t(`vault.state.${box.state}`)}</p>
+            {box.state === "listed" && box.listing ? (
+              <>
+                <p className="vault-buybox-label">{t("vault.item.price")}</p>
+                <p className="vault-buybox-price">{t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}</p>
+                <p className="vault-meta">{t("vault.box.until", { date: new Date(box.listing.endTime * 1000).toLocaleDateString() })}</p>
+              </>
+            ) : box.state === "sold" ? (
+              <p className="vault-buybox-price">{t("vault.box.proceeds", { amount: formatAmount(box.proceeds, 18), coin })}</p>
+            ) : (
+              inVault && <p className="vault-meta">{t("vault.item.notListed")}</p>
+            )}
+            {!holder && inVault && (
+              <div className="vault-buybox-ctas">
+                {!account ? (
+                  connect
+                ) : (
+                  <>
+                    {box.state === "listed" && (
+                      <button type="button" className="sec-btn" disabled={busy} onClick={() => void act("buy", (o) => vault.buy(box.boxId, o), () => t("vault.done.buy"))}>
+                        {t("vault.action.buyNow")}
+                      </button>
+                    )}
+                    <button type="button" className="sec-btn sec-btn-ghost" aria-expanded={offering} onClick={() => setOffering((o) => !o)}>
+                      {t("vault.action.offer")}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {holder && account && <HolderTools box={box} coin={coin} account={account} busy={busy} act={act} vault={vault} />}
+
+          {inVault && (
+            <section className="vault-offers-wrap">
+              <h3>{t("vault.action.offers")}</h3>
+              <Offers box={box} coin={coin} account={account} busy={busy} act={act} vault={vault} holder={holder} offering={offering} />
+            </section>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** What a box's holder can do with it, each action opening its own small form. */
+function HolderTools({ box, coin, account, busy, act, vault }: { box: VaultBox; coin: string; account: Address; busy: boolean; act: Act; vault: VaultAdapter }) {
+  const t = useT();
+  const [open, setOpen] = useState<"withdraw" | "list" | "claim" | "delegate" | "send" | "sell" | "adopt" | null>(null);
   const toggle = (what: typeof open) => setOpen((cur) => (cur === what ? null : what));
   /** The box's own actions fold their form away once they went through. */
   const run: Act = async (name, task, message) => {
@@ -374,40 +732,40 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
     return result;
   };
   const actions: { key: NonNullable<typeof open> | "unlist"; when: boolean }[] = [
-    { key: "withdraw", when: box.state === "sealed" || box.state === "listed" },
     { key: "list", when: box.state === "sealed" },
     { key: "unlist", when: box.state === "listed" },
     { key: "claim", when: box.state === "sold" },
-    { key: "offers", when: box.state === "sealed" || box.state === "listed" },
+    { key: "withdraw", when: box.state === "sealed" || box.state === "listed" },
     { key: "delegate", when: box.state === "sealed" || box.state === "listed" },
     { key: "sell", when: box.state === "sealed" },
     { key: "send", when: box.state === "sealed" },
     { key: "adopt", when: box.state === "sealed" },
   ];
+  const shown = actions.filter((a) => a.when);
+  if (shown.length === 0) return null;
 
   return (
-    <li className="vault-card vault-card-mine">
-      <NftArt label={label} uri={box.tokenUri} seed={box.tokenId} />
-      <p className="vault-card-name">{label}</p>
-      <p className={`vault-state vault-state-${box.state}`}>{t(`vault.state.${box.state}`)}</p>
-      {box.listing && box.state === "listed" && <p className="vault-price">{t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}</p>}
-      {box.state === "sold" && <p className="vault-price">{t("vault.box.proceeds", { amount: formatAmount(box.proceeds, 18), coin })}</p>}
-      {box.delegate && <p className="vault-meta">{t("vault.box.delegate", { address: shortAddress(box.delegate) })}</p>}
+    <section className="vault-tools">
       {box.busy && <p className="vault-meta">{t("vault.box.busy")}</p>}
       <div className="vault-actions">
-        {actions
-          .filter((a) => a.when)
-          .map((a) =>
-            a.key === "unlist" ? (
-              <button key={a.key} type="button" className="sec-btn sec-btn-ghost sec-btn-small" disabled={busy} onClick={() => void run("unlist", (o) => vault.unlist(box.boxId, o), () => t("vault.done.unlist"))}>
-                {t("vault.action.unlist")}
-              </button>
-            ) : (
-              <button key={a.key} type="button" className="sec-btn sec-btn-ghost sec-btn-small" aria-expanded={open === a.key} disabled={busy} onClick={() => toggle(a.key as typeof open)}>
-                {t(`vault.action.${a.key}`)}
-              </button>
-            ),
-          )}
+        {shown.map((a, i) =>
+          a.key === "unlist" ? (
+            <button key={a.key} type="button" className="sec-btn sec-btn-ghost sec-btn-small" disabled={busy} onClick={() => void run("unlist", (o) => vault.unlist(box.boxId, o), () => t("vault.done.unlist"))}>
+              {t("vault.action.unlist")}
+            </button>
+          ) : (
+            <button
+              key={a.key}
+              type="button"
+              className={`sec-btn sec-btn-small${i === 0 ? "" : " sec-btn-ghost"}`}
+              aria-expanded={open === a.key}
+              disabled={busy}
+              onClick={() => toggle(a.key as typeof open)}
+            >
+              {t(`vault.action.${a.key}`)}
+            </button>
+          ),
+        )}
       </div>
       {open === "withdraw" && (
         <AddressForm account={account} hint={t("vault.form.toHint")} busy={busy} onSubmit={(to) => void run("withdraw", (o) => vault.withdraw(box.boxId, to, o), () => t("vault.done.withdraw", { address: shortAddress(to) }))} />
@@ -420,7 +778,6 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
           onSubmit={(to) => void run("claim", (o) => vault.claim(box.boxId, to, o), (amount) => t("vault.done.claim", { amount: formatAmount(amount, 18), coin, address: shortAddress(to) }))}
         />
       )}
-      {open === "offers" && <Offers box={box} coin={coin} account={account} busy={busy} act={run} vault={vault} holder />}
       {open === "delegate" && (
         <>
           <AddressForm
@@ -436,9 +793,7 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
           )}
         </>
       )}
-      {open === "send" && (
-        <AddressForm account={null} hint={t("vault.form.sendHint")} busy={busy} onSubmit={(to) => void run("send", (o) => vault.send(box.boxId, to, o), () => t("vault.done.send"))} />
-      )}
+      {open === "send" && <AddressForm account={null} hint={t("vault.form.sendHint")} busy={busy} onSubmit={(to) => void run("send", (o) => vault.send(box.boxId, to, o), () => t("vault.done.send"))} />}
       {open === "list" && <ListForm coin={coin} busy={busy} onSubmit={(price, endTime) => void run("list", (o) => vault.list(box.boxId, price, endTime, o), () => t("vault.done.list"))} />}
       {open === "sell" && <SellForm busy={busy} onSubmit={(buyer, price) => void run("sell", (o) => vault.offerSale(box.boxId, buyer, price, o), () => t("vault.done.sell"))} />}
       {open === "adopt" && (
@@ -446,33 +801,33 @@ function MyBox({ box, coin, name, account, busy, act, vault }: { box: VaultBox; 
           {null}
         </Form>
       )}
-    </li>
-  );
-}
-
-/** Someone else's box, or one nobody has found to be the account's: anyone may offer on it. */
-function OfferCard({ box, coin, name, account, busy, act, vault }: { box: VaultBox; coin: string; name: string; account: Address | null; busy: boolean; act: Act; vault: VaultAdapter }) {
-  const t = useT();
-  const [open, setOpen] = useState(false);
-  const label = t("vault.nft", { collection: name, id: String(box.tokenId) });
-  return (
-    <li className="vault-card">
-      <NftArt label={label} uri={box.tokenUri} seed={box.tokenId} />
-      <p className="vault-card-name">{label}</p>
-      {box.listing && box.state === "listed" && <p className="vault-meta">{t("vault.offer.listedAt", { price: formatAmount(box.listing.price, 18), coin })}</p>}
-      <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" aria-expanded={open} disabled={busy} onClick={() => setOpen((o) => !o)}>
-        {t("vault.action.offer")}
-      </button>
-      {open && <Offers box={box} coin={coin} account={account} busy={busy} act={act} vault={vault} holder={false} />}
-    </li>
+    </section>
   );
 }
 
 /**
- * The offers on one box, read when it opens. Its holder picks one and where the ETH goes; anyone
- * else sees them, cancels their own, and makes one.
+ * The offers on one box, read when its page opens. Its holder picks one and where the ETH goes;
+ * anyone else sees them, cancels their own, and makes one.
  */
-function Offers({ box, coin, account, busy, act, vault, holder }: { box: VaultBox; coin: string; account: Address | null; busy: boolean; act: Act; vault: VaultAdapter; holder: boolean }) {
+function Offers({
+  box,
+  coin,
+  account,
+  busy,
+  act,
+  vault,
+  holder,
+  offering,
+}: {
+  box: VaultBox;
+  coin: string;
+  account: Address | null;
+  busy: boolean;
+  act: Act;
+  vault: VaultAdapter;
+  holder: boolean;
+  offering: boolean;
+}) {
   const t = useT();
   const [offers, setOffers] = useState<VaultOffer[] | null>(null);
   const [chosen, setChosen] = useState<VaultOffer | null>(null);
@@ -481,6 +836,7 @@ function Offers({ box, coin, account, busy, act, vault, holder }: { box: VaultBo
   const date = (s: number) => new Date(s * 1000).toLocaleDateString();
   return (
     <div className="vault-offers">
+      {!holder && account && offering && <OfferForm busy={busy} onSubmit={(amount, endTime) => void act("offer", (opts) => vault.makeOffer(box.boxId, amount, endTime, opts), () => t("vault.done.offer")).then(read)} />}
       {offers === null ? (
         <p className="vault-meta">{t("vault.offers.loading")}</p>
       ) : offers.length === 0 ? (
@@ -524,7 +880,6 @@ function Offers({ box, coin, account, busy, act, vault, holder }: { box: VaultBo
           }
         />
       )}
-      {!holder && account && <OfferForm busy={busy} onSubmit={(amount, endTime) => void act("offer", (opts) => vault.makeOffer(box.boxId, amount, endTime, opts), () => t("vault.done.offer")).then(read)} />}
     </div>
   );
 }
@@ -669,15 +1024,90 @@ function SellForm({ busy, onSubmit }: { busy: boolean; onSubmit: (buyer: Address
   );
 }
 
-/** The NFT's own picture when its metadata carries one inline, a stamped carton otherwise. */
+/** A grid's empty state: a closed carton, a line, and what to do. */
+function Empty({ title, body, children }: { title: string; body?: string; children?: ReactNode }) {
+  return (
+    <div className="vault-emptybox">
+      <div className="vault-carton" aria-hidden="true">
+        <span>Do not open</span>
+      </div>
+      <p className="vault-emptybox-title">{title}</p>
+      {body && <p className="vault-meta">{body}</p>}
+      {children}
+    </div>
+  );
+}
+
+/** Grey cards while the vault is first read. */
+function Skeletons() {
+  return (
+    <ul className="vault-grid" aria-hidden="true">
+      {Array.from({ length: 8 }, (_, i) => (
+        <li key={i} className="vault-card vault-skeleton" />
+      ))}
+    </ul>
+  );
+}
+
+const HEX = "0123456789abcdef";
+
+/** An encrypted value: hex that never settles. Still, for whoever asked for less motion. */
+function Cipher({ length }: { length: number }) {
+  const t = useT();
+  const still = useMemo(() => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches, []);
+  const roll = () => `0x${Array.from({ length }, () => HEX[Math.floor(Math.random() * 16)]).join("")}…${Array.from({ length }, () => HEX[Math.floor(Math.random() * 16)]).join("")}`;
+  const [text, setText] = useState(roll);
+  useEffect(() => {
+    if (still) return;
+    const id = setInterval(() => setText(roll()), 140);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [still, length]);
+  return (
+    <span className="vault-cipher" title={t("vault.item.encrypted")}>
+      <span aria-hidden="true">{still ? `0x${"•".repeat(length)}…${"•".repeat(length)}` : text}</span>
+      <span className="vault-sr">{t("vault.item.encrypted")}</span>
+    </span>
+  );
+}
+
+/** The NFT's own picture when its metadata carries one inline, a seeded pattern otherwise. */
 function NftArt({ label, uri, seed }: { label: string; uri: string | null; seed: bigint }) {
   const image = useMemo(() => inlineImage(uri), [uri]);
-  if (image) return <img className="vault-art" src={image} alt={label} />;
-  const hue = Number(seed % 360n);
+  if (image) return <img className="vault-art" src={image} alt={label} loading="lazy" />;
+  return <Pattern label={label} seed={seed} />;
+}
+
+/** A small seeded drawing for NFTs without an inline image: two hues, a few shapes, the number. */
+function Pattern({ label, seed }: { label: string; seed: bigint }) {
+  const shapes = useMemo(() => {
+    let s = Number(seed % 2_147_483_647n) || 1;
+    const rand = () => {
+      s = (s * 16_807) % 2_147_483_647;
+      return s / 2_147_483_647;
+    };
+    const hue = Math.floor(rand() * 360);
+    const hue2 = (hue + 60 + Math.floor(rand() * 120)) % 360;
+    const dots = Array.from({ length: 6 }, () => ({ x: rand() * 100, y: rand() * 100, r: 6 + rand() * 22, o: 0.18 + rand() * 0.4, c: rand() > 0.5 ? hue2 : hue }));
+    return { hue, hue2, dots };
+  }, [seed]);
+  const id = `g${String(seed)}`;
   return (
-    <div className="vault-art vault-art-blank" style={{ background: `hsl(${hue} 70% 62%)` }} aria-label={label} role="img">
-      <span>#{String(seed).slice(-6)}</span>
-    </div>
+    <svg className="vault-art" viewBox="0 0 100 100" role="img" aria-label={label} preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={`hsl(${shapes.hue} 65% 58%)`} />
+          <stop offset="1" stopColor={`hsl(${shapes.hue2} 60% 32%)`} />
+        </linearGradient>
+      </defs>
+      <rect width="100" height="100" fill={`url(#${id})`} />
+      {shapes.dots.map((d, i) => (
+        <circle key={i} cx={d.x} cy={d.y} r={d.r} fill={`hsl(${d.c} 80% 75%)`} opacity={d.o} />
+      ))}
+      <text x="50" y="58" textAnchor="middle" fontFamily="ui-monospace, monospace" fontWeight="700" fontSize="16" fill="rgb(7 9 12 / 0.7)">
+        #{String(seed).slice(-6)}
+      </text>
+    </svg>
   );
 }
 
@@ -700,12 +1130,19 @@ function parseUnits(value: string, decimals: number): bigint | null {
   return BigInt(m[1]!) * 10n ** BigInt(decimals) + BigInt((m[2] ?? "").padEnd(decimals, "0") || "0");
 }
 
-/** What shows and what does not, side by side. */
+/** Why the vault, then what shows and what does not, side by side. */
 function Leaks() {
   const t = useT();
   return (
-    <section className="vault-panel vault-leaks" id="leaks">
-      <h2>{t("vault.leaks.title")}</h2>
+    <section className="vault-leaks" id="leaks">
+      <p className="vault-meta vault-leaks-lede">{t("vault.lede")}</p>
+      <ol className="vault-why">
+        {(["1", "2", "3", "4"] as const).map((n) => (
+          <li key={n}>
+            <strong>{t(`vault.why${n}.title`)}</strong> {t(`vault.why${n}.body`)}
+          </li>
+        ))}
+      </ol>
       <div className="vault-leaks-cols">
         <div>
           <h3>{t("vault.leaks.public")}</h3>
@@ -727,4 +1164,3 @@ function Leaks() {
     </section>
   );
 }
-

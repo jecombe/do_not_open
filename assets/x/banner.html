@@ -1,0 +1,173 @@
+<!doctype html><meta charset="utf-8"><style>@font-face{font-family:S;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+stardos-stencil@5.3.0/node_modules/@fontsource/stardos-stencil/files/stardos-stencil-latin-700-normal.woff2)}@font-face{font-family:B;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2)}@font-face{font-family:BM;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-500-normal.woff2)}html,body{margin:0;background:#07090c}svg{display:block}</style>
+<!-- The X (Twitter) profile banner, 1500×500. Left: the game's warehouse (kraft boxes, tape, the stamp, the cats).
+     Right: the vault's dark, teal, encrypted side. One box sits across the seam, half cardboard, half cipher.
+     X lays the avatar over the bottom left and crops the top and bottom on phones, so both stay plain. -->
+<svg width="1500" height="500" viewBox="0 0 1500 500" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+ <clipPath id="warm"><polygon points="0,0 700,0 800,500 0,500"/></clipPath>
+ <clipPath id="cold"><polygon points="700,0 1500,0 1500,500 800,500"/></clipPath>
+ <radialGradient id="lamp" cx="30%" cy="0%" r="70%"><stop offset="0" stop-color="#ffb454" stop-opacity=".55"/><stop offset=".5" stop-color="#ffb454" stop-opacity=".12"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <radialGradient id="tealglow" cx="72%" cy="20%" r="65%"><stop offset="0" stop-color="#5be3c2" stop-opacity=".18"/><stop offset="1" stop-color="#5be3c2" stop-opacity="0"/></radialGradient>
+ <radialGradient id="boxlight" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb454" stop-opacity=".35"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0e0b08" stop-opacity="0"/><stop offset="1" stop-color="#0e0b08" stop-opacity=".9"/></linearGradient>
+ <linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d79a55"/><stop offset="1" stop-color="#b9783c"/></linearGradient>
+ <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#1c2530" stroke-width="1"/></pattern>
+ <pattern id="hazard" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="20" height="40" fill="#ffd66b"/><rect x="20" width="20" height="40" fill="#17130f"/></pattern>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="3"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="softglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".55"/></filter>
+ <symbol id="sbox" viewBox="0 0 100 80" overflow="visible">
+  <rect width="100" height="80" fill="#8a6238"/>
+  <rect width="100" height="80" fill="#8a6238" filter="url(#grain)"/>
+  <rect width="100" height="14" fill="#a8925e"/>
+  <rect x="44" width="12" height="80" fill="#d9c28a" opacity=".55"/>
+  <rect x="12" y="40" width="26" height="16" fill="#f6eedb" opacity=".85"/>
+ </symbol>
+ <!-- the big box, front 0..300 x 0..220, top and side in a light oblique -->
+ <g id="boxShape">
+  <polygon points="0,0 300,0 360,-50 60,-50"/>
+  <polygon points="300,0 360,-50 360,170 300,220"/>
+  <rect x="0" y="0" width="300" height="220"/>
+ </g>
+</defs>
+
+<!-- ============ WARM SIDE: the game ============ -->
+<g clip-path="url(#warm)">
+ <rect width="1500" height="500" fill="#2a221b"/>
+ <rect width="1500" height="500" fill="url(#lamp)"/>
+ <!-- back shelf -->
+ <rect x="0" y="196" width="900" height="10" fill="#0e0b08"/>
+ <use href="#sbox" x="300" y="128" width="84" height="68"/>
+ <use href="#sbox" x="392" y="146" width="62" height="50"/>
+ <use href="#sbox" x="462" y="120" width="96" height="76"/>
+ <use href="#sbox" x="566" y="140" width="70" height="56"/>
+ <use href="#sbox" x="20" y="134" width="78" height="62"/>
+ <!-- floor -->
+ <rect x="0" y="380" width="900" height="120" fill="#1d1712"/>
+ <rect x="0" y="380" width="900" height="3" fill="#3a2e22"/>
+ <rect x="0" y="300" width="900" height="200" fill="url(#floor)"/>
+ <!-- hazard tape along the top -->
+ <rect x="0" y="0" width="900" height="16" fill="url(#hazard)" opacity=".9"/>
+
+ <!-- cats on the floor, clear of the avatar's corner -->
+ <image href="../discord/emoji/dno_tabby.png" x="346" y="292" width="118" height="96" filter="url(#shadow)"/>
+ <image href="../discord/emoji/dno_orange.png" x="470" y="276" width="66" height="112" filter="url(#shadow)"/>
+
+ <!-- the stamp -->
+ <g transform="translate(46 44) rotate(-4)" filter="url(#shadow)">
+  <rect width="440" height="112" rx="4" fill="#e9dfc8"/>
+  <rect x="10" y="10" width="420" height="92" fill="none" stroke="#c2261d" stroke-width="5" filter="url(#rough)"/>
+  <text x="220" y="78" text-anchor="middle" font-family="S" font-size="58" fill="#c2261d" textLength="380" lengthAdjust="spacingAndGlyphs" filter="url(#rough)">DO NOT OPEN</text>
+ </g>
+ <text x="56" y="232" font-family="B" font-size="30" fill="#e9dfc8" letter-spacing="1" transform="rotate(-1 56 232)">10,000 SEALED BOXES.</text>
+ <text x="56" y="266" font-family="B" font-size="30" fill="#ffd66b" letter-spacing="1" transform="rotate(-1 56 266)">ONE CAT IN EACH.</text>
+</g>
+
+<!-- ============ COLD SIDE: the vault ============ -->
+<g clip-path="url(#cold)">
+ <rect width="1500" height="500" fill="#07090c"/>
+ <rect width="1500" height="500" fill="url(#grid)" opacity=".9"/>
+ <rect width="1500" height="500" fill="url(#tealglow)"/>
+ <!-- falling ciphertext, faint -->
+ <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="13" fill="#5be3c2" opacity=".13">
+  <text x="830" y="40">0x9f3a…c71e  euint256  0x51b0…aa02</text>
+  <text x="860" y="470">eaddress 0x7c2e…19fd  ·  ACL allowThis</text>
+  <text x="1210" y="470">0xe4d5…bf2a</text>
+  <text x="1270" y="40">select(moved, r, k)</text>
+ </g>
+ <!-- the cat in the dark: only its eyes -->
+ <g filter="url(#glow)">
+  <ellipse cx="1400" cy="414" rx="8" ry="10" fill="#5be3c2"/>
+  <ellipse cx="1430" cy="414" rx="8" ry="10" fill="#5be3c2"/>
+  <ellipse cx="1400" cy="414" rx="2" ry="8" fill="#07090c"/>
+  <ellipse cx="1430" cy="414" rx="2" ry="8" fill="#07090c"/>
+ </g>
+
+ <!-- the vault's copy -->
+ <g transform="translate(1064 0)">
+  <text x="0" y="92" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="15" fill="#5be3c2" letter-spacing="3">● SEALED VAULT</text>
+  <text x="0" y="150" font-family="B" font-size="46" fill="#e6edf3">The world sees the art.</text>
+  <text x="0" y="204" font-family="B" font-size="46" fill="#5be3c2" filter="url(#glow)">Not the owner.</text>
+  <!-- a ledger line, as the public sees it -->
+  <g transform="translate(0 240)" font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="14">
+   <rect width="400" height="96" rx="8" fill="#0d1117" stroke="#2a3644"/>
+   <text x="16" y="28" fill="#8b97a6">box</text><text x="96" y="28" fill="#e6edf3">#0007</text>
+   <text x="16" y="52" fill="#8b97a6">holds</text><text x="96" y="52" fill="#e6edf3">Bored Ape #1234</text>
+   <text x="16" y="76" fill="#8b97a6">holder</text>
+   <rect x="96" y="63" width="150" height="17" rx="3" fill="#5be3c2" opacity=".18"/>
+   <text x="102" y="76" fill="#5be3c2">▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒</text>
+   <text x="262" y="76" fill="#5be3c2" opacity=".75">encrypted</text>
+  </g>
+  <text x="0" y="380" font-family="BM" font-size="19" fill="#8b97a6" letter-spacing="2.5">CONFIDENTIAL NFTS · FHE ON ETHEREUM</text>
+ </g>
+</g>
+
+<!-- ============ THE BOX ACROSS THE SEAM ============ -->
+<g transform="translate(600 182)">
+ <ellipse cx="180" cy="232" rx="210" ry="20" fill="#000" opacity=".5"/>
+ <!-- cardboard half -->
+ <g clip-path="url(#boxwarm)">
+  <clipPath id="boxwarm"><polygon points="-200,-282 80,-282 200,318 -200,318"/></clipPath>
+  <polygon points="0,0 300,0 360,-50 60,-50" fill="#e3ad6d"/>
+  <polygon points="300,0 360,-50 360,170 300,220" fill="#9a6230"/>
+  <rect width="300" height="220" fill="url(#front)"/>
+  <rect width="300" height="220" fill="#c08040" filter="url(#grain)" opacity=".8"/>
+  <!-- tape -->
+  <polygon points="130,0 170,0 230,-50 190,-50" fill="#f0d79a" opacity=".85"/>
+  <rect x="130" y="0" width="40" height="64" fill="#f0d79a" opacity=".8"/>
+  <!-- label -->
+  <g transform="translate(22 92)">
+   <rect width="110" height="62" fill="#f6eedb"/>
+   <text x="8" y="16" font-family="B" font-size="9" fill="#1c1814">LOST PARCEL DEPOT / CONSIGNMENT</text>
+   <text x="8" y="38" font-family="S" font-size="20" fill="#1c1814">DNO-0007</text>
+   <g fill="#1c1814"><rect x="8" y="46" width="2" height="10"/><rect x="12" y="46" width="1" height="10"/><rect x="15" y="46" width="3" height="10"/><rect x="20" y="46" width="1" height="10"/><rect x="23" y="46" width="2" height="10"/><rect x="27" y="46" width="1" height="10"/><rect x="30" y="46" width="3" height="10"/><rect x="35" y="46" width="1" height="10"/><rect x="38" y="46" width="2" height="10"/><rect x="42" y="46" width="1" height="10"/><rect x="45" y="46" width="3" height="10"/><rect x="50" y="46" width="2" height="10"/><rect x="54" y="46" width="1" height="10"/><rect x="57" y="46" width="2" height="10"/><rect x="61" y="46" width="3" height="10"/><rect x="66" y="46" width="1" height="10"/></g>
+  </g>
+  <g transform="translate(36 194) rotate(-6)">
+   <rect width="104" height="24" fill="none" stroke="#c2261d" stroke-width="2.5" filter="url(#rough)" opacity=".85"/>
+   <text x="52" y="18" text-anchor="middle" font-family="S" font-size="15" fill="#c2261d" filter="url(#rough)" opacity=".85">DO NOT OPEN</text>
+  </g>
+  <!-- the king peeks over the lid -->
+ </g>
+ <!-- cipher half -->
+ <g clip-path="url(#boxcold)">
+  <clipPath id="boxcold"><polygon points="80,-282 600,-282 600,318 200,318"/></clipPath>
+  <polygon points="0,0 300,0 360,-50 60,-50" fill="#0f1a1d" stroke="#5be3c2" stroke-width="2"/>
+  <polygon points="300,0 360,-50 360,170 300,220" fill="#0a1214" stroke="#5be3c2" stroke-width="2"/>
+  <rect width="300" height="220" fill="#0d1619" stroke="#5be3c2" stroke-width="2"/>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="12" fill="#5be3c2" opacity=".55">
+   <text x="140" y="24">a3 9f 0c 7e 51 b0</text>
+   <text x="140" y="44">e4 d5 bf 2a 96 64</text>
+   <text x="140" y="64">1c 45 30 fc ba f4</text>
+   <text x="140" y="84">7b 7b 0a 2f ac ef</text>
+   <text x="140" y="104">55 b4 4f ed f5 ea</text>
+   <text x="140" y="124">c8 9c 8f 1b ae fe</text>
+   <text x="140" y="144">37 e9 47 f2 92 76</text>
+   <text x="140" y="164">69 09 75 da 96 aa</text>
+   <text x="140" y="184">4d 2d 25 1b 88 b8</text>
+   <text x="140" y="204">0e de a8 77 e3 37</text>
+  </g>
+  <!-- a padlock on the cipher face -->
+  <g transform="translate(232 76)" filter="url(#glow)">
+   <path d="M10 26 V16 a14 14 0 0 1 28 0 V26" fill="none" stroke="#5be3c2" stroke-width="4"/>
+   <rect x="2" y="26" width="44" height="34" rx="5" fill="#07090c" stroke="#5be3c2" stroke-width="3"/>
+   <circle cx="24" cy="40" r="4" fill="#5be3c2"/><rect x="22" y="42" width="4" height="9" fill="#5be3c2"/>
+  </g>
+ </g>
+ <!-- the shield around the box: arcs on the cold side -->
+ <g fill="none" stroke="#5be3c2" stroke-width="1.5" opacity=".45">
+  <path d="M138 -106 A 240 240 0 1 1 138 366" stroke-dasharray="6 7"/>
+  <path d="M133 -134 A 268 268 0 1 1 133 394" stroke-dasharray="2 10" opacity=".7"/>
+ </g>
+ <!-- a probe bouncing off the shield -->
+ <g stroke="#ff4d3d" stroke-width="2" opacity=".8" fill="none">
+  <path d="M400 -180 L 305 -86 L 360 -110"/><circle cx="305" cy="-86" r="3" fill="#ff4d3d"/>
+ </g>
+ <!-- the king cat on top of the lid, on the cardboard side -->
+ <image href="../discord/emoji/dno_king.png" x="40" y="-150" width="128" height="127" filter="url(#shadow)"/>
+</g>
+
+<!-- the seam itself -->
+<line x1="700" y1="0" x2="800" y2="500" stroke="#5be3c2" stroke-width="2" opacity=".55" filter="url(#softglow)" stroke-dasharray="10 8"/>
+</svg>

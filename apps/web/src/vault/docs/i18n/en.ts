@@ -48,7 +48,7 @@ export const vaultDocsEn = {
   "vaultDocs.offers.p5": "Only Seaport 1.5 offers paid in WETH can be accepted. Offers made on OpenSea's own site on mainnet use a newer Seaport and go through OpenSea's own service: the vault cannot accept those yet. Offers on some of a collection's NFTs only (by trait, say) are not taken either.",
 
   "vaultDocs.section.bid": "Making an offer",
-  "vaultDocs.bid.p1": "\"Make an offer\" on the vault's page lists every other NFT in the vault, each with its offers. You pick an amount and how long the offer lasts (1, 7 or 30 days). You do not know who holds the box, and you do not need to: the offer is for the NFT, and only its holder can accept it.",
+  "vaultDocs.bid.p1": "Every NFT in the vault's grid opens its own page, with its offers and a \"Make an offer\" button, whether it is listed or not. You pick an amount and how long the offer lasts (1, 7 or 30 days). You do not know who holds the box, and you do not need to: the offer is for the NFT, and only its holder can accept it.",
   "vaultDocs.bid.p2": "The page wraps your ETH into WETH, lets Seaport take that WETH, and has you sign the offer, then posts it to the board. The WETH stays in your wallet: Seaport takes it only if the holder accepts, and the NFT reaches you in the same move. WETH you no longer need stays yours, and turns back into ETH at any time.",
   "vaultDocs.bid.p3": "Your address shows with the offer, as on any marketplace. You can cancel it at any time, in one transaction; it also ends by itself on its end date.",
 

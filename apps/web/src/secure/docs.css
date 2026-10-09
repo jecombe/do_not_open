@@ -1,0 +1,305 @@
+/*
+ * The project's docs and the vault's (DocShell) in the secure theme: secure.css's bar, colours and
+ * type over the manual's layout (docs.css). Loaded after both. The game's manual keeps docs.css alone.
+ */
+.sec-doc {
+  /* The manual's colours, mapped onto the secure theme's, for what docs.css still draws. */
+  --dock-shadow: var(--bg);
+  --manifest: var(--text);
+  --sodium: var(--teal);
+  --spectral: var(--teal);
+  --tape: var(--line-2);
+  --stamp-red: var(--red);
+  --ink-red: var(--red);
+  --gutter: clamp(16px, 4vw, 48px);
+  --measure: 70ch;
+  font: 17px/1.65 var(--sans);
+}
+
+/* Three links at most: they stay in the bar until the phone, as on the vault's page. */
+@media (max-width: 1240px) {
+  .sec-doc .sec-top nav {
+    display: flex;
+  }
+}
+
+.sec-doc .manual {
+  max-width: 1240px;
+  padding-top: 0;
+}
+
+.sec-doc main a,
+.sec-doc .foot a {
+  color: var(--teal);
+  text-decoration: none;
+}
+
+.sec-doc main a:hover {
+  text-decoration: underline;
+}
+
+.sec-doc :focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* The hero. */
+.sec-doc .hero {
+  padding: clamp(40px, 7vw, 96px) 0 clamp(32px, 5vw, 64px);
+}
+
+.sec-doc h1 {
+  margin: 0 0 22px;
+  font: 700 clamp(38px, 5.2vw, 68px) / 1.04 var(--sans);
+  letter-spacing: -0.035em;
+  text-transform: none;
+  color: var(--text);
+}
+
+.sec-doc .lede {
+  max-width: 62ch;
+  margin: 0 0 28px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.sec-doc .hero-links {
+  gap: 14px 22px;
+}
+
+.sec-doc a.sec-btn,
+.sec-doc a.sec-btn:hover {
+  color: #04110d;
+  text-decoration: none;
+}
+
+/* The contents. */
+.sec-doc .toc {
+  top: 84px;
+}
+
+.sec-doc .toc .toc-group {
+  padding: 6px 0 6px 12px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font: 14px/1.35 var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sec-doc .toc .toc-group:hover {
+  color: var(--text);
+}
+
+.sec-doc .toc .toc-group[aria-current] {
+  border-left-color: var(--teal);
+  color: var(--teal);
+}
+
+/* The chapters. */
+.sec-doc main > section {
+  padding: clamp(40px, 6vw, 72px) 0;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 84px;
+}
+
+.sec-doc h2 {
+  margin: 0 0 18px;
+  font: 700 clamp(26px, 3.2vw, 38px) / 1.1 var(--sans);
+  letter-spacing: -0.03em;
+  text-transform: none;
+  color: var(--text);
+}
+
+.sec-doc main h3 {
+  font: 500 12px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sec-doc .prose p {
+  color: #c4ced9;
+}
+
+/* What leaks: the home page's two panels. */
+.sec-doc .doc-leaks > div {
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.sec-doc .doc-leaks > div:last-child {
+  border-color: rgb(91 227 194 / 0.35);
+  background: linear-gradient(180deg, rgb(91 227 194 / 0.07), var(--panel));
+}
+
+.sec-doc .doc-leaks h3 {
+  margin-top: 0;
+}
+
+.sec-doc .doc-leaks > div:last-child h3 {
+  color: var(--teal);
+}
+
+.sec-doc .refs li,
+.sec-doc .addresses li {
+  border-bottom: 1px solid var(--line);
+}
+
+.sec-doc .refs li {
+  color: var(--muted);
+}
+
+.sec-doc .refs a {
+  font-weight: 600;
+}
+
+.sec-doc .addresses li {
+  padding: 6px 0;
+  color: var(--muted);
+}
+
+.sec-doc .addresses a {
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+/* The animated flow: its card is a panel, not a paper slip. */
+.sec-doc .slip {
+  --manifest: var(--text);
+  --ink: var(--line-2);
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+  transform: none;
+  font-size: 15px;
+}
+
+.sec-doc .slip .lead {
+  font-size: 17px;
+}
+
+.sec-doc .steps {
+  border-block-color: var(--line);
+}
+
+.sec-doc .steps li + li {
+  border-top-color: var(--line);
+}
+
+.sec-doc .steps span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.sec-doc .steps .is-current button {
+  border-radius: 8px;
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+.sec-doc .steps .is-current span {
+  color: var(--text);
+}
+
+.sec-doc .plain-button {
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.sec-doc .plain-button:hover:not(:disabled),
+.sec-doc .picker button[aria-pressed="true"],
+.sec-doc .picker button:hover {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+.sec-doc .picker button {
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.sec-doc .legend {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sec-doc .legend [data-kind="proof"]::before {
+  background: var(--red);
+}
+
+.sec-doc .legend [data-kind="sign"]::before {
+  background: #ffb454;
+}
+
+.sec-doc .stage-label {
+  font: 600 13px var(--mono);
+}
+
+.sec-doc .foot {
+  margin-top: clamp(40px, 6vw, 72px);
+  padding: 28px 0 40px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 860px) {
+  .sec-doc {
+    font-size: 16px;
+  }
+
+  /* The contents' bar sits under the site's bar. */
+  .sec-doc .toc {
+    top: 63px;
+    background: rgb(7 9 12 / 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sec-doc .toc-narrow summary {
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+  }
+
+  .sec-doc .toc-label {
+    color: var(--teal);
+    font: 500 11px var(--mono);
+    letter-spacing: 0.12em;
+  }
+
+  .sec-doc .toc-narrow .toc-parts {
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sec-doc main > section {
+    scroll-margin-top: 130px;
+  }
+}
+
+@media (max-width: 560px) {
+  .sec-doc .sec-top nav {
+    gap: 14px;
+    font-size: 13px;
+  }
+}
+
+.sec-doc main > section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}

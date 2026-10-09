@@ -260,7 +260,7 @@ theirs its delegate in delegate.xyz's registry, so airdrops and token gates stil
 can also change hands privately, for a cUSDC price only the two sides read, settled under
 encryption. Public: the deposit, the NFT in each box, Seaport listings, offers and who made them, a box's
 delegate, where an NFT or a sale's ETH goes. Never public: who holds a box (even right after the deposit, with decoys), its key, a private sale's price and whether it went
-through. 2.5% of each sale goes to the treasury. The page is `/vault`; the design, the flows and
+through. 2.5% of each sale goes to the treasury. The page is `/vault`, laid out as a marketplace that fits the screen (the collection's numbers, tabs to explore, find your boxes, seal an NFT, read private sales and what leaks, filters on the side, each box's page in a dialog); the design, the flows and
 the limits are in [`docs/VAULT.md`](docs/VAULT.md).
 
 ## On Sepolia
@@ -412,8 +412,12 @@ before a mainnet deployment.
 
 ## Read next
 
-The site opens on a cartoon home page at `/` (source `apps/web/src/home`): the pitch in four steps, a box to shake until a random cat jumps out, and every kind of cat on a three.js turntable. The app carries its own illustrated manual at `/docs` (`/fr/docs`, `/es/docs`, `/it/docs`) (the "Manual" tag in the
-navigation): the seed, the flows and the package layout as interactive three.js diagrams.
+The site opens on the home page at `/` (source `apps/web/src/secure`): the sealed vault first, in a dark, security-minded
+theme, and the game as a small corner at the end. Its bar's "Docs" leads straight to the vault's docs (`/docs` on `vault.`,
+source `apps/web/src/vault/docs`), which share that theme with the project's docs (`/docs` on the bare domain, source
+`apps/web/src/project`): both are laid out by `apps/web/src/docs/DocShell.tsx` and styled by `apps/web/src/secure/docs.css`.
+The game carries its own illustrated manual in the game's look at `/docs` on `game.` (`/fr/docs`, `/es/docs`, `/it/docs`)
+(the "Manual" tag in the navigation): the seed, the flows and the package layout as interactive three.js diagrams.
 Its source is `apps/web/src/docs`.
 
 The home page, the manual, the studio and the boarding page are prerendered at build time, one file per language
