@@ -1192,8 +1192,9 @@ leaves the vault (the NFT, a Seaport listing, an accepted offer, a sale's ETH) a
 delegate in delegate.xyz are asked with the key, bound to the request's terms, so any wallet can
 carry the request: the API's vault relayer, when there is one. The deposit, Seaport (list, fill,
 sync, collect), giving a box and making its key yours, the state diagram, what leaks and why
-are in [VAULT.md](VAULT.md). The flows below are the ones with encryption in them, and the two
-that ride on a request: accepting an offer and delegating.
+are in [VAULT.md](VAULT.md). The flows below are the ones with encryption in them, the two that
+ride on a request (accepting an offer and delegating), and the pockets, where the vault holds
+cUSDC under a key.
 
 ### A request: take out, list, take down, collect, accept an offer, delegate
 
@@ -1315,6 +1316,56 @@ sequenceDiagram
 ```
 
 Nothing is decrypted in public: a sale that went through and one that did not look the same.
+
+### Pockets: send and take out
+
+A pocket is cUSDC under an encrypted key ([VAULT.md](VAULT.md#pockets)). Every action names a set
+of pockets, the real one among decoys; nothing is decrypted in public.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder's page
+  participant R as Relayer
+  participant P as SealedPockets
+  participant U as cUSDC
+  H->>H: encrypt amount + target, then key XOR spendHash(action, sets, destination, their handles)
+  H->>R: send(from set, to set, inputs) or withdraw(from set, to, inputs)
+  R->>P: the same, from its own wallet
+  P->>P: refuse a bound key's handle already spent
+  P->>P: each paying pocket: ok = key matches AND balance >= amount (AND target in the receiving set)
+  P->>P: debit select(ok, amount, 0) from each; credit the total to the receiving pocket whose number = target
+  P->>U: withdraw only: confidentialTransfer(to, the total)
+  H->>H: the viewer user-decrypts the new balance
+```
+
+### Pockets: buying a private sale
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor S as Seller
+  participant V as Vault
+  participant D as PocketDesk
+  actor H as Buyer's page
+  participant K as Zama relayer + KMS
+  participant P as SealedPockets
+  S->>V: offerSale(boxId, desk, encrypted price)
+  S->>D: reserve(saleId, pocket): its viewer may read the price
+  H->>D: ask(saleId, key XOR buyHash(sale, pocket, box key handle), box key handle)
+  D->>P: deskCheck(pocket, key, price): ok, made publicly decryptable
+  H->>K: publicDecrypt(ok)
+  H->>D: buy(askId, proof, box key encrypted for the vault with the desk as user)
+  alt ok is false
+    D->>D: ask Refused, the sale stays open
+  else ok is true
+    D->>P: deskTake: select(key and balance still hold, price, 0) to the desk
+    D->>V: acceptSale(saleId, box key): pulls the price from the desk, all or nothing
+    V->>V: moved = paid AND the seller holds the box; the box and key go to the desk
+    D->>P: deskGive(pocket, the desk's balance: a refund, or 0)
+    D->>D: ownerOf(box) = pocket + 1 if moved, readable by its viewer
+  end
+```
 
 ## Where the money goes
 

@@ -92,6 +92,9 @@ mainnet), **Not done** (a check nobody has run).
 | O42 | Vault listings are validated on-chain and never posted to OpenSea's API: OpenSea's website may not show them (its testnet site may not show Sepolia at all). Not checked | Low (UX) | `SealedVault._list` |
 | O43 | The vault accepts Seaport 1.5 offers in WETH only, with fixed amounts and no tips: OpenSea's mainnet offers (Seaport 1.6, through its zone) cannot be filled, and the board refuses trait offers (a criteria root other than 0) | Low (UX) | `VaultOffers.inspect`, `post` |
 | O44 | A vault box keeps its delegate when it changes hands (clearing it on a transfer would let anyone clear any box's delegate with a transfer that moves nothing): the previous holder's delegate keeps the NFT's rights in delegate.xyz until the new holder names their own. The delegate is public | Low (rights, privacy) | `SealedVault._delegate`, `_transfer` |
+| O45 | The pockets' sets are public: a pocket named in many actions, or always among the same few, can be singled out by intersecting its sets; a deposit names its wallet, a withdrawal its address. The hiding grows with the number of pockets and the decoys each action names | Medium (privacy) | `SealedPockets`, `pocketSet` |
+| O46 | A pocket's key and viewer come from one wallet signature of a fixed message: a site that gets that signature can spend the pocket and read its balance | Medium (keys) | `EvmPockets.keys`, `pocketKeyMessage` |
+| O47 | A box bought from a pocket is held by `PocketDesk`: it can be taken out, listed, sold to an offer and delegated with its key, but not given or sold privately again, and the reserved pocket of a desk sale is public | Low (UX, privacy) | `PocketDesk.reserve`, `buy` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -512,6 +515,30 @@ FHEVM mock, against Seaport 1.5's runtime bytecode read from Sepolia (`test/seap
 | HCU | Pass | `acceptSale` ~4.34M (2.31M depth) of 20M (5M), the heaviest call; a transfer ~338k; accepting an offer and delegating cost a request's ~191k, their finalize none |
 | Contract size | Pass | `SealedVault` 24,322 bytes deployed, 254 under the 24,576-byte limit (default optimizer); `VaultOffers` 6,517 |
 | Static analysis, fuzzing | Not done | |
+
+## 16. The vault's pockets: SealedPockets and PocketDesk
+
+`SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
+buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). Not deployed yet.
+45 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
+(itself on Seaport 1.5's and delegate.xyz's bytecode); the relayer's routes in
+`apps/api/test/vaultRelay.test.ts`; the adapter's `EvmPockets` (what the page runs) against the contracts in `test/PocketsAdapter.ts`.
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Tokens are conserved | Pass | Every pocket's balance and the pockets' own cUSDC match a model after 24 random deposits, sends (right and wrong keys, short balances, targets outside the set) and withdrawals: what the contract holds is the sum of the balances. Test: "keeps every token accounted for over a long run of random actions" |
+| Only the key's pocket pays, only if it covers the amount | Pass | `_debit`: `select(eq(key, k) AND ge(balance, amount) AND go, amount, 0)` per pocket, summed. Tests: "moves the amount from the key's pocket…", "moves nothing with a wrong key", "moves nothing when the balance is short", "debits only the pocket whose key it is…", "pays nothing with a wrong key or a short balance" |
+| Nothing is lost to a missing target | Pass | A send debits only if the target is in the receiving set (`_inSet`); a deposit refunds what found no pocket. Tests: "moves nothing when the target is not in the receiving set", "gives the tokens back when the target is not in the set" |
+| A pocket is paid once per action | Pass | `_checkSet`: 1 to `MAX_SET` pockets, strictly increasing, all opened. Test: "refuses sets out of order, repeated, too long or naming no pocket" |
+| The relayer cannot change a spend or replay it | Pass | The bound key hashes the action, both sets, the destination and the handles of the encrypted amount and target; each bound key's handle is spent once; inputs are bound to their sender. Tests: "moves nothing when the relay changes the receiving set", "moves nothing when the relay changes the paying set or the amount", "pays nothing when the relay changes where it goes", "runs a bound key once…", "refuses a bound key the relay replays in another kind of spend", "refuses inputs encrypted for another sender" |
+| Only the viewer reads a balance; nobody reads a key | Pass | `_setBalance` allows the pockets and the viewer; the key is `allowThis` only. Test: "opens a pocket with a zero balance only its viewer reads" |
+| Only the desk moves balances outside a spend | Pass | `deskTake`, `deskCheck`, `deskGive` revert `OnlyDesk`; `setDesk` is the owner's, once. Tests: "refuses a desk move from anyone but the desk", "leaves the desk unset until the owner sets it, once" |
+| A short or wrong pocket buys nothing, and pays for nobody | Pass | The desk holds only what `deskTake` just took; the vault pulls the price all or nothing; tokens sent to the desk do not stand in for a pocket (the ask checks the pocket's own balance). Tests: "buys nothing with a wrong key…", "buys nothing when the pocket cannot cover the price", "does not let tokens sent to the desk pay for a pocket that is short", "buys nothing when the pocket was spent between the ask and the purchase" |
+| A stranger cannot spend a seller's sale | Pass | `ask` makes only the key-and-balance bit public; `buy` runs the sale only with its proof, so a wrong key leaves the sale open. Test: "buys nothing with a wrong key, and the sale stays open for the real buyer" |
+| A refund comes back to the pocket | Pass | `_handBack` sends the desk's whole balance back to the pocket after `acceptSale`. Test: "hands the price back to the pocket when the seller no longer holds the box" |
+| A purchase follows the seller's reservation, its box key, its proof | Pass | `buy` re-checks `reservedFor`, compares the box key's handle with the ask's, checks the proof with `FHE.checkSignatures`, settles once. Tests: "follows the seller's latest reservation", "refuses a box key other than the one the ask named", "rejects a forged decryption proof", "only lets the seller reserve…", "stops a purchase whose sale the seller cancelled after the ask" |
+| The bought box answers to the buyer's key | Pass | The box key is encrypted for the vault with the desk as user and becomes the box's key at `acceptSale`. Test: "buys a private sale with a pocket…" takes the NFT out with that key |
+| Every call fits the HCU limits | Pass | A send between two sets of five ~6.5M HCU, a desk purchase ~6.3M. Tests under "limits and costs" and "buys within the HCU limits" |
 
 ## Before mainnet
 

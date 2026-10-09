@@ -23,7 +23,8 @@ flowchart LR
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
 | `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport, `offers` (`VaultOffers`' address, ABI and deploy block), WETH, delegate.xyz's registry and collections; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
-| `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`) |
+| `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`); the `PocketsAdapter` interface, its pockets' (`PocketsInfo`, `PocketSale`, `PocketOptions`) |
+| `src/pockets.ts` | `pocketSet`: the real pocket among decoys, as the contract wants a set |
 | `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`), the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
 | `src/mock/MockVault.ts` | The vault in memory, with the contract's rules: the night shift holds two boxes, one listed on Seaport, buys a listing of yours after 20 mock seconds, offers 0.03 WETH for every NFT you seal and accepts any private sale offered to it. `MOCK_VAULT` and `MOCK_VAULT_NFT` (a free test collection) are exported |
@@ -314,6 +315,35 @@ The key is never stored: the wallet signs `vaultKeyMessage(vault, chainId)` once
 tokenId))`, the same on any device. The EVM vault reads its boxes and logs from the RPC; the API
 indexes only its counts, for the team. Every action reports the usual steps (`wallet` also for the key
 signature).
+
+`vault.pockets()` returns the vault's `PocketsAdapter`, or null where the pockets are not deployed
+(`sepolia.json`'s `vault.pockets`, with its `desk`). A pocket holds cUSDC under a key, not an
+address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
+
+- `info()`: `address`, `desk`, `count` (pockets opened, the decoys' pool), `maxSet` (5).
+- `mine()` finds the wallet's pocket (null before it is opened); `open()` opens it (relayed when
+  there is a relayer). The wallet signs `pocketKeyMessage(pockets, chainId)` once a session:
+  `keccak256(signature, "key")` is the key, `keccak256(signature, "viewer")` the private key of
+  the viewer, a wallet that only signs decryption permits.
+- `balance()` user-decrypts the pocket's balance as its viewer (`userDecryptAs`: the adapter
+  keeps a permit per account).
+- `deposit(amount, { to?, decoys? })` pulls the wallet's cUSDC (making the pockets its operator
+  if needed) into pocket `to` (the wallet's own by default) among decoys; `send(to, amount, {
+  decoys? })` and `withdraw(address, amount, { decoys? })` encrypt the amount and target, then
+  the key XOR `spendHash(...)` in a second input, and go through the relayer. A short balance
+  moves nothing and throws nothing. `pocketSet(real, count, decoys, maxSet)` picks the sets
+  (`DEFAULT_POCKET_DECOYS`, 2 decoys).
+- `offerSale(boxId, pocketId, price)` (the seller) offers a box privately to the desk and
+  reserves it for a pocket; `sales()` lists the sales reserved for the wallet's pocket
+  (`PocketSale`, with `pocketId`); `salePrices(saleIds)` decrypts them as the viewer;
+  `buy(saleId)` asks (the pocket's bound key for the desk, the box key encrypted for the vault
+  with the desk as user), waits for the public "ok", then buys: throws `not-yours` when the key
+  or the balance did not hold (the sale stays open), else returns whether the box moved.
+  `boxes()` lists the boxes the wallet's pocket bought (`ownerOf` on the desk, decrypted as the
+  viewer); the vault's own requests work on them with the usual box key.
+
+The mock (`MockVault`) has four strangers' pockets and the night shift's, which buys any box
+offered to it; opening a pocket brings an offer of one of the night shift's boxes for 5 cUSDC.
 
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its
 account picker again (EIP-2255 `wallet_requestPermissions`) rather than handing back the

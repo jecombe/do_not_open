@@ -32,8 +32,9 @@ them, duel them, open them. Who holds what is encrypted.
 
 ### 🔐 The sealed vault
 
-Put any NFT in a box whose holder is encrypted. Take it out, sell it on Seaport, accept an
-offer, or lend its rights, without your address showing.
+Put any NFT in a box whose holder is encrypted, and your tokens in a pocket. Take the NFT out,
+sell it on Seaport, accept an offer, lend its rights, or pay anyone from your pocket, without
+your address showing.
 
 **[Open the vault](https://vault.do-not-open.app)** · [Docs](https://vault.do-not-open.app/docs) ·
 **[Developer docs → `docs/VAULT.md`](docs/VAULT.md)**
@@ -53,7 +54,8 @@ account finds its own tokens by decrypting its own transfer receipts. See
 - **[The game](#the-game)** builds a collection on it: 10,000 boxes whose cats, owners,
   balances and sale count are encrypted.
 - **[The sealed vault](#the-sealed-vault)** builds a second one that wraps any NFT, so its
-  holder disappears from the chain until they take it out.
+  holder disappears from the chain until they take it out, and pockets that do the same for
+  tokens: who paid whom, and how much, stays encrypted.
 
 Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 
@@ -99,7 +101,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault, VaultOffers"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault, VaultOffers,<br/>SealedPockets, PocketDesk"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
   api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
@@ -134,7 +136,7 @@ does not depend on ethers, viem or the Relayer SDK.
 
 ```bash
 pnpm install
-pnpm test        # generator, chain adapter, API, and 285 contract tests on the FHEVM mock
+pnpm test        # generator, chain adapter, API, and 335 contract tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173: home page; the game at /app, the vault at /vault (mock mode, no chain)
 ```
@@ -213,13 +215,16 @@ USDC.
 
 > **[→ Read the vault's developer docs: `docs/VAULT.md`](docs/VAULT.md)** · [Open the vault](https://vault.do-not-open.app) · [Its docs](https://vault.do-not-open.app/docs)
 
-Next to the game, the same encryption hides who holds any NFT. `SealedVault` takes an NFT of an
+Next to the game, the same encryption hides who holds any NFT, and who pays whom with tokens.
+`SealedVault` takes an NFT of an
 allowed collection (a free test collection on test networks) and gives its depositor a box, a
 Confidential ERC-721 of its own whose holder is encrypted, sent in the same transaction to a few
 decoys so even the depositor is not its obvious holder. Every request on a box is asked with an
 encrypted key the holder's wallet derives from one signature, not with an address, so the API's
 relayer can send it and the holder's address shows on none. 2.5% of each sale goes to the
-treasury.
+treasury. Tokens go in pockets: `SealedPockets` holds cUSDC under a key rather than an address,
+so sending it to another pocket, buying a box with it (through `PocketDesk`) or taking it out says
+nothing public about who paid whom, or how much.
 
 | What a holder can do | Where to read more |
 | --- | --- |
@@ -230,16 +235,19 @@ treasury.
 | 🪪 **Name a delegate** in delegate.xyz, so airdrops and token gates still reach you | [Delegation](docs/VAULT.md#delegation) |
 | 🤫 **Sell the box privately** for a cUSDC price only the two sides read | [Private sale](docs/VAULT.md#private-sale) |
 | 🎁 **Give the box**, and make its key yours | [Give a box](docs/VAULT.md#give-a-box-and-make-its-key-yours) |
+| 👛 **Keep tokens in a pocket**: put cUSDC in, send it pocket to pocket, take it out, nothing public says who paid whom | [Pockets](docs/VAULT.md#pockets) |
+| 🛒 **Pay for a box from a pocket**, and cash a private sale into one | [With the vault's boxes](docs/VAULT.md#with-the-vaults-boxes) |
 | 👁️ **What leaks**, and what never does | [What is public, what is not](docs/VAULT.md#what-is-public-what-is-not) |
 | ⚙️ The relayer, the team's view, the decisions, the limits, the costs | [Relayer](docs/VAULT.md#the-relayer) · [Team](docs/VAULT.md#what-the-team-sees) · [Decisions](docs/VAULT.md#decisions) · [Limits](docs/VAULT.md#limits) · [Cost](docs/VAULT.md#cost) |
 | 📜 **The contracts and their addresses** | [The vault's contracts](#the-vaults-contracts) |
 
 Public: the deposit, the NFT in each box, Seaport listings, offers and who made them, a box's
 delegate, where an NFT or a sale's ETH goes. Never public: who holds a box (even right after the
-deposit, with decoys), its key, a private sale's price and whether it went through. The page is
+deposit, with decoys), its key, a private sale's price and whether it went through, a pocket's
+balance, an amount it moved, which pocket of a set moved. The page is
 `/vault`, laid out as a marketplace that fits the screen (the collection's numbers, tabs to
-explore, find your boxes, seal an NFT, read private sales and what leaks, filters on the side,
-each box's page in a dialog). Every action plays on a stage with its own animation, its steps
+explore, find your boxes, your pocket, seal an NFT, read private sales and what leaks, filters
+on the side, each box's page in a dialog). Every action plays on a stage with its own animation, its steps
 and its transactions (block, gas, explorer link); folded away, or left behind when the visitor
 goes to another page of the site, it shows at the foot of the page. The header carries the
 wallet's balances, live (ETH, WETH, USDC, and cUSDC decrypted for its holder alone); a click on
@@ -252,6 +260,7 @@ testnet any more).
 | Part | Scope | State |
 | --- | --- | --- |
 | Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, sold to a buyer's WETH offer the holder accepts (`VaultOffers`, also an on-chain offer board), or sold privately for an encrypted cUSDC price; meanwhile the NFT's rights (airdrops, token gates) lent to a wallet through delegate.xyz; every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs | **Live** on Sepolia since 2026-10-08, redeployed twice on 2026-10-09: requests no longer lock a box and a deposit sends decoys (block 11876345), then accepted offers and delegation (`SealedVault` block 11876575, `VaultOffers` 11876574, its test NFT kept) |
+| Pockets | "My pocket" on `/vault`: cUSDC in a pocket locked by a key rather than an address (`SealedPockets`), put in from a wallet, sent pocket to pocket, taken out to any address, each action naming the real pocket among decoys and settled under encryption with no decryption; a private sale offered to a pocket and bought with it (`PocketDesk`: an ask with one public bit, then the purchase; the box then held by the desk with the buyer's key); a sale's cUSDC cashed into the seller's pocket; relayed by the API; the home page's story alternates an NFT and tokens | **Done**, not deployed on Sepolia yet |
 
 ## On Sepolia
 

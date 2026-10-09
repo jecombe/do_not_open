@@ -92,7 +92,9 @@ describe("SealedPockets", function () {
       expect(await pockets.viewerOf(id)).to.eq(viewers[0]!.address);
       expect(await pockets.pocketOf(viewers[0]!.address)).to.eq(1n);
       expect(await balance(id, 0)).to.eq(0n);
-      await expect(fhevm.userDecryptEuint(FhevmType.euint64, await pockets.balanceOf(id), addr, viewers[1]!)).to.be.rejected;
+      let refused = false;
+      await fhevm.userDecryptEuint(FhevmType.euint64, await pockets.balanceOf(id), addr, viewers[1]!).catch(() => (refused = true));
+      expect(refused).to.eq(true);
     });
 
     it("takes one pocket per viewer", async function () {
@@ -585,7 +587,7 @@ describe("SealedPockets", function () {
       await deposit(alice, [pa], pa, usd("500"));
       const { boxId, saleId } = await offerToPocket(5, pa);
       // Bob gives the box away before the purchase.
-      await (await vault.connect(bob)["confidentialTransfer(address,uint256)"](carolAddress(), boxId)).wait();
+      await (await vault.connect(bob).confidentialTransfer(carolAddress(), boxId)).wait();
       await buy(saleId, pa, aliceKey, randomKey());
       expect(await balance(pa, 0)).to.eq(usd("500"));
       expect(await deskCusdc()).to.eq(0n);
