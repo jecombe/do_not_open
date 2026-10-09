@@ -51,7 +51,7 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.bid": "Hacer una oferta",
   "vaultDocs.bid.p1": "Cada NFT de la cuadrícula de la bóveda abre su propia ficha, con sus ofertas y un botón «Hacer una oferta», esté en venta o no. Eliges un importe y cuánto dura la oferta (1, 7 o 30 días). No sabes quién tiene la caja, ni te hace falta: la oferta es por el NFT, y solo su titular puede aceptarla.",
-  "vaultDocs.bid.p2": "La página envuelve tu ETH en WETH, deja que Seaport tome ese WETH y te hace firmar la oferta; luego la publica en el tablón. El WETH se queda en tu wallet: Seaport solo lo toma si el titular acepta, y el NFT te llega en el mismo movimiento. El WETH que ya no necesites sigue siendo tuyo, y vuelve a ser ETH cuando quieras.",
+  "vaultDocs.bid.p2": "La página envuelve tu ETH en WETH, deja que Seaport tome ese WETH y te hace firmar la oferta; luego la publica en el tablón. El WETH se queda en tu wallet: Seaport solo lo toma si el titular acepta, y el NFT te llega en el mismo movimiento. El WETH que ya no necesites sigue siendo tuyo, y vuelve a ser ETH cuando quieras. Un clic en tu dirección abre tu perfil: tu ETH, WETH, USDC y cUSDC (el cUSDC descifrado solo para ti, con una firma), en directo, tus cajas, y cómo cambiar de wallet o desconectarte.",
   "vaultDocs.bid.p3": "Tu dirección se ve con la oferta, como en cualquier marketplace. Puedes cancelarla en cualquier momento, en una transacción; además termina sola en su fecha.",
 
   "vaultDocs.section.private": "Ventas privadas",

@@ -105,6 +105,11 @@ export class MockVault implements VaultAdapter {
     return this.all.flatMap((b, id) => (me && b.holder === me && !gone(b) ? [id] : []));
   }
 
+  /** The demo keeps no WETH: its offers are paid from the buyer's ETH, as if wrapped on the spot. */
+  async wethBalance(_owner: Address): Promise<bigint> {
+    return 0n;
+  }
+
   async walletNfts(collection: Address): Promise<bigint[]> {
     const me = this.host.account();
     if (!me || !sameAddress(collection, MOCK_VAULT_NFT)) return [];

@@ -268,6 +268,8 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
   `busy` (requests wait for their proof: the box cannot move until they settle,
   though requests still go in), `tokenUri`. `myBoxes()` finds the
   connected account's from its own receipts (one decryption signature, as `boxesOf` does).
+- `wethBalance(owner)` reads the WETH an account holds (what its offers can pay; the mock keeps
+  none, its offers are paid from ETH).
 - `walletNfts(collection)` lists the wallet's token ids of a collection; `mintTestNft` mints a
   free one from a test collection.
 - `deposit(collection, tokenId, { decoys })` approves the vault if needed and seals the NFT

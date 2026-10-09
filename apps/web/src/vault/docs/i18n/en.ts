@@ -50,7 +50,7 @@ export const vaultDocsEn = {
 
   "vaultDocs.section.bid": "Making an offer",
   "vaultDocs.bid.p1": "Every NFT in the vault's grid opens its own page, with its offers and a \"Make an offer\" button, whether it is listed or not. You pick an amount and how long the offer lasts (1, 7 or 30 days). You do not know who holds the box, and you do not need to: the offer is for the NFT, and only its holder can accept it.",
-  "vaultDocs.bid.p2": "The page wraps your ETH into WETH, lets Seaport take that WETH, and has you sign the offer, then posts it to the board. The WETH stays in your wallet: Seaport takes it only if the holder accepts, and the NFT reaches you in the same move. WETH you no longer need stays yours, and turns back into ETH at any time.",
+  "vaultDocs.bid.p2": "The page wraps your ETH into WETH, lets Seaport take that WETH, and has you sign the offer, then posts it to the board. The WETH stays in your wallet: Seaport takes it only if the holder accepts, and the NFT reaches you in the same move. WETH you no longer need stays yours, and turns back into ETH at any time. A click on your address shows your profile: your ETH, WETH, USDC and cUSDC (cUSDC decrypted for you alone, with one signature), live, your boxes, and the way to switch wallets or disconnect.",
   "vaultDocs.bid.p3": "Your address shows with the offer, as on any marketplace. You can cancel it at any time, in one transaction; it also ends by itself on its end date.",
 
   "vaultDocs.section.private": "Private sales",

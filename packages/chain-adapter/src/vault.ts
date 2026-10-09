@@ -130,6 +130,8 @@ export interface VaultAdapter {
   box(boxId: number): Promise<VaultBox>;
   /** The connected account's boxes, found in its own receipts (one decryption signature). */
   myBoxes(): Promise<number[]>;
+  /** WETH `owner` holds, in wei: what their offers can pay. Public, as any ERC-20 balance. */
+  wethBalance(owner: Address): Promise<bigint>;
   /** Token ids of `collection` the connected wallet holds. */
   walletNfts(collection: Address): Promise<bigint[]>;
   /** Test collections only: mints a fresh NFT to the connected wallet. Returns its id. */

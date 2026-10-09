@@ -234,6 +234,11 @@ export class EvmVault implements VaultAdapter {
     return held.filter((_, i) => states[i] !== "withdrawn" && states[i] !== "claimed");
   }
 
+  async wethBalance(owner: Address): Promise<bigint> {
+    const weth = new Contract(this.deployed.weth, WETH_ABI, this.t.readProvider);
+    return BigInt(await this.t.reading(weth.balanceOf!(owner)));
+  }
+
   async walletNfts(collection: Address): Promise<bigint[]> {
     const account = await this.t.account();
     const nft = new Contract(collection, NFT_ABI, this.t.readProvider);

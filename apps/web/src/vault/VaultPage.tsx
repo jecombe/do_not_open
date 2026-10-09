@@ -23,6 +23,7 @@ import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
 import { dismissRun, dropRun, endRun, isOwnRun, runStep, runTx, startRun } from "./tx/runStore";
 import { TxDock, TxStage, useVaultRun } from "./tx/VaultTx";
+import { VaultBalances, VaultProfile } from "./VaultWallet";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
 const POLL_MS = 15_000;
@@ -273,18 +274,9 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
             <dd>{info ? `${info.feeBps / 100}%` : "…"}</dd>
           </div>
         </dl>
+        <VaultBalances vault={vault} coin={coin} className="vault-balances-head" />
         <div className="vault-account">
-          {account ? (
-            links.address(account) ? (
-              <a className="vault-me" href={links.address(account)!} target="_blank" rel="noreferrer" title={account}>
-                {shortAddress(account)}
-              </a>
-            ) : (
-              <span className="vault-me">{shortAddress(account)}</span>
-            )
-          ) : (
-            connectButton
-          )}
+          {account ? <VaultProfile account={account} vault={vault} coin={coin} links={links} boxes={mine?.length ?? null} onBoxes={() => setTab("mine")} /> : connectButton}
           {!account && picking && (
             <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
               <p>{t("vault.pickWallet")}</p>
