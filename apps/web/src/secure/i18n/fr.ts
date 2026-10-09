@@ -82,6 +82,16 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.trust.3.k": "10 %",
   "secure.trust.3.v": "le maximum que les frais du coffre pourront jamais atteindre, écrit dans le contrat. 2,5 % aujourd'hui.",
 
+  "secure.built.kicker": "Construit avec",
+  "secure.built.zama": "Chiffrement (FHE)",
+  "secure.built.ethereum": "Le réseau",
+  "secure.built.usdc": "Paiements, en cUSDC",
+  "secure.built.seaport": "Annonces",
+  "secure.built.uniswap": "Marché du CROQ",
+  "secure.built.delegate": "Délégation",
+  "secure.built.arweave": "Images",
+  "secure.built.note": "Les protocoles ouverts sur lesquels tournent le coffre et le jeu. Leurs noms et logos appartiennent à leurs propriétaires, et aucun d'eux ne cautionne DO NOT OPEN.",
+
   "secure.game.kicker": "Après le service",
   "secure.game.experimental": "Expérimental : un prototype dont les règles, les chiffres et les écrans changent encore, sur le réseau de test.",
   "secure.foot": "DO NOT OPEN tourne sur un réseau de test. Rien ici ne vaut encore de l'argent.",

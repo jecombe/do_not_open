@@ -1,0 +1,92 @@
+/* The protocols' logos: one tone at rest, teal on hover, each at the same height. */
+.protocol-wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.protocol-wall a {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 140px;
+  padding: 16px 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text, currentColor);
+  text-decoration: none;
+  opacity: 0.72;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.protocol-wall a:hover,
+.protocol-wall a:focus-visible {
+  opacity: 1;
+  color: var(--teal, currentColor);
+  border-color: var(--line, rgb(255 255 255 / 0.1));
+}
+
+.protocol-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+}
+
+.protocol-mark {
+  display: block;
+  height: 22px;
+  width: calc(22px * var(--ratio));
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+/* Wordmarks are thinner than marks: a little taller to read at the same weight. */
+.protocol-zama {
+  height: 18px;
+  width: calc(18px * var(--ratio));
+}
+
+.protocol-arweave {
+  height: 24px;
+  width: calc(24px * var(--ratio));
+}
+
+.protocol-delegate {
+  height: 24px;
+  width: calc(24px * var(--ratio));
+}
+
+.protocol-name {
+  font: 600 17px/1 var(--sans, inherit);
+  letter-spacing: -0.01em;
+}
+
+.protocol-role {
+  color: var(--muted, inherit);
+  font: 500 11px var(--mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+  .protocol-wall li {
+    flex: 1 1 calc(50% - 8px);
+  }
+  .protocol-wall a {
+    min-width: 0;
+    padding: 12px;
+  }
+}
