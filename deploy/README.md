@@ -229,10 +229,10 @@ copied as they are). The testnet stack then keeps the current database, its Sepo
 | --- | --- | --- |
 | `do-not-open.app` | the home page (the sealed vault first, the game as its fun side), the project's docs, boarding (Vercel), mainnet once it launches, Sepolia until then | `A 76.76.21.21` |
 | `www.do-not-open.app` | redirects to `do-not-open.app` (Vercel) | `CNAME cname.vercel-dns.com` |
-| `game.do-not-open.app` | the game at `/` (its flea market inside), its manual at `/docs`, the studio at `/studio` (Vercel, the same build) | `CNAME cname.vercel-dns.com` |
-| `vault.do-not-open.app` | the sealed vault at `/`, its docs at `/docs` (Vercel, the same build) | `CNAME cname.vercel-dns.com` |
+| `game.do-not-open.app` | the game at `/` (its flea market inside), its manual at `/docs`, the studio at `/studio` (Vercel, the same build) | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
+| `vault.do-not-open.app` | the sealed vault at `/`, its docs at `/docs` (Vercel, the same build) | `A 76.76.21.21` |
 | `testnet.do-not-open.app` | the site on Sepolia, the production build (Vercel), talking to `api.testnet` | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
-| `game.testnet.do-not-open.app`, `vault.testnet.do-not-open.app` | the testnet's game and vault, the same build, talking to `api.testnet` | `CNAME cname.vercel-dns.com` |
+| `game.testnet.do-not-open.app`, `vault.testnet.do-not-open.app` | the testnet's game and vault, the same build, talking to `api.testnet` | `A 76.76.21.21` |
 | `api.do-not-open.app` | the API (`API_DOMAIN`) | `A` the server's IP |
 | `api.testnet.do-not-open.app` | the testnet site's API replicas and lists (`/opt/dno-testnet`, deployed from `dev`) | `A` the server's IP |
 | `admin.do-not-open.app` | the team's admin site (`ADMIN_DOMAIN`) | `A` the server's IP |
