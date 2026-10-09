@@ -30,6 +30,7 @@ export const projectIt: Record<ProjectKey, string> = {
   "project.section.vault": "Il caveau sigillato",
   "project.vault.p1": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.",
   "project.vault.p2": "La scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore, o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte.",
+  "project.vault.p3": "Il caveau custodisce anche token. I tuoi cUSDC, un dollaro confidenziale, vanno in una tasca chiusa da una chiave invece che da un indirizzo: mandali a un'altra tasca, paga una scatola, o ritirali dove vuoi. I token confidenziali nascondono già gli importi; una tasca nasconde anche chi ha pagato chi.",
   "project.vault.docs": "Leggi la documentazione del caveau",
   "project.vault.open": "Apri il caveau",
 
@@ -55,7 +56,7 @@ export const projectIt: Record<ProjectKey, string> = {
 
   "project.section.more": "Per saperne di più",
   "project.more.vault": "La documentazione del caveau",
-  "project.more.vault.v": "Il deposito, la chiave, Seaport, le vendite private, il relayer, cosa trapela.",
+  "project.more.vault.v": "Il deposito, la chiave, Seaport, le vendite private, le tasche, il relayer, cosa trapela.",
   "project.more.game": "Il manuale del gioco",
   "project.more.game.v": "Scatole, gatti, crocchette, ratti, il mercatino, la testnet.",
   "project.more.repo": "Il codice",

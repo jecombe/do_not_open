@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ratParamsFromSpec } from "../lib/ratParams";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 const ERC20_ABI = ["function mint(address,uint256)", "function approve(address,uint256) returns (bool)"];
 const CUSDC_ABI = ["function wrap(address to, uint256 amount)", "function setOperator(address operator, uint48 until)", "function isOperator(address holder, address spender) view returns (bool)"];

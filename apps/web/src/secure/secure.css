@@ -592,9 +592,10 @@ button.sec-btn {
   letter-spacing: -0.03em;
 }
 
+/* Five reasons: three, then two wider, on a wide screen. */
 .sec-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
   margin: 40px 0 0;
   padding: 0;
@@ -607,6 +608,14 @@ button.sec-btn {
   border-radius: 16px;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
   transition: border-color 0.2s, transform 0.2s;
+}
+
+.sec-cards li {
+  grid-column: span 2;
+}
+
+.sec-cards li:nth-child(n + 4) {
+  grid-column: span 3;
 }
 
 .sec-cards li:hover {
@@ -1071,6 +1080,15 @@ button.sec-btn {
   }
   .sec-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sec-cards li,
+  .sec-cards li:nth-child(n + 4) {
+    grid-column: auto;
+  }
+
+  .sec-cards li:last-child {
+    grid-column: 1 / -1;
   }
 }
 

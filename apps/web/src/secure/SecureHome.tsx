@@ -46,6 +46,12 @@ function Story() {
   const [paused, setPaused] = useState(false);
   const labels = useRef<StoryLabels>({
     public: t("secure.story.public"),
+    publicTokens: t("secure.story.publicTokens"),
+    toPocket: t("secure.story.toPocket"),
+    payBox: t("secure.story.payBox"),
+    paidIn: t("secure.story.paidIn"),
+    saleCash: t("secure.story.saleCash"),
+    hiddenBalance: t("secure.story.hiddenBalance"),
     holder: t("secure.story.holder"),
     denied: t("secure.story.denied"),
     signature: t("secure.story.signature"),
@@ -127,7 +133,7 @@ function Story() {
 
 type Row = {
   block: number;
-  event: "seal" | "transfer" | "list" | "sale";
+  event: "seal" | "transfer" | "list" | "sale" | "pocket";
   box: string;
   mine: boolean;
 };
@@ -136,6 +142,8 @@ const ROWS: Row[] = [
   { block: 7_412_951, event: "transfer", box: "#0388", mine: false },
   { block: 7_413_066, event: "list", box: "#0412", mine: true },
   { block: 7_413_120, event: "sale", box: "#0731", mine: true },
+  // A pocket's payment names a few pockets: which one paid, and how much, stays encrypted.
+  { block: 7_413_207, event: "pocket", box: "P-04 · P-17 · P-22", mine: true },
 ];
 
 /** The same rows twice: as the chain shows them, and as their holder reads them. */
@@ -406,6 +414,7 @@ export function SecureHome() {
               ["2", "shield"],
               ["3", "lock"],
               ["4", "exit"],
+              ["5", "coins"],
             ] as const
           ).map(([n, icon]) => (
             <li key={n}>
@@ -454,7 +463,7 @@ export function SecureHome() {
               {h("home.leaks.public")}
             </h3>
             <ul>
-              {(["1", "2", "3"] as const).map((n) => (
+              {(["1", "2", "3", "4"] as const).map((n) => (
                 <li key={n}>{h(`home.leaks.public${n}`)}</li>
               ))}
             </ul>
@@ -465,7 +474,7 @@ export function SecureHome() {
               {h("home.leaks.hidden")}
             </h3>
             <ul>
-              {(["1", "2", "3"] as const).map((n) => (
+              {(["1", "2", "3", "4"] as const).map((n) => (
                 <li key={n}>{h(`home.leaks.hidden${n}`)}</li>
               ))}
             </ul>

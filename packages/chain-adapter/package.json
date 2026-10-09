@@ -17,6 +17,7 @@
     "smoke:sepolia": "tsx scripts/smoke.ts",
     "smoke:croq": "tsx scripts/smoke-croq.ts",
     "smoke:rats": "tsx scripts/smoke-rats.ts",
+    "smoke:pockets": "tsx scripts/smoke-pockets.ts",
     "test-wallets": "tsx scripts/testWallets.ts"
   },
   "dependencies": {

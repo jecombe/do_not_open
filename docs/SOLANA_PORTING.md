@@ -209,6 +209,13 @@ box program:
   part, public as on the EVM, cleared at an exit and kept on a transfer.
 - **Private sale.** Unchanged: the confidential token program's all-or-nothing transfer, a
   `select` on "paid and the seller held it", the price and the outcome granted to the two sides.
+- **Pockets.** `SealedPockets` ports as a program whose pockets are accounts holding an
+  encrypted key, an encrypted balance and a viewer pubkey, with the pool's confidential tokens in
+  a PDA's token account. A spend names its sets as remaining accounts; the key bound to the terms
+  and the spent-handle list carry over as they are (a bound key's ciphertext account can be
+  marked spent). The viewer is an ed25519 keypair derived from the same `signMessage`. The desk
+  becomes an instruction of that program calling the vault program's private-sale accept, its
+  public "ok" bit read the same way as the vault's requests.
 
 ## What to write in `packages/chain-adapter/src/solana`
 
@@ -225,7 +232,7 @@ box program:
 | `buyUsdc`, `trade` with `slippageBps`; `shieldUsdc`, `unshieldUsdc`, `wrap`, `unwrap` | `trade`: Uniswap V3 `QuoterV2` and `SwapRouter02` with a minimum out (`buyUsdc`: the ramp, over a V2 pool); ERC-7984 `wrap`, and `unwrap` + public decryption + `finalizeUnwrap` | a Solana AMM swap with a minimum out (a concentrated-liquidity pool such as Orca Whirlpools or Raydium CLMM takes the same CROQ-only range); the confidential token program's deposit and withdraw, the withdrawn amount made public the same way |
 | `signTerms` (the release form) | EIP-191 `personal_sign` (secp256k1), then `POST /v1/terms` | the Wallet Standard's `signMessage` (ed25519) on the same text naming the base58 address; the API's `AcceptTerms` verifies EIP-191 only, so it needs an ed25519 path and an address format check for Solana keys |
 | `allowList`, `claimAllowList` (the mainnet allow list) | EIP-191 `personal_sign` on `allowListMessage`, then `POST /v1/allowlist` | the same as `signTerms`: `signMessage` on the same text, and an ed25519 path in the API's `AllowList`, whose message names a 0x address today. `playerPoints` compares addresses lower-cased, which base58 must not be |
-| `vault()` (`VaultAdapter`, the sealed vault) | `EvmVault`: `SealedVault`, `VaultOffers` (offers signed with EIP-712, WETH wrapped) and Seaport through ethers; the box keys from one EIP-191 signature (wallets sign deterministically, RFC 6979, so the same wallet makes the same keys); requests through the API's relayer | a vault over the vault program and a Solana marketplace (its listings and bids); the keys from `signMessage` (ed25519 is deterministic too); the API's key as the fee payer |
+| `vault()` (`VaultAdapter`, the sealed vault, and its `pockets()`) | `EvmVault`: `SealedVault`, `VaultOffers` (offers signed with EIP-712, WETH wrapped) and Seaport through ethers; `EvmPockets` for `SealedPockets` and `PocketDesk`, the pocket's key and viewer from a second signature; the box keys from one EIP-191 signature (wallets sign deterministically, RFC 6979, so the same wallet makes the same keys); requests through the API's relayer | a vault over the vault program and a Solana marketplace (its listings and bids); the keys from `signMessage` (ed25519 is deterministic too); the API's key as the fee payer |
 | steps `wallet`, `confirming`, `decrypting`, `proving` | as is | as is |
 | `ChainError.reason` | Solidity custom error name | Anchor error name, kept identical |
 | `ChainError.detail` | `held`/`needed` from a dry run (`estimateGas`) and the balances; `resumable`/`landed` after the first transaction | `simulateTransaction` for the dry run and the fee; the same flags |

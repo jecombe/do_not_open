@@ -2,7 +2,7 @@ import { Wallet } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ratParamsFromSpec } from "../lib/ratParams";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /**
  * The depot's rats: the `Rats` ERC-721, sold in plain USDC to the treasury (STUDIO_TREASURY, or

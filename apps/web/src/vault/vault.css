@@ -132,6 +132,306 @@
   background: var(--teal);
 }
 
+button.vault-me {
+  color: var(--text);
+  font: 13px var(--mono);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+button.vault-me:hover,
+button.vault-me[aria-expanded="true"] {
+  border-color: var(--teal);
+}
+
+.vault-me-caret {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 2px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  rotate: 45deg;
+  transition: rotate 0.2s;
+}
+
+.vault-me[aria-expanded="true"] .vault-me-caret {
+  margin-top: 3px;
+  rotate: 225deg;
+}
+
+/* The wallet's balances: a dark glass strip of figures, cUSDC behind its lock. */
+.vault-balances {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgb(91 227 194 / 0.06), transparent), var(--panel);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+.vault-balance {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 70px;
+  margin: 0;
+  padding: 4px 12px 5px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.vault-balance + .vault-balance {
+  box-shadow: -1px 0 0 var(--line);
+}
+
+.vault-balance-symbol {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font: 600 11px var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.vault-balance-value {
+  font: 700 15px var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vault-balance-sealed {
+  color: var(--teal);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.vault-balance-sealed .vault-balance-symbol {
+  color: var(--teal);
+}
+
+.vault-balance-sealed:hover:not(:disabled) {
+  background: var(--teal-dim);
+}
+
+.vault-balance-sealed:disabled {
+  cursor: progress;
+}
+
+.vault-balance-sealed.is-locked .vault-balance-value {
+  letter-spacing: 0.14em;
+  opacity: 0.8;
+}
+
+.vault-balance-sealed.is-stale .vault-balance-value {
+  opacity: 0.5;
+  text-decoration: line-through dotted;
+}
+
+/* In the profile: the same figures, two by two. */
+.vault-balances-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vault-balances-stack .vault-balance {
+  padding: 8px 12px;
+}
+
+.vault-balances-stack .vault-balance + .vault-balance {
+  box-shadow: none;
+}
+
+/* A balance that moves: the figure rolls and pops, the chip glows teal going up and red going
+   down, and "+0.05" rises beside the symbol. */
+.live-flash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: vault-live-flash 1.6s ease-out forwards;
+}
+
+.live-flash.is-up {
+  --live: 91 227 194;
+}
+
+.live-flash.is-down {
+  --live: 255 77 61;
+}
+
+@keyframes vault-live-flash {
+  0% {
+    background: rgb(var(--live) / 0.32);
+    box-shadow: inset 0 0 0 1px rgb(var(--live) / 0.9);
+  }
+  100% {
+    background: rgb(var(--live) / 0);
+    box-shadow: inset 0 0 0 1px rgb(var(--live) / 0);
+  }
+}
+
+.live-figure {
+  display: inline-block;
+}
+
+.live-figure.is-up,
+.live-figure.is-down {
+  animation: vault-live-pop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes vault-live-pop {
+  30% {
+    transform: scale(1.16);
+  }
+}
+
+.live-delta {
+  margin-left: 4px;
+  font: 700 10px var(--mono);
+  animation: vault-live-delta 1.6s ease-out forwards;
+}
+
+.live-delta.is-up {
+  color: var(--teal);
+}
+
+.live-delta.is-down {
+  color: var(--red);
+}
+
+@keyframes vault-live-delta {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  20% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* The wallet's profile: a panel under its address. */
+.vault-profile-wrap {
+  position: relative;
+}
+
+.vault-profile {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 2 * var(--gutter)));
+  padding: 16px;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.55);
+  animation: vault-profile-in 0.18s ease-out;
+}
+
+@keyframes vault-profile-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.vault-profile-kicker {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vault-profile-id {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.vault-profile-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 10px var(--teal);
+}
+
+.vault-profile-address {
+  font: 13px/1.5 var(--mono);
+  word-break: break-all;
+}
+
+.vault-profile-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vault-profile .vault-meta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.vault-profile-boxes {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: 13px var(--sans);
+  cursor: pointer;
+}
+
+.vault-profile-boxes:hover {
+  border-color: var(--teal);
+}
+
+.vault-profile-boxes strong {
+  font: 700 14px var(--mono);
+  color: var(--teal);
+}
+
+.vault-profile-foot {
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+button.vault-disconnect {
+  border-color: rgb(255 77 61 / 0.5);
+  background: rgb(255 77 61 / 0.12);
+  color: var(--red);
+}
+
+button.vault-disconnect:hover {
+  border-color: var(--red);
+}
+
 /* The browser's wallets, when there are several: a menu under the button. */
 .vault-wallets {
   position: absolute;
@@ -839,6 +1139,35 @@ li.vault-card-open {
   color: var(--teal);
 }
 
+/* An address or a name that opens the explorer: the text stays, a dotted line says it leads out. */
+.vault-ext {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.vault-ext:hover,
+.vault-ext:focus-visible {
+  color: var(--teal);
+}
+
+a.vault-me {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.vault-me:hover {
+  border-color: var(--teal);
+}
+
+.vault-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  font-size: 13px;
+}
+
 .vault-buybox {
   display: grid;
   gap: 6px;
@@ -1047,6 +1376,192 @@ li.vault-card-open {
   opacity: 0.6;
 }
 
+/* The wallet's pocket: its code and balance, three small forms, the boxes offered to it. */
+.vault-pocket {
+  display: grid;
+  gap: 16px;
+  max-width: 1080px;
+}
+
+.vault-pocket-lede {
+  margin: 0;
+  max-width: 70ch;
+}
+
+.vault-pocket-intro {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  border: 1px dashed var(--line-2);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.vault-pocket-intro h3 {
+  margin: 0;
+  font: 700 22px/1.1 var(--stencil);
+}
+
+.vault-pocket-intro .vault-meta {
+  max-width: 52ch;
+}
+
+.vault-pouch {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  filter: drop-shadow(0 8px 18px rgb(0 0 0 / 0.45));
+}
+
+.vault-pocket-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgb(91 227 194 / 0.08), transparent 55%), var(--panel);
+}
+
+.vault-pocket-id,
+.vault-pocket-balance {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vault-pocket-id {
+  flex: 1 1 260px;
+}
+
+.vault-pocket-label {
+  margin: 0;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-pocket-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.vault-pocket-code strong {
+  color: var(--teal);
+  font: 700 28px/1 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.vault-pocket-id .vault-meta,
+.vault-pocket-balance .vault-meta {
+  margin: 0;
+}
+
+.vault-pocket-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.vault-pocket-form h4 {
+  margin: 0;
+  font: 700 16px/1.1 var(--stencil);
+  letter-spacing: 0.03em;
+}
+
+.vault-pocket-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vault-pocket-form .vault-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  white-space: normal;
+  color: var(--muted);
+  font: 13px var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.vault-pocket-form .vault-check input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  accent-color: var(--teal);
+}
+
+.vault-pocket-form .vault-check span {
+  min-width: 0;
+}
+
+.vault-pocket-form,
+.vault-pocket-card > * {
+  min-width: 0;
+}
+
+.vault-pocket-form > .sec-btn {
+  justify-self: start;
+}
+
+.vault-hint-bad {
+  color: #ffb4ab;
+}
+
+.vault-pocket-decoys > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vault-pocket-decoys .vault-meta {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+}
+
+.vault-pocket-sales h3 {
+  margin: 0;
+  font: 700 16px/1.1 var(--stencil);
+}
+
+.vault-pocket-sales .vault-toolbar {
+  justify-content: space-between;
+}
+
+.vault-sale-box {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(-45deg, var(--kraft) 0 8px, #b88a55 8px 16px);
+  color: #07090c;
+  font: 700 13px var(--mono);
+}
+
+.vault-pocket-public {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--teal);
+  background: var(--teal-dim);
+  border-radius: 0 10px 10px 0;
+}
+
+.vault-pocket-boxhint {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+
 /* Why the vault, then what shows and what does not. */
 .vault-leaks {
   display: grid;
@@ -1169,7 +1684,11 @@ li.vault-card-open {
   .vault-tape,
   .vault-carton,
   .vault-skeleton,
-  .vault-dialog {
+  .vault-dialog,
+  .vault-profile,
+  .live-flash,
+  .live-figure,
+  .live-delta {
     animation: none;
     transition: none;
   }
@@ -1177,6 +1696,11 @@ li.vault-card-open {
 
 /* The vault's bar has only three links: they stay until the phone. */
 @media (max-width: 1240px) {
+  /* The header has no room left for the balances: they stay in the wallet's profile. */
+  .vault-balances-head {
+    display: none;
+  }
+
   .vault .sec-top nav {
     display: flex;
   }

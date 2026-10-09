@@ -145,6 +145,21 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   token's share with the NFT its caller handed it (`fulfillAdvancedOrder`, criteria resolved to
   that token), unwraps the WETH and sends the ETH back. Only WETH offer and fee items, fixed
   amounts, no tips (`NotAnOffer`).
+- **`SealedPockets`** — the vault's pockets: cUSDC held under encrypted 256-bit keys rather than
+  addresses (constructor `(cUsdc, owner)`). `open(key, proof, viewer)`; `deposit(pockets[],
+  target, amount, proof)` pulls the caller's cUSDC into the pocket of the set whose number is the
+  encrypted target (the rest refunded); `send(from[], to[], input)` and `withdraw(from[], to,
+  input)` take a `SpendInput` (amount and target under one proof, the key XOR `spendHash(...)`
+  under another) and move `select(key matches and balance covers, amount, 0)`, with no
+  decryption. Sets of 1 to 5 pockets, increasing; a bound key's handle is `spent` once. `desk`
+  (set once by the owner) may `deskCheck`, `deskTake` and `deskGive`. See
+  [`docs/VAULT.md`](../../docs/VAULT.md#pockets).
+- **`PocketDesk`** (`contracts/vault/`) — buys the vault's private sales out of pockets
+  (constructor `(pockets, vault)`; it makes the vault its cUSDC operator). The seller offers a
+  box to the desk and `reserve(saleId, pocket)`s it; the buyer `ask`s (the key and the balance
+  checked under encryption, one bit made public), then `buy(askId, cleartexts, proof, boxKey,
+  boxKeyProof)`: the price taken from the pocket, `acceptSale` on the vault, any refund handed
+  back. Holds the boxes it bought (`ownerOf(box)`, encrypted pocket + 1), never sells.
 - **`VaultTestNFT`** (`contracts/mocks/`) — test networks only: an ERC-721 anyone mints for free,
   its picture an SVG drawn on-chain, to try the vault with. **`TestWETH`** (`contracts/mocks/`):
   local networks only, WETH as WETH9 does it.
@@ -173,6 +188,10 @@ The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 | A vault box's key | `euint256` in `SealedVault` | Nobody, the holder included; only compared under encryption |
 | A vault request's "key matched" | `ebool` | Everyone, once requested |
 | A vault private sale's price, and whether it moved the box | `euint64`, `ebool` in `SealedVault` | Its seller and its buyer |
+| A pocket's key | `euint256` in `SealedPockets` | Nobody; only compared under encryption |
+| A pocket's balance, and what a spend moved | `euint64` in `SealedPockets` | The pocket's viewer |
+| A desk purchase's "ok" | `ebool` in `PocketDesk` | Everyone, once asked |
+| Which pocket holds a box the desk bought | `euint32` in `PocketDesk` | The viewers of the pockets that bought it |
 
 ## Cost per function
 
@@ -213,6 +232,11 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `VaultOffers.post` (a buyer's offer validated and logged) | ~102k | 0 |
 | `SealedVault.sync` (sold / expired) | ~92k / ~51k | 0 |
 | `SealedVault.expire` | ~56k | 0 |
+| `SealedPockets.open` | ~280k to ~317k | 32 |
+| `SealedPockets.deposit` (set of 1 / 3 / 5) | ~835k / ~1.03M / ~1.24M | ~1.63M / ~2.56M / ~3.48M |
+| `SealedPockets.send` (1 / 3 / 5 pockets a side) | ~541k / ~1.08M / ~1.61M | ~1.32M / ~3.92M / ~6.52M (depth ~1.97M) |
+| `SealedPockets.withdraw` (set of 1 / 3 / 5) | ~696k / ~970k / ~1.27M | ~1.36M / ~2.82M / ~4.29M |
+| `PocketDesk.ask` / `buy` | ~432k / ~2.68M | ~0.37M / ~6.28M (depth ~3.28M) |
 | `SealedVault.confidentialTransfer` (with a new random key) | ~209k to ~266k | ~338k |
 | `SealedVault.setKey` | ~185k | ~225k |
 | `SealedVault.offerSale` | ~304k to ~324k | ~150k |
@@ -239,7 +263,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 285 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's and delegate.xyz's bytecode)
+pnpm test                 # 335 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's and delegate.xyz's bytecode) and its pockets
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -360,6 +384,29 @@ pool, its fee, the locked position's id and ticks, the locker, the position mana
 Single steps: `npx hardhat --network <net> dno:mint --quantity <n> --ids <n>`,
 `dno:shake|dno:feed|dno:paid-shake|dno:prove-alive|dno:observe|dno:status --token <id>`,
 `dno:entangle --a <id> --b <id>`, `dno:duel --a <id> --b <id>`.
+
+## Published to GitLab
+
+The contracts are also published, with their tests and their Sepolia addresses, as two standalone
+Hardhat projects: [`do-not-open-vault`](https://gitlab.com/do-not-open/do-not-open-vault) and
+[`do-not-open-game`](https://gitlab.com/do-not-open/do-not-open-game). `publish/publish.mjs`
+rebuilds each from the committed tree, from a whitelist (`publish/vault.json`, `publish/game.json`)
+plus `publish/templates/`, with the addresses only from `deployments/sepolia` (no bytecode, no
+compiler input, which holds the other contracts' sources). The game's also carries `game-spec` and
+`generator` under `vendor/`, which its tests and deploy read. Before a push it refuses any secret
+or reference to the rest of the monorepo, and installs, compiles and runs the tests on its own;
+it pushes one commit per repository whose files changed, with the subject of the last commit that
+touched them. `.github/workflows/publish-contracts.yml` runs it on pushes to `main` that touch
+these packages, with one GitLab deploy key per repository (`GITLAB_VAULT_SSH_KEY`,
+`GITLAB_GAME_SSH_KEY`).
+
+```bash
+node publish/publish.mjs --dry-run              # builds both, checks them, pushes nothing
+node publish/publish.mjs --dry-run --only vault
+```
+
+A new contract, test or deploy script reaches GitLab only once its manifest lists it (the game's
+takes `contracts/*.sol`, `test/*.ts` and `deploy/*.ts` but the vault's files).
 
 ## Two-step public decryption
 

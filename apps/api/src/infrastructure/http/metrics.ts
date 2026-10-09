@@ -273,7 +273,7 @@ export class Metrics {
       gauge("dno_vault_relayer_daily_cap", "Transactions a replica's vault relayer may send per UTC day (VAULT_RELAY_PER_DAY)", (g) => g.set(relay.today().perDay));
       new Counter({
         name: "dno_vault_relays_total",
-        help: "Vault relays since the replica started, by transaction (request, finalize) and outcome (sent, reverted, daily-cap, failed)",
+        help: "Vault relays since the replica started, by transaction (request, finalize, pocketOpen, pocketSend, pocketWithdraw, deskAsk, deskBuy) and outcome (sent, reverted, daily-cap, failed)",
         labelNames: ["kind", "outcome"],
         registers: [r],
         collect() {

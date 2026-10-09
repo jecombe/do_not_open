@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ChainError, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter } from "../src";
+import { ChainError, MOCK_DESK, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, pocketSet, vaultLinks } from "../src";
 
 const ETH = 10n ** 18n;
 const USD = 1_000_000n;
@@ -134,5 +134,116 @@ describe("MockVault", () => {
     expect(await vault.salePrices([saleId])).toEqual({ [saleId]: 5n * USD });
     expect(await vault.myBoxes()).toEqual([]);
     expect((await chain.confidentialUsdcBalance()) - before).toBe(5n * USD - (5n * USD * 250n) / 10_000n);
+  });
+});
+
+describe("MockVault pockets", () => {
+  const withPocket = async () => {
+    const { chain, vault } = await fresh();
+    const pockets = vault.pockets()!;
+    const id = await pockets.open();
+    return { chain, vault, pockets, id };
+  };
+
+  it("opens one pocket per wallet, among strangers' pockets, empty", async () => {
+    const { pockets, id } = await withPocket();
+    expect(await pockets.mine()).toBe(id);
+    expect(await pockets.open()).toBe(id);
+    expect(await pockets.balance()).toBe(0n);
+    expect((await pockets.info()).count).toBeGreaterThan(id);
+  });
+
+  it("deposits from the wallet's cUSDC, sends to another pocket and takes it out", async () => {
+    const { chain, pockets } = await withPocket();
+    const before = await chain.confidentialUsdcBalance();
+    await pockets.deposit(12n * USD);
+    expect(await pockets.balance()).toBe(12n * USD);
+    expect(before - (await chain.confidentialUsdcBalance())).toBe(12n * USD);
+    await pockets.send(0, 5n * USD);
+    expect(await pockets.balance()).toBe(7n * USD);
+    await pockets.withdraw(FRESH, 2n * USD);
+    expect(await pockets.balance()).toBe(5n * USD);
+    expect(await chain.confidentialUsdcBalance()).toBe(before - 12n * USD);
+  });
+
+  it("moves nothing, without an error, when the pocket is short", async () => {
+    const { pockets } = await withPocket();
+    await pockets.deposit(10n * USD);
+    await pockets.send(0, 11n * USD);
+    await pockets.withdraw(FRESH, 11n * USD);
+    expect(await pockets.balance()).toBe(10n * USD);
+  });
+
+  it("asks for a pocket before any spend", async () => {
+    const { vault } = await fresh();
+    expect(await code(vault.pockets()!.send(0, 1n))).toBe("not-yours");
+    expect(await vault.pockets()!.mine()).toBeNull();
+  });
+
+  it("buys the night shift's box offered to the pocket, and the box answers to the wallet's key", async () => {
+    const { vault, pockets } = await withPocket();
+    await pockets.deposit(15n * USD);
+    const [sale] = await pockets.sales();
+    expect(sale).toMatchObject({ status: "open", buyer: MOCK_DESK });
+    const price = (await pockets.salePrices([sale!.saleId]))[sale!.saleId]!;
+    expect(await pockets.buy(sale!.saleId)).toBe(true);
+    expect(await pockets.balance()).toBe(15n * USD - price);
+    expect(await pockets.boxes()).toEqual([sale!.boxId]);
+    expect(await vault.myBoxes()).toEqual([]);
+    // The key is the wallet's: the NFT comes out.
+    await vault.withdraw(sale!.boxId, FRESH);
+    expect(await pockets.boxes()).toEqual([]);
+  });
+
+  it("refuses a purchase the pocket cannot cover, and the sale stays open", async () => {
+    const { pockets } = await withPocket();
+    const [sale] = await pockets.sales();
+    expect(await code(pockets.buy(sale!.saleId))).toBe("not-yours");
+    expect((await pockets.sales())[0]).toMatchObject({ status: "open" });
+  });
+
+  it("sells a box privately to the night shift's pocket, which pays at once", async () => {
+    const { chain, vault, pockets } = await withPocket();
+    const boxId = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));
+    const before = await chain.confidentialUsdcBalance();
+    const night = (await pockets.info()).count - 2;
+    await pockets.offerSale(boxId, night, 10n * USD);
+    expect(await vault.myBoxes()).toEqual([]);
+    expect((await chain.confidentialUsdcBalance()) - before).toBe(10n * USD - (10n * USD * 250n) / 10_000n);
+  });
+});
+
+describe("pocketSet", () => {
+  it("names the real pocket among sorted, distinct decoys, never more than the cap", () => {
+    for (let i = 0; i < 50; i++) {
+      const set = pocketSet(3, 9, 4, 5);
+      expect(set).toContain(3);
+      expect(set).toHaveLength(5);
+      expect(new Set(set).size).toBe(5);
+      expect([...set].sort((a, b) => a - b)).toEqual(set);
+    }
+    expect(pocketSet(0, 1, 4, 5)).toEqual([0]);
+    expect(pocketSet(1, 3, 9, 5)).toHaveLength(3);
+    expect(pocketSet(2, 6, 0, 5)).toEqual([2]);
+  });
+});
+
+describe("vaultLinks", () => {
+  it("links addresses, transactions and NFTs where the chain has somewhere to look", () => {
+    const links = vaultLinks({ explorer: "https://sepolia.etherscan.io", marketplace: null });
+    expect(links.address(FRESH)).toBe(`https://sepolia.etherscan.io/address/${FRESH}`);
+    expect(links.tx("0xabc")).toBe("https://sepolia.etherscan.io/tx/0xabc");
+    expect(links.nft(MOCK_VAULT_NFT, 7n)).toBe(`https://sepolia.etherscan.io/nft/${MOCK_VAULT_NFT}/7`);
+    expect(links.marketplace(MOCK_VAULT_NFT, 7n)).toBeNull();
+    expect(vaultLinks({ explorer: null, marketplace: "https://opensea.io/item/ethereum" }).marketplace(MOCK_VAULT_NFT, 7n)).toBe(
+      `https://opensea.io/item/ethereum/${MOCK_VAULT_NFT}/7`,
+    );
+  });
+
+  it("has nothing to link in the demo", async () => {
+    const { vault } = await fresh();
+    const links = vaultLinks(await vault!.info());
+    expect(links.address(FRESH)).toBeNull();
+    expect(links.nft(MOCK_VAULT_NFT, 1n)).toBeNull();
   });
 });

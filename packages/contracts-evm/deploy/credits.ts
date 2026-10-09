@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { creditPriceFromEnv } from "../lib/creditPrice";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /**
  * Decryption credits: what a wallet buys, in plain USDC, once its free daily allowance of

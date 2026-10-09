@@ -334,6 +334,35 @@ base's `ConfidentialTransfer`. The API indexes their counts without the addresse
 `OfferPosted` not at all); its relayer proxy decrypts for the vault and follows its public
 decryptions.
 
+### Pockets
+
+`SealedPockets` holds cUSDC in pockets, each locked by a key rather than an address
+([VAULT.md](VAULT.md#pockets)). A public counter (`pocketCount`), `pocketOf(viewer)` (the
+pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views `balanceOf`,
+`viewerOf`, `spendHash`. Its `desk` is set once.
+
+| Struct | Field | Type | Who can read it | Meaning |
+| --- | --- | --- | --- | --- |
+| `Pocket` | `key` | `euint256` | the pockets only | The holder's 256-bit secret, from one signature. Nobody is allowed on it |
+| | `balance` | `euint64` | the pockets, the pocket's viewer | cUSDC in it. Every pocket named by an action gets a new handle, moved or not |
+| | `viewer` | `address` | public | The address the holder's page derives to read the balance; tied to no wallet, holds nothing |
+
+`PocketDesk` keeps `reservedFor(saleId)` (the pocket a sale offered to the desk is reserved for,
++ 1, public), `spent(handle)`, its asks and the owner of each box it bought:
+
+| Struct | Field | Type | Who can read it | Meaning |
+| --- | --- | --- | --- | --- |
+| `Ask` | `saleId`, `pocketId`, `boxKey` | plain | public | The sale, the reserved pocket, the handle of the box key `buy` must bring |
+| | `key` | `euint256` | the desk | The pocket's key as the ask gave it, for `buy` to take the price with |
+| | `ok` | `ebool` | publicly decryptable | The key matched and the pocket covered the price |
+| | `status` | `None`, `Pending`, `Done`, `Refused` | public | `Refused`: `ok` was false, nothing happened, the sale is still open |
+| owner (`ownerOf`) | | `euint32` | the desk, the viewers of the pockets that bought it | The pocket that holds a box the desk bought, + 1; 0 until a purchase moved it |
+
+Events: `Opened(pocketId, viewer)`, `Deposited(from, pockets[])`, `Sent(from[], to[])`,
+`Withdrawn(from[], to)`, `DeskSetTo(desk)`; on the desk `Reserved(saleId, pocketId)`,
+`Asked(askId, saleId, pocketId)`, `AskSettled(askId, status)`, `Bought(saleId, boxId,
+pocketId)`. No amount and no balance in any of them. The API does not index them yet.
+
 | Fact | The holder | Anyone else | How |
 | --- | --- | --- | --- |
 | Who holds a box | Yes | No | Encrypted owner; the holder finds it in their own receipts |

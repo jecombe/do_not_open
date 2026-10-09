@@ -5,7 +5,7 @@ import { expect } from "chai";
 import type { ContractTransactionReceipt } from "ethers";
 import { ethers, fhevm } from "hardhat";
 import { IDelegateRegistry, ISeaport, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC, TestWETH, VaultOffers } from "../types";
-import { confidentialUsdcOf, usd } from "./helpers";
+import { confidentialUsdcOf, usd } from "./tokens";
 import { installDelegateRegistry, installSeaport } from "./seaport";
 
 const BOX = { None: 0n, Sealed: 1n, Listed: 2n, Sold: 3n, Withdrawn: 4n, Claimed: 5n } as const;

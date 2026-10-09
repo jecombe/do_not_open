@@ -1,9 +1,9 @@
 import type { Clock } from "./auth";
-import type { VaultFinalizeTx, VaultRequestTx, VaultSender } from "./ports/vault";
+import type { PocketCall, PocketTxs, VaultFinalizeTx, VaultRequestTx, VaultSender } from "./ports/vault";
 import type { Address } from "../domain/types";
 
 export type VaultRelayRefusal = "reverted" | "daily-cap";
-export type VaultRelayKind = "request" | "finalize";
+export type VaultRelayKind = "request" | "finalize" | PocketCall;
 /** How a relay ended: sent, refused (the vault would revert, or the day's cap), or failed sending. */
 export type VaultRelayOutcome = "sent" | VaultRelayRefusal | "failed";
 
@@ -21,7 +21,9 @@ export class VaultRelayRefused extends Error {
  * The sealed vault's relayer: it sends holders' requests and their proofs from its own wallet,
  * so the holder's address appears in no transaction. It learns nothing a chain observer would
  * not: the key arrives encrypted for the vault and bound to the request's terms, so the relayer
- * can neither read it, change the terms, nor reuse it. It pays the gas, so it keeps a daily cap
+ * can neither read it, change the terms, nor reuse it. It sends the pockets' opens and spends and
+ * the desk's purchases the same way: keys bound to their terms, amounts encrypted, so it learns
+ * neither who pays whom nor how much. It pays the gas, so it keeps a daily cap
  * per process (the per-IP rate limit is the HTTP layer's).
  */
 export class VaultRelay {
@@ -57,6 +59,10 @@ export class VaultRelay {
 
   finalize(tx: VaultFinalizeTx): Promise<string> {
     return this.spend("finalize", () => this.sender.finalize(tx));
+  }
+
+  pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string> {
+    return this.spend(call, () => this.sender.pockets(call, tx));
   }
 
   private roll() {

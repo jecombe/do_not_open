@@ -363,7 +363,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private address_: Address | null = null;
   private readonly listeners = new Set<(account: Address | null) => void>();
   private relayer: Promise<Relayer> | null = null;
-  private permit: Permit | null = null;
+  /** Decryption permits by account: the wallet's, and a pocket viewer's. */
+  private readonly permits = new Map<string, Permit>();
   /** Set only while a dry run builds its transaction: `writer` hands it out instead of the wallet. */
   private dry: DrySigner | null = null;
   private constants: Promise<{ fees: Fees; maxSupply: number; maxPerTx: number; milestones: number[] }> | null = null;
@@ -430,7 +431,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     const next = signer ? await signer.getAddress() : null;
     if (next === this.address_) return;
     this.address_ = next;
-    this.permit = null;
+    this.permits.clear();
     this.holdings = null;
     for (const l of this.listeners) l(next);
   }
@@ -1750,6 +1751,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     this.vault_ ??= new EvmVault(deployed, {
       chainId: this.opts.chain.chainId,
       explorerUrl: this.opts.chain.explorerUrl ?? null,
+      marketplaceUrl: this.opts.chain.marketplaceUrl ?? null,
       readProvider: this.opts.readProvider,
       account: async () => (await this.signer().getAddress()) as Address,
       send: (opts, call) => this.send(opts, () => call()),
@@ -1758,6 +1760,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       encrypt: (contract, account, fill, what, opts, inputUser) => this.encrypt(contract, account, fill as never, what, opts, inputUser) as never,
       publicDecrypt: (handles, opts) => this.publicDecrypt(handles, opts) as never,
       userDecrypt: (handles, contractAddress, opts) => this.userDecrypt(handles, contractAddress, opts),
+      userDecryptAs: (signer, handles, contractAddress, opts) => this.userDecrypt(handles, contractAddress, opts, signer),
       signText: (message) => this.signText(message),
       signTypedData: async (domain, types, value) => {
         try {
@@ -1951,8 +1954,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * Decrypts handles of one contract the connected account is allowed on, with its session
    * permit. Handles it decrypted before come from the cache: no fee, no signature.
    */
-  private async userDecrypt(handles: string[], contractAddress: string, opts?: ActionOptions): Promise<Record<string, Clear>> {
-    const signer = this.signer();
+  private async userDecrypt(handles: string[], contractAddress: string, opts?: ActionOptions, as?: Signer): Promise<Record<string, Clear>> {
+    const signer = as ?? this.signer();
     const account = await signer.getAddress();
     const key = (handle: string) => `${this.opts.chain.chainId}:${account.toLowerCase()}:${handle.toLowerCase()}`;
     const out: Record<string, Clear> = {};
@@ -2161,7 +2164,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
         }
         // A permit the proxy will not take (expired): sign a fresh one and go again.
         if (refusal?.code === "bad-permit" && attempt === 0) {
-          this.permit = null;
+          this.permits.clear();
           continue;
         }
         throw new ChainError("decryption", `Could not encrypt ${what}: ${refusal?.message ?? (error as Error)?.message ?? "unknown error"}`);
@@ -2181,6 +2184,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
       ...(this.opts.market ? [this.opts.market.address] : []),
       // The vault's receipts and private sale prices.
       ...(this.opts.vault ? [this.opts.vault.address] : []),
+      // A pocket's balance, and which boxes its pocket bought.
+      ...(this.opts.vault?.pockets ? [this.opts.vault.pockets.address, this.opts.vault.pockets.desk.address] : []),
       // A rat's power is the Rats contract's handle.
       ...(this.opts.ratTricks && this.opts.rats ? [this.opts.rats.address] : []),
     ];
@@ -2341,7 +2346,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
         }
         // A permit the proxy will not take (expired): sign a fresh one and go again.
         if (refusal?.code === "bad-permit" && attempt === 0) {
-          this.permit = null;
+          this.permits.clear();
           continue;
         }
         if (refusal) throw new ChainError("decryption", refusal.message);
@@ -2394,8 +2399,8 @@ export class EvmFhevmAdapter implements ChainAdapter {
    */
   private async permitFor(relayer: Relayer, signer: Signer, account: Address, opts?: ActionOptions): Promise<Permit> {
     const now = Math.floor(Date.now() / 1000);
-    const p = this.permit;
-    if (p && p.account === account && now < p.start + PERMIT_DAYS * 86_400 - 600) return p;
+    const p = this.permits.get(account.toLowerCase());
+    if (p && now < p.start + PERMIT_DAYS * 86_400 - 600) return p;
 
     const keypair = relayer.generateKeypair();
     const eip712 = relayer.createEIP712(keypair.publicKey, await this.permitContracts(), now, PERMIT_DAYS);
@@ -2407,8 +2412,9 @@ export class EvmFhevmAdapter implements ChainAdapter {
     );
     opts?.onStep?.("decrypting");
     const contracts = await this.permitContracts();
-    this.permit = { account, publicKey: keypair.publicKey, privateKey: keypair.privateKey, signature, start: now, contracts, extraData: String(eip712.message.extraData ?? "0x00") };
-    return this.permit;
+    const permit = { account, publicKey: keypair.publicKey, privateKey: keypair.privateKey, signature, start: now, contracts, extraData: String(eip712.message.extraData ?? "0x00") };
+    this.permits.set(account.toLowerCase(), permit);
+    return permit;
   }
 
   private toChainError(error: unknown): ChainError {

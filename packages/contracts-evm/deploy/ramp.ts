@@ -1,7 +1,7 @@
 import { parseEther, parseUnits } from "ethers";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /** Uniswap V2 on Sepolia, from Uniswap's deployment list: the ramp's ETH/USDC pool. */
 export const UNISWAP_V2: Record<string, { router: string; factory: string; weth: string }> = {

@@ -213,6 +213,18 @@ seller; an accepted offer, as any Seaport fill, its buyer and amount and where t
 box's delegate is public: a fresh wallet says nothing about the holder, their main wallet would
 name them. See [VAULT.md](VAULT.md).
 
+## 5f. The vault's pockets
+
+The same idea for tokens. ERC-7984 already hides balances and amounts; `SealedPockets` hides
+the address graph too. A pocket is a number with an encrypted key and balance, read by a viewer
+address the holder's page derives from one signature, so no wallet is ever tied to it. Every
+deposit, send and withdrawal names a set of pockets (the real one among decoys) and decides
+under encryption which one moves and by how much: no decryption, one transaction. What leaks:
+the wallet behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
+address, and for a box bought from a pocket (`PocketDesk`) the reserved pocket and the ask's yes
+or no. The box then sits with the desk, a holder all pockets share. See
+[VAULT.md](VAULT.md#pockets).
+
 ## 6. What still leaks
 
 | Fact | Visible to everyone |

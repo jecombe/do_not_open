@@ -9,15 +9,22 @@ own ("DO NOT OPEN Vault", `SEALED`), built on the same `ConfidentialERC721` base
 the game. The NFT stays in the vault until the box's holder takes it out, sells it on Seaport
 (OpenSea's protocol) with the vault as the seller, by a listing or by accepting a buyer's WETH
 offer, or sells the box privately for an encrypted cUSDC price. Meanwhile the holder may lend
-the NFT's rights (airdrops, holder-only access) to a wallet of theirs through delegate.xyz. The
-page is `vault.do-not-open.app` (`/vault` off the site's domains), and its
+the NFT's rights (airdrops, holder-only access) to a wallet of theirs through delegate.xyz.
+Tokens go in too: cUSDC in a [pocket](#pockets) locked by a key rather than an address, sent to
+another pocket, used to buy a box, or taken out anywhere, without anything public saying who paid
+whom or how much. The page (its "My pocket" tab for the tokens) is `vault.do-not-open.app` (`/vault` off the site's domains), and its
 docs for holders, in four languages, are `vault.do-not-open.app/docs` (`apps/web/src/vault/docs`):
 they follow this file, so a change here goes there too.
 
 Every action on the page runs on a stage (`apps/web/src/vault/tx`): an animated scene for its kind
 (the NFT sealed in a box among its decoys, the vault door opening, a ship sailing to Seaport, the
 NFT and the ETH crossing, a badge flying to the delegate...), its steps as they come, and every
-transaction it sent with its block, its gas and a link to the explorer. Folded away, it sits at the
+transaction it sent with its block, its gas and a link to the explorer. Addresses (the
+connected wallet, a box's depositor and delegate, its collection, the vault's contract) and each
+NFT link to the explorer too, and to a marketplace where one shows the chain. The header
+carries the wallet's balances, read live like the game's (ETH, WETH, USDC, and cUSDC behind a
+lock until its holder decrypts it), and a click on the address opens its profile: the full
+address (copy, explorer), the same balances, its boxes, switch wallet and disconnect. Folded away, it sits at the
 foot of the screen. It is also written to a cookie shared by the site's hosts, so the home page,
 boarding and both docs show it at their foot when the visitor left the vault mid-way: the steps
 that run in the browser (the decryption and the proof) stop with the page, and the next visit
@@ -39,6 +46,14 @@ registry. Earlier deployments are left as they were: `0x27CA3698A34b53900047cD1D
 `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (2026-10-08, block 11872753), took one request per
 box and moved the nonce on with every request (see Decisions).
 
+The pockets (`SealedPockets`, and `PocketDesk` that buys private sales out of them) are done on
+the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 5 more running the
+adapter against them), and on Sepolia since 2026-10-09: `SealedPockets` at
+`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902, owner `0x590891F269720001435004A1089cAB5b2c20029A`) and
+`PocketDesk` at `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), on the vault above and Zama's
+cUSDC; `pnpm --filter @dno/chain-adapter smoke:pockets` (open, deposit, send, withdraw, both
+balances read by their viewers) passed there. See [Pockets](#pockets).
+
 ## Contracts
 
 | Contract | What it is |
@@ -49,6 +64,8 @@ box and moved the nonce on with every request (see Decisions).
 | `vault/IDelegateRegistry.sol` | The slice of delegate.xyz's Delegate Registry v2 the vault uses (`delegateERC721`, `checkDelegateForERC721`). The registry is at `0x00000000000000447e69651d841bD8D104Bed493` on Ethereum, Sepolia and most other chains |
 | `vault/IWETH.sol` | Wrapped ether (`deposit`, `withdraw`): what offers pay in |
 | `mocks/TestWETH.sol` | Local networks only: WETH as WETH9 does it |
+| `SealedPockets` | The pockets: cUSDC held under encrypted 256-bit keys, not addresses. `open`, `deposit` (from a wallet, into one pocket of a set), `send` (from one pocket of a set to one pocket of another, the key bound to the terms), `withdraw` (to any address, as cUSDC), and `deskTake`, `deskCheck`, `deskGive` for the desk only. No decryption anywhere: every spend settles under encryption in one transaction. `ZamaEthereumConfig`, `Ownable` (only to set the desk, once), `ReentrancyGuard` |
+| `vault/PocketDesk.sol` | Buys the vault's private sales out of pockets. A seller offers a box to the desk and `reserve`s the sale for a pocket; its holder `ask`s (the key and the balance checked under encryption, one bit made public), then `buy`s with the proof: the desk takes the price from the pocket, accepts the sale on the vault, and hands back any refund. The box stays with the desk, its vault key the buyer's. Holds tokens only during `buy`, never sells |
 | `mocks/VaultTestNFT.sol` | Test networks only: "Sealed Vault Test NFT" (`VTEST`), free to mint for anyone, its picture an SVG drawn on-chain from its id, so a marketplace shows something |
 
 ```mermaid
@@ -461,6 +478,158 @@ Until the receiver sets their key, nobody can take the NFT out, list it or colle
 key is random. `confidentialTransferIf` (the holder's own decoys) works on vault boxes as on the
 game's boxes. In the adapter: `send`, `adopt`.
 
+## Pockets
+
+The vault holds tokens too. An ERC-7984 token like cUSDC hides balances and amounts, but every
+transfer still names its sender and its receiver: the graph of who pays whom stays public. A
+pocket hides that as well. It is a number with an encrypted 256-bit key, an encrypted `euint64`
+balance and a `viewer`, an address the holder's page derives to read the balance; the holder's
+wallet appears in none of it. The design notes at the top of
+[`SealedPockets.sol`](../packages/contracts-evm/contracts/SealedPockets.sol) and
+[`PocketDesk.sol`](../packages/contracts-evm/contracts/vault/PocketDesk.sol) are the reference.
+
+**One signature.** The page asks the wallet to sign a fixed message (`pocketKeyMessage` in
+`EvmPockets.ts`), free and off-chain. `keccak256(signature, "key")` is the pocket's key,
+`keccak256(signature, "viewer")` the private key of its viewer, a wallet that only ever signs
+decryption permits and never a transaction. Nothing is stored: `pocketOf(viewer)` finds the
+pocket again on any device. A wallet has one pocket.
+
+**Sets, not pockets.** Every action names a set of pockets (`MAX_SET`, 5 at most, in increasing
+order, all opened): the real one and decoys the page picks at random among the pockets that
+exist. A deposit credits the pocket of its set whose number equals an encrypted target; a send
+debits the pocket of its paying set whose key matches and credits the pocket of its receiving
+set whose number matches; a withdrawal debits the matching pocket and pays the amount out. Every
+pocket named gets a new balance handle, moved or not, so nobody can tell which one moved.
+
+**The key bound to the terms.** A spend sends the amount and the target in one encrypted input,
+then the key XOR `spendHash(action, from, to, destination, amount handle, target handle)` in a
+second one (its terms hash the first one's handles, so it is encrypted after them). A relayer
+that changed a set, the destination or an encrypted value would make the pockets compare against
+another hash: the key would not match and nothing would move. Each bound key's handle can be used
+once (`spent`), so a spend cannot be replayed. A wrong key, a short balance or a target outside
+the receiving set move nothing, without a revert.
+
+**No decryption.** Unlike the boxes' requests, a spend never needs a public decryption: what it
+moves is decided and applied under encryption in the same transaction, and a withdrawal pays out
+an encrypted amount (`confidentialTransfer`). Pockets do not wait for Zama's gateway.
+
+### Flows
+
+```mermaid
+sequenceDiagram
+  actor W as Holder's wallet
+  participant P as Page
+  participant R as Relayer
+  participant S as SealedPockets
+  participant C as cUSDC
+  W->>P: sign the pocket message (once)
+  P->>P: key, viewer from the signature
+  P->>R: open(key encrypted, viewer)
+  R->>S: open
+  W->>S: deposit([decoys + mine], target, amount) (setOperator first)
+  S->>C: confidentialTransferFrom(wallet, pockets, amount)
+  S->>S: credit select(target == id) to each pocket of the set; refund what found no pocket
+  P->>R: send(from set, to set, amount + target, key XOR spendHash)
+  R->>S: send
+  S->>S: debit select(key matches and balance covers and target in set); credit the target
+  P->>R: withdraw(from set, to, amount, key XOR spendHash)
+  R->>S: withdraw
+  S->>C: confidentialTransfer(to, what was debited)
+  P->>P: the viewer decrypts the balance (user decryption)
+```
+
+```mermaid
+sequenceDiagram
+  actor Seller
+  participant V as SealedVault
+  participant D as PocketDesk
+  participant P as Buyer's page
+  participant K as Zama relayer + KMS
+  participant S as SealedPockets
+  Seller->>V: offerSale(box, desk, price)
+  Seller->>D: reserve(saleId, pocket) (the pocket's viewer may read the price)
+  P->>D: ask(saleId, key XOR buyHash(sale, pocket, box key handle))
+  D->>S: deskCheck: key matches and balance covers price (one bit, public)
+  P->>K: publicDecrypt(ok)
+  P->>D: buy(askId, proof, box key for the vault)
+  D->>S: deskTake(pocket, key, price): price or 0 to the desk
+  D->>V: acceptSale(saleId, box key): pulls the price from the desk, all or nothing
+  V-->>D: the box, if paid and the seller still held it; or a refund
+  D->>S: deskGive(pocket, what came back)
+```
+
+### With the vault's boxes
+
+**Paying from a pocket.** A seller offers a box privately to the desk and reserves the sale for
+the buyer's pocket (its code, `P-12` on the page); the desk lets that pocket's viewer read the
+price. The buyer asks first: the desk checks the key and the balance under encryption and makes
+only that bit public. Without that step a stranger could spend the seller's sale with a wrong
+key, since the vault settles a sale on its first `acceptSale`, paid or not. With the proof, `buy`
+takes the price from the pocket (or nothing, if the balance moved since), lets the vault pull it
+from the desk (all or nothing, so a pocket that paid nothing buys nothing), and hands back
+whatever the vault refunded. The desk never holds tokens outside `buy` and never sells, so the
+vault can never pull anything but the price just taken. The box is then held by the desk, a
+holder every pocket shares, with the buyer's vault key (the same key the page derives for any of
+the wallet's boxes): taking the NFT out, listing it, accepting an offer, claiming a sale's ETH and
+delegating work as for any box. Giving it away or selling it privately need its holder's address,
+here the desk's, so they are not offered for those boxes. `ownerOf(box)` on the desk (encrypted,
+readable by the buyers' viewers) tells the page which bought boxes are its pocket's.
+
+**Cashing in.** After a private sale, the seller's page offers "Into my pocket": a deposit of the
+price, less the fee, from the seller's cUSDC. The deposit names the seller's wallet, as any
+deposit does.
+
+### What is public
+
+| Fact | Visible to everyone |
+| --- | --- |
+| A pocket | its number and its viewer (an address tied to no wallet), when it was opened, by which sender |
+| A deposit | the wallet, and the set of pockets it named; not the amount when it comes from cUSDC, nor which pocket got it |
+| A send | the paying set and the receiving set, the sender (the relayer); not who paid whom, nor how much |
+| A withdrawal | the paying set, the address paid; not the amount, nor which pocket paid |
+| A purchase from a pocket | the sale, its seller, the pocket it is reserved for, the ask's yes or no; not the price, nor whether the box moved |
+
+Never public: a pocket's balance, an amount, which pocket of a set moved, who holds a pocket.
+
+In practice: the sets are public, so few decoys, or the same pockets named again and again, give
+hints, and a pocket's sets can be followed over time; the more pockets exist, the better each one
+hides. A deposit from plain USDC shows the amount when it is shielded; a withdrawal to a known
+address names its receiver. The reserved pocket of a desk sale is public (the seller chose it):
+that pocket tried to buy that box.
+
+### Pockets' decisions
+
+- **A key, as for the boxes, and a viewer apart.** The balance must be readable by its holder,
+  and ACL grants are public: allowing the wallet on its pocket's handles would name it. The
+  viewer, derived from the same signature, is allowed instead; it holds no ETH and signs only
+  decryption permits.
+- **Sets and an encrypted target, not one pocket.** Naming one pocket per side would make every
+  send a public edge between two pseudonyms. A set of five with the real one hidden costs a few
+  more encrypted operations per pocket (6.5M HCU for five on each side, under the 20M limit).
+- **A spent-handle list, not a nonce.** A nonce would have to move only when the key matched,
+  which is encrypted here (the boxes make that bit public; a spend does not decrypt anything).
+  A bound key's handle can be used once instead: a fresh encryption gives a fresh handle, and
+  only the key's holder can make one that matches.
+- **The desk asks first.** The vault's `acceptSale` settles a sale on its first call, paid or
+  not; letting anyone call `buy` straight away would let a stranger spend a seller's sale with a
+  wrong key. The one public bit costs a decryption, as the boxes' requests do.
+- **The desk, not the pockets, buys.** The vault pulls a sale's price from its buyer's whole
+  balance; the pockets' contract holds everyone's tokens, so a short pocket would have been paid
+  for by the others. The desk holds only what `buy` just took.
+- **No change to `SealedVault`.** It is 254 bytes under the size limit; the desk works with the
+  vault as it is deployed.
+
+### Pockets' limits
+
+- One token (cUSDC) per deployment, one pocket per wallet, five pockets a side at most.
+- A box bought from a pocket cannot be given or sold privately again (its holder is the desk).
+- A purchase needs a public decryption, so it waits for Zama's gateway like the boxes' requests;
+  deposits, sends and withdrawals do not.
+- The pocket key comes from one signature of a fixed message: a site that tricks a wallet into
+  signing it can spend that wallet's pocket.
+- Not audited. A purchase from a pocket has not run on Sepolia yet: it waits for the gateway like
+  the boxes' requests.
+
 ## What is public, what is not
 
 | Fact | Visible to everyone | How |
@@ -616,8 +785,10 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
 - Offers on some of a collection's tokens (a criteria root other than 0, as for trait offers)
   are refused by the board; the vault would fill one only with its Merkle proof.
 - OpenSea's own website lists orders posted to its API; an order validated on-chain may not show
-  there, and its testnet site may not show Sepolia orders at all. Not checked. The orders are
-  real Seaport orders: any Seaport marketplace, aggregator or script can fill them.
+  there. OpenSea closed its testnets (`testnets.opensea.io` redirects to its farewell page,
+  checked 2026-10-09), so on Sepolia the page links boxes and NFTs to Etherscan only; on mainnet
+  the chain's `marketplaceUrl` adds an OpenSea link. The orders are real Seaport orders: any
+  Seaport marketplace, aggregator or script can fill them.
 - A stranger's wrong-key requests can still hold a box's transfers and private sales back until
   someone finalizes them (anyone may, as soon as the KMS answers; the page does) or, after a day
   without a proof, expires them. Each try costs the stranger a request's gas (~290k to 375k). A
@@ -658,6 +829,17 @@ Measured on the local FHEVM with Seaport 1.5's Sepolia bytecode (gas from
 | `acceptSale` | 1,660,000 | 4,342,000 (depth 2,307,000) |
 | `cancelSale`, `sendFees` | 30,000, 36,000 | 0 |
 
+The pockets, measured the same way (`REPORT_COSTS=1 npx hardhat test test/SealedPockets.ts`):
+
+| Action | Gas | HCU |
+| --- | --- | --- |
+| `open` | 280,000 to 317,000 | 32 |
+| `deposit`, set of 1 / 3 / 5 | 835,000 / 1,026,000 / 1,242,000 | 1,633,000 / 2,555,000 / 3,477,000 |
+| `send`, 1 / 3 / 5 pockets a side | 541,000 / 1,079,000 / 1,614,000 | 1,315,000 / 3,915,000 / 6,515,000 (depth 1,971,000) |
+| `withdraw`, set of 1 / 3 / 5 | 696,000 / 970,000 / 1,268,000 | 1,358,000 / 2,824,000 / 4,290,000 |
+| `PocketDesk.ask` | 432,000 | 368,000 |
+| `PocketDesk.buy` (the sale accepted on the vault) | 2,679,000 | 6,277,000 (depth 3,277,000) |
+
 Deploying the vault takes about 5.5M gas, `VaultOffers` about 1.9M. Every call is far under the protocol's 20M HCU (5M
 depth) a transaction.
 
@@ -665,6 +847,8 @@ depth) a transaction.
 
 ```bash
 pnpm --filter @dno/contracts-evm test test/SealedVault.ts   # 62 tests, Seaport 1.5's and delegate.xyz's real bytecode
+pnpm --filter @dno/contracts-evm test test/SealedPockets.ts # 45 tests: the pockets and the desk, on the real vault
+pnpm --filter @dno/contracts-evm test test/PocketsAdapter.ts # 5: the adapter's EvmPockets against them, relayed or not
 pnpm --filter @dno/chain-adapter exec vitest run test/vault.test.ts   # the mock vault
 pnpm --filter @dno/api exec vitest run test/vaultRelay.test.ts        # the relayer and its routes
 pnpm dev                                                    # http://localhost:5173/vault, on the mock
@@ -677,7 +861,9 @@ vault is tested against Seaport itself, not a stand-in. delegate.xyz's registry 
 way (`test/fixtures/delegate-registry-v2.json`, no constructor state), and WETH is `TestWETH`.
 In the mock (`MockVault`) the night shift holds two boxes, one listed on Seaport; a listing of
 yours finds a buyer after 20 mock seconds, the night shift offers 0.03 WETH for every NFT you
-seal, and it accepts any private sale offered to it.
+seal, and it accepts any private sale offered to it. Its pockets: four strangers' and the night
+shift's, which buys any box offered to it; opening yours brings an offer of one of its boxes for
+5 cUSDC, so paying from a pocket can be played alone.
 
 End to end, on a local node or on Sepolia (`dno:vault-demo`: mints a test NFT, seals it, lists
 it, buys it the way any Seaport buyer would, sends the ETH to a fresh address, shows a wrong key
@@ -703,5 +889,9 @@ OpenSea's; a `TestWETH` locally). On a test network it deploys `VaultTestNFT` an
 a local node it first puts Seaport's and delegate.xyz's Sepolia code at their addresses.
 Payments are in the network's cUSDC (Zama's on Sepolia, a test one locally). `dno:export`
 writes `vault` (address, ABI, deploy block, Seaport, `offers` with its ABI and deploy block,
-WETH, the registry, the allowed collections) for the adapter and the API. Set `VAULT_RELAYER_KEY` on the API, and
+WETH, the registry, the allowed collections, and `pockets` with its `desk` when they are
+deployed) for the adapter and the API. `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys
+`SealedPockets` on the vault's cUSDC and `PocketDesk` on the vault, sets the desk once and hands
+the pockets to `COLLECTION_OWNER`: `npx hardhat deploy --network sepolia --tags Pockets` adds
+them next to a live vault. Set `VAULT_RELAYER_KEY` on the API, and
 fund that address with a little ETH, for the relayer.

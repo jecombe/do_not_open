@@ -14,8 +14,10 @@ import {
 } from "../lib/specParams";
 import { ConfidentialCroq, Croq, DoNotOpen, DoNotOpenConfig, Pantry, TestConfidentialUSDC, TestUSDC } from "../types";
 
-/** In USDC's smallest unit: 6 decimals. */
-export const usd = (amount: string) => ethers.parseUnits(amount, 6);
+import { confidentialUsdcOf, usd } from "./tokens";
+
+// The token helpers live in ./tokens, which the vault's tests use without the game's.
+export { confidentialUsdcOf, usd };
 export const FEES = {
   mint: usd("5"),
   observe: usd("1"),
@@ -73,12 +75,6 @@ export async function giveConfidentialUsdc(
 }
 
 /** `who`'s cUSDC balance, decrypted by its holder. */
-export async function confidentialUsdcOf(cUsdc: TestConfidentialUSDC, who: HardhatEthersSigner) {
-  const handle = await cUsdc.confidentialBalanceOf(who.address);
-  if (handle === ethers.ZeroHash) return 0n;
-  return fhevm.userDecryptEuint(FhevmType.euint64, handle, await cUsdc.getAddress(), who);
-}
-
 export const parseEvents = (dno: DoNotOpen, logs: readonly Log[], name: string) =>
   logs
     .filter((l) => l.address.toLowerCase() === (dno.target as string).toLowerCase())

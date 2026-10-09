@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { studioPacksFromSpec } from "../lib/studioPacks";
-import { PAYMENT_TOKENS } from "./deploy";
+import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /**
  * The studio's packs, sold in plain USDC before any AI generation, with the packs of

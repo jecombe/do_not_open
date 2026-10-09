@@ -2,7 +2,7 @@ import type { VaultDocsKey } from "./en";
 
 export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.title": "La bóveda sellada, la documentación · DO NOT OPEN",
-  "vaultDocs.description": "Cómo funciona la bóveda sellada: un NFT en una caja cuyo titular está cifrado, una llave que nadie puede leer, anuncios en Seaport y ofertas de compradores con la bóveda como vendedora, ventas privadas a un precio secreto, las ventajas del NFT prestadas a un wallet con delegate.xyz, un relayer, y exactamente lo que se filtra.",
+  "vaultDocs.description": "Cómo funciona la bóveda sellada: un NFT en una caja cuyo titular está cifrado, cUSDC en un bolsillo que nadie puede vincular a un wallet, llaves que nadie lee, anuncios de Seaport y ofertas de compradores con la bóveda como vendedora, ventas privadas a precio secreto, las ventajas del NFT prestadas con delegate.xyz, un relayer, y exactamente lo que se filtra.",
   "vaultDocs.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN, con un NFT dentro",
   "vaultDocs.homeAria": "DO NOT OPEN, inicio",
   "vaultDocs.site": "Sitio",
@@ -12,12 +12,12 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.nav.vault": "Abrir la bóveda",
 
   "vaultDocs.h1": "La bóveda sellada",
-  "vaultDocs.lede": "Cualquier NFT en una caja cuyo titular está cifrado on-chain. Aun así se puede vender en Seaport, anunciado o a la oferta de un comprador, o en privado por un precio que solo lee el comprador; sus airdrops siguen llegando a un wallet al que se los prestas; y sale a cualquier dirección. Así funciona, y esto es lo que cualquiera puede seguir viendo.",
+  "vaultDocs.lede": "Cualquier NFT en una caja cuyo titular está cifrado on-chain, y tus cUSDC en un bolsillo que nadie puede vincular a tu wallet. El NFT se sigue vendiendo en Seaport, anunciado o a la oferta de un comprador, o en privado por un precio que solo lee el comprador; sus airdrops siguen llegando al wallet al que se los prestas; tus tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién. Así funciona, y esto es lo que cualquiera puede seguir viendo.",
   "vaultDocs.hero.open": "Abrir la bóveda",
   "vaultDocs.hero.leaks": "Lo que se filtra",
 
   "vaultDocs.section.what": "Qué es la bóveda",
-  "vaultDocs.what.p1": "Un contrato que guarda NFT. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT se queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado.",
+  "vaultDocs.what.p1": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.",
   "vaultDocs.what.p2": "La bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear.",
 
   "vaultDocs.section.seal": "Sellar un NFT",
@@ -51,13 +51,22 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.bid": "Hacer una oferta",
   "vaultDocs.bid.p1": "Cada NFT de la cuadrícula de la bóveda abre su propia ficha, con sus ofertas y un botón «Hacer una oferta», esté en venta o no. Eliges un importe y cuánto dura la oferta (1, 7 o 30 días). No sabes quién tiene la caja, ni te hace falta: la oferta es por el NFT, y solo su titular puede aceptarla.",
-  "vaultDocs.bid.p2": "La página envuelve tu ETH en WETH, deja que Seaport tome ese WETH y te hace firmar la oferta; luego la publica en el tablón. El WETH se queda en tu wallet: Seaport solo lo toma si el titular acepta, y el NFT te llega en el mismo movimiento. El WETH que ya no necesites sigue siendo tuyo, y vuelve a ser ETH cuando quieras.",
+  "vaultDocs.bid.p2": "La página envuelve tu ETH en WETH, deja que Seaport tome ese WETH y te hace firmar la oferta; luego la publica en el tablón. El WETH se queda en tu wallet: Seaport solo lo toma si el titular acepta, y el NFT te llega en el mismo movimiento. El WETH que ya no necesites sigue siendo tuyo, y vuelve a ser ETH cuando quieras. Un clic en tu dirección abre tu perfil: tu ETH, WETH, USDC y cUSDC (el cUSDC descifrado solo para ti, con una firma), en directo, tus cajas, y cómo cambiar de wallet o desconectarte.",
   "vaultDocs.bid.p3": "Tu dirección se ve con la oferta, como en cualquier marketplace. Puedes cancelarla en cualquier momento, en una transacción; además termina sola en su fecha.",
 
   "vaultDocs.section.private": "Ventas privadas",
   "vaultDocs.private.p1": "Ofrece una caja a un solo comprador, por un precio en cUSDC (un dólar confidencial) que solo vosotros dos podéis leer. El comprador lo lee en la página, y luego paga y se lleva la caja en una sola transacción.",
   "vaultDocs.private.p2": "Todo se resuelve bajo cifrado: si el precio llegó y el vendedor aún tenía la caja, la caja se mueve con una llave que es del comprador, y el vendedor cobra; si no, nada se mueve y el comprador recupera sus cUSDC. Para todos los demás, una venta que se hizo y una que no se ven iguales.",
   "vaultDocs.private.p3": "Cualquiera puede ofrecer cualquier caja, así que una oferta no demuestra nada sobre quién la tiene. El vendedor puede cancelar una oferta abierta; solo el comprador nombrado puede aceptarla, una vez.",
+
+  "vaultDocs.section.pockets": "Los bolsillos: tokens que nadie rastrea",
+  "vaultDocs.pockets.p1": "Un dólar confidencial como el cUSDC ya oculta saldos e importes, pero cada transferencia sigue nombrando quién la envía y quién la recibe. Un bolsillo oculta también eso. Es un número (tu código, como P-12) con un saldo cifrado y una llave: lo que hay dentro, y quién lo tiene, nadie puede leerlo.",
+  "vaultDocs.pockets.p2": "Abrir tu bolsillo requiere una firma, gratis: con ella la página crea la llave del bolsillo y una segunda dirección que solo sirve para leer su saldo, nunca la de tu wallet. No se guarda nada; el mismo wallet encuentra el mismo bolsillo en cualquier dispositivo. El relayer envía la apertura, así que tu dirección no aparece.",
+  "vaultDocs.pockets.p3": "Depositar se hace desde los cUSDC de tu wallet (la página puede convertir antes USDC en cUSDC, y ese importe se ve). El depósito nombra tu wallet y algunos bolsillos elegidos al azar: cuál recibió, y cuánto, sigue cifrado. Cualquiera puede pagar a cualquier bolsillo así, desde un wallet.",
+  "vaultDocs.pockets.p4": "Para cobrar, da tu código. Enviar nombra tu bolsillo entre otros pocos, y el del destinatario entre otros pocos; la bóveda comprueba tu llave bajo cifrado, toma el importe del bolsillo que abre y lo suma al bolsillo cuyo número coincide, también bajo cifrado. Nada público dice quién pagó a quién, ni cuánto. Una llave equivocada o un saldo corto no mueven nada, sin error. No hace falta ningún descifrado: una sola transacción, que no espera a nadie.",
+  "vaultDocs.pockets.p5": "Sacar tokens los envía como cUSDC a cualquier dirección, con el importe aún cifrado. La dirección se ve: elige una nueva y nada la vincula contigo.",
+  "vaultDocs.pockets.p6": "Con las cajas de la bóveda: un vendedor puede ofrecer una caja en privado a tu bolsillo escribiendo tu código. Lees el precio y compras con tu bolsillo: primero una comprobación bajo cifrado que en público solo dice sí o no (para que un desconocido no pueda gastar la venta con una llave equivocada), luego la compra. La caja queda en la bóveda para una ventanilla que comparten todos los bolsillos, con tu llave: saca el NFT, ponlo en venta, acepta una oferta o delégalo, como cualquier caja. Desde ahí ya no se puede regalar ni revender en privado. Tras una venta privada, «A mi bolsillo» pone el precio, menos la comisión, en tu bolsillo.",
+  "vaultDocs.pockets.p7": "Límites: los bolsillos que nombra cada acción son públicos, así que nombrar pocos señuelos, o siempre los mismos bolsillos, da pistas; cuantos más bolsillos existen, mejor se esconde cada uno. Los bolsillos no tienen comisión propia. No están auditados.",
 
   "vaultDocs.section.give": "Regalar una caja",
   "vaultDocs.give.p1": "Envía una caja a cualquier dirección. Solo se mueve si la tienes, y llega sin llave: quien la recibe la encuentra en sus recibos y hace suya la llave. Hasta entonces nadie puede sacar nada de ella.",
@@ -83,11 +92,13 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.leaks.public6": "Las dos direcciones de una transferencia o de una venta privada",
   "vaultDocs.leaks.public7": "Las ofertas por cada NFT y quién las hizo, y el comprador y el importe de una oferta aceptada",
   "vaultDocs.leaks.public8": "El delegado de una caja, el wallet que actúa por el NFT en delegate.xyz",
+  "vaultDocs.leaks.public9": "Qué wallet depositó en qué bolsillos, los bolsillos que nombra cada pago de bolsillo, y la dirección a la que va un retiro de bolsillo",
   "vaultDocs.leaks.hidden1": "Quién tiene una caja",
   "vaultDocs.leaks.hidden2": "La llave de la caja",
   "vaultDocs.leaks.hidden3": "El precio de una venta privada, y si se hizo",
   "vaultDocs.leaks.hidden4": "Si una transferencia movió algo",
   "vaultDocs.leaks.hidden5": "Quién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer",
+  "vaultDocs.leaks.hidden6": "El saldo de un bolsillo, los importes que mueve, qué bolsillo de un grupo se movió, y quién tiene un bolsillo",
   "vaultDocs.leaks.p1": "En la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo).",
 
   "vaultDocs.section.testnet": "En la red de prueba",
@@ -98,6 +109,8 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.testnet.c.offers": "El tablón de ofertas",
   "vaultDocs.testnet.c.weth": "WETH, en lo que pagan las ofertas",
   "vaultDocs.testnet.c.registry": "El registro de delegate.xyz",
+  "vaultDocs.testnet.c.pockets": "Los bolsillos",
+  "vaultDocs.testnet.c.desk": "La ventanilla que compra desde los bolsillos",
 
   "vaultDocs.section.more": "Para saber más",
   "vaultDocs.more.project": "Sobre DO NOT OPEN",

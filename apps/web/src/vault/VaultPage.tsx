@@ -4,11 +4,13 @@ import {
   MAX_DECOYS,
   sameAddress,
   shortAddress,
+  vaultLinks,
   type ActionOptions,
   type Address,
   type VaultAdapter,
   type VaultBox,
   type VaultInfo,
+  type VaultLinks,
   type VaultOffer,
   type VaultSale,
 } from "@dno/chain-adapter";
@@ -21,6 +23,8 @@ import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
 import { dismissRun, dropRun, endRun, isOwnRun, runStep, runTx, startRun } from "./tx/runStore";
 import { TxDock, TxStage, useVaultRun } from "./tx/VaultTx";
+import { parsePocketCode, pocketCode, PocketTab } from "./VaultPocket";
+import { VaultBalances, VaultProfile } from "./VaultWallet";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
 const POLL_MS = 15_000;
@@ -28,7 +32,7 @@ const LIST_DAYS = [1, 7, 30];
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 /** Decoys a deposit sends the new box to unless the holder picks another count (0 to MAX_DECOYS). */
 const DEFAULT_DECOYS = 3;
-const TABS = ["explore", "mine", "wallet", "sales", "leaks"] as const;
+const TABS = ["explore", "mine", "pocket", "wallet", "sales", "leaks"] as const;
 type Tab = (typeof TABS)[number];
 type Status = "all" | "listed" | "unlisted";
 type Sort = "recent" | "low" | "high";
@@ -81,6 +85,9 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   const [info, setInfo] = useState<VaultInfo | null>(null);
   const [boxes, setBoxes] = useState<VaultBox[]>([]);
   const [mine, setMine] = useState<number[] | null>(null);
+  /** Boxes the wallet's pocket bought: held by the desk, with the wallet's key. */
+  const [pocketBoxes, setPocketBoxes] = useState<number[]>([]);
+  const [pocketCount, setPocketCount] = useState<number | null>(null);
   const [nfts, setNfts] = useState<{ collection: Address; name: string; id: bigint }[]>([]);
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
@@ -101,12 +108,17 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  const pockets = useMemo(() => vault.pockets(), [vault]);
+
   const readPublic = useCallback(async () => {
-    const [i, b] = await Promise.all([vault.info(), vault.boxes()]);
+    const [i, b, p] = await Promise.all([vault.info(), vault.boxes(), pockets?.info().catch(() => null) ?? null]);
     setInfo(i);
     setBoxes(b);
+    setPocketCount(p?.count ?? null);
     return i;
-  }, [vault]);
+  }, [vault, pockets]);
+
+  const readPocketBoxes = useCallback(() => void pockets?.boxes().then(setPocketBoxes, () => undefined), [pockets]);
 
   const readAccount = useCallback(
     async (i: VaultInfo | null, findBoxes: boolean) => {
@@ -115,6 +127,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
       setNfts(held.flat());
       setSales(await vault.sales());
       if (findBoxes) setMine(await vault.myBoxes());
+      if (pockets) setPocketBoxes(await pockets.boxes().catch(() => []));
     },
     [vault, account],
   );
@@ -122,6 +135,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   // A new account starts unknown: finding its boxes takes a signature, except in the demo.
   useEffect(() => {
     setMine(null);
+    setPocketBoxes([]);
     setNfts([]);
     setSales([]);
     setPrices({});
@@ -193,12 +207,14 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   const findMine = () => void act("find", () => vault.myBoxes()).then((m) => m && setMine(m));
 
   const coin = info?.coin ?? "ETH";
+  const links = useMemo(() => vaultLinks(info), [info]);
   const nameOf = (collection: Address) => info?.collections.find((c) => sameAddress(c.address, collection))?.name ?? shortAddress(collection);
   const labelOf = (b: VaultBox) => t("vault.nft", { collection: nameOf(b.collection), id: String(b.tokenId) });
   const inVault = boxes.filter((b) => b.state === "sealed" || b.state === "listed");
   const listed = inVault.filter((b) => b.listing && b.state === "listed");
   const floor = listed.reduce<bigint | null>((min, b) => (min === null || b.listing!.price < min ? b.listing!.price : min), null);
-  const myBoxes = boxes.filter((b) => mine?.includes(b.boxId));
+  const myBoxes = boxes.filter((b) => mine?.includes(b.boxId) || pocketBoxes.includes(b.boxId));
+  const isMine = (boxId: number) => !!mine?.includes(boxId) || pocketBoxes.includes(boxId);
   const box = opened === null ? null : (boxes.find((b) => b.boxId === opened) ?? null);
 
   const explore = useMemo(() => {
@@ -222,7 +238,8 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
 
   const counts: Record<Tab, number | null> = {
     explore: inVault.length,
-    mine: mine === null ? null : myBoxes.length,
+    mine: mine === null && !pocketBoxes.length ? null : myBoxes.length,
+    pocket: null,
     wallet: account ? nfts.length : null,
     sales: account ? sales.length : null,
     leaks: null,
@@ -265,13 +282,20 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               <Cipher length={4} />
             </dd>
           </div>
+          {pocketCount !== null && (
+            <div>
+              <dt>{t("vault.stat.pockets")}</dt>
+              <dd>{pocketCount}</dd>
+            </div>
+          )}
           <div>
             <dt>{t("vault.stat.fee")}</dt>
             <dd>{info ? `${info.feeBps / 100}%` : "…"}</dd>
           </div>
         </dl>
+        <VaultBalances vault={vault} coin={coin} className="vault-balances-head" />
         <div className="vault-account">
-          {account ? <span className="vault-me">{shortAddress(account)}</span> : connectButton}
+          {account ? <VaultProfile account={account} vault={vault} coin={coin} links={links} boxes={mine?.length ?? null} onBoxes={() => setTab("mine")} /> : connectButton}
           {!account && picking && (
             <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
               <p>{t("vault.pickWallet")}</p>
@@ -331,6 +355,11 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           <div className="vault-side-foot">
             <p className="vault-network">{t(demo ? "vault.network.mock" : "vault.network.sepolia")}</p>
             {info && <p className="vault-network">{info.relayer ? t("vault.relayer.on") : t("vault.relayer.off")}</p>}
+            {info?.explorerUrl && (
+              <a className="sec-link" href={info.explorerUrl} target="_blank" rel="noreferrer" title={info.address}>
+                {t("vault.link.contract")}&nbsp;↗
+              </a>
+            )}
             <a className="sec-link" href={vaultDocsPath(locale)}>
               {t("vault.docs")}&nbsp;→
             </a>
@@ -374,9 +403,9 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                       box={b}
                       label={labelOf(b)}
                       coin={coin}
-                      mine={!!mine?.includes(b.boxId)}
+                      mine={isMine(b.boxId)}
                       onOpen={() => setOpened(b.boxId)}
-                      onBuy={account && !mine?.includes(b.boxId) && b.state === "listed" ? () => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy")) : null}
+                      onBuy={account && !isMine(b.boxId) && b.state === "listed" ? () => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy")) : null}
                       busy={!!action.busy}
                     />
                   ))}
@@ -388,7 +417,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           {tab === "mine" &&
             (!account ? (
               <Empty title={t("vault.connectFirst")}>{connectButton}</Empty>
-            ) : mine === null ? (
+            ) : mine === null && !pocketBoxes.length ? (
               <Empty title={t("vault.mine.lede")}>
                 <button type="button" className="sec-btn sec-btn-small" disabled={!!action.busy} onClick={findMine}>
                   {t("vault.mine.find")}
@@ -403,7 +432,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
             ) : (
               <ul className="vault-grid">
                 {myBoxes.map((b) => (
-                  <BoxCard key={b.boxId} box={b} label={labelOf(b)} coin={coin} mine onOpen={() => setOpened(b.boxId)} onBuy={null} busy={!!action.busy} />
+                  <BoxCard key={b.boxId} box={b} label={labelOf(b)} coin={coin} mine viaPocket={pocketBoxes.includes(b.boxId)} onOpen={() => setOpened(b.boxId)} onBuy={null} busy={!!action.busy} />
                 ))}
               </ul>
             ))}
@@ -519,12 +548,47 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                               {t("vault.action.cancel")}
                             </button>
                           )}
+                          {/* Cash in: what the buyer paid, less the vault's fee, straight into the seller's pocket. */}
+                          {s.status === "settled" && !toMe && pockets && info && prices[s.saleId] !== undefined && (
+                            <button
+                              type="button"
+                              className="sec-btn sec-btn-ghost sec-btn-small"
+                              title={t("vault.pocket.intoPocketHint")}
+                              disabled={!!action.busy}
+                              onClick={() => {
+                                const paid = prices[s.saleId]!;
+                                const net = paid - (paid * BigInt(info.feeBps)) / 10_000n;
+                                void act("pocketDeposit", (o) => pockets.deposit(net, o), () => t("vault.done.pocketDeposit"));
+                              }}
+                            >
+                              {t("vault.pocket.intoPocket")}
+                            </button>
+                          )}
                         </li>
                       );
                     })}
                   </ul>
                 )}
               </>
+            ))}
+
+          {tab === "pocket" &&
+            (!account ? (
+              <Empty title={t("vault.connectFirst")}>{connectButton}</Empty>
+            ) : !pockets ? (
+              <Empty title={t("vault.pocket.missing")} />
+            ) : (
+              <PocketTab
+                pockets={pockets}
+                account={account}
+                act={act}
+                busy={!!action.busy}
+                demo={demo}
+                boxes={boxes}
+                labelOf={labelOf}
+                onOpenBox={setOpened}
+                onPocket={readPocketBoxes}
+              />
             ))}
 
           {tab === "leaks" && <Leaks />}
@@ -538,10 +602,12 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           collection={nameOf(box.collection)}
           coin={coin}
           account={account}
-          holder={!!mine?.includes(box.boxId)}
+          holder={isMine(box.boxId)}
+          viaPocket={pocketBoxes.includes(box.boxId)}
           busy={!!action.busy}
           act={act}
           vault={vault}
+          links={links}
           connect={connectButton}
           onClose={() => setOpened(null)}
         />
@@ -567,7 +633,26 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
 type Act = <T>(name: string, run: (opts: ActionOptions) => Promise<T>, message?: (r: T) => string) => Promise<T | undefined>;
 
 /** One NFT of the grid, as on a marketplace: its art under the vault's tape, its price, a button that slides up. */
-function BoxCard({ box, label, coin, mine, onOpen, onBuy, busy }: { box: VaultBox; label: string; coin: string; mine: boolean; onOpen: () => void; onBuy: (() => void) | null; busy: boolean }) {
+function BoxCard({
+  box,
+  label,
+  coin,
+  mine,
+  viaPocket = false,
+  onOpen,
+  onBuy,
+  busy,
+}: {
+  box: VaultBox;
+  label: string;
+  coin: string;
+  mine: boolean;
+  /** Bought with the wallet's pocket: the desk holds it, with the wallet's key. */
+  viaPocket?: boolean;
+  onOpen: () => void;
+  onBuy: (() => void) | null;
+  busy: boolean;
+}) {
   const t = useT();
   const [collection, id] = splitLabel(label);
   return (
@@ -580,7 +665,7 @@ function BoxCard({ box, label, coin, mine, onOpen, onBuy, busy }: { box: VaultBo
               Do not open
             </span>
           )}
-          {mine && <span className="vault-yours">{t("vault.market.yours")}</span>}
+          {mine && <span className="vault-yours">{viaPocket ? t("vault.pocket.badge") : t("vault.market.yours")}</span>}
         </div>
         <div className="vault-card-body">
           <p className="vault-card-coll">{collection}</p>
@@ -605,6 +690,47 @@ function BoxCard({ box, label, coin, mine, onOpen, onBuy, busy }: { box: VaultBo
   );
 }
 
+/** A link that opens outside the page, or its text alone where the chain has nowhere to look. */
+function ExternalLink({ href, title, children }: { href: string | null; title?: string; children: ReactNode }) {
+  return href ? (
+    <a className="vault-ext" href={href} target="_blank" rel="noreferrer" title={title}>
+      {children}
+    </a>
+  ) : (
+    <span title={title}>{children}</span>
+  );
+}
+
+function AddressLink({ address, links }: { address: Address; links: VaultLinks }) {
+  return (
+    <ExternalLink href={links.address(address)} title={address}>
+      {shortAddress(address)}
+    </ExternalLink>
+  );
+}
+
+/** Where to see the NFT itself: the explorer always (it shows the vault as its owner), a marketplace where one shows the chain. */
+function NftLinks({ box, links }: { box: VaultBox; links: VaultLinks }) {
+  const t = useT();
+  const explorer = links.nft(box.collection, box.tokenId);
+  const market = links.marketplace(box.collection, box.tokenId);
+  if (!explorer && !market) return null;
+  return (
+    <p className="vault-links">
+      {explorer && (
+        <a className="sec-link" href={explorer} target="_blank" rel="noreferrer">
+          {t("vault.link.explorer")}&nbsp;↗
+        </a>
+      )}
+      {market && (
+        <a className="sec-link" href={market} target="_blank" rel="noreferrer">
+          {t("vault.link.marketplace")}&nbsp;↗
+        </a>
+      )}
+    </p>
+  );
+}
+
 /** "Mock Kittens #12" → ["Mock Kittens", "#12"]. */
 function splitLabel(label: string): [string, string] {
   const at = label.lastIndexOf(" #");
@@ -619,9 +745,11 @@ function BoxDialog({
   coin,
   account,
   holder,
+  viaPocket,
   busy,
   act,
   vault,
+  links,
   connect,
   onClose,
 }: {
@@ -631,9 +759,11 @@ function BoxDialog({
   coin: string;
   account: Address | null;
   holder: boolean;
+  viaPocket: boolean;
   busy: boolean;
   act: Act;
   vault: VaultAdapter;
+  links: VaultLinks;
   connect: ReactNode;
   onClose: () => void;
 }) {
@@ -664,7 +794,11 @@ function BoxDialog({
           </div>
         </div>
         <div className="vault-dialog-info">
-          <p className="vault-card-coll">{collection}</p>
+          <p className="vault-card-coll">
+            <ExternalLink href={links.address(box.collection)} title={box.collection}>
+              {collection}
+            </ExternalLink>
+          </p>
           <h2>{splitLabel(label)[1] || label}</h2>
           <dl className="vault-facts">
             <div>
@@ -677,15 +811,20 @@ function BoxDialog({
             </div>
             <div>
               <dt>{t("vault.item.sealedBy")}</dt>
-              <dd>{shortAddress(box.depositor)}</dd>
+              <dd>
+                <AddressLink address={box.depositor} links={links} />
+              </dd>
             </div>
             {box.delegate && (
               <div>
                 <dt>delegate.xyz</dt>
-                <dd>{shortAddress(box.delegate)}</dd>
+                <dd>
+                  <AddressLink address={box.delegate} links={links} />
+                </dd>
               </div>
             )}
           </dl>
+          <NftLinks box={box} links={links} />
           <p className="vault-meta">{holder ? t("vault.item.ownerYou") : t("vault.item.ownerHidden")}</p>
 
           <div className="vault-buybox">
@@ -721,7 +860,8 @@ function BoxDialog({
             )}
           </div>
 
-          {holder && account && <HolderTools box={box} coin={coin} account={account} busy={busy} act={act} vault={vault} />}
+          {holder && viaPocket && <p className="vault-meta vault-pocket-boxhint">{t("vault.pocket.boxHint")}</p>}
+          {holder && account && <HolderTools box={box} coin={coin} account={account} busy={busy} act={act} vault={vault} viaPocket={viaPocket} />}
 
           {inVault && (
             <section className="vault-offers-wrap">
@@ -736,7 +876,24 @@ function BoxDialog({
 }
 
 /** What a box's holder can do with it, each action opening its own small form. */
-function HolderTools({ box, coin, account, busy, act, vault }: { box: VaultBox; coin: string; account: Address; busy: boolean; act: Act; vault: VaultAdapter }) {
+function HolderTools({
+  box,
+  coin,
+  account,
+  busy,
+  act,
+  vault,
+  viaPocket,
+}: {
+  box: VaultBox;
+  coin: string;
+  account: Address;
+  busy: boolean;
+  act: Act;
+  vault: VaultAdapter;
+  /** Held by the desk for the wallet's pocket: what needs the holder's address cannot be done. */
+  viaPocket: boolean;
+}) {
   const t = useT();
   const [open, setOpen] = useState<"withdraw" | "list" | "claim" | "delegate" | "send" | "sell" | "adopt" | null>(null);
   const toggle = (what: typeof open) => setOpen((cur) => (cur === what ? null : what));
@@ -761,9 +918,9 @@ function HolderTools({ box, coin, account, busy, act, vault }: { box: VaultBox; 
     { key: "claim", when: box.state === "sold" },
     { key: "withdraw", when: box.state === "sealed" || box.state === "listed" },
     { key: "delegate", when: box.state === "sealed" || box.state === "listed" },
-    { key: "sell", when: box.state === "sealed" },
-    { key: "send", when: box.state === "sealed" },
-    { key: "adopt", when: box.state === "sealed" },
+    { key: "sell", when: box.state === "sealed" && !viaPocket },
+    { key: "send", when: box.state === "sealed" && !viaPocket },
+    { key: "adopt", when: box.state === "sealed" && !viaPocket },
   ];
   const shown = actions.filter((a) => a.when);
   if (shown.length === 0) return null;
@@ -819,7 +976,17 @@ function HolderTools({ box, coin, account, busy, act, vault }: { box: VaultBox; 
       )}
       {open === "send" && <AddressForm account={null} hint={t("vault.form.sendHint")} busy={busy} onSubmit={(to) => void run("send", (o) => vault.send(box.boxId, to, o), () => t("vault.done.send"))} />}
       {open === "list" && <ListForm coin={coin} busy={busy} onSubmit={(price, endTime) => void run("list", (o) => vault.list(box.boxId, price, endTime, o), () => t("vault.done.list"))} />}
-      {open === "sell" && <SellForm busy={busy} onSubmit={(buyer, price) => void run("sell", (o) => vault.offerSale(box.boxId, buyer, price, o), () => t("vault.done.sell"))} />}
+      {open === "sell" && (
+        <SellForm
+          busy={busy}
+          pockets={!!vault.pockets()}
+          onSubmit={(buyer, price) =>
+            typeof buyer === "number"
+              ? void run("pocketOffer", (o) => vault.pockets()!.offerSale(box.boxId, buyer, price, o), () => t("vault.done.pocketOffer", { id: pocketCode(buyer) }))
+              : void run("sell", (o) => vault.offerSale(box.boxId, buyer, price, o), () => t("vault.done.sell"))
+          }
+        />
+      )}
       {open === "adopt" && (
         <Form busy={busy} hint={t("vault.form.adoptHint")} onSubmit={() => void run("adopt", (o) => vault.adopt(box.boxId, o), () => t("vault.done.adopt"))}>
           {null}
@@ -1020,7 +1187,8 @@ function ListForm({ coin, busy, onSubmit }: { coin: string; busy: boolean; onSub
   );
 }
 
-function SellForm({ busy, onSubmit }: { busy: boolean; onSubmit: (buyer: Address, price: bigint) => void }) {
+/** The buyer is an address, or a pocket's code (P-12) where there are pockets: then they pay from it. */
+function SellForm({ busy, pockets, onSubmit }: { busy: boolean; pockets: boolean; onSubmit: (buyer: Address | number, price: bigint) => void }) {
   const t = useT();
   const [buyer, setBuyer] = useState("");
   const [price, setPrice] = useState("10");
@@ -1031,14 +1199,15 @@ function SellForm({ busy, onSubmit }: { busy: boolean; onSubmit: (buyer: Address
       hint={bad ? t("vault.form.bad") : t("vault.form.sellHint")}
       onSubmit={() => {
         const units = parseUnits(price, 6);
-        const ok = ADDRESS.test(buyer.trim()) && !!units;
+        const pocket = pockets && !ADDRESS.test(buyer.trim()) ? parsePocketCode(buyer) : null;
+        const ok = (ADDRESS.test(buyer.trim()) || pocket !== null) && !!units;
         setBad(!ok);
-        if (ok) onSubmit(buyer.trim(), units!);
+        if (ok) onSubmit(pocket ?? buyer.trim(), units!);
       }}
     >
       <label>
         {t("vault.form.buyer")}
-        <input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="0x…" spellCheck={false} autoComplete="off" />
+        <input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder={pockets ? "0x… / P-12" : "0x…"} spellCheck={false} autoComplete="off" />
       </label>
       <label>
         {t("vault.form.usdc")}
@@ -1161,7 +1330,7 @@ function Leaks() {
     <section className="vault-leaks" id="leaks">
       <p className="vault-meta vault-leaks-lede">{t("vault.lede")}</p>
       <ol className="vault-why">
-        {(["1", "2", "3", "4"] as const).map((n) => (
+        {(["1", "2", "3", "4", "5"] as const).map((n) => (
           <li key={n}>
             <strong>{t(`vault.why${n}.title`)}</strong> {t(`vault.why${n}.body`)}
           </li>
