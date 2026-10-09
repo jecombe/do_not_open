@@ -30,6 +30,7 @@ export const projectFr: Record<ProjectKey, string> = {
   "project.section.vault": "Le coffre scellé",
   "project.vault.p1": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.",
   "project.vault.p2": "La boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur, ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part.",
+  "project.vault.p3": "Le coffre garde aussi des jetons. Tes cUSDC, un dollar confidentiel, vont dans une poche verrouillée par une clé plutôt que par une adresse : envoie-les vers une autre poche, paie une boîte avec, ou sors-les où tu veux. Les jetons confidentiels cachent déjà les montants ; une poche cache aussi qui a payé qui.",
   "project.vault.docs": "Lire la doc du coffre",
   "project.vault.open": "Ouvrir le coffre",
 
@@ -55,7 +56,7 @@ export const projectFr: Record<ProjectKey, string> = {
 
   "project.section.more": "Pour aller plus loin",
   "project.more.vault": "La doc du coffre",
-  "project.more.vault.v": "Le dépôt, la clé, Seaport, les ventes privées, le relayer, ce qui fuite.",
+  "project.more.vault.v": "Le dépôt, la clé, Seaport, les ventes privées, les poches, le relayer, ce qui fuite.",
   "project.more.game": "Le manuel du jeu",
   "project.more.game.v": "Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.",
   "project.more.repo": "Le code",

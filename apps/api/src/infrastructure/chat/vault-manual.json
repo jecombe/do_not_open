@@ -44,6 +44,11 @@
      "part": "manual"
     },
     {
+     "id": "vault-pockets",
+     "title": "Pockets: tokens nobody can trace",
+     "part": "manual"
+    },
+    {
      "id": "vault-give",
      "title": "Giving a box",
      "part": "manual"
@@ -119,7 +124,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "A contract that holds NFTs. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint."
+     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint."
     },
     {
      "id": "vault-seal-0",
@@ -206,6 +211,24 @@
      "text": "Offer a box to one buyer, for a price in cUSDC (a confidential dollar) that only the two of you can read. The buyer reads it in the page, then pays and takes the box in one transaction.\nEverything settles under encryption: if the price arrived and the seller still held the box, the box moves with a key that is the buyer's, and the seller is paid; otherwise nothing moves and the buyer gets their cUSDC back. To everyone else, a sale that went through and one that did not look the same.\nAnyone may offer any box, so an offer proves nothing about who holds it. The seller can cancel an open offer; only the named buyer can accept it, once."
     },
     {
+     "id": "vault-pockets-0",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "A confidential dollar like cUSDC already hides balances and amounts, but every transfer still names who sent it and who received it. A pocket hides that too. It is a number (your code, like P-12) with an encrypted balance and a key: what is in it, and who holds it, nobody can read.\nOpening your pocket takes one signature, free: from it the page makes the pocket's key and a second address that only ever reads its balance, never your wallet's. Nothing is stored; the same wallet finds the same pocket on any device. The relayer sends the opening, so your address is not on it.\nPutting tokens in comes from your wallet's cUSDC (the page can turn plain USDC into cUSDC first, and that amount shows). The deposit names your wallet and a few pockets picked at random: which one received, and how much, stays encrypted. Anyone can pay any pocket this way, from a wallet."
+    },
+    {
+     "id": "vault-pockets-1",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "To be paid, give your code. Sending names your pocket among a few others, and the receiver's among a few others; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody.\nTaking tokens out sends them as cUSDC to any address, the amount still encrypted. The address shows: pick a fresh one and nothing links it to you."
+    },
+    {
+     "id": "vault-pockets-2",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "With the vault's boxes: a seller can offer a box privately to your pocket by typing your code. You read the price, then buy with your pocket: first a check under encryption that only says yes or no in public (so a stranger cannot spend the sale with a wrong key), then the purchase. The box then sits in the vault for a desk every pocket shares, with your key: take the NFT out, list it, accept an offer or delegate it, as for any box. It cannot be given or sold privately again from there. After selling a box privately, \"Into my pocket\" puts the price, less the fee, in your pocket.\nLimits: the pockets each action names are public, so naming few decoys, or the same pockets again and again, gives hints; the more pockets exist, the better each one hides. Pockets have no fee of their own. They are not audited."
+    },
+    {
      "id": "vault-give-0",
      "section": "vault-give",
      "heading": null,
@@ -233,19 +256,19 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Public",
-     "text": "Who sealed which NFT (the deposit is an NFT transfer), and the addresses its decoys went to\nThe NFT inside each box, its state, its listing\nSeaport listings, purchases and accepted offers, with the vault as the seller\nThe address an NFT or a sale's ETH goes out to, and the amount\nThat a request was made, on which box, for what, and whether it was done, refused, missed or expired\nThe two addresses of a transfer or a private sale\nThe offers on each NFT and who made them, and an accepted offer's buyer and amount\nA box's delegate, the wallet that acts for the NFT in delegate.xyz"
+     "text": "Who sealed which NFT (the deposit is an NFT transfer), and the addresses its decoys went to\nThe NFT inside each box, its state, its listing\nSeaport listings, purchases and accepted offers, with the vault as the seller\nThe address an NFT or a sale's ETH goes out to, and the amount\nThat a request was made, on which box, for what, and whether it was done, refused, missed or expired\nThe two addresses of a transfer or a private sale\nThe offers on each NFT and who made them, and an accepted offer's buyer and amount\nA box's delegate, the wallet that acts for the NFT in delegate.xyz\nWhich wallet deposited into which pockets, which pockets each pocket payment names, and the address a withdrawal from a pocket goes to"
     },
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Never public",
-     "text": "Who holds a box\nThe box's key\nA private sale's price, and whether it went through\nWhether a transfer moved anything\nWho asked for a listing, a withdrawal, a payout, an accepted offer or a delegate, when the relayer sends it\nIn practice: take NFTs and ETH out to an address with no history, name a fresh wallet as the delegate, let the relayer send your requests, and know that timing can still give hints (a \"Make the key mine\" right after a transfer to the same address, say)."
+     "text": "Who holds a box\nThe box's key\nA private sale's price, and whether it went through\nWhether a transfer moved anything\nWho asked for a listing, a withdrawal, a payout, an accepted offer or a delegate, when the relayer sends it\nA pocket's balance, the amounts it moves, which pocket of a set moved, and who holds a pocket\nIn practice: take NFTs and ETH out to an address with no history, name a fresh wallet as the delegate, let the relayer send your requests, and know that timing can still give hints (a \"Make the key mine\" right after a transfer to the same address, say)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5, the WETH OpenSea uses there and delegate.xyz's registry. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xE225…8262\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nThe offer board 0x750d…f9E2\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493"
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5, the WETH OpenSea uses there and delegate.xyz's registry. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xE225…8262\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nThe offer board 0x750d…f9E2\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0xAfEc…e00C\nThe desk that buys from pockets 0x0939…759b"
     },
     {
      "id": "vault-more-0",
@@ -269,7 +292,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.\nThe box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller, or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere.\nRead the vault's documentation Open the vault"
+     "text": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.\nThe box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller, or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere.\nThe vault holds tokens too. Your cUSDC, a confidential dollar, goes in a pocket locked by a key rather than an address: send it to another pocket, pay for a box with it, or take it out anywhere. Confidential tokens already hide amounts; a pocket also hides who paid whom.\nRead the vault's documentation Open the vault"
     },
     {
      "id": "project-game-0",
@@ -299,7 +322,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "The vault's documentation Depositing, the key, Seaport, private sales, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code Contracts, app and API, all open source.\nZama's FHEVM The encryption the contracts run on."
+     "text": "The vault's documentation Depositing, the key, Seaport, private sales, pockets, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code Contracts, app and API, all open source.\nZama's FHEVM The encryption the contracts run on."
     }
    ]
   },
@@ -343,6 +366,11 @@
     {
      "id": "vault-private",
      "title": "Les ventes privées",
+     "part": "manual"
+    },
+    {
+     "id": "vault-pockets",
+     "title": "Les poches : des jetons que personne ne trace",
      "part": "manual"
     },
     {
@@ -421,7 +449,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrat qui garde des NFT. Chaque NFT qui entre reçoit une boîte : un jeton à part dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur) ou vende la boîte en privé.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
+     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
     },
     {
      "id": "vault-seal-0",
@@ -514,6 +542,30 @@
      "text": "Propose une boîte à un seul acheteur, pour un prix en cUSDC (un dollar confidentiel) que vous seuls, lui et toi, pouvez lire. L'acheteur le lit dans la page, puis paie et prend la boîte en une transaction.\nTout se règle sous chiffrement : si le prix est arrivé et que le vendeur détenait encore la boîte, la boîte bouge avec une clé qui est celle de l'acheteur, et le vendeur est payé ; sinon rien ne bouge et l'acheteur récupère ses cUSDC. Pour tous les autres, une vente qui a abouti et une vente ratée se ressemblent.\nN'importe qui peut proposer n'importe quelle boîte, donc une offre ne prouve rien sur qui la détient. Le vendeur peut annuler une offre ouverte ; seul l'acheteur désigné peut l'accepter, une fois."
     },
     {
+     "id": "vault-pockets-0",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.\nOuvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas."
+    },
+    {
+     "id": "vault-pockets-1",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Déposer se fait depuis les cUSDC de ton wallet (la page peut d'abord convertir de l'USDC en cUSDC, et ce montant-là se voit). Le dépôt nomme ton wallet et quelques poches tirées au hasard : laquelle a reçu, et combien, reste chiffré. N'importe qui peut payer n'importe quelle poche ainsi, depuis un wallet.\nPour être payé, donne ton code. Envoyer nomme ta poche parmi quelques autres, et celle du destinataire parmi quelques autres ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne."
+    },
+    {
+     "id": "vault-pockets-2",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Retirer envoie les jetons en cUSDC vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit : prends-en une neuve et rien ne la relie à toi.\nAvec les boîtes du coffre : un vendeur peut proposer une boîte en privé à ta poche en tapant ton code. Tu lis le prix, puis tu achètes avec ta poche : d'abord une vérification sous chiffrement qui ne dit en public que oui ou non (pour qu'un inconnu ne puisse pas gâcher la vente avec une mauvaise clé), puis l'achat. La boîte reste ensuite dans le coffre pour un guichet que toutes les poches partagent, avec ta clé : sors le NFT, mets-le en vente, accepte une offre ou délègue-le, comme pour n'importe quelle boîte. Elle ne peut plus être donnée ni revendue en privé de là. Après une vente privée, « Dans ma poche » met le prix, moins les frais, dans ta poche."
+    },
+    {
+     "id": "vault-pockets-3",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Limites : les poches que nomme chaque action sont publiques, donc nommer peu de leurres, ou toujours les mêmes poches, donne des indices ; plus il y a de poches, mieux chacune se cache. Les poches n'ont pas de frais propres. Elles ne sont pas auditées."
+    },
+    {
      "id": "vault-give-0",
      "section": "vault-give",
      "heading": null,
@@ -541,19 +593,19 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Public",
-     "text": "Qui a scellé quel NFT (le dépôt est un transfert de NFT), et les adresses où sont partis ses leurres\nLe NFT dans chaque boîte, son état, son annonce\nLes annonces, les achats et les offres acceptées sur Seaport, avec le coffre comme vendeur\nL'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant\nQu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée, manquée ou expirée\nLes deux adresses d'un transfert ou d'une vente privée\nLes offres sur chaque NFT et qui les a faites, et l'acheteur et le montant d'une offre acceptée\nLe délégué d'une boîte, le wallet qui agit pour le NFT dans delegate.xyz"
+     "text": "Qui a scellé quel NFT (le dépôt est un transfert de NFT), et les adresses où sont partis ses leurres\nLe NFT dans chaque boîte, son état, son annonce\nLes annonces, les achats et les offres acceptées sur Seaport, avec le coffre comme vendeur\nL'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant\nQu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée, manquée ou expirée\nLes deux adresses d'un transfert ou d'une vente privée\nLes offres sur chaque NFT et qui les a faites, et l'acheteur et le montant d'une offre acceptée\nLe délégué d'une boîte, le wallet qui agit pour le NFT dans delegate.xyz\nQuel wallet a déposé dans quelles poches, les poches que nomme chaque paiement de poche, et l'adresse où va un retrait de poche"
     },
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Jamais public",
-     "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie\nEn pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
+     "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie\nLe solde d'une poche, les montants qu'elle déplace, la poche d'un groupe qui a bougé, et qui détient une poche\nEn pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5, le WETH qu'OpenSea y utilise et le registre de delegate.xyz. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xE225…8262\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLe tableau des offres 0x750d…f9E2\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493"
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5, le WETH qu'OpenSea y utilise et le registre de delegate.xyz. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xE225…8262\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLe tableau des offres 0x750d…f9E2\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0xAfEc…e00C\nLe guichet qui achète depuis les poches 0x0939…759b"
     },
     {
      "id": "vault-more-0",
@@ -577,7 +629,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.\nLa boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur, ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part.\nLire la doc du coffre Ouvrir le coffre"
+     "text": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.\nLa boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur, ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part.\nLe coffre garde aussi des jetons. Tes cUSDC, un dollar confidentiel, vont dans une poche verrouillée par une clé plutôt que par une adresse : envoie-les vers une autre poche, paie une boîte avec, ou sors-les où tu veux. Les jetons confidentiels cachent déjà les montants ; une poche cache aussi qui a payé qui.\nLire la doc du coffre Ouvrir le coffre"
     },
     {
      "id": "project-game-0",
@@ -607,7 +659,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Contrats, app et API, tout est open source.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
+     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, les poches, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Contrats, app et API, tout est open source.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
     }
    ]
   },
@@ -651,6 +703,11 @@
     {
      "id": "vault-private",
      "title": "Ventas privadas",
+     "part": "manual"
+    },
+    {
+     "id": "vault-pockets",
+     "title": "Los bolsillos: tokens que nadie rastrea",
      "part": "manual"
     },
     {
@@ -729,7 +786,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrato que guarda NFT. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT se queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear."
+     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear."
     },
     {
      "id": "vault-seal-0",
@@ -816,6 +873,24 @@
      "text": "Ofrece una caja a un solo comprador, por un precio en cUSDC (un dólar confidencial) que solo vosotros dos podéis leer. El comprador lo lee en la página, y luego paga y se lleva la caja en una sola transacción.\nTodo se resuelve bajo cifrado: si el precio llegó y el vendedor aún tenía la caja, la caja se mueve con una llave que es del comprador, y el vendedor cobra; si no, nada se mueve y el comprador recupera sus cUSDC. Para todos los demás, una venta que se hizo y una que no se ven iguales.\nCualquiera puede ofrecer cualquier caja, así que una oferta no demuestra nada sobre quién la tiene. El vendedor puede cancelar una oferta abierta; solo el comprador nombrado puede aceptarla, una vez."
     },
     {
+     "id": "vault-pockets-0",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Un dólar confidencial como el cUSDC ya oculta saldos e importes, pero cada transferencia sigue nombrando quién la envía y quién la recibe. Un bolsillo oculta también eso. Es un número (tu código, como P-12) con un saldo cifrado y una llave: lo que hay dentro, y quién lo tiene, nadie puede leerlo.\nAbrir tu bolsillo requiere una firma, gratis: con ella la página crea la llave del bolsillo y una segunda dirección que solo sirve para leer su saldo, nunca la de tu wallet. No se guarda nada; el mismo wallet encuentra el mismo bolsillo en cualquier dispositivo. El relayer envía la apertura, así que tu dirección no aparece."
+    },
+    {
+     "id": "vault-pockets-1",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Depositar se hace desde los cUSDC de tu wallet (la página puede convertir antes USDC en cUSDC, y ese importe se ve). El depósito nombra tu wallet y algunos bolsillos elegidos al azar: cuál recibió, y cuánto, sigue cifrado. Cualquiera puede pagar a cualquier bolsillo así, desde un wallet.\nPara cobrar, da tu código. Enviar nombra tu bolsillo entre otros pocos, y el del destinatario entre otros pocos; la bóveda comprueba tu llave bajo cifrado, toma el importe del bolsillo que abre y lo suma al bolsillo cuyo número coincide, también bajo cifrado. Nada público dice quién pagó a quién, ni cuánto. Una llave equivocada o un saldo corto no mueven nada, sin error. No hace falta ningún descifrado: una sola transacción, que no espera a nadie.\nSacar tokens los envía como cUSDC a cualquier dirección, con el importe aún cifrado. La dirección se ve: elige una nueva y nada la vincula contigo."
+    },
+    {
+     "id": "vault-pockets-2",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Con las cajas de la bóveda: un vendedor puede ofrecer una caja en privado a tu bolsillo escribiendo tu código. Lees el precio y compras con tu bolsillo: primero una comprobación bajo cifrado que en público solo dice sí o no (para que un desconocido no pueda gastar la venta con una llave equivocada), luego la compra. La caja queda en la bóveda para una ventanilla que comparten todos los bolsillos, con tu llave: saca el NFT, ponlo en venta, acepta una oferta o delégalo, como cualquier caja. Desde ahí ya no se puede regalar ni revender en privado. Tras una venta privada, «A mi bolsillo» pone el precio, menos la comisión, en tu bolsillo.\nLímites: los bolsillos que nombra cada acción son públicos, así que nombrar pocos señuelos, o siempre los mismos bolsillos, da pistas; cuantos más bolsillos existen, mejor se esconde cada uno. Los bolsillos no tienen comisión propia. No están auditados."
+    },
+    {
      "id": "vault-give-0",
      "section": "vault-give",
      "heading": null,
@@ -843,19 +918,19 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Público",
-     "text": "Quién selló qué NFT (el depósito es una transferencia de NFT), y las direcciones adonde fueron sus señuelos\nEl NFT dentro de cada caja, su estado, su anuncio\nLos anuncios, las compras y las ofertas aceptadas en Seaport, con la bóveda como vendedora\nLa dirección a la que sale un NFT o el ETH de una venta, y el importe\nQue se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó, falló o expiró\nLas dos direcciones de una transferencia o de una venta privada\nLas ofertas por cada NFT y quién las hizo, y el comprador y el importe de una oferta aceptada\nEl delegado de una caja, el wallet que actúa por el NFT en delegate.xyz"
+     "text": "Quién selló qué NFT (el depósito es una transferencia de NFT), y las direcciones adonde fueron sus señuelos\nEl NFT dentro de cada caja, su estado, su anuncio\nLos anuncios, las compras y las ofertas aceptadas en Seaport, con la bóveda como vendedora\nLa dirección a la que sale un NFT o el ETH de una venta, y el importe\nQue se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó, falló o expiró\nLas dos direcciones de una transferencia o de una venta privada\nLas ofertas por cada NFT y quién las hizo, y el comprador y el importe de una oferta aceptada\nEl delegado de una caja, el wallet que actúa por el NFT en delegate.xyz\nQué wallet depositó en qué bolsillos, los bolsillos que nombra cada pago de bolsillo, y la dirección a la que va un retiro de bolsillo"
     },
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Nunca público",
-     "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer\nEn la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
+     "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer\nEl saldo de un bolsillo, los importes que mueve, qué bolsillo de un grupo se movió, y quién tiene un bolsillo\nEn la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real, el WETH que OpenSea usa allí y el registro de delegate.xyz. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xE225…8262\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nEl tablón de ofertas 0x750d…f9E2\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493"
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real, el WETH que OpenSea usa allí y el registro de delegate.xyz. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xE225…8262\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nEl tablón de ofertas 0x750d…f9E2\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0xAfEc…e00C\nLa ventanilla que compra desde los bolsillos 0x0939…759b"
     },
     {
      "id": "vault-more-0",
@@ -879,7 +954,13 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.\nLa caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora, o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte.\nLeer la documentación de la bóveda Abrir la bóveda"
+     "text": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.\nLa caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora, o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte.\nLa bóveda guarda también tokens. Tus cUSDC, un dólar confidencial, van a un bolsillo cerrado por una llave en lugar de una dirección: envíalos a otro bolsillo, paga una caja con ellos o sácalos a donde quieras. Los tokens confidenciales ya ocultan los importes; un bolsillo oculta además quién pagó a quién."
+    },
+    {
+     "id": "project-vault-1",
+     "section": "project-vault",
+     "heading": null,
+     "text": "Leer la documentación de la bóveda Abrir la bóveda"
     },
     {
      "id": "project-game-0",
@@ -909,7 +990,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentación de la bóveda Depositar, la llave, Seaport, ventas privadas, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Contratos, app y API, todo de código abierto.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
+     "text": "La documentación de la bóveda El depósito, la llave, Seaport, las ventas privadas, los bolsillos, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Contratos, app y API, todo de código abierto.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
     }
    ]
   },
@@ -953,6 +1034,11 @@
     {
      "id": "vault-private",
      "title": "Vendite private",
+     "part": "manual"
+    },
+    {
+     "id": "vault-pockets",
+     "title": "Le tasche: token che nessuno traccia",
      "part": "manual"
     },
     {
@@ -1031,7 +1117,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contratto che custodisce NFT. Ogni NFT che entra riceve una scatola: un token a sé il cui detentore è cifrato, come le scatole del gioco. L'NFT resta dentro finché il detentore della scatola non lo tira fuori, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare."
+     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare."
     },
     {
      "id": "vault-seal-0",
@@ -1118,6 +1204,30 @@
      "text": "Offri una scatola a un solo acquirente, a un prezzo in cUSDC (un dollaro riservato) che solo voi due potete leggere. L'acquirente lo legge nella pagina, poi paga e prende la scatola in una sola transazione.\nTutto si chiude sotto cifratura: se il prezzo è arrivato e il venditore aveva ancora la scatola, la scatola si sposta con una chiave che è dell'acquirente, e il venditore viene pagato; altrimenti non si muove niente e l'acquirente riceve indietro i suoi cUSDC. Per tutti gli altri, una vendita andata in porto e una no sembrano uguali.\nChiunque può offrire qualsiasi scatola, quindi un'offerta non prova niente su chi la detiene. Il venditore può annullare un'offerta aperta; solo l'acquirente indicato può accettarla, una volta."
     },
     {
+     "id": "vault-pockets-0",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Un dollaro confidenziale come il cUSDC nasconde già saldi e importi, ma ogni trasferimento nomina ancora chi lo invia e chi lo riceve. Una tasca nasconde anche questo. È un numero (il tuo codice, come P-12) con un saldo cifrato e una chiave: cosa c'è dentro, e chi la possiede, nessuno può leggerlo.\nAprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare."
+    },
+    {
+     "id": "vault-pockets-1",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Depositare avviene dai cUSDC del tuo wallet (la pagina può prima convertire USDC in cUSDC, e quell'importo si vede). Il deposito nomina il tuo wallet e alcune tasche scelte a caso: quale ha ricevuto, e quanto, resta cifrato. Chiunque può pagare qualsiasi tasca così, da un wallet.\nPer farti pagare, dai il tuo codice. Inviare nomina la tua tasca tra poche altre, e quella del destinatario tra poche altre; il caveau verifica la tua chiave sotto cifratura, prende l'importo dalla tasca che apre e lo aggiunge a quella il cui numero corrisponde, sempre sotto cifratura. Niente di pubblico dice chi ha pagato chi, né quanto. Una chiave sbagliata o un saldo insufficiente non spostano nulla, senza errore. Non serve alcuna decifratura: una sola transazione, che non aspetta nessuno."
+    },
+    {
+     "id": "vault-pockets-2",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Ritirare invia i token in cUSDC verso qualsiasi indirizzo, con l'importo ancora cifrato. L'indirizzo si vede: scegline uno nuovo e niente lo collega a te.\nCon le scatole del caveau: un venditore può offrire in privato una scatola alla tua tasca scrivendo il tuo codice. Leggi il prezzo, poi compri con la tua tasca: prima una verifica sotto cifratura che in pubblico dice solo sì o no (così uno sconosciuto non può bruciare la vendita con una chiave sbagliata), poi l'acquisto. La scatola resta poi nel caveau per uno sportello che tutte le tasche condividono, con la tua chiave: ritira l'NFT, mettilo in vendita, accetta un'offerta o delegalo, come per qualsiasi scatola. Da lì non si può più regalare né rivendere in privato. Dopo una vendita privata, «Nella mia tasca» mette il prezzo, meno la commissione, nella tua tasca."
+    },
+    {
+     "id": "vault-pockets-3",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Limiti: le tasche che ogni azione nomina sono pubbliche, quindi nominare poche esche, o sempre le stesse tasche, dà indizi; più tasche esistono, meglio ognuna si nasconde. Le tasche non hanno commissioni proprie. Non sono verificate da un audit."
+    },
+    {
      "id": "vault-give-0",
      "section": "vault-give",
      "heading": null,
@@ -1145,19 +1255,19 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Pubblico",
-     "text": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT), e gli indirizzi dove sono andate le sue esche\nL'NFT dentro ogni scatola, il suo stato, il suo annuncio\nGli annunci, gli acquisti e le offerte accettate su Seaport, con il caveau come venditore\nL'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo\nChe è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata, mancata o scaduta\nI due indirizzi di un trasferimento o di una vendita privata\nLe offerte per ogni NFT e chi le ha fatte, e l'acquirente e l'importo di un'offerta accettata\nIl delegato di una scatola, il wallet che agisce per l'NFT su delegate.xyz"
+     "text": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT), e gli indirizzi dove sono andate le sue esche\nL'NFT dentro ogni scatola, il suo stato, il suo annuncio\nGli annunci, gli acquisti e le offerte accettate su Seaport, con il caveau come venditore\nL'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo\nChe è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata, mancata o scaduta\nI due indirizzi di un trasferimento o di una vendita privata\nLe offerte per ogni NFT e chi le ha fatte, e l'acquirente e l'importo di un'offerta accettata\nIl delegato di una scatola, il wallet che agisce per l'NFT su delegate.xyz\nQuale wallet ha depositato in quali tasche, le tasche che ogni pagamento da tasca nomina, e l'indirizzo verso cui va un ritiro da tasca"
     },
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Mai pubblico",
-     "text": "Chi detiene una scatola\nLa chiave della scatola\nIl prezzo di una vendita privata, e se è andata in porto\nSe un trasferimento ha spostato qualcosa\nChi ha chiesto un annuncio, un ritiro, un incasso, un'offerta accettata o un delegato, quando lo invia il relayer\nIn pratica: tira fuori NFT ed ETH verso un indirizzo senza storia, nomina un wallet nuovo come delegato, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio)."
+     "text": "Chi detiene una scatola\nLa chiave della scatola\nIl prezzo di una vendita privata, e se è andata in porto\nSe un trasferimento ha spostato qualcosa\nChi ha chiesto un annuncio, un ritiro, un incasso, un'offerta accettata o un delegato, quando lo invia il relayer\nIl saldo di una tasca, gli importi che sposta, quale tasca di un gruppo si è mossa, e chi possiede una tasca\nIn pratica: tira fuori NFT ed ETH verso un indirizzo senza storia, nomina un wallet nuovo come delegato, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5, il WETH che OpenSea usa lì e il registro di delegate.xyz. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xE225…8262\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLa bacheca delle offerte 0x750d…f9E2\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493"
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5, il WETH che OpenSea usa lì e il registro di delegate.xyz. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xE225…8262\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLa bacheca delle offerte 0x750d…f9E2\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0xAfEc…e00C\nLo sportello che compra dalle tasche 0x0939…759b"
     },
     {
      "id": "vault-more-0",
@@ -1181,7 +1291,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.\nLa scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore, o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte.\nLeggi la documentazione del caveau Apri il caveau"
+     "text": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.\nLa scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore, o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte.\nIl caveau custodisce anche token. I tuoi cUSDC, un dollaro confidenziale, vanno in una tasca chiusa da una chiave invece che da un indirizzo: mandali a un'altra tasca, paga una scatola, o ritirali dove vuoi. I token confidenziali nascondono già gli importi; una tasca nasconde anche chi ha pagato chi.\nLeggi la documentazione del caveau Apri il caveau"
     },
     {
      "id": "project-game-0",
@@ -1211,7 +1321,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice Contratti, app e API, tutto open source.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
+     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, le tasche, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice Contratti, app e API, tutto open source.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
     }
    ]
   }

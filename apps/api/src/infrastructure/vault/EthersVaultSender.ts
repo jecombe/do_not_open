@@ -1,6 +1,6 @@
 import { Contract, isError, NonceManager, Wallet, type Provider } from "ethers";
 import { VaultRelayRefused } from "../../application/vaultRelay";
-import type { VaultFinalizeTx, VaultRequestTx, VaultSender } from "../../application/ports/vault";
+import type { PocketCall, PocketSpendInput, PocketTxs, VaultFinalizeTx, VaultRequestTx, VaultSender } from "../../application/ports/vault";
 import { normalizeAddress, type Address } from "../../domain/types";
 
 const VAULT_ABI = [
@@ -20,8 +20,33 @@ const VAULT_ABI = [
   "error OfferShort()",
 ];
 
+const SPEND_INPUT = "(bytes32 amount, bytes32 target, bytes inputProof, bytes32 boundKey, bytes keyProof)";
+const POCKETS_ABI = [
+  "function open(bytes32 key, bytes inputProof, address viewer) returns (uint256)",
+  `function send(uint256[] from, uint256[] to, ${SPEND_INPUT} s)`,
+  `function withdraw(uint256[] from, address to, ${SPEND_INPUT} s)`,
+  "error ZeroAddress()",
+  "error ViewerTaken(address viewer)",
+  "error NotAPocket(uint256 pocketId)",
+  "error BadSet()",
+  "error KeyUsed()",
+];
+const DESK_ABI = [
+  "function ask(uint256 saleId, bytes32 boundKey, bytes keyProof, bytes32 boxKey) returns (uint256)",
+  "function buy(uint256 askId, bytes abiEncodedCleartexts, bytes decryptionProof, bytes32 boxKey, bytes boxKeyProof)",
+  "error NotForDesk()",
+  "error NotReserved()",
+  "error KeyUsed()",
+  "error AskNotPending()",
+  "error WrongBoxKey()",
+  "error NotAPocket(uint256 pocketId)",
+];
+
+const spendTuple = (i: PocketSpendInput) => [i.amount, i.target, i.inputProof, i.boundKey, i.keyProof];
+
 /**
- * The relayer's wallet, sending to the SealedVault. Each call is estimated first, so what the
+ * The relayer's wallet, sending to the SealedVault, and to its pockets and their desk where they
+ * are deployed. Each call is estimated first, so what the
  * vault would refuse costs nothing. Replicas share the key: a nonce taken by another one is
  * retried with a fresh count.
  */
@@ -29,14 +54,44 @@ export class EthersVaultSender implements VaultSender {
   readonly address: Address;
   private readonly signer: NonceManager;
   private readonly vault: Contract;
+  private readonly pocketsContract: Contract | null;
+  private readonly desk: Contract | null;
   private readonly provider: Provider;
 
-  constructor(privateKey: string, vaultAddress: string, provider: Provider) {
+  constructor(privateKey: string, vaultAddress: string, provider: Provider, pockets?: { address: string; desk: string } | null) {
     this.provider = provider;
     const wallet = new Wallet(privateKey, provider);
     this.address = normalizeAddress(wallet.address);
     this.signer = new NonceManager(wallet);
     this.vault = new Contract(vaultAddress, VAULT_ABI, this.signer);
+    this.pocketsContract = pockets ? new Contract(pockets.address, POCKETS_ABI, this.signer) : null;
+    this.desk = pockets ? new Contract(pockets.desk, DESK_ABI, this.signer) : null;
+  }
+
+  pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string> {
+    if (!this.pocketsContract || !this.desk) return Promise.reject(new VaultRelayRefused("reverted", "There are no pockets on this network."));
+    switch (call) {
+      case "pocketOpen": {
+        const t = tx as PocketTxs["pocketOpen"];
+        return this.sendTo(this.pocketsContract, "open", [t.handle, t.inputProof, t.viewer]);
+      }
+      case "pocketSend": {
+        const t = tx as PocketTxs["pocketSend"];
+        return this.sendTo(this.pocketsContract, "send", [t.from, t.to, spendTuple(t.input)]);
+      }
+      case "pocketWithdraw": {
+        const t = tx as PocketTxs["pocketWithdraw"];
+        return this.sendTo(this.pocketsContract, "withdraw", [t.from, t.to, spendTuple(t.input)]);
+      }
+      case "deskAsk": {
+        const t = tx as PocketTxs["deskAsk"];
+        return this.sendTo(this.desk, "ask", [t.saleId, t.handle, t.keyProof, t.boxKey]);
+      }
+      default: {
+        const t = tx as PocketTxs["deskBuy"];
+        return this.sendTo(this.desk, "buy", [t.askId, t.cleartexts, t.proof, t.boxKey, t.boxKeyProof]);
+      }
+    }
   }
 
   request(tx: VaultRequestTx): Promise<string> {
@@ -52,8 +107,12 @@ export class EthersVaultSender implements VaultSender {
     return this.provider.getBalance(this.address);
   }
 
-  private async send(method: "request" | "finalize" | "finalizeOffer", args: unknown[]): Promise<string> {
-    const fn = this.vault.getFunction(method);
+  private send(method: "request" | "finalize" | "finalizeOffer", args: unknown[]): Promise<string> {
+    return this.sendTo(this.vault, method, args);
+  }
+
+  private async sendTo(contract: Contract, method: string, args: unknown[]): Promise<string> {
+    const fn = contract.getFunction(method);
     try {
       await fn.estimateGas(...args);
     } catch (error) {

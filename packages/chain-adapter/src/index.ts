@@ -3,12 +3,13 @@ import type { ChainAdapter } from "./types";
 
 export * from "./types";
 export * from "./vault";
-export { MOCK_VAULT, MOCK_VAULT_NFT } from "./mock/MockVault";
+export { MOCK_VAULT, MOCK_VAULT_NFT, MOCK_POCKETS, MOCK_DESK } from "./mock/MockVault";
 export { traitIndexAtOffset } from "./layout";
 export { duelSettles, duelUnderway, onShelf, shelfBoxes } from "./duels";
 export * from "./standings";
 export { CLAIM_WINDOW, claimWindows } from "./claims";
 export { decoyPlan, type Send } from "./decoys";
+export { DEFAULT_POCKET_DECOYS, pocketSet } from "./pockets";
 export { ratJob } from "./rats";
 export { MockAdapter, mockRatPower, mockSeedForToken, mockWeighIn, MOCK_YOU, MOCK_NIGHT_SHIFT, MOCK_MARKET, type MockOptions } from "./mock/MockAdapter";
 

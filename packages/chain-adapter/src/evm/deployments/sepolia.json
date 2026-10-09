@@ -9322,6 +9322,1172 @@
         "name": "Sealed Vault Test NFT",
         "mintable": true
       }
-    ]
+    ],
+    "pockets": {
+      "address": "0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C",
+      "abi": [
+        {
+          "inputs": [
+            {
+              "internalType": "contract IERC7984",
+              "name": "token_",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "owner_",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "constructor"
+        },
+        {
+          "inputs": [],
+          "name": "BadSet",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "DeskSet",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "KeyUsed",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            }
+          ],
+          "name": "NotAPocket",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "OnlyDesk",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            }
+          ],
+          "name": "OwnableInvalidOwner",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "OwnableUnauthorizedAccount",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "ReentrancyGuardReentrantCall",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "handle",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "address",
+              "name": "sender",
+              "type": "address"
+            }
+          ],
+          "name": "SenderNotAllowedToUseHandle",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "viewer",
+              "type": "address"
+            }
+          ],
+          "name": "ViewerTaken",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "ZamaProtocolUnsupported",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "ZeroAddress",
+          "type": "error"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256[]",
+              "name": "pockets",
+              "type": "uint256[]"
+            }
+          ],
+          "name": "Deposited",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": false,
+              "internalType": "address",
+              "name": "desk",
+              "type": "address"
+            }
+          ],
+          "name": "DeskSetTo",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "viewer",
+              "type": "address"
+            }
+          ],
+          "name": "Opened",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "previousOwner",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "OwnershipTransferred",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": false,
+              "internalType": "uint256[]",
+              "name": "from",
+              "type": "uint256[]"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256[]",
+              "name": "to",
+              "type": "uint256[]"
+            }
+          ],
+          "name": "Sent",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": false,
+              "internalType": "uint256[]",
+              "name": "from",
+              "type": "uint256[]"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            }
+          ],
+          "name": "Withdrawn",
+          "type": "event"
+        },
+        {
+          "inputs": [],
+          "name": "MAX_SET",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            }
+          ],
+          "name": "balanceOf",
+          "outputs": [
+            {
+              "internalType": "euint64",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "confidentialProtocolId",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256[]",
+              "name": "pockets",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "externalEuint32",
+              "name": "target",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "externalEuint64",
+              "name": "amount",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "inputProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "deposit",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "desk",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "euint256",
+              "name": "key",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "euint64",
+              "name": "amount",
+              "type": "bytes32"
+            }
+          ],
+          "name": "deskCheck",
+          "outputs": [
+            {
+              "internalType": "ebool",
+              "name": "ok",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "euint64",
+              "name": "amount",
+              "type": "bytes32"
+            }
+          ],
+          "name": "deskGive",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "euint256",
+              "name": "key",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "euint64",
+              "name": "amount",
+              "type": "bytes32"
+            }
+          ],
+          "name": "deskTake",
+          "outputs": [
+            {
+              "internalType": "euint64",
+              "name": "taken",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "externalEuint256",
+              "name": "key",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "inputProof",
+              "type": "bytes"
+            },
+            {
+              "internalType": "address",
+              "name": "viewer",
+              "type": "address"
+            }
+          ],
+          "name": "open",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "owner",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "pocketCount",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "viewer",
+              "type": "address"
+            }
+          ],
+          "name": "pocketOf",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketIdPlusOne",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "renounceOwnership",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256[]",
+              "name": "from",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "to",
+              "type": "uint256[]"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "externalEuint64",
+                  "name": "amount",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "externalEuint32",
+                  "name": "target",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "inputProof",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "externalEuint256",
+                  "name": "boundKey",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "keyProof",
+                  "type": "bytes"
+                }
+              ],
+              "internalType": "struct SealedPockets.SpendInput",
+              "name": "s",
+              "type": "tuple"
+            }
+          ],
+          "name": "send",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "desk_",
+              "type": "address"
+            }
+          ],
+          "name": "setDesk",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "enum SealedPockets.Spend",
+              "name": "action",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "from",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "to",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "address",
+              "name": "dest",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "amount",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "target",
+              "type": "bytes32"
+            }
+          ],
+          "name": "spendHash",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "handle",
+              "type": "bytes32"
+            }
+          ],
+          "name": "spent",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "token",
+          "outputs": [
+            {
+              "internalType": "contract IERC7984",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "transferOwnership",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "pocketId",
+              "type": "uint256"
+            }
+          ],
+          "name": "viewerOf",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256[]",
+              "name": "from",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "externalEuint64",
+                  "name": "amount",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "externalEuint32",
+                  "name": "target",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "inputProof",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "externalEuint256",
+                  "name": "boundKey",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "keyProof",
+                  "type": "bytes"
+                }
+              ],
+              "internalType": "struct SealedPockets.SpendInput",
+              "name": "s",
+              "type": "tuple"
+            }
+          ],
+          "name": "withdraw",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ],
+      "deployBlock": 11877902,
+      "desk": {
+        "address": "0x0939D713429FCD1c5AF9589b121a8F77C49F759b",
+        "abi": [
+          {
+            "inputs": [
+              {
+                "internalType": "contract SealedPockets",
+                "name": "pockets_",
+                "type": "address"
+              },
+              {
+                "internalType": "contract SealedVault",
+                "name": "vault_",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "nonpayable",
+            "type": "constructor"
+          },
+          {
+            "inputs": [],
+            "name": "AskNotPending",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "InvalidKMSSignatures",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "KeyUsed",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "NotForDesk",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "NotReserved",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "NotSeller",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "ReentrancyGuardReentrantCall",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "bytes32",
+                "name": "handle",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+              }
+            ],
+            "name": "SenderNotAllowedToUseHandle",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "WrongBoxKey",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "ZamaProtocolUnsupported",
+            "type": "error"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "askId",
+                "type": "uint256"
+              },
+              {
+                "indexed": false,
+                "internalType": "enum PocketDesk.AskStatus",
+                "name": "status",
+                "type": "uint8"
+              }
+            ],
+            "name": "AskSettled",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "askId",
+                "type": "uint256"
+              },
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "saleId",
+                "type": "uint256"
+              },
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "Asked",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "saleId",
+                "type": "uint256"
+              },
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "boxId",
+                "type": "uint256"
+              },
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "Bought",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": false,
+                "internalType": "bytes32[]",
+                "name": "handlesList",
+                "type": "bytes32[]"
+              },
+              {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "abiEncodedCleartexts",
+                "type": "bytes"
+              }
+            ],
+            "name": "PublicDecryptionVerified",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "saleId",
+                "type": "uint256"
+              },
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "Reserved",
+            "type": "event"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "saleId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "externalEuint256",
+                "name": "boundKey",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes",
+                "name": "keyProof",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "boxKey",
+                "type": "bytes32"
+              }
+            ],
+            "name": "ask",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "askId",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "askCount",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "askId",
+                "type": "uint256"
+              }
+            ],
+            "name": "askInfo",
+            "outputs": [
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "saleId",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "pocketId",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "euint256",
+                    "name": "key",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "ebool",
+                    "name": "ok",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "bytes32",
+                    "name": "boxKey",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "enum PocketDesk.AskStatus",
+                    "name": "status",
+                    "type": "uint8"
+                  }
+                ],
+                "internalType": "struct PocketDesk.Ask",
+                "name": "",
+                "type": "tuple"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "askId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes",
+                "name": "abiEncodedCleartexts",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bytes",
+                "name": "decryptionProof",
+                "type": "bytes"
+              },
+              {
+                "internalType": "externalEuint256",
+                "name": "boxKey",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes",
+                "name": "boxKeyProof",
+                "type": "bytes"
+              }
+            ],
+            "name": "buy",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "saleId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "boxKey",
+                "type": "bytes32"
+              }
+            ],
+            "name": "buyHash",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "confidentialProtocolId",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "boxId",
+                "type": "uint256"
+              }
+            ],
+            "name": "ownerOf",
+            "outputs": [
+              {
+                "internalType": "euint32",
+                "name": "",
+                "type": "bytes32"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "pockets",
+            "outputs": [
+              {
+                "internalType": "contract SealedPockets",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "saleId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "reserve",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "saleId",
+                "type": "uint256"
+              }
+            ],
+            "name": "reservedFor",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "pocketIdPlusOne",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "bytes32",
+                "name": "handle",
+                "type": "bytes32"
+              }
+            ],
+            "name": "spent",
+            "outputs": [
+              {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "token",
+            "outputs": [
+              {
+                "internalType": "contract IERC7984",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "vault",
+            "outputs": [
+              {
+                "internalType": "contract SealedVault",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          }
+        ],
+        "deployBlock": 11877903
+      }
+    }
   }
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
  * it loops while the action runs and freezes under a stamp when it ends. Each action names its
  * scene in `SCENE_OF`; an unknown one gets the vault door.
  */
-export type SceneKind = "press" | "seal" | "door" | "ship" | "trade" | "badge" | "shuffle" | "envelope" | "scan" | "key";
+export type SceneKind = "press" | "seal" | "door" | "ship" | "trade" | "badge" | "shuffle" | "envelope" | "scan" | "key" | "pouch" | "pouches";
 
 export const SCENE_OF: Record<string, SceneKind> = {
   mint: "press",
@@ -26,10 +26,19 @@ export const SCENE_OF: Record<string, SceneKind> = {
   accept: "envelope",
   prices: "envelope",
   find: "scan",
+  faucet: "press",
+  pocketOpen: "pouch",
+  pocketDeposit: "pouch",
+  pocketWithdraw: "pouch",
+  pocketSend: "pouches",
+  pocketBuy: "trade",
+  pocketOffer: "envelope",
 };
 
 /** Actions whose scene runs backwards: the listing sails home, the offer comes back. */
-const REVERSED = new Set(["unlist", "cancelOffer", "cancelSale"]);
+const REVERSED = new Set(["unlist", "cancelOffer", "cancelSale", "pocketWithdraw"]);
+/** The pouch opening, rather than a coin going in or out. */
+const SEWING = new Set(["pocketOpen"]);
 
 const GLYPHS = "0123456789abcdef#%&@$*+=<>";
 
@@ -290,6 +299,60 @@ function KeyLock() {
   );
 }
 
+/** A drawstring pouch, centred on the origin, about 60 wide. */
+function PouchShape({ className, mark = true }: { className?: string; mark?: boolean }) {
+  return (
+    <g className={className}>
+      <path d="M-26 -10 Q-30 30 0 34 Q30 30 26 -10 Z" fill="#c99a63" stroke="#07090c" strokeWidth="1.5" />
+      <path d="M-20 -10 Q0 -24 20 -10" fill="none" stroke="#07090c" strokeWidth="1.5" />
+      <rect x="-28" y="-15" width="56" height="9" rx="4" fill="#e8d3a2" stroke="#07090c" strokeWidth="1.2" />
+      {mark && <circle cx="0" cy="12" r="8" fill="#ff4d3d" />}
+    </g>
+  );
+}
+
+/** Coins drop into the pouch (out of it, reversed); opening, its seam is stitched and it locks. */
+function Pouch({ sewing }: { sewing: boolean }) {
+  return (
+    <>
+      <rect x="40" y="122" width="160" height="4" rx="2" fill="#2a3644" />
+      <g transform="translate(120 84)">
+        <PouchShape className="vx-pouch" />
+      </g>
+      {sewing ? (
+        <g className="vx-stitch">
+          <path d="M92 70 L100 64 L108 70 L116 64 L124 70 L132 64 L140 70 L148 64" fill="none" stroke="#5be3c2" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="6 4" />
+        </g>
+      ) : (
+        [0, 1, 2].map((i) => (
+          <g key={i} transform={`translate(${112 + i * 8} 0)`}>
+            <g className={`vx-coin vx-coin-${i}`}>
+              <Coin />
+            </g>
+          </g>
+        ))
+      )}
+    </>
+  );
+}
+
+/** A coin hops from one pouch to another among four, the others twitching: which one paid? */
+function Pouches() {
+  return (
+    <>
+      <rect x="10" y="122" width="220" height="4" rx="2" fill="#2a3644" />
+      {[34, 92, 150, 208].map((x, i) => (
+        <g key={x} transform={`translate(${x} 96) scale(0.72)`}>
+          <PouchShape className={`vx-twitch vx-twitch-${i}`} mark={i === 0 || i === 2} />
+        </g>
+      ))}
+      <g className="vx-hop">
+        <Coin />
+      </g>
+    </>
+  );
+}
+
 /** The scene of an action, looping while `live`, frozen under `stamp` once it ended. */
 export function TxScene({ name, decoys = 0, live, stamp, failed = false, small = false }: { name: string; decoys?: number; live: boolean; stamp?: string | null; failed?: boolean; small?: boolean }) {
   const kind = SCENE_OF[name] ?? "door";
@@ -308,6 +371,8 @@ export function TxScene({ name, decoys = 0, live, stamp, failed = false, small =
         {kind === "envelope" && <Envelope />}
         {kind === "scan" && <Scan />}
         {kind === "key" && <KeyLock />}
+        {kind === "pouch" && <Pouch sewing={SEWING.has(name)} />}
+        {kind === "pouches" && <Pouches />}
       </svg>
       {stamp && !small && <span className="vx-stamp">{stamp}</span>}
     </div>

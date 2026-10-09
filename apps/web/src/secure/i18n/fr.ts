@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureFr: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, le coffre scellé : des NFT que personne ne te voit détenir",
-  "secure.description": "Mets n'importe quel NFT dans une boîte scellée dont le détenteur est chiffré sur Ethereum, grâce au FHE de Zama. Elle se vend quand même sur Seaport, ou en privé pour un prix que seul l'acheteur lit.",
+  "secure.title": "DO NOT OPEN, le coffre scellé : des NFT et des jetons que personne ne te voit détenir",
+  "secure.description": "Mets n'importe quel NFT dans une boîte scellée, et tes cUSDC dans une poche scellée, leur détenteur chiffré sur Ethereum grâce au FHE de Zama. Le NFT se vend quand même sur Seaport ; les jetons paient quand même n'importe qui, sans montrer qui a payé qui.",
   "secure.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, dans un bouclier de chiffrement lumineux",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocole",
@@ -21,7 +21,7 @@ export const secureFr: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Coffre scellé · FHE de Zama · Ethereum",
   "secure.h1": "Ce que tu possèdes ne regarde que toi.",
-  "secure.lede": "Mets n'importe quel NFT dans une boîte scellée. Dès lors, personne ne sait qui la détient : ni les marketplaces, ni les trackers, ni nous. Elle se vend quand même sur Seaport.",
+  "secure.lede": "Mets n'importe quel NFT dans une boîte scellée, et tes jetons dans une poche scellée. Dès lors, personne ne sait qui les détient : ni les marketplaces, ni les trackers, ni nous. Le NFT se vend quand même sur Seaport, les jetons paient quand même n'importe qui.",
   "secure.cta.open": "Ouvrir le coffre",
   "secure.cta.protocol": "Lire le protocole",
   "secure.spec.1.k": "Détenteur",
@@ -31,8 +31,15 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.spec.3.k": "Règles",
   "secure.spec.3.v": "appliquées, vérifiables",
 
-  "secure.story.aria": "Le coffre en quatre étapes, en boucle : un NFT est scellé dans une boîte, une clé naît d'une seule signature, la boîte se vend sur Seaport, à l'offre d'un acheteur ou en privé, se donne ou prête ses avantages à un délégué pendant que les sondes rebondissent, et le NFT ressort vers une adresse neuve. Clique pour passer à l'étape suivante.",
+  "secure.story.aria": "Le coffre en quatre étapes, en boucle, une fois avec un NFT et une fois avec des jetons : on le scelle dans une boîte, une clé naît d'une signature, il se vend, paie ou se donne pendant que les sondes rebondissent, et il sort vers une adresse neuve. Clique pour passer à l'étape suivante.",
   "secure.story.public": "dépôt · public",
+  "secure.story.publicTokens": "dépôt · montant scellé",
+  "secure.story.toPocket": "vers une poche",
+  "secure.story.payBox": "paie une boîte",
+  "secure.story.paidIn": "paiement reçu",
+  "secure.story.saleCash": "cUSDC d'une vente",
+  "secure.story.hiddenBalance": "solde scellé",
+  "secure.ledger.ev.pocket": "Paiement de poche",
   "secure.story.holder": "détenteur",
   "secure.story.denied": "lecture refusée",
   "secure.story.signature": "1 signature",
@@ -50,12 +57,12 @@ export const secureFr: Record<SecureKey, string> = {
 
   "secure.ledger.kicker": "Modèle de menace",
   "secure.ledger.title": "Ce que voit la chaîne, ce que tu vois",
-  "secure.ledger.lede": "Les quatre mêmes transactions. Tout le monde peut lire la chaîne ; la colonne du détenteur est chiffrée pour tous, sauf pour le détenteur.",
+  "secure.ledger.lede": "Les cinq mêmes transactions. Tout le monde peut lire la chaîne ; la colonne du détenteur est chiffrée pour tous, sauf pour le détenteur.",
   "secure.ledger.public": "Vue publique",
   "secure.ledger.yours": "Ta vue",
   "secure.ledger.block": "Bloc",
   "secure.ledger.event": "Événement",
-  "secure.ledger.box": "Boîte",
+  "secure.ledger.box": "Boîte / poche",
   "secure.ledger.holder": "Détenteur",
   "secure.ledger.ev.seal": "Scellée",
   "secure.ledger.ev.transfer": "A changé de mains",

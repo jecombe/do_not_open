@@ -5,7 +5,7 @@ import { ImageArchive } from "../src/application/archive";
 import { Metadata } from "../src/application/metadata";
 import { Queries } from "../src/application/queries";
 import { VaultRelay, VaultRelayRefused } from "../src/application/vaultRelay";
-import type { VaultFinalizeTx, VaultRequestTx, VaultSender } from "../src/application/ports/vault";
+import type { PocketCall, PocketTxs, VaultFinalizeTx, VaultRequestTx, VaultSender } from "../src/application/ports/vault";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
 import { buildServer } from "../src/infrastructure/http/server";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
@@ -17,7 +17,7 @@ const HANDLE = "0x" + "ab".repeat(32);
 /** Records what it would send; a box id of 666 is one the vault refuses. */
 class FakeSender implements VaultSender {
   readonly address = RELAYER;
-  readonly sent: (VaultRequestTx | VaultFinalizeTx)[] = [];
+  readonly sent: (VaultRequestTx | VaultFinalizeTx | { call: PocketCall; tx: unknown })[] = [];
   async request(tx: VaultRequestTx): Promise<string> {
     if (tx.boxId === 666) throw new VaultRelayRefused("reverted", "The vault would refuse it: BoxBusy.");
     this.sent.push(tx);
@@ -25,6 +25,12 @@ class FakeSender implements VaultSender {
   }
   async finalize(tx: VaultFinalizeTx): Promise<string> {
     this.sent.push(tx);
+    return "0x" + String(this.sent.length).padStart(64, "0");
+  }
+  async pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string> {
+    // A send naming pocket 666 is one the pockets refuse.
+    if (call === "pocketSend" && (tx as PocketTxs["pocketSend"]).from.includes(666)) throw new VaultRelayRefused("reverted", "The vault would refuse it: NotAPocket.");
+    this.sent.push({ call, tx });
     return "0x" + String(this.sent.length).padStart(64, "0");
   }
 }
@@ -63,7 +69,7 @@ describe("vault relay routes", () => {
       corsOrigins: ["*"],
       rateLimitPerMinute: 1000,
     };
-    app = await buildServer({ ...deps, vaultRelay: new VaultRelay(sender, { now: () => 0 }, 100) } as Parameters<typeof buildServer>[0]);
+    app = await buildServer({ ...deps, vaultRelay: new VaultRelay(sender, { now: () => 0 }, 100), vaultRelayRatePerMinute: 1000 } as Parameters<typeof buildServer>[0]);
     bare = await buildServer(deps as Parameters<typeof buildServer>[0]);
   });
 
@@ -94,6 +100,43 @@ describe("vault relay routes", () => {
     const fin = { requestId: 9, cleartexts: "0x01", proof: "0x02", offer: "0x" + "cd".repeat(600) };
     expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "finalize", args: fin } })).statusCode).toBe(200);
     expect(sender.sent.at(-1)).toMatchObject({ requestId: 9, offer: fin.offer });
+  });
+
+  const spend = { amount: HANDLE, target: HANDLE, inputProof: "0xbeef", boundKey: HANDLE, keyProof: "0xcafe" };
+
+  it("relays a pocket's open, send and withdrawal as given", async () => {
+    const viewer = "0x00000000000000000000000000000000000b0c55";
+    const calls = [
+      { call: "pocketOpen", args: { handle: HANDLE, inputProof: "0xdead", viewer } },
+      { call: "pocketSend", args: { from: [1, 4, 7], to: [0, 2], input: spend } },
+      { call: "pocketWithdraw", args: { from: [3], to: RELAYER, input: spend } },
+    ];
+    for (const payload of calls) {
+      const res = await app.inject({ method: "POST", url: "/v1/vault/relay", payload });
+      expect(res.statusCode).toBe(200);
+      expect(sender.sent.at(-1)).toEqual({ call: payload.call, tx: payload.args });
+    }
+  });
+
+  it("relays the desk's ask and purchase", async () => {
+    const ask = { saleId: 5, handle: HANDLE, keyProof: "0xdead", boxKey: HANDLE };
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "deskAsk", args: ask } })).statusCode).toBe(200);
+    expect(sender.sent.at(-1)).toEqual({ call: "deskAsk", tx: ask });
+    const buy = { askId: 2, cleartexts: "0x01", proof: "0x02", boxKey: HANDLE, boxKeyProof: "0x03" };
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "deskBuy", args: buy } })).statusCode).toBe(200);
+    expect(sender.sent.at(-1)).toEqual({ call: "deskBuy", tx: buy });
+  });
+
+  it("refuses pocket sets that are empty or longer than five, and says why the pockets would refuse", async () => {
+    for (const from of [[], [1, 2, 3, 4, 5, 6]]) {
+      const res = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketSend", args: { from, to: [0], input: spend } } });
+      expect(res.statusCode).toBe(400);
+    }
+    const bad = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketOpen", args: { handle: HANDLE, inputProof: "0x", viewer: "nope" } } });
+    expect(bad.statusCode).toBe(400);
+    const refused = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketSend", args: { from: [666], to: [0], input: spend } } });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json().code).toBe("reverted");
   });
 
   it("refuses a malformed body and says why the vault would refuse", async () => {

@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureEs: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, la bóveda sellada: NFT que nadie te ve tener",
-  "secure.description": "Mete cualquier NFT en una caja sellada cuyo dueño está cifrado en Ethereum con el FHE de Zama. Aun así se vende en Seaport, o en privado por un precio que solo lee el comprador.",
+  "secure.title": "DO NOT OPEN, la bóveda sellada: NFT y tokens que nadie te ve tener",
+  "secure.description": "Pon cualquier NFT en una caja sellada, y tus cUSDC en un bolsillo sellado, con su titular cifrado en Ethereum gracias al FHE de Zama. El NFT se sigue vendiendo en Seaport; los tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién.",
   "secure.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN dentro de un escudo de cifrado luminoso",
   "secure.nav": "Sitio",
   "secure.nav.protocol": "Protocolo",
@@ -21,7 +21,7 @@ export const secureEs: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Bóveda sellada · FHE de Zama · Ethereum",
   "secure.h1": "Lo que tienes no le importa a nadie más.",
-  "secure.lede": "Mete cualquier NFT en una caja sellada. Desde entonces nadie sabe quién la tiene: ni los marketplaces, ni los trackers, ni nosotros. Aun así se vende en Seaport.",
+  "secure.lede": "Pon cualquier NFT en una caja sellada, y tus tokens en un bolsillo sellado. Desde entonces nadie sabe quién los tiene: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT se sigue vendiendo en Seaport, los tokens siguen pagando a cualquiera.",
   "secure.cta.open": "Abrir la bóveda",
   "secure.cta.protocol": "Leer el protocolo",
   "secure.spec.1.k": "Dueño",
@@ -31,8 +31,15 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.spec.3.k": "Reglas",
   "secure.spec.3.v": "aplicadas, verificables",
 
-  "secure.story.aria": "La bóveda en cuatro pasos, en bucle: un NFT se sella en una caja, una llave nace de una sola firma, la caja se vende en Seaport, a la oferta de un comprador o en privado, se regala o presta sus ventajas a un delegado mientras las sondas rebotan, y el NFT sale hacia una dirección nueva. Haz clic para pasar al siguiente paso.",
+  "secure.story.aria": "La bóveda en cuatro pasos, en bucle, una vez con un NFT y otra con tokens: se sella en una caja, una llave nace de una firma, se vende, paga o se regala mientras las sondas rebotan, y sale a una dirección nueva. Haz clic para pasar al paso siguiente.",
   "secure.story.public": "depósito · público",
+  "secure.story.publicTokens": "depósito · importe sellado",
+  "secure.story.toPocket": "a un bolsillo",
+  "secure.story.payBox": "paga una caja",
+  "secure.story.paidIn": "pago recibido",
+  "secure.story.saleCash": "cUSDC de una venta",
+  "secure.story.hiddenBalance": "saldo sellado",
+  "secure.ledger.ev.pocket": "Pago de bolsillo",
   "secure.story.holder": "dueño",
   "secure.story.denied": "lectura denegada",
   "secure.story.signature": "1 firma",
@@ -50,12 +57,12 @@ export const secureEs: Record<SecureKey, string> = {
 
   "secure.ledger.kicker": "Modelo de amenaza",
   "secure.ledger.title": "Lo que ve la cadena, lo que ves tú",
-  "secure.ledger.lede": "Las mismas cuatro transacciones. Cualquiera puede leer la cadena; la columna del dueño está cifrada para todos menos para el dueño.",
+  "secure.ledger.lede": "Las mismas cinco transacciones. Cualquiera puede leer la cadena; la columna del titular está cifrada para todos menos para el titular.",
   "secure.ledger.public": "Vista pública",
   "secure.ledger.yours": "Tu vista",
   "secure.ledger.block": "Bloque",
   "secure.ledger.event": "Evento",
-  "secure.ledger.box": "Caja",
+  "secure.ledger.box": "Caja / bolsillo",
   "secure.ledger.holder": "Dueño",
   "secure.ledger.ev.seal": "Sellada",
   "secure.ledger.ev.transfer": "Cambió de manos",

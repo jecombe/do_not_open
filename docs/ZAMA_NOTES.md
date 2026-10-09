@@ -835,6 +835,39 @@ matched, where an NFT or a sale's ETH goes, `setKey`'s caller, a private sale's 
 the key, a private sale's price, and whether a private sale or a transfer moved anything. HCU
 per call is in [VAULT.md](VAULT.md#cost): ~83k a deposit, ~191k a request, ~225k a `setKey`.
 
+### The vault's pockets (2026-10-09)
+
+`SealedPockets` holds cUSDC in pockets locked by a `euint256` key, and `PocketDesk` buys the
+vault's private sales out of them ([VAULT.md](VAULT.md#pockets)). On Sepolia since 2026-10-09:
+`SealedPockets` `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902), `PocketDesk`
+`0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903). What is
+specific to the protocol:
+
+- **Nothing decrypted for a spend.** A deposit, a send or a withdrawal computes, for every pocket
+  of its sets, `ok = eq(key, k) AND ge(balance, amount)` (and the target's membership), moves
+  `select(ok, amount, 0)`, and pays a withdrawal out with `confidentialTransfer` on that
+  encrypted amount. No request, no proof, no gateway: one transaction.
+- **A replay guard without a nonce.** The boxes move a nonce when the decrypted "key matched" bit
+  says so; a spend decrypts nothing, so the pockets keep the handles of bound keys already used
+  (`spent`) instead. The bound key is `key XOR spendHash(...)`, and `spendHash` takes the handles
+  of the amount and the target, so the page encrypts them first and the bound key in a second
+  input: two input proofs per spend, both bound to the sender (the relayer).
+- **A viewer address for user decryption.** A balance must be readable by its holder, and an ACL
+  grant to the holder's wallet would be public. The page derives a second private key from the
+  pocket's signature; the pockets allow that viewer on every new balance handle, and it signs the
+  user-decryption permit (the adapter keeps one permit per account, the wallet's and the
+  viewer's). It never holds ETH.
+- **Inputs for another contract.** At a desk purchase the page encrypts the box's new key for
+  the vault with the desk as the user (`createEncryptedInput(vault, desk)`), since the desk is
+  the one calling `acceptSale`; the pocket's own key goes to the desk, bound to the relayer.
+- **The desk's one public bit.** The vault settles a private sale on its first `acceptSale`, paid
+  or not, so a purchase is asked first: the desk publishes only "the key matched and the pocket
+  covers the price" and runs the purchase with its proof (`FHE.checkSignatures`), as the boxes'
+  requests do. A purchase needs the gateway; the rest of the pockets do not.
+- **HCU.** A send between two full sets of five is ~6.5M HCU (depth ~2M), a deposit into five
+  ~3.5M, a withdrawal from five ~4.3M; a desk purchase ~6.3M (depth ~3.3M), most of it the
+  vault's own `acceptSale`. All under the 20M limit; see [VAULT.md](VAULT.md#cost).
+
 ### Sepolia deployment (2026-10-08): free gift boxes
 
 Current. Deployed at blocks 11869530 to 11869590 (`DoNotOpen` at 11869550) by

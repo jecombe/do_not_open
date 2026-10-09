@@ -37,10 +37,12 @@ const INDEXED: Record<Source, string[]> = {
 /** The one ACL event the index follows, and only when one of the protocol's contracts is the caller. */
 const ACL = new Interface(["event AllowedForDecryption(address indexed caller, bytes32[] handlesList)"]);
 
-/** Handles made publicly decryptable by the contracts that publish some: the collection, the Pantry, cCROQ, the flea market, the sealed vault. */
+/** Handles made publicly decryptable by the contracts that publish some: the collection, the Pantry, cCROQ, the flea market, the sealed vault, and the desk that buys from pockets. */
 export function aclFilterFor(d: ProtocolDeployment): LogFilter {
   // Every contract that calls `makePubliclyDecryptable`: a handle another one publishes is refused at the relayer proxy.
-  const publishers = [d.collection.address, d.pantry?.address, d.cCroq?.address, d.fleaMarket?.address, d.vault?.address].filter((a): a is string => !!a);
+  const publishers = [d.collection.address, d.pantry?.address, d.cCroq?.address, d.fleaMarket?.address, d.vault?.address, d.vault?.pockets?.desk.address].filter(
+    (a): a is string => !!a,
+  );
   return {
     address: [d.fhevm.acl.toLowerCase()],
     topics: [ACL.getEvent("AllowedForDecryption")!.topicHash, publishers.map((a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`)],

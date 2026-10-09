@@ -91,6 +91,9 @@ class Sender implements VaultSender {
   async finalize(_tx: VaultFinalizeTx): Promise<string> {
     throw new Error("node down");
   }
+  async pockets(): Promise<string> {
+    return "0x02";
+  }
   async balance() {
     return 3n * 10n ** 16n;
   }

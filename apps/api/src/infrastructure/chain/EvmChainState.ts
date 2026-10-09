@@ -108,8 +108,9 @@ export class EvmChainState implements ChainState {
         // A rat's power is a handle of the Rats contract, read with the same permit as the boxes;
         // a trick's trait is an encrypted input for RatTricks.
         this.d.ratTricks ? this.d.rats?.address : undefined, this.d.ratTricks?.address,
-        // The sealed vault: its receipts, private sale prices and box keys.
-        this.d.vault?.address].filter((a): a is string => !!a).map(normalizeAddress);
+        // The sealed vault: its receipts, private sale prices and box keys; its pockets (balances,
+        // spends) and the desk that buys from them (asks, the boxes a pocket bought).
+        this.d.vault?.address, this.d.vault?.pockets?.address, this.d.vault?.pockets?.desk.address].filter((a): a is string => !!a).map(normalizeAddress);
     });
     this.contracts.catch(() => (this.contracts = null));
     return this.contracts;

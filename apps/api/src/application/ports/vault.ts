@@ -22,12 +22,36 @@ export interface VaultFinalizeTx {
   offer?: string;
 }
 
+/** A pocket spend's encrypted inputs, as `SealedPockets.SpendInput`. */
+export interface PocketSpendInput {
+  amount: string;
+  target: string;
+  inputProof: string;
+  boundKey: string;
+  keyProof: string;
+}
+
+/** The pockets' and the desk's calls the relayer sends, by name. */
+export interface PocketTxs {
+  /** Opens a pocket: its key encrypted for the pockets, and the address that reads its balance. */
+  pocketOpen: { handle: string; inputProof: string; viewer: Address };
+  pocketSend: { from: number[]; to: number[]; input: PocketSpendInput };
+  pocketWithdraw: { from: number[]; to: Address; input: PocketSpendInput };
+  /** Step 1 of a purchase out of a pocket: the pocket's bound key, and the box key's handle. */
+  deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
+  /** Step 2: the proof of the "ok" bit and the box's new key. */
+  deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
+}
+export type PocketCall = keyof PocketTxs;
+
 /** Sends the vault's transactions from the relayer's own wallet. */
 export interface VaultSender {
   readonly address: Address;
   /** Plays it first: a transaction the vault would refuse is never sent (it throws `VaultRelayRefused`). Returns the hash. */
   request(tx: VaultRequestTx): Promise<string>;
   finalize(tx: VaultFinalizeTx): Promise<string>;
+  /** The pockets' and the desk's calls; refused (`reverted`) where they are not deployed. */
+  pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string>;
   /** The wallet's balance in wei, for the monitoring: it pays every transaction's gas. */
   balance?(): Promise<bigint>;
 }

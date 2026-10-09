@@ -2,7 +2,7 @@ import type { VaultDocsKey } from "./en";
 
 export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.title": "Le coffre scellé, la documentation · DO NOT OPEN",
-  "vaultDocs.description": "Comment marche le coffre scellé : un NFT dans une boîte dont le détenteur est chiffré, une clé que personne ne peut lire, des annonces Seaport et des offres d'acheteurs avec le coffre comme vendeur, des ventes privées à prix secret, les avantages du NFT prêtés à un wallet via delegate.xyz, un relayer, et exactement ce qui fuite.",
+  "vaultDocs.description": "Comment marche le coffre scellé : un NFT dans une boîte dont le détenteur est chiffré, des cUSDC dans une poche que personne ne peut relier à un wallet, des clés que personne ne lit, des annonces Seaport et des offres d'acheteurs avec le coffre comme vendeur, des ventes privées à prix secret, les avantages du NFT prêtés via delegate.xyz, un relayer, et exactement ce qui fuite.",
   "vaultDocs.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, avec un NFT dedans",
   "vaultDocs.homeAria": "DO NOT OPEN, accueil",
   "vaultDocs.site": "Site",
@@ -12,12 +12,12 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.nav.vault": "Ouvrir le coffre",
 
   "vaultDocs.h1": "Le coffre scellé",
-  "vaultDocs.lede": "N'importe quel NFT dans une boîte dont le détenteur est chiffré on-chain. Il peut quand même se vendre sur Seaport, en annonce ou à l'offre d'un acheteur, ou en privé pour un prix que seul l'acheteur lit ; ses airdrops arrivent toujours à un wallet à qui tu les prêtes ; et il sort vers n'importe quelle adresse. Voici comment, et ce que tout le monde peut encore voir.",
+  "vaultDocs.lede": "N'importe quel NFT dans une boîte dont le détenteur est chiffré on-chain, et tes cUSDC dans une poche que personne ne peut relier à ton wallet. Le NFT se vend toujours sur Seaport, en annonce ou à l'offre d'un acheteur, ou en privé pour un prix que seul l'acheteur lit ; ses airdrops arrivent toujours au wallet à qui tu les prêtes ; tes jetons paient toujours n'importe qui, sans montrer qui a payé qui. Voici comment, et ce que tout le monde peut encore voir.",
   "vaultDocs.hero.open": "Ouvrir le coffre",
   "vaultDocs.hero.leaks": "Ce qui fuite",
 
   "vaultDocs.section.what": "Ce qu'est le coffre",
-  "vaultDocs.what.p1": "Un contrat qui garde des NFT. Chaque NFT qui entre reçoit une boîte : un jeton à part dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur) ou vende la boîte en privé.",
+  "vaultDocs.what.p1": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.",
   "vaultDocs.what.p2": "Le coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter.",
 
   "vaultDocs.section.seal": "Sceller un NFT",
@@ -59,6 +59,15 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.private.p2": "Tout se règle sous chiffrement : si le prix est arrivé et que le vendeur détenait encore la boîte, la boîte bouge avec une clé qui est celle de l'acheteur, et le vendeur est payé ; sinon rien ne bouge et l'acheteur récupère ses cUSDC. Pour tous les autres, une vente qui a abouti et une vente ratée se ressemblent.",
   "vaultDocs.private.p3": "N'importe qui peut proposer n'importe quelle boîte, donc une offre ne prouve rien sur qui la détient. Le vendeur peut annuler une offre ouverte ; seul l'acheteur désigné peut l'accepter, une fois.",
 
+  "vaultDocs.section.pockets": "Les poches : des jetons que personne ne trace",
+  "vaultDocs.pockets.p1": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.",
+  "vaultDocs.pockets.p2": "Ouvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas.",
+  "vaultDocs.pockets.p3": "Déposer se fait depuis les cUSDC de ton wallet (la page peut d'abord convertir de l'USDC en cUSDC, et ce montant-là se voit). Le dépôt nomme ton wallet et quelques poches tirées au hasard : laquelle a reçu, et combien, reste chiffré. N'importe qui peut payer n'importe quelle poche ainsi, depuis un wallet.",
+  "vaultDocs.pockets.p4": "Pour être payé, donne ton code. Envoyer nomme ta poche parmi quelques autres, et celle du destinataire parmi quelques autres ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne.",
+  "vaultDocs.pockets.p5": "Retirer envoie les jetons en cUSDC vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit : prends-en une neuve et rien ne la relie à toi.",
+  "vaultDocs.pockets.p6": "Avec les boîtes du coffre : un vendeur peut proposer une boîte en privé à ta poche en tapant ton code. Tu lis le prix, puis tu achètes avec ta poche : d'abord une vérification sous chiffrement qui ne dit en public que oui ou non (pour qu'un inconnu ne puisse pas gâcher la vente avec une mauvaise clé), puis l'achat. La boîte reste ensuite dans le coffre pour un guichet que toutes les poches partagent, avec ta clé : sors le NFT, mets-le en vente, accepte une offre ou délègue-le, comme pour n'importe quelle boîte. Elle ne peut plus être donnée ni revendue en privé de là. Après une vente privée, « Dans ma poche » met le prix, moins les frais, dans ta poche.",
+  "vaultDocs.pockets.p7": "Limites : les poches que nomme chaque action sont publiques, donc nommer peu de leurres, ou toujours les mêmes poches, donne des indices ; plus il y a de poches, mieux chacune se cache. Les poches n'ont pas de frais propres. Elles ne sont pas auditées.",
+
   "vaultDocs.section.give": "Donner une boîte",
   "vaultDocs.give.p1": "Envoie une boîte à n'importe quelle adresse. Elle ne bouge que si tu la détiens, et elle arrive sans clé : celui qui la reçoit la trouve dans ses reçus et fait sienne la clé. D'ici là, personne ne peut rien en sortir.",
 
@@ -83,11 +92,13 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.leaks.public6": "Les deux adresses d'un transfert ou d'une vente privée",
   "vaultDocs.leaks.public7": "Les offres sur chaque NFT et qui les a faites, et l'acheteur et le montant d'une offre acceptée",
   "vaultDocs.leaks.public8": "Le délégué d'une boîte, le wallet qui agit pour le NFT dans delegate.xyz",
+  "vaultDocs.leaks.public9": "Quel wallet a déposé dans quelles poches, les poches que nomme chaque paiement de poche, et l'adresse où va un retrait de poche",
   "vaultDocs.leaks.hidden1": "Qui détient une boîte",
   "vaultDocs.leaks.hidden2": "La clé de la boîte",
   "vaultDocs.leaks.hidden3": "Le prix d'une vente privée, et si elle a abouti",
   "vaultDocs.leaks.hidden4": "Si un transfert a déplacé quelque chose",
   "vaultDocs.leaks.hidden5": "Qui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie",
+  "vaultDocs.leaks.hidden6": "Le solde d'une poche, les montants qu'elle déplace, la poche d'un groupe qui a bougé, et qui détient une poche",
   "vaultDocs.leaks.p1": "En pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple).",
 
   "vaultDocs.section.testnet": "Sur le réseau de test",
@@ -98,6 +109,8 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.testnet.c.offers": "Le tableau des offres",
   "vaultDocs.testnet.c.weth": "WETH, ce en quoi les offres paient",
   "vaultDocs.testnet.c.registry": "Le registre de delegate.xyz",
+  "vaultDocs.testnet.c.pockets": "Les poches",
+  "vaultDocs.testnet.c.desk": "Le guichet qui achète depuis les poches",
 
   "vaultDocs.section.more": "Pour aller plus loin",
   "vaultDocs.more.project": "À propos de DO NOT OPEN",

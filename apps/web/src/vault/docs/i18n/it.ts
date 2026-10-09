@@ -2,7 +2,7 @@ import type { VaultDocsKey } from "./en";
 
 export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.title": "Il caveau sigillato, la documentazione · DO NOT OPEN",
-  "vaultDocs.description": "Come funziona il caveau sigillato: un NFT in una scatola il cui detentore è cifrato, una chiave che nessuno può leggere, annunci su Seaport e offerte degli acquirenti con il caveau come venditore, vendite private a un prezzo segreto, i vantaggi dell'NFT prestati a un wallet con delegate.xyz, un relayer, ed esattamente cosa trapela.",
+  "vaultDocs.description": "Come funziona il caveau sigillato: un NFT in una scatola il cui titolare è cifrato, cUSDC in una tasca che nessuno può collegare a un wallet, chiavi che nessuno legge, annunci Seaport e offerte degli acquirenti con il caveau come venditore, vendite private a prezzo segreto, i vantaggi dell'NFT prestati tramite delegate.xyz, un relayer, ed esattamente cosa trapela.",
   "vaultDocs.imageAlt": "Una scatola di cartone sigillata col timbro DO NOT OPEN, con dentro un NFT",
   "vaultDocs.homeAria": "DO NOT OPEN, home",
   "vaultDocs.site": "Sito",
@@ -12,12 +12,12 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.nav.vault": "Apri il caveau",
 
   "vaultDocs.h1": "Il caveau sigillato",
-  "vaultDocs.lede": "Qualsiasi NFT in una scatola il cui detentore è cifrato on-chain. Si può comunque vendere su Seaport, in annuncio o all'offerta di un acquirente, o in privato a un prezzo che legge solo l'acquirente; i suoi airdrop arrivano ancora a un wallet a cui li presti; ed esce verso qualsiasi indirizzo. Ecco come, e cosa chiunque può ancora vedere.",
+  "vaultDocs.lede": "Qualsiasi NFT in una scatola il cui titolare è cifrato on-chain, e i tuoi cUSDC in una tasca che nessuno può collegare al tuo wallet. L'NFT si vende ancora su Seaport, in annuncio o all'offerta di un acquirente, o in privato a un prezzo che solo l'acquirente legge; i suoi airdrop arrivano ancora al wallet a cui li presti; i tuoi token pagano ancora chiunque, senza mostrare chi ha pagato chi. Ecco come, e cosa chiunque può ancora vedere.",
   "vaultDocs.hero.open": "Apri il caveau",
   "vaultDocs.hero.leaks": "Cosa trapela",
 
   "vaultDocs.section.what": "Cos'è il caveau",
-  "vaultDocs.what.p1": "Un contratto che custodisce NFT. Ogni NFT che entra riceve una scatola: un token a sé il cui detentore è cifrato, come le scatole del gioco. L'NFT resta dentro finché il detentore della scatola non lo tira fuori, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato.",
+  "vaultDocs.what.p1": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.",
   "vaultDocs.what.p2": "Il caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare.",
 
   "vaultDocs.section.seal": "Sigillare un NFT",
@@ -59,6 +59,15 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.private.p2": "Tutto si chiude sotto cifratura: se il prezzo è arrivato e il venditore aveva ancora la scatola, la scatola si sposta con una chiave che è dell'acquirente, e il venditore viene pagato; altrimenti non si muove niente e l'acquirente riceve indietro i suoi cUSDC. Per tutti gli altri, una vendita andata in porto e una no sembrano uguali.",
   "vaultDocs.private.p3": "Chiunque può offrire qualsiasi scatola, quindi un'offerta non prova niente su chi la detiene. Il venditore può annullare un'offerta aperta; solo l'acquirente indicato può accettarla, una volta.",
 
+  "vaultDocs.section.pockets": "Le tasche: token che nessuno traccia",
+  "vaultDocs.pockets.p1": "Un dollaro confidenziale come il cUSDC nasconde già saldi e importi, ma ogni trasferimento nomina ancora chi lo invia e chi lo riceve. Una tasca nasconde anche questo. È un numero (il tuo codice, come P-12) con un saldo cifrato e una chiave: cosa c'è dentro, e chi la possiede, nessuno può leggerlo.",
+  "vaultDocs.pockets.p2": "Aprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare.",
+  "vaultDocs.pockets.p3": "Depositare avviene dai cUSDC del tuo wallet (la pagina può prima convertire USDC in cUSDC, e quell'importo si vede). Il deposito nomina il tuo wallet e alcune tasche scelte a caso: quale ha ricevuto, e quanto, resta cifrato. Chiunque può pagare qualsiasi tasca così, da un wallet.",
+  "vaultDocs.pockets.p4": "Per farti pagare, dai il tuo codice. Inviare nomina la tua tasca tra poche altre, e quella del destinatario tra poche altre; il caveau verifica la tua chiave sotto cifratura, prende l'importo dalla tasca che apre e lo aggiunge a quella il cui numero corrisponde, sempre sotto cifratura. Niente di pubblico dice chi ha pagato chi, né quanto. Una chiave sbagliata o un saldo insufficiente non spostano nulla, senza errore. Non serve alcuna decifratura: una sola transazione, che non aspetta nessuno.",
+  "vaultDocs.pockets.p5": "Ritirare invia i token in cUSDC verso qualsiasi indirizzo, con l'importo ancora cifrato. L'indirizzo si vede: scegline uno nuovo e niente lo collega a te.",
+  "vaultDocs.pockets.p6": "Con le scatole del caveau: un venditore può offrire in privato una scatola alla tua tasca scrivendo il tuo codice. Leggi il prezzo, poi compri con la tua tasca: prima una verifica sotto cifratura che in pubblico dice solo sì o no (così uno sconosciuto non può bruciare la vendita con una chiave sbagliata), poi l'acquisto. La scatola resta poi nel caveau per uno sportello che tutte le tasche condividono, con la tua chiave: ritira l'NFT, mettilo in vendita, accetta un'offerta o delegalo, come per qualsiasi scatola. Da lì non si può più regalare né rivendere in privato. Dopo una vendita privata, «Nella mia tasca» mette il prezzo, meno la commissione, nella tua tasca.",
+  "vaultDocs.pockets.p7": "Limiti: le tasche che ogni azione nomina sono pubbliche, quindi nominare poche esche, o sempre le stesse tasche, dà indizi; più tasche esistono, meglio ognuna si nasconde. Le tasche non hanno commissioni proprie. Non sono verificate da un audit.",
+
   "vaultDocs.section.give": "Regalare una scatola",
   "vaultDocs.give.p1": "Manda una scatola a qualsiasi indirizzo. Si sposta solo se la detieni, e arriva senza chiave: chi la riceve la trova nelle sue ricevute e fa sua la chiave. Fino ad allora nessuno può tirarne fuori niente.",
 
@@ -83,11 +92,13 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.leaks.public6": "I due indirizzi di un trasferimento o di una vendita privata",
   "vaultDocs.leaks.public7": "Le offerte per ogni NFT e chi le ha fatte, e l'acquirente e l'importo di un'offerta accettata",
   "vaultDocs.leaks.public8": "Il delegato di una scatola, il wallet che agisce per l'NFT su delegate.xyz",
+  "vaultDocs.leaks.public9": "Quale wallet ha depositato in quali tasche, le tasche che ogni pagamento da tasca nomina, e l'indirizzo verso cui va un ritiro da tasca",
   "vaultDocs.leaks.hidden1": "Chi detiene una scatola",
   "vaultDocs.leaks.hidden2": "La chiave della scatola",
   "vaultDocs.leaks.hidden3": "Il prezzo di una vendita privata, e se è andata in porto",
   "vaultDocs.leaks.hidden4": "Se un trasferimento ha spostato qualcosa",
   "vaultDocs.leaks.hidden5": "Chi ha chiesto un annuncio, un ritiro, un incasso, un'offerta accettata o un delegato, quando lo invia il relayer",
+  "vaultDocs.leaks.hidden6": "Il saldo di una tasca, gli importi che sposta, quale tasca di un gruppo si è mossa, e chi possiede una tasca",
   "vaultDocs.leaks.p1": "In pratica: tira fuori NFT ed ETH verso un indirizzo senza storia, nomina un wallet nuovo come delegato, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio).",
 
   "vaultDocs.section.testnet": "Sulla rete di prova",
@@ -98,6 +109,8 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.testnet.c.offers": "La bacheca delle offerte",
   "vaultDocs.testnet.c.weth": "WETH, in cui pagano le offerte",
   "vaultDocs.testnet.c.registry": "Il registro di delegate.xyz",
+  "vaultDocs.testnet.c.pockets": "Le tasche",
+  "vaultDocs.testnet.c.desk": "Lo sportello che compra dalle tasche",
 
   "vaultDocs.section.more": "Per saperne di più",
   "vaultDocs.more.project": "Su DO NOT OPEN",

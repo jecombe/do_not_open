@@ -48,7 +48,7 @@ export function ProjectDocs() {
     fhe: <Prose>{[t("project.fhe.p1"), t("project.fhe.p2"), t("project.fhe.p3")]}</Prose>,
     vault: (
       <>
-        <Prose>{[t("project.vault.p1"), t("project.vault.p2")]}</Prose>
+        <Prose>{[t("project.vault.p1"), t("project.vault.p2"), t("project.vault.p3")]}</Prose>
         {links({ href: vaultDocsPath(locale), label: t("project.vault.docs") }, { href: vaultPath(locale), label: t("project.vault.open") })}
       </>
     ),
