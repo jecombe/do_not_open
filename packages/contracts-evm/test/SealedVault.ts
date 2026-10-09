@@ -4,14 +4,45 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import type { ContractTransactionReceipt } from "ethers";
 import { ethers, fhevm } from "hardhat";
-import { ISeaport, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC } from "../types";
+import { IDelegateRegistry, ISeaport, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC, TestWETH, VaultOffers } from "../types";
 import { confidentialUsdcOf, usd } from "./helpers";
-import { installSeaport } from "./seaport";
+import { installDelegateRegistry, installSeaport } from "./seaport";
 
 const BOX = { None: 0n, Sealed: 1n, Listed: 2n, Sold: 3n, Withdrawn: 4n, Claimed: 5n } as const;
-const ACTION = { Withdraw: 0, List: 1, Unlist: 2, Claim: 3 } as const;
+const ACTION = { Withdraw: 0, List: 1, Unlist: 2, Claim: 3, AcceptOffer: 4, Delegate: 5 } as const;
 const REQUEST = { None: 0n, Pending: 1n, Done: 2n, Refused: 3n, Stale: 4n, Expired: 5n } as const;
 const DAY = 86_400;
+/** Seaport 1.5's EIP-712 types, for an order a buyer signs. */
+const SEAPORT_TYPES = {
+  OrderComponents: [
+    { name: "offerer", type: "address" },
+    { name: "zone", type: "address" },
+    { name: "offer", type: "OfferItem[]" },
+    { name: "consideration", type: "ConsiderationItem[]" },
+    { name: "orderType", type: "uint8" },
+    { name: "startTime", type: "uint256" },
+    { name: "endTime", type: "uint256" },
+    { name: "zoneHash", type: "bytes32" },
+    { name: "salt", type: "uint256" },
+    { name: "conduitKey", type: "bytes32" },
+    { name: "counter", type: "uint256" },
+  ],
+  OfferItem: [
+    { name: "itemType", type: "uint8" },
+    { name: "token", type: "address" },
+    { name: "identifierOrCriteria", type: "uint256" },
+    { name: "startAmount", type: "uint256" },
+    { name: "endAmount", type: "uint256" },
+  ],
+  ConsiderationItem: [
+    { name: "itemType", type: "uint8" },
+    { name: "token", type: "address" },
+    { name: "identifierOrCriteria", type: "uint256" },
+    { name: "startAmount", type: "uint256" },
+    { name: "endAmount", type: "uint256" },
+    { name: "recipient", type: "address" },
+  ],
+};
 const SALE = { None: 0n, Open: 1n, Settled: 2n, Cancelled: 3n } as const;
 const FEE_BPS = 250n;
 const feeOf = (price: bigint) => (price * FEE_BPS) / 10_000n;
@@ -46,6 +77,9 @@ describe("SealedVault", function () {
   let cUsdc: TestConfidentialUSDC;
   let nft: TestERC721;
   let seaport: ISeaport;
+  let weth: TestWETH;
+  let registry: IDelegateRegistry;
+  let offers: VaultOffers;
   let vault: SealedVault;
   let vaultAddress: string;
 
@@ -74,12 +108,12 @@ describe("SealedVault", function () {
   }
   let lastDeposit: ContractTransactionReceipt;
 
-  type Terms = { to?: string; price?: bigint; endTime?: number };
+  type Terms = { to?: string; price?: bigint; endTime?: number; ref?: string };
 
   /** What the holder's page encrypts for a request: the key bound to the request's terms. */
   async function boundKey(boxId: bigint, action: number, key: bigint, terms: Terms, sender: HardhatEthersSigner) {
     const { nonce } = await vault.boxInfo(boxId);
-    const hash = await vault.requestHash(boxId, nonce, action, terms.to ?? ethers.ZeroAddress, terms.price ?? 0n, terms.endTime ?? 0);
+    const hash = await vault.requestHash(boxId, nonce, action, terms.to ?? ethers.ZeroAddress, terms.price ?? 0n, terms.endTime ?? 0, terms.ref ?? ethers.ZeroHash);
     return keyInput(sender, key ^ hash);
   }
 
@@ -91,7 +125,7 @@ describe("SealedVault", function () {
     await (
       await vault
         .connect(sender)
-        .request(boxId, action, opts.to ?? ethers.ZeroAddress, opts.price ?? 0n, opts.endTime ?? 0, input.handles[0]!, input.inputProof)
+        .request(boxId, action, opts.to ?? ethers.ZeroAddress, opts.price ?? 0n, opts.endTime ?? 0, opts.ref ?? ethers.ZeroHash, input.handles[0]!, input.inputProof)
     ).wait();
     return id;
   }
@@ -146,6 +180,106 @@ describe("SealedVault", function () {
     await (await vault.connect(buyer).acceptSale(saleId, input.handles[0]!, input.inputProof)).wait();
   }
 
+
+  type Fee = { to: string; amount: bigint };
+  type OfferOpts = {
+    /** The token the offer asks for, or none: any token of the collection (criteria root 0). */
+    tokenId?: number;
+    /** Tokens the offer is for: a collection offer may take several, one share each. */
+    units?: bigint;
+    /** The order's own fees (a marketplace's, royalties), paid in WETH out of the price. */
+    fees?: Fee[];
+    /** Signed by the buyer (as on a marketplace) rather than validated on-chain by them. */
+    signed?: boolean;
+    /** Signed, and posted to the vault's offer board by someone else (the relay), as the vault's page does. */
+    posted?: boolean;
+    /** Asks for this NFT instead of the vault's collection's (an order trying to take another). */
+    collection?: string;
+    endTime?: number;
+    /** Leaves the buyer's WETH unapproved: Seaport cannot take it. */
+    noAllowance?: boolean;
+  };
+
+  /** A buyer's Seaport offer: `price` WETH for one or more NFTs, as a marketplace makes one. */
+  async function makeOffer(buyer: HardhatEthersSigner, price: bigint, opts: OfferOpts = {}) {
+    await (await weth.connect(buyer).deposit({ value: price })).wait();
+    if (!opts.noAllowance) await (await weth.connect(buyer).approve(await seaport.getAddress(), price)).wait();
+    const units = opts.units ?? 1n;
+    const nftItem = {
+      itemType: opts.tokenId === undefined ? 4 : 2, // ERC721_WITH_CRITERIA : ERC721
+      token: opts.collection ?? (await nft.getAddress()),
+      identifierOrCriteria: BigInt(opts.tokenId ?? 0),
+      startAmount: units,
+      endAmount: units,
+      recipient: buyer.address,
+    };
+    const fees = (opts.fees ?? []).map((f) => ({
+      itemType: 1,
+      token: wethAddress,
+      identifierOrCriteria: 0n,
+      startAmount: f.amount,
+      endAmount: f.amount,
+      recipient: f.to,
+    }));
+    const components = {
+      offerer: buyer.address,
+      zone: ethers.ZeroAddress,
+      offer: [{ itemType: 1, token: wethAddress, identifierOrCriteria: 0n, startAmount: price, endAmount: price }],
+      consideration: [nftItem, ...fees],
+      orderType: units > 1n ? 1 : 0, // PARTIAL_OPEN : FULL_OPEN
+      startTime: BigInt((await time.latest()) - 1),
+      endTime: BigInt(opts.endTime ?? (await inAWeek())),
+      zoneHash: ethers.ZeroHash,
+      salt: BigInt(ethers.hexlify(ethers.randomBytes(32))),
+      conduitKey: ethers.ZeroHash,
+      counter: await seaport.getCounter(buyer.address),
+    };
+    const orderHash = await seaport.getOrderHash(components);
+    const { counter: _, ...rest } = components;
+    const parameters = { ...rest, totalOriginalConsiderationItems: BigInt(components.consideration.length) };
+    let signature = "0x";
+    if (opts.signed || opts.posted) {
+      const domain = { name: "Seaport", version: "1.5", chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: await seaport.getAddress() };
+      signature = await buyer.signTypedData(domain, SEAPORT_TYPES, components);
+      if (opts.posted) {
+        await (await offers.connect(relay).post(parameters, signature)).wait();
+        // Validated: it fills with no signature from now on.
+        signature = "0x";
+      }
+    } else {
+      await (await seaport.connect(buyer).validate([{ parameters, signature: "0x" }])).wait();
+    }
+    return { parameters, signature, orderHash, components };
+  }
+  let wethAddress: string;
+
+  type Offer = Awaited<ReturnType<typeof makeOffer>>;
+
+  /** What `finalizeOffer` takes: abi.encode(AdvancedOrder, bytes32[] criteriaProof). */
+  function encodeOffer(offer: Offer, criteriaProof: string[] = []) {
+    const orderType = seaport.interface.getFunction("fulfillAdvancedOrder")!.inputs[0]!;
+    const order = { parameters: offer.parameters, numerator: 1n, denominator: 1n, signature: offer.signature, extraData: "0x" };
+    return ethers.AbiCoder.defaultAbiCoder().encode([orderType, "bytes32[]"], [order, criteriaProof]);
+  }
+
+  /** Step 2 of accepting an offer, as the relay sends it. */
+  async function finalizeOffer(requestId: bigint, offer: Offer) {
+    const { ok } = await vault.requestInfo(requestId);
+    const result = await fhevm.publicDecrypt([ok]);
+    return vault.connect(relay).finalizeOffer(requestId, result.abiEncodedClearValues, result.decryptionProof, encodeOffer(offer));
+  }
+
+  /** The holder accepts `offer` for at least `least` wei, paid to `to`. */
+  async function acceptOffer(boxId: bigint, key: bigint, offer: Offer, least: bigint, to: string) {
+    const id = await placeRequest(boxId, ACTION.AcceptOffer, key, { to, price: least, ref: offer.orderHash });
+    await (await finalizeOffer(id, offer)).wait();
+    return { id, status: (await vault.requestInfo(id)).status };
+  }
+
+  /** Whether `delegate` may act for the vault on `tokenId`, in delegate.xyz's registry. */
+  const delegated = async (delegate: string, tokenId: number) =>
+    registry.checkDelegateForERC721(delegate, vaultAddress, await nft.getAddress(), tokenId, ethers.ZeroHash);
+
   beforeEach(async function () {
     [deployer, alice, bob, carol, relay, treasury, fresh] = (await ethers.getSigners()) as HardhatEthersSigner[] as [
       HardhatEthersSigner,
@@ -157,12 +291,18 @@ describe("SealedVault", function () {
       HardhatEthersSigner,
     ];
     seaport = await installSeaport();
+    registry = await installDelegateRegistry();
+    weth = (await (await ethers.getContractFactory("TestWETH")).deploy()) as unknown as TestWETH;
+    wethAddress = await weth.getAddress();
+    offers = (await (await ethers.getContractFactory("VaultOffers")).deploy(await seaport.getAddress(), await weth.getAddress())) as unknown as VaultOffers;
     usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     cUsdc = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(await usdc.getAddress())) as unknown as TestConfidentialUSDC;
     nft = (await (await ethers.getContractFactory("TestERC721")).deploy()) as unknown as TestERC721;
     vault = (await (await ethers.getContractFactory("SealedVault")).deploy(
       await seaport.getAddress(),
       await cUsdc.getAddress(),
+      await offers.getAddress(),
+      await registry.getAddress(),
       treasury.address,
       deployer.address,
       FEE_BPS,
@@ -229,12 +369,12 @@ describe("SealedVault", function () {
       // Alice's page binds the key to "withdraw to fresh"; the relay sends it to itself instead.
       const input = await boundKey(boxId, ACTION.Withdraw, key, { to: fresh.address }, relay);
       let id = await vault.requestCount();
-      await (await vault.connect(relay).request(boxId, ACTION.Withdraw, relay.address, 0, 0, input.handles[0]!, input.inputProof)).wait();
+      await (await vault.connect(relay).request(boxId, ACTION.Withdraw, relay.address, 0, 0, ethers.ZeroHash, input.handles[0]!, input.inputProof)).wait();
       expect(await finalize(id)).to.eq(REQUEST.Refused);
       expect(await nft.ownerOf(1)).to.eq(vaultAddress);
       // A wrong key spoils nothing: the same input, with the terms alice signed for, still works.
       id = await vault.requestCount();
-      await (await vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, input.handles[0]!, input.inputProof)).wait();
+      await (await vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, ethers.ZeroHash, input.handles[0]!, input.inputProof)).wait();
       expect(await finalize(id)).to.eq(REQUEST.Done);
       expect(await nft.ownerOf(1)).to.eq(fresh.address);
     });
@@ -244,7 +384,7 @@ describe("SealedVault", function () {
       const boxId = await deposit(alice, 1, key);
       const endTime = await inAWeek();
       const input = await boundKey(boxId, ACTION.List, key, { price: ETH("1"), endTime }, relay);
-      const send = () => vault.connect(relay).request(boxId, ACTION.List, ethers.ZeroAddress, ETH("1"), endTime, input.handles[0]!, input.inputProof);
+      const send = () => vault.connect(relay).request(boxId, ACTION.List, ethers.ZeroAddress, ETH("1"), endTime, ethers.ZeroHash, input.handles[0]!, input.inputProof);
       let id = await vault.requestCount();
       await (await send()).wait();
       expect(await finalize(id)).to.eq(REQUEST.Done);
@@ -262,7 +402,7 @@ describe("SealedVault", function () {
       await act(boxId, ACTION.Withdraw, key, { to: alice.address });
       const input = await keyInput(relay, key);
       await expect(
-        vault.connect(relay).request(boxId, ACTION.Withdraw, alice.address, 0, 0, input.handles[0]!, input.inputProof),
+        vault.connect(relay).request(boxId, ACTION.Withdraw, alice.address, 0, 0, ethers.ZeroHash, input.handles[0]!, input.inputProof),
       ).to.be.revertedWithCustomError(vault, "WrongState");
     });
 
@@ -422,13 +562,13 @@ describe("SealedVault", function () {
       const boxId = await deposit(alice, 5, key);
       const input = await keyInput(relay, key);
       await expect(
-        vault.connect(relay).request(boxId, ACTION.List, ethers.ZeroAddress, 0, await inAWeek(), input.handles[0]!, input.inputProof),
+        vault.connect(relay).request(boxId, ACTION.List, ethers.ZeroAddress, 0, await inAWeek(), ethers.ZeroHash, input.handles[0]!, input.inputProof),
       ).to.be.revertedWithCustomError(vault, "BadPrice");
       await expect(
-        vault.connect(relay).request(boxId, ACTION.List, ethers.ZeroAddress, ETH("1"), await time.latest(), input.handles[0]!, input.inputProof),
+        vault.connect(relay).request(boxId, ACTION.List, ethers.ZeroAddress, ETH("1"), await time.latest(), ethers.ZeroHash, input.handles[0]!, input.inputProof),
       ).to.be.revertedWithCustomError(vault, "BadEndTime");
       await expect(
-        vault.connect(relay).request(boxId, ACTION.Claim, fresh.address, 0, 0, input.handles[0]!, input.inputProof),
+        vault.connect(relay).request(boxId, ACTION.Claim, fresh.address, 0, 0, ethers.ZeroHash, input.handles[0]!, input.inputProof),
       ).to.be.revertedWithCustomError(vault, "WrongState");
     });
 
@@ -560,7 +700,7 @@ describe("SealedVault", function () {
       expect(await finalize(junk!)).to.eq(REQUEST.Refused);
       // ...and alice's input still works.
       const id = await vault.requestCount();
-      await (await vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, input.handles[0]!, input.inputProof)).wait();
+      await (await vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, ethers.ZeroHash, input.handles[0]!, input.inputProof)).wait();
       expect(await finalize(id)).to.eq(REQUEST.Done);
     });
 
@@ -644,7 +784,7 @@ describe("SealedVault", function () {
       const key = randomKey();
       const boxId = await deposit(alice, 1, key);
       const input = await boundKey(boxId, ACTION.Withdraw, key, { to: fresh.address }, relay);
-      const send = () => vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, input.handles[0]!, input.inputProof);
+      const send = () => vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, ethers.ZeroHash, input.handles[0]!, input.inputProof);
       let id = await vault.requestCount();
       await (await send()).wait();
       await time.increase(DAY + 1);
@@ -761,6 +901,290 @@ describe("SealedVault", function () {
         expect(await act(boxes[i]!, ACTION.Withdraw, keys[i]!, { to: fresh.address })).to.eq(REQUEST.Done);
         expect(await nft.ownerOf(20 + i)).to.eq(fresh.address);
       }
+    });
+  });
+
+  describe("accepting Seaport offers", function () {
+    it("fills a buyer's offer for the box's NFT and pays the key's holder straight away", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const market = ethers.Wallet.createRandom().address;
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5, fees: [{ to: market, amount: ETH("0.025") }] });
+      const net = ETH("0.975");
+      const before = await ethers.provider.getBalance(fresh.address);
+      const { id, status } = await acceptOffer(boxId, key, offer, net, fresh.address);
+      expect(status).to.eq(REQUEST.Done);
+      expect(await nft.ownerOf(5)).to.eq(carol.address);
+      expect(await weth.balanceOf(market)).to.eq(ETH("0.025"));
+      expect((await ethers.provider.getBalance(fresh.address)) - before).to.eq(net - feeOf(net));
+      const box = await vault.boxInfo(boxId);
+      expect(box.state).to.eq(BOX.Claimed);
+      expect(box.proceeds).to.eq(0n);
+      expect(await vault.feesOwed()).to.eq(feeOf(net));
+      expect(await vault.boxOf(await nft.getAddress(), 5)).to.eq(0n);
+      // Nothing stays behind in the helper.
+      expect(await weth.balanceOf(await offers.getAddress())).to.eq(0n);
+      expect(await ethers.provider.getBalance(await offers.getAddress())).to.eq(0n);
+      const logs = (await ethers.provider.getTransactionReceipt((await vault.queryFilter(vault.filters.RequestSettled(id)))[0]!.transactionHash))!.logs;
+      const accepted = logs.map((l) => vault.interface.parseLog(l)).find((l) => l?.name === "OfferAccepted")!;
+      expect(accepted.args.buyer).to.eq(carol.address);
+      expect(accepted.args.amount).to.eq(net);
+    });
+
+    it("takes one share of a signed collection offer, and the rest stays open", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 8, key);
+      const market = ethers.Wallet.createRandom().address;
+      // 2 WETH for any two tokens of the collection, 0.1 WETH of fees.
+      const offer = await makeOffer(carol, ETH("2"), { units: 2n, signed: true, fees: [{ to: market, amount: ETH("0.1") }] });
+      const { status } = await acceptOffer(boxId, key, offer, ETH("0.95"), fresh.address);
+      expect(status).to.eq(REQUEST.Done);
+      expect(await nft.ownerOf(8)).to.eq(carol.address);
+      expect(await weth.balanceOf(market)).to.eq(ETH("0.05"));
+      const orderStatus = await seaport.getOrderStatus(offer.orderHash);
+      expect(orderStatus.totalFilled).to.eq(1n);
+      expect(orderStatus.totalSize).to.eq(2n);
+    });
+
+    it("a listed box: accepting an offer takes the listing down first", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const listingId = await list(boxId, key, ETH("3"));
+      const offer = await makeOffer(carol, ETH("2"), { tokenId: 5 });
+      expect((await acceptOffer(boxId, key, offer, ETH("2"), fresh.address)).status).to.eq(REQUEST.Done);
+      expect((await seaport.getOrderStatus((await vault.listingInfo(listingId)).orderHash)).isCancelled).to.eq(true);
+      expect(await nft.ownerOf(5)).to.eq(carol.address);
+    });
+
+    it("an order asking for another box's NFT cannot take it, even a listed one Seaport may move", async function () {
+      const aliceKey = randomKey();
+      const bobKey = randomKey();
+      const cheap = await deposit(alice, 1, aliceKey);
+      const dear = await deposit(bob, 2, bobKey);
+      await list(dear, bobKey, ETH("50"));
+      // Alice makes an offer (as a buyer) for bob's NFT, and accepts it with her own box's key.
+      const offer = await makeOffer(alice, 1n, { tokenId: 2 });
+      expect((await acceptOffer(cheap, aliceKey, offer, 1n, alice.address)).status).to.eq(REQUEST.Stale);
+      expect(await nft.ownerOf(2)).to.eq(vaultAddress);
+      expect(await nft.ownerOf(1)).to.eq(vaultAddress);
+      // Straight to the helper: it holds neither NFT, so Seaport takes nothing.
+      await expect(offers.connect(alice).fill(encodeOffer(offer), await nft.getAddress(), 2)).to.be.reverted;
+      expect(await nft.ownerOf(2)).to.eq(vaultAddress);
+      // A collection offer is resolved to the box's own token, never another.
+      const any = await makeOffer(alice, 1n);
+      expect((await acceptOffer(cheap, aliceKey, any, 1n, alice.address)).status).to.eq(REQUEST.Done);
+      expect(await nft.ownerOf(1)).to.eq(alice.address);
+      expect(await nft.ownerOf(2)).to.eq(vaultAddress);
+    });
+
+    it("an order for another collection, or paying in something else, settles stale", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const other = (await (await ethers.getContractFactory("TestERC721")).deploy()) as unknown as TestERC721;
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5, collection: await other.getAddress() });
+      expect((await acceptOffer(boxId, key, offer, 1n, fresh.address)).status).to.eq(REQUEST.Stale);
+      expect(await nft.ownerOf(5)).to.eq(vaultAddress);
+      expect((await vault.boxInfo(boxId)).state).to.eq(BOX.Sealed);
+    });
+
+    it("an offer worth less than asked, cancelled or ended settles stale and the box stays", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const low = await makeOffer(carol, ETH("1"), { tokenId: 5, fees: [{ to: bob.address, amount: ETH("0.1") }] });
+      expect((await acceptOffer(boxId, key, low, ETH("0.95"), fresh.address)).status).to.eq(REQUEST.Stale);
+
+      const cancelled = await makeOffer(carol, ETH("1"), { tokenId: 5 });
+      const id = await placeRequest(boxId, ACTION.AcceptOffer, key, { to: fresh.address, price: ETH("1"), ref: cancelled.orderHash });
+      await (await seaport.connect(carol).cancel([cancelled.components])).wait();
+      await (await finalizeOffer(id, cancelled)).wait();
+      expect((await vault.requestInfo(id)).status).to.eq(REQUEST.Stale);
+
+      const endTime = (await time.latest()) + 3_600;
+      const ending = await makeOffer(carol, ETH("1"), { tokenId: 5, endTime });
+      const late = await placeRequest(boxId, ACTION.AcceptOffer, key, { to: fresh.address, price: ETH("1"), ref: ending.orderHash });
+      await time.increaseTo(endTime + 1);
+      await (await finalizeOffer(late, ending)).wait();
+      expect((await vault.requestInfo(late)).status).to.eq(REQUEST.Stale);
+
+      expect(await nft.ownerOf(5)).to.eq(vaultAddress);
+      expect((await vault.boxInfo(boxId)).pending).to.eq(0n);
+      expect(await act(boxId, ACTION.Withdraw, key, { to: fresh.address })).to.eq(REQUEST.Done);
+    });
+
+    it("the order must be the one the key was bound to, and only finalizeOffer runs it", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5 });
+      const other = await makeOffer(bob, ETH("0.5"), { tokenId: 5 });
+      const id = await placeRequest(boxId, ACTION.AcceptOffer, key, { to: fresh.address, price: ETH("0.5"), ref: offer.orderHash });
+      await expect(finalizeOffer(id, other)).to.be.revertedWithCustomError(vault, "WrongOrder");
+      await expect(finalize(id)).to.be.revertedWithCustomError(vault, "NeedsOrder");
+      expect((await vault.requestInfo(id)).status).to.eq(REQUEST.Pending);
+      await (await finalizeOffer(id, offer)).wait();
+      expect((await vault.requestInfo(id)).status).to.eq(REQUEST.Done);
+      // finalizeOffer runs nothing else.
+      const key2 = randomKey();
+      const box2 = await deposit(alice, 6, key2);
+      const w = await placeRequest(box2, ACTION.Withdraw, key2, { to: fresh.address });
+      await expect(finalizeOffer(w, offer)).to.be.revertedWithCustomError(vault, "NotAnOffer");
+    });
+
+    it("a wrong key settles refused with a plain finalize, no order needed", async function () {
+      const boxId = await deposit(alice, 5, randomKey());
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5 });
+      const id = await placeRequest(boxId, ACTION.AcceptOffer, randomKey(), { to: carol.address, price: 1n, ref: offer.orderHash });
+      expect(await finalize(id)).to.eq(REQUEST.Refused);
+      expect(await nft.ownerOf(5)).to.eq(vaultAddress);
+    });
+
+    it("an order Seaport will not fill now leaves the request waiting, not spoiled, and a day later anyone expires it", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      // The buyer never let Seaport take their WETH.
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5, noAllowance: true });
+      const id = await placeRequest(boxId, ACTION.AcceptOffer, key, { to: fresh.address, price: ETH("1"), ref: offer.orderHash });
+      await expect(finalizeOffer(id, offer)).to.be.reverted;
+      expect((await vault.requestInfo(id)).status).to.eq(REQUEST.Pending);
+      expect(await nft.ownerOf(5)).to.eq(vaultAddress);
+      // The buyer fixes it: the same request goes through.
+      await (await weth.connect(carol).approve(await seaport.getAddress(), ETH("1"))).wait();
+      await (await finalizeOffer(id, offer)).wait();
+      expect((await vault.requestInfo(id)).status).to.eq(REQUEST.Done);
+
+      const key2 = randomKey();
+      const box2 = await deposit(alice, 6, key2);
+      const stuck = await makeOffer(bob, ETH("1"), { tokenId: 6, noAllowance: true });
+      const id2 = await placeRequest(box2, ACTION.AcceptOffer, key2, { to: fresh.address, price: ETH("1"), ref: stuck.orderHash });
+      await expect(finalizeOffer(id2, stuck)).to.be.reverted;
+      await time.increase(DAY + 1);
+      await (await vault.connect(carol).expire(id2)).wait();
+      expect((await vault.boxInfo(box2)).pending).to.eq(0n);
+      expect(await act(box2, ACTION.Withdraw, key2, { to: fresh.address })).to.eq(REQUEST.Done);
+    });
+
+    it("a payout to an address that refuses ETH keeps the sale and holds the ETH for a claim", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5 });
+      expect((await acceptOffer(boxId, key, offer, ETH("1"), await nft.getAddress())).status).to.eq(REQUEST.Done);
+      const box = await vault.boxInfo(boxId);
+      expect(box.state).to.eq(BOX.Sold);
+      expect(box.proceeds).to.eq(ETH("1") - feeOf(ETH("1")));
+      expect(await act(boxId, ACTION.Claim, key, { to: fresh.address })).to.eq(REQUEST.Done);
+    });
+  });
+
+  describe("the offer board", function () {
+    it("validates a signed offer on Seaport and logs it by NFT, so a holder finds and accepts it", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5, posted: true });
+      expect((await seaport.getOrderStatus(offer.orderHash)).isValidated).to.eq(true);
+      const logs = await offers.queryFilter(offers.filters.OfferPosted(await nft.getAddress(), 5));
+      expect(logs).to.have.length(1);
+      expect(logs[0]!.args.orderHash).to.eq(offer.orderHash);
+      expect(logs[0]!.args.order.offerer).to.eq(carol.address);
+      // What the page rebuilds from the log is enough to accept it.
+      const fromLog = { ...offer, parameters: plain(logs[0]!.args.order) as Offer["parameters"], signature: "0x" };
+      expect((await offers.inspect(encodeOffer(fromLog), await nft.getAddress(), 5, 0)).fillable).to.eq(true);
+      expect((await acceptOffer(boxId, key, fromLog, ETH("1"), fresh.address)).status).to.eq(REQUEST.Done);
+      expect(await nft.ownerOf(5)).to.eq(carol.address);
+    });
+
+    it("logs a collection offer under ANY_TOKEN", async function () {
+      await makeOffer(carol, ETH("2"), { units: 2n, posted: true });
+      const any = await offers.ANY_TOKEN();
+      expect(await offers.queryFilter(offers.filters.OfferPosted(await nft.getAddress(), any))).to.have.length(1);
+    });
+
+    it("refuses what is not an offer for an NFT, or a signature that is not the buyer's", async function () {
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 5 });
+      // Asks for WETH only: no NFT.
+      const noNft = { ...offer.parameters, consideration: offer.parameters.consideration.slice(1), totalOriginalConsiderationItems: 0n };
+      await expect(offers.post(noNft, "0x")).to.be.revertedWithCustomError(offers, "NotAnOffer");
+      // A trait offer (criteria root set) needs proofs the page cannot make.
+      const trait = {
+        ...offer.parameters,
+        consideration: [{ ...offer.parameters.consideration[0]!, itemType: 4, identifierOrCriteria: 1n }],
+      };
+      await expect(offers.post(trait, "0x")).to.be.revertedWithCustomError(offers, "NotAnOffer");
+      // Someone else's signature does not validate carol's order.
+      const fresh2 = { ...offer.parameters, salt: 1n };
+      const domain = { name: "Seaport", version: "1.5", chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: await seaport.getAddress() };
+      const forged = await bob.signTypedData(domain, SEAPORT_TYPES, { ...offer.components, salt: 1n });
+      await expect(offers.post(fresh2, forged)).to.be.reverted;
+    });
+  });
+
+  describe("delegation", function () {
+    it("names a wallet in delegate.xyz for the box's NFT, replaces it, and clears it", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const hot = ethers.Wallet.createRandom().address;
+      expect(await act(boxId, ACTION.Delegate, key, { to: hot })).to.eq(REQUEST.Done);
+      expect(await delegated(hot, 5)).to.eq(true);
+      expect((await vault.boxInfo(boxId)).delegate).to.eq(hot);
+
+      const other = ethers.Wallet.createRandom().address;
+      expect(await act(boxId, ACTION.Delegate, key, { to: other })).to.eq(REQUEST.Done);
+      expect(await delegated(hot, 5)).to.eq(false);
+      expect(await delegated(other, 5)).to.eq(true);
+
+      expect(await act(boxId, ACTION.Delegate, key, { to: ethers.ZeroAddress })).to.eq(REQUEST.Done);
+      expect(await delegated(other, 5)).to.eq(false);
+      expect((await vault.boxInfo(boxId)).delegate).to.eq(ethers.ZeroAddress);
+    });
+
+    it("a wrong key delegates nothing", async function () {
+      const boxId = await deposit(alice, 5, randomKey());
+      expect(await act(boxId, ACTION.Delegate, randomKey(), { to: carol.address })).to.eq(REQUEST.Refused);
+      expect(await delegated(carol.address, 5)).to.eq(false);
+    });
+
+    it("a listed box can be delegated", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      await list(boxId, key, ETH("1"));
+      expect(await act(boxId, ACTION.Delegate, key, { to: fresh.address })).to.eq(REQUEST.Done);
+      expect(await delegated(fresh.address, 5)).to.eq(true);
+    });
+
+    it("taking the NFT out, a Seaport sale or an accepted offer clears the delegate", async function () {
+      const k1 = randomKey();
+      const b1 = await deposit(alice, 1, k1);
+      await act(b1, ACTION.Delegate, k1, { to: fresh.address });
+      await act(b1, ACTION.Withdraw, k1, { to: alice.address });
+      expect(await delegated(fresh.address, 1)).to.eq(false);
+
+      const k2 = randomKey();
+      const b2 = await deposit(alice, 2, k2);
+      await act(b2, ACTION.Delegate, k2, { to: fresh.address });
+      const listingId = await list(b2, k2, ETH("1"));
+      await (await fill(listingId, carol)).wait();
+      await (await vault.sync(b2)).wait();
+      expect(await delegated(fresh.address, 2)).to.eq(false);
+
+      const k3 = randomKey();
+      const b3 = await deposit(alice, 3, k3);
+      await act(b3, ACTION.Delegate, k3, { to: fresh.address });
+      await acceptOffer(b3, k3, await makeOffer(carol, ETH("1"), { tokenId: 3 }), ETH("1"), alice.address);
+      expect(await delegated(fresh.address, 3)).to.eq(false);
+    });
+
+    it("a box that changes hands keeps its delegate until the new holder sets theirs", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      await act(boxId, ACTION.Delegate, key, { to: fresh.address });
+      await (await vault.connect(alice).confidentialTransfer(bob.address, boxId)).wait();
+      expect(await delegated(fresh.address, 5)).to.eq(true);
+      // Alice's key no longer opens it: she cannot move the delegate.
+      expect(await act(boxId, ACTION.Delegate, key, { to: alice.address })).to.eq(REQUEST.Refused);
+      const bobKey = randomKey();
+      const input = await keyInput(bob, bobKey);
+      await (await vault.connect(bob).setKey(boxId, input.handles[0]!, input.inputProof)).wait();
+      expect(await act(boxId, ACTION.Delegate, bobKey, { to: carol.address })).to.eq(REQUEST.Done);
+      expect(await delegated(fresh.address, 5)).to.eq(false);
+      expect(await delegated(carol.address, 5)).to.eq(true);
     });
   });
 

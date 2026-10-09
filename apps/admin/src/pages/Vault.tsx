@@ -16,7 +16,14 @@ const STATE_LABEL: Record<VaultBoxState, string> = {
   claimed: "Vendues, ETH réclamé",
 };
 
-const ACTION_LABEL: Record<string, string> = { withdraw: "retrait", list: "mise en vente", unlist: "retrait de vente", claim: "claim" };
+const ACTION_LABEL: Record<string, string> = {
+  withdraw: "retrait",
+  list: "mise en vente",
+  unlist: "retrait de vente",
+  claim: "claim",
+  acceptOffer: "acceptation d'offre",
+  delegate: "délégation",
+};
 const OUTCOME_LABEL: Record<string, string> = { done: "faite", refused: "refusée (mauvaise clé)", stale: "caduque (la boîte a changé)", expired: "expirée (pas de preuve en un jour)" };
 
 /** Wei (a decimal string) in ETH, four decimals at most. */
@@ -52,10 +59,12 @@ export function Vault({ days, onError }: { days: number; onError: (e: unknown) =
           <b>{fmt(inVault)}</b> NFT dans le coffre, <b>{fmt(s.deposits)}</b> déposés depuis le début
         </div>
         <div>
-          <b>{fmt(s.seaportSales)}</b> ventes Seaport pour <b>{eth(s.seaportVolume)}</b>, <b>{fmt(s.privateSales.settled)}</b> ventes privées réglées
+          <b>{fmt(s.seaportSales)}</b> ventes Seaport pour <b>{eth(s.seaportVolume)}</b> (dont <b>{fmt(s.offersAccepted)}</b> offres acceptées),{" "}
+          <b>{fmt(s.privateSales.settled)}</b> ventes privées réglées
         </div>
         <div>
-          <b>{fmt(s.listed)}</b> annonces en ligne, <b>{fmt(s.privateSales.open)}</b> ventes privées en attente
+          <b>{fmt(s.listed)}</b> annonces en ligne, <b>{fmt(s.privateSales.open)}</b> ventes privées en attente, <b>{fmt(s.delegations)}</b> délégations
+          posées ou retirées
         </div>
         {s.requests.pending > 0 && (
           <div className="warn">
@@ -169,6 +178,10 @@ function feedText(i: VaultFeedItem): string {
       return `Vendue sur Seaport${box} pour ${eth(i.detail ?? "0")}`;
     case "VaultClaimed":
       return `ETH réclamé${box} : ${eth(i.detail ?? "0")}`;
+    case "VaultOfferAccepted":
+      return `Offre Seaport acceptée${box} : ${eth(i.detail ?? "0")}`;
+    case "VaultDelegated":
+      return `Délégation posée ou retirée${box}`;
     case "VaultSaleOffered":
       return `Vente privée proposée${box}`;
     case "VaultSaleSettled":

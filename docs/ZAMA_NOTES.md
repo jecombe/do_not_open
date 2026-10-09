@@ -785,10 +785,14 @@ a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
 
 `SealedVault` puts any NFT of an allowed collection in a box whose holder is encrypted: a
 second `ConfidentialERC721`, next to the game and linked to none of its contracts. It lists on
-Seaport 1.5 with the vault as the offerer and sells privately in cUSDC. 21,869 bytes deployed
-(20,833 before requests stopped locking the box and the deposit took decoys, 2026-10-09),
-compiled with the default optimizer (200 runs): it needs none of `DoNotOpen`'s size tricks. Not
-deployed on Sepolia yet. The design is in [VAULT.md](VAULT.md); what is specific to the protocol:
+Seaport 1.5 with the vault as the offerer, accepts buyers' WETH offers on Seaport 1.5 (through
+its helper `VaultOffers`, 6,517 bytes, which is also the on-chain offer board), names a box's
+delegate in delegate.xyz's registry, and sells privately in cUSDC. 24,322 bytes deployed, 254
+under the limit (21,869 before offers and delegation, 20,833 before requests stopped locking the
+box and the deposit took decoys, both 2026-10-09), compiled with the default optimizer (200
+runs): it needs none of `DoNotOpen`'s size tricks yet, but the next feature has to move logic
+out first, as offers did into `VaultOffers`. On Sepolia (table below). The design is in
+[VAULT.md](VAULT.md); what is specific to the protocol:
 
 - **A key compared, never decrypted.** Each box has a `euint256` key, allowed to the vault alone
   (`allowThis`). A request carries `key XOR requestHash(terms, nonce)` as an `externalEuint256`;
@@ -813,14 +817,21 @@ deployed on Sepolia yet. The design is in [VAULT.md](VAULT.md); what is specific
   MAX_SALE_PRICE)` (10^12) at the offer, so `pulled * MAX_FEE_BPS` (1,000) never wraps 64 bits.
   The price is allowed to the vault, the seller and the buyer; `moved` to the two sides once
   settled. The heaviest call of the vault: ~4.34M HCU (2.31M depth).
+- **Offers and delegation add no FHE.** Accepting an offer and naming a delegate are ordinary
+  requests (the same ~191k HCU, the order hash bound to the key as `ref`); the fill
+  (`finalizeOffer`, ~399k gas) and the registry calls are plain EVM, 0 HCU. Since the key's bit
+  is only decrypted off-chain, the order travels at `finalizeOffer`, not at the request: a fill
+  that fails for a reason that may pass (the buyer's WETH short) reverts and leaves the request
+  `Pending` rather than spending the decrypted "yes".
 - **The relayer proxy decrypts for it.** The API's relayer proxy lets user decryptions and
   inputs name the vault (`EvmChainState.decryptable`: receipts, private sale prices, box keys as
   inputs), and the index follows the vault's `AllowedForDecryption` events
   (`EvmChainSource.aclFilterFor`), so the "key matched" bits go through it like the game's.
 
 What becomes public: each deposit (the depositor), the NFT in each box, Seaport listings and
-their prices, a request's sender, action, terms and whether its key matched, where an NFT or a
-sale's ETH goes, `setKey`'s caller, a private sale's two sides. Never public: who holds a box,
+their prices, buyers' offers and who made them, an accepted offer's buyer and amount, a box's
+delegate, a request's sender, action, terms (an offer's order hash included) and whether its key
+matched, where an NFT or a sale's ETH goes, `setKey`'s caller, a private sale's two sides. Never public: who holds a box,
 the key, a private sale's price, and whether a private sale or a transfer moved anything. HCU
 per call is in [VAULT.md](VAULT.md#cost): ~83k a deposit, ~191k a request, ~225k a `setKey`.
 
@@ -859,8 +870,11 @@ change): the rats stay with their owners. `WhitelistGifts` is the giver of both 
 | `RatTricks` (sniffs, shields, jams) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
 | `WhitelistGifts` (root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
 | `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
-| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, 2.5% fee; owner and treasury `0x5908…029A`) | [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D) (since 2026-10-09; until then [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), whose requests locked the box) |
+| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, listings and accepted WETH offers, delegate.xyz delegation, 2.5% fee; owner and treasury `0x5908…029A`) | [`0xE22509e741233072aFF4e0c6B56d5e3De8018262`](https://sepolia.etherscan.io/address/0xE22509e741233072aFF4e0c6B56d5e3De8018262) (since 2026-10-09, block 11876575; before it [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D), 2026-10-09, block 11876345, no offers nor delegation, and [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), 2026-10-08, whose requests locked the box) |
+| `VaultOffers` (the vault's offer board, fills the offers it accepts) | [`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`](https://sepolia.etherscan.io/address/0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2) (block 11876574) |
 | `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
+| WETH (OpenSea's on Sepolia, what offers pay in; not ours) | [`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`](https://sepolia.etherscan.io/address/0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9) |
+| delegate.xyz Delegate Registry v2 (not ours) | [`0x00000000000000447e69651d841bD8D104Bed493`](https://sepolia.etherscan.io/address/0x00000000000000447e69651d841bD8D104Bed493) |
 
 Deploying took `SEPOLIA_GAS_PRICE=20000000` and `--maxfee 50000000 --priorityfee 2000000`: a
 0.3 gwei cap asked 0.0144 ETH up front for `DoNotOpen`'s ~40M gas (39,600,324 used) while the

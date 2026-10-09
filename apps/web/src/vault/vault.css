@@ -347,6 +347,43 @@
   font-size: 14px;
 }
 
+/* The offers on one box: the holder picks one, a buyer cancels theirs or makes one. */
+.vault-offers {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.vault-offers ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-offers li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 13px;
+}
+
+.vault-offers li.on {
+  border-color: var(--teal);
+}
+
+.vault-offers li .vault-chip {
+  margin-left: 6px;
+}
+
 .vault-leaks-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -1759,6 +1759,13 @@ export class EvmFhevmAdapter implements ChainAdapter {
       publicDecrypt: (handles, opts) => this.publicDecrypt(handles, opts) as never,
       userDecrypt: (handles, contractAddress, opts) => this.userDecrypt(handles, contractAddress, opts),
       signText: (message) => this.signText(message),
+      signTypedData: async (domain, types, value) => {
+        try {
+          return await this.signer().signTypedData(domain, types, value);
+        } catch (error) {
+          throw this.toChainError(error);
+        }
+      },
       ensureOperator: (token, account, operator, opts) => this.ensureOperator(token, account, operator, opts),
       cUsdc: async () => (await this.payment()).cUsdc,
       relay: () => {

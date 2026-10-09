@@ -1,7 +1,9 @@
 /**
  * The sealed vault: any NFT of an allowed collection, in a box whose holder is encrypted. The
  * NFT can come out to any address, be sold on Seaport (OpenSea's protocol) with the vault as
- * the seller, or change hands privately for an encrypted cUSDC price.
+ * the seller, by a listing or by accepting a buyer's WETH offer, or change hands privately for
+ * an encrypted cUSDC price. Meanwhile its rights (airdrops, token gates) can be lent to a wallet
+ * through delegate.xyz.
  *
  * Every holder action that leaves the vault is asked with the box's key, a secret the wallet
  * derives from one signature, never with the holder's address: a relayer (or any wallet)
@@ -27,6 +29,10 @@ export interface VaultInfo {
   feeBps: number;
   /** The Seaport the listings live on: any Seaport marketplace can fill them. */
   seaport: Address;
+  /** What buyers' offers pay in: WETH, wrapped from ETH by the page when needed. */
+  weth: Address;
+  /** delegate.xyz's registry, where a box's delegate is written. */
+  delegateRegistry: Address;
   collections: VaultCollection[];
   /** Sends holders' requests, so their address shows nowhere. Null: the wallet sends them, and its address shows. */
   relayer: Address | null;
@@ -55,10 +61,25 @@ export interface VaultBox {
   listing: VaultListing | null;
   /** Wei a Seaport sale left for the box's key holder, the fee taken. */
   proceeds: bigint;
+  /** The wallet acting for the NFT in delegate.xyz (airdrops, token gates), or null. Public. */
+  delegate: Address | null;
   /** Requests on it wait for their proof: it cannot move until they settle (anyone may settle them). Requests still go in. */
   busy: boolean;
   /** The NFT's own metadata URI. */
   tokenUri: string;
+}
+
+/** A buyer's Seaport offer for a box's NFT, in WETH. Public, as on any marketplace. */
+export interface VaultOffer {
+  orderHash: string;
+  /** The buyer: public, they signed the offer. */
+  buyer: Address;
+  /** Wei of WETH one NFT nets, the order's own fees taken, before the vault's fee. */
+  amount: bigint;
+  /** Unix seconds. */
+  endTime: number;
+  /** An offer on any NFT of the collection, not on this one alone. */
+  anyToken: boolean;
 }
 
 export type VaultSaleStatus = "open" | "settled" | "cancelled";
@@ -103,6 +124,17 @@ export interface VaultAdapter {
   buy(boxId: number, opts?: ActionOptions): Promise<void>;
   /** Sends a Seaport sale's ETH to `to`. Returns what was sent. Throws `not-yours`. */
   claim(boxId: number, to: Address, opts?: ActionOptions): Promise<bigint>;
+
+  /** Live offers buyers posted for the box's NFT (or any NFT of its collection) that their WETH still covers, best first. */
+  offers(boxId: number): Promise<VaultOffer[]>;
+  /** Offers `amount` wei of WETH for the box's NFT until `endTime`: wraps ETH and lets Seaport take the WETH when needed, signs the Seaport order, posts it to the offer board. Returns its order hash. The buyer's address is public. */
+  makeOffer(boxId: number, amount: bigint, endTime: number, opts?: ActionOptions): Promise<string>;
+  /** Cancels one of the connected wallet's own offers on Seaport. */
+  cancelOffer(orderHash: string, opts?: ActionOptions): Promise<void>;
+  /** The holder accepts an offer: the NFT goes to the buyer, the ETH, less the fee, to `to`. Returns what was sent. Throws `not-yours`, or `missed` when the offer is gone. */
+  acceptOffer(boxId: number, orderHash: string, to: Address, opts?: ActionOptions): Promise<bigint>;
+  /** Names `delegate` (null: nobody) as the wallet acting for the box's NFT in delegate.xyz. Public: a fresh wallet keeps the holder unlinked. Throws `not-yours`. */
+  delegate(boxId: number, delegate: Address | null, opts?: ActionOptions): Promise<void>;
 
   /** Gives the box to `to`: moves it only if the caller holds it. The receiver sets its key with `adopt`. Settles the box's waiting requests first. */
   send(boxId: number, to: Address, opts?: ActionOptions): Promise<void>;

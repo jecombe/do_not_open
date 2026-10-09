@@ -1188,13 +1188,14 @@ inside a sealed box.
 
 `SealedVault` is not part of the game: any NFT of an allowed collection goes into a box whose
 holder is encrypted, a Confidential ERC-721 of its own. Every box has an encrypted key; what
-leaves the vault (the NFT, a Seaport listing, a sale's ETH) is asked with the key, bound to the
-request's terms, so any wallet can carry the request: the API's vault relayer, when there is
-one. The deposit, Seaport (list, fill, sync, collect), giving a box and making its key yours,
-the state diagram, what leaks and why are in [VAULT.md](VAULT.md). The two flows below are the
-ones with encryption in them.
+leaves the vault (the NFT, a Seaport listing, an accepted offer, a sale's ETH) and the box's
+delegate in delegate.xyz are asked with the key, bound to the request's terms, so any wallet can
+carry the request: the API's vault relayer, when there is one. The deposit, Seaport (list, fill,
+sync, collect), giving a box and making its key yours, the state diagram, what leaks and why
+are in [VAULT.md](VAULT.md). The flows below are the ones with encryption in them, and the two
+that ride on a request: accepting an offer and delegating.
 
-### A request: take out, list, take down, collect
+### A request: take out, list, take down, collect, accept an offer, delegate
 
 ```mermaid
 sequenceDiagram
@@ -1203,24 +1204,24 @@ sequenceDiagram
   participant Rl as Relayer (API)
   participant V as Vault
   participant R as Relayer / KMS
-  H->>H: encrypt key XOR requestHash(boxId, nonce, action, to, price, endTime)
+  H->>H: encrypt key XOR requestHash(boxId, nonce, action, to, price, endTime, ref)
   H->>Rl: POST /v1/vault/relay {call: "request", args}
-  Rl->>V: request(boxId, action, to, price, endTime, boundKey, proof)
+  Rl->>V: request(boxId, action, to, price, endTime, ref, boundKey, proof)
   V->>V: sync, state allows it (else revert); other waiting requests do not stop it
   V->>V: ok = (boundKey XOR requestHash(terms, nonce)) == key, publicly decryptable, pending += 1
   V-->>H: RequestPlaced(requestId, boxId, action, relayer)
   H->>R: publicDecrypt(requestInfo(requestId).ok)
   R-->>H: ok + KMS proof
   H->>Rl: POST /v1/vault/relay {call: "finalize", args}
-  Rl->>V: finalize(requestId, ok, proof) (anyone may)
+  Rl->>V: finalize(requestId, ok, proof) (anyone may; finalizeOffer for an offer, below)
   alt not ok
     V->>V: Refused: nothing happens
   else ok, but the box changed first
     V->>V: Stale: nothing happens
   else ok
-    V->>V: withdraw, list on Seaport, take down, or send the ETH: Done
+    V->>V: withdraw, list on Seaport, take down, send the ETH, or name the delegate: Done
   end
-  V->>V: pending -= 1, and nonce += 1 if the key matched
+  V->>V: pending -= 1 (only once the action ran), and nonce += 1 if the key matched
   V-->>H: RequestSettled(requestId, status)
 ```
 
@@ -1228,8 +1229,70 @@ A relayer that changed a term, or replayed the input once its request settled, m
 compare against another hash: `Refused`. A stranger's wrong key moves nothing, the nonce
 included, and does not stop the holder's own request; while any request waits the box cannot
 move, and anyone may `expire` a request a day after it was placed with no proof (`Expired`,
-nothing runs, the nonce moves on). See [VAULT.md](VAULT.md#a-request-take-out-list-take-down-collect). Without a relayer the wallet sends both, and its address shows. In the adapter:
-`withdraw`, `list`, `unlist`, `claim` (throw `not-yours` when refused, `missed` when stale).
+nothing runs, the nonce moves on). `ref` is the order hash of the offer an `AcceptOffer` names,
+zero for every other action. See [VAULT.md](VAULT.md#a-request-take-out-list-take-down-collect-accept-an-offer-delegate). Without a relayer the wallet sends both, and its address shows. In the adapter:
+`withdraw`, `list`, `unlist`, `claim`, `acceptOffer`, `delegate` (throw `not-yours` when refused, `missed` when stale).
+
+### Accepting an offer
+
+A buyer's offer is a plain Seaport 1.5 order (WETH offered, the NFT asked for), posted to the
+offer board `VaultOffers`. The holder accepts it with an `AcceptOffer` request (`to` the payout
+address, `price` the least WETH it must net, `ref` its order hash); the order itself only comes
+at `finalizeOffer`.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor B as Buyer
+  participant O as VaultOffers
+  participant S as Seaport 1.5
+  actor H as Holder
+  participant V as Vault
+  B->>B: wrap ETH, approve Seaport, sign the order (EIP-712)
+  B->>O: post(order, signature)
+  O->>S: validate: fillable with no signature from now on
+  O-->>H: OfferPosted(collection, tokenId or ANY_TOKEN, orderHash, order)
+  H->>V: request(AcceptOffer, to, least, ref = orderHash) ... publicDecrypt
+  H->>V: finalizeOffer(requestId, ok, proof, abi.encode(order, criteriaProof))
+  V->>O: inspect: orderHash == ref (else revert WrongOrder), alive, nets at least least
+  alt not ok
+    V->>V: Refused
+  else the order is dead (cancelled, filled, ended, worth less)
+    V->>V: Stale: the box stays
+  else
+    V->>V: a listed box is taken down first; the NFT to VaultOffers
+    V->>O: fill: fulfillAdvancedOrder (1/units, criteria resolved to the box's token)
+    O->>S: WETH in, the NFT to the buyer, WETH unwrapped
+    O->>V: ETH (receive: Seaport or VaultOffers only)
+    V->>V: less than least: revert OfferShort; fee to feesOwed, delegate cleared
+    V-->>H: OfferAccepted(boxId, orderHash, buyer, amount)
+    V->>V: proceeds to `to`: Claimed (Sold if `to` refuses ETH, for a Claim)
+  end
+```
+
+A fill that only fails now (the buyer's WETH or allowance short) reverts and leaves the request
+`Pending`: it can be tried again, or expired after a day. Plain `finalize` on an `AcceptOffer`
+settles a wrong key `Refused` and reverts `NeedsOrder` when the key matched. With the relayer,
+a `finalize` call carrying `offer` is sent as `finalizeOffer`. In the adapter: `offers`,
+`makeOffer`, `cancelOffer`, `acceptOffer`.
+
+### Delegation
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder
+  participant V as Vault
+  participant D as delegate.xyz registry
+  H->>V: request(Delegate, to = a wallet, or zero to clear) ... finalize
+  V->>D: delegateERC721(old, collection, tokenId, 0, false) (if any)
+  V->>D: delegateERC721(to, collection, tokenId, 0, true) (unless zero)
+  V-->>H: Delegated(boxId, to)
+```
+
+The delegate is public. It is cleared when the NFT leaves (withdrawal, Seaport sale, accepted
+offer) and kept when the box is transferred: whether a transfer moved is secret, and anyone may
+send one that moves nothing. In the adapter: `delegate(boxId, wallet | null)`.
 
 ### Private sale
 
@@ -1263,7 +1326,7 @@ Nothing is decrypted in public: a sale that went through and one that did not lo
 | Studio packs (Starter 2, Litter 8) | plain USDC | the treasury address set in `StudioPacks`, at once; the AI services are paid from it |
 | Adopting a rat (1 a free rat, 3 an AI rat) | plain USDC | the treasury address set in `Rats`, at once; Arweave storage of AI rats is paid from it |
 | A flea market sale (2.5%, at most 10%) | cUSDC | the treasury address set in `FleaMarket`, at the sale; the rest to the seller. For a sale by offer the fee is computed encrypted and stays secret |
-| A sealed vault sale (2.5%, at most 10%) | ETH on Seaport; cUSDC privately | Seaport: kept in `SealedVault` (`feesOwed`) and sent to its treasury by `sendFees`, which anyone may call; the rest waits in the box for the key's holder. Private: to the treasury at the sale, computed encrypted |
+| A sealed vault sale (2.5%, at most 10%) | ETH on Seaport (a listing, or an accepted WETH offer, unwrapped); cUSDC privately | Seaport: kept in `SealedVault` (`feesOwed`) and sent to its treasury by `sendFees`, which anyone may call; the rest waits in the box for the key's holder (an accepted offer pays it straight to the address the holder named). Private: to the treasury at the sale, computed encrypted |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 
@@ -1498,7 +1561,7 @@ Every two-step action can be picked up later, by anyone:
 | Weigh-in pending | "Weigh the cat" | `weigh` (picks up the pending one: `finalizeWeigh`) |
 | Flea market: a box listing `Pending` | The seller's stall marks it as on its way | `finishListing(listingId)` (throws `not-yours` when refused) |
 | Flea market: a purchase `Pending` | Not shown yet | `finishPurchase(purchaseId)`; `pendingPurchases(account)` lists them |
-| Sealed vault: a request `Pending` (the box cannot move; requests still go in) | The box says requests wait for their proof | Sending the box or accepting a private sale settles them first (`settlePending` in `EvmVault`): `finalize(requestId, …)` with the public decryption of `requestInfo(requestId).ok`, or `expire(requestId)` a day after it was placed. Anyone may do either |
+| Sealed vault: a request `Pending` (the box cannot move; requests still go in) | The box says requests wait for their proof | Sending the box or accepting a private sale settles them first (`settlePending` in `EvmVault`): `finalize(requestId, …)` with the public decryption of `requestInfo(requestId).ok` (`finalizeOffer` with the order for an `AcceptOffer`, which stays `Pending` while a fill fails), or `expire(requestId)` a day after it was placed. Anyone may do either |
 
 When the step after the first transaction fails (the decryption service is slow, the
 user declines the proof's signature), the adapter marks the `ChainError` `resumable`,

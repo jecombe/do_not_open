@@ -66,7 +66,7 @@ export interface Idea {
 }
 
 export type VaultBoxState = "sealed" | "listed" | "sold" | "withdrawn" | "claimed";
-export type VaultAction = "withdraw" | "list" | "unlist" | "claim";
+export type VaultAction = "withdraw" | "list" | "unlist" | "claim" | "acceptOffer" | "delegate";
 
 export interface VaultSummary {
   boxes: Record<VaultBoxState, number>;
@@ -76,7 +76,10 @@ export interface VaultSummary {
   listed: number;
   unlisted: number;
   expired: number;
+  /** Listings filled and buyers' offers accepted (`offersAccepted` of them). */
   seaportSales: number;
+  offersAccepted: number;
+  delegations: number;
   /** Wei, as decimal strings. */
   seaportVolume: string;
   claimed: string;

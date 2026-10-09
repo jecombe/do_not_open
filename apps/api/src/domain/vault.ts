@@ -2,8 +2,8 @@ import type { ProtocolEvent } from "./events";
 import type { Address } from "./types";
 
 /** What a vault request asks, in the contract's order (SealedVault.Action). */
-export type VaultAction = "withdraw" | "list" | "unlist" | "claim";
-export const VAULT_ACTIONS: readonly VaultAction[] = ["withdraw", "list", "unlist", "claim"];
+export type VaultAction = "withdraw" | "list" | "unlist" | "claim" | "acceptOffer" | "delegate";
+export const VAULT_ACTIONS: readonly VaultAction[] = ["withdraw", "list", "unlist", "claim", "acceptOffer", "delegate"];
 
 /** How a vault request ended: done, a wrong key (refused), a box that changed first (stale), or no proof within a day (expired). */
 export type VaultRequestOutcome = "done" | "refused" | "stale" | "expired";
@@ -28,8 +28,12 @@ export interface VaultSummary {
   listed: number;
   unlisted: number;
   expired: number;
+  /** Seaport sales: listings filled, and buyers' offers the vault accepted (`offersAccepted` of them). */
   seaportSales: number;
-  /** Wei: what Seaport buyers paid, and what holders collected from sales (the fee taken). */
+  offersAccepted: number;
+  /** Times a box's delegate (delegate.xyz) was set or cleared. */
+  delegations: number;
+  /** Wei: what Seaport buyers paid (net of an offer's own fees), and what holders collected from sales (the fee taken). */
   seaportVolume: string;
   claimed: string;
   privateSales: { offered: number; settled: number; cancelled: number; open: number };
@@ -57,6 +61,8 @@ export function summarizeVault(events: readonly ProtocolEvent[]): VaultSummary {
     unlisted: 0,
     expired: 0,
     seaportSales: 0,
+    offersAccepted: 0,
+    delegations: 0,
     seaportVolume: "0",
     claimed: "0",
     privateSales: { offered: 0, settled: 0, cancelled: 0, open: 0 },
@@ -93,6 +99,15 @@ export function summarizeVault(events: readonly ProtocolEvent[]): VaultSummary {
         volume += BigInt(e.price);
         live.delete(e.listingId);
         state.set(e.boxId, "sold");
+        break;
+      case "VaultOfferAccepted":
+        s.seaportSales++;
+        s.offersAccepted++;
+        volume += BigInt(e.amount);
+        state.set(e.boxId, "sold");
+        break;
+      case "VaultDelegated":
+        s.delegations++;
         break;
       case "VaultClaimed":
         claimed += BigInt(e.amount);
@@ -154,7 +169,7 @@ export function feedItemOf(e: VaultEvent): VaultFeedItem {
     e.name === "VaultRequestPlaced" ? e.action
     : e.name === "VaultRequestSettled" ? e.status
     : e.name === "VaultListed" || e.name === "VaultSoldOnSeaport" ? e.price
-    : e.name === "VaultClaimed" ? e.amount
+    : e.name === "VaultClaimed" || e.name === "VaultOfferAccepted" ? e.amount
     : e.name === "VaultSaleSettled" || e.name === "VaultSaleCancelled" ? `#${e.saleId}`
     : null;
   return { at: e.timestamp, block: e.block, txHash: e.txHash, name: e.name, boxId, detail };

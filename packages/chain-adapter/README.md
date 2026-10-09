@@ -9,7 +9,7 @@ flowchart LR
   iface --> mock["MockAdapter<br/>in memory"]
   iface --> evm["EvmFhevmAdapter<br/>ethers + Relayer SDK"]
   iface -.-> sol["solana/<br/>not started"]
-  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC,<br/>Rats, RatTricks, FleaMarket on Sepolia;<br/>SealedVault and Seaport 1.5"]
+  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC,<br/>Rats, RatTricks, FleaMarket on Sepolia;<br/>SealedVault, VaultOffers,<br/>Seaport 1.5, delegate.xyz"]
   evm --> market["Uniswap V3: CROQ/USDC<br/>QuoterV2, SwapRouter02"]
   evm --> relayer["Zama relayer + KMS"]
 ```
@@ -21,12 +21,12 @@ flowchart LR
 | `src/evm/EvmFhevmAdapter.ts` | Sepolia: transactions through ethers, decryptions through `@zama-fhe/relayer-sdk` |
 | `src/evm/wallet.ts` | Where signatures come from: an injected browser wallet, or a fixed signer in Node |
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
-| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport and collections; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
+| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport, `offers` (`VaultOffers`' address, ABI and deploy block), WETH, delegate.xyz's registry and collections; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
-| `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultSale`) |
-| `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault` and Seaport through ethers, the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
+| `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`) |
+| `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`), the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
-| `src/mock/MockVault.ts` | The vault in memory, with the contract's rules: the night shift holds two boxes, one listed on Seaport, buys a listing of yours after 20 mock seconds and accepts any private sale offered to it. `MOCK_VAULT` and `MOCK_VAULT_NFT` (a free test collection) are exported |
+| `src/mock/MockVault.ts` | The vault in memory, with the contract's rules: the night shift holds two boxes, one listed on Seaport, buys a listing of yours after 20 mock seconds, offers 0.03 WETH for every NFT you seal and accepts any private sale offered to it. `MOCK_VAULT` and `MOCK_VAULT_NFT` (a free test collection) are exported |
 | `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
 | `src/standings.ts` | The duel ranking (`duelStandings`, `rosettePlace`, `ROSETTES`) and the mainnet allow list's points and claim message (`playerPoints`, `ALLOW_LIST_POINTS`, `allowListMessage`, `allowListAddress`, `byClaimRank`), and the boarding pass bonuses (`X_PASS_BONUS`, `DISCORD_BONUS`, `REFERRAL_BONUS`, `REFERRAL_CAP`, `xPassWalletMessage`). Pure, exported as `@dno/chain-adapter/standings`, also used by the API, so every reader ranks the same way |
 | `src/mock/pool.ts` | `MockPool`: the mock's market, the same CROQ-only V3 range |
@@ -254,13 +254,15 @@ through `apiUrl` (its `vaultRelay` option); the Node adapter has none, so its wa
 not part of the game: any NFT of an allowed collection goes into
 a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 
-- `info()`: `address`, `explorerUrl`, `feeBps`, `seaport`, `collections` (`VaultCollection`:
+- `info()`: `address`, `explorerUrl`, `feeBps`, `seaport`, `weth` (what offers pay in),
+  `delegateRegistry` (delegate.xyz's), `collections` (`VaultCollection`:
   `address`, `name`, `mintable` for a free test collection), `relayer` (the API relayer's
   address, or null: requests then go from the wallet, whose address shows) and `coin` ("ETH").
 - `boxes()` (newest first) and `box(boxId)` read `VaultBox`es, all public: `collection`,
   `tokenId`, `state` (`"sealed"`, `"listed"`, `"sold"`, `"withdrawn"`, `"claimed"`),
   `depositor`, `listing` (`VaultListing`: `listingId`, `price` in wei, `endTime`, `orderHash`),
-  `proceeds`, `busy` (requests wait for their proof: the box cannot move until they settle,
+  `proceeds`, `delegate` (the wallet acting for the NFT in delegate.xyz, or null; public),
+  `busy` (requests wait for their proof: the box cannot move until they settle,
   though requests still go in), `tokenUri`. `myBoxes()` finds the
   connected account's from its own receipts (one decryption signature, as `boxesOf` does).
 - `walletNfts(collection)` lists the wallet's token ids of a collection; `mintTestNft` mints a
@@ -275,6 +277,21 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
   "the key matched" and `finalize`, relayed too. They throw `not-yours` when the key did not
   match (nothing happened) and `missed` when the box changed first (a listing sold or ran out);
   `network` when the relayer could not send. `claim` returns the wei sent.
+- `offers(boxId)` lists the live offers buyers posted to the board (`VaultOffers`' `OfferPosted`
+  logs) for the box's NFT or any NFT of its collection, that their WETH still covers, best first
+  (`VaultOffer`: `orderHash`, `buyer`, `amount` in wei of WETH one NFT nets after the order's
+  own fees, `endTime`, `anyToken`). `makeOffer(boxId, amount, endTime)` wraps ETH into WETH and
+  approves Seaport when needed, signs the Seaport 1.5 order (EIP-712) and posts it to the board;
+  it returns the order hash, and the buyer's address is public. `cancelOffer(orderHash)` cancels
+  one of the wallet's own offers on Seaport.
+- `acceptOffer(boxId, orderHash, to)` is a request (`AcceptOffer`, the order hash bound to the
+  key as `ref`, the offer's current net as the least it must fetch), finalized with
+  `finalizeOffer` and the order: the NFT goes to the buyer, the ETH, less the fee, to `to`. It
+  returns the wei sent; throws `not-yours`, or `missed` when the offer is gone.
+- `delegate(boxId, wallet | null)` is a request too: it names the wallet acting for the box's
+  NFT in delegate.xyz's registry (null clears it). The delegate is public, so a fresh wallet
+  keeps the holder unlinked; it is cleared when the NFT leaves and kept when the box changes
+  hands. Throws `not-yours`.
 - `buy(boxId)` fills the box's Seaport order from the wallet, as any marketplace buyer would,
   then sends `sync` so the box shows as sold at once.
 - `send(boxId, to)` gives the box (a "maybe" transfer); the receiver calls `adopt(boxId)`, which
@@ -290,7 +307,7 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 The key is never stored: the wallet signs `vaultKeyMessage(vault, chainId)` once a session
 (EIP-191, free), and each box's key is `keccak256(abi.encode(keccak256(signature), collection,
 tokenId))`, the same on any device. The EVM vault reads its boxes and logs from the RPC; the API
-does not index the vault. Every action reports the usual steps (`wallet` also for the key
+indexes only its counts, for the team. Every action reports the usual steps (`wallet` also for the key
 signature).
 
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its

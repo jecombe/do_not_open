@@ -48,7 +48,7 @@ the sealed vault on [vault.do-not-open.app](https://vault.do-not-open.app), each
 | Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 15) | **Done** |
 | Whitelist gifts | Each seated wallet collects its class's gift once (`WhitelistGifts`): an encrypted draw of cCROQ, a box minted free out of the 1,000 the sale leaves (`DoNotOpen.gift`), a free rat (`Rats.gift`), against a Merkle root of (wallet, tier) | **Done**, live on Sepolia since 2026-10-08 (root not set yet) |
 | Boarding page | `/apply`, in the home page's dark theme: a sealed box behind its encryption shield (probes cannot read the passenger; once boarded, the player sees their own handle), Sign in with X, five quick tasks on X (declared), the mainnet list's points, a wallet bonus and a referral link with a printable boarding pass; linked from the home page's bar (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
-| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, or sold privately for an encrypted cUSDC price, every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs | **Live** on Sepolia since 2026-10-08, redeployed on 2026-10-09 so requests no longer lock a box and a deposit sends decoys (`SealedVault` block 11876345, its test NFT kept) |
+| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, sold to a buyer's WETH offer the holder accepts (`VaultOffers`, also an on-chain offer board), or sold privately for an encrypted cUSDC price; meanwhile the NFT's rights (airdrops, token gates) lent to a wallet through delegate.xyz; every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs | **Live** on Sepolia since 2026-10-08, redeployed twice on 2026-10-09: requests no longer lock a box and a deposit sends decoys (block 11876345), then accepted offers and delegation (`SealedVault` block 11876575, `VaultOffers` 11876574, its test NFT kept) |
 
 ## Layout
 
@@ -58,7 +58,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault, VaultOffers"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
   api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
@@ -84,7 +84,7 @@ Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
 
 ```bash
 pnpm install
-pnpm test        # generator, chain adapter, API, and 267 contract tests on the FHEVM mock
+pnpm test        # generator, chain adapter, API, and 285 contract tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173: home page; the game is at /app (mock mode, no chain)
 ```
@@ -247,14 +247,19 @@ an allowed collection (a free test collection on test networks) and gives its de
 a Confidential ERC-721 of its own whose holder is encrypted, sent in the same transaction to a
 few decoys so even the depositor is not its obvious holder. Every box has an encrypted key the
 holder's wallet derives from one signature; taking the NFT out, listing it, taking the listing
-down or collecting a sale's ETH is asked with that key, not with an address, so the API's
+down, collecting a sale's ETH, accepting a buyer's offer or naming a delegate is asked with that key, not with an address, so the API's
 relayer can send the request and the holder's address shows on none. Requests do not lock the
 box, so a stranger's wrong keys never keep its holder from taking the NFT out, and one whose
 proof never comes expires after a day. A listing is a real
-Seaport 1.5 order with the vault as the seller, which any Seaport marketplace can fill. A box
+Seaport 1.5 order with the vault as the seller, which any Seaport marketplace can fill. Buyers
+can also make WETH offers on any NFT in the vault (signed Seaport 1.5 orders, posted to the
+on-chain board `VaultOffers`); the holder accepts one with a request, the vault fills it through
+`VaultOffers`, which it hands that one NFT for that one call, and the ETH goes straight to an
+address the holder picks. While the NFT sits in the vault, the holder can name a wallet of
+theirs its delegate in delegate.xyz's registry, so airdrops and token gates still reach them. A box
 can also change hands privately, for a cUSDC price only the two sides read, settled under
-encryption. Public: the deposit, the NFT in each box, Seaport listings, where an NFT or a sale's
-ETH goes. Never public: who holds a box (even right after the deposit, with decoys), its key, a private sale's price and whether it went
+encryption. Public: the deposit, the NFT in each box, Seaport listings, offers and who made them, a box's
+delegate, where an NFT or a sale's ETH goes. Never public: who holds a box (even right after the deposit, with decoys), its key, a private sale's price and whether it went
 through. 2.5% of each sale goes to the treasury. The page is `/vault`; the design, the flows and
 the limits are in [`docs/VAULT.md`](docs/VAULT.md).
 
@@ -292,7 +297,8 @@ owner was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`):
 | `RatTricks` (sniffs, shields and jams; DoNotOpen's guard) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
 | `WhitelistGifts` (the whitelist's gifts, DoNotOpen's and Rats' giver, 425,000 cCROQ; root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
 | `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
-| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, 2.5% fee; owner and treasury `0x5908…029A`) | [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D) (since 2026-10-09; until then [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), whose requests locked the box) |
+| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, listings and accepted WETH offers, delegate.xyz delegation, 2.5% fee; owner and treasury `0x5908…029A`) | [`0xE22509e741233072aFF4e0c6B56d5e3De8018262`](https://sepolia.etherscan.io/address/0xE22509e741233072aFF4e0c6B56d5e3De8018262) (since 2026-10-09, block 11876575; before it [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D), 2026-10-09, no offers nor delegation, and [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), 2026-10-08, whose requests locked the box) |
+| `VaultOffers` (the vault's on-chain offer board; fills the offers the vault accepts) | [`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`](https://sepolia.etherscan.io/address/0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2) |
 | `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
 
 Deployed with `SEPOLIA_GAS_PRICE=20000000 pnpm --filter @dno/contracts-evm exec hardhat deploy
