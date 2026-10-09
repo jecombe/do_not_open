@@ -1,0 +1,5 @@
+{
+  "//": "CommonJS on purpose: Vercel compiles the routing middleware (middleware.ts at the repo root) to CommonJS and require()s this file; apps/web is an ES module package, and Node refuses to require() one (ERR_REQUIRE_ESM). Vite and tsx read the TypeScript either way.",
+  "type": "commonjs",
+  "main": "index.js"
+}
