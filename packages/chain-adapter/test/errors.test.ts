@@ -128,3 +128,47 @@ describe("EvmFhevmAdapter dry run", () => {
     expect(sent).toHaveBeenCalledOnce();
   });
 });
+
+describe("EvmFhevmAdapter allowance meter", () => {
+  const fake = {
+    generateKeypair: () => ({ publicKey: "", privateKey: "" }),
+    createEIP712: () => ({}),
+    userDecrypt: async () => ({}),
+    publicDecrypt: async () => Promise.reject(new Error("refused")),
+    createEncryptedInput: () => ({ add64() { return this; }, encrypt: async () => ({ handles: [], inputProof: new Uint8Array() }) }),
+  };
+  const make = (metered: boolean) =>
+    new EvmFhevmAdapter({
+      chain: SEPOLIA,
+      address: SEPOLIA_DEPLOYMENT.address,
+      abi: SEPOLIA_DEPLOYMENT.abi,
+      readProvider: new Node(() => 0n, 0n),
+      wallet: { current: () => null, options: () => [], connect: async () => { throw new Error("no wallet"); }, disconnect: async () => {}, onChange: () => () => {} },
+      loadRelayer: async () => fake as never,
+      metered,
+    });
+  // The relayer as the adapter's own calls see it.
+  const relayerOf = (a: EvmFhevmAdapter) => (a as unknown as { loadRelayer(): Promise<typeof fake> }).loadRelayer();
+
+  it("tells the meters once each counted call settles, refused ones too", async () => {
+    const adapter = make(true);
+    const spent = vi.fn();
+    const stop = adapter.onAllowanceSpent(spent);
+    const relayer = await relayerOf(adapter);
+    await relayer.userDecrypt();
+    await relayer.publicDecrypt().catch(() => undefined);
+    await relayer.createEncryptedInput().add64().encrypt();
+    expect(spent).toHaveBeenCalledTimes(3);
+    stop();
+    await relayer.userDecrypt();
+    expect(spent).toHaveBeenCalledTimes(3);
+  });
+
+  it("stays quiet where nobody counts the decryptions", async () => {
+    const adapter = make(false);
+    const spent = vi.fn();
+    adapter.onAllowanceSpent(spent);
+    await (await relayerOf(adapter)).userDecrypt();
+    expect(spent).not.toHaveBeenCalled();
+  });
+});

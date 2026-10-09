@@ -362,6 +362,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private readonly iface: Interface;
   private address_: Address | null = null;
   private readonly listeners = new Set<(account: Address | null) => void>();
+  private readonly spentListeners = new Set<() => void>();
   private relayer: Promise<Relayer> | null = null;
   /** Decryption permits by account: the wallet's, and a pocket viewer's. */
   private readonly permits = new Map<string, Permit>();
@@ -1209,6 +1210,17 @@ export class EvmFhevmAdapter implements ChainAdapter {
     if (!ix || !account || !(await this.metered())) return null;
     const [data, price] = await Promise.all([this.allowanceSince(ix, account), this.creditPrice()]);
     return { ...data, price };
+  }
+
+  onAllowanceSpent(listener: () => void): () => void {
+    this.spentListeners.add(listener);
+    return () => void this.spentListeners.delete(listener);
+  }
+
+  /** Tells the meters a counted call settled: spent, refused or given back, the API's count moved. */
+  private spent(): void {
+    if (!this.opts.metered) return;
+    for (const l of this.spentListeners) l();
   }
 
   /**
@@ -2322,9 +2334,26 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   private loadRelayer(): Promise<Relayer> {
-    this.relayer ??= this.opts.loadRelayer();
+    this.relayer ??= this.opts.loadRelayer().then((r) => this.metering(r));
     this.relayer.catch(() => (this.relayer = null));
     return this.relayer;
+  }
+
+  /** The relayer, with every call the API counts telling the meters once it settles. */
+  private metering(relayer: Relayer): Relayer {
+    const after = <T>(p: Promise<T>): Promise<T> => p.finally(() => this.spent());
+    return {
+      generateKeypair: () => relayer.generateKeypair(),
+      createEIP712: (...args) => relayer.createEIP712(...args),
+      userDecrypt: (...args) => after(relayer.userDecrypt(...args)),
+      publicDecrypt: (...args) => after(relayer.publicDecrypt(...args)),
+      createEncryptedInput: (...args) => {
+        const input = relayer.createEncryptedInput(...args);
+        const encrypt = input.encrypt.bind(input);
+        input.encrypt = (...a: Parameters<typeof encrypt>) => after(encrypt(...a));
+        return input;
+      },
+    };
   }
 
   /**
