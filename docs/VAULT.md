@@ -17,7 +17,12 @@ they follow this file, so a change here goes there too.
 Every action on the page runs on a stage (`apps/web/src/vault/tx`): an animated scene for its kind
 (the NFT sealed in a box among its decoys, the vault door opening, a ship sailing to Seaport, the
 NFT and the ETH crossing, a badge flying to the delegate...), its steps as they come, and every
-transaction it sent with its block, its gas and a link to the explorer. Folded away, it sits at the
+transaction it sent with its block, its gas and a link to the explorer. Addresses (the
+connected wallet, a box's depositor and delegate, its collection, the vault's contract) and each
+NFT link to the explorer too, and to a marketplace where one shows the chain. The header
+carries the wallet's balances, read live like the game's (ETH, WETH, USDC, and cUSDC behind a
+lock until its holder decrypts it), and a click on the address opens its profile: the full
+address (copy, explorer), the same balances, its boxes, switch wallet and disconnect. Folded away, it sits at the
 foot of the screen. It is also written to a cookie shared by the site's hosts, so the home page,
 boarding and both docs show it at their foot when the visitor left the vault mid-way: the steps
 that run in the browser (the decryption and the proof) stop with the page, and the next visit
@@ -616,8 +621,10 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
 - Offers on some of a collection's tokens (a criteria root other than 0, as for trait offers)
   are refused by the board; the vault would fill one only with its Merkle proof.
 - OpenSea's own website lists orders posted to its API; an order validated on-chain may not show
-  there, and its testnet site may not show Sepolia orders at all. Not checked. The orders are
-  real Seaport orders: any Seaport marketplace, aggregator or script can fill them.
+  there. OpenSea closed its testnets (`testnets.opensea.io` redirects to its farewell page,
+  checked 2026-10-09), so on Sepolia the page links boxes and NFTs to Etherscan only; on mainnet
+  the chain's `marketplaceUrl` adds an OpenSea link. The orders are real Seaport orders: any
+  Seaport marketplace, aggregator or script can fill them.
 - A stranger's wrong-key requests can still hold a box's transfers and private sales back until
   someone finalizes them (anyone may, as soon as the KMS answers; the page does) or, after a day
   without a proof, expires them. Each try costs the stranger a request's gas (~290k to 375k). A

@@ -1750,6 +1750,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     this.vault_ ??= new EvmVault(deployed, {
       chainId: this.opts.chain.chainId,
       explorerUrl: this.opts.chain.explorerUrl ?? null,
+      marketplaceUrl: this.opts.chain.marketplaceUrl ?? null,
       readProvider: this.opts.readProvider,
       account: async () => (await this.signer().getAddress()) as Address,
       send: (opts, call) => this.send(opts, () => call()),

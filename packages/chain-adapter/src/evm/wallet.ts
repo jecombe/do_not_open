@@ -30,6 +30,8 @@ export interface ChainParams {
   name: string;
   rpcUrl: string;
   explorerUrl: string | null;
+  /** Where an NFT's page is on a marketplace, `${marketplaceUrl}/<collection>/<tokenId>`. Null where none shows the chain. */
+  marketplaceUrl?: string | null;
   currency: { name: string; symbol: string; decimals: number };
 }
 

@@ -191,7 +191,13 @@
      "id": "vault-bid-0",
      "section": "vault-bid",
      "heading": null,
-     "text": "Every NFT in the vault's grid opens its own page, with its offers and a \"Make an offer\" button, whether it is listed or not. You pick an amount and how long the offer lasts (1, 7 or 30 days). You do not know who holds the box, and you do not need to: the offer is for the NFT, and only its holder can accept it.\nThe page wraps your ETH into WETH, lets Seaport take that WETH, and has you sign the offer, then posts it to the board. The WETH stays in your wallet: Seaport takes it only if the holder accepts, and the NFT reaches you in the same move. WETH you no longer need stays yours, and turns back into ETH at any time.\nYour address shows with the offer, as on any marketplace. You can cancel it at any time, in one transaction; it also ends by itself on its end date."
+     "text": "Every NFT in the vault's grid opens its own page, with its offers and a \"Make an offer\" button, whether it is listed or not. You pick an amount and how long the offer lasts (1, 7 or 30 days). You do not know who holds the box, and you do not need to: the offer is for the NFT, and only its holder can accept it.\nThe page wraps your ETH into WETH, lets Seaport take that WETH, and has you sign the offer, then posts it to the board. The WETH stays in your wallet: Seaport takes it only if the holder accepts, and the NFT reaches you in the same move. WETH you no longer need stays yours, and turns back into ETH at any time. A click on your address shows your profile: your ETH, WETH, USDC and cUSDC (cUSDC decrypted for you alone, with one signature), live, your boxes, and the way to switch wallets or disconnect."
+    },
+    {
+     "id": "vault-bid-1",
+     "section": "vault-bid",
+     "heading": null,
+     "text": "Your address shows with the offer, as on any marketplace. You can cancel it at any time, in one transaction; it also ends by itself on its end date."
     },
     {
      "id": "vault-private-0",
@@ -493,7 +499,13 @@
      "id": "vault-bid-0",
      "section": "vault-bid",
      "heading": null,
-     "text": "Chaque NFT de la grille du coffre ouvre sa propre fiche, avec ses offres et un bouton « Faire une offre », qu'il soit en vente ou non. Tu choisis un montant et une durée (1, 7 ou 30 jours). Tu ne sais pas qui détient la boîte, et tu n'as pas besoin de le savoir : l'offre porte sur le NFT, et seul son détenteur peut l'accepter.\nLa page emballe ton ETH en WETH, autorise Seaport à prendre ce WETH, te fait signer l'offre, puis la publie sur le tableau. Le WETH reste dans ton wallet : Seaport ne le prend que si le détenteur accepte, et le NFT t'arrive dans le même mouvement. Le WETH dont tu n'as plus besoin reste à toi, et se rechange en ETH quand tu veux.\nTon adresse se voit avec l'offre, comme sur n'importe quelle marketplace. Tu peux l'annuler à tout moment, en une transaction ; elle prend aussi fin d'elle-même à sa date."
+     "text": "Chaque NFT de la grille du coffre ouvre sa propre fiche, avec ses offres et un bouton « Faire une offre », qu'il soit en vente ou non. Tu choisis un montant et une durée (1, 7 ou 30 jours). Tu ne sais pas qui détient la boîte, et tu n'as pas besoin de le savoir : l'offre porte sur le NFT, et seul son détenteur peut l'accepter.\nLa page emballe ton ETH en WETH, autorise Seaport à prendre ce WETH, te fait signer l'offre, puis la publie sur le tableau. Le WETH reste dans ton wallet : Seaport ne le prend que si le détenteur accepte, et le NFT t'arrive dans le même mouvement. Le WETH dont tu n'as plus besoin reste à toi, et se rechange en ETH quand tu veux. Un clic sur ton adresse ouvre ton profil : ton ETH, ton WETH, tes USDC et cUSDC (le cUSDC déchiffré pour toi seul, avec une signature), en direct, tes boîtes, et de quoi changer de wallet ou te déconnecter."
+    },
+    {
+     "id": "vault-bid-1",
+     "section": "vault-bid",
+     "heading": null,
+     "text": "Ton adresse se voit avec l'offre, comme sur n'importe quelle marketplace. Tu peux l'annuler à tout moment, en une transaction ; elle prend aussi fin d'elle-même à sa date."
     },
     {
      "id": "vault-private-0",
@@ -789,7 +801,13 @@
      "id": "vault-bid-0",
      "section": "vault-bid",
      "heading": null,
-     "text": "Cada NFT de la cuadrícula de la bóveda abre su propia ficha, con sus ofertas y un botón «Hacer una oferta», esté en venta o no. Eliges un importe y cuánto dura la oferta (1, 7 o 30 días). No sabes quién tiene la caja, ni te hace falta: la oferta es por el NFT, y solo su titular puede aceptarla.\nLa página envuelve tu ETH en WETH, deja que Seaport tome ese WETH y te hace firmar la oferta; luego la publica en el tablón. El WETH se queda en tu wallet: Seaport solo lo toma si el titular acepta, y el NFT te llega en el mismo movimiento. El WETH que ya no necesites sigue siendo tuyo, y vuelve a ser ETH cuando quieras.\nTu dirección se ve con la oferta, como en cualquier marketplace. Puedes cancelarla en cualquier momento, en una transacción; además termina sola en su fecha."
+     "text": "Cada NFT de la cuadrícula de la bóveda abre su propia ficha, con sus ofertas y un botón «Hacer una oferta», esté en venta o no. Eliges un importe y cuánto dura la oferta (1, 7 o 30 días). No sabes quién tiene la caja, ni te hace falta: la oferta es por el NFT, y solo su titular puede aceptarla.\nLa página envuelve tu ETH en WETH, deja que Seaport tome ese WETH y te hace firmar la oferta; luego la publica en el tablón. El WETH se queda en tu wallet: Seaport solo lo toma si el titular acepta, y el NFT te llega en el mismo movimiento. El WETH que ya no necesites sigue siendo tuyo, y vuelve a ser ETH cuando quieras. Un clic en tu dirección abre tu perfil: tu ETH, WETH, USDC y cUSDC (el cUSDC descifrado solo para ti, con una firma), en directo, tus cajas, y cómo cambiar de wallet o desconectarte."
+    },
+    {
+     "id": "vault-bid-1",
+     "section": "vault-bid",
+     "heading": null,
+     "text": "Tu dirección se ve con la oferta, como en cualquier marketplace. Puedes cancelarla en cualquier momento, en una transacción; además termina sola en su fecha."
     },
     {
      "id": "vault-private-0",
@@ -1085,7 +1103,13 @@
      "id": "vault-bid-0",
      "section": "vault-bid",
      "heading": null,
-     "text": "Ogni NFT nella griglia del caveau apre la sua scheda, con le sue offerte e un pulsante «Fai un'offerta», che sia in vendita o no. Scegli un importo e quanto dura l'offerta (1, 7 o 30 giorni). Non sai chi detiene la scatola, e non ti serve: l'offerta è per l'NFT, e solo il suo detentore può accettarla.\nLa pagina avvolge il tuo ETH in WETH, lascia che Seaport prenda quel WETH e ti fa firmare l'offerta, poi la pubblica sulla bacheca. Il WETH resta nel tuo wallet: Seaport lo prende solo se il detentore accetta, e l'NFT ti arriva nello stesso movimento. Il WETH che non ti serve più resta tuo, e torna ETH quando vuoi.\nIl tuo indirizzo si vede con l'offerta, come su qualsiasi marketplace. Puoi annullarla in qualsiasi momento, con una transazione; e finisce da sola alla sua data."
+     "text": "Ogni NFT nella griglia del caveau apre la sua scheda, con le sue offerte e un pulsante «Fai un'offerta», che sia in vendita o no. Scegli un importo e quanto dura l'offerta (1, 7 o 30 giorni). Non sai chi detiene la scatola, e non ti serve: l'offerta è per l'NFT, e solo il suo detentore può accettarla.\nLa pagina avvolge il tuo ETH in WETH, lascia che Seaport prenda quel WETH e ti fa firmare l'offerta, poi la pubblica sulla bacheca. Il WETH resta nel tuo wallet: Seaport lo prende solo se il detentore accetta, e l'NFT ti arriva nello stesso movimento. Il WETH che non ti serve più resta tuo, e torna ETH quando vuoi. Un clic sul tuo indirizzo apre il tuo profilo: il tuo ETH, WETH, USDC e cUSDC (il cUSDC decifrato solo per te, con una firma), in tempo reale, le tue scatole, e come cambiare wallet o disconnetterti."
+    },
+    {
+     "id": "vault-bid-1",
+     "section": "vault-bid",
+     "heading": null,
+     "text": "Il tuo indirizzo si vede con l'offerta, come su qualsiasi marketplace. Puoi annullarla in qualsiasi momento, con una transazione; e finisce da sola alla sua data."
     },
     {
      "id": "vault-private-0",

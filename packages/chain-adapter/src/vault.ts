@@ -25,6 +25,10 @@ export interface VaultCollection {
 export interface VaultInfo {
   address: Address;
   explorerUrl: string | null;
+  /** The chain's block explorer (Etherscan's layout), or null without one. Links go through `vaultLinks`. */
+  explorer: string | null;
+  /** Where an NFT's page is on a marketplace, `<marketplace>/<collection>/<tokenId>`, or null where none shows the chain. */
+  marketplace: string | null;
   /** Share of each sale (Seaport or private) kept as a fee, in basis points. */
   feeBps: number;
   /** The Seaport the listings live on: any Seaport marketplace can fill them. */
@@ -38,6 +42,25 @@ export interface VaultInfo {
   relayer: Address | null;
   /** The chain's coin, for Seaport prices: "ETH". */
   coin: string;
+}
+
+/** Links to look a vault's address, transaction or NFT up outside the page; null where the chain has nowhere to look. */
+export interface VaultLinks {
+  address(address: Address): string | null;
+  tx(hash: string): string | null;
+  nft(collection: Address, tokenId: bigint): string | null;
+  marketplace(collection: Address, tokenId: bigint): string | null;
+}
+
+export function vaultLinks(info: Pick<VaultInfo, "explorer" | "marketplace"> | null): VaultLinks {
+  const explorer = info?.explorer ?? null;
+  const market = info?.marketplace ?? null;
+  return {
+    address: (address) => (explorer ? `${explorer}/address/${address}` : null),
+    tx: (hash) => (explorer ? `${explorer}/tx/${hash}` : null),
+    nft: (collection, tokenId) => (explorer ? `${explorer}/nft/${collection}/${tokenId}` : null),
+    marketplace: (collection, tokenId) => (market ? `${market}/${collection}/${tokenId}` : null),
+  };
 }
 
 export interface VaultListing {
@@ -107,6 +130,8 @@ export interface VaultAdapter {
   box(boxId: number): Promise<VaultBox>;
   /** The connected account's boxes, found in its own receipts (one decryption signature). */
   myBoxes(): Promise<number[]>;
+  /** WETH `owner` holds, in wei: what their offers can pay. Public, as any ERC-20 balance. */
+  wethBalance(owner: Address): Promise<bigint>;
   /** Token ids of `collection` the connected wallet holds. */
   walletNfts(collection: Address): Promise<bigint[]>;
   /** Test collections only: mints a fresh NFT to the connected wallet. Returns its id. */

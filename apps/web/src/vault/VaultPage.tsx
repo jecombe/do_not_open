@@ -4,11 +4,13 @@ import {
   MAX_DECOYS,
   sameAddress,
   shortAddress,
+  vaultLinks,
   type ActionOptions,
   type Address,
   type VaultAdapter,
   type VaultBox,
   type VaultInfo,
+  type VaultLinks,
   type VaultOffer,
   type VaultSale,
 } from "@dno/chain-adapter";
@@ -21,6 +23,7 @@ import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
 import { dismissRun, dropRun, endRun, isOwnRun, runStep, runTx, startRun } from "./tx/runStore";
 import { TxDock, TxStage, useVaultRun } from "./tx/VaultTx";
+import { VaultBalances, VaultProfile } from "./VaultWallet";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
 const POLL_MS = 15_000;
@@ -193,6 +196,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   const findMine = () => void act("find", () => vault.myBoxes()).then((m) => m && setMine(m));
 
   const coin = info?.coin ?? "ETH";
+  const links = useMemo(() => vaultLinks(info), [info]);
   const nameOf = (collection: Address) => info?.collections.find((c) => sameAddress(c.address, collection))?.name ?? shortAddress(collection);
   const labelOf = (b: VaultBox) => t("vault.nft", { collection: nameOf(b.collection), id: String(b.tokenId) });
   const inVault = boxes.filter((b) => b.state === "sealed" || b.state === "listed");
@@ -270,8 +274,9 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
             <dd>{info ? `${info.feeBps / 100}%` : "…"}</dd>
           </div>
         </dl>
+        <VaultBalances vault={vault} coin={coin} className="vault-balances-head" />
         <div className="vault-account">
-          {account ? <span className="vault-me">{shortAddress(account)}</span> : connectButton}
+          {account ? <VaultProfile account={account} vault={vault} coin={coin} links={links} boxes={mine?.length ?? null} onBoxes={() => setTab("mine")} /> : connectButton}
           {!account && picking && (
             <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
               <p>{t("vault.pickWallet")}</p>
@@ -331,6 +336,11 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           <div className="vault-side-foot">
             <p className="vault-network">{t(demo ? "vault.network.mock" : "vault.network.sepolia")}</p>
             {info && <p className="vault-network">{info.relayer ? t("vault.relayer.on") : t("vault.relayer.off")}</p>}
+            {info?.explorerUrl && (
+              <a className="sec-link" href={info.explorerUrl} target="_blank" rel="noreferrer" title={info.address}>
+                {t("vault.link.contract")}&nbsp;↗
+              </a>
+            )}
             <a className="sec-link" href={vaultDocsPath(locale)}>
               {t("vault.docs")}&nbsp;→
             </a>
@@ -542,6 +552,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           busy={!!action.busy}
           act={act}
           vault={vault}
+          links={links}
           connect={connectButton}
           onClose={() => setOpened(null)}
         />
@@ -605,6 +616,47 @@ function BoxCard({ box, label, coin, mine, onOpen, onBuy, busy }: { box: VaultBo
   );
 }
 
+/** A link that opens outside the page, or its text alone where the chain has nowhere to look. */
+function ExternalLink({ href, title, children }: { href: string | null; title?: string; children: ReactNode }) {
+  return href ? (
+    <a className="vault-ext" href={href} target="_blank" rel="noreferrer" title={title}>
+      {children}
+    </a>
+  ) : (
+    <span title={title}>{children}</span>
+  );
+}
+
+function AddressLink({ address, links }: { address: Address; links: VaultLinks }) {
+  return (
+    <ExternalLink href={links.address(address)} title={address}>
+      {shortAddress(address)}
+    </ExternalLink>
+  );
+}
+
+/** Where to see the NFT itself: the explorer always (it shows the vault as its owner), a marketplace where one shows the chain. */
+function NftLinks({ box, links }: { box: VaultBox; links: VaultLinks }) {
+  const t = useT();
+  const explorer = links.nft(box.collection, box.tokenId);
+  const market = links.marketplace(box.collection, box.tokenId);
+  if (!explorer && !market) return null;
+  return (
+    <p className="vault-links">
+      {explorer && (
+        <a className="sec-link" href={explorer} target="_blank" rel="noreferrer">
+          {t("vault.link.explorer")}&nbsp;↗
+        </a>
+      )}
+      {market && (
+        <a className="sec-link" href={market} target="_blank" rel="noreferrer">
+          {t("vault.link.marketplace")}&nbsp;↗
+        </a>
+      )}
+    </p>
+  );
+}
+
 /** "Mock Kittens #12" → ["Mock Kittens", "#12"]. */
 function splitLabel(label: string): [string, string] {
   const at = label.lastIndexOf(" #");
@@ -622,6 +674,7 @@ function BoxDialog({
   busy,
   act,
   vault,
+  links,
   connect,
   onClose,
 }: {
@@ -634,6 +687,7 @@ function BoxDialog({
   busy: boolean;
   act: Act;
   vault: VaultAdapter;
+  links: VaultLinks;
   connect: ReactNode;
   onClose: () => void;
 }) {
@@ -664,7 +718,11 @@ function BoxDialog({
           </div>
         </div>
         <div className="vault-dialog-info">
-          <p className="vault-card-coll">{collection}</p>
+          <p className="vault-card-coll">
+            <ExternalLink href={links.address(box.collection)} title={box.collection}>
+              {collection}
+            </ExternalLink>
+          </p>
           <h2>{splitLabel(label)[1] || label}</h2>
           <dl className="vault-facts">
             <div>
@@ -677,15 +735,20 @@ function BoxDialog({
             </div>
             <div>
               <dt>{t("vault.item.sealedBy")}</dt>
-              <dd>{shortAddress(box.depositor)}</dd>
+              <dd>
+                <AddressLink address={box.depositor} links={links} />
+              </dd>
             </div>
             {box.delegate && (
               <div>
                 <dt>delegate.xyz</dt>
-                <dd>{shortAddress(box.delegate)}</dd>
+                <dd>
+                  <AddressLink address={box.delegate} links={links} />
+                </dd>
               </div>
             )}
           </dl>
+          <NftLinks box={box} links={links} />
           <p className="vault-meta">{holder ? t("vault.item.ownerYou") : t("vault.item.ownerHidden")}</p>
 
           <div className="vault-buybox">

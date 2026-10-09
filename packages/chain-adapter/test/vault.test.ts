@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ChainError, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter } from "../src";
+import { ChainError, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, vaultLinks } from "../src";
 
 const ETH = 10n ** 18n;
 const USD = 1_000_000n;
@@ -134,5 +134,25 @@ describe("MockVault", () => {
     expect(await vault.salePrices([saleId])).toEqual({ [saleId]: 5n * USD });
     expect(await vault.myBoxes()).toEqual([]);
     expect((await chain.confidentialUsdcBalance()) - before).toBe(5n * USD - (5n * USD * 250n) / 10_000n);
+  });
+});
+
+describe("vaultLinks", () => {
+  it("links addresses, transactions and NFTs where the chain has somewhere to look", () => {
+    const links = vaultLinks({ explorer: "https://sepolia.etherscan.io", marketplace: null });
+    expect(links.address(FRESH)).toBe(`https://sepolia.etherscan.io/address/${FRESH}`);
+    expect(links.tx("0xabc")).toBe("https://sepolia.etherscan.io/tx/0xabc");
+    expect(links.nft(MOCK_VAULT_NFT, 7n)).toBe(`https://sepolia.etherscan.io/nft/${MOCK_VAULT_NFT}/7`);
+    expect(links.marketplace(MOCK_VAULT_NFT, 7n)).toBeNull();
+    expect(vaultLinks({ explorer: null, marketplace: "https://opensea.io/item/ethereum" }).marketplace(MOCK_VAULT_NFT, 7n)).toBe(
+      `https://opensea.io/item/ethereum/${MOCK_VAULT_NFT}/7`,
+    );
+  });
+
+  it("has nothing to link in the demo", async () => {
+    const { vault } = await fresh();
+    const links = vaultLinks(await vault!.info());
+    expect(links.address(FRESH)).toBeNull();
+    expect(links.nft(MOCK_VAULT_NFT, 1n)).toBeNull();
   });
 });

@@ -254,7 +254,10 @@ through `apiUrl` (its `vaultRelay` option); the Node adapter has none, so its wa
 not part of the game: any NFT of an allowed collection goes into
 a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 
-- `info()`: `address`, `explorerUrl`, `feeBps`, `seaport`, `weth` (what offers pay in),
+- `info()`: `address`, `explorerUrl` (the vault's page), `explorer` and `marketplace` (the
+  chain's explorer and NFT marketplace bases, null where there is none: OpenSea has no testnet,
+  so `marketplace` is null on Sepolia; `vaultLinks(info)` builds the address, transaction, NFT
+  and marketplace links from them), `feeBps`, `seaport`, `weth` (what offers pay in),
   `delegateRegistry` (delegate.xyz's), `collections` (`VaultCollection`:
   `address`, `name`, `mintable` for a free test collection), `relayer` (the API relayer's
   address, or null: requests then go from the wallet, whose address shows) and `coin` ("ETH").
@@ -265,6 +268,8 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
   `busy` (requests wait for their proof: the box cannot move until they settle,
   though requests still go in), `tokenUri`. `myBoxes()` finds the
   connected account's from its own receipts (one decryption signature, as `boxesOf` does).
+- `wethBalance(owner)` reads the WETH an account holds (what its offers can pay; the mock keeps
+  none, its offers are paid from ETH).
 - `walletNfts(collection)` lists the wallet's token ids of a collection; `mintTestNft` mints a
   free one from a test collection.
 - `deposit(collection, tokenId, { decoys })` approves the vault if needed and seals the NFT

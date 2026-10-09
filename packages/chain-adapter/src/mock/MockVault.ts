@@ -78,6 +78,8 @@ export class MockVault implements VaultAdapter {
     return {
       address: MOCK_VAULT,
       explorerUrl: null,
+      explorer: null,
+      marketplace: null,
       feeBps: Number(FEE_BPS),
       seaport: MOCK_SEAPORT,
       weth: MOCK_WETH,
@@ -101,6 +103,11 @@ export class MockVault implements VaultAdapter {
   async myBoxes(): Promise<number[]> {
     const me = this.host.account();
     return this.all.flatMap((b, id) => (me && b.holder === me && !gone(b) ? [id] : []));
+  }
+
+  /** The demo keeps no WETH: its offers are paid from the buyer's ETH, as if wrapped on the spot. */
+  async wethBalance(_owner: Address): Promise<bigint> {
+    return 0n;
   }
 
   async walletNfts(collection: Address): Promise<bigint[]> {

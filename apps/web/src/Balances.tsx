@@ -118,7 +118,7 @@ function SealedChip({ token, symbol, decimals, watch }: { token: SealedToken; sy
   );
 }
 
-function Lock({ open }: { open: boolean }) {
+export function Lock({ open }: { open: boolean }) {
   return (
     <svg className="balance-lock" viewBox="0 0 12 14" width="10" height="12" aria-hidden="true">
       <path d={open ? "M3.5 6V4a2.5 2.5 0 0 1 4.9-.7" : "M3.5 6V4a2.5 2.5 0 0 1 5 0v2"} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
