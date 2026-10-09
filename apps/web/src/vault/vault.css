@@ -1641,6 +1641,97 @@ a.vault-me:hover {
   margin: 2px 0 0;
 }
 
+/* The token the pocket below holds: one chip per token, each with its logo. */
+.vault-pocket-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.vault-pocket-tokens > span {
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-pocket-tokens > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vault-pocket-tokens button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: 500 13px var(--mono);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.vault-pocket-tokens button.on {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+}
+
+.vault-pocket-tokens button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.vault-pocket-tokens .vault-meta {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* The pouch's seal: the token's logo, stamped on when the token changes. */
+.vault-pouch-seal {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vault-seal-stamp 0.42s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+@keyframes vault-seal-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.8) rotate(-18deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vault-amount-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vault-amount-input input {
+  flex: 1;
+  min-width: 0;
+}
+
+.vault-pocket-plain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.vault-pocket-nodesk {
+  margin: 0;
+}
+
 .vault-pocket-sales h3 {
   margin: 0;
   font: 700 16px/1.1 var(--stencil);
@@ -1801,7 +1892,8 @@ a.vault-me:hover {
   .vault-profile,
   .live-flash,
   .live-figure,
-  .live-delta {
+  .live-delta,
+  .vault-pouch-seal {
     animation: none;
     transition: none;
   }

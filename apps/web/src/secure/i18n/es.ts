@@ -2,7 +2,7 @@ import type { SecureKey } from "./en";
 
 export const secureEs: Record<SecureKey, string> = {
   "secure.title": "DO NOT OPEN, la bóveda sellada: activos que nadie te ve tener, NFT y tokens por igual",
-  "secure.description": "Pon tus activos en la bóveda sellada, un NFT en una caja o tus cUSDC en un bolsillo, su titular cifrado en Ethereum con el FHE de Zama. Los NFT se siguen vendiendo en Seaport; los tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién.",
+  "secure.description": "Pon tus activos en la bóveda sellada, un NFT en una caja o tus cUSDC, cUSDT, cWETH o cZAMA en un bolsillo, su titular cifrado en Ethereum con el FHE de Zama. Los NFT se siguen vendiendo en Seaport; los tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién.",
   "secure.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN dentro de un escudo de cifrado luminoso",
   "secure.nav": "Sitio",
   "secure.nav.protocol": "Protocolo",

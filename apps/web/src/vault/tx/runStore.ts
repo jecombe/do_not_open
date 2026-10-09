@@ -25,6 +25,8 @@ export interface VaultRun {
   box?: number;
   /** For a deposit, how many decoys the new box went to. */
   decoys?: number;
+  /** For a pocket's action, the token it moved (cUSDC, cZAMA ...): its scene wears that logo. */
+  token?: string;
   step: Step | null;
   /** The steps seen so far, in order, each with when it began. */
   steps: { step: Step; at: number }[];
@@ -148,7 +150,7 @@ export const currentRun = (): VaultRun | null => own ?? shared;
 export const isOwnRun = (run: VaultRun | null): boolean => !!run && own?.id === run.id;
 
 /** Starts a run in this page and keeps it beating until it ends. */
-export function startRun(name: string, extra: { box?: number; decoys?: number } = {}): number {
+export function startRun(name: string, extra: { box?: number; decoys?: number; token?: string } = {}): number {
   const now = Date.now();
   save({ id: now, name, ...extra, step: null, steps: [], txs: [], explorer: null, status: "running", beat: now });
   if (beating) clearInterval(beating);

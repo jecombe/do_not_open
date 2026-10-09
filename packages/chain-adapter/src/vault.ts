@@ -123,11 +123,31 @@ export interface VaultDepositOptions extends ActionOptions {
   decoys?: number;
 }
 
-/** The pockets: cUSDC held in pockets locked by a key, not an address. */
+/** A confidential token pockets hold: cUSDC, and Zama's other ERC-7984 wrappers (cUSDT, cWETH, cZAMA). */
+export interface PocketToken {
+  /** As the page shows it: cUSDC, cUSDT, cWETH, cZAMA. */
+  symbol: string;
+  name: string;
+  /** The confidential token (ERC-7984). */
+  address: Address;
+  /** The confidential token's decimals (6 for every wrapper): pocket amounts are in these units. */
+  decimals: number;
+  /** Plain units of the ERC-20 per confidential unit (10^12 for an 18-decimal token). */
+  rate: bigint;
+  /** The ERC-20 it wraps. */
+  underlying: { address: Address; symbol: string; decimals: number };
+  /** Whether its pockets also buy the vault's private sales: only the vault's cUSDC ones. */
+  desk: boolean;
+  /** Test networks: plain units `faucet` mints. Null without a faucet. */
+  faucet: bigint | null;
+}
+
+/** The pockets of one token: held in pockets locked by a key, not an address. */
 export interface PocketsInfo {
   address: Address;
-  /** Buys the vault's private sales out of pockets, and holds the boxes it bought. */
-  desk: Address;
+  /** Buys the vault's private sales out of pockets, and holds the boxes it bought. Null for a
+   *  token other than the vault's cUSDC. */
+  desk: Address | null;
   /** Pockets opened in all: decoys are picked among them. */
   count: number;
   /** The most pockets one side of an action may name, the real one included. */
@@ -152,22 +172,31 @@ export interface PocketSale extends VaultSale {
  * none of them, only on deposits.
  */
 export interface PocketsAdapter {
+  /** The token these pockets hold. */
+  readonly token: PocketToken;
   info(): Promise<PocketsInfo>;
   /** The wallet's pocket, or null before it is opened. One signature a session. */
   mine(opts?: ActionOptions): Promise<number | null>;
   /** Opens the wallet's pocket. Returns its number. */
   open(opts?: ActionOptions): Promise<number>;
-  /** Decrypts the wallet's pocket balance, in cUSDC's smallest unit. */
+  /** Decrypts the wallet's pocket balance, in the token's smallest unit. */
   balance(opts?: ActionOptions): Promise<bigint>;
-  /** Puts `amount` of the wallet's cUSDC into pocket `to` (the wallet's own when left out),
+  /** Puts `amount` of the wallet's confidential token into pocket `to` (the wallet's own when left out),
    *  among decoys. Public: the wallet and the pockets named, not the amount nor which one. */
   deposit(amount: bigint, opts?: PocketOptions & { to?: number }): Promise<void>;
   /** Sends `amount` from the wallet's pocket to pocket `to`. Nothing public says who paid whom.
    *  Moves nothing (no error) when the balance is short: check `balance` first. */
   send(to: number, amount: bigint, opts?: PocketOptions): Promise<void>;
-  /** Takes `amount` out of the wallet's pocket to `to`, as cUSDC. The address is public. */
+  /** Takes `amount` out of the wallet's pocket to `to`, as the confidential token. The address is public. */
   withdraw(to: Address, amount: bigint, opts?: PocketOptions): Promise<void>;
-  /** The seller's side: offers box `boxId` privately to pocket `pocketId` for `price` cUSDC.
+  /** The wallet's plain ERC-20 balance of the token's underlying, in its own units. */
+  plainBalance(): Promise<bigint>;
+  /** Test networks: mints `token.faucet` of the underlying ERC-20 to the wallet. */
+  faucet(opts?: ActionOptions): Promise<void>;
+  /** Wraps the plain ERC-20 into `amount` of the confidential token (in its units), so it can
+   *  be put in a pocket. Throws `insufficient-usdc` when the wallet holds too little. */
+  shield(amount: bigint, opts?: ActionOptions): Promise<void>;
+  /** The seller's side, cUSDC pockets only (`token.desk`): offers box `boxId` privately to pocket `pocketId` for `price` cUSDC.
    *  Returns the sale id. */
   offerSale(boxId: number, pocketId: number, price: bigint, opts?: ActionOptions): Promise<number>;
   /** Sales reserved for the wallet's pocket, newest first. */
@@ -185,8 +214,10 @@ export interface PocketsAdapter {
 
 export interface VaultAdapter {
   info(): Promise<VaultInfo>;
-  /** The pockets, where they are deployed. */
-  pockets(): PocketsAdapter | null;
+  /** The tokens pockets hold where they are deployed, the vault's cUSDC first. */
+  pocketTokens(): PocketToken[];
+  /** The pockets of `symbol` (the vault's cUSDC when left out), where they are deployed. */
+  pockets(symbol?: string): PocketsAdapter | null;
   /** Every box, newest first. */
   boxes(): Promise<VaultBox[]>;
   box(boxId: number): Promise<VaultBox>;

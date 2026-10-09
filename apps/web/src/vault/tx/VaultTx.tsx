@@ -118,7 +118,7 @@ export function TxStage({ run, onMinimize, onClose }: { run: VaultRun; onMinimiz
       <div className={`vx-stage vx-stage-${run.status}`} role="dialog" aria-modal="true" aria-labelledby={`vx-title-${run.id}`} tabIndex={-1} ref={panel}>
         <p className="vx-kicker">{running ? t(stepKey(run.step)) : run.status === "done" ? t("vtx.done") : t("vtx.failed")}</p>
         <h2 id={`vx-title-${run.id}`}>{t(titleKey(run.name))}</h2>
-        <TxScene name={run.name} decoys={run.decoys} live={running} stamp={running ? null : t(stampKey(run))} failed={run.status === "failed"} />
+        <TxScene name={run.name} decoys={run.decoys} token={run.token} live={running} stamp={running ? null : t(stampKey(run))} failed={run.status === "failed"} />
         <p className={`vx-cipher${secret ? " is-on" : ""}`} aria-hidden="true">
           <CipherLine length={28} live={secret} />
         </p>
@@ -170,7 +170,7 @@ export function TxDock({ onShow }: { onShow?: () => void }) {
 
   return (
     <aside className={`vx-dock vx-dock-${stale ? "stale" : run.status}`} aria-label={t("vtx.dock.label")} role="status" aria-live="polite">
-      <TxScene name={run.name} decoys={run.decoys} live={live} failed={run.status === "failed" || stale} small />
+      <TxScene name={run.name} decoys={run.decoys} token={run.token} live={live} failed={run.status === "failed" || stale} small />
       <div className="vx-dock-text">
         <strong>{t(titleKey(run.name))}</strong>
         <span>{line}</span>

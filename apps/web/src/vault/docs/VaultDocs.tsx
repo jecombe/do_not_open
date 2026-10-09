@@ -25,12 +25,15 @@ const CONTRACTS = [
   { key: "registry", address: "0x00000000000000447e69651d841bD8D104Bed493" },
   { key: "pockets", address: "0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C" },
   { key: "desk", address: "0x0939D713429FCD1c5AF9589b121a8F77C49F759b" },
+  { key: "pocketsUsdt", address: "0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe" },
+  { key: "pocketsWeth", address: "0x4e8A23DfD7a23677b023E069CB8D3A94993b1350" },
+  { key: "pocketsZama", address: "0x6D1585c58238DaADF748558051BF368DAA3eceE2" },
 ] as const;
 
 /** The manual's animated flow of a withdrawal through the relayer. */
 const VAULT_FLOW = ["vault"] as const;
 
-const PUBLIC = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+const PUBLIC = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] as const;
 const HIDDEN = ["1", "2", "3", "4", "5", "6"] as const;
 
 /**
@@ -73,7 +76,7 @@ export function VaultDocs() {
     private: <Prose>{[t("vaultDocs.private.p1"), t("vaultDocs.private.p2"), t("vaultDocs.private.p3")]}</Prose>,
     pockets: (
       <Prose>
-        {[t("vaultDocs.pockets.p1"), t("vaultDocs.pockets.p2"), t("vaultDocs.pockets.p3"), t("vaultDocs.pockets.p4"), t("vaultDocs.pockets.p5"), t("vaultDocs.pockets.p6"), t("vaultDocs.pockets.p7")]}
+        {[t("vaultDocs.pockets.p1"), t("vaultDocs.pockets.p2"), t("vaultDocs.pockets.p3"), t("vaultDocs.pockets.p4"), t("vaultDocs.pockets.p5"), t("vaultDocs.pockets.p6"), t("vaultDocs.pockets.p7"), t("vaultDocs.pockets.p8")]}
       </Prose>
     ),
     give: <Prose>{[t("vaultDocs.give.p1")]}</Prose>,

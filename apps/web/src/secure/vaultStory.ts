@@ -55,8 +55,14 @@ const FRESH = new Vector3(1.85, -0.5, 0.2);
 const ORBIT = 2.05;
 const ROUTES = ["seaport", "offer", "private", "gift", "delegate"] as const;
 /** The coins a loop seals instead of the NFT, back to front, and where each sits in the fan. */
-const COINS = ["ETH", "WETH", "cUSDC"] as const;
-const COIN_FAN = [new Vector3(-0.3, 0.1, -0.16), new Vector3(0.3, 0.1, -0.16), new Vector3(0, -0.08, 0.08)];
+const COINS = ["ETH", "WETH", "cZAMA", "cUSDT", "cUSDC"] as const;
+const COIN_FAN = [
+  new Vector3(-0.52, 0.06, -0.26),
+  new Vector3(-0.28, 0.16, -0.16),
+  new Vector3(0.28, 0.16, -0.16),
+  new Vector3(0.52, 0.06, -0.26),
+  new Vector3(0, -0.08, 0.08),
+];
 /** The same orbit when the loop seals tokens: where a pocket's cUSDC goes. */
 const TOKEN_ROUTES = ["toPocket", "payBox", "paidIn", "saleCash", "hiddenBalance"] as const;
 /** When the first way out lights up in step three, and how far apart the next ones do. */
@@ -192,7 +198,7 @@ export class VaultStoryScene {
   private readonly lattice: LineSegments;
   private readonly glow: ShaderMaterial;
   private readonly card = new Group();
-  /** The tokens a loop seals instead of the NFT: ETH, WETH and cUSDC coins, fanned out. */
+  /** The tokens a loop seals instead of the NFT: ETH, WETH, cZAMA, cUSDT and cUSDC coins, fanned out. */
   private readonly coins = new Group();
   /** Whether this loop seals tokens rather than an NFT. */
   private tokens = false;
@@ -278,8 +284,8 @@ export class VaultStoryScene {
     this.card.add(slab, rim, this.cardLight);
     stage.scene.add(this.card);
 
-    // The tokens: three coins fanned out, each wearing its token's logo (cUSDC in front), the
-    // edge in the vault's metal and light.
+    // The tokens: five coins fanned out, each wearing its token's logo (cUSDC in front, the
+    // pockets' other tokens beside it), the edge in the vault's metal and light.
     const coinSide = new MeshStandardMaterial({ color: "#2E8C78", emissive: TEAL, emissiveIntensity: 0.35, metalness: 0.7, roughness: 0.35 });
     const coinEdge = new LineBasicMaterial({ color: TEAL, transparent: true, opacity: 0.9 });
     const coinGeometry = new CylinderGeometry(0.3, 0.3, 0.07, 48);

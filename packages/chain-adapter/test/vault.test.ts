@@ -228,6 +228,47 @@ describe("pocketSet", () => {
   });
 });
 
+describe("MockVault pockets of other tokens", () => {
+  it("holds cUSDC, cUSDT, cWETH and cZAMA, the cUSDC pockets first and the only ones with the desk", async () => {
+    const { vault } = await fresh();
+    expect(vault.pocketTokens().map((t) => t.symbol)).toEqual(["cUSDC", "cUSDT", "cWETH", "cZAMA"]);
+    expect(vault.pocketTokens().map((t) => t.desk)).toEqual([true, false, false, false]);
+    expect(vault.pockets()!.token.symbol).toBe("cUSDC");
+    expect(vault.pockets("czama")!.token.symbol).toBe("cZAMA");
+    expect(vault.pockets("cDOGE")).toBeNull();
+    expect((await vault.pockets("cWETH")!.info()).desk).toBeNull();
+  });
+
+  it("mints, wraps 18-decimal WETH to 6-decimal cWETH, and moves it between pockets", async () => {
+    const { vault } = await fresh();
+    const weth = vault.pockets("cWETH")!;
+    const id = await weth.open();
+    await weth.faucet();
+    expect(await weth.plainBalance()).toBe(10n ** 18n);
+    await weth.shield(250_000n);
+    expect(await weth.plainBalance()).toBe(10n ** 18n - 250_000n * 10n ** 12n);
+    await weth.deposit(200_000n);
+    expect(await weth.balance()).toBe(200_000n);
+    await weth.send(0, 50_000n);
+    await weth.withdraw(FRESH, 25_000n);
+    expect(await weth.balance()).toBe(125_000n);
+    // The cUSDC pocket is another pocket: empty, its number its own.
+    const usdc = vault.pockets()!;
+    expect(await usdc.mine()).toBeNull();
+    expect(id).toBeGreaterThan(0);
+    await expect(weth.shield(10n ** 9n)).rejects.toThrow(/WETH/);
+  });
+
+  it("buys no private sales outside cUSDC", async () => {
+    const { vault } = await fresh();
+    const zama = vault.pockets("cZAMA")!;
+    await zama.open();
+    expect(await zama.sales()).toEqual([]);
+    expect(await zama.boxes()).toEqual([]);
+    await expect(zama.buy(0)).rejects.toThrow(/cUSDC/);
+  });
+});
+
 describe("vaultLinks", () => {
   it("links addresses, transactions and NFTs where the chain has somewhere to look", () => {
     const links = vaultLinks({ explorer: "https://sepolia.etherscan.io", marketplace: null });

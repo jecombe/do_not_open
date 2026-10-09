@@ -1783,6 +1783,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       },
       ensureOperator: (token, account, operator, opts) => this.ensureOperator(token, account, operator, opts),
       cUsdc: async () => (await this.payment()).cUsdc,
+      faucets: !!this.opts.usdcFaucet,
       relay: () => {
         if (!this.opts.vaultRelay) return Promise.resolve(null);
         this.vaultRelay_ ??= this.opts.vaultRelay();
@@ -1979,13 +1980,13 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }
     if (!missing.length) return out;
     const values = await this.decrypting(opts, async (relayer) => {
-      const permit = await this.permitFor(relayer, signer, account, opts);
+      const permit = await this.permitFor(relayer, signer, account, opts, !!as);
       return relayer.userDecrypt(
         missing.map((handle) => ({ handle, contractAddress })),
         permit.privateKey,
         permit.publicKey,
         permit.signature.replace("0x", ""),
-        await this.permitContracts(),
+        permit.contracts,
         account,
         permit.start,
         PERMIT_DAYS,
@@ -2185,8 +2186,18 @@ export class EvmFhevmAdapter implements ChainAdapter {
   }
 
   /** Contracts a user-decryption permit covers: the boxes, cUSDC balances, and with croquettes,
-   *  cCROQ balances and what a feeder gave a cat today. */
-  private async permitContracts(): Promise<string[]> {
+   *  cCROQ balances and what a feeder gave a cat today. A pocket's viewer, which reads only its
+   *  pocket, gets the vault's contracts: the relayer takes 10 at most. */
+  private async permitContracts(viewer = false): Promise<string[]> {
+    const pockets = this.opts.vault?.pockets;
+    if (viewer) {
+      // A pocket's balance (any token's), which boxes its pocket bought, and the sale prices it reads.
+      return [
+        ...(this.opts.vault ? [this.opts.vault.address] : []),
+        ...(pockets ? [pockets.address, ...(pockets.desk ? [pockets.desk.address] : [])] : []),
+        ...(this.opts.vault?.otherPockets ?? []).map((p) => p.address),
+      ];
+    }
     const e = this.opts.economy;
     const { cUsdc } = await this.payment();
     return [
@@ -2197,7 +2208,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
       // The vault's receipts and private sale prices.
       ...(this.opts.vault ? [this.opts.vault.address] : []),
       // A pocket's balance, and which boxes its pocket bought.
-      ...(this.opts.vault?.pockets ? [this.opts.vault.pockets.address, this.opts.vault.pockets.desk.address] : []),
+      ...(pockets ? [pockets.address, ...(pockets.desk ? [pockets.desk.address] : [])] : []),
       // A rat's power is the Rats contract's handle.
       ...(this.opts.ratTricks && this.opts.rats ? [this.opts.rats.address] : []),
     ];
@@ -2426,13 +2437,14 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * page, whatever the account is already allowed to read on this contract. It is kept in
    * memory so the wallet prompts once per session, not once per shake.
    */
-  private async permitFor(relayer: Relayer, signer: Signer, account: Address, opts?: ActionOptions): Promise<Permit> {
+  private async permitFor(relayer: Relayer, signer: Signer, account: Address, opts?: ActionOptions, viewer = false): Promise<Permit> {
     const now = Math.floor(Date.now() / 1000);
     const p = this.permits.get(account.toLowerCase());
     if (p && now < p.start + PERMIT_DAYS * 86_400 - 600) return p;
 
     const keypair = relayer.generateKeypair();
-    const eip712 = relayer.createEIP712(keypair.publicKey, await this.permitContracts(), now, PERMIT_DAYS);
+    const contracts = await this.permitContracts(viewer);
+    const eip712 = relayer.createEIP712(keypair.publicKey, contracts, now, PERMIT_DAYS);
     opts?.onStep?.("wallet");
     const signature = await signer.signTypedData(
       eip712.domain as never,
@@ -2440,7 +2452,6 @@ export class EvmFhevmAdapter implements ChainAdapter {
       eip712.message as never,
     );
     opts?.onStep?.("decrypting");
-    const contracts = await this.permitContracts();
     const permit = { account, publicKey: keypair.publicKey, privateKey: keypair.privateKey, signature, start: now, contracts, extraData: String(eip712.message.extraData ?? "0x00") };
     this.permits.set(account.toLowerCase(), permit);
     return permit;

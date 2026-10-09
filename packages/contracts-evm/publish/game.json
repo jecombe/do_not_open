@@ -19,7 +19,8 @@
     "deploy/*.ts",
     "!deploy/vault.ts",
     "!deploy/pockets.ts",
-    "lib/*.ts"
+    "lib/*.ts",
+    "!lib/pocketTokens.ts"
   ],
   "vendor": {
     "game-spec": [

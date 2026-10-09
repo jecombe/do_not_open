@@ -2,7 +2,7 @@ import type { SecureKey } from "./en";
 
 export const secureFr: Record<SecureKey, string> = {
   "secure.title": "DO NOT OPEN, le coffre scellé : des actifs que personne ne te voit détenir, NFT comme jetons",
-  "secure.description": "Mets tes actifs dans le coffre scellé, un NFT dans une boîte ou tes cUSDC dans une poche, leur détenteur chiffré sur Ethereum grâce au FHE de Zama. Les NFT se vendent quand même sur Seaport ; les jetons paient quand même n'importe qui, sans montrer qui a payé qui.",
+  "secure.description": "Mets tes actifs dans le coffre scellé, un NFT dans une boîte ou tes cUSDC, cUSDT, cWETH ou cZAMA dans une poche, leur détenteur chiffré sur Ethereum grâce au FHE de Zama. Les NFT se vendent quand même sur Seaport ; les jetons paient quand même n'importe qui, sans montrer qui a payé qui.",
   "secure.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, dans un bouclier de chiffrement lumineux",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocole",

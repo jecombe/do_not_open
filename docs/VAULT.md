@@ -55,12 +55,15 @@ registry. Earlier deployments are left as they were: `0x27CA3698A34b53900047cD1D
 box and moved the nonce on with every request (see Decisions).
 
 The pockets (`SealedPockets`, and `PocketDesk` that buys private sales out of them) are done on
-the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 5 more running the
+the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 6 more running the
 adapter against them), and on Sepolia since 2026-10-09: `SealedPockets` at
 `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902, owner `0x590891F269720001435004A1089cAB5b2c20029A`) and
 `PocketDesk` at `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), on the vault above and Zama's
 cUSDC; `pnpm --filter @dno/chain-adapter smoke:pockets` (open, deposit, send, withdraw, both
-balances read by their viewers) passed there. See [Pockets](#pockets).
+balances read by their viewers) passed there. Pockets of cUSDT, cWETH and cZAMA, without a desk,
+are on Sepolia since 2026-10-09 too (blocks 11878756 to 11878758; `POCKET_TOKEN=cZAMA` runs the
+same smoke test on one of them; it passed there with cZAMA and with cWETH, 1 WETH of 18 decimals
+wrapped to 1 cWETH of 6). See [Pockets](#pockets) and [Other tokens](#other-tokens).
 
 ## Contracts
 
@@ -72,7 +75,7 @@ balances read by their viewers) passed there. See [Pockets](#pockets).
 | `vault/IDelegateRegistry.sol` | The slice of delegate.xyz's Delegate Registry v2 the vault uses (`delegateERC721`, `checkDelegateForERC721`). The registry is at `0x00000000000000447e69651d841bD8D104Bed493` on Ethereum, Sepolia and most other chains |
 | `vault/IWETH.sol` | Wrapped ether (`deposit`, `withdraw`): what offers pay in |
 | `mocks/TestWETH.sol` | Local networks only: WETH as WETH9 does it |
-| `SealedPockets` | The pockets: cUSDC held under encrypted 256-bit keys, not addresses. `open`, `deposit` (from a wallet, into one pocket of a set), `send` (from one pocket of a set to one pocket of another, the key bound to the terms), `withdraw` (to any address, as cUSDC), and `deskTake`, `deskCheck`, `deskGive` for the desk only. No decryption anywhere: every spend settles under encryption in one transaction. `ZamaEthereumConfig`, `Ownable` (only to set the desk, once), `ReentrancyGuard` |
+| `SealedPockets` | The pockets: one confidential token (cUSDC; cUSDT, cWETH and cZAMA in instances of their own, without a desk) held under encrypted 256-bit keys, not addresses. `open`, `deposit` (from a wallet, into one pocket of a set), `send` (from one pocket of a set to one pocket of another, the key bound to the terms), `withdraw` (to any address, as cUSDC), and `deskTake`, `deskCheck`, `deskGive` for the desk only. No decryption anywhere: every spend settles under encryption in one transaction. `ZamaEthereumConfig`, `Ownable` (only to set the desk, once), `ReentrancyGuard` |
 | `vault/PocketDesk.sol` | Buys the vault's private sales out of pockets. A seller offers a box to the desk and `reserve`s the sale for a pocket; its holder `ask`s (the key and the balance checked under encryption, one bit made public), then `buy`s with the proof: the desk takes the price from the pocket, accepts the sale on the vault, and hands back any refund. The box stays with the desk, its vault key the buyer's. Holds tokens only during `buy`, never sells |
 | `mocks/VaultTestNFT.sol` | Test networks only: "Sealed Vault Test NFT" (`VTEST`), free to mint for anyone, its picture an SVG drawn on-chain from its id, so a marketplace shows something |
 
@@ -500,7 +503,7 @@ wallet appears in none of it. The design notes at the top of
 `EvmPockets.ts`), free and off-chain. `keccak256(signature, "key")` is the pocket's key,
 `keccak256(signature, "viewer")` the private key of its viewer, a wallet that only ever signs
 decryption permits and never a transaction. Nothing is stored: `pocketOf(viewer)` finds the
-pocket again on any device. A wallet has one pocket.
+pocket again on any device. A wallet has one pocket per token (see [Other tokens](#other-tokens)).
 
 **Sets, not pockets.** Every action names a set of pockets (`MAX_SET`, 5 at most, in increasing
 order, all opened): the real one and decoys the page picks at random among the pockets that
@@ -605,6 +608,36 @@ hides. A deposit from plain USDC shows the amount when it is shielded; a withdra
 address names its receiver. The reserved pocket of a desk sale is public (the seller chose it):
 that pocket tried to buy that box.
 
+### Other tokens
+
+The pockets hold Zama's other confidential tokens too: cUSDT, cWETH and cZAMA, the ERC-7984
+wrappers listed in Zama's Confidential Token Wrappers Registry
+(`0x2f0750Bbb0A246059d80e94c454586a7F27a128e` on Sepolia), all with 6 decimals, their test
+ERC-20s free for anyone to mint. Each has its own `SealedPockets`, the same contract unchanged,
+deployed by `deploy/pockets.ts` from `lib/pocketTokens.ts` as `SealedPockets_<symbol>`, without a
+desk: the vault's private sales settle in cUSDC, so only cUSDC pockets buy boxes.
+
+| Token | Its pockets on Sepolia | The token | Its ERC-20 |
+| --- | --- | --- | --- |
+| cUSDC | `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (with `PocketDesk`) | `0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639` | USDC (6 decimals) |
+| cUSDT | `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe` | `0x4E7B06D78965594eB5EF5414c357ca21E1554491` | USDT `0xa7dA08FafDC9097Cc0E7D4f113A61e31d7e8e9b0` (6) |
+| cWETH | `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` | `0x46208622DA27d91db4f0393733C8BA082ed83158` | Zama's WETHMock `0xff54739b16576FA5402F211D0b938469Ab9A5f3F` (18, rate 10^12), not OpenSea's WETH the offers pay in |
+| cZAMA | `0x6D1585c58238DaADF748558051BF368DAA3eceE2` | `0xf2D628d2598aF4eAF94CB76a437Ff86CA78FfbFB` | ZAMA `0x75355a85c6FB9df5f0C80FF54e8747EEe9a0BF57` (18, rate 10^12) |
+
+**Still one signature.** The same message (it names the cUSDC pockets) makes every token's
+pocket. cUSDC keeps `keccak256(signature, "key")` and `"viewer"`; another token's pocket uses
+`keccak256(signature, "key:" + its pockets' address, lowercase)` and `"viewer:" + address`. Each
+pocket has its own viewer, so nothing on-chain ties a wallet's pockets of different tokens
+together; switching tokens on the page asks nothing more.
+
+**On the page.** A token picker, each with its logo, above "My pocket"; the pouch, the balance,
+the amounts and every action's scene wear the picked token's logo. On a test network, "Get test
+…" mints the ERC-20 and "Turn … into …" wraps it before the deposit.
+
+**What it adds to what leaks.** Which token an action moves is public (each token's pockets are
+their own contract), and decoys are picked only among the same token's pockets: a token few
+people use hides its pockets among fewer.
+
 ### Pockets' decisions
 
 - **A key, as for the boxes, and a viewer apart.** The balance must be readable by its holder,
@@ -626,10 +659,19 @@ that pocket tried to buy that box.
   for by the others. The desk holds only what `buy` just took.
 - **No change to `SealedVault`.** It is 254 bytes under the size limit; the desk works with the
   vault as it is deployed.
+- **One contract per token, not one for all.** One contract holding every token would share the
+  decoys but would show which token moved anyway, unless every action touched every token (the
+  HCU multiplied by the number of tokens). The same `SealedPockets`, deployed again, needed no
+  new code and no new audit surface.
+- **A viewer's permit names the vault's contracts only.** Zama's relayer takes 10 contracts per
+  decryption permit; the wallet's permit already names nine. A pocket's viewer reads only its
+  pocket, the desk and the vault's sale prices, so its permit names the vault, the pockets (every
+  token's) and the desk.
 
 ### Pockets' limits
 
-- One token (cUSDC) per deployment, one pocket per wallet, five pockets a side at most.
+- One token per pockets contract (cUSDC, cUSDT, cWETH, cZAMA on Sepolia), one pocket per wallet
+  and token, five pockets a side at most; only cUSDC pockets buy boxes.
 - A box bought from a pocket cannot be given or sold privately again (its holder is the desk).
 - A purchase needs a public decryption, so it waits for Zama's gateway like the boxes' requests;
   deposits, sends and withdrawals do not.
@@ -897,9 +939,12 @@ OpenSea's; a `TestWETH` locally). On a test network it deploys `VaultTestNFT` an
 a local node it first puts Seaport's and delegate.xyz's Sepolia code at their addresses.
 Payments are in the network's cUSDC (Zama's on Sepolia, a test one locally). `dno:export`
 writes `vault` (address, ABI, deploy block, Seaport, `offers` with its ABI and deploy block,
-WETH, the registry, the allowed collections, and `pockets` with its `desk` when they are
-deployed) for the adapter and the API. `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys
+WETH, the registry, the allowed collections, `pockets` with its `desk` and its `token` when they
+are deployed, and `otherPockets`: each other token's pockets, deploy block and token) for the
+adapter and the API. `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys
 `SealedPockets` on the vault's cUSDC and `PocketDesk` on the vault, sets the desk once and hands
-the pockets to `COLLECTION_OWNER`: `npx hardhat deploy --network sepolia --tags Pockets` adds
-them next to a live vault. Set `VAULT_RELAYER_KEY` on the API, and
+the pockets to `COLLECTION_OWNER`, then one `SealedPockets_<symbol>` per token of
+`lib/pocketTokens.ts`: `npx hardhat deploy --network sepolia --tags Pockets` adds them next to a
+live vault (with `STUDIO_TREASURY` and `COLLECTION_OWNER` set as the live vault's, or the vault's
+script redeploys it). Set `VAULT_RELAYER_KEY` on the API, and
 fund that address with a little ETH, for the relayer.

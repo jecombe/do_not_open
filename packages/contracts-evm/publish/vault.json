@@ -20,9 +20,10 @@
     "test/fixtures/**",
     "deploy/vault.ts",
     "deploy/pockets.ts",
-    "lib/paymentTokens.ts"
+    "lib/paymentTokens.ts",
+    "lib/pocketTokens.ts"
   ],
-  "deployments": ["SealedVault", "VaultOffers", "VaultTestNFT", "SealedPockets", "PocketDesk"],
+  "deployments": ["SealedVault", "VaultOffers", "VaultTestNFT", "SealedPockets", "PocketDesk", "SealedPockets_cUSDT", "SealedPockets_cWETH", "SealedPockets_cZAMA"],
   "dependencies": ["@fhevm/solidity", "@openzeppelin/confidential-contracts", "@openzeppelin/contracts", "encrypted-types"],
   "devDependencies": [
     "@fhevm/hardhat-plugin", "@fhevm/mock-utils", "@nomicfoundation/hardhat-chai-matchers", "@nomicfoundation/hardhat-ethers",
