@@ -49,7 +49,7 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.offers.p5": "Seules les offres Seaport 1.5 payées en WETH peuvent être acceptées. Les offres faites sur le site d'OpenSea sur le réseau principal utilisent un Seaport plus récent et passent par le service d'OpenSea : le coffre ne peut pas encore les accepter. Les offres sur une partie seulement des NFT d'une collection (par trait, par exemple) ne sont pas prises non plus.",
 
   "vaultDocs.section.bid": "Faire une offre",
-  "vaultDocs.bid.p1": "« Faire une offre », sur la page du coffre, liste tous les autres NFT du coffre, chacun avec ses offres. Tu choisis un montant et une durée (1, 7 ou 30 jours). Tu ne sais pas qui détient la boîte, et tu n'as pas besoin de le savoir : l'offre porte sur le NFT, et seul son détenteur peut l'accepter.",
+  "vaultDocs.bid.p1": "Chaque NFT de la grille du coffre ouvre sa propre fiche, avec ses offres et un bouton « Faire une offre », qu'il soit en vente ou non. Tu choisis un montant et une durée (1, 7 ou 30 jours). Tu ne sais pas qui détient la boîte, et tu n'as pas besoin de le savoir : l'offre porte sur le NFT, et seul son détenteur peut l'accepter.",
   "vaultDocs.bid.p2": "La page emballe ton ETH en WETH, autorise Seaport à prendre ce WETH, te fait signer l'offre, puis la publie sur le tableau. Le WETH reste dans ton wallet : Seaport ne le prend que si le détenteur accepte, et le NFT t'arrive dans le même mouvement. Le WETH dont tu n'as plus besoin reste à toi, et se rechange en ETH quand tu veux.",
   "vaultDocs.bid.p3": "Ton adresse se voit avec l'offre, comme sur n'importe quelle marketplace. Tu peux l'annuler à tout moment, en une transaction ; elle prend aussi fin d'elle-même à sa date.",
 
