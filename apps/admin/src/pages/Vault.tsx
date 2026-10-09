@@ -17,7 +17,7 @@ const STATE_LABEL: Record<VaultBoxState, string> = {
 };
 
 const ACTION_LABEL: Record<string, string> = { withdraw: "retrait", list: "mise en vente", unlist: "retrait de vente", claim: "claim" };
-const OUTCOME_LABEL: Record<string, string> = { done: "faite", refused: "refusée (mauvaise clé)", stale: "caduque (la boîte a changé)" };
+const OUTCOME_LABEL: Record<string, string> = { done: "faite", refused: "refusée (mauvaise clé)", stale: "caduque (la boîte a changé)", expired: "expirée (pas de preuve en un jour)" };
 
 /** Wei (a decimal string) in ETH, four decimals at most. */
 const eth = (wei: string) => {
@@ -43,7 +43,7 @@ export function Vault({ days, onError }: { days: number; onError: (e: unknown) =
   if (!d) return <div className="splash">Chargement…</div>;
   const s = d.summary;
   const inVault = s.boxes.sealed + s.boxes.listed + s.boxes.sold;
-  const settled = s.requests.settled.done + s.requests.settled.refused + s.requests.settled.stale;
+  const settled = s.requests.settled.done + s.requests.settled.refused + s.requests.settled.stale + s.requests.settled.expired;
 
   return (
     <>

@@ -180,8 +180,8 @@ contract:
 `SealedVault` ports as its own program too, sharing only the confidential-token base with the
 box program:
 
-- **Boxes and keys.** A box account per NFT (collection, token, state, listing, busy, proceeds,
-  nonce) with an encrypted owner and an encrypted 256-bit key. If the SVM has no 256-bit
+- **Boxes and keys.** A box account per NFT (collection, token, state, listing, pending
+  requests, proceeds, nonce) with an encrypted owner and an encrypted 256-bit key. If the SVM has no 256-bit
   encrypted integer with `xor` and `eq` (open question 9), the key becomes four 64-bit words,
   compared word by word and `and`ed. A transfer still draws a fresh random key.
 - **Custody.** The NFT goes to a token account owned by a vault PDA; a withdrawal is a transfer

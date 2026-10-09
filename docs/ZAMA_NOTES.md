@@ -785,7 +785,7 @@ a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
 
 `SealedVault` puts any NFT of an allowed collection in a box whose holder is encrypted: a
 second `ConfidentialERC721`, next to the game and linked to none of its contracts. It lists on
-Seaport 1.5 with the vault as the offerer and sells privately in cUSDC. 20,833 bytes deployed,
+Seaport 1.5 with the vault as the offerer and sells privately in cUSDC. 21,869 bytes deployed,
 compiled with the default optimizer (200 runs): it needs none of `DoNotOpen`'s size tricks. Not
 deployed on Sepolia yet. The design is in [VAULT.md](VAULT.md); what is specific to the protocol:
 

@@ -81,7 +81,7 @@ export interface VaultSummary {
   seaportVolume: string;
   claimed: string;
   privateSales: { offered: number; settled: number; cancelled: number; open: number };
-  requests: { placed: Record<VaultAction, number>; settled: Record<"done" | "refused" | "stale", number>; pending: number };
+  requests: { placed: Record<VaultAction, number>; settled: Record<"done" | "refused" | "stale" | "expired", number>; pending: number };
   collections: { collection: string; deposits: number; inVault: number }[];
 }
 

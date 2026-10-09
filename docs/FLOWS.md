@@ -1206,8 +1206,8 @@ sequenceDiagram
   H->>H: encrypt key XOR requestHash(boxId, nonce, action, to, price, endTime)
   H->>Rl: POST /v1/vault/relay {call: "request", args}
   Rl->>V: request(boxId, action, to, price, endTime, boundKey, proof)
-  V->>V: not busy, sync, state allows it (else revert)
-  V->>V: ok = (boundKey XOR requestHash(terms, nonce++)) == key, publicly decryptable, busy
+  V->>V: sync, state allows it (else revert); other waiting requests do not stop it
+  V->>V: ok = (boundKey XOR requestHash(terms, nonce)) == key, publicly decryptable, pending += 1
   V-->>H: RequestPlaced(requestId, boxId, action, relayer)
   H->>R: publicDecrypt(requestInfo(requestId).ok)
   R-->>H: ok + KMS proof
@@ -1220,11 +1220,15 @@ sequenceDiagram
   else ok
     V->>V: withdraw, list on Seaport, take down, or send the ETH: Done
   end
+  V->>V: pending -= 1, and nonce += 1 if the key matched
   V-->>H: RequestSettled(requestId, status)
 ```
 
-A relayer that changed a term, or replayed the input, makes the vault compare against another
-hash: `Refused`. Without a relayer the wallet sends both, and its address shows. In the adapter:
+A relayer that changed a term, or replayed the input once its request settled, makes the vault
+compare against another hash: `Refused`. A stranger's wrong key moves nothing, the nonce
+included, and does not stop the holder's own request; while any request waits the box cannot
+move, and anyone may `expire` a request a day after it was placed with no proof (`Expired`,
+nothing runs, the nonce moves on). See [VAULT.md](VAULT.md#a-request-take-out-list-take-down-collect). Without a relayer the wallet sends both, and its address shows. In the adapter:
 `withdraw`, `list`, `unlist`, `claim` (throw `not-yours` when refused, `missed` when stale).
 
 ### Private sale
@@ -1494,7 +1498,7 @@ Every two-step action can be picked up later, by anyone:
 | Weigh-in pending | "Weigh the cat" | `weigh` (picks up the pending one: `finalizeWeigh`) |
 | Flea market: a box listing `Pending` | The seller's stall marks it as on its way | `finishListing(listingId)` (throws `not-yours` when refused) |
 | Flea market: a purchase `Pending` | Not shown yet | `finishPurchase(purchaseId)`; `pendingPurchases(account)` lists them |
-| Sealed vault: a request `Pending` (the box is busy) | The box shows "A request waits for its proof" | None yet: anyone may send `finalize(requestId, …)` with the public decryption of `requestInfo(requestId).ok` |
+| Sealed vault: a request `Pending` (the box cannot move; requests still go in) | The box says requests wait for their proof | Sending the box or accepting a private sale settles them first (`settlePending` in `EvmVault`): `finalize(requestId, …)` with the public decryption of `requestInfo(requestId).ok`, or `expire(requestId)` a day after it was placed. Anyone may do either |
 
 When the step after the first transaction fails (the decryption service is slow, the
 user declines the proof's signature), the adapter marks the `ChainError` `resumable`,

@@ -3479,7 +3479,7 @@
           "sort": "desc"
         }
       },
-      "description": "refused: a wrong key, nothing happened; stale: the box changed first (its listing filled or expired)."
+      "description": "refused: a wrong key, nothing happened; stale: the box changed first (its listing filled or expired); expired: no proof within a day, expired by anyone."
     },
     {
       "id": 65,

@@ -260,12 +260,15 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 - `boxes()` (newest first) and `box(boxId)` read `VaultBox`es, all public: `collection`,
   `tokenId`, `state` (`"sealed"`, `"listed"`, `"sold"`, `"withdrawn"`, `"claimed"`),
   `depositor`, `listing` (`VaultListing`: `listingId`, `price` in wei, `endTime`, `orderHash`),
-  `proceeds`, `busy` (a request waits for its proof), `tokenUri`. `myBoxes()` finds the
+  `proceeds`, `busy` (requests wait for their proof: the box cannot move until they settle,
+  though requests still go in), `tokenUri`. `myBoxes()` finds the
   connected account's from its own receipts (one decryption signature, as `boxesOf` does).
 - `walletNfts(collection)` lists the wallet's token ids of a collection; `mintTestNft` mints a
   free one from a test collection.
-- `deposit(collection, tokenId)` approves the vault if needed and seals the NFT with the
-  wallet's key; it returns the box id. The deposit is public.
+- `deposit(collection, tokenId, { decoys })` approves the vault if needed and seals the NFT
+  with the wallet's key, sending the new box to `decoys` (0 to `MAX_DECOYS`) fresh random
+  addresses in the same transaction, each transfer moving nothing (`decoySends`); it returns the
+  box id. The deposit is public, not who holds the box after it. The mock ignores decoys.
 - `withdraw(boxId, to)`, `list(boxId, price, endTime)`, `unlist(boxId)` and `claim(boxId, to)`
   are requests: the key bound to the request's terms, encrypted for the relayer's address (or the
   wallet's), sent through the API's relayer when there is one, then the public decryption of
@@ -275,7 +278,9 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 - `buy(boxId)` fills the box's Seaport order from the wallet, as any marketplace buyer would,
   then sends `sync` so the box shows as sold at once.
 - `send(boxId, to)` gives the box (a "maybe" transfer); the receiver calls `adopt(boxId)`, which
-  sets their key (`setKey`) before anything can leave the box.
+  sets their key (`setKey`) before anything can leave the box. `send` and `acceptSale` first
+  settle the requests the box waits on, anyone's: `finalize` with their public decryption, or
+  `expire` a day after one was placed.
 - `offerSale(boxId, buyer, price)` encrypts a cUSDC price in the page; `sales()` lists the
   account's private sales (`VaultSale`: `saleId`, `boxId`, `seller`, `buyer`, `status`);
   `salePrices(saleIds)` user-decrypts their prices; `acceptSale(saleId)` makes the vault the

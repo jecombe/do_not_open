@@ -10,7 +10,8 @@ import {
   type Provider,
 } from "ethers";
 import { ChainError, sameAddress, type ActionOptions, type Address, type TxRecord } from "../types";
-import type { VaultAdapter, VaultBox, VaultBoxState, VaultCollection, VaultInfo, VaultListing, VaultSale, VaultSaleStatus } from "../vault";
+import { decoySends } from "../decoys";
+import type { VaultAdapter, VaultBox, VaultBoxState, VaultCollection, VaultDepositOptions, VaultInfo, VaultListing, VaultSale, VaultSaleStatus } from "../vault";
 import type { VaultRelay } from "./vaultRelay";
 
 interface Deployed {
@@ -25,7 +26,7 @@ export interface VaultDeployment extends Deployed {
   collections: VaultCollection[];
 }
 
-type InputBuilder = { add64(v: bigint): InputBuilder; add256(v: bigint): InputBuilder };
+type InputBuilder = { addBool(v: boolean): InputBuilder; add64(v: bigint): InputBuilder; add256(v: bigint): InputBuilder };
 type Encrypted = { handles: (string | Uint8Array)[]; inputProof: string | Uint8Array };
 
 /** What the vault borrows from the EVM adapter it sits in: its wallet, its sends and its decryptions. */
@@ -50,8 +51,11 @@ export interface EvmVaultTools {
 /** SealedVault's enums, in their contract order. */
 const STATES: (VaultBoxState | "none")[] = ["none", "sealed", "listed", "sold", "withdrawn", "claimed"];
 const ACTIONS = { withdraw: 0, list: 1, unlist: 2, claim: 3 } as const;
+const REQUEST_PENDING = 1;
 const REQUEST_REFUSED = 3;
 const REQUEST_STALE = 4;
+/** SealedVault.REQUEST_TIMEOUT: after this, a request with no proof may be expired by anyone. */
+const REQUEST_TIMEOUT = 86_400;
 const SALE_STATUS: (VaultSaleStatus | "none")[] = ["none", "open", "settled", "cancelled"];
 const LOG_SPAN = 40_000;
 const ZERO = "0x" + "0".repeat(64);
@@ -164,14 +168,18 @@ export class EvmVault implements VaultAdapter {
     return tokenId;
   }
 
-  async deposit(collection: Address, tokenId: bigint, opts?: ActionOptions): Promise<number> {
+  async deposit(collection: Address, tokenId: bigint, opts?: VaultDepositOptions): Promise<number> {
     const account = await this.t.account();
     const key = await this.keyFor(collection, tokenId, opts);
     const nft = { address: collection, abi: NFT_ABI };
     const approved = await this.t.reading(new Contract(collection, NFT_ABI, this.t.readProvider).getApproved!(tokenId));
     if (!sameAddress(String(approved), this.deployed.address)) await this.t.send(opts, () => this.t.writer(nft).approve!(this.deployed.address, tokenId));
-    const input = await this.t.encrypt(this.deployed.address, account, (b) => b.add256(key), "the box key", opts);
-    const receipt = await this.t.send(opts, () => this.t.writer(this.deployed).deposit!(collection, tokenId, input.handles[0], input.inputProof));
+    // The key, then each decoy's "really" (false), under one proof.
+    const sends = decoySends(opts?.decoys ?? 0);
+    const input = await this.t.encrypt(this.deployed.address, account, (b) => sends.reduce((acc, s) => acc.addBool(s.really), b.add256(key)), "the box key", opts);
+    const receipt = await this.t.send(opts, () =>
+      this.t.writer(this.deployed).deposit!(collection, tokenId, input.handles[0], sends.map((s) => s.to), input.handles.slice(1), input.inputProof),
+    );
     return Number(this.events(receipt, "Deposited")[0]!.boxId);
   }
 
@@ -207,6 +215,7 @@ export class EvmVault implements VaultAdapter {
   }
 
   async send(boxId: number, to: Address, opts?: ActionOptions): Promise<void> {
+    await this.settlePending(boxId, opts);
     await this.t.send(opts, () => this.t.writer(this.deployed)["confidentialTransfer(address,uint256)"]!(getAddress(to), boxId));
     await this.myBoxes().catch(() => undefined);
   }
@@ -248,6 +257,7 @@ export class EvmVault implements VaultAdapter {
     const s = await this.t.reading(this.read.saleInfo!(saleId));
     const box = await this.box(Number(s.boxId));
     const key = await this.keyFor(box.collection, box.tokenId, opts);
+    await this.settlePending(box.boxId, opts);
     await this.t.ensureOperator(await this.t.cUsdc(), account, this.deployed.address, opts);
     const input = await this.t.encrypt(this.deployed.address, account, (b) => b.add256(key), "the box key", opts);
     await this.t.send(opts, () => this.t.writer(this.deployed).acceptSale!(saleId, input.handles[0], input.inputProof));
@@ -304,6 +314,34 @@ export class EvmVault implements VaultAdapter {
     if (status === REQUEST_STALE) throw new ChainError("missed", "The box changed first (its listing sold or ran out). Nothing happened.");
   }
 
+  /**
+   * Settles whatever requests the box waits on, so it can move: anyone's, a stranger's with a
+   * wrong key included. Each gets its proof (finalize) or, after a day without one, is expired.
+   * Sent by the relayer when there is one, by the wallet otherwise.
+   */
+  private async settlePending(boxId: number, opts?: ActionOptions): Promise<void> {
+    if (Number((await this.t.reading(this.read.boxInfo!(boxId))).pending) === 0) return;
+    const latest = await this.t.readProvider.getBlockNumber();
+    const placed = await this.logs(this.read.filters.RequestPlaced!(null, boxId), this.deployed.deployBlock ?? 0, latest);
+    const relay = await this.t.relay();
+    const now = Math.floor(Date.now() / 1000);
+    for (const requestId of [...new Set(placed.map((l) => Number((l as EventLog).args.requestId)))]) {
+      const info = await this.t.reading(this.read.requestInfo!(requestId));
+      if (Number(info.status) !== REQUEST_PENDING) continue;
+      if (now > Number(info.placedAt) + REQUEST_TIMEOUT) {
+        await this.t.send(opts, () => this.t.writer(this.deployed).expire!(requestId));
+        continue;
+      }
+      const decrypted = await this.t.publicDecrypt([String(info.ok)], opts);
+      opts?.onStep?.("proving");
+      if (relay) {
+        await this.relayed(opts, "finalize", () => relay.finalize({ requestId, cleartexts: decrypted.abiEncodedClearValues, proof: decrypted.decryptionProof }), false);
+      } else {
+        await this.t.send(opts, () => this.t.writer(this.deployed).finalize!(requestId, decrypted.abiEncodedClearValues, decrypted.decryptionProof));
+      }
+    }
+  }
+
   /** A transaction the relayer sends: no wallet prompt, but the same steps and journal entry. */
   private async relayed(opts: ActionOptions | undefined, call: string, sendIt: () => Promise<string>, announce = true): Promise<ContractTransactionReceipt> {
     if (announce) opts?.onStep?.("confirming");
@@ -357,7 +395,7 @@ export class EvmVault implements VaultAdapter {
       depositor: depositor ?? "",
       listing,
       proceeds: BigInt(b.proceeds),
-      busy: Number(b.busy) > 0,
+      busy: Number(b.pending) > 0,
       tokenUri,
     };
   }

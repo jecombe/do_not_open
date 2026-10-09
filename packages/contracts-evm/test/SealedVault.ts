@@ -2,6 +2,7 @@ import { FhevmType } from "@fhevm/hardhat-plugin";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
+import type { ContractTransactionReceipt } from "ethers";
 import { ethers, fhevm } from "hardhat";
 import { ISeaport, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC } from "../types";
 import { confidentialUsdcOf, usd } from "./helpers";
@@ -9,7 +10,8 @@ import { installSeaport } from "./seaport";
 
 const BOX = { None: 0n, Sealed: 1n, Listed: 2n, Sold: 3n, Withdrawn: 4n, Claimed: 5n } as const;
 const ACTION = { Withdraw: 0, List: 1, Unlist: 2, Claim: 3 } as const;
-const REQUEST = { None: 0n, Pending: 1n, Done: 2n, Refused: 3n, Stale: 4n } as const;
+const REQUEST = { None: 0n, Pending: 1n, Done: 2n, Refused: 3n, Stale: 4n, Expired: 5n } as const;
+const DAY = 86_400;
 const SALE = { None: 0n, Open: 1n, Settled: 2n, Cancelled: 3n } as const;
 const FEE_BPS = 250n;
 const feeOf = (price: bigint) => (price * FEE_BPS) / 10_000n;
@@ -23,6 +25,9 @@ const plain = (value: unknown): unknown => {
   if (!keys.length || keys[0]!.startsWith("_")) return items;
   return Object.fromEntries(keys.map((k, i) => [k, items[i]]));
 };
+
+/** `n` decoy sends to fresh random addresses, as the app makes them. */
+const decoys = (n: number) => Array.from({ length: n }, () => ({ to: ethers.Wallet.createRandom().address, really: false }));
 
 /** A box key, as the app derives one: any 256-bit secret. */
 const randomKey = () => BigInt(ethers.hexlify(ethers.randomBytes(32)));
@@ -47,15 +52,27 @@ describe("SealedVault", function () {
   const keyInput = (sender: HardhatEthersSigner, key: bigint) =>
     fhevm.createEncryptedInput(vaultAddress, sender.address).add256(key).encrypt();
 
-  /** Mints NFT `tokenId` to `who` and puts it in a box with `key`. Returns the box id. */
-  async function deposit(who: HardhatEthersSigner, tokenId: number, key: bigint) {
+  type Send = { to: string; really: boolean };
+
+  /** The deposit's arguments: the key, then each send's encrypted "really", under one proof. */
+  async function depositInput(who: HardhatEthersSigner, key: bigint, sends: Send[] = []) {
+    const builder = fhevm.createEncryptedInput(vaultAddress, who.address).add256(key);
+    for (const s of sends) builder.addBool(s.really);
+    const input = await builder.encrypt();
+    return { key: input.handles[0]!, to: sends.map((s) => s.to), really: input.handles.slice(1), proof: input.inputProof };
+  }
+
+  /** Mints NFT `tokenId` to `who` and puts it in a box with `key`, sent on to `sends`. Returns the box id. */
+  async function deposit(who: HardhatEthersSigner, tokenId: number, key: bigint, sends: Send[] = []) {
     await (await nft.mint(who.address, tokenId)).wait();
     await (await nft.connect(who).approve(vaultAddress, tokenId)).wait();
-    const input = await keyInput(who, key);
+    const i = await depositInput(who, key, sends);
     const boxId = await vault.tokenCount();
-    await (await vault.connect(who).deposit(await nft.getAddress(), tokenId, input.handles[0]!, input.inputProof)).wait();
+    const receipt = await (await vault.connect(who).deposit(await nft.getAddress(), tokenId, i.key, i.to, i.really, i.proof)).wait();
+    lastDeposit = receipt!;
     return boxId;
   }
+  let lastDeposit: ContractTransactionReceipt;
 
   type Terms = { to?: string; price?: bigint; endTime?: number };
 
@@ -169,8 +186,8 @@ describe("SealedVault", function () {
       await (await vault.setCollection(await nft.getAddress(), false)).wait();
       await (await nft.mint(alice.address, 1)).wait();
       await (await nft.connect(alice).approve(vaultAddress, 1)).wait();
-      const input = await keyInput(alice, 1n);
-      await expect(vault.connect(alice).deposit(await nft.getAddress(), 1, input.handles[0]!, input.inputProof)).to.be.revertedWithCustomError(
+      const i = await depositInput(alice, 1n);
+      await expect(vault.connect(alice).deposit(await nft.getAddress(), 1, i.key, i.to, i.really, i.proof)).to.be.revertedWithCustomError(
         vault,
         "CollectionNotAllowed",
       );
@@ -178,8 +195,8 @@ describe("SealedVault", function () {
 
     it("refuses an NFT the caller does not hold", async function () {
       await (await nft.mint(alice.address, 2)).wait();
-      const input = await keyInput(bob, 1n);
-      await expect(vault.connect(bob).deposit(await nft.getAddress(), 2, input.handles[0]!, input.inputProof)).to.be.reverted;
+      const i = await depositInput(bob, 1n);
+      await expect(vault.connect(bob).deposit(await nft.getAddress(), 2, i.key, i.to, i.really, i.proof)).to.be.reverted;
     });
 
     it("shows the NFT's own metadata for the box", async function () {
@@ -214,12 +231,29 @@ describe("SealedVault", function () {
       let id = await vault.requestCount();
       await (await vault.connect(relay).request(boxId, ACTION.Withdraw, relay.address, 0, 0, input.handles[0]!, input.inputProof)).wait();
       expect(await finalize(id)).to.eq(REQUEST.Refused);
-      // The same input with the right terms, a request later: the nonce moved on.
+      expect(await nft.ownerOf(1)).to.eq(vaultAddress);
+      // A wrong key spoils nothing: the same input, with the terms alice signed for, still works.
       id = await vault.requestCount();
       await (await vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, input.handles[0]!, input.inputProof)).wait();
+      expect(await finalize(id)).to.eq(REQUEST.Done);
+      expect(await nft.ownerOf(1)).to.eq(fresh.address);
+    });
+
+    it("an input that worked once is refused the second time: the nonce moved on", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 1, key);
+      const endTime = await inAWeek();
+      const input = await boundKey(boxId, ACTION.List, key, { price: ETH("1"), endTime }, relay);
+      const send = () => vault.connect(relay).request(boxId, ACTION.List, ethers.ZeroAddress, ETH("1"), endTime, input.handles[0]!, input.inputProof);
+      let id = await vault.requestCount();
+      await (await send()).wait();
+      expect(await finalize(id)).to.eq(REQUEST.Done);
+      expect(await act(boxId, ACTION.Unlist, key)).to.eq(REQUEST.Done);
+      // The relay keeps alice's old listing input and sends it again: refused.
+      id = await vault.requestCount();
+      await (await send()).wait();
       expect(await finalize(id)).to.eq(REQUEST.Refused);
-      expect(await nft.ownerOf(1)).to.eq(vaultAddress);
-      expect(await act(boxId, ACTION.Withdraw, key, { to: fresh.address })).to.eq(REQUEST.Done);
+      expect((await vault.boxInfo(boxId)).state).to.eq(BOX.Sealed);
     });
 
     it("cannot withdraw a box twice", async function () {
@@ -232,15 +266,16 @@ describe("SealedVault", function () {
       ).to.be.revertedWithCustomError(vault, "WrongState");
     });
 
-    it("holds the box still while a request waits", async function () {
+    it("holds the box still while a request waits, then lets it move", async function () {
       const key = randomKey();
       const boxId = await deposit(alice, 1, key);
-      await placeRequest(boxId, ACTION.Withdraw, key, { to: alice.address });
-      const input = await keyInput(relay, key);
-      await expect(
-        vault.connect(relay).request(boxId, ACTION.Withdraw, alice.address, 0, 0, input.handles[0]!, input.inputProof),
-      ).to.be.revertedWithCustomError(vault, "BoxBusy");
+      const id = await placeRequest(boxId, ACTION.Withdraw, randomKey(), { to: carol.address });
+      expect((await vault.boxInfo(boxId)).pending).to.eq(1n);
       await expect(vault.connect(alice).confidentialTransfer(bob.address, boxId)).to.be.revertedWithCustomError(vault, "BoxBusy");
+      expect(await finalize(id)).to.eq(REQUEST.Refused);
+      expect((await vault.boxInfo(boxId)).pending).to.eq(0n);
+      await (await vault.connect(alice).confidentialTransfer(bob.address, boxId)).wait();
+      expect(await holderOf(boxId)).to.eq(bob.address);
     });
   });
 
@@ -476,6 +511,256 @@ describe("SealedVault", function () {
       await list(boxId, key, ETH("1"));
       const input = await keyInput(bob, 1n);
       await expect(vault.connect(bob).acceptSale(saleId, input.handles[0]!, input.inputProof)).to.be.revertedWithCustomError(vault, "WrongState");
+    });
+  });
+
+  describe("requests that do not lock the box", function () {
+    /** Requests with wrong keys, as a stranger would send to keep the box busy. */
+    async function grief(boxId: bigint, times: number, action: number = ACTION.Withdraw) {
+      const ids: bigint[] = [];
+      for (let i = 0; i < times; i++) ids.push(await placeRequest(boxId, action, randomKey(), { to: carol.address, sender: carol }));
+      return ids;
+    }
+
+    it("a stranger's waiting requests do not stop the holder taking the NFT out", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 1, key);
+      const junk = await grief(boxId, 3);
+      expect((await vault.boxInfo(boxId)).pending).to.eq(3n);
+      // Alice's request goes in next to them and settles first.
+      expect(await act(boxId, ACTION.Withdraw, key, { to: fresh.address })).to.eq(REQUEST.Done);
+      expect(await nft.ownerOf(1)).to.eq(fresh.address);
+      // The stranger's requests settle refused, whenever someone finalizes them.
+      for (const id of junk) expect(await finalize(id)).to.eq(REQUEST.Refused);
+      expect((await vault.boxInfo(boxId)).pending).to.eq(0n);
+    });
+
+    it("a stranger's requests do not stop listing, unlisting or collecting either", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      await grief(boxId, 1);
+      const listingId = await list(boxId, key, ETH("1"));
+      await grief(boxId, 1);
+      expect(await act(boxId, ACTION.Unlist, key)).to.eq(REQUEST.Done);
+      await list(boxId, key, ETH("1"));
+      await (await fill((await vault.boxInfo(boxId)).listing - 1n, carol)).wait();
+      expect(listingId).to.not.eq((await vault.boxInfo(boxId)).listing - 1n);
+      await grief(boxId, 2, ACTION.Claim);
+      expect(await act(boxId, ACTION.Claim, key, { to: fresh.address })).to.eq(REQUEST.Done);
+      expect((await vault.boxInfo(boxId)).state).to.eq(BOX.Claimed);
+    });
+
+    it("a wrong key does not spoil an input the holder already prepared", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 1, key);
+      // Alice's page binds her key to the current nonce...
+      const input = await boundKey(boxId, ACTION.Withdraw, key, { to: fresh.address }, relay);
+      // ...a stranger's request lands and settles first...
+      const [junk] = await grief(boxId, 1);
+      expect(await finalize(junk!)).to.eq(REQUEST.Refused);
+      // ...and alice's input still works.
+      const id = await vault.requestCount();
+      await (await vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, input.handles[0]!, input.inputProof)).wait();
+      expect(await finalize(id)).to.eq(REQUEST.Done);
+    });
+
+    it("the nonce moves on only when a key matched", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      for (const id of await grief(boxId, 2)) await finalize(id);
+      expect((await vault.boxInfo(boxId)).nonce).to.eq(0n);
+      await list(boxId, key, ETH("1"));
+      expect((await vault.boxInfo(boxId)).nonce).to.eq(1n);
+      // A matched key that found the box changed (stale) moves it on too.
+      const id = await placeRequest(boxId, ACTION.Unlist, key);
+      await (await fill((await vault.boxInfo(boxId)).listing - 1n, carol)).wait();
+      expect(await finalize(id)).to.eq(REQUEST.Stale);
+      expect((await vault.boxInfo(boxId)).nonce).to.eq(2n);
+    });
+
+    it("two of the holder's own requests at once: the first runs, the second finds the box changed", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 1, key);
+      const first = await placeRequest(boxId, ACTION.Withdraw, key, { to: fresh.address });
+      const second = await placeRequest(boxId, ACTION.Withdraw, key, { to: bob.address });
+      expect(await finalize(first)).to.eq(REQUEST.Done);
+      expect(await finalize(second)).to.eq(REQUEST.Stale);
+      expect(await nft.ownerOf(1)).to.eq(fresh.address);
+    });
+
+    it("finalized in any order, requests leave the box consistent", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 5, key);
+      const junk = await grief(boxId, 2);
+      const listing = await placeRequest(boxId, ACTION.List, key, { price: ETH("1"), endTime: await inAWeek() });
+      // The second request is placed while the box is still sealed: Withdraw is allowed then.
+      const withdraw = await placeRequest(boxId, ACTION.Withdraw, key, { to: fresh.address });
+      expect(await finalize(withdraw)).to.eq(REQUEST.Done);
+      expect(await finalize(listing)).to.eq(REQUEST.Stale);
+      for (const id of junk) expect(await finalize(id)).to.eq(REQUEST.Refused);
+      const box = await vault.boxInfo(boxId);
+      expect(box.state).to.eq(BOX.Withdrawn);
+      expect(box.pending).to.eq(0n);
+      expect(await nft.getApproved(5)).to.eq(ethers.ZeroAddress);
+    });
+
+    it("a private sale waits for the box's requests, then goes through", async function () {
+      await giveCusdc(bob, usd("1000"));
+      const boxId = await deposit(alice, 9, randomKey());
+      const saleId = await offerSale(alice, boxId, bob, usd("10"));
+      const [junk] = await grief(boxId, 1);
+      const input = await keyInput(bob, randomKey());
+      await expect(vault.connect(bob).acceptSale(saleId, input.handles[0]!, input.inputProof)).to.be.revertedWithCustomError(vault, "BoxBusy");
+      // Anyone may finalize the stranger's request, the buyer included.
+      expect(await finalize(junk!)).to.eq(REQUEST.Refused);
+      await acceptSale(saleId, bob, randomKey());
+      expect(await holderOf(boxId)).to.eq(bob.address);
+    });
+  });
+
+  describe("expiry", function () {
+    it("a request whose proof never comes can be expired by anyone, after a day", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 1, key);
+      const id = await placeRequest(boxId, ACTION.Withdraw, randomKey(), { to: carol.address, sender: carol });
+      await expect(vault.connect(bob).expire(id)).to.be.revertedWithCustomError(vault, "TooEarly");
+      await time.increase(DAY + 1);
+      await (await vault.connect(bob).expire(id)).wait();
+      const box = await vault.boxInfo(boxId);
+      expect((await vault.requestInfo(id)).status).to.eq(REQUEST.Expired);
+      expect(box.pending).to.eq(0n);
+      expect(box.nonce).to.eq(1n);
+      // Settled once, for good.
+      await expect(vault.expire(id)).to.be.revertedWithCustomError(vault, "RequestNotPending");
+      const { ok } = await vault.requestInfo(id);
+      const result = await fhevm.publicDecrypt([ok]);
+      await expect(vault.finalize(id, result.abiEncodedClearValues, result.decryptionProof)).to.be.revertedWithCustomError(vault, "RequestNotPending");
+      // The box moves and comes out again.
+      await (await vault.connect(alice).confidentialTransfer(bob.address, boxId)).wait();
+      expect(await holderOf(boxId)).to.eq(bob.address);
+    });
+
+    it("an expired request of the holder's runs nothing, and its input cannot be sent again", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 1, key);
+      const input = await boundKey(boxId, ACTION.Withdraw, key, { to: fresh.address }, relay);
+      const send = () => vault.connect(relay).request(boxId, ACTION.Withdraw, fresh.address, 0, 0, input.handles[0]!, input.inputProof);
+      let id = await vault.requestCount();
+      await (await send()).wait();
+      await time.increase(DAY + 1);
+      await (await vault.expire(id)).wait();
+      expect(await nft.ownerOf(1)).to.eq(vaultAddress);
+      id = await vault.requestCount();
+      await (await send()).wait();
+      expect(await finalize(id)).to.eq(REQUEST.Refused);
+      expect(await act(boxId, ACTION.Withdraw, key, { to: fresh.address })).to.eq(REQUEST.Done);
+    });
+
+    it("a request already finalized cannot be expired", async function () {
+      const key = randomKey();
+      const boxId = await deposit(alice, 1, key);
+      const id = await placeRequest(boxId, ACTION.Withdraw, key, { to: fresh.address });
+      await finalize(id);
+      await time.increase(DAY + 1);
+      await expect(vault.expire(id)).to.be.revertedWithCustomError(vault, "RequestNotPending");
+    });
+  });
+
+  describe("deposit with decoys", function () {
+
+    it("sends the new box to decoys that move nothing: the depositor keeps it and its key", async function () {
+      const key = randomKey();
+      const sends = decoys(3);
+      const boxId = await deposit(alice, 1, key, sends);
+      expect(await holderOf(boxId)).to.eq(alice.address);
+      // One receipt per send, from alice, each a "maybe" only alice can read.
+      const receipts = lastDeposit.logs
+        .map((l) => vault.interface.parseLog(l))
+        .filter((e) => e?.name === "ConfidentialTransfer" && e.args.from === alice.address);
+      expect(receipts.map((e) => e!.args.to)).to.deep.eq(sends.map((s) => s.to));
+      for (const e of receipts) expect(await fhevm.userDecryptEbool(e!.args.moved, vaultAddress, alice)).to.eq(false);
+      expect(await act(boxId, ACTION.Withdraw, key, { to: fresh.address })).to.eq(REQUEST.Done);
+    });
+
+    it("can hand the box straight to someone else, among decoys: they set their key", async function () {
+      const key = randomKey();
+      const sends = [...decoys(2), { to: bob.address, really: true }, ...decoys(1)];
+      const boxId = await deposit(alice, 1, key, sends);
+      expect(await holderOf(boxId)).to.eq(bob.address);
+      // The box moved, so it has a key nobody knows: alice's no longer opens it.
+      expect(await act(boxId, ACTION.Withdraw, key, { to: alice.address })).to.eq(REQUEST.Refused);
+      const bobKey = randomKey();
+      const input = await keyInput(bob, bobKey);
+      await (await vault.connect(bob).setKey(boxId, input.handles[0]!, input.inputProof)).wait();
+      expect(await act(boxId, ACTION.Withdraw, bobKey, { to: fresh.address })).to.eq(REQUEST.Done);
+    });
+
+    it("a real send after a real send: the box ends with the last one", async function () {
+      const boxId = await deposit(alice, 1, randomKey(), [{ to: bob.address, really: true }, { to: carol.address, really: true }]);
+      // The second transfer is alice's, but alice no longer holds the box: it moves nothing.
+      expect(await holderOf(boxId)).to.eq(bob.address);
+    });
+
+    it("refuses too many sends, or sends and flags that do not pair up", async function () {
+      await (await nft.mint(alice.address, 1)).wait();
+      await (await nft.connect(alice).approve(vaultAddress, 1)).wait();
+      const six = await depositInput(alice, 1n, decoys(6));
+      await expect(vault.connect(alice).deposit(await nft.getAddress(), 1, six.key, six.to, six.really, six.proof)).to.be.revertedWithCustomError(
+        vault,
+        "BadSends",
+      );
+      const two = await depositInput(alice, 1n, decoys(2));
+      await expect(
+        vault.connect(alice).deposit(await nft.getAddress(), 1, two.key, two.to, two.really.slice(1), two.proof),
+      ).to.be.revertedWithCustomError(vault, "BadSends");
+    });
+
+    it("stays within the HCU budget with the most sends", async function () {
+      await deposit(alice, 1, randomKey(), decoys(5));
+      const used = fhevm.computeTransactionHCU(lastDeposit as Parameters<typeof fhevm.computeTransactionHCU>[0]);
+      expect(used.globalHCU).to.be.lessThan(20_000_000);
+      expect(used.maxHCUDepth).to.be.lessThan(5_000_000);
+    });
+  });
+
+  describe("no box stays stuck", function () {
+    it("whatever strangers send, once every request is settled each holder can still take their NFT out", async function () {
+      // Three boxes, three holders; strangers pile wrong-key requests, transfers and offers on them.
+      const keys = [randomKey(), randomKey(), randomKey()];
+      const holders = [alice, bob, carol];
+      const boxes: bigint[] = [];
+      for (let i = 0; i < 3; i++) boxes.push(await deposit(holders[i]!, 20 + i, keys[i]!, decoys(i)));
+      const open: bigint[] = [];
+      let seed = 7;
+      const rand = (n: number) => (seed = (seed * 48_271) % 2_147_483_647) % n;
+      for (let round = 0; round < 12; round++) {
+        const b = rand(3);
+        const stranger = holders[(b + 1 + rand(2)) % 3]!;
+        switch (rand(4)) {
+          case 0:
+          case 1:
+            open.push(await placeRequest(boxes[b]!, ACTION.Withdraw, randomKey(), { to: stranger.address, sender: stranger }));
+            break;
+          case 2:
+            // A transfer from someone who does not hold it: reverts while busy, moves nothing otherwise.
+            if ((await vault.boxInfo(boxes[b]!)).pending === 0n) await (await vault.connect(stranger).confidentialTransfer(fresh.address, boxes[b]!)).wait();
+            break;
+          default:
+            // Some proofs come back, in any order.
+            if (open.length) expect(await finalize(open.splice(rand(open.length), 1)[0]!)).to.eq(REQUEST.Refused);
+        }
+      }
+      // Whatever is left: some proofs come back, the rest expire.
+      const late = open.splice(0, Math.ceil(open.length / 2));
+      for (const id of late) await finalize(id);
+      await time.increase(DAY + 1);
+      for (const id of open) await (await vault.connect(fresh).expire(id)).wait();
+      for (let i = 0; i < 3; i++) {
+        expect((await vault.boxInfo(boxes[i]!)).pending).to.eq(0n);
+        expect(await holderOf(boxes[i]!)).to.eq(holders[i]!.address);
+        expect(await act(boxes[i]!, ACTION.Withdraw, keys[i]!, { to: fresh.address })).to.eq(REQUEST.Done);
+        expect(await nft.ownerOf(20 + i)).to.eq(fresh.address);
+      }
     });
   });
 

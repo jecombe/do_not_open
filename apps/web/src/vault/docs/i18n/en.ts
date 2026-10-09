@@ -21,7 +21,7 @@ export const vaultDocsEn = {
 
   "vaultDocs.section.seal": "Sealing an NFT",
   "vaultDocs.seal.p1": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.",
-  "vaultDocs.seal.p2": "Until the box moves, its depositor is its obvious holder. The doubt comes with a transfer: as soon as boxes change hands, nobody can tell who holds which.",
+  "vaultDocs.seal.p2": "The deposit names its depositor, but it can also send the new box on at once, in the same transaction, to a few random addresses where each transfer moves nothing (decoys, checked by default). Anyone sees the transfers, nobody sees which moved, so even the depositor is no longer the obvious holder. Without decoys, they are until the box moves.",
   "vaultDocs.seal.p3": "To find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature.",
 
   "vaultDocs.section.key": "The box's key",
@@ -32,8 +32,8 @@ export const vaultDocsEn = {
 
   "vaultDocs.section.requests": "Asking for something",
   "vaultDocs.requests.p1": "Taking an NFT out, listing it, taking a listing down and collecting a sale's ETH all go the same way, in two steps. A request on-chain: the vault checks the key under encryption. Then a proof from Zama's key management service that the key matched, which anyone can bring back.",
-  "vaultDocs.requests.p2": "The request settles one of three ways: done; refused, when the key did not match (nothing happens, nothing reverts, so a stranger learns nothing); or missed, when the box changed in between (sold on Seaport meanwhile, say).",
-  "vaultDocs.requests.p3": "While a request waits for its proof the box is busy: it cannot move or take another request. That usually takes a few seconds.",
+  "vaultDocs.requests.p2": "The request settles one of four ways: done; refused, when the key did not match (nothing happens, nothing reverts, so a stranger learns nothing); missed, when the box changed in between (sold on Seaport meanwhile, say); or expired, when no proof came within a day (nothing happens).",
+  "vaultDocs.requests.p3": "Requests do not lock each other out: a stranger who sends requests with a wrong key cannot stop you taking your NFT out, listing it or collecting. Each is decided on its own, and the counter the key is mixed with moves on only when a key matched, so a stranger's try spoils nothing you prepared. While any request waits for its proof, the box cannot change hands; the page settles the waiting ones first (anyone may), and one whose proof never comes can be expired by anyone after a day. No box stays stuck.",
 
   "vaultDocs.section.seaport": "Selling on Seaport",
   "vaultDocs.seaport.p1": "A listing is a real Seaport 1.5 order, OpenSea's protocol, whose seller is the vault itself: your address appears nowhere. The vault validates the order on-chain, so it signs nothing, and only the orders it validated can sell its NFTs.",
@@ -56,11 +56,11 @@ export const vaultDocsEn = {
   "vaultDocs.section.leaks": "What is public, what is not",
   "vaultDocs.leaks.public": "Public",
   "vaultDocs.leaks.hidden": "Never public",
-  "vaultDocs.leaks.public1": "Who sealed which NFT (the deposit is an NFT transfer)",
+  "vaultDocs.leaks.public1": "Who sealed which NFT (the deposit is an NFT transfer), and the addresses its decoys went to",
   "vaultDocs.leaks.public2": "The NFT inside each box, its state, its listing",
   "vaultDocs.leaks.public3": "Seaport listings and purchases, with the vault as the seller",
   "vaultDocs.leaks.public4": "The address an NFT or a sale's ETH goes out to, and the amount",
-  "vaultDocs.leaks.public5": "That a request was made, on which box, for what, and whether it was done, refused or missed",
+  "vaultDocs.leaks.public5": "That a request was made, on which box, for what, and whether it was done, refused, missed or expired",
   "vaultDocs.leaks.public6": "The two addresses of a transfer or a private sale",
   "vaultDocs.leaks.hidden1": "Who holds a box",
   "vaultDocs.leaks.hidden2": "The box's key",

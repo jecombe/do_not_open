@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {FHE, ebool, euint64, euint256, externalEuint64, externalEuint256} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, ebool, euint64, euint256, externalEbool, externalEuint64, externalEuint256} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -45,9 +45,14 @@ import {
 ///     longer act on it. The new holder sets theirs with `setKey`, a "maybe" like a transfer
 ///     (only the holder's call takes effect), or as part of a private sale.
 ///
-///  3. One request per box at a time. While it waits for its public decryption, the box cannot
-///     move, so a request decided for one holder never runs for the next. Anyone may finalize it
-///     with the KMS proof (`finalize`), as with every reveal in this repo.
+///  3. Requests do not lock each other out: a box takes any number of them at once, each decided
+///     on its own when its proof comes back (`finalize`, which anyone may send), and one that can
+///     no longer run (the box changed first) settles `Stale`. So a stranger's requests with a
+///     wrong key cannot keep the holder from taking the NFT out, listing it or collecting. While
+///     any request waits, the box cannot move: a request decided for one holder never runs for
+///     the next. The nonce a key is bound to moves on only when a key matched, so a wrong key
+///     spoils nothing the holder prepared. A request whose proof never comes can be expired by
+///     anyone after `REQUEST_TIMEOUT`, so no box waits forever.
 ///
 ///  4. Seaport: listing validates a Seaport order whose offerer is the vault itself (an
 ///     offerer's own orders need no signature) for the NFT against `price` wei paid to the
@@ -62,7 +67,11 @@ import {
 ///     buyer, under encryption. Nothing decides it in the clear: to everyone else a sale that
 ///     happened and one that did not look the same.
 ///
-///  6. What is public: each deposit (who put which NFT in), the NFT behind each box, Seaport
+///  6. A deposit may send the new box on at once, in the same transaction, to up to
+///     `MAX_DEPOSIT_SENDS` addresses, each transfer real or not under encryption (decoys go to
+///     fresh random addresses): the deposit names the depositor, but no longer who holds the box.
+///
+///  7. What is public: each deposit (who put which NFT in), the NFT behind each box, Seaport
 ///     listings and their prices (Seaport is public), the address a withdrawal or a sale's ETH
 ///     is sent to, and who called what. Never public: who holds a box, the key, a private sale's
 ///     price, and whether a private sale or a plain transfer moved anything.
@@ -95,7 +104,9 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         /// The key was wrong. Nothing happened.
         Refused,
         /// The key was right, but the box changed first (its listing filled or expired, say).
-        Stale
+        Stale,
+        /// Its proof never came: nothing happened, and the box no longer waits on it.
+        Expired
     }
 
     enum SaleStatus {
@@ -112,11 +123,12 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         BoxState state;
         /// The listing id + 1 while listed or sold, 0 otherwise.
         uint256 listing;
-        /// The pending request's id + 1, 0 when none.
-        uint256 busy;
+        /// How many requests wait for their proof. The box cannot move while any does.
+        uint256 pending;
         /// ETH a Seaport sale left for the box's key holder, the fee taken.
         uint256 proceeds;
-        /// How many requests the box has had: part of what each request's key is bound to.
+        /// How many requests on the box matched its key: part of what each request's key is
+        ///      bound to. A wrong key does not move it on.
         uint64 nonce;
     }
 
@@ -138,6 +150,8 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         /// List only.
         uint256 price;
         uint64 endTime;
+        /// When it was placed: after `REQUEST_TIMEOUT` without a proof, anyone may expire it.
+        uint64 placedAt;
         /// key == the box's key, publicly decryptable.
         ebool ok;
     }
@@ -159,6 +173,10 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     uint16 public constant MAX_FEE_BPS = 1_000;
     /// @notice The longest a Seaport listing may run.
     uint64 public constant MAX_LISTING_TIME = 180 days;
+    /// @notice How long a request may wait for its proof before anyone may expire it.
+    uint64 public constant REQUEST_TIMEOUT = 1 days;
+    /// @notice The most transfers a deposit may send the new box on, decoys included.
+    uint256 public constant MAX_DEPOSIT_SENDS = 5;
 
     ISeaport public immutable seaport;
     IERC7984 public immutable confidentialUsdc;
@@ -194,6 +212,8 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     error NotSeller();
     error NotBuyer();
     error RequestNotPending();
+    error TooEarly();
+    error BadSends();
     error OnlySeaport();
     error SendFailed();
 
@@ -239,20 +259,30 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     /// @notice Puts `tokenId` of `collection` in a new box held by the caller, with `key` (a
     ///         256-bit secret encrypted for this contract) as its key. The vault must be approved
     ///         on the NFT. The deposit itself is public; what happens to the box next is not.
-    function deposit(address collection, uint256 tokenId, externalEuint256 key, bytes calldata inputProof)
-        external
-        nonReentrant
-        returns (uint256 boxId)
-    {
+    ///         The box is then sent to each of `to` in turn, for real only where `really` is true
+    ///         (encrypted, with `key`, under `inputProof`): with decoys only, the caller keeps it,
+    ///         and nobody else can tell. A box that moves gets a random key, as on any transfer.
+    function deposit(
+        address collection,
+        uint256 tokenId,
+        externalEuint256 key,
+        address[] calldata to,
+        externalEbool[] calldata really,
+        bytes calldata inputProof
+    ) external nonReentrant returns (uint256 boxId) {
+        if (to.length != really.length || to.length > MAX_DEPOSIT_SENDS) revert BadSends();
         if (!allowedCollection[collection]) revert CollectionNotAllowed(collection);
         IERC721(collection).transferFrom(msg.sender, address(this), tokenId);
         boxId = _mint(msg.sender, FHE.asEbool(true));
-        _boxes[boxId] = Box({collection: collection, tokenId: tokenId, state: BoxState.Sealed, listing: 0, busy: 0, proceeds: 0, nonce: 0});
+        _boxes[boxId] = Box({collection: collection, tokenId: tokenId, state: BoxState.Sealed, listing: 0, pending: 0, proceeds: 0, nonce: 0});
         boxOf[collection][tokenId] = boxId + 1;
         euint256 k = FHE.fromExternal(key, inputProof);
         FHE.allowThis(k);
         _keys[boxId] = k;
         emit Deposited(boxId, collection, tokenId, msg.sender);
+        for (uint256 i = 0; i < to.length; i++) {
+            _transfer(msg.sender, to[i], boxId, FHE.fromExternal(really[i], inputProof));
+        }
     }
 
     /// @notice Sets the box's key, if the caller holds it; does nothing otherwise, and looks the
@@ -272,7 +302,7 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     ///         `requestHash` of these same terms, encrypted for this contract and for whichever
     ///         wallet sends this. `to` is where a withdrawal or a sale's ETH goes;
     ///         `price` (wei) and `endTime` are for a listing. Reverts only on what is public: the
-    ///         box's state, a pending request, a bad price or date.
+    ///         box's state, a bad price or date. Other requests waiting on the box do not stop it.
     function request(
         uint256 boxId,
         Action action,
@@ -283,10 +313,9 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         bytes calldata inputProof
     ) external returns (uint256 requestId) {
         Box storage b = _box(boxId);
-        if (b.busy != 0) revert BoxBusy(boxId);
         _sync(boxId);
         _checkAction(boxId, b, action, to, price, endTime);
-        uint256 terms = requestHash(boxId, b.nonce++, action, to, price, endTime);
+        uint256 terms = requestHash(boxId, b.nonce, action, to, price, endTime);
         ebool ok = FHE.eq(FHE.xor(FHE.fromExternal(boundKey, inputProof), terms), _keys[boxId]);
         FHE.allowThis(ok);
         FHE.makePubliclyDecryptable(ok);
@@ -298,9 +327,10 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
             to: to,
             price: price,
             endTime: endTime,
+            placedAt: uint64(block.timestamp),
             ok: ok
         });
-        b.busy = requestId + 1;
+        b.pending++;
         emit RequestPlaced(requestId, boxId, action, msg.sender);
     }
 
@@ -319,7 +349,7 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         bool ok = abi.decode(abiEncodedCleartexts, (bool));
 
         Box storage b = _boxes[r.boxId];
-        b.busy = 0;
+        b.pending--;
         _sync(r.boxId);
         if (!ok) {
             r.status = RequestStatus.Refused;
@@ -328,7 +358,23 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         } else {
             r.status = _run(r) ? RequestStatus.Done : RequestStatus.Stale;
         }
+        // The key matched: an input bound to this nonce must not work twice.
+        if (ok) b.nonce++;
         emit RequestSettled(requestId, r.status);
+    }
+
+    /// @notice Settles a request whose proof did not come within `REQUEST_TIMEOUT`: nothing
+    ///         happens, and the box no longer waits on it. Anyone may. The nonce moves on, so
+    ///         an input bound to it cannot be sent again later.
+    function expire(uint256 requestId) external {
+        Request storage r = _requests[requestId];
+        if (r.status != RequestStatus.Pending) revert RequestNotPending();
+        if (block.timestamp <= r.placedAt + REQUEST_TIMEOUT) revert TooEarly();
+        Box storage b = _boxes[r.boxId];
+        b.pending--;
+        b.nonce++;
+        r.status = RequestStatus.Expired;
+        emit RequestSettled(requestId, RequestStatus.Expired);
     }
 
     /// @notice Brings a listed box up to date with Seaport: sold if its order filled, back to
@@ -405,7 +451,8 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     // ------------------------------------------------------------------ views
 
     /// @notice What a request's key is bound to: the holder sends key XOR this. `nonce` is the
-    ///         box's `nonce` when the request is placed.
+    ///         box's `nonce` when the request is placed: it moves on only when a key matches (or
+    ///         a request expires).
     function requestHash(uint256 boxId, uint64 nonce, Action action, address to, uint256 price, uint64 endTime)
         public
         view
@@ -474,12 +521,12 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
 
     // --------------------------------------------------------------- internal
 
-    /// @dev Boxes move only while sealed and not waiting on a request, and lose their key when
+    /// @dev Boxes move only while sealed and not waiting on any request, and lose their key when
     ///      they do: the previous holder's key must not open them.
     function _transfer(address from, address to, uint256 tokenId, ebool really) internal override returns (ebool moved) {
         Box storage b = _box(tokenId);
         if (b.state != BoxState.Sealed) revert WrongState(tokenId, b.state);
-        if (b.busy != 0) revert BoxBusy(tokenId);
+        if (b.pending != 0) revert BoxBusy(tokenId);
         moved = super._transfer(from, to, tokenId, really);
         euint256 k = FHE.select(moved, FHE.randEuint256(), _keys[tokenId]);
         FHE.allowThis(k);

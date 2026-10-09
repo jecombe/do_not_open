@@ -53,7 +53,7 @@ async function seal(c: Ctx, key: bigint) {
   await (await c.nft.approve(c.vaultAddress, tokenId)).wait();
   const input = await c.fhevm.createEncryptedInput(c.vaultAddress, c.holder.address).add256(key).encrypt();
   const boxId = await c.vault.tokenCount();
-  const tx = await c.vault.deposit(await c.nft.getAddress(), tokenId, input.handles[0]!, input.inputProof);
+  const tx = await c.vault.deposit(await c.nft.getAddress(), tokenId, input.handles[0]!, [], [], input.inputProof);
   await tx.wait();
   console.log(`  sealed test NFT #${tokenId} in box ${boxId} (tx ${tx.hash})`);
   return boxId;

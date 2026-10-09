@@ -84,7 +84,7 @@ Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
 
 ```bash
 pnpm install
-pnpm test        # generator, chain adapter, API, and 250 contract tests on the FHEVM mock
+pnpm test        # generator, chain adapter, API, and 267 contract tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173: home page; the game is at /app (mock mode, no chain)
 ```
@@ -244,14 +244,17 @@ are in [`docs/FLOWS.md`](docs/FLOWS.md#the-flea-market).
 
 Next to the game, the same encryption hides who holds any NFT. `SealedVault` takes an NFT of
 an allowed collection (a free test collection on test networks) and gives its depositor a box,
-a Confidential ERC-721 of its own whose holder is encrypted. Every box has an encrypted key the
+a Confidential ERC-721 of its own whose holder is encrypted, sent in the same transaction to a
+few decoys so even the depositor is not its obvious holder. Every box has an encrypted key the
 holder's wallet derives from one signature; taking the NFT out, listing it, taking the listing
 down or collecting a sale's ETH is asked with that key, not with an address, so the API's
-relayer can send the request and the holder's address shows on none. A listing is a real
+relayer can send the request and the holder's address shows on none. Requests do not lock the
+box, so a stranger's wrong keys never keep its holder from taking the NFT out, and one whose
+proof never comes expires after a day. A listing is a real
 Seaport 1.5 order with the vault as the seller, which any Seaport marketplace can fill. A box
 can also change hands privately, for a cUSDC price only the two sides read, settled under
 encryption. Public: the deposit, the NFT in each box, Seaport listings, where an NFT or a sale's
-ETH goes. Never public: who holds a box, its key, a private sale's price and whether it went
+ETH goes. Never public: who holds a box (even right after the deposit, with decoys), its key, a private sale's price and whether it went
 through. 2.5% of each sale goes to the treasury. The page is `/vault`; the design, the flows and
 the limits are in [`docs/VAULT.md`](docs/VAULT.md).
 

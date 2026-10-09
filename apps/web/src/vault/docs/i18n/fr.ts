@@ -22,7 +22,7 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.seal": "Sceller un NFT",
   "vaultDocs.seal.p1": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à votre nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.",
-  "vaultDocs.seal.p2": "Tant que la boîte ne bouge pas, son déposant en est le détenteur évident. Le doute vient avec un transfert : dès que des boîtes changent de mains, personne ne peut dire qui détient laquelle.",
+  "vaultDocs.seal.p2": "Le dépôt nomme son déposant, mais il peut aussi envoyer aussitôt la nouvelle boîte, dans la même transaction, à quelques adresses au hasard où chaque transfert ne déplace rien (des leurres, cochés par défaut). Tout le monde voit les transferts, personne ne voit lequel a déplacé la boîte : même le déposant n'en est plus le détenteur évident. Sans leurres, il l'est tant que la boîte ne bouge pas.",
   "vaultDocs.seal.p3": "Pour retrouver vos boîtes, la page lit vos propres reçus et déchiffre, pour vous seul, celles qui vous sont vraiment arrivées. Une signature.",
 
   "vaultDocs.section.key": "La clé de la boîte",
@@ -33,8 +33,8 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.requests": "Demander quelque chose",
   "vaultDocs.requests.p1": "Sortir un NFT, le mettre en vente, retirer une annonce et encaisser l'ETH d'une vente se passent tous de la même façon, en deux temps. Une demande on-chain : le coffre vérifie la clé sous chiffrement. Puis une preuve du service de gestion des clés de Zama que la clé correspondait, que n'importe qui peut rapporter.",
-  "vaultDocs.requests.p2": "La demande se règle de trois façons : faite ; refusée, quand la clé ne correspondait pas (rien ne se passe, rien n'échoue, donc un inconnu n'apprend rien) ; ou manquée, quand la boîte a changé entre-temps (vendue sur Seaport dans l'intervalle, par exemple).",
-  "vaultDocs.requests.p3": "Tant qu'une demande attend sa preuve, la boîte est occupée : elle ne peut ni bouger ni recevoir une autre demande. Cela prend en général quelques secondes.",
+  "vaultDocs.requests.p2": "La demande se règle de quatre façons : faite ; refusée, quand la clé ne correspondait pas (rien ne se passe, rien n'échoue, donc un inconnu n'apprend rien) ; manquée, quand la boîte a changé entre-temps (vendue sur Seaport dans l'intervalle, par exemple) ; ou expirée, quand aucune preuve n'est venue en un jour (rien ne se passe).",
+  "vaultDocs.requests.p3": "Les demandes ne se bloquent pas entre elles : un inconnu qui envoie des demandes avec une mauvaise clé ne peut pas t'empêcher de sortir ton NFT, de le mettre en vente ou d'encaisser. Chacune est décidée pour elle-même, et le compteur mêlé à la clé n'avance que quand une clé correspondait : l'essai d'un inconnu ne gâche rien de ce que tu as préparé. Tant qu'une demande attend sa preuve, la boîte ne peut pas changer de mains ; la page règle d'abord celles qui attendent (n'importe qui le peut), et une demande dont la preuve ne vient jamais peut être expirée par n'importe qui au bout d'un jour. Aucune boîte ne reste bloquée.",
 
   "vaultDocs.section.seaport": "Vendre sur Seaport",
   "vaultDocs.seaport.p1": "Une annonce est un vrai ordre Seaport 1.5, le protocole d'OpenSea, dont le vendeur est le coffre lui-même : votre adresse n'apparaît nulle part. Le coffre valide l'ordre on-chain, il ne signe donc rien, et seuls les ordres qu'il a validés peuvent vendre ses NFT.",
@@ -57,11 +57,11 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.section.leaks": "Ce qui est public, ce qui ne l'est pas",
   "vaultDocs.leaks.public": "Public",
   "vaultDocs.leaks.hidden": "Jamais public",
-  "vaultDocs.leaks.public1": "Qui a scellé quel NFT (le dépôt est un transfert de NFT)",
+  "vaultDocs.leaks.public1": "Qui a scellé quel NFT (le dépôt est un transfert de NFT), et les adresses où sont partis ses leurres",
   "vaultDocs.leaks.public2": "Le NFT dans chaque boîte, son état, son annonce",
   "vaultDocs.leaks.public3": "Les annonces et les achats Seaport, avec le coffre comme vendeur",
   "vaultDocs.leaks.public4": "L'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant",
-  "vaultDocs.leaks.public5": "Qu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée ou manquée",
+  "vaultDocs.leaks.public5": "Qu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée, manquée ou expirée",
   "vaultDocs.leaks.public6": "Les deux adresses d'un transfert ou d'une vente privée",
   "vaultDocs.leaks.hidden1": "Qui détient une boîte",
   "vaultDocs.leaks.hidden2": "La clé de la boîte",

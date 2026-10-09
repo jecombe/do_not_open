@@ -55,7 +55,7 @@ export interface VaultBox {
   listing: VaultListing | null;
   /** Wei a Seaport sale left for the box's key holder, the fee taken. */
   proceeds: bigint;
-  /** A request on it waits for its proof: it cannot move until then. */
+  /** Requests on it wait for their proof: it cannot move until they settle (anyone may settle them). Requests still go in. */
   busy: boolean;
   /** The NFT's own metadata URI. */
   tokenUri: string;
@@ -72,6 +72,13 @@ export interface VaultSale {
   status: VaultSaleStatus;
 }
 
+export interface VaultDepositOptions extends ActionOptions {
+  /** Decoys to send the new box to in the same transaction, 0 to `MAX_DECOYS`: transfers to fresh
+   *  random addresses that move nothing. The deposit names the depositor; with decoys, nobody can
+   *  tell whether the box is still theirs. None when left out. */
+  decoys?: number;
+}
+
 export interface VaultAdapter {
   info(): Promise<VaultInfo>;
   /** Every box, newest first. */
@@ -84,8 +91,8 @@ export interface VaultAdapter {
   /** Test collections only: mints a fresh NFT to the connected wallet. Returns its id. */
   mintTestNft(collection: Address, opts?: ActionOptions): Promise<bigint>;
 
-  /** Puts the wallet's NFT in a new box with the wallet's key. Returns the box id. The deposit is public. */
-  deposit(collection: Address, tokenId: bigint, opts?: ActionOptions): Promise<number>;
+  /** Puts the wallet's NFT in a new box with the wallet's key, sent to `decoys` decoys. Returns the box id. The deposit is public. */
+  deposit(collection: Address, tokenId: bigint, opts?: VaultDepositOptions): Promise<number>;
   /** Takes the NFT out to `to` (any address: a fresh one shows no link). Throws `not-yours`. */
   withdraw(boxId: number, to: Address, opts?: ActionOptions): Promise<void>;
   /** Lists the box's NFT on Seaport for `price` wei until `endTime`, the vault as the seller. Throws `not-yours`. */
@@ -97,7 +104,7 @@ export interface VaultAdapter {
   /** Sends a Seaport sale's ETH to `to`. Returns what was sent. Throws `not-yours`. */
   claim(boxId: number, to: Address, opts?: ActionOptions): Promise<bigint>;
 
-  /** Gives the box to `to`: moves it only if the caller holds it. The receiver sets its key with `adopt`. */
+  /** Gives the box to `to`: moves it only if the caller holds it. The receiver sets its key with `adopt`. Settles the box's waiting requests first. */
   send(boxId: number, to: Address, opts?: ActionOptions): Promise<void>;
   /** Makes the wallet's key the box's: what a received box needs before anything leaves it. A "maybe", like a transfer. */
   adopt(boxId: number, opts?: ActionOptions): Promise<void>;

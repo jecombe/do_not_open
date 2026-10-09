@@ -22,7 +22,7 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.seal": "Sigillare un NFT",
   "vaultDocs.seal.p1": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.",
-  "vaultDocs.seal.p2": "Finché la scatola non si sposta, chi l'ha depositata è il suo detentore ovvio. Il dubbio arriva con un trasferimento: appena le scatole cambiano mano, nessuno può dire chi detiene quale.",
+  "vaultDocs.seal.p2": "Il deposito nomina chi deposita, ma può anche inviare subito la nuova scatola, nella stessa transazione, a qualche indirizzo a caso dove ogni trasferimento non sposta nulla (esche, selezionate di default). Tutti vedono i trasferimenti, nessuno vede quale ha spostato la scatola: nemmeno chi ha depositato ne è più il detentore ovvio. Senza esche, lo è finché la scatola non si sposta.",
   "vaultDocs.seal.p3": "Per ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma.",
 
   "vaultDocs.section.key": "La chiave della scatola",
@@ -33,8 +33,8 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.requests": "Chiedere qualcosa",
   "vaultDocs.requests.p1": "Tirare fuori un NFT, metterlo in vendita, ritirare un annuncio e incassare l'ETH di una vendita funzionano allo stesso modo, in due passi. Una richiesta on-chain: il caveau verifica la chiave sotto cifratura. Poi una prova del servizio di gestione delle chiavi di Zama che la chiave corrispondeva, che chiunque può riportare.",
-  "vaultDocs.requests.p2": "La richiesta si chiude in uno di tre modi: eseguita; rifiutata, quando la chiave non corrispondeva (non succede niente, niente fa revert, quindi un estraneo non scopre nulla); o mancata, quando la scatola è cambiata nel frattempo (venduta su Seaport intanto, per esempio).",
-  "vaultDocs.requests.p3": "Mentre una richiesta aspetta la sua prova la scatola è occupata: non può spostarsi né ricevere un'altra richiesta. Di solito ci vogliono pochi secondi.",
+  "vaultDocs.requests.p2": "La richiesta si chiude in uno di quattro modi: eseguita; rifiutata, quando la chiave non corrispondeva (non succede niente, niente fa revert, quindi un estraneo non scopre nulla); mancata, quando la scatola è cambiata nel frattempo (venduta su Seaport intanto, per esempio); o scaduta, quando nessuna prova è arrivata entro un giorno (non succede niente).",
+  "vaultDocs.requests.p3": "Le richieste non si bloccano a vicenda: un estraneo che invia richieste con una chiave sbagliata non può impedirti di ritirare il tuo NFT, metterlo in vendita o incassare. Ognuna è decisa per conto suo, e il contatore mescolato alla chiave avanza solo quando una chiave corrispondeva: il tentativo di un estraneo non rovina nulla di ciò che hai preparato. Finché una richiesta aspetta la sua prova, la scatola non può cambiare mano; la pagina risolve prima quelle in attesa (chiunque può), e una la cui prova non arriva mai può essere fatta scadere da chiunque dopo un giorno. Nessuna scatola resta bloccata.",
 
   "vaultDocs.section.seaport": "Vendere su Seaport",
   "vaultDocs.seaport.p1": "Un annuncio è un vero ordine Seaport 1.5, il protocollo di OpenSea, il cui venditore è il caveau stesso: il tuo indirizzo non compare da nessuna parte. Il caveau convalida l'ordine on-chain, quindi non firma niente, e solo gli ordini che ha convalidato possono vendere i suoi NFT.",
@@ -57,11 +57,11 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.section.leaks": "Cosa è pubblico, cosa no",
   "vaultDocs.leaks.public": "Pubblico",
   "vaultDocs.leaks.hidden": "Mai pubblico",
-  "vaultDocs.leaks.public1": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT)",
+  "vaultDocs.leaks.public1": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT), e gli indirizzi dove sono andate le sue esche",
   "vaultDocs.leaks.public2": "L'NFT dentro ogni scatola, il suo stato, il suo annuncio",
   "vaultDocs.leaks.public3": "Gli annunci e gli acquisti su Seaport, con il caveau come venditore",
   "vaultDocs.leaks.public4": "L'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo",
-  "vaultDocs.leaks.public5": "Che è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata o mancata",
+  "vaultDocs.leaks.public5": "Che è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata, mancata o scaduta",
   "vaultDocs.leaks.public6": "I due indirizzi di un trasferimento o di una vendita privata",
   "vaultDocs.leaks.hidden1": "Chi detiene una scatola",
   "vaultDocs.leaks.hidden2": "La chiave della scatola",

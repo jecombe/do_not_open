@@ -12,6 +12,8 @@ import { useT } from "./i18n";
 const POLL_MS = 15_000;
 const LIST_DAYS = [1, 7, 30];
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+/** Decoys a deposit sends the new box to, when the box is checked. */
+const DEPOSIT_DECOYS = 3;
 
 /**
  * The sealed vault: NFTs in boxes whose holder is encrypted, sold on Seaport with the vault as
@@ -100,6 +102,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
   const [done, setDone] = useState<string | null>(null);
+  const [decoys, setDecoys] = useState(true);
 
   const readPublic = useCallback(async () => {
     const [i, b] = await Promise.all([vault.info(), vault.boxes()]);
@@ -180,6 +183,15 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
           <h2>{t("vault.wallet.title")}</h2>
           <p className="vault-lede">{t("vault.wallet.lede")}</p>
           {nfts.length === 0 && <p className="vault-empty">{t("vault.wallet.empty")}</p>}
+          {nfts.length > 0 && (
+            <>
+              <label className="vault-check">
+                <input type="checkbox" checked={decoys} onChange={(e) => setDecoys(e.target.checked)} disabled={!!action.busy} />
+                {t("vault.wallet.decoys", { n: DEPOSIT_DECOYS })}
+              </label>
+              <p className="vault-meta">{t(decoys ? "vault.wallet.decoysOn" : "vault.wallet.decoysOff", { n: DEPOSIT_DECOYS })}</p>
+            </>
+          )}
           <ul className="vault-grid">
             {nfts.map((n) => (
               <li key={`${n.collection}:${n.id}`} className="vault-card">
@@ -189,7 +201,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
                   type="button"
                   className="sec-btn sec-btn-small"
                   disabled={!!action.busy}
-                  onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, o), (box) => t("vault.done.deposit", { box }))}
+                  onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, { ...o, decoys: decoys ? DEPOSIT_DECOYS : 0 }), (box) => t("vault.done.deposit", { box }))}
                 >
                   {t("vault.wallet.seal")}
                 </button>

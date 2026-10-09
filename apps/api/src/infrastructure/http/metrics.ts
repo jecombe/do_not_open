@@ -255,7 +255,7 @@ export class Metrics {
         const r = (await summary()).requests;
         for (const action of VAULT_ACTIONS) g.set({ action }, r.placed[action]);
       }, ["action"]);
-      gauge("dno_vault_requests_settled", "Vault requests settled, by outcome (done, refused: a wrong key, stale: the box changed first)", async (g) => {
+      gauge("dno_vault_requests_settled", "Vault requests settled, by outcome (done, refused: a wrong key, stale: the box changed first, expired: no proof within a day)", async (g) => {
         const r = (await summary()).requests;
         for (const status of ["done", "refused", "stale"] as const) g.set({ status }, r.settled[status]);
       }, ["status"]);

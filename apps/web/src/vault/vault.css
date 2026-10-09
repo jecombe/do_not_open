@@ -492,3 +492,17 @@
     font-size: 16px;
   }
 }
+
+/* The deposit's decoys: one checkbox above the wallet's NFTs. */
+.vault-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.vault-check input {
+  accent-color: var(--teal);
+}

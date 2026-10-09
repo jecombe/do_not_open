@@ -23,6 +23,12 @@ export function decoyPlan(to: Address, decoys: number): Send[] {
   return plan;
 }
 
+/** `decoys` sends that move nothing, each to a fresh random address: a deposit's, which has no real one. */
+export function decoySends(decoys: number): Send[] {
+  const count = Math.max(0, Math.min(MAX_DECOYS, Math.floor(decoys)));
+  return Array.from({ length: count }, () => ({ to: randomAddress(), really: false }));
+}
+
 function randomAddress(): Address {
   const bytes = crypto.getRandomValues(new Uint8Array(20));
   return `0x${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;

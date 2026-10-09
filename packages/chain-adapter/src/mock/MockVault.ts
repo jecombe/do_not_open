@@ -1,5 +1,5 @@
 import { ChainError, sameAddress, type ActionOptions, type Address } from "../types";
-import type { VaultAdapter, VaultBox, VaultCollection, VaultInfo, VaultListing, VaultSale } from "../vault";
+import type { VaultAdapter, VaultBox, VaultCollection, VaultDepositOptions, VaultInfo, VaultListing, VaultSale } from "../vault";
 
 /** The vault's address in the demo: it holds the NFTs. */
 export const MOCK_VAULT: Address = "0x0000000000000000000000000000000000ba5e00";
@@ -96,7 +96,8 @@ export class MockVault implements VaultAdapter {
     return this.mintTo(me);
   }
 
-  async deposit(collection: Address, tokenId: bigint, opts?: ActionOptions): Promise<number> {
+  /** Decoys move nothing, so the mock leaves them out. */
+  async deposit(collection: Address, tokenId: bigint, opts?: VaultDepositOptions): Promise<number> {
     const me = this.signer();
     if (!sameAddress(collection, MOCK_VAULT_NFT)) throw revert("CollectionNotAllowed");
     if (this.nfts.get(String(tokenId)) !== me) throw revert("ERC721InsufficientApproval");

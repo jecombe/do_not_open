@@ -286,7 +286,7 @@ function contentsFrom(c: Result): RevealedContents {
 }
 
 const VAULT_ACTIONS = ["withdraw", "list", "unlist", "claim"] as const;
-const VAULT_OUTCOMES: Record<number, "done" | "refused" | "stale"> = { 2: "done", 3: "refused", 4: "stale" };
+const VAULT_OUTCOMES: Record<number, "done" | "refused" | "stale" | "expired"> = { 2: "done", 3: "refused", 4: "stale", 5: "expired" };
 
 /**
  * A sealed vault event, its name prefixed. The addresses that could name a holder (the

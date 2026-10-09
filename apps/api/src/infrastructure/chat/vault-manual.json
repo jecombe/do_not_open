@@ -110,7 +110,7 @@
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.\nUntil the box moves, its depositor is its obvious holder. The doubt comes with a transfer: as soon as boxes change hands, nobody can tell who holds which.\nTo find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature."
+     "text": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.\nThe deposit names its depositor, but it can also send the new box on at once, in the same transaction, to a few random addresses where each transfer moves nothing (decoys, checked by default). Anyone sees the transfers, nobody sees which moved, so even the depositor is no longer the obvious holder. Without decoys, they are until the box moves.\nTo find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature."
     },
     {
      "id": "vault-key-0",
@@ -128,16 +128,22 @@
      "id": "vault-requests-0",
      "section": "vault-requests",
      "heading": null,
-     "text": "Taking an NFT out, listing it, taking a listing down and collecting a sale's ETH all go the same way, in two steps. A request on-chain: the vault checks the key under encryption. Then a proof from Zama's key management service that the key matched, which anyone can bring back.\nThe request settles one of three ways: done; refused, when the key did not match (nothing happens, nothing reverts, so a stranger learns nothing); or missed, when the box changed in between (sold on Seaport meanwhile, say).\nWhile a request waits for its proof the box is busy: it cannot move or take another request. That usually takes a few seconds.\nWhat the parcels are"
+     "text": "Taking an NFT out, listing it, taking a listing down and collecting a sale's ETH all go the same way, in two steps. A request on-chain: the vault checks the key under encryption. Then a proof from Zama's key management service that the key matched, which anyone can bring back.\nThe request settles one of four ways: done; refused, when the key did not match (nothing happens, nothing reverts, so a stranger learns nothing); missed, when the box changed in between (sold on Seaport meanwhile, say); or expired, when no proof came within a day (nothing happens)."
     },
     {
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "At the sealed vault. The relayer carries your request, the key is checked blind, and the NFT goes where you said. Your address appears nowhere. Your page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches. Handed to the relayer The relayer sends the request Compared blind Anyone may ask for that bit Yes or no, signed The relayer sends the proof The NFT is out Play Next step Ciphertext Transaction Value with proof Clear value\nYour page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches.\nHanded to the relayer\nThe relayer sends the request\nCompared blind\nAnyone may ask for that bit\nYes or no, signed"
+     "text": "Requests do not lock each other out: a stranger who sends requests with a wrong key cannot stop you taking your NFT out, listing it or collecting. Each is decided on its own, and the counter the key is mixed with moves on only when a key matched, so a stranger's try spoils nothing you prepared. While any request waits for its proof, the box cannot change hands; the page settles the waiting ones first (anyone may), and one whose proof never comes can be expired by anyone after a day. No box stays stuck.\nWhat the parcels are"
     },
     {
      "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "At the sealed vault. The relayer carries your request, the key is checked blind, and the NFT goes where you said. Your address appears nowhere. Your page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches. Handed to the relayer The relayer sends the request Compared blind Anyone may ask for that bit Yes or no, signed The relayer sends the proof The NFT is out Play Next step Ciphertext Transaction Value with proof Clear value\nYour page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches.\nHanded to the relayer\nThe relayer sends the request\nCompared blind\nAnyone may ask for that bit\nYes or no, signed"
+    },
+    {
+     "id": "vault-requests-3",
      "section": "vault-requests",
      "heading": null,
      "text": "The relayer sends the proof\nThe NFT is out\nCiphertext\nTransaction\nValue with proof\nClear value"
@@ -170,7 +176,7 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Public",
-     "text": "Who sealed which NFT (the deposit is an NFT transfer)\nThe NFT inside each box, its state, its listing\nSeaport listings and purchases, with the vault as the seller\nThe address an NFT or a sale's ETH goes out to, and the amount\nThat a request was made, on which box, for what, and whether it was done, refused or missed\nThe two addresses of a transfer or a private sale"
+     "text": "Who sealed which NFT (the deposit is an NFT transfer), and the addresses its decoys went to\nThe NFT inside each box, its state, its listing\nSeaport listings and purchases, with the vault as the seller\nThe address an NFT or a sale's ETH goes out to, and the amount\nThat a request was made, on which box, for what, and whether it was done, refused, missed or expired\nThe two addresses of a transfer or a private sale"
     },
     {
      "id": "vault-leaks-1",
@@ -349,7 +355,7 @@
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à votre nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.\nTant que la boîte ne bouge pas, son déposant en est le détenteur évident. Le doute vient avec un transfert : dès que des boîtes changent de mains, personne ne peut dire qui détient laquelle.\nPour retrouver vos boîtes, la page lit vos propres reçus et déchiffre, pour vous seul, celles qui vous sont vraiment arrivées. Une signature."
+     "text": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à votre nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.\nLe dépôt nomme son déposant, mais il peut aussi envoyer aussitôt la nouvelle boîte, dans la même transaction, à quelques adresses au hasard où chaque transfert ne déplace rien (des leurres, cochés par défaut). Tout le monde voit les transferts, personne ne voit lequel a déplacé la boîte : même le déposant n'en est plus le détenteur évident. Sans leurres, il l'est tant que la boîte ne bouge pas.\nPour retrouver vos boîtes, la page lit vos propres reçus et déchiffre, pour vous seul, celles qui vous sont vraiment arrivées. Une signature."
     },
     {
      "id": "vault-key-0",
@@ -367,16 +373,22 @@
      "id": "vault-requests-0",
      "section": "vault-requests",
      "heading": null,
-     "text": "Sortir un NFT, le mettre en vente, retirer une annonce et encaisser l'ETH d'une vente se passent tous de la même façon, en deux temps. Une demande on-chain : le coffre vérifie la clé sous chiffrement. Puis une preuve du service de gestion des clés de Zama que la clé correspondait, que n'importe qui peut rapporter.\nLa demande se règle de trois façons : faite ; refusée, quand la clé ne correspondait pas (rien ne se passe, rien n'échoue, donc un inconnu n'apprend rien) ; ou manquée, quand la boîte a changé entre-temps (vendue sur Seaport dans l'intervalle, par exemple).\nTant qu'une demande attend sa preuve, la boîte est occupée : elle ne peut ni bouger ni recevoir une autre demande. Cela prend en général quelques secondes.\nCe que sont les colis"
+     "text": "Sortir un NFT, le mettre en vente, retirer une annonce et encaisser l'ETH d'une vente se passent tous de la même façon, en deux temps. Une demande on-chain : le coffre vérifie la clé sous chiffrement. Puis une preuve du service de gestion des clés de Zama que la clé correspondait, que n'importe qui peut rapporter.\nLa demande se règle de quatre façons : faite ; refusée, quand la clé ne correspondait pas (rien ne se passe, rien n'échoue, donc un inconnu n'apprend rien) ; manquée, quand la boîte a changé entre-temps (vendue sur Seaport dans l'intervalle, par exemple) ; ou expirée, quand aucune preuve n'est venue en un jour (rien ne se passe)."
     },
     {
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "Au coffre scellé. Le relayer porte votre demande, la clé est vérifiée à l'aveugle, et le NFT part où vous l'avez dit. Votre adresse n'apparaît nulle part. Votre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus. Confiée au relayer Le relayer envoie la demande Comparée à l'aveugle N'importe qui peut demander ce bit Oui ou non, signé Le relayer envoie la preuve Le NFT est sorti Lecture Étape suivante Chiffré Transaction Valeur avec preuve Valeur en clair\nVotre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus.\nConfiée au relayer\nLe relayer envoie la demande\nComparée à l'aveugle"
+     "text": "Les demandes ne se bloquent pas entre elles : un inconnu qui envoie des demandes avec une mauvaise clé ne peut pas t'empêcher de sortir ton NFT, de le mettre en vente ou d'encaisser. Chacune est décidée pour elle-même, et le compteur mêlé à la clé n'avance que quand une clé correspondait : l'essai d'un inconnu ne gâche rien de ce que tu as préparé. Tant qu'une demande attend sa preuve, la boîte ne peut pas changer de mains ; la page règle d'abord celles qui attendent (n'importe qui le peut), et une demande dont la preuve ne vient jamais peut être expirée par n'importe qui au bout d'un jour. Aucune boîte ne reste bloquée.\nCe que sont les colis"
     },
     {
      "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Au coffre scellé. Le relayer porte votre demande, la clé est vérifiée à l'aveugle, et le NFT part où vous l'avez dit. Votre adresse n'apparaît nulle part. Votre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus. Confiée au relayer Le relayer envoie la demande Comparée à l'aveugle N'importe qui peut demander ce bit Oui ou non, signé Le relayer envoie la preuve Le NFT est sorti Lecture Étape suivante Chiffré Transaction Valeur avec preuve Valeur en clair\nVotre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus.\nConfiée au relayer\nLe relayer envoie la demande\nComparée à l'aveugle"
+    },
+    {
+     "id": "vault-requests-3",
      "section": "vault-requests",
      "heading": null,
      "text": "N'importe qui peut demander ce bit\nOui ou non, signé\nLe relayer envoie la preuve\nLe NFT est sorti\nChiffré\nTransaction\nValeur avec preuve\nValeur en clair"
@@ -409,7 +421,7 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Public",
-     "text": "Qui a scellé quel NFT (le dépôt est un transfert de NFT)\nLe NFT dans chaque boîte, son état, son annonce\nLes annonces et les achats Seaport, avec le coffre comme vendeur\nL'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant\nQu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée ou manquée\nLes deux adresses d'un transfert ou d'une vente privée"
+     "text": "Qui a scellé quel NFT (le dépôt est un transfert de NFT), et les adresses où sont partis ses leurres\nLe NFT dans chaque boîte, son état, son annonce\nLes annonces et les achats Seaport, avec le coffre comme vendeur\nL'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant\nQu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée, manquée ou expirée\nLes deux adresses d'un transfert ou d'une vente privée"
     },
     {
      "id": "vault-leaks-1",
@@ -588,7 +600,7 @@
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.\nMientras la caja no se mueva, su depositante es su titular evidente. La duda llega con una transferencia: en cuanto las cajas cambian de manos, nadie puede saber quién tiene cuál.\nPara volver a encontrar tus cajas, la página lee tus propios recibos y descifra, solo para ti, cuáles te llegaron de verdad. Una firma."
+     "text": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.\nEl depósito nombra a su depositante, pero también puede enviar enseguida la nueva caja, en la misma transacción, a unas cuantas direcciones al azar donde cada transferencia no mueve nada (señuelos, marcados por defecto). Todo el mundo ve las transferencias, nadie ve cuál movió la caja: ni siquiera el depositante es ya su titular evidente. Sin señuelos, lo es mientras la caja no se mueva.\nPara volver a encontrar tus cajas, la página lee tus propios recibos y descifra, solo para ti, cuáles te llegaron de verdad. Una firma."
     },
     {
      "id": "vault-key-0",
@@ -606,16 +618,22 @@
      "id": "vault-requests-0",
      "section": "vault-requests",
      "heading": null,
-     "text": "Sacar un NFT, ponerlo en venta, retirar un anuncio y cobrar el ETH de una venta funcionan igual, en dos pasos. Una solicitud on-chain: la bóveda comprueba la llave bajo cifrado. Luego una prueba del servicio de gestión de llaves de Zama de que la llave coincidió, que cualquiera puede traer de vuelta.\nLa solicitud se resuelve de una de tres maneras: hecha; rechazada, cuando la llave no coincidió (no pasa nada, nada revierte, así que un desconocido no aprende nada); o fallida, cuando la caja cambió entretanto (vendida en Seaport mientras tanto, por ejemplo).\nMientras una solicitud espera su prueba, la caja está ocupada: no puede moverse ni recibir otra solicitud. Eso suele tardar unos segundos.\nQué son los paquetes"
+     "text": "Sacar un NFT, ponerlo en venta, retirar un anuncio y cobrar el ETH de una venta funcionan igual, en dos pasos. Una solicitud on-chain: la bóveda comprueba la llave bajo cifrado. Luego una prueba del servicio de gestión de llaves de Zama de que la llave coincidió, que cualquiera puede traer de vuelta.\nLa solicitud se resuelve de una de cuatro maneras: hecha; rechazada, cuando la llave no coincidió (no pasa nada, nada revierte, así que un desconocido no aprende nada); fallida, cuando la caja cambió entretanto (vendida en Seaport mientras tanto, por ejemplo); o expirada, cuando no llegó ninguna prueba en un día (no pasa nada)."
     },
     {
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "En la bóveda sellada. El relayer lleva tu petición, la llave se comprueba a ciegas, y el NFT va adonde dijiste. Tu dirección no aparece en ninguna parte. Tu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide. Entregada al relayer El relayer envía la petición Comparada a ciegas Cualquiera puede pedir ese bit Sí o no, firmado El relayer envía la prueba El NFT ha salido Reproducir Siguiente paso Texto cifrado Transacción Valor con prueba Valor en claro\nTu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide.\nEntregada al relayer\nEl relayer envía la petición\nComparada a ciegas\nCualquiera puede pedir ese bit"
+     "text": "Las solicitudes no se bloquean entre sí: un desconocido que envía solicitudes con una llave equivocada no puede impedirte sacar tu NFT, ponerlo en venta o cobrar. Cada una se decide por separado, y el contador que se mezcla con la llave solo avanza cuando una llave coincidió: el intento de un desconocido no estropea nada de lo que preparaste. Mientras una solicitud espera su prueba, la caja no puede cambiar de manos; la página resuelve primero las que esperan (cualquiera puede), y una cuya prueba nunca llega puede expirarla cualquiera al cabo de un día. Ninguna caja se queda bloqueada.\nQué son los paquetes"
     },
     {
      "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "En la bóveda sellada. El relayer lleva tu petición, la llave se comprueba a ciegas, y el NFT va adonde dijiste. Tu dirección no aparece en ninguna parte. Tu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide. Entregada al relayer El relayer envía la petición Comparada a ciegas Cualquiera puede pedir ese bit Sí o no, firmado El relayer envía la prueba El NFT ha salido Reproducir Siguiente paso Texto cifrado Transacción Valor con prueba Valor en claro\nTu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide.\nEntregada al relayer\nEl relayer envía la petición\nComparada a ciegas\nCualquiera puede pedir ese bit"
+    },
+    {
+     "id": "vault-requests-3",
      "section": "vault-requests",
      "heading": null,
      "text": "Sí o no, firmado\nEl relayer envía la prueba\nEl NFT ha salido\nTexto cifrado\nTransacción\nValor con prueba\nValor en claro"
@@ -648,7 +666,7 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Público",
-     "text": "Quién selló qué NFT (el depósito es una transferencia de NFT)\nEl NFT dentro de cada caja, su estado, su anuncio\nLos anuncios y las compras en Seaport, con la bóveda como vendedora\nLa dirección a la que sale un NFT o el ETH de una venta, y el importe\nQue se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó o falló\nLas dos direcciones de una transferencia o de una venta privada"
+     "text": "Quién selló qué NFT (el depósito es una transferencia de NFT), y las direcciones adonde fueron sus señuelos\nEl NFT dentro de cada caja, su estado, su anuncio\nLos anuncios y las compras en Seaport, con la bóveda como vendedora\nLa dirección a la que sale un NFT o el ETH de una venta, y el importe\nQue se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó, falló o expiró\nLas dos direcciones de una transferencia o de una venta privada"
     },
     {
      "id": "vault-leaks-1",
@@ -827,7 +845,7 @@
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.\nFinché la scatola non si sposta, chi l'ha depositata è il suo detentore ovvio. Il dubbio arriva con un trasferimento: appena le scatole cambiano mano, nessuno può dire chi detiene quale.\nPer ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma."
+     "text": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.\nIl deposito nomina chi deposita, ma può anche inviare subito la nuova scatola, nella stessa transazione, a qualche indirizzo a caso dove ogni trasferimento non sposta nulla (esche, selezionate di default). Tutti vedono i trasferimenti, nessuno vede quale ha spostato la scatola: nemmeno chi ha depositato ne è più il detentore ovvio. Senza esche, lo è finché la scatola non si sposta.\nPer ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma."
     },
     {
      "id": "vault-key-0",
@@ -845,16 +863,22 @@
      "id": "vault-requests-0",
      "section": "vault-requests",
      "heading": null,
-     "text": "Tirare fuori un NFT, metterlo in vendita, ritirare un annuncio e incassare l'ETH di una vendita funzionano allo stesso modo, in due passi. Una richiesta on-chain: il caveau verifica la chiave sotto cifratura. Poi una prova del servizio di gestione delle chiavi di Zama che la chiave corrispondeva, che chiunque può riportare.\nLa richiesta si chiude in uno di tre modi: eseguita; rifiutata, quando la chiave non corrispondeva (non succede niente, niente fa revert, quindi un estraneo non scopre nulla); o mancata, quando la scatola è cambiata nel frattempo (venduta su Seaport intanto, per esempio).\nMentre una richiesta aspetta la sua prova la scatola è occupata: non può spostarsi né ricevere un'altra richiesta. Di solito ci vogliono pochi secondi.\nCosa sono i pacchi"
+     "text": "Tirare fuori un NFT, metterlo in vendita, ritirare un annuncio e incassare l'ETH di una vendita funzionano allo stesso modo, in due passi. Una richiesta on-chain: il caveau verifica la chiave sotto cifratura. Poi una prova del servizio di gestione delle chiavi di Zama che la chiave corrispondeva, che chiunque può riportare.\nLa richiesta si chiude in uno di quattro modi: eseguita; rifiutata, quando la chiave non corrispondeva (non succede niente, niente fa revert, quindi un estraneo non scopre nulla); mancata, quando la scatola è cambiata nel frattempo (venduta su Seaport intanto, per esempio); o scaduta, quando nessuna prova è arrivata entro un giorno (non succede niente)."
     },
     {
      "id": "vault-requests-1",
      "section": "vault-requests",
      "heading": null,
-     "text": "Al caveau sigillato. Il relayer porta la tua richiesta, la chiave viene verificata alla cieca, e l'NFT va dove hai detto. Il tuo indirizzo non compare da nessuna parte. La tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più. Affidata al relayer Il relayer invia la richiesta Confrontata alla cieca Chiunque può chiedere quel bit Sì o no, firmato Il relayer invia la prova L'NFT è fuori Riproduci Passo successivo Testo cifrato Transazione Valore con prova Valore in chiaro\nLa tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più.\nAffidata al relayer\nIl relayer invia la richiesta"
+     "text": "Le richieste non si bloccano a vicenda: un estraneo che invia richieste con una chiave sbagliata non può impedirti di ritirare il tuo NFT, metterlo in vendita o incassare. Ognuna è decisa per conto suo, e il contatore mescolato alla chiave avanza solo quando una chiave corrispondeva: il tentativo di un estraneo non rovina nulla di ciò che hai preparato. Finché una richiesta aspetta la sua prova, la scatola non può cambiare mano; la pagina risolve prima quelle in attesa (chiunque può), e una la cui prova non arriva mai può essere fatta scadere da chiunque dopo un giorno. Nessuna scatola resta bloccata.\nCosa sono i pacchi"
     },
     {
      "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Al caveau sigillato. Il relayer porta la tua richiesta, la chiave viene verificata alla cieca, e l'NFT va dove hai detto. Il tuo indirizzo non compare da nessuna parte. La tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più. Affidata al relayer Il relayer invia la richiesta Confrontata alla cieca Chiunque può chiedere quel bit Sì o no, firmato Il relayer invia la prova L'NFT è fuori Riproduci Passo successivo Testo cifrato Transazione Valore con prova Valore in chiaro\nLa tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più.\nAffidata al relayer\nIl relayer invia la richiesta"
+    },
+    {
+     "id": "vault-requests-3",
      "section": "vault-requests",
      "heading": null,
      "text": "Confrontata alla cieca\nChiunque può chiedere quel bit\nSì o no, firmato\nIl relayer invia la prova\nL'NFT è fuori\nTesto cifrato\nTransazione\nValore con prova\nValore in chiaro"
@@ -887,7 +911,7 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Pubblico",
-     "text": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT)\nL'NFT dentro ogni scatola, il suo stato, il suo annuncio\nGli annunci e gli acquisti su Seaport, con il caveau come venditore\nL'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo\nChe è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata o mancata\nI due indirizzi di un trasferimento o di una vendita privata"
+     "text": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT), e gli indirizzi dove sono andate le sue esche\nL'NFT dentro ogni scatola, il suo stato, il suo annuncio\nGli annunci e gli acquisti su Seaport, con il caveau come venditore\nL'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo\nChe è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata, mancata o scaduta\nI due indirizzi di un trasferimento o di una vendita privata"
     },
     {
      "id": "vault-leaks-1",

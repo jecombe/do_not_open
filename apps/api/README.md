@@ -422,7 +422,7 @@ is stored.
 | Route | Answer |
 | --- | --- |
 | `GET /v1/vault/relayer` | `{ data: { address } }`, the relayer's address or null (no key, or no vault in the deployment). Always served, cached 60 s: the vault page asks it to know whether to send from the wallet |
-| `POST /v1/vault/relay` | Only with `VAULT_RELAYER_KEY`. `{ call: "request", args: { boxId, action (0 to 3), to, price (decimal string, wei), endTime, handle, inputProof } }` or `{ call: "finalize", args: { requestId, cleartexts, proof } }` → `{ hash }`. Each call is estimated first, so what the vault would refuse is never sent: `400 { code: "reverted" }` with the contract's reason (`BoxBusy`, `WrongState`, `BadEndTime`...); `400` for a malformed body; `429 { code: "daily-cap" }` past `VAULT_RELAY_PER_DAY` (500) transactions a day on this replica. `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP; bodies up to 64 KB (an input carries its proof) |
+| `POST /v1/vault/relay` | Only with `VAULT_RELAYER_KEY`. `{ call: "request", args: { boxId, action (0 to 3), to, price (decimal string, wei), endTime, handle, inputProof } }` or `{ call: "finalize", args: { requestId, cleartexts, proof } }` → `{ hash }`. Each call is estimated first, so what the vault would refuse is never sent: `400 { code: "reverted" }` with the contract's reason (`WrongState`, `BadEndTime`, `RequestNotPending`...); `400` for a malformed body; `429 { code: "daily-cap" }` past `VAULT_RELAY_PER_DAY` (500) transactions a day on this replica. `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP; bodies up to 64 KB (an input carries its proof) |
 
 The encrypted input must be made for the relayer's address (an input is bound to the address
 that sends it), which the page reads from `GET /v1/vault/relayer`. Replicas share the key, so a
@@ -438,7 +438,7 @@ with the game's `RequestPlaced` or `Claimed`): `VaultDeposited` (box, collection
 id), `VaultWithdrawn`, `VaultListed` / `VaultUnlisted` / `VaultListingExpired` /
 `VaultSoldOnSeaport` (listing, box, price in wei), `VaultClaimed` (the ETH collected),
 `VaultSaleOffered` / `VaultSaleSettled` / `VaultSaleCancelled`, `VaultRequestPlaced` (action) and
-`VaultRequestSettled` (done, refused, stale). The addresses these logs carry (the depositor, a
+`VaultRequestSettled` (done, refused, stale, expired). The addresses these logs carry (the depositor, a
 withdrawal's or a claim's recipient, a private sale's seller and buyer, who sent a request) are
 public on-chain but dropped at decoding: the index keeps what the team counts, never who. They
 stay in `events` only, out of the game's feeds (`activity` leaves `source = 'vault'` out), and are

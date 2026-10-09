@@ -34,7 +34,7 @@ describe("the vault's summary", () => {
     expect(s.boxes).toEqual({ sealed: 1, listed: 0, sold: 0, withdrawn: 1, claimed: 1 });
     expect(s).toMatchObject({ deposits: 3, withdrawals: 1, listings: 1, listed: 0, seaportSales: 1, seaportVolume: String(ETH / 2n) });
     expect(s.privateSales).toEqual({ offered: 1, settled: 0, cancelled: 0, open: 1 });
-    expect(s.requests).toEqual({ placed: { withdraw: 1, list: 1, unlist: 0, claim: 0 }, settled: { done: 1, refused: 0, stale: 0 }, pending: 1 });
+    expect(s.requests).toEqual({ placed: { withdraw: 1, list: 1, unlist: 0, claim: 0 }, settled: { done: 1, refused: 0, stale: 0, expired: 0 }, pending: 1 });
     expect(s.collections).toEqual([
       { collection: NFT, deposits: 2, inVault: 0 },
       { collection: ALICE, deposits: 1, inVault: 1 },

@@ -5,8 +5,8 @@ import type { Address } from "./types";
 export type VaultAction = "withdraw" | "list" | "unlist" | "claim";
 export const VAULT_ACTIONS: readonly VaultAction[] = ["withdraw", "list", "unlist", "claim"];
 
-/** How a vault request ended: done, a wrong key (refused), or a box that changed first (stale). */
-export type VaultRequestOutcome = "done" | "refused" | "stale";
+/** How a vault request ended: done, a wrong key (refused), a box that changed first (stale), or no proof within a day (expired). */
+export type VaultRequestOutcome = "done" | "refused" | "stale" | "expired";
 
 /** Where a vault box stands, as its public events tell (SealedVault.BoxState). */
 export type VaultBoxState = "sealed" | "listed" | "sold" | "withdrawn" | "claimed";
@@ -60,7 +60,7 @@ export function summarizeVault(events: readonly ProtocolEvent[]): VaultSummary {
     seaportVolume: "0",
     claimed: "0",
     privateSales: { offered: 0, settled: 0, cancelled: 0, open: 0 },
-    requests: { placed: zeros(VAULT_ACTIONS), settled: zeros(["done", "refused", "stale"] as const), pending: 0 },
+    requests: { placed: zeros(VAULT_ACTIONS), settled: zeros(["done", "refused", "stale", "expired"] as const), pending: 0 },
     collections: [],
   };
   let volume = 0n;

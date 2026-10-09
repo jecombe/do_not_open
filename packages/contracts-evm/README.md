@@ -105,13 +105,18 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   writes to `DoNotOpen` beyond `gift`.
 - **`SealedVault`** — the sealed vault, a product next to the game: any NFT of a collection the
   owner allows (`setCollection`) goes into a box, a `ConfidentialERC721` of its own ("DO NOT OPEN
-  Vault", `SEALED`) whose holder is encrypted. `deposit(collection, tokenId, key, proof)` pulls
-  the NFT (public) and stores the box's key, a `euint256` nobody may decrypt. Taking the NFT out,
+  Vault", `SEALED`) whose holder is encrypted. `deposit(collection, tokenId, key, to, really,
+  proof)` pulls the NFT (public), stores the box's key, a `euint256` nobody may decrypt, and
+  sends the new box on to each of `to` (at most `MAX_DEPOSIT_SENDS`, 5), for real only where the
+  encrypted `really` is: decoys, so the depositor is no longer its obvious holder. Taking the NFT out,
   listing it on Seaport, taking the listing down and collecting a sale's ETH go through
   `request(boxId, action, to, price, endTime, boundKey, proof)`, where `boundKey` is the key XOR
   `requestHash(...)` of those terms and the box's nonce, so any wallet (the API's relayer) can
   send it; only "the key matched" is made publicly decryptable, and `finalize` (anyone) runs it,
-  or settles it `Refused` or `Stale`. A box with a pending request cannot move (`busy`). A
+  or settles it `Refused` or `Stale`; the nonce moves on only when the key matched. Requests do
+  not lock each other out: a stranger's wrong keys never hold back an exit. A box with a waiting
+  request cannot move (`pending`), and `expire` (anyone, a day after `placedAt`) settles a
+  request whose proof never came (`Expired`). A
   listing is a Seaport 1.5 order with the vault as offerer, validated on-chain (no signature, no
   ERC-1271), Seaport approved for that token only; `sync` (anyone, and every request) marks it
   sold or expired. A transfer gives the box a random key; `setKey` sets the holder's (a "maybe").
@@ -178,10 +183,11 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `WhitelistGifts.claim`, economy (croquettes, rat and its power) | ~740k | ~1.57M |
 | `RatTricks.trick` (first on a box / box already tricked) | ~1.06M / ~881k | ~2.27M / ~2.25M |
 | `RatTricks.sniff` (tricked box, power-1 rebate) | ~1.79M | ~4.27M |
-| `SealedVault.deposit` | ~392k to ~469k | ~83k |
+| `SealedVault.deposit` (no decoy / each decoy more / 5 decoys) | ~450k to ~470k / ~230k / ~1.54M | ~83k / ~363k / ~1.90M (depth ~1.23M) |
 | `SealedVault.request` + `finalize` (withdraw / list / unlist / claim) | ~323k + ~152k / ~349k + ~317k / ~321k + ~153k / ~309k + ~122k | ~191k |
 | `SealedVault.request` + `finalize`, a wrong key (`Refused`) | ~326k + ~101k | ~191k |
 | `SealedVault.sync` (sold / expired) | ~92k / ~51k | 0 |
+| `SealedVault.expire` | ~56k | 0 |
 | `SealedVault.confidentialTransfer` (with a new random key) | ~209k to ~266k | ~338k |
 | `SealedVault.setKey` | ~185k | ~225k |
 | `SealedVault.offerSale` | ~304k to ~324k | ~150k |
@@ -207,7 +213,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 250 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's bytecode)
+pnpm test                 # 267 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's bytecode)
 
 # Local walkthrough
 pnpm chain                # terminal 1

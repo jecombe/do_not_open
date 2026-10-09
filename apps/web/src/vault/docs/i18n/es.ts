@@ -22,7 +22,7 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.seal": "Sellar un NFT",
   "vaultDocs.seal.p1": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.",
-  "vaultDocs.seal.p2": "Mientras la caja no se mueva, su depositante es su titular evidente. La duda llega con una transferencia: en cuanto las cajas cambian de manos, nadie puede saber quién tiene cuál.",
+  "vaultDocs.seal.p2": "El depósito nombra a su depositante, pero también puede enviar enseguida la nueva caja, en la misma transacción, a unas cuantas direcciones al azar donde cada transferencia no mueve nada (señuelos, marcados por defecto). Todo el mundo ve las transferencias, nadie ve cuál movió la caja: ni siquiera el depositante es ya su titular evidente. Sin señuelos, lo es mientras la caja no se mueva.",
   "vaultDocs.seal.p3": "Para volver a encontrar tus cajas, la página lee tus propios recibos y descifra, solo para ti, cuáles te llegaron de verdad. Una firma.",
 
   "vaultDocs.section.key": "La llave de la caja",
@@ -33,8 +33,8 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.requests": "Pedir algo",
   "vaultDocs.requests.p1": "Sacar un NFT, ponerlo en venta, retirar un anuncio y cobrar el ETH de una venta funcionan igual, en dos pasos. Una solicitud on-chain: la bóveda comprueba la llave bajo cifrado. Luego una prueba del servicio de gestión de llaves de Zama de que la llave coincidió, que cualquiera puede traer de vuelta.",
-  "vaultDocs.requests.p2": "La solicitud se resuelve de una de tres maneras: hecha; rechazada, cuando la llave no coincidió (no pasa nada, nada revierte, así que un desconocido no aprende nada); o fallida, cuando la caja cambió entretanto (vendida en Seaport mientras tanto, por ejemplo).",
-  "vaultDocs.requests.p3": "Mientras una solicitud espera su prueba, la caja está ocupada: no puede moverse ni recibir otra solicitud. Eso suele tardar unos segundos.",
+  "vaultDocs.requests.p2": "La solicitud se resuelve de una de cuatro maneras: hecha; rechazada, cuando la llave no coincidió (no pasa nada, nada revierte, así que un desconocido no aprende nada); fallida, cuando la caja cambió entretanto (vendida en Seaport mientras tanto, por ejemplo); o expirada, cuando no llegó ninguna prueba en un día (no pasa nada).",
+  "vaultDocs.requests.p3": "Las solicitudes no se bloquean entre sí: un desconocido que envía solicitudes con una llave equivocada no puede impedirte sacar tu NFT, ponerlo en venta o cobrar. Cada una se decide por separado, y el contador que se mezcla con la llave solo avanza cuando una llave coincidió: el intento de un desconocido no estropea nada de lo que preparaste. Mientras una solicitud espera su prueba, la caja no puede cambiar de manos; la página resuelve primero las que esperan (cualquiera puede), y una cuya prueba nunca llega puede expirarla cualquiera al cabo de un día. Ninguna caja se queda bloqueada.",
 
   "vaultDocs.section.seaport": "Vender en Seaport",
   "vaultDocs.seaport.p1": "Un anuncio es una orden real de Seaport 1.5, el protocolo de OpenSea, cuyo vendedor es la propia bóveda: tu dirección no aparece en ninguna parte. La bóveda valida la orden on-chain, así que no firma nada, y solo las órdenes que ella validó pueden vender sus NFT.",
@@ -57,11 +57,11 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.section.leaks": "Lo que es público y lo que no",
   "vaultDocs.leaks.public": "Público",
   "vaultDocs.leaks.hidden": "Nunca público",
-  "vaultDocs.leaks.public1": "Quién selló qué NFT (el depósito es una transferencia de NFT)",
+  "vaultDocs.leaks.public1": "Quién selló qué NFT (el depósito es una transferencia de NFT), y las direcciones adonde fueron sus señuelos",
   "vaultDocs.leaks.public2": "El NFT dentro de cada caja, su estado, su anuncio",
   "vaultDocs.leaks.public3": "Los anuncios y las compras en Seaport, con la bóveda como vendedora",
   "vaultDocs.leaks.public4": "La dirección a la que sale un NFT o el ETH de una venta, y el importe",
-  "vaultDocs.leaks.public5": "Que se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó o falló",
+  "vaultDocs.leaks.public5": "Que se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó, falló o expiró",
   "vaultDocs.leaks.public6": "Las dos direcciones de una transferencia o de una venta privada",
   "vaultDocs.leaks.hidden1": "Quién tiene una caja",
   "vaultDocs.leaks.hidden2": "La llave de la caja",

@@ -293,12 +293,13 @@ counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (
 | --- | --- | --- | --- | --- |
 | `Box` | `collection`, `tokenId` | `address`, `uint256` | public | The NFT inside; `boxOf[collection][tokenId]` is the box id + 1 while the vault holds it |
 | | `state` | `None`, `Sealed`, `Listed`, `Sold`, `Withdrawn`, `Claimed` | public | `Sold`: the Seaport order filled and the ETH waits; `Withdrawn` and `Claimed` are final |
-| | `listing`, `busy` | `uint256` | public | The listing id + 1 while listed or sold; the pending request's id + 1 (the box cannot move while it is set) |
+| | `listing`, `pending` | `uint256` | public | The listing id + 1 while listed or sold; how many requests wait for their proof (the box cannot move while any does; requests still go in) |
 | | `proceeds` | `uint256` | public | ETH a Seaport sale left for the key's holder, the fee taken |
-| | `nonce` | `uint64` | public | Requests the box has had: part of what each request's key is bound to |
+| | `nonce` | `uint64` | public | Requests on the box whose key matched, plus expired ones: part of what each request's key is bound to. A wrong key does not move it |
 | key (`_keys`) | | `euint256` | the vault only | The holder's 256-bit secret. Nobody is allowed on it, the holder included; random after a transfer that moved the box |
 | `Request` | `boxId`, `action`, `to`, `price`, `endTime` | plain | public | `Withdraw`, `List`, `Unlist` or `Claim`, and its terms |
-| | `status` | `None`, `Pending`, `Done`, `Refused`, `Stale` | public | `Refused`: the key did not match; `Stale`: it matched but the box changed first (or the ETH would not send) |
+| | `placedAt` | `uint64` | public | When it was placed: `expire` is open to anyone `REQUEST_TIMEOUT` (one day) later |
+| | `status` | `None`, `Pending`, `Done`, `Refused`, `Stale`, `Expired` | public | `Refused`: the key did not match; `Stale`: it matched but the box changed first (or the ETH would not send); `Expired`: no proof within a day, nothing ran |
 | | `ok` | `ebool` | publicly decryptable | `(input XOR requestHash) == key` |
 | `Listing` | `boxId`, `price`, `startTime`, `endTime`, `counter`, `orderHash` | plain | public | The Seaport order the vault validated, in wei, at most 180 days |
 | `Sale` | `boxId`, `seller`, `buyer`, `status` | plain | public | A private sale offered to one buyer: `Open`, `Settled`, `Cancelled` |
