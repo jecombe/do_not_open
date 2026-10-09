@@ -410,9 +410,11 @@ Its source is `apps/web/src/docs`.
 The home page, the manual, the studio and the boarding page are prerendered at build time, one file per language
 (`apps/web/scripts/prerender.mts`, run by `pnpm build`), with their title, description,
 canonical, `hreflang`, Open Graph, Twitter and JSON-LD tags; `src/site.ts` holds the site's
-address and paths. `public/robots.txt` and `public/sitemap.xml` list them, and `vercel.json`
+address and paths. The same script writes `sitemap.xml` from their canonical URLs, on every host
+(the bare domain, `game.`, `vault.`) and in every language, plus the vault's page, whose sharing
+tags are in `vault.html` itself; `public/robots.txt` points at it, and `vercel.json`
 serves clean URLs, sends `/fr/app` (and `/es/app`, `/it/app`) to `/app?lang=…`, and marks the testnet site, the game and the render pages `noindex`. The
-social card and app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics
+social cards (`og.png` for the game's manual and the studio, `og-vault.png` for the home page, the project's and the vault's pages and boarding) and app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics
 counts page views without cookies, and every URL is stripped of its query string first
 (`src/analytics.ts`), so a `?box=` link never ties a visitor to a token.
 
