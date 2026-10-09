@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { formatAmount, sameAddress, shortAddress, type ActionOptions, type Address, type VaultAdapter, type VaultBox, type VaultInfo, type VaultSale } from "@dno/chain-adapter";
+import { formatAmount, MAX_DECOYS, sameAddress, shortAddress, type ActionOptions, type Address, type VaultAdapter, type VaultBox, type VaultInfo, type VaultSale } from "@dno/chain-adapter";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { useLocale } from "../i18n/locale";
 import { DISCORD } from "../links";
@@ -12,8 +12,8 @@ import { useT } from "./i18n";
 const POLL_MS = 15_000;
 const LIST_DAYS = [1, 7, 30];
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-/** Decoys a deposit sends the new box to, when the box is checked. */
-const DEPOSIT_DECOYS = 3;
+/** Decoys a deposit sends the new box to unless the holder picks another count (0 to MAX_DECOYS). */
+const DEFAULT_DECOYS = 3;
 
 /**
  * The sealed vault: NFTs in boxes whose holder is encrypted, sold on Seaport with the vault as
@@ -102,7 +102,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
   const [done, setDone] = useState<string | null>(null);
-  const [decoys, setDecoys] = useState(true);
+  const [decoys, setDecoys] = useState(DEFAULT_DECOYS);
 
   const readPublic = useCallback(async () => {
     const [i, b] = await Promise.all([vault.info(), vault.boxes()]);
@@ -185,11 +185,15 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
           {nfts.length === 0 && <p className="vault-empty">{t("vault.wallet.empty")}</p>}
           {nfts.length > 0 && (
             <>
-              <label className="vault-check">
-                <input type="checkbox" checked={decoys} onChange={(e) => setDecoys(e.target.checked)} disabled={!!action.busy} />
-                {t("vault.wallet.decoys", { n: DEPOSIT_DECOYS })}
-              </label>
-              <p className="vault-meta">{t(decoys ? "vault.wallet.decoysOn" : "vault.wallet.decoysOff", { n: DEPOSIT_DECOYS })}</p>
+              <div className="vault-decoys" role="radiogroup" aria-label={t("vault.wallet.decoys")}>
+                <span>{t("vault.wallet.decoys")}</span>
+                {Array.from({ length: MAX_DECOYS + 1 }, (_, n) => (
+                  <button key={n} type="button" role="radio" aria-checked={decoys === n} className={decoys === n ? "on" : undefined} disabled={!!action.busy} onClick={() => setDecoys(n)}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <p className="vault-meta">{decoys > 0 ? t("vault.wallet.decoysOn", { n: decoys }) : t("vault.wallet.decoysOff")}</p>
             </>
           )}
           <ul className="vault-grid">
@@ -201,7 +205,7 @@ function VaultDesk({ vault, account, demo }: { vault: VaultAdapter; account: Add
                   type="button"
                   className="sec-btn sec-btn-small"
                   disabled={!!action.busy}
-                  onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, { ...o, decoys: decoys ? DEPOSIT_DECOYS : 0 }), (box) => t("vault.done.deposit", { box }))}
+                  onClick={() => void act("deposit", (o) => vault.deposit(n.collection, n.id, { ...o, decoys }), (box) => t("vault.done.deposit", { box }))}
                 >
                   {t("vault.wallet.seal")}
                 </button>

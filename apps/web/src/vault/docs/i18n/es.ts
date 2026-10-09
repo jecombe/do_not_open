@@ -22,7 +22,7 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.seal": "Sellar un NFT",
   "vaultDocs.seal.p1": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.",
-  "vaultDocs.seal.p2": "El depósito nombra a su depositante, pero también puede enviar enseguida la nueva caja, en la misma transacción, a unas cuantas direcciones al azar donde cada transferencia no mueve nada (señuelos, marcados por defecto). Todo el mundo ve las transferencias, nadie ve cuál movió la caja: ni siquiera el depositante es ya su titular evidente. Sin señuelos, lo es mientras la caja no se mueva.",
+  "vaultDocs.seal.p2": "El depósito nombra a su depositante, pero también puede enviar enseguida la nueva caja, en la misma transacción, a unas cuantas direcciones al azar donde cada transferencia no mueve nada (señuelos: eliges cuántos, de 0 a 5, 3 por defecto). Todo el mundo ve las transferencias, nadie ve cuál movió la caja: ni siquiera el depositante es ya su titular evidente. Sin señuelos, lo es mientras la caja no se mueva.",
   "vaultDocs.seal.p3": "Para volver a encontrar tus cajas, la página lee tus propios recibos y descifra, solo para ti, cuáles te llegaron de verdad. Una firma.",
 
   "vaultDocs.section.key": "La llave de la caja",

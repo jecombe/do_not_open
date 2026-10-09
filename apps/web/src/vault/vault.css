@@ -493,16 +493,47 @@
   }
 }
 
-/* The deposit's decoys: one checkbox above the wallet's NFTs. */
-.vault-check {
+/* The deposit's decoys: how many, 0 to 5, above the wallet's NFTs. */
+.vault-decoys {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin: 12px 0 4px;
+}
+
+.vault-decoys span {
+  margin-right: 6px;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-decoys button {
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel);
   color: var(--text);
+  font: 500 13px var(--mono);
   cursor: pointer;
 }
 
-.vault-check input {
-  accent-color: var(--teal);
+.vault-decoys button.on {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+}
+
+.vault-decoys button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* On a phone the label takes its own line, so the six counts stay on one. */
+@media (max-width: 420px) {
+  .vault-decoys span {
+    flex-basis: 100%;
+  }
 }

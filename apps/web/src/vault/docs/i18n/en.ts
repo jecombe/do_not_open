@@ -21,7 +21,7 @@ export const vaultDocsEn = {
 
   "vaultDocs.section.seal": "Sealing an NFT",
   "vaultDocs.seal.p1": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.",
-  "vaultDocs.seal.p2": "The deposit names its depositor, but it can also send the new box on at once, in the same transaction, to a few random addresses where each transfer moves nothing (decoys, checked by default). Anyone sees the transfers, nobody sees which moved, so even the depositor is no longer the obvious holder. Without decoys, they are until the box moves.",
+  "vaultDocs.seal.p2": "The deposit names its depositor, but it can also send the new box on at once, in the same transaction, to a few random addresses where each transfer moves nothing (decoys: you pick how many, 0 to 5, 3 by default). Anyone sees the transfers, nobody sees which moved, so even the depositor is no longer the obvious holder. Without decoys, they are until the box moves.",
   "vaultDocs.seal.p3": "To find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature.",
 
   "vaultDocs.section.key": "The box's key",

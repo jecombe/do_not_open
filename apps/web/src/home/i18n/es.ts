@@ -24,7 +24,7 @@ export const homeEs: Record<HomeKey, string> = {
   "home.leaks.title": "Lo que se ve y lo que no",
   "home.leaks.public": "Público",
   "home.leaks.hidden": "Nunca público",
-  "home.leaks.public1": "Quién selló qué NFT: el depósito es una transferencia de NFT",
+  "home.leaks.public1": "Quién selló qué NFT: el depósito es una transferencia de NFT. No si sigue teniendo la caja, una vez que salieron señuelos con ella",
   "home.leaks.public2": "El NFT de cada caja, y su anuncio en Seaport",
   "home.leaks.public3": "La dirección a la que sale un NFT o el ETH de una venta",
   "home.leaks.hidden1": "Quién tiene una caja",

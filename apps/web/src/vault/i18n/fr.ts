@@ -27,8 +27,8 @@ export const vaultFr: Record<VaultKey, string> = {
   "vault.wallet.mint": "Minter un NFT de test gratuit",
   "vault.wallet.seal": "Le sceller",
   "vault.wallet.decoysOff": "Sans leurres, tu es le détenteur évident de la boîte tant qu'elle ne bouge pas.",
-  "vault.wallet.decoysOn": "Dans la même transaction, la nouvelle boîte est envoyée à {n} adresses au hasard, chaque transfert ne déplaçant rien. Ton dépôt reste public, mais personne ne peut dire si la boîte est encore à toi. Plus de gas, aucun autre coût.",
-  "vault.wallet.decoys": "Le sceller avec {n} leurres",
+  "vault.wallet.decoysOn": "Dans la même transaction, la nouvelle boîte est envoyée à {n} adresses au hasard, chaque transfert ne déplaçant rien. Ton dépôt reste public, mais personne ne peut dire si la boîte est encore à toi. Plus il y a de leurres, plus le doute est grand, et plus il faut de gas (environ 230 000 chacun).",
+  "vault.wallet.decoys": "Leurres",
   "vault.nft": "{collection} #{id}",
 
   "vault.mine.title": "Tes boîtes",

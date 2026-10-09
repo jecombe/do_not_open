@@ -133,8 +133,8 @@ sequenceDiagram
 
 The deposit is public: it is a plain NFT transfer, and `Deposited` names the depositor. What
 happens to the box next is not, and it can start in the same transaction: `deposit` sends the
-new box on to each of `to`, for real only where the encrypted `really` is true. The page sends
-three decoys by default (`decoys` in the adapter, `decoySends`): fresh random addresses nobody
+new box on to each of `to`, for real only where the encrypted `really` is true. The page lets
+the holder pick how many decoys, 0 to 5, three by default (`decoys` in the adapter, `decoySends`): fresh random addresses nobody
 holds a key of, `really` false for each, so the depositor keeps the box, but to anyone else each
 transfer is a "maybe" and the depositor is no longer its obvious holder. One of them may be real
 (a gift, or the holder's own fresh wallet): the box then moves and gets a random key, as on any

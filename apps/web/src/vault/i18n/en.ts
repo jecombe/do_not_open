@@ -26,8 +26,8 @@ export const vaultEn = {
   "vault.wallet.mint": "Mint a free test NFT",
   "vault.wallet.seal": "Seal it",
   "vault.wallet.decoysOff": "Without decoys, you are the obvious holder of the box until it moves.",
-  "vault.wallet.decoysOn": "In the same transaction, the new box is sent to {n} random addresses, each transfer moving nothing. Your deposit stays public, but nobody can tell whether the box is still yours. More gas, no other cost.",
-  "vault.wallet.decoys": "Seal it with {n} decoys",
+  "vault.wallet.decoysOn": "In the same transaction, the new box is sent to {n} random addresses, each transfer moving nothing. Your deposit stays public, but nobody can tell whether the box is still yours. The more decoys, the more doubt, and the more gas (about 230,000 each).",
+  "vault.wallet.decoys": "Decoys",
   "vault.nft": "{collection} #{id}",
 
   "vault.mine.title": "Your boxes",

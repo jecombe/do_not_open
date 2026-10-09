@@ -27,8 +27,8 @@ export const vaultIt: Record<VaultKey, string> = {
   "vault.wallet.mint": "Conia un NFT di prova gratis",
   "vault.wallet.seal": "Sigillalo",
   "vault.wallet.decoysOff": "Senza esche, sei il detentore ovvio della scatola finché non si muove.",
-  "vault.wallet.decoysOn": "Nella stessa transazione, la nuova scatola viene inviata a {n} indirizzi a caso, e nessuno di questi trasferimenti sposta nulla. Il tuo deposito resta pubblico, ma nessuno può dire se la scatola è ancora tua. Più gas, nessun altro costo.",
-  "vault.wallet.decoys": "Sigillalo con {n} esche",
+  "vault.wallet.decoysOn": "Nella stessa transazione, la nuova scatola viene inviata a {n} indirizzi a caso, e nessuno di questi trasferimenti sposta nulla. Il tuo deposito resta pubblico, ma nessuno può dire se la scatola è ancora tua. Più esche, più dubbio, e più gas (circa 230.000 ciascuna).",
+  "vault.wallet.decoys": "Esche",
   "vault.nft": "{collection} #{id}",
 
   "vault.mine.title": "Le tue scatole",

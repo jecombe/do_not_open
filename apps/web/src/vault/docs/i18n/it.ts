@@ -22,7 +22,7 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.seal": "Sigillare un NFT",
   "vaultDocs.seal.p1": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.",
-  "vaultDocs.seal.p2": "Il deposito nomina chi deposita, ma può anche inviare subito la nuova scatola, nella stessa transazione, a qualche indirizzo a caso dove ogni trasferimento non sposta nulla (esche, selezionate di default). Tutti vedono i trasferimenti, nessuno vede quale ha spostato la scatola: nemmeno chi ha depositato ne è più il detentore ovvio. Senza esche, lo è finché la scatola non si sposta.",
+  "vaultDocs.seal.p2": "Il deposito nomina chi deposita, ma può anche inviare subito la nuova scatola, nella stessa transazione, a qualche indirizzo a caso dove ogni trasferimento non sposta nulla (esche: scegli quante, da 0 a 5, 3 di default). Tutti vedono i trasferimenti, nessuno vede quale ha spostato la scatola: nemmeno chi ha depositato ne è più il detentore ovvio. Senza esche, lo è finché la scatola non si sposta.",
   "vaultDocs.seal.p3": "Per ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma.",
 
   "vaultDocs.section.key": "La chiave della scatola",

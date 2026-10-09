@@ -23,7 +23,7 @@ export const homeEn = {
   "home.leaks.title": "What shows, what doesn't",
   "home.leaks.public": "Public",
   "home.leaks.hidden": "Never public",
-  "home.leaks.public1": "Who sealed which NFT: the deposit is an NFT transfer",
+  "home.leaks.public1": "Who sealed which NFT: the deposit is an NFT transfer. Not whether they still hold the box, once decoys went with it",
   "home.leaks.public2": "The NFT in each box, and its Seaport listing",
   "home.leaks.public3": "The address an NFT or a sale's ETH goes out to",
   "home.leaks.hidden1": "Who holds a box",

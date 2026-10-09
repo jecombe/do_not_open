@@ -27,8 +27,8 @@ export const vaultEs: Record<VaultKey, string> = {
   "vault.wallet.mint": "Mintear un NFT de prueba gratis",
   "vault.wallet.seal": "Sellarlo",
   "vault.wallet.decoysOff": "Sin señuelos, eres el titular evidente de la caja mientras no se mueva.",
-  "vault.wallet.decoysOn": "En la misma transacción, la nueva caja se envía a {n} direcciones al azar, y ninguna de esas transferencias mueve nada. Tu depósito sigue siendo público, pero nadie puede saber si la caja sigue siendo tuya. Más gas, ningún otro coste.",
-  "vault.wallet.decoys": "Sellarlo con {n} señuelos",
+  "vault.wallet.decoysOn": "En la misma transacción, la nueva caja se envía a {n} direcciones al azar, y ninguna de esas transferencias mueve nada. Tu depósito sigue siendo público, pero nadie puede saber si la caja sigue siendo tuya. Cuantos más señuelos, más duda, y más gas (unos 230.000 cada uno).",
+  "vault.wallet.decoys": "Señuelos",
   "vault.nft": "{collection} #{id}",
 
   "vault.mine.title": "Tus cajas",
