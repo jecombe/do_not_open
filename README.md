@@ -1,56 +1,97 @@
+<div align="center">
+
 # DO NOT OPEN
 
-A confidential NFT collection on the Zama Protocol (FHEVM). 10,000 sealed boxes. Each
-holds a cat whose state and traits are drawn and stored encrypted on-chain, so nobody,
-the deployer included, knows what is inside until a box is observed.
+**Confidential NFTs on the Zama Protocol (FHEVM): owners, balances and contents encrypted on-chain.**
 
-Who holds which box, how many boxes an account holds, and how many boxes were sold are
-encrypted too: `DoNotOpen` is a Confidential ERC-721, and only milestones of the sale are
-announced. The sale stops at 9,000 boxes; the last 1,000 are kept for the mainnet
-whitelist's gifts, minted free by `WhitelistGifts` and never sold. See
+[![Site](https://img.shields.io/badge/site-do--not--open.app-111?style=flat-square)](https://do-not-open.app)
+[![Game](https://img.shields.io/badge/game-game.do--not--open.app-e8590c?style=flat-square)](https://game.do-not-open.app)
+[![Vault](https://img.shields.io/badge/vault-vault.do--not--open.app-1c7ed6?style=flat-square)](https://vault.do-not-open.app)
+[![Network](https://img.shields.io/badge/network-Sepolia-6741d9?style=flat-square)](#on-sepolia)
+[![Audit](https://img.shields.io/badge/audit-not%20audited-c92a2a?style=flat-square)](docs/AUDIT_CHECKLIST.md)
+
+[Overview](#overview) · [The game](#the-game) · [The sealed vault](#the-sealed-vault) ·
+[Run it](#run-it) · [On Sepolia](#on-sepolia) · [All the docs](#all-the-docs)
+
+</div>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🐈 The game
+
+10,000 sealed boxes, each with a cat nobody has seen, the deployer included. Shake them, feed
+them, duel them, open them. Who holds what is encrypted.
+
+**[Play](https://game.do-not-open.app)** · [Manual](https://game.do-not-open.app/docs) ·
+**[Developer docs → `docs/GAME.md`](docs/GAME.md)**
+
+</td>
+<td width="50%" valign="top">
+
+### 🔐 The sealed vault
+
+Put any NFT in a box whose holder is encrypted. Take it out, sell it on Seaport, accept an
+offer, or lend its rights, without your address showing.
+
+**[Open the vault](https://vault.do-not-open.app)** · [Docs](https://vault.do-not-open.app/docs) ·
+**[Developer docs → `docs/VAULT.md`](docs/VAULT.md)**
+
+</td>
+</tr>
+</table>
+
+## Overview
+
+DO NOT OPEN is two products on one foundation: a **Confidential ERC-721**
+(`ConfidentialERC721`), an NFT whose owners are encrypted with Zama's fully homomorphic
+encryption. Nothing on it exposes an owner, transfers never revert on ownership, and an
+account finds its own tokens by decrypting its own transfer receipts. See
 [`docs/HIDDEN_OWNERS.md`](docs/HIDDEN_OWNERS.md).
 
-Prices are in USDC and paid in cUSDC, Zama's confidential USDC, so no amount is public;
-the app shields plain USDC first when needed. The app's bureau de change swaps between ETH,
-USDC, cUSDC, CROQ and cCROQ in one form, with the route, fees and slippage shown before signing. Holders pet their cats (affection, which can turn the accessory golden) and feed
-them croquettes (CROQ), a game currency with encrypted balances. The cat eats every
-croquette and puts on a weight nobody can read; when the box is opened, the cat is
-weighed in public. The heavier it is, the rarer its build, and past a tolerance of its
-own the cat is sick: an ultra-rare trophy.
+- **[The game](#the-game)** builds a collection on it: 10,000 boxes whose cats, owners,
+  balances and sale count are encrypted.
+- **[The sealed vault](#the-sealed-vault)** builds a second one that wraps any NFT, so its
+  holder disappears from the chain until they take it out.
 
 Target: Ethereum Sepolia, then mainnet, then Solana once Zama ships SVM support.
 
 Live at [do-not-open.app](https://do-not-open.app) (on Sepolia until the mainnet launch): the
-project's page and docs there, the game on [game.do-not-open.app](https://game.do-not-open.app),
+home page and the project's docs there, the game on [game.do-not-open.app](https://game.do-not-open.app),
 the sealed vault on [vault.do-not-open.app](https://vault.do-not-open.app), each with its docs at
 `/docs`. The same on [testnet.do-not-open.app](https://testnet.do-not-open.app) (`game.testnet.`,
 `vault.testnet.`); the API answers at `api.do-not-open.app`. Domains and DNS in
 [`deploy/README.md`](deploy/README.md#domains).
 
-## Status
+### Every reveal has the same shape
 
-| Phase | Scope                                                                 | State       |
-| ----- | --------------------------------------------------------------------- | ----------- |
-| 1     | Game spec, generator, art direction, sealed box + shake, five cats    | **Done**    |
-| 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, CLI demo | **Done**, live on Sepolia |
-| 3     | duel, entangle, feed, paidShake and their 3D effects                  | **Done**, live on Sepolia |
-| 4     | EVM chain adapter, full frontend on Sepolia, offscreen metadata render| **Done**    |
-| 5     | Full docs, Solana porting map, audit checklist                        | **Done**    |
-| CROQ  | Croquette economy: CROQ + cCROQ, Pantry, a CROQ-only Uniswap V3 pool locked for good, 10,000 boxes | **Done**, live on Sepolia |
-| Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done**, live on Sepolia |
+There is no decryption callback in the current protocol, so whatever is revealed (a cat, a
+vault request, a sale) goes the same way, and nothing reverts on ownership: a request by
+someone who does not hold the token settles `Refused` and decrypts to zeros.
+
+```mermaid
+flowchart LR
+  req["1. request on-chain<br/>checked under encryption"] --> dec["2. public decryption<br/>Zama relayer + KMS"]
+  dec --> fin["3. finalize(proof)<br/>anyone may send it"]
+```
+
+The game's version is drawn step by step in [`docs/GAME.md`](docs/GAME.md#how-a-box-is-opened),
+the vault's in [`docs/VAULT.md`](docs/VAULT.md#a-request-take-out-list-take-down-collect-accept-an-offer-delegate).
+The protocol's details are in [`docs/ZAMA_NOTES.md`](docs/ZAMA_NOTES.md).
+
+### Status of the platform
+
+| Part | Scope | State |
+| --- | --- | --- |
+| Chain adapter and frontend | EVM chain adapter, full frontend on Sepolia, offscreen metadata render | **Done** |
+| Docs | Full docs, Solana porting map, audit checklist | **Done** |
 | Hidden owners | Confidential ERC-721, hidden mint quantity, sale milestones, game actions checked under encryption | **Done**, live on Sepolia |
-| Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
-| Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing on mainnet, filed by the API (`POST /v1/terms`); on Sepolia a notice says what a redeployment keeps instead | **Done** |
-| Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
-| Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
-| Rat powers | Each rat draws a secret power at its mint (1 cheaper sniffs, 2 blocks one trait, 3 all five); a rat set on a box for 3 days shields it from strangers or jams its holder, decided under encryption (`RatTricks`, the collection's shake guard) | **Live** on Sepolia since 2026-10-08 |
-| Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Live** on Sepolia since 2026-10-08 |
-| Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 15) | **Done** |
-| Whitelist gifts | Each seated wallet collects its class's gift once (`WhitelistGifts`): an encrypted draw of cCROQ, a box minted free out of the 1,000 the sale leaves (`DoNotOpen.gift`), a free rat (`Rats.gift`), against a Merkle root of (wallet, tier) | **Done**, live on Sepolia since 2026-10-08 (root not set yet) |
 | Boarding page | `/apply`, in the home page's dark theme: a sealed box behind its encryption shield (probes cannot read the passenger; once boarded, the player sees their own handle), Sign in with X, five quick tasks on X (declared), the mainnet list's points, a wallet bonus and a referral link with a printable boarding pass; linked from the home page's bar (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
-| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, sold to a buyer's WETH offer the holder accepts (`VaultOffers`, also an on-chain offer board), or sold privately for an encrypted cUSDC price; meanwhile the NFT's rights (airdrops, token gates) lent to a wallet through delegate.xyz; every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs | **Live** on Sepolia since 2026-10-08, redeployed twice on 2026-10-09: requests no longer lock a box and a deposit sends decoys (block 11876345), then accepted offers and delegation (`SealedVault` block 11876575, `VaultOffers` 11876574, its test NFT kept) |
 
-## Layout
+The game's rows are [under the game](#status-of-the-game), the vault's [under the vault](#status-of-the-vault).
+
+### Layout
 
 ```mermaid
 flowchart LR
@@ -69,199 +110,142 @@ flowchart LR
   evm -- logs --> api -- "reads (VITE_API_URL)" --> adapter
 ```
 
+| Package | What it is |
+| --- | --- |
+| [`packages/game-spec`](packages/game-spec/README.md) | Every game number in one JSON file: traits, odds, score, economy |
+| `packages/generator` | A seed turned into a cat or a box spec, plain JSON |
+| `packages/scene` | three.js builders for cats, boxes and rats, no React |
+| [`packages/contracts-evm`](packages/contracts-evm/README.md) | The contracts, the game's and the vault's, with their tests and deploy |
+| [`packages/chain-adapter`](packages/chain-adapter/README.md) | The `ChainAdapter` interface, its mock and its EVM implementation |
+| `apps/web` | The site: home page, game, studio, vault, boarding, docs |
+| [`apps/api`](apps/api/README.md) | The indexer and the HTTP API |
+| [`apps/admin`](apps/admin/README.md) | The team's password-protected admin site |
+
 The backend, `apps/api`, indexes the protocol into Postgres and serves the app's reads, so
 visitors do not each hit a public RPC; it runs on its own server (one indexer and several API
-replicas behind Caddy, load-tested with k6 on every API pull request into `main`), the site stays on Vercel.
-See [`apps/api/README.md`](apps/api/README.md), [`deploy/README.md`](deploy/README.md) and
-[`loadtest/README.md`](loadtest/README.md). The team follows the players and the game on a
-password-protected admin site, `apps/admin` ([`apps/admin/README.md`](apps/admin/README.md)).
+replicas behind Caddy, load-tested with k6 on every API pull request into `main`), the site stays
+on Vercel. See [`deploy/README.md`](deploy/README.md) and [`loadtest/README.md`](loadtest/README.md).
 
-Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific:
-`contracts-evm` and the adapter implementations. The frontend only ever talks to the
-`ChainAdapter` interface: `apps/web` does not depend on ethers, viem or the Relayer SDK.
+Portable: `game-spec`, `generator`, `scene`, `apps/web`. Chain-specific: `contracts-evm` and the
+adapter implementations. The frontend only ever talks to the `ChainAdapter` interface: `apps/web`
+does not depend on ethers, viem or the Relayer SDK.
 
-## Run it
+### Run it
 
 ```bash
 pnpm install
 pnpm test        # generator, chain adapter, API, and 285 contract tests on the FHEVM mock
 pnpm typecheck
-pnpm dev         # http://localhost:5173: home page; the game is at /app (mock mode, no chain)
+pnpm dev         # http://localhost:5173: home page; the game at /app, the vault at /vault (mock mode, no chain)
 ```
 
-The same app on Sepolia, against Zama's relayer. The hidden-owner contracts are not
-deployed there yet: until `pnpm deploy:sepolia` runs, this mode points at the previous
-version (the table below), which the current adapter does not speak.
+Against Sepolia and Zama's relayer: `VITE_CHAIN_MODE=sepolia pnpm dev`, or `?chain=sepolia` in
+the URL. What a player needs there is in [`docs/GAME.md`](docs/GAME.md#play-on-sepolia), the
+vault's local walkthrough in [`docs/VAULT.md`](docs/VAULT.md#run-it).
 
-```bash
-VITE_CHAIN_MODE=sepolia pnpm dev     # or open http://localhost:5173/app?chain=sepolia
-```
+Requires Node 20+ and pnpm 9. Copy `.env.example` to `.env` when a phase needs secrets. No private
+key is ever committed.
 
-You need a browser wallet with a little Sepolia ETH for gas. Prices are in Zama's test USDC
-on Sepolia; the wallet slip has a button that mints some, and the bureau de change (in the
-menu) shields it as cUSDC, buys it with ETH or trades it for croquettes. On Sepolia the
-bureau's "Testnet faucet" card mints 100 test USDC, then turns the counter to shielding it,
-with links to Google's Sepolia ETH faucet for gas and to Zama's test token addresses. The
-notice shown when the game first opens on Sepolia (contracts can be redeployed, what is kept)
-points to it.
-Who holds a box is encrypted, so the app finds yours from your own transfer receipts: one
-decryption signature per visit ("Show my boxes"). `?chain=mock` and `?chain=sepolia`
-switch modes without restarting. The menu does the same under the languages: ETH / SOL
-(Solana stays disabled until Zama ships SVM support) and Testnet / Mainnet: Testnet reloads
-the page with `?chain=sepolia`, Mainnet stays disabled until a mainnet deployment exists
-(an old `?chain=mainnet` link lands on Sepolia).
+<details>
+<summary><b>The site: hosts, prerendering, sharing tags, analytics</b></summary>
 
-Token metadata is served live by the API (`GET /metadata/:id`); its images are stored for
-good on Arweave, for free, as soon as a box is minted or a cat opened (see
-[`apps/api/README.md`](apps/api/README.md#token-images-on-arweave)). Offline render (JSON, a
-3D render and an SVG fallback per token):
+The site opens on the home page at `/` (source `apps/web/src/secure`): the sealed vault first, in a
+dark, security-minded theme, and the game as a small corner at the end. Its bar's "Docs" leads
+straight to the vault's docs (`/docs` on `vault.`, source `apps/web/src/vault/docs`), which share
+that theme with the project's docs (`/docs` on the bare domain, source `apps/web/src/project`): both
+are laid out by `apps/web/src/docs/DocShell.tsx` and styled by `apps/web/src/secure/docs.css`. The
+game carries its own manual in the game's look ([more](docs/GAME.md#the-manual)).
 
-```bash
-pnpm --filter @dno/web render:metadata                    # fixtures
-pnpm --filter @dno/web render:metadata --source sepolia   # every minted token
-```
+The home page, the manual, the studio and the boarding page are prerendered at build time, one file
+per language (`apps/web/scripts/prerender.mts`, run by `pnpm build`), with their title,
+description, canonical, `hreflang`, Open Graph, Twitter and JSON-LD tags; `src/site.ts` holds the
+site's address and paths. The same script writes `sitemap.xml` from their canonical URLs, on every
+host (the bare domain, `game.`, `vault.`) and in every language, plus the vault's page, whose
+sharing tags are in `vault.html` itself; `public/robots.txt` points at it, and `vercel.json` serves
+clean URLs, sends `/fr/app` (and `/es/app`, `/it/app`) to `/app?lang=…`, and marks the testnet
+site, the game and the render pages `noindex`. The social cards (`og.png` for the game's manual and
+the studio, `og-vault.png` for the home page, the project's and the vault's pages and boarding) and
+app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics counts page views
+without cookies, and every URL is stripped of its query string first (`src/analytics.ts`), so a
+`?box=` link never ties a visitor to a token.
 
-Requires Node 20+ and pnpm 9. Copy `.env.example` to `.env` when a phase needs secrets.
-No private key is ever committed.
+</details>
 
-## How a box is opened
+## The game
 
-Every reveal follows this shape: a request on-chain, a decryption off-chain, a proof
-back on-chain. There is no decryption callback on the current protocol. Nothing reverts
-on ownership: a request by someone who does not hold the box is settled `Refused` and
-decrypts to zeros.
+> **[→ Read the game's developer docs: `docs/GAME.md`](docs/GAME.md)** · [Play it](https://game.do-not-open.app) · [Its manual](https://game.do-not-open.app/docs)
 
-```mermaid
-sequenceDiagram
-  actor Holder
-  participant App
-  participant Contract as DoNotOpen
-  participant KMS as Zama relayer + KMS
-  Holder->>App: Open the box
-  App->>Contract: observe(tokenId)
-  Contract->>Contract: ok = holds AND paid (encrypted), seed masked by ok
-  Contract-->>App: RequestPlaced(requestId)
-  App->>KMS: publicDecrypt(requestInfo(requestId).handles)
-  KMS-->>App: ok, seed + proof
-  App->>Contract: finalize(requestId, cleartexts, proof)
-  Contract->>Contract: verify proof, ok: decode seed, status = Revealed, Observed(tokenId, opener)
-  App->>App: seed to CatSpec to 3D cat
-```
+10,000 sealed boxes. Each holds a cat whose state and traits are drawn and stored encrypted
+on-chain. Who holds which box, how many boxes an account holds and how many were sold are
+encrypted too; only milestones of the sale are announced. The sale stops at 9,000 boxes, the last
+1,000 are the mainnet whitelist's gifts. Prices are in USDC, paid in cUSDC, Zama's confidential
+USDC.
 
-The other mechanics are in [`docs/FLOWS.md`](docs/FLOWS.md).
-
-## Croquettes
-
-Two tokens: **CROQ**, a plain ERC-20 that any market can list, and **cCROQ**, its
-confidential ERC-7984 wrapper, which is what the game uses. 20,000,000 CROQ were minted
-once at deployment; nothing can mint more.
-
-```mermaid
-flowchart LR
-  pool["Uniswap V3<br/>CROQ/USDC, CROQ only at launch"] <-- "buy, sell<br/>public amounts" --> player(("Player"))
-  locker["LiquidityLocker"] -- "holds the position for good<br/>fees, collect()" --> treasury
-  player -- "wrap / unwrap<br/>public amounts" --> ccroq["cCROQ<br/>encrypted balances"]
-  pantry["Pantry"] -- "welcome bag 100 per box<br/>purr 0..4 per box per day<br/>paid into the box, then its holder" --> ccroq
-  ccroq -- "holder feeds a sealed cat<br/>2 meals, 1,000 a day" --> meal{{"meal, eaten whole<br/>weight += amount"}}
-  meal -- "60%" --> pantry
-  meal -- "20%, collect()" --> treasury["collection treasury"]
-  meal -. "20%" .-> burnt["burnt<br/>locked in the Pantry"]
-  meal -. "opened: weigh-in" .-> build["public weight<br/>thin to huge, or sick"]
-```
-
-| Share | CROQ |
+| | Where to read more |
 | --- | --- |
-| Game reserve (Pantry, pays the purr, takes back 60% of every meal) | 10,000,000 |
-| Welcome bags (Pantry, 100 per box) | 1,000,000 |
-| Market liquidity (Uniswap V3, CROQ only, locked) | 4,000,000 |
-| Treasury | 5,000,000 |
+| 📦 **Open a box**: request, decryption, proof | [How a box is opened](docs/GAME.md#how-a-box-is-opened) |
+| 🧭 **Every mechanic**: mint, shake, feed, duel, entangle, gifts… | [The mechanics, one link each](docs/GAME.md#every-mechanic) |
+| 🍪 **Croquettes**: CROQ and cCROQ, meals, the weigh-in | [Croquettes](docs/GAME.md#croquettes), then [`docs/CROQ.md`](docs/CROQ.md) |
+| 🐀 **The studio and the rats**: drawn for free or from a prompt, with secret powers | [The studio and the rats](docs/GAME.md#the-studio-and-the-rats) |
+| 🏷️ **The flea market**: boxes, cats and rats between players, secret offers | [The flea market](docs/GAME.md#the-flea-market) |
+| 🧪 **Play on Sepolia**: wallet, test USDC, the bureau de change | [Play on Sepolia](docs/GAME.md#play-on-sepolia) |
+| 📜 **The contracts and their addresses** | [The game's contracts](#the-games-contracts) |
 
-The market is one Uniswap V3 position that holds only CROQ: the creator put in no USDC.
-It sells CROQ from 0.001 USDC up to 1 USDC each, so CROQ never sells below 0.001 USDC, and
-until someone buys there is no USDC to sell into. The position is held for good by the
-`LiquidityLocker`; its 1% trading fees go to the treasury.
+### Status of the game
 
-The rules, what leaks and the costs are in [`docs/CROQ.md`](docs/CROQ.md).
-
-## The studio
-
-The studio (`/studio`) is the way in for people who do not care about blockchains. It draws
-the depot's rats, not cats, on purpose: the cats only come out of boxes, so nothing drawn in
-the studio can be taken for one. Anyone draws a random rat there for free: a procedural rat
-generator (`buildRatSpec` in `packages/generator`, `createRat` in `packages/scene`: buck teeth,
-big ears, hats, a wedge of cheese, assembled from the Blender rat kit `rat.glb`), in the
-browser, no wallet. To draw a rat from a prompt
-("a chubby rat chef stealing a wheel of cheese"), a player buys a
-pack in plain USDC from `StudioPacks`: **Starter**, 2 USDC for 10 sketches and 1 3D model;
-**Litter**, 8 USDC for 50 and 5. A sketch is a cartoon picture in the house style (try again
-until it looks right); a model turns a sketch into a 3D mesh, drawn with the game's toon
-materials. The API spends a unit before it calls the AI services and gives it back if they
-fail, and stops for the day past a dollar budget. Each pack sells for at least twice what it
-is expected to cost, so the services are paid back with a margin for the treasury. The
-numbers are in [`packages/game-spec/studio.json`](packages/game-spec/studio.json), the flow in
-[`docs/FLOWS.md`](docs/FLOWS.md#the-studio).
-
-A rat can then be adopted: minted in `Rats`, a plain ERC-721, for 1 USDC (a free rat, by its
-seed) or 3 USDC (an AI rat: the API stores its picture on Arweave like a cat's and keeps its 3D model). An
-adopted rat earns 3 plain CROQ a day from the `RatPantry` (funded with 500,000 CROQ sent from the
-treasury with a plain transfer, at most 7 days kept between two claims; while it is empty a
-claim waits rather than losing the days) and sniffs boxes for its
-owner through the paid shake. "My rats" in the game lists them.
-
-Each rat also gets a secret power when it is minted, which only its holder can read: 1 (keen
-nose: 30% of a sniff's price comes back, in secret), 2 (blocks one trait you pick) or 3 (blocks
-all five). A rat can be set on a sealed box for 3 days, then rests 7. On your own box it
-protects it: whoever shakes or sniffs it reads a fake for the blocked traits. On someone else's
-box it attacks it: its holder's shakes of those traits come back scrambled. The contract
-decides which under encryption, so nobody can tell a shield from an attack, a rat's power, or
-the trait (`RatTricks`, see [`docs/FLOWS.md`](docs/FLOWS.md#the-rats-tricks-sniff-shield-jam)). There will only ever be 700
-free rats and 300 AI rats, and one wallet mints 5 at most: every rat is paid from the same
-fixed fund, so the supply is capped in the contract, and the home page and the studio count
-the rats left.
-
-## The flea market
-
-`FleaMarket` lets players sell each other sealed boxes, cats (opened boxes) and rats, paid in
-cUSDC. The market holds what it sells. A rat is escrowed at once. A box goes to the market in
-a "maybe" transfer whose arrival is proven by a public decryption, so only a seller who really
-held it gets an active listing. Two ways to buy:
-
-- **at the asking price**, which is public: the buyer pays, then a public decryption of the
-  single bit "paid" delivers the item, or refunds the payment if someone else was faster or
-  the listing changed;
-- **with a secret offer**: an encrypted amount of cUSDC escrowed on the listing that only the
-  buyer and the seller can read. The seller may accept it at once, and that price never
-  becomes public.
-
-2.5% of each sale goes to the treasury (`market.feeBps` in the spec, never more than 10%). A
-box is sold in the public state it was listed in: if it is opened or entangled while it waits,
-the sale is refused and a pending payment comes back. Public: the seller of an active listing
-(so selling a box shows you held it), the asking price, the buyer of a sale. Never public:
-balances, offer amounts, the price of a sale by offer, what is inside a sealed box. The flows
-are in [`docs/FLOWS.md`](docs/FLOWS.md#the-flea-market).
+| Phase | Scope                                                                 | State       |
+| ----- | --------------------------------------------------------------------- | ----------- |
+| 1     | Game spec, generator, art direction, sealed box + shake, five cats    | **Done**    |
+| 2     | Contract: mint, shake, observe, proveAlive, ACL, mock tests, CLI demo | **Done**, live on Sepolia |
+| 3     | duel, entangle, feed, paidShake and their 3D effects                  | **Done**, live on Sepolia |
+| CROQ  | Croquette economy: CROQ + cCROQ, Pantry, a CROQ-only Uniswap V3 pool locked for good, 10,000 boxes | **Done**, live on Sepolia |
+| Weight | Meals eaten whole, 20/60/20 split, daily cap, weigh-in, builds, sickness | **Done**, live on Sepolia |
+| Duel shelf | Boxes put up for a duel, open to any box or reserved for one, holding proven at posting, 7 days on the shelf | **Done**, live on Sepolia |
+| Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing on mainnet, filed by the API (`POST /v1/terms`); on Sepolia a notice says what a redeployment keeps instead | **Done** |
+| Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
+| Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
+| Rat powers | Each rat draws a secret power at its mint (1 cheaper sniffs, 2 blocks one trait, 3 all five); a rat set on a box for 3 days shields it from strangers or jams its holder, decided under encryption (`RatTricks`, the collection's shake guard) | **Live** on Sepolia since 2026-10-08 |
+| Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Live** on Sepolia since 2026-10-08 |
+| Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 15) | **Done** |
+| Whitelist gifts | Each seated wallet collects its class's gift once (`WhitelistGifts`): an encrypted draw of cCROQ, a box minted free out of the 1,000 the sale leaves (`DoNotOpen.gift`), a free rat (`Rats.gift`), against a Merkle root of (wallet, tier) | **Done**, live on Sepolia since 2026-10-08 (root not set yet) |
 
 ## The sealed vault
 
-Next to the game, the same encryption hides who holds any NFT. `SealedVault` takes an NFT of
-an allowed collection (a free test collection on test networks) and gives its depositor a box,
-a Confidential ERC-721 of its own whose holder is encrypted, sent in the same transaction to a
-few decoys so even the depositor is not its obvious holder. Every box has an encrypted key the
-holder's wallet derives from one signature; taking the NFT out, listing it, taking the listing
-down, collecting a sale's ETH, accepting a buyer's offer or naming a delegate is asked with that key, not with an address, so the API's
-relayer can send the request and the holder's address shows on none. Requests do not lock the
-box, so a stranger's wrong keys never keep its holder from taking the NFT out, and one whose
-proof never comes expires after a day. A listing is a real
-Seaport 1.5 order with the vault as the seller, which any Seaport marketplace can fill. Buyers
-can also make WETH offers on any NFT in the vault (signed Seaport 1.5 orders, posted to the
-on-chain board `VaultOffers`); the holder accepts one with a request, the vault fills it through
-`VaultOffers`, which it hands that one NFT for that one call, and the ETH goes straight to an
-address the holder picks. While the NFT sits in the vault, the holder can name a wallet of
-theirs its delegate in delegate.xyz's registry, so airdrops and token gates still reach them. A box
-can also change hands privately, for a cUSDC price only the two sides read, settled under
-encryption. Public: the deposit, the NFT in each box, Seaport listings, offers and who made them, a box's
-delegate, where an NFT or a sale's ETH goes. Never public: who holds a box (even right after the deposit, with decoys), its key, a private sale's price and whether it went
-through. 2.5% of each sale goes to the treasury. The page is `/vault`, laid out as a marketplace that fits the screen (the collection's numbers, tabs to explore, find your boxes, seal an NFT, read private sales and what leaks, filters on the side, each box's page in a dialog); the design, the flows and
-the limits are in [`docs/VAULT.md`](docs/VAULT.md).
+> **[→ Read the vault's developer docs: `docs/VAULT.md`](docs/VAULT.md)** · [Open the vault](https://vault.do-not-open.app) · [Its docs](https://vault.do-not-open.app/docs)
+
+Next to the game, the same encryption hides who holds any NFT. `SealedVault` takes an NFT of an
+allowed collection (a free test collection on test networks) and gives its depositor a box, a
+Confidential ERC-721 of its own whose holder is encrypted, sent in the same transaction to a few
+decoys so even the depositor is not its obvious holder. Every request on a box is asked with an
+encrypted key the holder's wallet derives from one signature, not with an address, so the API's
+relayer can send it and the holder's address shows on none. 2.5% of each sale goes to the
+treasury.
+
+| What a holder can do | Where to read more |
+| --- | --- |
+| 📥 **Seal an NFT** in a box, sent to decoys at the same time | [Deposit](docs/VAULT.md#deposit) |
+| 🔑 **Ask with a key**, not an address: requests never lock a box, and expire after a day | [A box and its key](docs/VAULT.md#a-box-and-its-key), [a request](docs/VAULT.md#a-request-take-out-list-take-down-collect-accept-an-offer-delegate) |
+| 🏪 **List it on Seaport 1.5**, the vault as the seller, any Seaport marketplace fills it | [Seaport: list, fill, sync, collect](docs/VAULT.md#seaport-list-fill-sync-collect) |
+| 🤝 **Accept a buyer's WETH offer**, posted on the on-chain board `VaultOffers` | [Accepting an offer](docs/VAULT.md#accepting-an-offer) |
+| 🪪 **Name a delegate** in delegate.xyz, so airdrops and token gates still reach you | [Delegation](docs/VAULT.md#delegation) |
+| 🤫 **Sell the box privately** for a cUSDC price only the two sides read | [Private sale](docs/VAULT.md#private-sale) |
+| 🎁 **Give the box**, and make its key yours | [Give a box](docs/VAULT.md#give-a-box-and-make-its-key-yours) |
+| 👁️ **What leaks**, and what never does | [What is public, what is not](docs/VAULT.md#what-is-public-what-is-not) |
+| ⚙️ The relayer, the team's view, the decisions, the limits, the costs | [Relayer](docs/VAULT.md#the-relayer) · [Team](docs/VAULT.md#what-the-team-sees) · [Decisions](docs/VAULT.md#decisions) · [Limits](docs/VAULT.md#limits) · [Cost](docs/VAULT.md#cost) |
+| 📜 **The contracts and their addresses** | [The vault's contracts](#the-vaults-contracts) |
+
+Public: the deposit, the NFT in each box, Seaport listings, offers and who made them, a box's
+delegate, where an NFT or a sale's ETH goes. Never public: who holds a box (even right after the
+deposit, with decoys), its key, a private sale's price and whether it went through. The page is
+`/vault`, laid out as a marketplace that fits the screen (the collection's numbers, tabs to
+explore, find your boxes, seal an NFT, read private sales and what leaks, filters on the side,
+each box's page in a dialog).
+
+### Status of the vault
+
+| Part | Scope | State |
+| --- | --- | --- |
+| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, sold to a buyer's WETH offer the holder accepts (`VaultOffers`, also an on-chain offer board), or sold privately for an encrypted cUSDC price; meanwhile the NFT's rights (airdrops, token gates) lent to a wallet through delegate.xyz; every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs | **Live** on Sepolia since 2026-10-08, redeployed twice on 2026-10-09: requests no longer lock a box and a deposit sends decoys (block 11876345), then accepted offers and delegation (`SealedVault` block 11876575, `VaultOffers` 11876574, its test NFT kept) |
 
 ## On Sepolia
 
@@ -275,6 +259,10 @@ its hooks, its `Pantry` and a fresh croquette economy (new CROQ, cCROQ, pool, lo
 packs and the USDC ramp were kept. The deployer `0x590891F269720001435004A1089cAB5b2c20029A`
 owns every contract and is the treasury and the rebater of power-1 sniffs (until 2026-10-07 the
 owner was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`):
+
+### The game's contracts
+
+Shared with the vault: USDC, cUSDC, `UsdcRamp` and `DecryptionCredits`. The game's docs: [`docs/GAME.md`](docs/GAME.md).
 
 | Contract | Address |
 | --- | --- |
@@ -297,6 +285,13 @@ owner was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`):
 | `RatTricks` (sniffs, shields and jams; DoNotOpen's guard) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
 | `WhitelistGifts` (the whitelist's gifts, DoNotOpen's and Rats' giver, 425,000 cCROQ; root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
 | `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
+
+### The vault's contracts
+
+Seaport 1.5 (`0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC`), the WETH OpenSea uses on Sepolia (`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`) and delegate.xyz's registry (`0x00000000000000447e69651d841bD8D104Bed493`) are not ours. The vault's docs: [`docs/VAULT.md`](docs/VAULT.md).
+
+| Contract | Address |
+| --- | --- |
 | `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, listings and accepted WETH offers, delegate.xyz delegation, 2.5% fee; owner and treasury `0x5908…029A`) | [`0xE22509e741233072aFF4e0c6B56d5e3De8018262`](https://sepolia.etherscan.io/address/0xE22509e741233072aFF4e0c6B56d5e3De8018262) (since 2026-10-09, block 11876575; before it [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D), 2026-10-09, no offers nor delegation, and [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), 2026-10-08, whose requests locked the box) |
 | `VaultOffers` (the vault's on-chain offer board; fills the offers the vault accepts) | [`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`](https://sepolia.etherscan.io/address/0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2) |
 | `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
@@ -310,6 +305,9 @@ CROQ trades through Uniswap's own V3 contracts on Sepolia: `SwapRouter02`
 `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`, `QuoterV2`
 `0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3`, `NonfungiblePositionManager`
 `0x1238536071E1c677A632429e3655c799b22cDA52`.
+
+<details>
+<summary><b>Earlier deployments, replaced and kept for the record</b></summary>
 
 The contracts of 2026-10-07 (blocks 11862300 to 11862351), for the rats' powers and tricks,
 replaced where the free gift boxes redeployed them (`Rats`, the credits, the studio packs and
@@ -406,41 +404,33 @@ The previous version, an ERC-721 with public owners, kept for the record:
 | `UsdcRamp` (ETH in, USDC or cUSDC out, 0.3% fee) | [`0x20FB2d7f2d3fb249924ce3871255bb417670ba50`](https://sepolia.etherscan.io/address/0x20FB2d7f2d3fb249924ce3871255bb417670ba50) |
 | ETH/USDC pair, Uniswap V2 (seeded for the ramp) | [`0x58151722a43de9a7A850dF12f6D9924B19E50F8D`](https://sepolia.etherscan.io/address/0x58151722a43de9a7A850dF12f6D9924B19E50F8D) |
 
+
+</details>
+
 The earlier ETH-priced and 5,000-box deployments are superseded. None of these contracts has been
 audited. See [`docs/AUDIT_CHECKLIST.md`](docs/AUDIT_CHECKLIST.md) for what is open
 before a mainnet deployment.
 
-## Read next
+## All the docs
 
-The site opens on the home page at `/` (source `apps/web/src/secure`): the sealed vault first, in a dark, security-minded
-theme, and the game as a small corner at the end. Its bar's "Docs" leads straight to the vault's docs (`/docs` on `vault.`,
-source `apps/web/src/vault/docs`), which share that theme with the project's docs (`/docs` on the bare domain, source
-`apps/web/src/project`): both are laid out by `apps/web/src/docs/DocShell.tsx` and styled by `apps/web/src/secure/docs.css`.
-The game carries its own illustrated manual in the game's look at `/docs` on `game.` (`/fr/docs`, `/es/docs`, `/it/docs`)
-(the "Manual" tag in the navigation): the seed, the flows and the package layout as interactive three.js diagrams.
-Its source is `apps/web/src/docs`.
+Players and anyone curious read the docs in the app: the game's manual at
+[game.do-not-open.app/docs](https://game.do-not-open.app/docs), the vault's at
+[vault.do-not-open.app/docs](https://vault.do-not-open.app/docs), the project's at
+[do-not-open.app/docs](https://do-not-open.app/docs). The documents below are for developers; the
+index is [`docs/README.md`](docs/README.md).
 
-The home page, the manual, the studio and the boarding page are prerendered at build time, one file per language
-(`apps/web/scripts/prerender.mts`, run by `pnpm build`), with their title, description,
-canonical, `hreflang`, Open Graph, Twitter and JSON-LD tags; `src/site.ts` holds the site's
-address and paths. The same script writes `sitemap.xml` from their canonical URLs, on every host
-(the bare domain, `game.`, `vault.`) and in every language, plus the vault's page, whose sharing
-tags are in `vault.html` itself; `public/robots.txt` points at it, and `vercel.json`
-serves clean URLs, sends `/fr/app` (and `/es/app`, `/it/app`) to `/app?lang=…`, and marks the testnet site, the game and the render pages `noindex`. The
-social cards (`og.png` for the game's manual and the studio, `og-vault.png` for the home page, the project's and the vault's pages and boarding) and app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics
-counts page views without cookies, and every URL is stripped of its query string first
-(`src/analytics.ts`), so a `?box=` link never ties a visitor to a token.
-
-For the reference documents, start at [`docs/README.md`](docs/README.md). In short:
-
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): packages, data flow, 3D pipeline
-- [`docs/HIDDEN_OWNERS.md`](docs/HIDDEN_OWNERS.md): encrypted owners, hidden mint quantity, milestones, what leaks, what it costs
-- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md): what is encrypted, who can read what, ACL on transfer
-- [`docs/FLOWS.md`](docs/FLOWS.md): sequence diagrams for every mechanic
-- [`docs/CROQ.md`](docs/CROQ.md): the croquette economy, its two tokens and its market
-- [`docs/VAULT.md`](docs/VAULT.md): the sealed vault, any NFT with its holder hidden
-- [`docs/SOLANA_PORTING.md`](docs/SOLANA_PORTING.md): the porting map
-- [`docs/AUDIT_CHECKLIST.md`](docs/AUDIT_CHECKLIST.md): checks done and findings open
-- [`docs/DESIGN.md`](docs/DESIGN.md): art direction, effect catalogue, performance budget
-- [`docs/ZAMA_NOTES.md`](docs/ZAMA_NOTES.md): verified FHEVM versions and deviations from the brief
-- [`assets/BLENDER_TODO.md`](assets/BLENDER_TODO.md): asset backlog and specs
+| | Document | What it answers |
+| --- | --- | --- |
+| 🐈 | [`docs/GAME.md`](docs/GAME.md) | **The game's hub**: every mechanic, opening a box, croquettes, the studio and the rats, the flea market, playing on Sepolia |
+| 🔐 | [`docs/VAULT.md`](docs/VAULT.md) | **The vault's hub**: any NFT with its holder hidden, keys, Seaport, offers, delegation, private sales, what leaks |
+| 🧱 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Packages, data flow, 3D pipeline |
+| 🕶️ | [`docs/HIDDEN_OWNERS.md`](docs/HIDDEN_OWNERS.md) | Encrypted owners, hidden mint quantity, milestones, what leaks, what it costs |
+| 🗂️ | [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | What is encrypted, who can read what, ACL on transfer |
+| 🔁 | [`docs/FLOWS.md`](docs/FLOWS.md) | Sequence diagrams for every mechanic, the game's and the vault's |
+| 🍪 | [`docs/CROQ.md`](docs/CROQ.md) | The croquette economy, its two tokens and its market |
+| 🌉 | [`docs/SOLANA_PORTING.md`](docs/SOLANA_PORTING.md) | The porting map |
+| 🛡️ | [`docs/AUDIT_CHECKLIST.md`](docs/AUDIT_CHECKLIST.md) | Checks done and findings open |
+| 🎨 | [`docs/DESIGN.md`](docs/DESIGN.md) | Art direction, effect catalogue, performance budget |
+| 🧬 | [`docs/ZAMA_NOTES.md`](docs/ZAMA_NOTES.md) | Verified FHEVM versions and deviations from the brief |
+| 🧀 | [`assets/BLENDER_TODO.md`](assets/BLENDER_TODO.md) | Asset backlog and specs |
+| 🚀 | [`deploy/README.md`](deploy/README.md) | The server, domains, monitoring |
