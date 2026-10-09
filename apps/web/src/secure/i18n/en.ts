@@ -1,7 +1,7 @@
 /** The secure home page's own messages; the rest (why, how, what shows, the game) are the home page's. */
 export const secureEn = {
-  "secure.title": "DO NOT OPEN, the sealed vault: own NFTs and tokens nobody can see you hold",
-  "secure.description": "Put any NFT in a sealed box, and your cUSDC in a sealed pocket, their holder encrypted on Ethereum with Zama's FHE. The NFT still sells on Seaport; the tokens still pay anyone, without showing who paid whom.",
+  "secure.title": "DO NOT OPEN, the sealed vault: own assets nobody can see you hold, NFTs and tokens alike",
+  "secure.description": "Put your assets in the sealed vault, an NFT in a box or your cUSDC in a pocket, their holder encrypted on Ethereum with Zama's FHE. NFTs still sell on Seaport; tokens still pay anyone, without showing who paid whom.",
   "secure.imageAlt": "A sealed cardboard box stamped DO NOT OPEN inside a glowing encryption shield",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocol",
@@ -20,7 +20,7 @@ export const secureEn = {
 
   "secure.eyebrow": "Sealed vault · Zama FHE · Ethereum",
   "secure.h1": "What you own is nobody's business.",
-  "secure.lede": "Put any NFT in a sealed box, and your tokens in a sealed pocket. From then on nobody knows who holds them: not marketplaces, not trackers, not us. The NFT still sells on Seaport, the tokens still pay anyone.",
+  "secure.lede": "Put your assets in the vault, NFTs and tokens alike: each NFT in a sealed box, your tokens in a sealed pocket. From then on nobody knows who holds them: not marketplaces, not trackers, not us. They still sell, pay and move like any asset.",
   "secure.cta.open": "Open the vault",
   "secure.cta.protocol": "Read the protocol",
   "secure.spec.1.k": "Holder",

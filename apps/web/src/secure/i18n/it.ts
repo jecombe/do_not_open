@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureIt: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, il caveau sigillato: NFT e token che nessuno ti vede possedere",
-  "secure.description": "Metti qualsiasi NFT in una scatola sigillata, e i tuoi cUSDC in una tasca sigillata, con il titolare cifrato su Ethereum grazie all'FHE di Zama. L'NFT si vende comunque su Seaport; i token pagano comunque chiunque, senza mostrare chi ha pagato chi.",
+  "secure.title": "DO NOT OPEN, il caveau sigillato: asset che nessuno ti vede possedere, NFT e token allo stesso modo",
+  "secure.description": "Metti i tuoi asset nel caveau sigillato, un NFT in una scatola o i tuoi cUSDC in una tasca, il loro titolare cifrato su Ethereum con l'FHE di Zama. Gli NFT si vendono comunque su Seaport; i token pagano comunque chiunque, senza mostrare chi ha pagato chi.",
   "secure.imageAlt": "Una scatola di cartone sigillata con il timbro DO NOT OPEN dentro uno scudo di cifratura luminoso",
   "secure.nav": "Sito",
   "secure.nav.protocol": "Protocollo",
@@ -21,7 +21,7 @@ export const secureIt: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Caveau sigillato · FHE di Zama · Ethereum",
   "secure.h1": "Quello che possiedi non riguarda nessun altro.",
-  "secure.lede": "Metti qualsiasi NFT in una scatola sigillata, e i tuoi token in una tasca sigillata. Da allora nessuno sa chi li possiede: né i marketplace, né i tracker, né noi. L'NFT si vende comunque su Seaport, i token pagano comunque chiunque.",
+  "secure.lede": "Metti i tuoi asset nel caveau, NFT e token allo stesso modo: ogni NFT in una scatola sigillata, i tuoi token in una tasca sigillata. Da quel momento nessuno sa chi li detiene: né i marketplace, né i tracker, né noi. Si vendono, pagano e si muovono comunque come qualsiasi asset.",
   "secure.cta.open": "Apri il caveau",
   "secure.cta.protocol": "Leggi il protocollo",
   "secure.spec.1.k": "Proprietario",
