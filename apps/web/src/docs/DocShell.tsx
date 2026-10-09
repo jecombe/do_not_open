@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { LangSwitch } from "../i18n/LangSwitch";
+import { TxDock } from "../vault/tx/VaultTx";
 
 export interface DocSection {
   id: string;
@@ -145,6 +146,8 @@ export function DocShell({
 
         <footer className="foot">{foot}</footer>
       </div>
+      {/* An action left running on the vault's page, if any. */}
+      <TxDock />
     </div>
   );
 }

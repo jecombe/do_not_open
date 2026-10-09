@@ -70,9 +70,6 @@ export const vaultEn = {
   "vault.item.notListed": "Not on Seaport. Make an offer: its holder may take it, without ever showing who they are.",
   "vault.item.close": "Close",
   "vault.item.encrypted": "encrypted",
-  "vault.stamp.listed": "Listed",
-  "vault.stamp.bought": "Bought",
-  "vault.stamp.sold": "Sold",
 
   "vault.mine.lede": "Who holds a box is encrypted: your page finds yours by decrypting your own receipts. One signature.",
   "vault.mine.find": "Find my boxes",
@@ -169,11 +166,6 @@ export const vaultEn = {
   "vault.done.delegate": "{address} now acts for the NFT in delegate.xyz.",
   "vault.done.clearDelegate": "The NFT has no delegate any more.",
 
-  "vault.step.encrypting": "Encrypting the key",
-  "vault.step.wallet": "Waiting for the wallet",
-  "vault.step.confirming": "Waiting for the block",
-  "vault.step.decrypting": "Checking the key, under encryption",
-  "vault.step.proving": "Sending the proof",
 
 } as const satisfies Record<string, string>;
 

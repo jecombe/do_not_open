@@ -239,7 +239,9 @@ delegate, where an NFT or a sale's ETH goes. Never public: who holds a box (even
 deposit, with decoys), its key, a private sale's price and whether it went through. The page is
 `/vault`, laid out as a marketplace that fits the screen (the collection's numbers, tabs to
 explore, find your boxes, seal an NFT, read private sales and what leaks, filters on the side,
-each box's page in a dialog).
+each box's page in a dialog). Every action plays on a stage with its own animation, its steps
+and its transactions (block, gas, explorer link); folded away, or left behind when the visitor
+goes to another page of the site, it shows at the foot of the page.
 
 ### Status of the vault
 

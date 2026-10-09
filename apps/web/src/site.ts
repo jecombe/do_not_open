@@ -62,6 +62,9 @@ const lang = (locale: Locale): string => (locale === "en" ? "" : `?lang=${locale
 /** The sealed vault: one page for every language, which it reads from `?lang=`, as the game does. */
 export const vaultPath = (locale: Locale): string => (here() ? on("vault", "/") : "/vault") + lang(locale);
 
+/** The sealed vault opened on one box's page. */
+export const vaultBoxPath = (locale: Locale, box: number): string => `${vaultPath(locale)}${locale === "en" ? "?" : "&"}box=${box}`;
+
 /** The game: one page for every language, which it reads from `?lang=`. */
 export const appPath = (locale: Locale): string => (here() ? on("game", "/") : "/app") + lang(locale);
 
