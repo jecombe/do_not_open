@@ -60,6 +60,8 @@ export interface HttpDeps {
   vaultRelayRatePerMinute?: number;
   /** The manual's chatbot. */
   chat?: AskManual;
+  /** The Warden: the same chat on the vault's and the project's docs (`book: "vault"`). */
+  vaultChat?: AskManual;
   /** Chat questions per minute per IP. */
   chatRatePerMinute?: number;
   /** The manual's chatbot as Discord's `/ask`, with the application's public key that signs each call. */
@@ -779,9 +781,11 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
   const chat = deps.chat;
   if (chat) {
     app.post("/v1/chat", { config: { rateLimit: { max: deps.chatRatePerMinute ?? 10, timeWindow: "1 minute" } } }, async (req, reply) => {
-      const input = askInput.parse(req.body);
+      const { book, ...input } = askInput.parse(req.body);
       reply.header("cache-control", "no-store");
-      return { data: await chat.ask(input, req.ip) };
+      const asked = book === "vault" ? deps.vaultChat : chat;
+      if (!asked) return reply.status(404).send({ error: "not-found", message: "no chat for this book" });
+      return { data: await asked.ask(input, req.ip) };
     });
   }
 

@@ -90,6 +90,7 @@ a {
   text-decoration: none;
   text-transform: uppercase;
   rotate: -2deg;
+  white-space: nowrap;
 }
 
 .sec-top nav {
@@ -101,6 +102,7 @@ a {
 .sec-top nav a {
   color: var(--muted);
   text-decoration: none;
+  white-space: nowrap;
   transition: color 0.15s;
 }
 
@@ -907,7 +909,15 @@ button.sec-btn {
   transform: translateY(-5px) rotate(-45deg);
 }
 
-@media (max-width: 1100px) {
+/* The network's status is the first to go when the bar runs short. */
+@media (max-width: 1440px) {
+  .sec-status {
+    display: none;
+  }
+}
+
+/* Below this the home page's six links no longer fit beside the stamp and the buttons: they fold into the menu. */
+@media (max-width: 1240px) {
   .sec-top nav {
     display: none;
   }

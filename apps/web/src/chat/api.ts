@@ -25,7 +25,10 @@ export class ClerkError extends Error {
   }
 }
 
-export async function askClerk(question: string, locale: Locale, history: Turn[], signal?: AbortSignal): Promise<ClerkAnswer> {
+/** Which docs answer: the game's manual (the clerk) or the vault's and the project's (the Warden). */
+export type ChatBook = "game" | "vault";
+
+export async function askClerk(question: string, locale: Locale, history: Turn[], signal?: AbortSignal, book: ChatBook = "game"): Promise<ClerkAnswer> {
   const api = chatApi();
   if (!api) throw new ClerkError("network");
   let res: Response;
@@ -33,7 +36,7 @@ export async function askClerk(question: string, locale: Locale, history: Turn[]
     res = await fetch(`${api}/v1/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ question, locale, history }),
+      body: JSON.stringify({ question, locale, history, ...(book === "game" ? {} : { book }) }),
       signal,
     });
   } catch {

@@ -5,6 +5,7 @@ import { useLocale } from "../i18n/locale";
 import { DISCORD } from "../links";
 import { vaultDocsPath } from "../site";
 import { SecureTop } from "../secure/SecureTop";
+import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
@@ -83,6 +84,7 @@ export function VaultPage() {
           Discord
         </a>
       </footer>
+      <Warden />
     </div>
   );
 }

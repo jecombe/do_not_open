@@ -151,7 +151,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/vault/relayer` · `POST /v1/vault/relay` | The sealed vault's relayer (below): its address, or null; sends a holder's request or proof from its own wallet |
 | `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
 | `GET /v1/rats?owner=` · `GET /v1/rats/supply` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
-| `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
+| `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history, book? }` in, `{ mode, answer, sources, passages, reason }` out; `book: "vault"` asks the Warden (the vault's and the project's docs), the game's clerk otherwise |
 | `POST /v1/discord/interactions` | Discord's `/ask` (below): called by Discord only, signed with the application's Ed25519 key (`401` otherwise) |
 | `GET /v1/herald?token=&limit=&network=` | The collection's Discord channel (below): its posts, newest first, queued, sent or rehearsed; `network=discord` for that network only. With `HERALD_ADMIN_TOKEN` set, only with that token |
 
@@ -583,6 +583,15 @@ The manual is `src/infrastructure/chat/manual.json`, written by
 reader sees it and cuts it into passages. `pnpm test` fails when the manual changed and the
 file was not written again. On Gemini's free tier Google may use the questions to improve
 its products; the chat says so, and only questions about a public game go there.
+
+### The Warden: the vault's and the project's docs
+
+The home page and the vault's page have their own chat, the Warden (`apps/web/src/secure/Warden.tsx`),
+asked with `book: "vault"`. It is a second `AskManual` on `src/infrastructure/chat/vault-manual.json`,
+which `export:manual` writes from the vault's docs and the project's (section ids `vault-<id>` and
+`project-<id>`, linked to `/docs` on `vault.` and to the project's docs), with its own rules
+(`warden` in `askManual.ts`: the docs only, never more privacy than they claim, never a box's
+key) and the same model, limits and daily total as the clerk: both draw from one free quota.
 
 ### On Discord: `/ask`
 

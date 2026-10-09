@@ -8,34 +8,9 @@ import { PopBoxScene, SHAKES_TO_OPEN } from "../home/popBox";
 import { useT } from "./i18n";
 import { Icon } from "./Icon";
 import { SecureTop } from "./SecureTop";
+import { Warden } from "./Warden";
 import { ShieldScene } from "./shieldScene";
-
-const GLYPHS = "0123456789abcdef▓▒░█";
-const glyphs = (n: number) => Array.from({ length: n }, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]).join("");
-const hex = (n: number) => Array.from({ length: n }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
-const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/**
- * Text that resolves out of ciphertext, left to right, when it first shows or changes. Screen
- * readers get the plain text from the caller's aria-label.
- */
-function useDecrypt(text: string, ms = 1100): string {
-  const [shown, setShown] = useState(text);
-  useEffect(() => {
-    if (reduced()) return setShown(text);
-    const start = performance.now();
-    let raf = 0;
-    const tick = () => {
-      const k = Math.min(1, (performance.now() - start) / ms);
-      const fixed = Math.floor(text.length * k);
-      setShown(text.slice(0, fixed) + [...text.slice(fixed)].map((c) => (c === " " ? " " : glyphs(1))).join(""));
-      if (k < 1) raf = requestAnimationFrame(tick);
-    };
-    tick();
-    return () => cancelAnimationFrame(raf);
-  }, [text, ms]);
-  return shown;
-}
+import { glyphs, hex, reduced, useDecrypt } from "./cipher";
 
 /** Ciphertext that never settles. */
 function Cipher({ length = 10 }: { length?: number }) {
@@ -416,6 +391,7 @@ export function SecureHome() {
           Discord
         </a>
       </footer>
+      <Warden />
     </div>
   );
 }
