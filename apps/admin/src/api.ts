@@ -65,6 +65,44 @@ export interface Idea {
   createdAt: number;
 }
 
+export type VaultBoxState = "sealed" | "listed" | "sold" | "withdrawn" | "claimed";
+export type VaultAction = "withdraw" | "list" | "unlist" | "claim";
+
+export interface VaultSummary {
+  boxes: Record<VaultBoxState, number>;
+  deposits: number;
+  withdrawals: number;
+  listings: number;
+  listed: number;
+  unlisted: number;
+  expired: number;
+  seaportSales: number;
+  /** Wei, as decimal strings. */
+  seaportVolume: string;
+  claimed: string;
+  privateSales: { offered: number; settled: number; cancelled: number; open: number };
+  requests: { placed: Record<VaultAction, number>; settled: Record<"done" | "refused" | "stale", number>; pending: number };
+  collections: { collection: string; deposits: number; inVault: number }[];
+}
+
+export interface VaultFeedItem {
+  at: number | null;
+  block: number;
+  txHash: string;
+  name: string;
+  boxId: number | null;
+  detail: string | null;
+}
+
+export interface VaultDashboard {
+  generatedAt: number;
+  days: number;
+  summary: VaultSummary;
+  kpis: Kpi[];
+  daily: DayRow[];
+  recent: VaultFeedItem[];
+}
+
 /** The session ended or never began: the app shows the sign-in page. */
 export class SignedOut extends Error {}
 
@@ -84,4 +122,5 @@ export const api = {
   players: () => call<PlayerRow[]>("/players"),
   wallet: (code: string) => call<{ address: string | null }>(`/players/${encodeURIComponent(code)}/wallet`),
   ideas: () => call<Idea[]>("/ideas"),
+  vault: (days: number) => call<VaultDashboard>(`/vault?days=${days}`),
 };

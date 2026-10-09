@@ -1,7 +1,7 @@
 {
   "uid": "dno-protocol",
   "title": "DO NOT OPEN \u00b7 Protocol",
-  "description": "The protocol on one network: collection, pending proofs, indexer, RPC pool, API replicas and traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.",
+  "description": "The protocol on one network: collection, pending proofs, indexer, RPC pool, API replicas and traffic, side services, the mainnet whitelist, the sealed vault, the studio. Public facts and counts only.",
   "tags": [
     "dno"
   ],
@@ -2855,7 +2855,7 @@
     },
     {
       "type": "row",
-      "title": "The studio",
+      "title": "The sealed vault",
       "id": 54,
       "gridPos": {
         "h": 1,
@@ -2868,7 +2868,7 @@
     },
     {
       "id": 55,
-      "title": "Open",
+      "title": "NFTs in the vault",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -2879,6 +2879,796 @@
         "w": 4,
         "x": 0,
         "y": 118
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(dno_vault_boxes{network=\"$network\",state=~\"sealed|listed|sold\"})",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Sealed, listed on Seaport, or sold with the ETH not yet collected."
+    },
+    {
+      "id": 56,
+      "title": "Deposits",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 118
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_deposits{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 57,
+      "title": "Seaport sales",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 118
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_seaport_sales{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 58,
+      "title": "Seaport volume",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 118
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_seaport_volume_eth{network=\"$network\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "ETH Seaport buyers paid for vault boxes (test ETH on Sepolia)."
+    },
+    {
+      "id": 59,
+      "title": "Private sales settled",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 118
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_private_sales{network=\"$network\",status=\"settled\"}",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "Their price and whether the box moved stay encrypted."
+    },
+    {
+      "id": 60,
+      "title": "Relayer balance",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 118
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(dno_vault_relayer_balance_eth{network=\"$network\"})",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.02
+              },
+              {
+                "color": "green",
+                "value": 0.1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "description": "ETH on the vault relayer's wallet (VAULT_RELAYER_KEY): it pays the gas of holders' requests. Below 0.05 the VaultRelayerLow alert fires."
+    },
+    {
+      "id": 61,
+      "title": "Vault boxes by state",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 122
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_boxes{network=\"$network\"}",
+          "legendFormat": "{{state}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "sealed: in the vault; listed: on Seaport; sold: sold, ETH waiting for the key's holder; withdrawn: the NFT taken out; claimed: sold and collected."
+    },
+    {
+      "id": 62,
+      "title": "Vault activity per hour",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 122
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(dno_vault_deposits{network=\"$network\"}[1h])",
+          "legendFormat": "deposits",
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(dno_vault_withdrawals{network=\"$network\"}[1h])",
+          "legendFormat": "withdrawals",
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(dno_vault_seaport_sales{network=\"$network\"}[1h])",
+          "legendFormat": "Seaport sales",
+          "instant": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(dno_vault_private_sales{network=\"$network\",status=\"settled\"}[1h])",
+          "legendFormat": "private sales",
+          "instant": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(dno_vault_listings{network=\"$network\",kind=\"placed\"}[1h])",
+          "legendFormat": "listings",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 63,
+      "title": "Requests placed, by action",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 130
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_requests{network=\"$network\"}",
+          "legendFormat": "{{action}}",
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_requests_pending{network=\"$network\"}",
+          "legendFormat": "pending",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Withdrawals, listings, unlistings and claims asked with a box's key; pending ones wait for their KMS proof."
+    },
+    {
+      "id": 64,
+      "title": "Requests settled, by outcome",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 130
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_requests_settled{network=\"$network\"}",
+          "legendFormat": "{{status}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "refused: a wrong key, nothing happened; stale: the box changed first (its listing filled or expired)."
+    },
+    {
+      "id": 65,
+      "title": "Relayed per minute, by transaction and outcome",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (kind, outcome) (rate(dno_vault_relays_total{network=\"$network\"}[5m])) * 60",
+          "legendFormat": "{{kind}} {{outcome}}",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "reverted: the vault would refuse it, nothing sent; daily-cap: VAULT_RELAY_PER_DAY reached; failed: the node or the wallet failed (out of gas?)."
+    },
+    {
+      "id": 66,
+      "title": "Relayer: sent today against the cap, by replica",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "dno_vault_relayer_sent_today{network=\"$network\"}",
+          "legendFormat": "{{instance}}",
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(dno_vault_relayer_daily_cap{network=\"$network\"})",
+          "legendFormat": "cap per replica",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 67,
+      "title": "Relayer balance",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(dno_vault_relayer_balance_eth{network=\"$network\"})",
+          "legendFormat": "ETH",
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 4,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "The studio",
+      "id": 68,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 146
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 69,
+      "title": "Open",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 147
       },
       "targets": [
         {
@@ -2943,7 +3733,7 @@
       "description": "Open: the fal key and the StudioPacks contract are there, and STUDIO_PAUSED is not set."
     },
     {
-      "id": 56,
+      "id": 70,
       "title": "Packs sold",
       "type": "stat",
       "datasource": {
@@ -2954,7 +3744,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 118
+        "y": 147
       },
       "targets": [
         {
@@ -3001,7 +3791,7 @@
       }
     },
     {
-      "id": 57,
+      "id": 71,
       "title": "USDC brought in",
       "type": "stat",
       "datasource": {
@@ -3012,7 +3802,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 118
+        "y": 147
       },
       "targets": [
         {
@@ -3060,7 +3850,7 @@
       "description": "Paid for packs, straight to the treasury. Test USDC on Sepolia."
     },
     {
-      "id": 58,
+      "id": 72,
       "title": "AI cost, all time",
       "type": "stat",
       "datasource": {
@@ -3071,7 +3861,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 118
+        "y": 147
       },
       "targets": [
         {
@@ -3119,7 +3909,7 @@
       "description": "Estimated from studio.json's estimatedCostUsd, failed jobs included: check it against fal's bill."
     },
     {
-      "id": 59,
+      "id": 73,
       "title": "Margin",
       "type": "stat",
       "datasource": {
@@ -3130,7 +3920,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 118
+        "y": 147
       },
       "targets": [
         {
@@ -3182,7 +3972,7 @@
       "description": "USDC brought in minus the estimated AI cost. The StudioLosingMoney alert fires when it stays negative."
     },
     {
-      "id": 60,
+      "id": 74,
       "title": "Today's AI budget used",
       "type": "stat",
       "datasource": {
@@ -3193,7 +3983,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 118
+        "y": 147
       },
       "targets": [
         {
@@ -3249,7 +4039,7 @@
       "description": "Past it, generation waits for midnight UTC (STUDIO_DAILY_BUDGET_USD)."
     },
     {
-      "id": 61,
+      "id": 75,
       "title": "Generations by kind and status",
       "type": "timeseries",
       "datasource": {
@@ -3260,7 +4050,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 122
+        "y": 151
       },
       "targets": [
         {
@@ -3300,7 +4090,7 @@
       "description": "failed: unit given back; rejected: refused by the safety checker or past the day's refunds, unit kept."
     },
     {
-      "id": 62,
+      "id": 76,
       "title": "AI spend today against the budget",
       "type": "timeseries",
       "datasource": {
@@ -3311,7 +4101,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 122
+        "y": 151
       },
       "targets": [
         {

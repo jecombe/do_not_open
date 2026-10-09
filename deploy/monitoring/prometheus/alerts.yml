@@ -125,6 +125,70 @@ groups:
         annotations:
           summary: "The certificate of {{ $labels.instance }} expires in {{ $value | humanizeDuration }} (Caddy renews at 30 days: it is stuck)."
 
+  - name: vault
+    rules:
+      # The relayer's wallet pays the gas of every request and proof it sends for holders.
+      - alert: VaultRelayerLow
+        expr: max by (network) (dno_vault_relayer_balance_eth) < 0.05
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "The vault relayer has {{ $value | printf \"%.4f\" }} ETH left: top up its wallet (VAULT_RELAYER_KEY) before holders' withdrawals and listings stop going through it."
+
+      - alert: VaultRelayerEmpty
+        expr: max by (network) (dno_vault_relayer_balance_eth) < 0.005
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "The vault relayer is out of gas ({{ $value | printf \"%.4f\" }} ETH): holders can only send their requests from their own wallet, which shows their address."
+
+      - alert: VaultRelayFailing
+        expr: sum by (network) (increase(dno_vault_relays_total{outcome="failed"}[15m])) >= 3
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value | printf \"%.0f\" }} vault relays failed to send in 15 minutes: the node, the nonce or the relayer's gas (see the API logs)."
+
+      - alert: VaultRelayerCapNear
+        expr: max by (network) (dno_vault_relayer_sent_today / dno_vault_relayer_daily_cap) > 0.8 and max by (network) (dno_vault_relayer_daily_cap) > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "A replica's vault relayer sent {{ $value | humanizePercentage }} of today's cap (VAULT_RELAY_PER_DAY): past it, holders must send from their wallet until midnight UTC."
+
+      - alert: VaultRequestsStuck
+        expr: max by (network) (dno_vault_requests_pending) > 0 and max by (network) (dno_vault_requests_pending offset 1h) > 0 and max by (network) (dno_vault_requests_settled) == max by (network) (dno_vault_requests_settled offset 1h)
+        for: 30m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value | printf \"%.0f\" }} vault request(s) have waited over an hour for their proof and none settled: the relayer or Zama's KMS (the box stays busy until then)."
+
+      # What happened, for the team's activity channel.
+      - alert: VaultDeposits
+        expr: max by (network) (dno_vault_deposits) - max by (network) (dno_vault_deposits offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: |-
+            🔐 {{ $value | printf "%.0f" }} NFT(s) sealed in the vault in 15 minutes ({{ with printf `sum(max by (state) (dno_vault_boxes{network="%s",state=~"sealed|listed|sold"}))` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ end }} inside now).
+
+      - alert: VaultSeaportSales
+        expr: max by (network) (dno_vault_seaport_sales) - max by (network) (dno_vault_seaport_sales offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: |-
+            🛒 {{ $value | printf "%.0f" }} vault box(es) sold on Seaport in 15 minutes ({{ with printf `max(dno_vault_seaport_volume_eth{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.4f" }}{{ end }} ETH in all).
+
+      - alert: VaultPrivateSales
+        expr: max by (network) (dno_vault_private_sales{status="settled"}) - max by (network) (dno_vault_private_sales{status="settled"} offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "🤝 {{ $value | printf \"%.0f\" }} private vault sale(s) settled in 15 minutes (price and outcome encrypted)."
+
+      - alert: VaultWithdrawals
+        expr: max by (network) (dno_vault_withdrawals) - max by (network) (dno_vault_withdrawals offset 15m) > 0
+        labels: { severity: activity }
+        annotations:
+          summary: "📤 {{ $value | printf \"%.0f\" }} NFT(s) taken out of the vault in 15 minutes."
+
   - name: studio
     rules:
       - alert: StudioBudgetNearlySpent
@@ -317,6 +381,7 @@ groups:
             👋 new addresses +{{ with printf `max(dno_users{network="%[1]s"}) - max(dno_users{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} ({{ with printf `max(dno_users{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}–{{ end }})
             📦 boxes sold +{{ with printf `max(dno_boxes_minted{network="%[1]s"}) - max(dno_boxes_minted{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} ({{ with printf `max(dno_boxes_minted{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}–{{ end }}) · 🐈 opened +{{ with printf `max(dno_boxes_opened{network="%[1]s"}) - max(dno_boxes_opened{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · ⚔️ duels +{{ with printf `max(dno_duels{network="%[1]s"}) - max(dno_duels{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }}
             🐀 rats +{{ with printf `sum(max by (kind) (dno_rats_minted{network="%[1]s"})) - sum(max by (kind) (dno_rats_minted{network="%[1]s"} offset 1d))` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · 🎨 studio packs +{{ with printf `max(dno_studio_packs_sold{network="%[1]s"}) - max(dno_studio_packs_sold{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }}
+            🔐 vault deposits +{{ with printf `max(dno_vault_deposits{network="%[1]s"}) - max(dno_vault_deposits{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · 🛒 Seaport sales +{{ with printf `max(dno_vault_seaport_sales{network="%[1]s"}) - max(dno_vault_seaport_sales{network="%[1]s"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · 🤝 private sales +{{ with printf `max(dno_vault_private_sales{network="%[1]s",status="settled"}) - max(dno_vault_private_sales{network="%[1]s",status="settled"} offset 1d)` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }} · relayer {{ with printf `max(dno_vault_relayer_balance_eth{network="%s"})` $labels.network | query }}{{ . | first | value | printf "%.4f" }} ETH{{ else }}–{{ end }}
             📡 API requests {{ with printf `sum(increase(dno_http_request_duration_seconds_count{network="%s",route!~"/metrics|/health"}[1d]))` $labels.network | query }}{{ . | first | value | printf "%.0f" }}{{ else }}0{{ end }}
 
       - alert: SiteQuiet

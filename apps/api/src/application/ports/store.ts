@@ -163,6 +163,8 @@ export interface ReadStore {
   publishedAmong(handles: string[]): Promise<string[]>;
   /** Credits ever bought for this account. */
   creditsBought(account: Address): Promise<number>;
+  /** Every sealed vault event, in chain order: the admin site's vault page and its metrics. */
+  vaultEvents(): Promise<ProtocolEvent[]>;
 }
 
 export interface Store extends ReadStore {

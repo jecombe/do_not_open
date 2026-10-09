@@ -2,5 +2,14 @@
 - targets:
     - https://api.testnet.do-not-open.app/health
     - https://testnet.do-not-open.app/
+    - https://game.testnet.do-not-open.app/
+    - https://vault.testnet.do-not-open.app/
+  labels:
+    network: sepolia
+# The bare domain, game. and vault. serve Sepolia too until mainnet: they move to mainnet.yml then.
+- targets:
+    - https://do-not-open.app/
+    - https://game.do-not-open.app/
+    - https://vault.do-not-open.app/
   labels:
     network: sepolia

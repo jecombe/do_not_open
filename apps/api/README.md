@@ -145,7 +145,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/gifts/:address` | A wallet's gift proof once the list is frozen: `{ tier, proof, root }`; `404 not-frozen` without `WHITELIST_GIFTS_TREE`, `404 not-on-list` for a wallet not in it. Cached 60 s |
 | `POST /v1/sync/nudge` | Asks the indexer to look now; an API replica passes it on over Postgres (`NOTIFY dno_nudge`) |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
-| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`). Public facts only. Each process reports its own traffic and memory; the index's counts come from the indexer only, so a sum over replicas counts them once. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
+| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`), the sealed vault's boxes, sales and requests (`dno_vault_*`) and its relayer's wallet and outcomes. Public facts only. Each process reports its own traffic and memory; the index's counts come from the indexer only, so a sum over replicas counts them once. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 | `GET /v1/vault/relayer` · `POST /v1/vault/relay` | The sealed vault's relayer (below): its address, or null; sends a holder's request or proof from its own wallet |
@@ -431,6 +431,26 @@ relay leaves the page its wallet. The relayer proxy also lets decryptions and in
 vault, and the index follows its public decryptions (`AllowedForDecryption` with the vault as
 caller), so the "key matched" bits go through the proxy like the game's.
 
+### The vault in the index
+
+The indexer reads the vault's own events too (source `vault`, names prefixed so they never mix
+with the game's `RequestPlaced` or `Claimed`): `VaultDeposited` (box, collection, the NFT's token
+id), `VaultWithdrawn`, `VaultListed` / `VaultUnlisted` / `VaultListingExpired` /
+`VaultSoldOnSeaport` (listing, box, price in wei), `VaultClaimed` (the ETH collected),
+`VaultSaleOffered` / `VaultSaleSettled` / `VaultSaleCancelled`, `VaultRequestPlaced` (action) and
+`VaultRequestSettled` (done, refused, stale). The addresses these logs carry (the depositor, a
+withdrawal's or a claim's recipient, a private sale's seller and buyer, who sent a request) are
+public on-chain but dropped at decoding: the index keeps what the team counts, never who. They
+stay in `events` only, out of the game's feeds (`activity` leaves `source = 'vault'` out), and are
+folded on read by `summarizeVault` (`src/domain/vault.ts`) for the admin site's vault tab and the
+`dno_vault_*` metrics. Migration 27 moves the cursor back to the vault's deployment block on
+Sepolia (11,872,753) so the indexer reads those blocks again: what it recorded already is
+skipped, only the vault's events are added.
+
+The relayer reports itself on each API replica: `dno_vault_relayer_balance_eth` (its wallet),
+`dno_vault_relayer_sent_today` against `dno_vault_relayer_daily_cap`, and
+`dno_vault_relays_total{kind, outcome}` (request or finalize; sent, reverted, daily-cap, failed).
+
 ## The studio
 
 Players draw a cartoon rat from a prompt (rats, not cats, so nothing drawn here can be taken
@@ -667,6 +687,7 @@ routes under `/admin/api` (`infrastructure/http/admin.ts`, read from `applicatio
 | `GET /admin/api/players` | every pass: handle, tasks with their times, seat, whether a wallet is linked, claimed, `/board` |
 | `GET /admin/api/players/:code/wallet` | the wallet linked to one pass (logged) |
 | `GET /admin/api/ideas` | the suggestion box |
+| `GET /admin/api/vault?days=30` | the sealed vault from its public events: boxes by state, deposits, Seaport listings, sales and volume, ETH collected, private sales offered, settled and cancelled (never their price), requests by action and outcome, deposits per collection, a daily line per series and the latest events. No address but the collections' |
 
 The session is a signed expiry, its key derived from the password: no table, any replica checks
 it, a new password ends every session. Nothing lists a wallet next to a handle. The chain's daily

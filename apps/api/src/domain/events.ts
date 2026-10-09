@@ -1,8 +1,9 @@
 import type { RatKind } from "./rats";
+import type { VaultAction, VaultRequestOutcome } from "./vault";
 import type { Address, ChainRef, DuelStatus, RequestKind, RequestStatus, RevealedContents, WeighIn } from "./types";
 
 /** Which deployed contract emitted an event. */
-export type Source = "collection" | "pantry" | "ramp" | "credits" | "studio" | "rats" | "ratPantry" | "ratTricks" | "acl";
+export type Source = "collection" | "pantry" | "ramp" | "credits" | "studio" | "rats" | "ratPantry" | "ratTricks" | "vault" | "acl";
 
 type Ev<N extends string, B> = ChainRef & { source: Source; name: N } & B;
 
@@ -45,8 +46,29 @@ export type ProtocolEvent =
   | Ev<"RatSniffed", { ratId: number; tokenId: number; sniffer: Address }>
   /** RatTricks: a rat was set on a box until `until` (seconds), resting until `readyAt`. Shield, jam or bluff is encrypted. */
   | Ev<"RatTrick", { ratId: number; tokenId: number; player: Address; until: number; readyAt: number }>
+  /**
+   * The sealed vault (SealedVault), its names prefixed: its requests and claims are not the
+   * game's. `boxId` is a vault box, never a game box; `nftTokenId` the token it holds in its own
+   * collection. No address that could name a holder is kept: not the depositor, not a sale's
+   * parties, not where a withdrawal went, not who sent a request (the relayer, mostly).
+   */
+  | Ev<"VaultDeposited", { boxId: number; collection: Address; nftTokenId: string }>
+  | Ev<"VaultWithdrawn", { boxId: number }>
+  | Ev<"VaultListed", { listingId: number; boxId: number; price: string; endTime: number }>
+  | Ev<"VaultUnlisted", { listingId: number; boxId: number }>
+  | Ev<"VaultListingExpired", { listingId: number; boxId: number }>
+  | Ev<"VaultSoldOnSeaport", { listingId: number; boxId: number; price: string }>
+  | Ev<"VaultClaimed", { boxId: number; amount: string }>
+  | Ev<"VaultSaleOffered", { saleId: number; boxId: number }>
+  | Ev<"VaultSaleCancelled", { saleId: number }>
+  | Ev<"VaultSaleSettled", { saleId: number }>
+  | Ev<"VaultRequestPlaced", { requestId: number; boxId: number; action: VaultAction }>
+  | Ev<"VaultRequestSettled", { requestId: number; status: VaultRequestOutcome }>
   /** Zama's ACL: one of the protocol's contracts made these handles publicly decryptable. */
   | Ev<"PubliclyDecryptable", { caller: Address; handles: string[] }>;
+
+/** The sealed vault's events: its own page on the admin site, kept out of the game's feeds. */
+export const isVaultEvent = (e: Pick<ProtocolEvent, "source">): boolean => e.source === "vault";
 
 /** Bookkeeping, not activity: left out of the feeds. */
 export const QUIET_EVENTS: readonly string[] = ["PubliclyDecryptable"];

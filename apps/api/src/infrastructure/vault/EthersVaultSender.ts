@@ -24,8 +24,10 @@ export class EthersVaultSender implements VaultSender {
   readonly address: Address;
   private readonly signer: NonceManager;
   private readonly vault: Contract;
+  private readonly provider: Provider;
 
   constructor(privateKey: string, vaultAddress: string, provider: Provider) {
+    this.provider = provider;
     const wallet = new Wallet(privateKey, provider);
     this.address = normalizeAddress(wallet.address);
     this.signer = new NonceManager(wallet);
@@ -38,6 +40,10 @@ export class EthersVaultSender implements VaultSender {
 
   finalize(tx: VaultFinalizeTx): Promise<string> {
     return this.send("finalize", [tx.requestId, tx.cleartexts, tx.proof]);
+  }
+
+  balance(): Promise<bigint> {
+    return this.provider.getBalance(this.address);
   }
 
   private async send(method: "request" | "finalize", args: unknown[]): Promise<string> {

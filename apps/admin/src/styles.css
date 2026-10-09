@@ -782,3 +782,16 @@ table.players {
     grid-template-columns: 100px minmax(0, 1fr) 40px;
   }
 }
+
+/* The vault's tab: plain lists of figures under its charts. */
+.plain {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+}
+.plain b {
+  color: var(--spectral);
+}

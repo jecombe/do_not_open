@@ -1,7 +1,7 @@
 import type { ActivityQuery, CarriedFacts, DuelQuery, EventBucket, EntangleProposal, Mint, ProjectionTx, Stats, Store, StoredEvent, Ticket, Transfer } from "../../application/ports/store";
 import type { Box } from "../../domain/box";
 import { isOpen, type Duel } from "../../domain/duel";
-import { actorsOf, byChainOrder, QUIET_EVENTS, tokensOf } from "../../domain/events";
+import { actorsOf, byChainOrder, isVaultEvent, QUIET_EVENTS, tokensOf } from "../../domain/events";
 import type { Charge, Meter, PublicDecryption } from "../../domain/relayer";
 import type { Request } from "../../domain/request";
 import type { Address } from "../../domain/types";
@@ -280,12 +280,20 @@ export class MemoryStore implements Store, PostStore, ArchiveStore, StudioStore,
   async activity(q: ActivityQuery) {
     return [...this.s.events.values()]
       .map((s) => s.event)
-      .filter((e) => !QUIET_EVENTS.includes(e.name))
+      .filter((e) => !QUIET_EVENTS.includes(e.name) && !isVaultEvent(e))
       .filter((e) => q.beforeBlock === undefined || e.block < q.beforeBlock)
       .filter((e) => q.tokenId === undefined || tokensOf(e).includes(q.tokenId))
       .filter((e) => q.account === undefined || actorsOf(e).includes(q.account))
       .sort((a, b) => byChainOrder(b, a))
       .slice(0, q.limit)
+      .map(clone);
+  }
+
+  async vaultEvents() {
+    return [...this.s.events.values()]
+      .map((s) => s.event)
+      .filter(isVaultEvent)
+      .sort(byChainOrder)
       .map(clone);
   }
 

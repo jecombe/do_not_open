@@ -27,6 +27,10 @@ const INDEXED: Record<Source, string[]> = {
   rats: ["RatMinted", "Transfer"],
   ratPantry: ["RatsFed"],
   ratTricks: ["Sniffed", "TrickPlayed"],
+  vault: [
+    "Deposited", "Withdrawn", "Listed", "Unlisted", "ListingExpired", "SoldOnSeaport", "Claimed",
+    "SaleOffered", "SaleCancelled", "SaleSettled", "RequestPlaced", "RequestSettled",
+  ],
   acl: ["AllowedForDecryption"],
 };
 
@@ -87,6 +91,7 @@ export class EvmChainSource implements ChainSource {
       ...(d.rats ? [{ source: "rats" as const, address: d.rats.address, iface: new Interface(d.rats.abi) }] : []),
       ...(d.ratPantry ? [{ source: "ratPantry" as const, address: d.ratPantry.address, iface: new Interface(d.ratPantry.abi) }] : []),
       ...(d.ratTricks ? [{ source: "ratTricks" as const, address: d.ratTricks.address, iface: new Interface(d.ratTricks.abi) }] : []),
+      ...(d.vault ? [{ source: "vault" as const, address: d.vault.address, iface: new Interface(d.vault.abi) }] : []),
     ].map((c) => ({ ...c, address: c.address.toLowerCase() }));
     // An event an older deployment's ABI lacks (BoxGifted before the free gifts) is simply not asked for.
     this.topics = this.contracts.flatMap((c) => INDEXED[c.source].flatMap((name) => c.iface.getEvent(name)?.topicHash ?? []));
@@ -176,7 +181,8 @@ export class EvmChainSource implements ChainSource {
       return [];
     }
     if (!parsed) return [];
-    const body = toBody(parsed.name, parsed.args);
+    // The vault shares event names with the game (RequestPlaced, Claimed): its own decoder.
+    const body = contract.source === "vault" ? vaultBody(parsed.name, parsed.args) : toBody(parsed.name, parsed.args);
     if (!body) return [];
     const block = Number(l.blockNumber);
     return [
@@ -277,6 +283,48 @@ function contentsFrom(c: Result): RevealedContents {
     affection: num(c.affection),
     golden: Boolean(c.golden),
   };
+}
+
+const VAULT_ACTIONS = ["withdraw", "list", "unlist", "claim"] as const;
+const VAULT_OUTCOMES: Record<number, "done" | "refused" | "stale"> = { 2: "done", 3: "refused", 4: "stale" };
+
+/**
+ * A sealed vault event, its name prefixed. The addresses that could name a holder (the
+ * depositor, a withdrawal's or a claim's recipient, a private sale's seller and buyer, a
+ * request's sender) are public on-chain but left out: the index keeps what the admin site
+ * counts, never who.
+ */
+function vaultBody(name: string, a: Result): Record<string, unknown> | null {
+  switch (name) {
+    case "Deposited":
+      return { name: "VaultDeposited", boxId: num(a.boxId), collection: addr(a.collection), nftTokenId: String(a.tokenId) };
+    case "Withdrawn":
+      return { name: "VaultWithdrawn", boxId: num(a.boxId) };
+    case "Listed":
+      return { name: "VaultListed", listingId: num(a.listingId), boxId: num(a.boxId), price: String(a.price), endTime: num(a.endTime) };
+    case "Unlisted":
+      return { name: "VaultUnlisted", listingId: num(a.listingId), boxId: num(a.boxId) };
+    case "ListingExpired":
+      return { name: "VaultListingExpired", listingId: num(a.listingId), boxId: num(a.boxId) };
+    case "SoldOnSeaport":
+      return { name: "VaultSoldOnSeaport", listingId: num(a.listingId), boxId: num(a.boxId), price: String(a.price) };
+    case "Claimed":
+      return { name: "VaultClaimed", boxId: num(a.boxId), amount: String(a.amount) };
+    case "SaleOffered":
+      return { name: "VaultSaleOffered", saleId: num(a.saleId), boxId: num(a.boxId) };
+    case "SaleCancelled":
+      return { name: "VaultSaleCancelled", saleId: num(a.saleId) };
+    case "SaleSettled":
+      return { name: "VaultSaleSettled", saleId: num(a.saleId) };
+    case "RequestPlaced":
+      return { name: "VaultRequestPlaced", requestId: num(a.requestId), boxId: num(a.boxId), action: VAULT_ACTIONS[num(a.action)] ?? "withdraw" };
+    case "RequestSettled": {
+      const status = VAULT_OUTCOMES[num(a.status)];
+      return status ? { name: "VaultRequestSettled", requestId: num(a.requestId), status } : null;
+    }
+    default:
+      return null;
+  }
 }
 
 /** The event's own fields, in the domain's words. Null for an event the index ignores. */
