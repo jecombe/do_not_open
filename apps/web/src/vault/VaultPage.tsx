@@ -34,6 +34,12 @@ const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const DEFAULT_DECOYS = 3;
 const TABS = ["explore", "mine", "pocket", "wallet", "sales", "leaks"] as const;
 type Tab = (typeof TABS)[number];
+/** The vault's two sides: NFTs in boxes (non-fungible), tokens in pockets (fungible). */
+const KINDS = ["nft", "token"] as const;
+type Kind = (typeof KINDS)[number];
+const KIND_TABS: Record<Kind, readonly Tab[]> = { nft: ["explore", "mine", "wallet", "sales", "leaks"], token: ["pocket", "leaks"] };
+/** The tab a link opens: `#tokens` the pockets, `#leaks` what leaks, anything else the NFTs. */
+const hashTab = (): Tab => (location.hash === "#leaks" ? "leaks" : location.hash === "#tokens" ? "pocket" : "explore");
 type Status = "all" | "listed" | "unlisted";
 type Sort = "recent" | "low" | "high";
 /** The box a `?box=` link opens. */
@@ -75,13 +81,37 @@ export function VaultPage() {
   );
 }
 
+/**
+ * Two wordings in one grid cell, the other one hidden but still taking its room: the header keeps
+ * the size of the longer one, so the NFT / token switch never moves it.
+ */
+function Swap({ on, off, onText }: { on: boolean; off: string; onText: string }) {
+  return (
+    <span className="vault-swap">
+      <span aria-hidden={on}>{off}</span>
+      <span aria-hidden={!on}>{onText}</span>
+    </span>
+  );
+}
+
 /** The whole market: header, tabs, side filters, the grid, a box's dialog, and how actions go. */
 function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   const t = useT();
   const locale = useLocale();
   const action = useAction();
   const { account, connect, connectError, picking, closePicker } = useChain();
-  const [tab, setTab] = useState<Tab>(() => (location.hash === "#leaks" ? "leaks" : "explore"));
+  const [tab, setTab] = useState<Tab>(hashTab);
+  // "What leaks" sits on both sides: it keeps the side it was opened from.
+  const [kind, setKind] = useState<Kind>(() => (hashTab() === "pocket" ? "token" : "nft"));
+  const go = useCallback((next: Tab) => {
+    setTab(next);
+    if (next !== "leaks") setKind(next === "pocket" ? "token" : "nft");
+  }, []);
+  const pickKind = (k: Kind) => {
+    setKind(k);
+    setTab(KIND_TABS[k][0]!);
+    history.replaceState(null, "", `${location.pathname}${location.search}${k === "token" ? "#tokens" : ""}`);
+  };
   const [info, setInfo] = useState<VaultInfo | null>(null);
   const [boxes, setBoxes] = useState<VaultBox[]>([]);
   const [mine, setMine] = useState<number[] | null>(null);
@@ -103,10 +133,10 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
 
   // The bar's "What leaks" link opens its tab.
   useEffect(() => {
-    const onHash = () => location.hash === "#leaks" && setTab("leaks");
+    const onHash = () => (location.hash === "#leaks" || location.hash === "#tokens") && go(hashTab());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
+  }, [go]);
 
   const pockets = useMemo(() => vault.pockets(), [vault]);
 
@@ -259,11 +289,15 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
         </div>
         <div className="vault-id">
           <h1>
-            {t("vault.h1")} <span className="vault-verified" title={t("vault.network.sepolia")} aria-hidden="true" />
+            <Swap on={kind === "token"} off={t("vault.h1")} onText={t("vault.h1.token")} /> <span className="vault-verified" title={t("vault.network.sepolia")} aria-hidden="true" />
           </h1>
-          <p>{t("vault.tagline")}</p>
+          <p>
+            <Swap on={kind === "token"} off={t("vault.tagline")} onText={t("vault.tagline.token")} />
+          </p>
         </div>
-        <dl className="vault-stats">
+        {/* Both sides' numbers sit in one cell, the other side's hidden: switching moves nothing. */}
+        <div className="vault-stats-wrap vault-swap">
+          <dl className="vault-stats" aria-hidden={kind !== "nft"}>
           <div>
             <dt>{t("vault.stat.boxes")}</dt>
             <dd>{info ? inVault.length : "…"}</dd>
@@ -282,20 +316,37 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               <Cipher length={4} />
             </dd>
           </div>
-          {pocketCount !== null && (
-            <div>
-              <dt>{t("vault.stat.pockets")}</dt>
-              <dd>{pocketCount}</dd>
-            </div>
-          )}
           <div>
             <dt>{t("vault.stat.fee")}</dt>
             <dd>{info ? `${info.feeBps / 100}%` : "…"}</dd>
           </div>
         </dl>
+          <dl className="vault-stats" aria-hidden={kind !== "token"}>
+            <div>
+              <dt>{t("vault.stat.pockets")}</dt>
+              <dd>{pocketCount ?? "…"}</dd>
+            </div>
+            <div>
+              <dt>{t("vault.stat.holders")}</dt>
+              <dd>
+                <Cipher length={4} />
+              </dd>
+            </div>
+            <div>
+              <dt>{t("vault.stat.amounts")}</dt>
+              <dd>
+                <Cipher length={4} />
+              </dd>
+            </div>
+            <div>
+              <dt>{t("vault.stat.token")}</dt>
+              <dd>cUSDC</dd>
+            </div>
+          </dl>
+        </div>
         <VaultBalances vault={vault} coin={coin} className="vault-balances-head" />
         <div className="vault-account">
-          {account ? <VaultProfile account={account} vault={vault} coin={coin} links={links} boxes={mine?.length ?? null} onBoxes={() => setTab("mine")} /> : connectButton}
+          {account ? <VaultProfile account={account} vault={vault} coin={coin} links={links} boxes={mine?.length ?? null} onBoxes={() => go("mine")} /> : connectButton}
           {!account && picking && (
             <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
               <p>{t("vault.pickWallet")}</p>
@@ -314,9 +365,24 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
         </div>
       </header>
 
-      <nav className="vault-tabs" role="tablist" aria-label={t("vault.h1")}>
-        {TABS.map((k) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : undefined} onClick={() => setTab(k)}>
+      <div className="vault-kinds" role="radiogroup" aria-label={t("vault.kind.label")}>
+        {KINDS.map((k) => (
+          <button key={k} type="button" role="radio" aria-checked={kind === k} className={`vault-kind vault-kind-${k}${kind === k ? " on" : ""}`} onClick={() => pickKind(k)}>
+            <span className="vault-kind-icon" aria-hidden="true">
+              {k === "nft" ? <span className="vault-kind-box" /> : <span className="vault-kind-coins"><i /><i /><i /></span>}
+            </span>
+            <span className="vault-kind-text">
+              <span className="vault-kind-tag">{t(`vault.kind.${k}.tag`)}</span>
+              <strong>{t(`vault.kind.${k}.title`)}</strong>
+              <small>{t(`vault.kind.${k}.hint`)}</small>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <nav className="vault-tabs" role="tablist" aria-label={t(`vault.kind.${kind}.title`)}>
+        {KIND_TABS[kind].map((k) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : undefined} onClick={() => go(k)}>
             {t(`vault.tab.${k}`)}
             {counts[k] !== null && <span className="vault-count">{counts[k]}</span>}
           </button>
@@ -389,7 +455,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                 <Skeletons />
               ) : inVault.length === 0 ? (
                 <Empty title={t("vault.empty.title")} body={t("vault.empty.body")}>
-                  <button type="button" className="sec-btn sec-btn-small" onClick={() => setTab("wallet")}>
+                  <button type="button" className="sec-btn sec-btn-small" onClick={() => go("wallet")}>
                     {t("vault.empty.cta")}
                   </button>
                 </Empty>
@@ -425,7 +491,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               </Empty>
             ) : myBoxes.length === 0 ? (
               <Empty title={t("vault.mine.empty")}>
-                <button type="button" className="sec-btn sec-btn-small" onClick={() => setTab("wallet")}>
+                <button type="button" className="sec-btn sec-btn-small" onClick={() => go("wallet")}>
                   {t("vault.empty.cta")}
                 </button>
               </Empty>
