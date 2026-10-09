@@ -200,6 +200,16 @@ const schema = z.object({
    * Its address is RATS_ATTESTER at deployment. Without it, only seed rats can be adopted.
    */
   RATS_ATTESTER_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "0x and 64 hex characters").optional(),
+  /**
+   * The sealed vault's relayer: sends holders' requests from this wallet, so their address shows
+   * on none. It pays the gas: fund it with a little ETH. Without it, holders send from their own
+   * wallet.
+   */
+  VAULT_RELAYER_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "0x and 64 hex characters").optional(),
+  /** Transactions the vault relayer sends a day, per replica. */
+  VAULT_RELAY_PER_DAY: z.coerce.number().int().min(0).default(500),
+  /** Vault relays per minute per IP. */
+  VAULT_RELAY_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
   /** The site, e.g. https://do-not-open.app: rats' metadata links its studio. */
   SITE_URL: z.string().url().optional(),
 

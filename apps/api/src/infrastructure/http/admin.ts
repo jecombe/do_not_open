@@ -154,6 +154,11 @@ export async function registerAdmin(app: FastifyInstance, deps: AdminDeps): Prom
     });
 
     admin.get("/ideas", async () => deps.insights.ideas());
+
+    admin.get("/vault", async (req) => {
+      const { days } = z.object({ days: z.coerce.number().int().min(7).max(365).default(30) }).parse(req.query);
+      return deps.insights.vault(days);
+    });
   }, { prefix: "/admin/api" });
 
   if (deps.staticDir && existsSync(deps.staticDir)) {

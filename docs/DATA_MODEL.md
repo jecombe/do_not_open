@@ -142,6 +142,9 @@ sequenceDiagram
 | postDuel | "the caller holds A" becomes publicly decryptable | A duel is a public act |
 | acceptDuel | five duel values become publicly decryptable | The last three masked by "both hold" |
 | observe | "holds and paid", seed and affection (masked by it) become publicly decryptable | Irreversible, like the grant |
+| Vault: deposit, `setKey`, a transfer | the vault alone on the box's key (a fresh random one after a transfer that moved it) | A holder allowed on the key would keep reading it after the box left |
+| Vault: `request` | "the key matched" becomes publicly decryptable | One bit; nothing about who sent the key |
+| Vault: `offerSale`, `acceptSale` | the vault, the seller and the buyer on the price, then on `moved` | The two sides must read the price and the outcome; nobody else |
 
 What a previous holder keeps after a sale: the traits they shook out, which no system
 could make them forget, and the receipts that tell them the box left. What they lose: the
@@ -227,6 +230,11 @@ A seed rat's picture is rendered from its seed on request (`/rats/:id/image.svg`
 it is stored. `RatTrick` events stay in `events` (source `ratTricks`) and the feeds, folded into
 nothing else.
 
+The sealed vault's events (source `vault`, names prefixed `Vault`: deposits, withdrawals, Seaport
+listings and sales, claims, private sales, requests) stay in `events` too, without any address
+that could name a holder, out of the game's feeds, folded on read (`summarizeVault`) for the
+admin site and the metrics. No table of their own ([`docs/VAULT.md`](VAULT.md#what-the-team-sees)).
+
 ## Flea market
 
 `FleaMarket` keeps three maps, each with a public counter (`listingCount`, `purchaseCount`,
@@ -271,6 +279,58 @@ for a sale by offer), `FeeSet`, `TreasurySet`. The API does not index any of the
 | The price of a sale by offer, and its fee | The buyer and the seller (the treasury learns its fee as a cUSDC transfer) | No | `Sold` says price 0, `byOffer` true |
 | Balances | Their account | No | cUSDC is ERC-7984 |
 | What is inside a sealed box | No | No | Unchanged by a sale |
+
+## Sealed vault
+
+`SealedVault` is a Confidential ERC-721 of its own, next to the game: each token is a box
+holding one NFT of an allowed collection. Its owner is an `eaddress`, as for the game's boxes
+(see [Per token](#per-token) and [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)). Four maps with public
+counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (`boxInfo`,
+`requestInfo`, `listingInfo`, `saleInfo`, `seaportOrder`), plus the keys. Flows in
+[VAULT.md](VAULT.md).
+
+| Struct | Field | Type | Who can read it | Meaning |
+| --- | --- | --- | --- | --- |
+| `Box` | `collection`, `tokenId` | `address`, `uint256` | public | The NFT inside; `boxOf[collection][tokenId]` is the box id + 1 while the vault holds it |
+| | `state` | `None`, `Sealed`, `Listed`, `Sold`, `Withdrawn`, `Claimed` | public | `Sold`: the Seaport order filled and the ETH waits; `Withdrawn` and `Claimed` are final |
+| | `listing`, `busy` | `uint256` | public | The listing id + 1 while listed or sold; the pending request's id + 1 (the box cannot move while it is set) |
+| | `proceeds` | `uint256` | public | ETH a Seaport sale left for the key's holder, the fee taken |
+| | `nonce` | `uint64` | public | Requests the box has had: part of what each request's key is bound to |
+| key (`_keys`) | | `euint256` | the vault only | The holder's 256-bit secret. Nobody is allowed on it, the holder included; random after a transfer that moved the box |
+| `Request` | `boxId`, `action`, `to`, `price`, `endTime` | plain | public | `Withdraw`, `List`, `Unlist` or `Claim`, and its terms |
+| | `status` | `None`, `Pending`, `Done`, `Refused`, `Stale` | public | `Refused`: the key did not match; `Stale`: it matched but the box changed first (or the ETH would not send) |
+| | `ok` | `ebool` | publicly decryptable | `(input XOR requestHash) == key` |
+| `Listing` | `boxId`, `price`, `startTime`, `endTime`, `counter`, `orderHash` | plain | public | The Seaport order the vault validated, in wei, at most 180 days |
+| `Sale` | `boxId`, `seller`, `buyer`, `status` | plain | public | A private sale offered to one buyer: `Open`, `Settled`, `Cancelled` |
+| | `price` | `euint64` | the vault, the seller, the buyer | cUSDC, capped at `MAX_SALE_PRICE` (1,000,000 USDC) under encryption |
+| | `moved` | `ebool` | the vault, the seller, the buyer, once settled | Whether the box went to the buyer |
+
+Plus `allowedCollection` (public, set by the owner), `treasury`, `feeBps` (at most
+`MAX_FEE_BPS`, 1,000), `feesOwed` (Seaport fees in ETH not yet sent), and the immutables
+`seaport` and `confidentialUsdc`. The NFTs themselves are ordinary holdings of the vault
+(`ownerOf` shows it), approved to Seaport one at a time while listed.
+
+Events: `Deposited(boxId, collection, tokenId, depositor)`, `KeySet(boxId, caller)`,
+`RequestPlaced(requestId, boxId, action, caller)`, `RequestSettled(requestId, status)`,
+`Withdrawn(boxId, to)`, `Listed(listingId, boxId, price, endTime, orderHash)`,
+`Unlisted(listingId, boxId)`, `ListingExpired(listingId, boxId)`,
+`SoldOnSeaport(listingId, boxId, price)`, `Claimed(boxId, to, amount)`,
+`SaleOffered(saleId, boxId, seller, buyer)` (no price), `SaleCancelled(saleId)`,
+`SaleSettled(saleId)` (not whether it moved), `CollectionSet`, `FeeSet`, `TreasurySet`, and the
+base's `ConfidentialTransfer`. The API does not index any of them; its relayer proxy decrypts
+for the vault and follows its public decryptions.
+
+| Fact | The holder | Anyone else | How |
+| --- | --- | --- | --- |
+| Who holds a box | Yes | No | Encrypted owner; the holder finds it in their own receipts |
+| The box's key | Derived in their page | No | Nobody is allowed on it; only compared under encryption |
+| Who put the NFT in | Yes | Yes | `Deposited` |
+| Who asked for a request | Yes | The sender only: the relayer, or the wallet when there is none | `RequestPlaced`, the transaction |
+| Whether the key matched | Yes | Yes | `ok` is decrypted in public; `RequestSettled` |
+| Where an NFT or a sale's ETH went | Yes | Yes | `Withdrawn`, `Claimed` |
+| A Seaport listing and its buyer | Yes | Yes | `Listed`, Seaport's own events |
+| A private sale's price | The seller and the buyer | No | User decryption; `SaleOffered` carries no price |
+| Whether a private sale moved the box | The seller and the buyer | No | `moved`; `SaleSettled` says only that it settled |
 
 ## Release forms
 

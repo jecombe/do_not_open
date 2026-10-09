@@ -3,7 +3,7 @@ import { spec, type SeedField } from "@dno/game-spec";
 import { buildCatSpec, decodeSeed, FIXTURE_SEEDS, resolveTrait, seedToHex, stateFromRoll } from "@dno/generator";
 import { useLocale } from "../i18n/locale";
 import { catNames, stateName, variantName } from "../i18n/names";
-import { flows, packetName, type PacketKind, type StationId } from "./flows";
+import { flows, GAME_FLOWS, packetName, type FlowKey, type PacketKind, type StationId } from "./flows";
 import { useT } from "./i18n";
 import { FlowScene } from "./three/flow";
 import { HeroScene } from "./three/hero";
@@ -183,11 +183,12 @@ export function SeedFigure() {
 /** Seconds a step stays up before the next one plays. */
 const STEP_SECONDS = 4.2;
 
-export function FlowFigure() {
+export function FlowFigure({ keys = GAME_FLOWS }: { keys?: readonly FlowKey[] }) {
   const t = useT();
   const locale = useLocale();
-  const FLOWS = useMemo(flows, [locale]);
-  const [flowIndex, setFlowIndex] = useState(2);
+  // The words change with the language: `locale` is there for that.
+  const FLOWS = useMemo(() => flows(keys), [locale, keys]);
+  const [flowIndex, setFlowIndex] = useState(Math.max(0, keys.indexOf("open")));
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const { host, scene, ready } = useScene((el) => new FlowScene(el));
@@ -223,13 +224,13 @@ export function FlowFigure() {
     <figure className="figure">
       <div ref={host} className="stage tall" />
       <figcaption className="slip">
-        <div className="picker tabs" role="group" aria-label={t("fig.flow.which")}>
+        {FLOWS.length > 1 && <div className="picker tabs" role="group" aria-label={t("fig.flow.which")}>
           {FLOWS.map((f, i) => (
             <button type="button" key={f.key} aria-pressed={i === flowIndex} onClick={() => choose(i)}>
               {f.name}
             </button>
           ))}
-        </div>
+        </div>}
         <p className="lead">{flow.summary}</p>
         <ol className="steps">
           {flow.steps.map((s, i) => (

@@ -2,6 +2,8 @@ import { MockAdapter, type MockOptions } from "./mock/MockAdapter";
 import type { ChainAdapter } from "./types";
 
 export * from "./types";
+export * from "./vault";
+export { MOCK_VAULT, MOCK_VAULT_NFT } from "./mock/MockVault";
 export { traitIndexAtOffset } from "./layout";
 export { duelSettles, duelUnderway, onShelf, shelfBoxes } from "./duels";
 export * from "./standings";

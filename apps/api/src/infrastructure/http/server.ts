@@ -16,6 +16,7 @@ import { BadRequest, NotFound, type Queries } from "../../application/queries";
 import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../application/relayerGate";
 import { StudioRefused, type Studio } from "../../application/studio";
 import { RatRefused, type Rats } from "../../application/rats";
+import { VaultRelayRefused, type VaultRelay } from "../../application/vaultRelay";
 import type { StudioJob } from "../../domain/studio";
 import { normalizeAddress, type Address } from "../../domain/types";
 import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
@@ -53,6 +54,10 @@ export interface HttpDeps {
   };
   /** The depot's rats: read back, described for marketplaces, and adopted. */
   rats?: Rats;
+  /** The sealed vault's relayer. Absent: holders send their requests from their own wallet. */
+  vaultRelay?: VaultRelay;
+  /** Vault relays per minute per IP. */
+  vaultRelayRatePerMinute?: number;
   /** The manual's chatbot. */
   chat?: AskManual;
   /** Chat questions per minute per IP. */
@@ -526,6 +531,49 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       const p = z.object({ address }).parse(req.params);
       return send(reply, await relayer.allowance(p.address), "private, no-store");
     });
+  }
+
+  // --- the sealed vault's relayer ---
+
+  // Asked by every vault page: null when there is none, so the page sends from the wallet.
+  app.get("/v1/vault/relayer", async (_req, reply) => send(reply, { address: deps.vaultRelay?.address ?? null }, "public, max-age=60"));
+
+  const vaultRelay = deps.vaultRelay;
+  if (vaultRelay) {
+    const hex = z.string().regex(/^0x[0-9a-fA-F]*$/, "hex").max(20_000);
+    const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "32 bytes");
+    const body = z.discriminatedUnion("call", [
+      z.object({
+        call: z.literal("request"),
+        args: z.object({
+          boxId: id,
+          action: z.number().int().min(0).max(3),
+          to: address,
+          price: z.string().regex(/^\d{1,78}$/).transform(BigInt),
+          endTime: z.number().int().min(0).max(2 ** 48),
+          handle: bytes32,
+          inputProof: hex,
+        }),
+      }),
+      z.object({ call: z.literal("finalize"), args: z.object({ requestId: id, cleartexts: hex, proof: hex }) }),
+    ]);
+    app.post(
+      "/v1/vault/relay",
+      // An encrypted input carries its proof: bigger than the API's other bodies.
+      { bodyLimit: 64 * 1024, config: { rateLimit: { max: deps.vaultRelayRatePerMinute ?? 10, timeWindow: "1 minute" } } },
+      async (req, reply) => {
+        reply.header("cache-control", "no-store");
+        const parsed = body.safeParse(req.body);
+        if (!parsed.success) return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "bad request" });
+        try {
+          const hash = parsed.data.call === "request" ? await vaultRelay.request(parsed.data.args) : await vaultRelay.finalize(parsed.data.args);
+          return { hash };
+        } catch (error) {
+          if (error instanceof VaultRelayRefused) return reply.status(error.code === "daily-cap" ? 429 : 400).send({ error: error.message, code: error.code });
+          throw error;
+        }
+      },
+    );
   }
 
   // --- the studio ---

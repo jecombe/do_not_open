@@ -33,6 +33,8 @@ export interface ProtocolDeployment {
   ratTricks: (Deployed & { deployBlock?: number | null }) | null;
   /** The flea market, where players sell to each other in cUSDC: wallets' permits name it. Null where none was deployed. */
   fleaMarket: Deployed | null;
+  /** The sealed vault: its relayer sends holders' requests, and wallets' permits name it. Null where none was deployed. */
+  vault: Deployed | null;
   /** Zama's contracts on this network, as the Relayer SDK's preset names them. */
   fhevm: FhevmConfig;
   /** The Uniswap V3 CROQ/USDC pool and the locked position CROQ is sold from. */
@@ -97,6 +99,7 @@ export function deploymentFor(network: string, overrides: { address?: string; st
     ratPantry: own ? SEPOLIA_RAT_PANTRY : null,
     ratTricks: own ? SEPOLIA_RAT_TRICKS : null,
     fleaMarket: own ? SEPOLIA_FLEA_MARKET : null,
+    vault: own ? (SEPOLIA_DEPLOYMENT.vault ?? null) : null,
     fhevm: SEPOLIA_FHEVM,
     market: own ? SEPOLIA_ECONOMY.market : null,
     // Zama's USDCMock lets anyone mint: 100 test dollars a go.

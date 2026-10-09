@@ -57,6 +57,9 @@ import { Rats } from "./application/rats";
 import type { RatStore } from "./application/ports/rats";
 import { JpegShrinker } from "./infrastructure/rats/JpegShrinker";
 import { EthersAdoptionSigner } from "./infrastructure/rats/EthersAdoptionSigner";
+import { JsonRpcProvider } from "ethers";
+import { VaultRelay } from "./application/vaultRelay";
+import { EthersVaultSender } from "./infrastructure/vault/EthersVaultSender";
 import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 
 /** The composition root: the one place that knows every concrete class. */
@@ -258,6 +261,13 @@ async function main() {
     feed,
   );
 
+  // The sealed vault's relayer: sends holders' requests from its own wallet, through the first RPC endpoint.
+  const vaultRelay =
+    config.VAULT_RELAYER_KEY && deployment.vault && config.ROLE !== "indexer"
+      ? new VaultRelay(new EthersVaultSender(config.VAULT_RELAYER_KEY, deployment.vault.address, new JsonRpcProvider(config.RPC_URLS[0], deployment.chainId, { staticNetwork: true })), clock, config.VAULT_RELAY_PER_DAY)
+      : undefined;
+  if (vaultRelay) log.info({ address: vaultRelay.address }, "the vault relayer sends holders' requests");
+
   // What the index holds is reported by one process only, the one that indexes: API replicas
   // report their own traffic, memory and RPC calls.
   const reports = config.ROLE !== "api";
@@ -276,7 +286,9 @@ async function main() {
         open: !!config.FAL_KEY && !!deployment.studio && !config.STUDIO_PAUSED,
       },
       rats: store,
+      vault: store,
     }),
+    ...(vaultRelay && { vaultRelay }),
     indexer,
     rpcStatus: () => rpc.status(),
     info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev", role: config.ROLE },
@@ -298,6 +310,8 @@ async function main() {
           relayerRatePerMinute: config.RELAYER_RATE_PER_MINUTE,
           studio: { studio, publicUrl: config.PUBLIC_URL },
           rats,
+          vaultRelay,
+          vaultRelayRatePerMinute: config.VAULT_RELAY_RATE_PER_MINUTE,
           chat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
           discord,

@@ -35,9 +35,10 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
 
 /**
  * Five parts for players and anyone curious, with no code in them: a start, the boxes, the money,
- * the studio and its rats, the flea market. Then two bare chapters with no part title: the
- * testnet, which goes away at mainnet, and the references. `audience` is what the API's chatbot
- * and lessons know a chapter by: "manual" for the players' five parts.
+ * the studio and its rats, and the flea market (the sealed vault has docs of its own). Then two bare
+ * chapters with no part title: the testnet, which goes away at mainnet, and the references.
+ * `audience` is what the API's chatbot and lessons know a chapter by: "manual" for the players'
+ * five parts.
  */
 export const PARTS = [
   { key: "start", audience: "manual", sections: ["box", "map", "cats", "terms"] },

@@ -432,6 +432,28 @@
   overflow-y: auto;
 }
 
+/* The game is a prototype: said first, in the depot's red. */
+.testnet-experimental {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 3px solid var(--ink-red);
+  background: rgb(194 38 29 / 0.12);
+}
+
+.testnet-experimental h3 {
+  margin: 0 0 4px;
+  color: var(--ink-red);
+  font-family: var(--stencil);
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.testnet-experimental p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
 .testnet-lede {
   margin: 0 0 14px;
   font-size: 18px;

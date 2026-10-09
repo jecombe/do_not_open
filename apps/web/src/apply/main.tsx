@@ -2,7 +2,7 @@ import "@fontsource/stardos-stencil/700.css";
 import "@fontsource/barlow-condensed/500.css";
 import "@fontsource/barlow-condensed/600.css";
 import "@fontsource/barlow-condensed/700.css";
-import "../home/home.css";
+import "../secure/secure.css";
 import "./apply.css";
 import { createRoot } from "react-dom/client";
 import { startAnalytics } from "../analytics";

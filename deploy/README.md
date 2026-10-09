@@ -43,7 +43,7 @@ Ports to open on the server: **22** (SSH), **80** and **443** (TCP), and **443/U
 
 ```bash
 scp deploy/bootstrap.sh ubuntu@SERVER:
-ssh ubuntu@SERVER 'sudo bash bootstrap.sh api.do-not-open.app "https://do-not-open.app,https://www.do-not-open.app,https://testnet.do-not-open.app,https://do-not-open-*.vercel.app"'
+ssh ubuntu@SERVER 'sudo bash bootstrap.sh api.do-not-open.app "https://do-not-open.app,https://*.do-not-open.app,https://*.testnet.do-not-open.app,https://do-not-open-*.vercel.app"'
 ```
 
 Without a domain, `<ip-with-dashes>.sslip.io` resolves to the server and gets a real
@@ -142,14 +142,17 @@ Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they 
 Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
 indexer, RPC pool, API replicas (up, traffic and p95 per replica, CPU, memory, event loop lag,
 restarts, the image each runs), API traffic, Zama relayer calls, Arweave, Gemini, herald, the mainnet whitelist
-(seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the studio) and "Server and
+(seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the sealed vault (boxes by state, deposits, Seaport and private sales, requests, the relayer's wallet, day and outcomes), the studio) and "Server and
 URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
 each titled with its network: a replica down (`ApiReplicaDown`, the others carry its traffic),
 none left (`ApiNoReplica`), the indexer down (`IndexerDown`), a process restarting over and over
-(`ApiRestarting`), a saturated replica (`ApiEventLoopBlocked`), among the others. The same
+(`ApiRestarting`), a saturated replica (`ApiEventLoopBlocked`), the vault relayer low on gas or empty
+(`VaultRelayerLow` under 0.05 ETH, `VaultRelayerEmpty`), failing to send (`VaultRelayFailing`), near its
+daily cap (`VaultRelayerCapNear`), or vault requests waiting over an hour (`VaultRequestsStuck`), among the others. The same
 channel follows what players do (the `activity` group, posted with ✨ and no "resolved"
 message): new boarding passes, X accounts connected, seats taken, whitelist claims, ideas, new
-addresses, boxes sold and opened, duels, milestones, rats, studio packs and traffic spikes, each
+addresses, boxes sold and opened, duels, milestones, rats, studio packs, the vault's deposits,
+Seaport sales, private sales and withdrawals, and traffic spikes, each
 compared with 15 minutes earlier and posted again every 30 minutes while it lasts; a 🗞️ recap of
 the last 24 hours at 08:00 UTC, which also proves once a day that alerts still reach Discord; and
 `SiteQuiet` when nobody has called the API for 6 hours. For each player by name (their X handle:
@@ -172,7 +175,8 @@ CI copies `deploy/monitoring` on every deploy and reloads Prometheus and Alertma
 `.env` stays on the server. Dashboards are written by `grafana/dashboards.py`. At mainnet
 launch: uncomment the `dno-api-mainnet` job in `prometheus/prometheus.yml` and rename
 `probes/mainnet.yml.example` (the mainnet replicas and indexer on the edge network as
-`dno-api-mainnet` and `dno-indexer-mainnet`), and move the apex probe out of Sepolia.
+`dno-api-mainnet` and `dno-indexer-mainnet`), and move the bare domain's, `game.`'s and `vault.`'s
+probes out of `probes/sepolia.yml`.
 
 ## The admin site
 
@@ -227,13 +231,26 @@ copied as they are). The testnet stack then keeps the current database, its Sepo
 
 | Name | Serves | DNS record |
 | --- | --- | --- |
-| `do-not-open.app` | the site (Vercel), mainnet once it launches, Sepolia until then | `A 76.76.21.21` |
+| `do-not-open.app` | the home page (the sealed vault first, the game as its fun side), the project's docs, boarding (Vercel), mainnet once it launches, Sepolia until then | `A 76.76.21.21` |
 | `www.do-not-open.app` | redirects to `do-not-open.app` (Vercel) | `CNAME cname.vercel-dns.com` |
+| `game.do-not-open.app` | the game at `/` (its flea market inside), its manual at `/docs`, the studio at `/studio` (Vercel, the same build) | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
+| `vault.do-not-open.app` | the sealed vault at `/`, its docs at `/docs` (Vercel, the same build) | `A 76.76.21.21` |
 | `testnet.do-not-open.app` | the site on Sepolia, the production build (Vercel), talking to `api.testnet` | `A 76.76.21.21` (a CNAME clashes with the registrar's mail records) |
+| `game.testnet.do-not-open.app`, `vault.testnet.do-not-open.app` | the testnet's game and vault, the same build, talking to `api.testnet` | `A 76.76.21.21` |
 | `api.do-not-open.app` | the API (`API_DOMAIN`) | `A` the server's IP |
 | `api.testnet.do-not-open.app` | the testnet site's API replicas and lists (`/opt/dno-testnet`, deployed from `dev`) | `A` the server's IP |
 | `admin.do-not-open.app` | the team's admin site (`ADMIN_DOMAIN`) | `A` the server's IP |
 | `monitoring.do-not-open.app` | Grafana (`MONITORING_DOMAIN`) | `A` the server's IP |
+
+One build serves every name, each added to the Vercel project. Which page a name shows is decided
+at the edge: `middleware.ts` (the repo root, Vercel's routing middleware, which runs before the
+static files) applies `apps/web/src/hosts.ts`: `game.` shows the game at `/`, the game's
+manual at `/docs` and the studio at `/studio`, `vault.` the vault and its docs, the bare domain the project's page and its
+docs; the old paths (`/app`, `/vault`, `/studio`, `/fr/app`, a shared box's `/app?box=`) redirect to the
+subdomain, query kept, and the bare domain's pages asked on a subdomain go back to it. Off these
+names (localhost, a preview) nothing moves: the game is `/app`, the vault `/vault`, the
+project's docs `/project`, the vault's `/vault-docs`. The pages build their links the same way
+(`apps/web/src/site.ts`), and `pnpm --filter @dno/web test` checks both.
 
 Only one network runs today: both sites are on Sepolia and the same build, the testnet one with
 its own API replicas and lists (above), the other from `main` with the list that lasts until mainnet. Remove the registrar's default parking records (`A` and `AAAA` on
@@ -249,8 +266,14 @@ Every API name gets its own certificate from Caddy, and plain HTTP redirects to 
 API_DOMAIN=api.do-not-open.app
 API_ALIASES=api.testnet.do-not-open.app        # space or comma separated
 SIGN_IN_DOMAIN=do-not-open.app                 # the name shown in the sign-in message
-CORS_ORIGINS=https://do-not-open.app,https://www.do-not-open.app,https://testnet.do-not-open.app,https://do-not-open-*.vercel.app
+CORS_ORIGINS=https://do-not-open.app,https://*.do-not-open.app,https://*.testnet.do-not-open.app,https://do-not-open-*.vercel.app
 ```
+
+A `*` in an origin stands for one label: `https://*.do-not-open.app` takes `www.`, `game.`,
+`vault.` and `testnet.`, and `https://*.testnet.do-not-open.app` the testnet's `game.` and
+`vault.`. The testnet stack's `.env` (`/opt/dno-testnet/.env`) needs the same `CORS_ORIGINS`
+when it sets one. Sign in with X starts from the boarding page, on the bare domains only, so
+`X_RETURN_ORIGINS` keeps its default.
 
 then `bash /opt/dno/deploy.sh` (or the next deploy) renders the Caddy file
 and reloads the proxy. The GitHub variable `API_DOMAIN` is the name CI smoke-tests.

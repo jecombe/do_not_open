@@ -10,6 +10,8 @@ import type { IndexerStatus } from "../Indexer";
 import type { SeatsView } from "../../application/seats";
 import type { XPass } from "../../application/xPass";
 import type { AllowListClaim } from "../../application/allowList";
+import type { VaultRelay } from "../../application/vaultRelay";
+import { summarizeVault, VAULT_ACTIONS, VAULT_BOX_STATES, type VaultSummary } from "../../domain/vault";
 
 export interface MetricsSources {
   /**
@@ -32,6 +34,10 @@ export interface MetricsSources {
     store: { xPasses(): Promise<XPass[]>; allowListClaims(): Promise<AllowListClaim[]>; ideaCount(): Promise<number> };
     signInEnabled: boolean;
   };
+  /** The sealed vault's index (its public events): reported by the indexer, like the other counts. */
+  vault?: Pick<ReadStore, "vaultEvents">;
+  /** The vault's relayer, on the API replicas that send for holders: its wallet, its day, its outcomes. */
+  vaultRelay?: Pick<VaultRelay, "today" | "balance" | "outcomes">;
   /** Shown on `dno_info`; Prometheus adds the `network` and `role` labels to every series from its target. */
   info: { chain: string; collection: string; version: string; role: string };
 }
@@ -215,6 +221,67 @@ export class Metrics {
         ["task"],
       );
       gauge("dno_ideas_received", "Ideas left in the boarding page's suggestion box", async (g) => g.set(await w.store.ideaCount()));
+    }
+    if (s.vault) {
+      const store = s.vault;
+      // One read of the vault's events per scrape, shared by its gauges.
+      let cached: { at: number; summary: Promise<VaultSummary> } | null = null;
+      const summary = () => {
+        if (!cached || Date.now() - cached.at > 5_000) cached = { at: Date.now(), summary: store.vaultEvents().then(summarizeVault) };
+        return cached.summary;
+      };
+      const eth = (wei: string) => Number(BigInt(wei) / 10n ** 12n) / 1e6;
+      gauge("dno_vault_boxes", "Sealed vault boxes by state: sealed, listed, sold (proceeds not yet collected), withdrawn, claimed", async (g) => {
+        const v = await summary();
+        for (const state of VAULT_BOX_STATES) g.set({ state }, v.boxes[state]);
+      }, ["state"]);
+      gauge("dno_vault_deposits", "NFTs ever deposited in the sealed vault", async (g) => g.set((await summary()).deposits));
+      gauge("dno_vault_withdrawals", "NFTs ever taken out of the sealed vault", async (g) => g.set((await summary()).withdrawals));
+      gauge("dno_vault_listings", "Seaport listings placed by the vault, and those live now", async (g) => {
+        const v = await summary();
+        g.set({ kind: "placed" }, v.listings);
+        g.set({ kind: "live" }, v.listed);
+        g.set({ kind: "unlisted" }, v.unlisted);
+        g.set({ kind: "expired" }, v.expired);
+      }, ["kind"]);
+      gauge("dno_vault_seaport_sales", "Vault boxes sold on Seaport", async (g) => g.set((await summary()).seaportSales));
+      gauge("dno_vault_seaport_volume_eth", "ETH Seaport buyers paid for vault boxes", async (g) => g.set(eth((await summary()).seaportVolume)));
+      gauge("dno_vault_claimed_eth", "ETH holders collected from Seaport sales, the fee taken", async (g) => g.set(eth((await summary()).claimed)));
+      gauge("dno_vault_private_sales", "Private sales by status: offered, settled, cancelled, open (prices and outcomes stay encrypted)", async (g) => {
+        const p = (await summary()).privateSales;
+        for (const status of ["offered", "settled", "cancelled", "open"] as const) g.set({ status }, p[status]);
+      }, ["status"]);
+      gauge("dno_vault_requests", "Vault requests placed, by action", async (g) => {
+        const r = (await summary()).requests;
+        for (const action of VAULT_ACTIONS) g.set({ action }, r.placed[action]);
+      }, ["action"]);
+      gauge("dno_vault_requests_settled", "Vault requests settled, by outcome (done, refused: a wrong key, stale: the box changed first)", async (g) => {
+        const r = (await summary()).requests;
+        for (const status of ["done", "refused", "stale"] as const) g.set({ status }, r.settled[status]);
+      }, ["status"]);
+      gauge("dno_vault_requests_pending", "Vault requests waiting for their proof", async (g) => g.set((await summary()).requests.pending));
+    }
+    if (s.vaultRelay) {
+      const relay = s.vaultRelay;
+      gauge("dno_vault_relayer_balance_eth", "ETH left on the vault relayer's wallet, which pays the gas of what it sends", async (g) => {
+        const wei = await relay.balance().catch(() => null);
+        if (wei !== null) g.set(Number(wei / 10n ** 12n) / 1e6);
+      });
+      gauge("dno_vault_relayer_sent_today", "Transactions this replica's vault relayer sent today (UTC)", (g) => g.set(relay.today().sent));
+      gauge("dno_vault_relayer_daily_cap", "Transactions a replica's vault relayer may send per UTC day (VAULT_RELAY_PER_DAY)", (g) => g.set(relay.today().perDay));
+      new Counter({
+        name: "dno_vault_relays_total",
+        help: "Vault relays since the replica started, by transaction (request, finalize) and outcome (sent, reverted, daily-cap, failed)",
+        labelNames: ["kind", "outcome"],
+        registers: [r],
+        collect() {
+          this.reset();
+          for (const [key, n] of relay.outcomes) {
+            const [kind, outcome] = key.split(":");
+            this.inc({ kind: kind!, outcome: outcome! }, n);
+          }
+        },
+      });
     }
     if (s.rats) {
       const rats = s.rats;

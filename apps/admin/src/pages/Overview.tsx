@@ -4,7 +4,7 @@ import { ago, change, duration, fmt } from "../format";
 import type { XTask } from "../api";
 import { C, FEED_ICON, KPI_LABEL, TASK_LABEL } from "../labels";
 
-const KPI_COLOR: Record<string, string> = {
+export const KPI_COLOR: Record<string, string> = {
   passes: C.sodium,
   x: C.blue,
   seated: C.green,
@@ -17,6 +17,12 @@ const KPI_COLOR: Record<string, string> = {
   rats: C.kraft,
   packs: C.violet,
   active: C.spectral,
+  deposits: C.spectral,
+  listings: C.blue,
+  seaportSales: C.sodium,
+  privateSales: C.violet,
+  withdrawals: C.red,
+  requests: C.tape,
 };
 
 export function Overview({ d }: { d: Dashboard }) {
@@ -106,7 +112,7 @@ function Seats({ d }: { d: Dashboard }) {
   );
 }
 
-function KpiCard({ k }: { k: Kpi }) {
+export function KpiCard({ k }: { k: Kpi }) {
   const meta = KPI_LABEL[k.key] ?? { label: k.key, hint: "" };
   const week = change(k.last7, k.prev7);
   const color = KPI_COLOR[k.key] ?? C.sodium;

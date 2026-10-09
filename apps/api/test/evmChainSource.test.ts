@@ -148,6 +148,36 @@ describe("EvmChainSource", () => {
     expect(batch.events[0]).not.toHaveProperty("tokenId");
   });
 
+  it("decodes the sealed vault's events under their own names, without the addresses that could name a holder", async () => {
+    const vault = new Interface(d.vault!.abi);
+    const v = d.vault!.address;
+    const NFT = "0x00000000000000000000000000000000000000f7";
+    const logs = [
+      log(v, vault, "Deposited", [0, NFT, 42, ALICE], 230, 0),
+      log(v, vault, "RequestPlaced", [5, 0, 1, BOB], 231, 0),
+      log(v, vault, "RequestSettled", [5, 4], 232, 0),
+      log(v, vault, "Listed", [3, 0, 10n ** 16n, 1_800_000_000, "0x" + "cc".repeat(32)], 232, 1),
+      log(v, vault, "SoldOnSeaport", [3, 0, 10n ** 16n], 233, 0),
+      log(v, vault, "Claimed", [0, ALICE, 975n * 10n ** 13n], 234, 0),
+      log(v, vault, "SaleOffered", [7, 1, ALICE, BOB], 235, 0),
+      log(v, vault, "Withdrawn", [1, BOB], 236, 0),
+    ];
+    const { rpc } = node(logs, () => null);
+    const batch = await new EvmChainSource(rpc, d, silentLogger).read(230, 236);
+    expect(batch.events.map((e) => e.name)).toEqual(["VaultDeposited", "VaultRequestPlaced", "VaultRequestSettled", "VaultListed", "VaultSoldOnSeaport", "VaultClaimed", "VaultSaleOffered", "VaultWithdrawn"]);
+    expect(batch.events[0]).toMatchObject({ source: "vault", boxId: 0, collection: NFT, nftTokenId: "42" });
+    expect(batch.events[1]).toMatchObject({ requestId: 5, boxId: 0, action: "list" });
+    expect(batch.events[2]).toMatchObject({ requestId: 5, status: "stale" });
+    expect(batch.events[3]).toMatchObject({ listingId: 3, price: "10000000000000000", endTime: 1_800_000_000 });
+    expect(batch.events[5]).toMatchObject({ boxId: 0, amount: "9750000000000000" });
+    // Nobody's address: not the depositor, not a sale's parties, not where anything went.
+    const text = JSON.stringify(batch.events).toLowerCase();
+    expect(text).not.toContain(ALICE.slice(2));
+    expect(text).not.toContain(BOB.slice(2));
+    // A vault box is not a game box.
+    for (const e of batch.events) expect(e).not.toHaveProperty("tokenId");
+  });
+
   it("asks for the protocol's contracts and event topics only", async () => {
     const filters: { address: string[]; topics: (string | string[])[] }[] = [];
     const fetch = (async (_u: string, init: RequestInit) => {
@@ -158,13 +188,13 @@ describe("EvmChainSource", () => {
     const source = new EvmChainSource(new RpcPool({ urls: ["https://n"], rps: 100, maxLogRange: 100, fetch }), d, silentLogger);
     expect(await source.read(1, 50)).toMatchObject({ to: 50, events: [] });
     const [filter, acl] = filters;
-    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : []), ...(d.studio ? [d.studio.address] : []), ...(d.rats ? [d.rats.address] : []), ...(d.ratPantry ? [d.ratPantry.address] : []), ...(d.ratTricks ? [d.ratTricks.address] : [])].map((a) => a.toLowerCase()));
+    expect(filter!.address).toEqual([d.collection.address, d.pantry!.address, d.ramp!.address, ...(d.credits ? [d.credits.address] : []), ...(d.studio ? [d.studio.address] : []), ...(d.rats ? [d.rats.address] : []), ...(d.ratPantry ? [d.ratPantry.address] : []), ...(d.ratTricks ? [d.ratTricks.address] : []), ...(d.vault ? [d.vault.address] : [])].map((a) => a.toLowerCase()));
     const decryptionProof = collection.getEvent("PublicDecryptionVerified")!.topicHash;
     expect(filter!.topics[0]).not.toContain(decryptionProof);
     for (const name of ["DuelPosted", "DuelOpened", "DuelAccepted", "DuelReopened"]) expect(filter!.topics[0]).toContain(collection.getEvent(name)!.topicHash);
-    // The ACL, only where the protocol's own contracts are the caller: the flea market publishes its "arrived" and "paid" bits too.
+    // The ACL, only where the protocol's own contracts are the caller: the flea market publishes its "arrived" and "paid" bits too, the sealed vault its requests' "key matched" bit.
     expect(acl!.address).toEqual([d.fhevm.acl.toLowerCase()]);
-    expect(acl!.topics[1]).toEqual([d.collection.address, d.pantry!.address, d.cCroq!.address, d.fleaMarket!.address].map((a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`));
+    expect(acl!.topics[1]).toEqual([d.collection.address, d.pantry!.address, d.cCroq!.address, d.fleaMarket!.address, ...(d.vault ? [d.vault.address] : [])].map((a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`));
   });
 
   it("reads which handles the protocol made public from the ACL", async () => {

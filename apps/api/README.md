@@ -98,6 +98,7 @@ to itself stays in its memory, and the proxy sends one client IP to the same rep
 | Questions the chat may put to Gemini today, in all | `daily_quotas` (`chat-model`) | One free quota for every replica (`CHAT_PER_DAY`) |
 | A nudge after a transaction | `NOTIFY dno_nudge`, the indexer listens | The replica that gets it does not index |
 | Sign-in nonces, sessions, the relayer meter, studio jobs, everything else | Postgres already | |
+| What the vault relayer sent today (`VAULT_RELAY_PER_DAY`) | the replica's memory | A cap per replica, on purpose: the stack's is the cap times `API_REPLICAS`. The replicas share the relayer's key, and retry a nonce another one took |
 | Rate limits per IP (`RATE_LIMIT_PER_MINUTE` and each route's), questions per IP (`CHAT_PER_IP_PER_DAY`) | the replica's memory | The proxy hashes the client IP to one replica, so its count is the whole count. A deploy, or a replica leaving, moves some IPs and starts their minute again |
 | Caches (economy, claim times, chat answers, facts behind the points) | the replica's memory | Each replica reads them once per period: a few more RPC calls, never a wrong answer |
 | A studio generation running | the replica that started it | A replica stopped mid-job loses it; `recover()` gives the unit back after twice `STUDIO_TIMEOUT_MS`, on any replica |
@@ -144,9 +145,10 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/gifts/:address` | A wallet's gift proof once the list is frozen: `{ tier, proof, root }`; `404 not-frozen` without `WHITELIST_GIFTS_TREE`, `404 not-on-list` for a wallet not in it. Cached 60 s |
 | `POST /v1/sync/nudge` | Asks the indexer to look now; an API replica passes it on over Postgres (`NOTIFY dno_nudge`) |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
-| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`). Public facts only. Each process reports its own traffic and memory; the index's counts come from the indexer only, so a sum over replicas counts them once. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
+| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`), the sealed vault's boxes, sales and requests (`dno_vault_*`) and its relayer's wallet and outcomes. Public facts only. Each process reports its own traffic and memory; the index's counts come from the indexer only, so a sum over replicas counts them once. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
+| `GET /v1/vault/relayer` · `POST /v1/vault/relay` | The sealed vault's relayer (below): its address, or null; sends a holder's request or proof from its own wallet |
 | `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
 | `GET /v1/rats?owner=` · `GET /v1/rats/supply` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history }` in, `{ mode, answer, sources, passages, reason }` out |
@@ -388,8 +390,8 @@ adds `RELAYER_API_KEY` and forwards.
 
 | Request | Let through when | Counted |
 | --- | --- | --- |
-| user decryption | every contract named is the protocol's (collection, its cUSDC, Pantry, cCROQ, flea market, and with the rats' tricks, Rats for a rat's power and RatTricks for a trick's encrypted trait), and the EIP-712 permit was signed by the `userAddress` it is for | one unit per value: the day's free units first (`RELAYER_FREE_PER_DAY`, 25, or `RELAYER_NEWCOMER_PER_DAY`, 16, for a wallet the index has never seen act on-chain or be sent a box; reset at midnight UTC), then the wallet's credits. Given back when Zama refuses |
-| public decryption | every handle was made public by the collection, the Pantry, cCROQ or the flea market: the index follows Zama's ACL (`AllowedForDecryption` with one of them as caller), and the last `RELAYER_RECENT_BLOCKS` are read directly for what it has not caught up with | `RELAYER_PUBLIC_UNITS` (1) units a value, charged to the wallet whose permit comes as a bearer token (as for an input; else `bad-permit`), only when the request is sent to Zama: posting and settling duels in a loop spends the griefer's units, not the collection's money. 0 makes them free and anonymous again. Sent to Zama once per exact request (handles in order + extra data, `public_decryptions`): asking the same again replays the same job, answered from the cache once done, free and without a permit for whoever asks, so a loop over an old duel costs nothing. Reordering or recombining handles makes a new request, so a handle may only be named in `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent to Zama (`public_decrypt_uses`), past which it is refused (`bad-request`). A job Zama fails or loses, or still running after 5 minutes, is sent again |
+| user decryption | every contract named is the protocol's (collection, its cUSDC, Pantry, cCROQ, flea market, with the rats' tricks Rats for a rat's power and RatTricks for a trick's encrypted trait, and the sealed vault), and the EIP-712 permit was signed by the `userAddress` it is for | one unit per value: the day's free units first (`RELAYER_FREE_PER_DAY`, 25, or `RELAYER_NEWCOMER_PER_DAY`, 16, for a wallet the index has never seen act on-chain or be sent a box; reset at midnight UTC), then the wallet's credits. Given back when Zama refuses |
+| public decryption | every handle was made public by the collection, the Pantry, cCROQ, the flea market or the sealed vault: the index follows Zama's ACL (`AllowedForDecryption` with one of them as caller), and the last `RELAYER_RECENT_BLOCKS` are read directly for what it has not caught up with | `RELAYER_PUBLIC_UNITS` (1) units a value, charged to the wallet whose permit comes as a bearer token (as for an input; else `bad-permit`), only when the request is sent to Zama: posting and settling duels in a loop spends the griefer's units, not the collection's money. 0 makes them free and anonymous again. Sent to Zama once per exact request (handles in order + extra data, `public_decryptions`): asking the same again replays the same job, answered from the cache once done, free and without a permit for whoever asks, so a loop over an old duel costs nothing. Reordering or recombining handles makes a new request, so a handle may only be named in `RELAYER_PUBLIC_PER_HANDLE` (4) requests sent to Zama (`public_decrypt_uses`), past which it is refused (`bad-request`). A job Zama fails or loses, or still running after 5 minutes, is sent again |
 | encrypted input | for one of the protocol's contracts, on this chain, sent with `Authorization: Bearer <base64url of the JSON permit>`: the user-decryption permit of the `userAddress` the input is for (else `bad-permit`), so nobody spends another wallet's units | `RELAYER_INPUT_UNITS` (5) units, the same way: Zama charges an input five times a decryption. Given back when Zama refuses |
 
 Polling a queued job is passed through and not counted. A refusal answers in the relayer's
@@ -404,6 +406,50 @@ reverts; cUSDC would move 0 silently), and indexed from its `CreditsBought` even
 used is kept in `relayer_free_used` and `relayer_credits_spent`, which a replay of the
 chain does not touch. Migration 4 empties the index once so it is rebuilt with the ACL and
 credit events.
+
+## The sealed vault's relayer
+
+The sealed vault ([`docs/VAULT.md`](../../docs/VAULT.md)) asks everything that leaves it with a
+box's key, not with the holder's address, so any wallet can send the request. With
+`VAULT_RELAYER_KEY`, the API replicas send holders' requests and proofs from that wallet
+(`VaultRelay` in `src/application/vaultRelay.ts`, `EthersVaultSender` in
+`src/infrastructure/vault/`), so the holder's address appears in no transaction. The relayer
+learns nothing a chain observer would not: the key arrives encrypted for the vault and bound to
+the request's terms and the box's nonce, so it can neither read it, change the terms, nor reuse
+it. It pays the gas: fund its address with a little ETH. The indexer role never sends; nothing
+is stored.
+
+| Route | Answer |
+| --- | --- |
+| `GET /v1/vault/relayer` | `{ data: { address } }`, the relayer's address or null (no key, or no vault in the deployment). Always served, cached 60 s: the vault page asks it to know whether to send from the wallet |
+| `POST /v1/vault/relay` | Only with `VAULT_RELAYER_KEY`. `{ call: "request", args: { boxId, action (0 to 3), to, price (decimal string, wei), endTime, handle, inputProof } }` or `{ call: "finalize", args: { requestId, cleartexts, proof } }` → `{ hash }`. Each call is estimated first, so what the vault would refuse is never sent: `400 { code: "reverted" }` with the contract's reason (`BoxBusy`, `WrongState`, `BadEndTime`...); `400` for a malformed body; `429 { code: "daily-cap" }` past `VAULT_RELAY_PER_DAY` (500) transactions a day on this replica. `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP; bodies up to 64 KB (an input carries its proof) |
+
+The encrypted input must be made for the relayer's address (an input is bound to the address
+that sends it), which the page reads from `GET /v1/vault/relayer`. Replicas share the key, so a
+nonce taken by another one is retried with a fresh count, twice at most. A refused or capped
+relay leaves the page its wallet. The relayer proxy also lets decryptions and inputs name the
+vault, and the index follows its public decryptions (`AllowedForDecryption` with the vault as
+caller), so the "key matched" bits go through the proxy like the game's.
+
+### The vault in the index
+
+The indexer reads the vault's own events too (source `vault`, names prefixed so they never mix
+with the game's `RequestPlaced` or `Claimed`): `VaultDeposited` (box, collection, the NFT's token
+id), `VaultWithdrawn`, `VaultListed` / `VaultUnlisted` / `VaultListingExpired` /
+`VaultSoldOnSeaport` (listing, box, price in wei), `VaultClaimed` (the ETH collected),
+`VaultSaleOffered` / `VaultSaleSettled` / `VaultSaleCancelled`, `VaultRequestPlaced` (action) and
+`VaultRequestSettled` (done, refused, stale). The addresses these logs carry (the depositor, a
+withdrawal's or a claim's recipient, a private sale's seller and buyer, who sent a request) are
+public on-chain but dropped at decoding: the index keeps what the team counts, never who. They
+stay in `events` only, out of the game's feeds (`activity` leaves `source = 'vault'` out), and are
+folded on read by `summarizeVault` (`src/domain/vault.ts`) for the admin site's vault tab and the
+`dno_vault_*` metrics. Migration 27 moves the cursor back to the vault's deployment block on
+Sepolia (11,872,753) so the indexer reads those blocks again: what it recorded already is
+skipped, only the vault's events are added.
+
+The relayer reports itself on each API replica: `dno_vault_relayer_balance_eth` (its wallet),
+`dno_vault_relayer_sent_today` against `dno_vault_relayer_daily_cap`, and
+`dno_vault_relays_total{kind, outcome}` (request or finalize; sent, reverted, daily-cap, failed).
 
 ## The studio
 
@@ -641,6 +687,7 @@ routes under `/admin/api` (`infrastructure/http/admin.ts`, read from `applicatio
 | `GET /admin/api/players` | every pass: handle, tasks with their times, seat, whether a wallet is linked, claimed, `/board` |
 | `GET /admin/api/players/:code/wallet` | the wallet linked to one pass (logged) |
 | `GET /admin/api/ideas` | the suggestion box |
+| `GET /admin/api/vault?days=30` | the sealed vault from its public events: boxes by state, deposits, Seaport listings, sales and volume, ETH collected, private sales offered, settled and cancelled (never their price), requests by action and outcome, deposits per collection, a daily line per series and the latest events. No address but the collections' |
 
 The session is a signed expiry, its key derived from the password: no table, any replica checks
 it, a new password ends every session. Nothing lists a wallet next to a handle. The chain's daily
@@ -669,5 +716,5 @@ Configuration is environment variables, all optional in development: see `src/co
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `ACTIVITY_DISCORD_WEBHOOK_URL`, `ADMIN_PASSWORD`, `LISTS_SCHEMA`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
-`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`, `TEAM_WALLETS`, `TEAM_X_HANDLES`...). Deployment is in
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `VAULT_RELAYER_KEY`, `VAULT_RELAY_PER_DAY`, `VAULT_RELAY_RATE_PER_MINUTE`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`, `TEAM_WALLETS`, `TEAM_X_HANDLES`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md); load tests in [`loadtest/README.md`](../../loadtest/README.md).

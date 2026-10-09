@@ -86,6 +86,20 @@ protocol=mk("DO NOT OPEN · Protocol","dno-protocol",[
   {"title":"Boarding funnel","exprs":[[f"dno_xpass_passes{{{N}}}","{{stage}}"]],"desc":"started: a pass handed out; connected: an X account proved; seated: every required task done; wallet: a wallet linked."}],
  [{"title":"Tasks on X declared, by task","exprs":[[f"dno_xpass_tasks{{{N}}}","{{task}}"]],"desc":"Declared by the players, checked by hand before mainnet."},
   {"title":"Sign in with X per hour, by outcome","exprs":[[f"sum by (outcome) (increase(dno_xpass_sign_ins_total{{{N}}}[1h]))","{{outcome}}"]],"desc":"x-down: X refused the code or did not answer; sign-in-refused: the player cancelled on X; list-full: no seat left."}],
+ "The sealed vault",
+ [{"title":"NFTs in the vault","type":"stat","exprs":[[f'sum(dno_vault_boxes{{{N},state=~"sealed|listed|sold"}})']],"w":4,"h":4,"desc":"Sealed, listed on Seaport, or sold with the ETH not yet collected."},
+  {"title":"Deposits","type":"stat","exprs":[[f"dno_vault_deposits{{{N}}}"]],"w":4,"h":4},
+  {"title":"Seaport sales","type":"stat","exprs":[[f"dno_vault_seaport_sales{{{N}}}"]],"w":4,"h":4},
+  {"title":"Seaport volume","type":"stat","exprs":[[f"dno_vault_seaport_volume_eth{{{N}}}"]],"unit":"none","decimals":4,"w":4,"h":4,"desc":"ETH Seaport buyers paid for vault boxes (test ETH on Sepolia)."},
+  {"title":"Private sales settled","type":"stat","exprs":[[f'dno_vault_private_sales{{{N},status="settled"}}']],"w":4,"h":4,"desc":"Their price and whether the box moved stay encrypted."},
+  {"title":"Relayer balance","type":"stat","exprs":[[f"max(dno_vault_relayer_balance_eth{{{N}}})"]],"unit":"none","decimals":4,"w":4,"h":4,"thresholds":[{"color":"red","value":None},{"color":"orange","value":0.02},{"color":"green","value":0.1}],"desc":"ETH on the vault relayer's wallet (VAULT_RELAYER_KEY): it pays the gas of holders' requests. Below 0.05 the VaultRelayerLow alert fires."}],
+ [{"title":"Vault boxes by state","exprs":[[f"dno_vault_boxes{{{N}}}","{{state}}"]],"desc":"sealed: in the vault; listed: on Seaport; sold: sold, ETH waiting for the key's holder; withdrawn: the NFT taken out; claimed: sold and collected."},
+  {"title":"Vault activity per hour","exprs":[[f"increase(dno_vault_deposits{{{N}}}[1h])","deposits"],[f"increase(dno_vault_withdrawals{{{N}}}[1h])","withdrawals"],[f"increase(dno_vault_seaport_sales{{{N}}}[1h])","Seaport sales"],[f'increase(dno_vault_private_sales{{{N},status="settled"}}[1h])',"private sales"],[f'increase(dno_vault_listings{{{N},kind="placed"}}[1h])',"listings"]]}],
+ [{"title":"Requests placed, by action","exprs":[[f"dno_vault_requests{{{N}}}","{{action}}"],[f"dno_vault_requests_pending{{{N}}}","pending"]],"desc":"Withdrawals, listings, unlistings and claims asked with a box's key; pending ones wait for their KMS proof."},
+  {"title":"Requests settled, by outcome","exprs":[[f"dno_vault_requests_settled{{{N}}}","{{status}}"]],"desc":"refused: a wrong key, nothing happened; stale: the box changed first (its listing filled or expired)."}],
+ [{"title":"Relayed per minute, by transaction and outcome","exprs":[[f"sum by (kind, outcome) (rate(dno_vault_relays_total{{{N}}}[5m])) * 60","{{kind}} {{outcome}}"]],"desc":"reverted: the vault would refuse it, nothing sent; daily-cap: VAULT_RELAY_PER_DAY reached; failed: the node or the wallet failed (out of gas?)."},
+  {"title":"Relayer: sent today against the cap, by replica","exprs":[[f"dno_vault_relayer_sent_today{{{N}}}","{{instance}}"],[f"max(dno_vault_relayer_daily_cap{{{N}}})","cap per replica"]]},
+  {"title":"Relayer balance","exprs":[[f"max(dno_vault_relayer_balance_eth{{{N}}})","ETH"]],"unit":"none","decimals":4}],
  "The studio",
  [{"title":"Open","type":"stat","exprs":[[f"dno_studio_open{{{N}}}"]],"w":4,"h":4,"mappings":[{"type":"value","options":{"0":{"text":"OFF"},"1":{"text":"OPEN"}}}],"thresholds":[{"color":"red","value":None},{"color":"green","value":1}],"desc":"Open: the fal key and the StudioPacks contract are there, and STUDIO_PAUSED is not set."},
   {"title":"Packs sold","type":"stat","exprs":[[f"dno_studio_packs_sold{{{N}}}"]],"w":4,"h":4},
@@ -95,7 +109,7 @@ protocol=mk("DO NOT OPEN · Protocol","dno-protocol",[
   {"title":"Today's AI budget used","type":"stat","exprs":[[f"dno_studio_spent_today_usd{{{N}}} / dno_studio_daily_budget_usd{{{N}}}"]],"unit":"percentunit","w":4,"h":4,"thresholds":G+[{"color":"orange","value":0.8},{"color":"red","value":0.98}],"desc":"Past it, generation waits for midnight UTC (STUDIO_DAILY_BUDGET_USD)."}],
  [{"title":"Generations by kind and status","exprs":[[f"dno_studio_jobs{{{N}}}","{{kind}} {{status}}"]],"desc":"failed: unit given back; rejected: refused by the safety checker or past the day's refunds, unit kept."},
   {"title":"AI spend today against the budget","exprs":[[f"dno_studio_spent_today_usd{{{N}}}","spent today"],[f"dno_studio_daily_budget_usd{{{N}}}","daily budget"]],"unit":"currencyUSD"}],
-],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API replicas and traffic, side services, the mainnet whitelist, the studio. Public facts and counts only.")
+],[net],"The protocol on one network: collection, pending proofs, indexer, RPC pool, API replicas and traffic, side services, the mainnet whitelist, the sealed vault, the studio. Public facts and counts only.")
 
 srv=mk("DO NOT OPEN · Server and URLs","dno-server",[
  "Public URLs",
