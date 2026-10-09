@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
-import type { ISeaport } from "../types";
+import type { IDelegateRegistry, ISeaport } from "../types";
+import registryFixture from "./fixtures/delegate-registry-v2.json";
 import fixture from "./fixtures/seaport-1.5.json";
 
 /**
@@ -17,4 +18,13 @@ export async function installSeaport(): Promise<ISeaport> {
     await ethers.provider.send("hardhat_setStorageAt", [fixture.seaport.address, slot, value]);
   }
   return (await ethers.getContractAt("ISeaport", fixture.seaport.address)) as unknown as ISeaport;
+}
+
+/**
+ * Puts delegate.xyz's Delegate Registry v2 on the local network, at its usual address, from its
+ * Sepolia runtime code (test/fixtures/delegate-registry-v2.json). It has no constructor state.
+ */
+export async function installDelegateRegistry(): Promise<IDelegateRegistry> {
+  await ethers.provider.send("hardhat_setCode", [registryFixture.address, registryFixture.code]);
+  return (await ethers.getContractAt("IDelegateRegistry", registryFixture.address)) as unknown as IDelegateRegistry;
 }

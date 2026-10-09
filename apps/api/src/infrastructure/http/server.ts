@@ -549,15 +549,17 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
         call: z.literal("request"),
         args: z.object({
           boxId: id,
-          action: z.number().int().min(0).max(3),
+          action: z.number().int().min(0).max(5),
           to: address,
           price: z.string().regex(/^\d{1,78}$/).transform(BigInt),
           endTime: z.number().int().min(0).max(2 ** 48),
+          // Only accepting an offer names one; older pages send none.
+          ref: bytes32.default("0x" + "0".repeat(64)),
           handle: bytes32,
           inputProof: hex,
         }),
       }),
-      z.object({ call: z.literal("finalize"), args: z.object({ requestId: id, cleartexts: hex, proof: hex }) }),
+      z.object({ call: z.literal("finalize"), args: z.object({ requestId: id, cleartexts: hex, proof: hex, offer: hex.optional() }) }),
     ]);
     app.post(
       "/v1/vault/relay",

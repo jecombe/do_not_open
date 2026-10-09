@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @dev The slice of Seaport 1.5 the vault uses, with its structs as Seaport defines them
-///      (seaport-types, ConsiderationStructs.sol). OpenSea's marketplace runs on it; on Ethereum
-///      and Sepolia it lives at 0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC.
+/// @dev The slice of Seaport 1.5 the vault uses (its own listings, and the buyers' offers it
+///      accepts), with its structs as Seaport defines them (seaport-types,
+///      ConsiderationStructs.sol). OpenSea's marketplace runs on it; on Ethereum and Sepolia it
+///      lives at 0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC.
 enum ItemType {
     NATIVE,
     ERC20,
@@ -71,6 +72,31 @@ struct Order {
     bytes signature;
 }
 
+/// @dev An order with the share of it to fill (`numerator` / `denominator`) and what its zone
+///      reads (`extraData`): what a fulfiller passes to `fulfillAdvancedOrder`.
+struct AdvancedOrder {
+    OrderParameters parameters;
+    uint120 numerator;
+    uint120 denominator;
+    bytes signature;
+    bytes extraData;
+}
+
+enum Side {
+    OFFER,
+    CONSIDERATION
+}
+
+/// @dev Names the token an item "with criteria" stands for (a collection offer, say): any token
+///      when the item's criteria root is 0, else one proven against it.
+struct CriteriaResolver {
+    uint256 orderIndex;
+    Side side;
+    uint256 index;
+    uint256 identifier;
+    bytes32[] criteriaProof;
+}
+
 interface ISeaport {
     /// @dev An offerer validating its own orders needs no signature.
     function validate(Order[] calldata orders) external returns (bool validated);
@@ -88,4 +114,13 @@ interface ISeaport {
     function getCounter(address offerer) external view returns (uint256 counter);
 
     function fulfillOrder(Order calldata order, bytes32 fulfillerConduitKey) external payable returns (bool fulfilled);
+
+    /// @dev The offer's items go to `recipient` first, then the fulfiller (msg.sender) hands over
+    ///      the consideration's.
+    function fulfillAdvancedOrder(
+        AdvancedOrder calldata advancedOrder,
+        CriteriaResolver[] calldata criteriaResolvers,
+        bytes32 fulfillerConduitKey,
+        address recipient
+    ) external payable returns (bool fulfilled);
 }

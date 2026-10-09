@@ -2,8 +2,7 @@ import type { SecureKey } from "./en";
 
 export const secureEs: Record<SecureKey, string> = {
   "secure.title": "DO NOT OPEN, la bóveda sellada: NFT que nadie te ve tener",
-  "secure.description":
-    "Mete cualquier NFT en una caja sellada cuyo dueño está cifrado en Ethereum con el FHE de Zama. Aun así se vende en Seaport, o en privado por un precio que solo lee el comprador.",
+  "secure.description": "Mete cualquier NFT en una caja sellada cuyo dueño está cifrado en Ethereum con el FHE de Zama. Aun así se vende en Seaport, o en privado por un precio que solo lee el comprador.",
   "secure.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN dentro de un escudo de cifrado luminoso",
   "secure.nav": "Sitio",
   "secure.nav.protocol": "Protocolo",
@@ -32,11 +31,22 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.spec.3.k": "Reglas",
   "secure.spec.3.v": "aplicadas, verificables",
 
-  "secure.scene.aria": "Una caja sellada dentro de un escudo de cifrado. Las sondas que intentan leer a su dueño rebotan. Haz clic para lanzar una.",
-  "secure.scene.holder": "dueño",
-  "secure.scene.denied": "lectura denegada",
-  "secure.scene.caption": "Cada intento de leer al dueño choca con texto cifrado.",
-  "secure.scene.hint": "Haz clic para intentarlo",
+  "secure.story.aria": "La bóveda en cuatro pasos, en bucle: un NFT se sella en una caja, una llave nace de una sola firma, la caja se vende en Seaport, a la oferta de un comprador o en privado, se regala o presta sus ventajas a un delegado mientras las sondas rebotan, y el NFT sale hacia una dirección nueva. Haz clic para pasar al siguiente paso.",
+  "secure.story.public": "depósito · público",
+  "secure.story.holder": "dueño",
+  "secure.story.denied": "lectura denegada",
+  "secure.story.signature": "1 firma",
+  "secure.story.key": "llave",
+  "secure.story.keyOk": "coincide",
+  "secure.story.seaport": "Seaport",
+  "secure.story.offer": "oferta",
+  "secure.story.private": "venta privada",
+  "secure.story.gift": "regalo",
+  "secure.story.delegate": "delegado",
+  "secure.story.fresh": "dirección nueva",
+  "secure.story.pause": "Pausa",
+  "secure.story.play": "Reproducir",
+  "secure.story.steps": "Los pasos de la bóveda",
 
   "secure.ledger.kicker": "Modelo de amenaza",
   "secure.ledger.title": "Lo que ve la cadena, lo que ves tú",

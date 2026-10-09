@@ -42,7 +42,7 @@ describe("VaultRelay", () => {
 
   it("does not count what the vault refused", async () => {
     const relay = new VaultRelay(new FakeSender(), { now: () => 0 }, 1);
-    const refused = { boxId: 666, action: 0, to: RELAYER, price: 0n, endTime: 0, handle: HANDLE, inputProof: "0x" };
+    const refused = { boxId: 666, action: 0, to: RELAYER, price: 0n, endTime: 0, ref: HANDLE, handle: HANDLE, inputProof: "0x" };
     await expect(relay.request(refused)).rejects.toBeInstanceOf(VaultRelayRefused);
     await expect(relay.finalize({ requestId: 0, cleartexts: "0x01", proof: "0x" })).resolves.toMatch(/^0x/);
   });
@@ -83,7 +83,17 @@ describe("vault relay routes", () => {
     const res = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "request", args } });
     expect(res.statusCode).toBe(200);
     expect(res.json().hash).toMatch(/^0x[0-9a-f]{64}$/);
-    expect(sender.sent.at(-1)).toMatchObject({ boxId: 3, action: 1, price: 1_000_000_000_000_000n, handle: HANDLE });
+    expect(sender.sent.at(-1)).toMatchObject({ boxId: 3, action: 1, price: 1_000_000_000_000_000n, handle: HANDLE, ref: "0x" + "0".repeat(64) });
+  });
+
+  it("relays accepting an offer: its order hash with the request, the order with the proof", async () => {
+    const ref = "0x" + "ab".repeat(32);
+    const args = { boxId: 4, action: 4, to: RELAYER, price: "1", endTime: 0, ref, handle: HANDLE, inputProof: "0xdead" };
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "request", args } })).statusCode).toBe(200);
+    expect(sender.sent.at(-1)).toMatchObject({ action: 4, ref });
+    const fin = { requestId: 9, cleartexts: "0x01", proof: "0x02", offer: "0x" + "cd".repeat(600) };
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "finalize", args: fin } })).statusCode).toBe(200);
+    expect(sender.sent.at(-1)).toMatchObject({ requestId: 9, offer: fin.offer });
   });
 
   it("refuses a malformed body and says why the vault would refuse", async () => {

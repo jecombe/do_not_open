@@ -231,7 +231,9 @@ it is stored. `RatTrick` events stay in `events` (source `ratTricks`) and the fe
 nothing else.
 
 The sealed vault's events (source `vault`, names prefixed `Vault`: deposits, withdrawals, Seaport
-listings and sales, claims, private sales, requests) stay in `events` too, without any address
+listings and sales, accepted offers (`VaultOfferAccepted`, the amount only), delegations
+(`VaultDelegated`, the box only: the delegate could name the holder), claims, private sales,
+requests) stay in `events` too, without any address
 that could name a holder, out of the game's feeds, folded on read (`summarizeVault`) for the
 admin site and the metrics. No table of their own ([`docs/VAULT.md`](VAULT.md#what-the-team-sees)).
 
@@ -293,12 +295,14 @@ counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (
 | --- | --- | --- | --- | --- |
 | `Box` | `collection`, `tokenId` | `address`, `uint256` | public | The NFT inside; `boxOf[collection][tokenId]` is the box id + 1 while the vault holds it |
 | | `state` | `None`, `Sealed`, `Listed`, `Sold`, `Withdrawn`, `Claimed` | public | `Sold`: the Seaport order filled and the ETH waits; `Withdrawn` and `Claimed` are final |
-| | `listing`, `busy` | `uint256` | public | The listing id + 1 while listed or sold; the pending request's id + 1 (the box cannot move while it is set) |
+| | `listing`, `pending` | `uint256` | public | The listing id + 1 while listed or sold; how many requests wait for their proof (the box cannot move while any does; requests still go in) |
 | | `proceeds` | `uint256` | public | ETH a Seaport sale left for the key's holder, the fee taken |
-| | `nonce` | `uint64` | public | Requests the box has had: part of what each request's key is bound to |
+| | `nonce` | `uint64` | public | Requests on the box whose key matched, plus expired ones: part of what each request's key is bound to. A wrong key does not move it |
+| | `delegate` | `address` | public | The wallet named for the NFT in delegate.xyz's registry (every right), or zero. Cleared when the NFT leaves (withdrawal, Seaport sale, accepted offer), kept on a transfer |
 | key (`_keys`) | | `euint256` | the vault only | The holder's 256-bit secret. Nobody is allowed on it, the holder included; random after a transfer that moved the box |
-| `Request` | `boxId`, `action`, `to`, `price`, `endTime` | plain | public | `Withdraw`, `List`, `Unlist` or `Claim`, and its terms |
-| | `status` | `None`, `Pending`, `Done`, `Refused`, `Stale` | public | `Refused`: the key did not match; `Stale`: it matched but the box changed first (or the ETH would not send) |
+| `Request` | `boxId`, `action`, `to`, `price`, `endTime`, `ref` | plain | public | `Withdraw` (0), `List` (1), `Unlist` (2), `Claim` (3), `AcceptOffer` (4) or `Delegate` (5), and its terms. For `AcceptOffer`, `to` is the payout address, `price` the least WETH the offer must net and `ref` its Seaport order hash; for `Delegate`, `to` is the delegate (zero clears it); `ref` is zero for every other action |
+| | `placedAt` | `uint64` | public | When it was placed: `expire` is open to anyone `REQUEST_TIMEOUT` (one day) later |
+| | `status` | `None`, `Pending`, `Done`, `Refused`, `Stale`, `Expired` | public | `Refused`: the key did not match; `Stale`: it matched but the box changed first (or the ETH would not send); `Expired`: no proof within a day, nothing ran |
 | | `ok` | `ebool` | publicly decryptable | `(input XOR requestHash) == key` |
 | `Listing` | `boxId`, `price`, `startTime`, `endTime`, `counter`, `orderHash` | plain | public | The Seaport order the vault validated, in wei, at most 180 days |
 | `Sale` | `boxId`, `seller`, `buyer`, `status` | plain | public | A private sale offered to one buyer: `Open`, `Settled`, `Cancelled` |
@@ -307,18 +311,28 @@ counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (
 
 Plus `allowedCollection` (public, set by the owner), `treasury`, `feeBps` (at most
 `MAX_FEE_BPS`, 1,000), `feesOwed` (Seaport fees in ETH not yet sent), and the immutables
-`seaport` and `confidentialUsdc`. The NFTs themselves are ordinary holdings of the vault
-(`ownerOf` shows it), approved to Seaport one at a time while listed.
+`seaport`, `confidentialUsdc`, `offers` (`VaultOffers`) and `delegateRegistry` (delegate.xyz's
+Registry v2). The NFTs themselves are ordinary holdings of the vault (`ownerOf` shows it),
+approved to Seaport one at a time while listed, and handed to `VaultOffers` for the one call that
+fills an accepted offer.
+
+`VaultOffers` stores nothing: it is the offer board and the helper that fills the offers the
+vault accepts. Its only event is `OfferPosted(collection, tokenId, orderHash, order)` (the first
+three indexed; `tokenId` is `ANY_TOKEN`, 2^256 - 1, for an offer on any NFT of the collection),
+logged when `post` validated a buyer's signed WETH offer on Seaport. The order itself (buyer,
+WETH amount, end time) is in the log, as public as on any marketplace.
 
 Events: `Deposited(boxId, collection, tokenId, depositor)`, `KeySet(boxId, caller)`,
 `RequestPlaced(requestId, boxId, action, caller)`, `RequestSettled(requestId, status)`,
 `Withdrawn(boxId, to)`, `Listed(listingId, boxId, price, endTime, orderHash)`,
+`OfferAccepted(boxId, orderHash, buyer, amount)`, `Delegated(boxId, delegate)`,
 `Unlisted(listingId, boxId)`, `ListingExpired(listingId, boxId)`,
 `SoldOnSeaport(listingId, boxId, price)`, `Claimed(boxId, to, amount)`,
 `SaleOffered(saleId, boxId, seller, buyer)` (no price), `SaleCancelled(saleId)`,
 `SaleSettled(saleId)` (not whether it moved), `CollectionSet`, `FeeSet`, `TreasurySet`, and the
-base's `ConfidentialTransfer`. The API does not index any of them; its relayer proxy decrypts
-for the vault and follows its public decryptions.
+base's `ConfidentialTransfer`. The API indexes their counts without the addresses (above,
+`OfferPosted` not at all); its relayer proxy decrypts for the vault and follows its public
+decryptions.
 
 | Fact | The holder | Anyone else | How |
 | --- | --- | --- | --- |
@@ -329,6 +343,9 @@ for the vault and follows its public decryptions.
 | Whether the key matched | Yes | Yes | `ok` is decrypted in public; `RequestSettled` |
 | Where an NFT or a sale's ETH went | Yes | Yes | `Withdrawn`, `Claimed` |
 | A Seaport listing and its buyer | Yes | Yes | `Listed`, Seaport's own events |
+| An offer, its buyer and amount | Yes | Yes | `OfferPosted`, Seaport's `OrderValidated` |
+| An accepted offer: the buyer, the amount, the payout address | Yes | Yes | `OfferAccepted`, `Claimed`, Seaport's `OrderFulfilled` |
+| A box's delegate | Yes | Yes | `boxInfo`, `Delegated`, the registry |
 | A private sale's price | The seller and the buyer | No | User decryption; `SaleOffered` carries no price |
 | Whether a private sale moved the box | The seller and the buyer | No | `moved`; `SaleSettled` says only that it settled |
 

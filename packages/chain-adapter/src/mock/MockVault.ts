@@ -1,16 +1,20 @@
 import { ChainError, sameAddress, type ActionOptions, type Address } from "../types";
-import type { VaultAdapter, VaultBox, VaultCollection, VaultInfo, VaultListing, VaultSale } from "../vault";
+import type { VaultAdapter, VaultBox, VaultCollection, VaultDepositOptions, VaultInfo, VaultListing, VaultOffer, VaultSale } from "../vault";
 
 /** The vault's address in the demo: it holds the NFTs. */
 export const MOCK_VAULT: Address = "0x0000000000000000000000000000000000ba5e00";
 /** The demo's test collection, free to mint. */
 export const MOCK_VAULT_NFT: Address = "0x00000000000000000000000000000000000ca7e5";
 const MOCK_SEAPORT: Address = "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC";
+const MOCK_WETH: Address = "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9";
+const MOCK_REGISTRY: Address = "0x00000000000000447e69651d841bD8D104Bed493";
 
 const FEE_BPS = 250n;
 const ETH = 10n ** 18n;
 /** A Seaport listing of yours finds a buyer this long after it went up, in mock milliseconds. */
 const BUYER_AFTER_MS = 20_000;
+/** What the night shift offers, in WETH, for each NFT you seal. */
+const NIGHT_OFFER = (3n * ETH) / 100n;
 
 /** What the mock vault borrows from the demo around it: the account, the clock, the cUSDC book. */
 export interface MockVaultHost {
@@ -31,6 +35,11 @@ interface MockVaultBox extends Omit<VaultBox, "busy"> {
   keyed: boolean;
 }
 
+interface MockOffer extends VaultOffer {
+  boxId: number;
+  status: "open" | "filled" | "cancelled";
+}
+
 interface MockSale extends VaultSale {
   /** Encrypted on a real chain, readable by the two sides only. */
   price: bigint;
@@ -39,12 +48,13 @@ interface MockSale extends VaultSale {
 /**
  * The sealed vault in memory, with the contract's rules: a wrong key settles refused and moves
  * nothing, a listed box stays put, a box that changes hands needs its new holder's key. The
- * night shift holds two NFTs in it, one listed on Seaport, and buys any listing of yours after a
- * short while, so every flow can be played alone.
+ * night shift holds two NFTs in it, one listed on Seaport, buys any listing of yours after a
+ * short while, and makes a WETH offer on every NFT you seal, so every flow can be played alone.
  */
 export class MockVault implements VaultAdapter {
   private readonly all: MockVaultBox[] = [];
   private readonly saleList: MockSale[] = [];
+  private readonly offerList: MockOffer[] = [];
   private readonly nfts = new Map<string, Address>();
   private readonly eth = new Map<Address, bigint>();
   private listingCount = 0;
@@ -65,7 +75,17 @@ export class MockVault implements VaultAdapter {
 
   async info(): Promise<VaultInfo> {
     const collections: VaultCollection[] = [{ address: MOCK_VAULT_NFT, name: "Mock Kittens", mintable: true }];
-    return { address: MOCK_VAULT, explorerUrl: null, feeBps: Number(FEE_BPS), seaport: MOCK_SEAPORT, collections, relayer: "0x000000000000000000000000000000000000a11e", coin: "ETH" };
+    return {
+      address: MOCK_VAULT,
+      explorerUrl: null,
+      feeBps: Number(FEE_BPS),
+      seaport: MOCK_SEAPORT,
+      weth: MOCK_WETH,
+      delegateRegistry: MOCK_REGISTRY,
+      collections,
+      relayer: "0x000000000000000000000000000000000000a11e",
+      coin: "ETH",
+    };
   }
 
   async boxes(): Promise<VaultBox[]> {
@@ -96,7 +116,8 @@ export class MockVault implements VaultAdapter {
     return this.mintTo(me);
   }
 
-  async deposit(collection: Address, tokenId: bigint, opts?: ActionOptions): Promise<number> {
+  /** Decoys move nothing, so the mock leaves them out. */
+  async deposit(collection: Address, tokenId: bigint, opts?: VaultDepositOptions): Promise<number> {
     const me = this.signer();
     if (!sameAddress(collection, MOCK_VAULT_NFT)) throw revert("CollectionNotAllowed");
     if (this.nfts.get(String(tokenId)) !== me) throw revert("ERC721InsufficientApproval");
@@ -104,7 +125,9 @@ export class MockVault implements VaultAdapter {
     await this.host.send(opts, "deposit");
     this.nfts.set(String(tokenId), MOCK_VAULT);
     this.all.push(this.newBox(me, tokenId));
-    return this.all.length - 1;
+    const boxId = this.all.length - 1;
+    this.postOffer(boxId, this.host.nightShift, NIGHT_OFFER, Math.floor(this.host.now() / 1000) + 7 * 86_400);
+    return boxId;
   }
 
   async withdraw(boxId: number, to: Address, opts?: ActionOptions): Promise<void> {
@@ -113,6 +136,7 @@ export class MockVault implements VaultAdapter {
     await this.request(b, opts);
     b.listing = null;
     b.state = "withdrawn";
+    b.delegate = null;
     this.nfts.set(String(b.tokenId), to);
   }
 
@@ -157,6 +181,67 @@ export class MockVault implements VaultAdapter {
     b.state = "claimed";
     this.credit(to, amount);
     return amount;
+  }
+
+  async offers(boxId: number): Promise<VaultOffer[]> {
+    const b = this.get(boxId);
+    this.settle();
+    if (b.state !== "sealed" && b.state !== "listed") return [];
+    const now = Math.floor(this.host.now() / 1000);
+    return this.offerList
+      .filter((o) => o.boxId === boxId && o.status === "open" && o.endTime > now && this.ethOf(o.buyer) >= o.amount)
+      .map(({ boxId: _boxId, status: _status, ...o }) => o)
+      .sort((x, y) => (x.amount === y.amount ? 0 : x.amount > y.amount ? -1 : 1));
+  }
+
+  async makeOffer(boxId: number, amount: bigint, endTime: number, opts?: ActionOptions): Promise<string> {
+    const me = this.signer();
+    const b = this.get(boxId);
+    if (b.state !== "sealed" && b.state !== "listed") throw new ChainError("missed", "This NFT is no longer in the vault.");
+    if (amount <= 0n) throw revert("BadPrice");
+    if (this.ethOf(me) < amount) throw new ChainError("insufficient-funds", "Not enough ETH to wrap for this offer.");
+    // Wrap, let Seaport take the WETH, sign the order, post it.
+    await this.host.send(opts, "deposit");
+    await this.host.send(opts, "approve");
+    opts?.onStep?.("wallet");
+    await this.host.send(opts, "post");
+    return this.postOffer(boxId, me, amount, endTime);
+  }
+
+  async cancelOffer(orderHash: string, opts?: ActionOptions): Promise<void> {
+    const me = this.signer();
+    const o = this.offerList.find((x) => x.orderHash === orderHash);
+    if (!o || o.status !== "open") throw new ChainError("missed", "No such offer on the board.");
+    if (o.buyer !== me) throw new ChainError("not-yours", "Only the buyer who made this offer can cancel it.");
+    await this.host.send(opts, "cancel");
+    o.status = "cancelled";
+  }
+
+  async acceptOffer(boxId: number, orderHash: string, to: Address, opts?: ActionOptions): Promise<bigint> {
+    const b = this.get(boxId);
+    this.settle();
+    const o = this.offerList.find((x) => x.orderHash === orderHash && x.boxId === boxId);
+    if (b.state !== "sealed" && b.state !== "listed") throw revert("WrongState");
+    if (!o || o.status !== "open" || o.endTime * 1000 <= this.host.now() || this.ethOf(o.buyer) < o.amount) {
+      throw new ChainError("missed", "This offer is gone: cancelled, filled or ended.");
+    }
+    await this.request(b, opts);
+    o.status = "filled";
+    this.credit(o.buyer, -o.amount);
+    this.nfts.set(String(b.tokenId), o.buyer);
+    const net = o.amount - (o.amount * FEE_BPS) / 10_000n;
+    this.credit(to, net);
+    b.listing = null;
+    b.delegate = null;
+    b.state = "claimed";
+    return net;
+  }
+
+  async delegate(boxId: number, delegate: Address | null, opts?: ActionOptions): Promise<void> {
+    const b = this.get(boxId);
+    if (b.state !== "sealed" && b.state !== "listed") throw revert("WrongState");
+    await this.request(b, opts);
+    b.delegate = delegate;
   }
 
   async send(boxId: number, to: Address, opts?: ActionOptions): Promise<void> {
@@ -284,6 +369,13 @@ export class MockVault implements VaultAdapter {
     this.nfts.set(String(b.tokenId), buyer);
     b.proceeds = price - fee;
     b.state = "sold";
+    b.delegate = null;
+  }
+
+  private postOffer(boxId: number, buyer: Address, amount: bigint, endTime: number): string {
+    const orderHash = `0x0ffe${this.offerList.length.toString(16).padStart(60, "0")}`;
+    this.offerList.push({ orderHash, boxId, buyer, amount, endTime, anyToken: false, status: "open" });
+    return orderHash;
   }
 
   private listBox(b: MockVaultBox, price: bigint, endTime: number): VaultListing {
@@ -303,6 +395,7 @@ export class MockVault implements VaultAdapter {
       depositor,
       listing: null,
       proceeds: 0n,
+      delegate: null,
       tokenUri: "",
       holder: depositor,
       keyed: true,
