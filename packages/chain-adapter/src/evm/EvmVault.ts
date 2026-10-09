@@ -50,6 +50,7 @@ type Encrypted = { handles: (string | Uint8Array)[]; inputProof: string | Uint8A
 export interface EvmVaultTools {
   chainId: number;
   explorerUrl: string | null;
+  marketplaceUrl: string | null;
   readProvider: Provider;
   account(): Promise<Address>;
   send(opts: ActionOptions | undefined, call: () => Promise<ContractTransactionResponse>): Promise<ContractTransactionReceipt>;
@@ -180,6 +181,8 @@ export class EvmVault implements VaultAdapter {
     return {
       address: this.deployed.address,
       explorerUrl: this.t.explorerUrl ? `${this.t.explorerUrl}/address/${this.deployed.address}` : null,
+      explorer: this.t.explorerUrl,
+      marketplace: this.t.marketplaceUrl,
       feeBps: Number(feeBps),
       seaport: this.deployed.seaport,
       weth: this.deployed.weth,

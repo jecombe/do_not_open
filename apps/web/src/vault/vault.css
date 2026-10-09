@@ -839,6 +839,35 @@ li.vault-card-open {
   color: var(--teal);
 }
 
+/* An address or a name that opens the explorer: the text stays, a dotted line says it leads out. */
+.vault-ext {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.vault-ext:hover,
+.vault-ext:focus-visible {
+  color: var(--teal);
+}
+
+a.vault-me {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.vault-me:hover {
+  border-color: var(--teal);
+}
+
+.vault-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  font-size: 13px;
+}
+
 .vault-buybox {
   display: grid;
   gap: 6px;

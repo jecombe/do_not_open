@@ -78,6 +78,8 @@ export class MockVault implements VaultAdapter {
     return {
       address: MOCK_VAULT,
       explorerUrl: null,
+      explorer: null,
+      marketplace: null,
       feeBps: Number(FEE_BPS),
       seaport: MOCK_SEAPORT,
       weth: MOCK_WETH,

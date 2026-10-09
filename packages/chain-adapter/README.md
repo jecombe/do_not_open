@@ -254,7 +254,10 @@ through `apiUrl` (its `vaultRelay` option); the Node adapter has none, so its wa
 not part of the game: any NFT of an allowed collection goes into
 a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 
-- `info()`: `address`, `explorerUrl`, `feeBps`, `seaport`, `weth` (what offers pay in),
+- `info()`: `address`, `explorerUrl` (the vault's page), `explorer` and `marketplace` (the
+  chain's explorer and NFT marketplace bases, null where there is none: OpenSea has no testnet,
+  so `marketplace` is null on Sepolia; `vaultLinks(info)` builds the address, transaction, NFT
+  and marketplace links from them), `feeBps`, `seaport`, `weth` (what offers pay in),
   `delegateRegistry` (delegate.xyz's), `collections` (`VaultCollection`:
   `address`, `name`, `mintable` for a free test collection), `relayer` (the API relayer's
   address, or null: requests then go from the wallet, whose address shows) and `coin` ("ETH").

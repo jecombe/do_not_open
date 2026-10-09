@@ -35,6 +35,8 @@ export const SEPOLIA: ChainParams = {
   name: "Sepolia",
   rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
   explorerUrl: "https://sepolia.etherscan.io",
+  // OpenSea closed its testnets; on mainnet this is "https://opensea.io/item/ethereum".
+  marketplaceUrl: null,
   currency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
 };
 
