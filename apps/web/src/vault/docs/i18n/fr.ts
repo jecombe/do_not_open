@@ -61,7 +61,7 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.pockets": "Les poches : des jetons que personne ne trace",
   "vaultDocs.pockets.p1": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.",
-  "vaultDocs.pockets.p2": "Ouvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas.",
+  "vaultDocs.pockets.p2": "Sur la page du coffre, un sélecteur en haut choisit le côté : NFT (non fongibles, dans des boîtes) ou Jetons (fongibles, dans ta poche). Ouvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas.",
   "vaultDocs.pockets.p3": "Déposer se fait depuis les cUSDC de ton wallet (la page peut d'abord convertir de l'USDC en cUSDC, et ce montant-là se voit). Le dépôt nomme ton wallet et quelques poches tirées au hasard : laquelle a reçu, et combien, reste chiffré. N'importe qui peut payer n'importe quelle poche ainsi, depuis un wallet.",
   "vaultDocs.pockets.p4": "Pour être payé, donne ton code. Envoyer nomme ta poche parmi quelques autres, et celle du destinataire parmi quelques autres ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne.",
   "vaultDocs.pockets.p5": "Retirer envoie les jetons en cUSDC vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit : prends-en une neuve et rien ne la relie à toi.",
@@ -117,6 +117,8 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.more.project.v": "L'idée, le chiffrement, à qui tu fais confiance.",
   "vaultDocs.more.design": "Les notes de conception",
   "vaultDocs.more.design.v": "Chaque flux, chaque vérification, chaque fuite, pour les développeurs.",
+  "vaultDocs.more.code": "Le code des contrats",
+  "vaultDocs.more.code.v": "Les contrats du coffre, leurs tests et leurs adresses sur Sepolia, open source sur GitLab",
   "vaultDocs.more.contract": "Le contrat",
   "vaultDocs.more.contract.v": "SealedVault.sol, open source.",
 

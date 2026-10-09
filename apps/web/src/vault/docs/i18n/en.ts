@@ -60,7 +60,7 @@ export const vaultDocsEn = {
 
   "vaultDocs.section.pockets": "Pockets: tokens nobody can trace",
   "vaultDocs.pockets.p1": "A confidential dollar like cUSDC already hides balances and amounts, but every transfer still names who sent it and who received it. A pocket hides that too. It is a number (your code, like P-12) with an encrypted balance and a key: what is in it, and who holds it, nobody can read.",
-  "vaultDocs.pockets.p2": "Opening your pocket takes one signature, free: from it the page makes the pocket's key and a second address that only ever reads its balance, never your wallet's. Nothing is stored; the same wallet finds the same pocket on any device. The relayer sends the opening, so your address is not on it.",
+  "vaultDocs.pockets.p2": "On the vault's page, a switch at the top picks the side: NFTs (non-fungible, in boxes) or Tokens (fungible, in your pocket). Opening your pocket takes one signature, free: from it the page makes the pocket's key and a second address that only ever reads its balance, never your wallet's. Nothing is stored; the same wallet finds the same pocket on any device. The relayer sends the opening, so your address is not on it.",
   "vaultDocs.pockets.p3": "Putting tokens in comes from your wallet's cUSDC (the page can turn plain USDC into cUSDC first, and that amount shows). The deposit names your wallet and a few pockets picked at random: which one received, and how much, stays encrypted. Anyone can pay any pocket this way, from a wallet.",
   "vaultDocs.pockets.p4": "To be paid, give your code. Sending names your pocket among a few others, and the receiver's among a few others; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody.",
   "vaultDocs.pockets.p5": "Taking tokens out sends them as cUSDC to any address, the amount still encrypted. The address shows: pick a fresh one and nothing links it to you.",
@@ -116,6 +116,8 @@ export const vaultDocsEn = {
   "vaultDocs.more.project.v": "The idea, the encryption, who you trust.",
   "vaultDocs.more.design": "The design notes",
   "vaultDocs.more.design.v": "Every flow, every check, every leak, for developers.",
+  "vaultDocs.more.code": "The contracts' code",
+  "vaultDocs.more.code.v": "The vault's contracts, their tests and their Sepolia addresses, open source on GitLab",
   "vaultDocs.more.contract": "The contract",
   "vaultDocs.more.contract.v": "SealedVault.sol, open source.",
 

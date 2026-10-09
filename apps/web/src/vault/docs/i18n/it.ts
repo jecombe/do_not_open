@@ -61,7 +61,7 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.pockets": "Le tasche: token che nessuno traccia",
   "vaultDocs.pockets.p1": "Un dollaro confidenziale come il cUSDC nasconde già saldi e importi, ma ogni trasferimento nomina ancora chi lo invia e chi lo riceve. Una tasca nasconde anche questo. È un numero (il tuo codice, come P-12) con un saldo cifrato e una chiave: cosa c'è dentro, e chi la possiede, nessuno può leggerlo.",
-  "vaultDocs.pockets.p2": "Aprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare.",
+  "vaultDocs.pockets.p2": "Nella pagina del caveau, un selettore in alto sceglie il lato: NFT (non fungibili, in scatole) o Token (fungibili, nella tua tasca). Aprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare.",
   "vaultDocs.pockets.p3": "Depositare avviene dai cUSDC del tuo wallet (la pagina può prima convertire USDC in cUSDC, e quell'importo si vede). Il deposito nomina il tuo wallet e alcune tasche scelte a caso: quale ha ricevuto, e quanto, resta cifrato. Chiunque può pagare qualsiasi tasca così, da un wallet.",
   "vaultDocs.pockets.p4": "Per farti pagare, dai il tuo codice. Inviare nomina la tua tasca tra poche altre, e quella del destinatario tra poche altre; il caveau verifica la tua chiave sotto cifratura, prende l'importo dalla tasca che apre e lo aggiunge a quella il cui numero corrisponde, sempre sotto cifratura. Niente di pubblico dice chi ha pagato chi, né quanto. Una chiave sbagliata o un saldo insufficiente non spostano nulla, senza errore. Non serve alcuna decifratura: una sola transazione, che non aspetta nessuno.",
   "vaultDocs.pockets.p5": "Ritirare invia i token in cUSDC verso qualsiasi indirizzo, con l'importo ancora cifrato. L'indirizzo si vede: scegline uno nuovo e niente lo collega a te.",
@@ -117,6 +117,8 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.more.project.v": "L'idea, la cifratura, di chi ti fidi.",
   "vaultDocs.more.design": "Le note di progetto",
   "vaultDocs.more.design.v": "Ogni flusso, ogni controllo, ogni fuga, per sviluppatori.",
+  "vaultDocs.more.code": "Il codice dei contratti",
+  "vaultDocs.more.code.v": "I contratti del caveau, i loro test e i loro indirizzi su Sepolia, open source su GitLab",
   "vaultDocs.more.contract": "Il contratto",
   "vaultDocs.more.contract.v": "SealedVault.sol, open source.",
 

@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { spec } from "@dno/game-spec";
 import { DocShell, Prose } from "../docs/DocShell";
 import { useLocale } from "../i18n/locale";
-import { REPO } from "../links";
+import { SOURCE } from "../links";
 import { appPath, docsPath, homePath, vaultDocsPath, vaultPath } from "../site";
 import { useT } from "./i18n";
 
@@ -39,7 +39,7 @@ export function ProjectDocs() {
   const refs = [
     { key: "vault", href: vaultDocsPath(locale) },
     { key: "game", href: docsPath(locale) },
-    { key: "repo", href: REPO },
+    { key: "repo", href: SOURCE },
     { key: "zama", href: ZAMA },
   ] as const;
 

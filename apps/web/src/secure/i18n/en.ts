@@ -84,6 +84,7 @@ export const secureEn = {
   "secure.game.kicker": "Off duty",
   "secure.game.experimental": "Experimental: a prototype whose rules, numbers and screens still change, on the test network.",
   "secure.foot": "DO NOT OPEN runs on a test network. Nothing here is worth money yet.",
+  "secure.source": "Source code",
   "warden.name": "The Warden",
   "warden.open": "Ask the Warden",
   "warden.title": "The vault's Warden",

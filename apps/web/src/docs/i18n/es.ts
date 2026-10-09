@@ -155,6 +155,8 @@ export const docsEs: Record<DocsKey, string> = {
   "docs.more.r5.v": "Dirección de arte, efectos, presupuesto de rendimiento",
   "docs.more.r6": "Contratos",
   "docs.more.r6.v": "Coste de cada función, despliegue, línea de comandos",
+  "docs.more.code": "El código de los contratos",
+  "docs.more.code.v": "Todos los contratos del juego, sus pruebas y sus direcciones en Sepolia, de código abierto en GitLab",
 
   "fig.field.stateRoll": "Tirada de estado",
   "fig.field.breed": "Raza",

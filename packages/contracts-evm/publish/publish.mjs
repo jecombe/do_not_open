@@ -227,7 +227,7 @@ function publish(manifest, src) {
   }
   const first = !git(["ls-remote", "--heads", "origin"]);
   const subject = first
-    ? `Publish the ${manifest.title.replace(/^DO NOT OPEN: /, "")} contracts`
+    ? `Publish the contracts of ${manifest.title}`
     : read("git", ["log", "-1", "--format=%s", "HEAD", "--", ...SOURCES], ROOT);
   run("git", ["-c", `user.name=${AUTHOR.name}`, "-c", `user.email=${AUTHOR.email}`, "commit", "--quiet", "-m", subject], dest, env);
   run("git", ["push", "--quiet", "origin", "HEAD:main"], dest, env);

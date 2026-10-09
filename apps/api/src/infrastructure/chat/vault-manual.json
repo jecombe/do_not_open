@@ -214,13 +214,13 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "A confidential dollar like cUSDC already hides balances and amounts, but every transfer still names who sent it and who received it. A pocket hides that too. It is a number (your code, like P-12) with an encrypted balance and a key: what is in it, and who holds it, nobody can read.\nOpening your pocket takes one signature, free: from it the page makes the pocket's key and a second address that only ever reads its balance, never your wallet's. Nothing is stored; the same wallet finds the same pocket on any device. The relayer sends the opening, so your address is not on it.\nPutting tokens in comes from your wallet's cUSDC (the page can turn plain USDC into cUSDC first, and that amount shows). The deposit names your wallet and a few pockets picked at random: which one received, and how much, stays encrypted. Anyone can pay any pocket this way, from a wallet."
+     "text": "A confidential dollar like cUSDC already hides balances and amounts, but every transfer still names who sent it and who received it. A pocket hides that too. It is a number (your code, like P-12) with an encrypted balance and a key: what is in it, and who holds it, nobody can read.\nOn the vault's page, a switch at the top picks the side: NFTs (non-fungible, in boxes) or Tokens (fungible, in your pocket). Opening your pocket takes one signature, free: from it the page makes the pocket's key and a second address that only ever reads its balance, never your wallet's. Nothing is stored; the same wallet finds the same pocket on any device. The relayer sends the opening, so your address is not on it."
     },
     {
      "id": "vault-pockets-1",
      "section": "vault-pockets",
      "heading": null,
-     "text": "To be paid, give your code. Sending names your pocket among a few others, and the receiver's among a few others; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody.\nTaking tokens out sends them as cUSDC to any address, the amount still encrypted. The address shows: pick a fresh one and nothing links it to you."
+     "text": "Putting tokens in comes from your wallet's cUSDC (the page can turn plain USDC into cUSDC first, and that amount shows). The deposit names your wallet and a few pockets picked at random: which one received, and how much, stays encrypted. Anyone can pay any pocket this way, from a wallet.\nTo be paid, give your code. Sending names your pocket among a few others, and the receiver's among a few others; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody.\nTaking tokens out sends them as cUSDC to any address, the amount still encrypted. The address shows: pick a fresh one and nothing links it to you."
     },
     {
      "id": "vault-pockets-2",
@@ -274,7 +274,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "About DO NOT OPEN The idea, the encryption, who you trust.\nThe design notes Every flow, every check, every leak, for developers.\nThe contract SealedVault.sol, open source."
+     "text": "About DO NOT OPEN The idea, the encryption, who you trust.\nThe design notes Every flow, every check, every leak, for developers.\nThe contracts' code The vault's contracts, their tests and their Sepolia addresses, open source on GitLab\nThe contract SealedVault.sol, open source."
     },
     {
      "id": "project-what-0",
@@ -322,7 +322,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "The vault's documentation Depositing, the key, Seaport, private sales, pockets, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code Contracts, app and API, all open source.\nZama's FHEVM The encryption the contracts run on."
+     "text": "The vault's documentation Depositing, the key, Seaport, private sales, pockets, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code The game's and the vault's contracts, their tests and their addresses, open source on GitLab.\nZama's FHEVM The encryption the contracts run on."
     }
    ]
   },
@@ -545,7 +545,7 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.\nOuvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas."
+     "text": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.\nSur la page du coffre, un sélecteur en haut choisit le côté : NFT (non fongibles, dans des boîtes) ou Jetons (fongibles, dans ta poche). Ouvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas."
     },
     {
      "id": "vault-pockets-1",
@@ -611,7 +611,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "À propos de DO NOT OPEN L'idée, le chiffrement, à qui tu fais confiance.\nLes notes de conception Chaque flux, chaque vérification, chaque fuite, pour les développeurs.\nLe contrat SealedVault.sol, open source."
+     "text": "À propos de DO NOT OPEN L'idée, le chiffrement, à qui tu fais confiance.\nLes notes de conception Chaque flux, chaque vérification, chaque fuite, pour les développeurs.\nLe code des contrats Les contrats du coffre, leurs tests et leurs adresses sur Sepolia, open source sur GitLab\nLe contrat SealedVault.sol, open source."
     },
     {
      "id": "project-what-0",
@@ -659,7 +659,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, les poches, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Contrats, app et API, tout est open source.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
+     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, les poches, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Les contrats du jeu et du coffre, leurs tests et leurs adresses, open source sur GitLab.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
     }
    ]
   },
@@ -876,7 +876,7 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Un dólar confidencial como el cUSDC ya oculta saldos e importes, pero cada transferencia sigue nombrando quién la envía y quién la recibe. Un bolsillo oculta también eso. Es un número (tu código, como P-12) con un saldo cifrado y una llave: lo que hay dentro, y quién lo tiene, nadie puede leerlo.\nAbrir tu bolsillo requiere una firma, gratis: con ella la página crea la llave del bolsillo y una segunda dirección que solo sirve para leer su saldo, nunca la de tu wallet. No se guarda nada; el mismo wallet encuentra el mismo bolsillo en cualquier dispositivo. El relayer envía la apertura, así que tu dirección no aparece."
+     "text": "Un dólar confidencial como el cUSDC ya oculta saldos e importes, pero cada transferencia sigue nombrando quién la envía y quién la recibe. Un bolsillo oculta también eso. Es un número (tu código, como P-12) con un saldo cifrado y una llave: lo que hay dentro, y quién lo tiene, nadie puede leerlo.\nEn la página de la bóveda, un selector arriba elige el lado: NFT (no fungibles, en cajas) o Tokens (fungibles, en tu bolsillo). Abrir tu bolsillo requiere una firma, gratis: con ella la página crea la llave del bolsillo y una segunda dirección que solo sirve para leer su saldo, nunca la de tu wallet. No se guarda nada; el mismo wallet encuentra el mismo bolsillo en cualquier dispositivo. El relayer envía la apertura, así que tu dirección no aparece."
     },
     {
      "id": "vault-pockets-1",
@@ -936,7 +936,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "Sobre DO NOT OPEN La idea, el cifrado, en quién confías.\nLas notas de diseño Cada flujo, cada comprobación, cada filtración, para desarrolladores.\nEl contrato SealedVault.sol, de código abierto."
+     "text": "Sobre DO NOT OPEN La idea, el cifrado, en quién confías.\nLas notas de diseño Cada flujo, cada comprobación, cada filtración, para desarrolladores.\nEl código de los contratos Los contratos de la bóveda, sus pruebas y sus direcciones en Sepolia, de código abierto en GitLab\nEl contrato SealedVault.sol, de código abierto."
     },
     {
      "id": "project-what-0",
@@ -990,7 +990,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentación de la bóveda El depósito, la llave, Seaport, las ventas privadas, los bolsillos, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Contratos, app y API, todo de código abierto.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
+     "text": "La documentación de la bóveda El depósito, la llave, Seaport, las ventas privadas, los bolsillos, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Los contratos del juego y de la bóveda, sus pruebas y sus direcciones, de código abierto en GitLab.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
     }
    ]
   },
@@ -1207,7 +1207,7 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Un dollaro confidenziale come il cUSDC nasconde già saldi e importi, ma ogni trasferimento nomina ancora chi lo invia e chi lo riceve. Una tasca nasconde anche questo. È un numero (il tuo codice, come P-12) con un saldo cifrato e una chiave: cosa c'è dentro, e chi la possiede, nessuno può leggerlo.\nAprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare."
+     "text": "Un dollaro confidenziale come il cUSDC nasconde già saldi e importi, ma ogni trasferimento nomina ancora chi lo invia e chi lo riceve. Una tasca nasconde anche questo. È un numero (il tuo codice, come P-12) con un saldo cifrato e una chiave: cosa c'è dentro, e chi la possiede, nessuno può leggerlo.\nNella pagina del caveau, un selettore in alto sceglie il lato: NFT (non fungibili, in scatole) o Token (fungibili, nella tua tasca). Aprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare."
     },
     {
      "id": "vault-pockets-1",
@@ -1273,7 +1273,7 @@
      "id": "vault-more-0",
      "section": "vault-more",
      "heading": null,
-     "text": "Su DO NOT OPEN L'idea, la cifratura, di chi ti fidi.\nLe note di progetto Ogni flusso, ogni controllo, ogni fuga, per sviluppatori.\nIl contratto SealedVault.sol, open source."
+     "text": "Su DO NOT OPEN L'idea, la cifratura, di chi ti fidi.\nLe note di progetto Ogni flusso, ogni controllo, ogni fuga, per sviluppatori.\nIl codice dei contratti I contratti del caveau, i loro test e i loro indirizzi su Sepolia, open source su GitLab\nIl contratto SealedVault.sol, open source."
     },
     {
      "id": "project-what-0",
@@ -1321,7 +1321,7 @@
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, le tasche, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice Contratti, app e API, tutto open source.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
+     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, le tasche, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice I contratti del gioco e del caveau, i loro test e i loro indirizzi, open source su GitLab.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
     }
    ]
   }
