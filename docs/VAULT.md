@@ -47,8 +47,12 @@ registry. Earlier deployments are left as they were: `0x27CA3698A34b53900047cD1D
 box and moved the nonce on with every request (see Decisions).
 
 The pockets (`SealedPockets`, and `PocketDesk` that buys private sales out of them) are done on
-the mock and in the tests (45 contract tests in `test/SealedPockets.ts`); they are not deployed
-on Sepolia yet. See [Pockets](#pockets).
+the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 5 more running the
+adapter against them), and on Sepolia since 2026-10-09: `SealedPockets` at
+`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902, owner `0x590891F269720001435004A1089cAB5b2c20029A`) and
+`PocketDesk` at `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), on the vault above and Zama's
+cUSDC; `pnpm --filter @dno/chain-adapter smoke:pockets` (open, deposit, send, withdraw, both
+balances read by their viewers) passed there. See [Pockets](#pockets).
 
 ## Contracts
 
@@ -623,7 +627,8 @@ that pocket tried to buy that box.
   deposits, sends and withdrawals do not.
 - The pocket key comes from one signature of a fixed message: a site that tricks a wallet into
   signing it can spend that wallet's pocket.
-- Not audited; not deployed on Sepolia yet.
+- Not audited. A purchase from a pocket has not run on Sepolia yet: it waits for the gateway like
+  the boxes' requests.
 
 ## What is public, what is not
 

@@ -519,7 +519,8 @@ FHEVM mock, against Seaport 1.5's runtime bytecode read from Sepolia (`test/seap
 ## 16. The vault's pockets: SealedPockets and PocketDesk
 
 `SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
-buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). Not deployed yet.
+buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). On Sepolia at
+`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
 45 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
 (itself on Seaport 1.5's and delegate.xyz's bytecode); the relayer's routes in
 `apps/api/test/vaultRelay.test.ts`; the adapter's `EvmPockets` (what the page runs) against the contracts in `test/PocketsAdapter.ts`.

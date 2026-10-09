@@ -22,6 +22,8 @@ const CONTRACTS = [
   { key: "offers", address: "0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2" },
   { key: "weth", address: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9" },
   { key: "registry", address: "0x00000000000000447e69651d841bD8D104Bed493" },
+  { key: "pockets", address: "0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C" },
+  { key: "desk", address: "0x0939D713429FCD1c5AF9589b121a8F77C49F759b" },
 ] as const;
 
 /** The manual's animated flow of a withdrawal through the relayer. */

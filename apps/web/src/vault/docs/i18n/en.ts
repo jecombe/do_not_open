@@ -108,6 +108,8 @@ export const vaultDocsEn = {
   "vaultDocs.testnet.c.offers": "The offer board",
   "vaultDocs.testnet.c.weth": "WETH, what offers pay in",
   "vaultDocs.testnet.c.registry": "delegate.xyz's registry",
+  "vaultDocs.testnet.c.pockets": "The pockets",
+  "vaultDocs.testnet.c.desk": "The desk that buys from pockets",
 
   "vaultDocs.section.more": "Further reading",
   "vaultDocs.more.project": "About DO NOT OPEN",

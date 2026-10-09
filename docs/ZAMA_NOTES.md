@@ -838,7 +838,9 @@ per call is in [VAULT.md](VAULT.md#cost): ~83k a deposit, ~191k a request, ~225k
 ### The vault's pockets (2026-10-09)
 
 `SealedPockets` holds cUSDC in pockets locked by a `euint256` key, and `PocketDesk` buys the
-vault's private sales out of them ([VAULT.md](VAULT.md#pockets)). Not deployed yet. What is
+vault's private sales out of them ([VAULT.md](VAULT.md#pockets)). On Sepolia since 2026-10-09:
+`SealedPockets` `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902), `PocketDesk`
+`0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903). What is
 specific to the protocol:
 
 - **Nothing decrypted for a spend.** A deposit, a send or a withdrawal computes, for every pocket

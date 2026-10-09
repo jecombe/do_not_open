@@ -268,7 +268,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5, the WETH OpenSea uses there and delegate.xyz's registry. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xE225…8262\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nThe offer board 0x750d…f9E2\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493"
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5, the WETH OpenSea uses there and delegate.xyz's registry. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xE225…8262\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nThe offer board 0x750d…f9E2\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0xAfEc…e00C\nThe desk that buys from pockets 0x0939…759b"
     },
     {
      "id": "vault-more-0",
@@ -605,7 +605,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5, le WETH qu'OpenSea y utilise et le registre de delegate.xyz. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xE225…8262\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLe tableau des offres 0x750d…f9E2\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493"
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5, le WETH qu'OpenSea y utilise et le registre de delegate.xyz. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xE225…8262\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLe tableau des offres 0x750d…f9E2\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0xAfEc…e00C\nLe guichet qui achète depuis les poches 0x0939…759b"
     },
     {
      "id": "vault-more-0",
@@ -930,7 +930,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real, el WETH que OpenSea usa allí y el registro de delegate.xyz. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xE225…8262\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nEl tablón de ofertas 0x750d…f9E2\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493"
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real, el WETH que OpenSea usa allí y el registro de delegate.xyz. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xE225…8262\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nEl tablón de ofertas 0x750d…f9E2\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0xAfEc…e00C\nLa ventanilla que compra desde los bolsillos 0x0939…759b"
     },
     {
      "id": "vault-more-0",
@@ -1267,7 +1267,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5, il WETH che OpenSea usa lì e il registro di delegate.xyz. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xE225…8262\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLa bacheca delle offerte 0x750d…f9E2\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493"
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5, il WETH che OpenSea usa lì e il registro di delegate.xyz. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xE225…8262\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLa bacheca delle offerte 0x750d…f9E2\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0xAfEc…e00C\nLo sportello che compra dalle tasche 0x0939…759b"
     },
     {
      "id": "vault-more-0",

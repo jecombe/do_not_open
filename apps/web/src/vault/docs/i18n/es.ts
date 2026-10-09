@@ -109,6 +109,8 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.testnet.c.offers": "El tablón de ofertas",
   "vaultDocs.testnet.c.weth": "WETH, en lo que pagan las ofertas",
   "vaultDocs.testnet.c.registry": "El registro de delegate.xyz",
+  "vaultDocs.testnet.c.pockets": "Los bolsillos",
+  "vaultDocs.testnet.c.desk": "La ventanilla que compra desde los bolsillos",
 
   "vaultDocs.section.more": "Para saber más",
   "vaultDocs.more.project": "Sobre DO NOT OPEN",

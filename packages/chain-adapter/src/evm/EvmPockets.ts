@@ -52,6 +52,8 @@ export class EvmPockets implements PocketsAdapter {
   private readonly desk: Contract;
   private readonly vaultRead: Contract;
   private secret: { account: Address; key: bigint; viewer: Wallet } | null = null;
+  /** The block of this page's last transaction: reads wait until the RPC has seen it. */
+  private lastBlock = 0;
 
   constructor(
     private readonly deployed: PocketsDeployment,
@@ -70,6 +72,7 @@ export class EvmPockets implements PocketsAdapter {
 
   async mine(opts?: ActionOptions): Promise<number | null> {
     const { viewer } = await this.keys(opts);
+    await this.caughtUp();
     const plusOne = Number(await this.t.reading(this.read.pocketOf!(viewer.address)));
     return plusOne === 0 ? null : plusOne - 1;
   }
@@ -83,7 +86,7 @@ export class EvmPockets implements PocketsAdapter {
     const input = await this.t.encrypt(this.deployed.address, account, (b) => b.add256(key), "the pocket key", opts, relay?.address ?? account);
     const [handle, inputProof] = [hex(input.handles[0]!), hex(input.inputProof)];
     if (relay) await this.relayed(opts, "open", () => relay.pockets("pocketOpen", { handle, inputProof, viewer: viewer.address }));
-    else await this.t.send(opts, () => this.t.writer(this.deployed).open!(handle, inputProof, viewer.address));
+    else await this.sent(opts, () => this.t.writer(this.deployed).open!(handle, inputProof, viewer.address));
     const id = await this.mine(opts);
     if (id === null) throw new ChainError("network", "The pocket did not open.");
     return id;
@@ -91,6 +94,7 @@ export class EvmPockets implements PocketsAdapter {
 
   async balance(opts?: ActionOptions): Promise<bigint> {
     const id = await this.mineOrThrow(opts);
+    await this.caughtUp();
     const handle = String(await this.t.reading(this.read.balanceOf!(id)));
     if (handle === ZERO) return 0n;
     const { viewer } = await this.keys(opts);
@@ -104,7 +108,7 @@ export class EvmPockets implements PocketsAdapter {
     const set = await this.set(to, opts);
     await this.t.ensureOperator(await this.t.cUsdc(), account, this.deployed.address, opts);
     const input = await this.t.encrypt(this.deployed.address, account, (b) => b.add32(to).add64(amount), "the amount", opts);
-    await this.t.send(opts, () => this.t.writer(this.deployed).deposit!(set, input.handles[0], input.handles[1], input.inputProof));
+    await this.sent(opts, () => this.t.writer(this.deployed).deposit!(set, input.handles[0], input.handles[1], input.inputProof));
   }
 
   async send(to: number, amount: bigint, opts?: PocketOptions): Promise<void> {
@@ -127,10 +131,10 @@ export class EvmPockets implements PocketsAdapter {
       throw new ChainError("unknown", `There is no pocket ${pocketId}.`);
     });
     const input = await this.t.encrypt(this.side.vault.address, account, (b) => b.add64(price), "the price", opts);
-    const receipt = await this.t.send(opts, () => this.t.writer(this.side.vault).offerSale!(boxId, this.deployed.desk.address, input.handles[0], input.inputProof));
+    const receipt = await this.sent(opts, () => this.t.writer(this.side.vault).offerSale!(boxId, this.deployed.desk.address, input.handles[0], input.inputProof));
     const log = receipt.logs.map((l) => this.parse(this.vaultRead, l)).find((e) => e?.name === "SaleOffered");
     const saleId = Number(log!.args.saleId);
-    await this.t.send(opts, () => this.t.writer(this.deployed.desk).reserve!(saleId, pocketId));
+    await this.sent(opts, () => this.t.writer(this.deployed.desk).reserve!(saleId, pocketId));
     return saleId;
   }
 
@@ -185,16 +189,18 @@ export class EvmPockets implements PocketsAdapter {
 
     const receipt = relay
       ? await this.relayed(opts, "ask", () => relay.pockets("deskAsk", { saleId, handle, keyProof, boxKey: boxHandle }))
-      : await this.t.send(opts, () => this.t.writer(this.deployed.desk).ask!(saleId, handle, keyProof, boxHandle));
+      : await this.sent(opts, () => this.t.writer(this.deployed.desk).ask!(saleId, handle, keyProof, boxHandle));
     const asked = receipt.logs.map((l) => this.parse(this.desk, l)).find((e) => e?.name === "Asked");
     const askId = Number(asked!.args.askId);
 
+    await this.caughtUp();
     const { ok } = await this.t.reading(this.desk.askInfo!(askId));
     const decrypted = await this.t.publicDecrypt([String(ok)], opts);
     opts?.onStep?.("proving");
     const args = { askId, cleartexts: decrypted.abiEncodedClearValues, proof: decrypted.decryptionProof, boxKey: boxHandle, boxKeyProof: hex(boxInput.inputProof) };
     if (relay) await this.relayed(opts, "buy", () => relay.pockets("deskBuy", args), false);
-    else await this.t.send(opts, () => this.t.writer(this.deployed.desk).buy!(askId, args.cleartexts, args.proof, args.boxKey, args.boxKeyProof));
+    else await this.sent(opts, () => this.t.writer(this.deployed.desk).buy!(askId, args.cleartexts, args.proof, args.boxKey, args.boxKeyProof));
+    await this.caughtUp();
     if (Number((await this.t.reading(this.desk.askInfo!(askId))).status) !== ASK_DONE) {
       throw new ChainError("not-yours", "Your pocket's key did not match, or it does not cover the price. Nothing happened; the sale is still open.");
     }
@@ -205,6 +211,7 @@ export class EvmPockets implements PocketsAdapter {
 
   async boxes(): Promise<number[]> {
     if (!this.secret) return [];
+    await this.caughtUp();
     const id = await this.mine();
     if (id === null) return [];
     const logs = await this.logs(this.desk, this.desk.filters.Bought!(null, null, id), this.deployed.desk.deployBlock);
@@ -259,15 +266,29 @@ export class EvmPockets implements PocketsAdapter {
     const input = { amount: amountHandle, target: targetHandle, inputProof: hex(values.inputProof), boundKey: hex(bound.handles[0]!), keyProof: hex(bound.inputProof) };
     if (action === SPEND.send) {
       if (relay) await this.relayed(opts, "send", () => relay.pockets("pocketSend", { from, to, input }));
-      else await this.t.send(opts, () => this.t.writer(this.deployed).send!(from, to, input));
+      else await this.sent(opts, () => this.t.writer(this.deployed).send!(from, to, input));
     } else {
       if (relay) await this.relayed(opts, "withdraw", () => relay.pockets("pocketWithdraw", { from, to: dest!, input }));
-      else await this.t.send(opts, () => this.t.writer(this.deployed).withdraw!(from, dest!, input));
+      else await this.sent(opts, () => this.t.writer(this.deployed).withdraw!(from, dest!, input));
     }
   }
 
-  private relayed(opts: ActionOptions | undefined, call: string, sendIt: () => Promise<string>, announce = true) {
-    return this.t.relayed(opts, call, sendIt, announce);
+  private async relayed(opts: ActionOptions | undefined, call: string, sendIt: () => Promise<string>, announce = true) {
+    return this.mined(await this.t.relayed(opts, call, sendIt, announce));
+  }
+
+  private async sent(opts: ActionOptions | undefined, call: Parameters<EvmPocketsTools["send"]>[1]) {
+    return this.mined(await this.t.send(opts, call));
+  }
+
+  private mined<R extends { blockNumber: number }>(receipt: R): R {
+    this.lastBlock = Math.max(this.lastBlock, receipt.blockNumber);
+    return receipt;
+  }
+
+  /** A public RPC can lag a block or two behind the transaction it just confirmed: wait for it (30 s at most). */
+  private async caughtUp(): Promise<void> {
+    for (let i = 0; i < 15 && (await this.t.readProvider.getBlockNumber()) < this.lastBlock; i++) await new Promise((r) => setTimeout(r, 2000));
   }
 
   private parse(contract: Contract, log: { topics: readonly string[]; data: string; address: string }) {
