@@ -4,7 +4,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
 import { IDelegateRegistry, ISeaport, PocketDesk, SealedPockets, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC, VaultOffers } from "../types";
-import { confidentialUsdcOf, usd } from "./helpers";
+import { confidentialUsdcOf, usd } from "./tokens";
 import { installDelegateRegistry, installSeaport } from "./seaport";
 
 const SPEND = { Send: 0, Withdraw: 1 } as const;
