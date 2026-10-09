@@ -15,6 +15,7 @@
     "!test/SealedVault.ts",
     "!test/SealedPockets.ts",
     "!test/seaport.ts",
+    "!test/PocketsAdapter.ts",
     "deploy/*.ts",
     "!deploy/vault.ts",
     "!deploy/pockets.ts",
