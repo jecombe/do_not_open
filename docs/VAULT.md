@@ -1,5 +1,8 @@
 # The sealed vault
 
+> [Open the vault](https://vault.do-not-open.app) · [Its docs](https://vault.do-not-open.app/docs) ·
+> [Back to the README](../README.md#the-sealed-vault) · Next to it: [the game](GAME.md)
+
 The sealed vault is a product next to the game, not a part of it. Any NFT of an allowed
 collection goes into a box whose holder is encrypted: the box is a Confidential ERC-721 of its
 own ("DO NOT OPEN Vault", `SEALED`), built on the same `ConfidentialERC721` base as the boxes of
