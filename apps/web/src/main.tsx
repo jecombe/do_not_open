@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import { startAnalytics } from "./analytics";
 import { App } from "./App";
 import { ChainProvider } from "./chain/ChainProvider";
+import { liftIntro } from "./intro";
 
 startAnalytics();
 
@@ -24,4 +25,6 @@ Promise.all(fonts.map((f) => document.fonts.load(f)))
         </ChainProvider>
       </StrictMode>,
     );
+    // The stage lifts the curtain once its canvas is up; a view without one still opens it.
+    window.setTimeout(liftIntro, 2500);
   });

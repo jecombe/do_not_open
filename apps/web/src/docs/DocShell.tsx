@@ -32,8 +32,9 @@ function useCurrent(ids: readonly string[]): string {
 }
 
 /**
- * The project's documentation and the vault's: the manual's look (docs.css) with one flat list
- * of chapters. The game's manual keeps its own, longer layout (Manual.tsx).
+ * The project's documentation and the vault's: the home page's and the vault's secure theme
+ * (secure.css, with secure/docs.css over the manual's layout in docs.css) and one flat list of
+ * chapters. The game's manual keeps the game's look and its own, longer layout (Manual.tsx).
  */
 export function DocShell({
   home,
@@ -88,58 +89,62 @@ export function DocShell({
   );
 
   return (
-    <div className="manual">
-      <header className="top">
-        <a className="wordmark" href={home} aria-label={homeAria}>
+    <div className="sec sec-doc">
+      <header className="sec-top">
+        <a className="sec-stamp" href={home} aria-label={homeAria}>
           Do not open
         </a>
-        <nav className="views" aria-label={navLabel}>
+        <nav aria-label={navLabel}>
           {nav.map((l) => (
             <a key={l.href} href={l.href}>
               {l.label}
             </a>
           ))}
-          <LangSwitch label={languageLabel} />
         </nav>
+        <div className="sec-top-end">
+          <LangSwitch label={languageLabel} />
+        </div>
       </header>
 
-      <section className="hero doc-hero">
-        <h1>{title}</h1>
-        <div>
-          <p className="lede">{lede}</p>
-          <p className="hero-links">
-            {heroLinks.map((l, i) => (
-              <a key={l.href} className={i === 0 ? "stamp-link" : undefined} href={l.href}>
-                {l.label}
-              </a>
+      <div className="manual">
+        <section className="hero doc-hero">
+          <h1>{title}</h1>
+          <div>
+            <p className="lede">{lede}</p>
+            <p className="hero-links">
+              {heroLinks.map((l, i) => (
+                <a key={l.href} className={i === 0 ? "sec-btn" : "sec-link"} href={l.href}>
+                  {l.label}
+                </a>
+              ))}
+            </p>
+          </div>
+        </section>
+
+        <div className="layout">
+          <nav className="toc" aria-label={contentsLabel}>
+            <div className="toc-wide">{list}</div>
+            <details className="toc-narrow" ref={fold} onClick={follow}>
+              <summary>
+                <span className="toc-label">{contentsLabel}</span>
+                <span className="toc-now">{reading?.title}</span>
+              </summary>
+              {list}
+            </details>
+          </nav>
+
+          <main>
+            {sections.map((s) => (
+              <section key={s.id} id={s.id}>
+                <h2>{s.title}</h2>
+                {s.body}
+              </section>
             ))}
-          </p>
+          </main>
         </div>
-      </section>
 
-      <div className="layout">
-        <nav className="toc" aria-label={contentsLabel}>
-          <div className="toc-wide">{list}</div>
-          <details className="toc-narrow" ref={fold} onClick={follow}>
-            <summary>
-              <span className="toc-label">{contentsLabel}</span>
-              <span className="toc-now">{reading?.title}</span>
-            </summary>
-            {list}
-          </details>
-        </nav>
-
-        <main>
-          {sections.map((s) => (
-            <section key={s.id} id={s.id}>
-              <h2>{s.title}</h2>
-              {s.body}
-            </section>
-          ))}
-        </main>
+        <footer className="foot">{foot}</footer>
       </div>
-
-      <footer className="foot">{foot}</footer>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import type { Intersection, Object3D } from "three";
 import type { QualitySettings } from "@dno/scene";
 import { useT } from "../i18n/app";
 import { ASTRAY, RECENTER } from "../scenes/leash";
+import { liftIntro } from "../intro";
 
 const NARROW = "(max-width: 700px)";
 
@@ -70,6 +71,7 @@ export function Stage({ quality, children }: { quality: QualitySettings; childre
         shadows={quality.shadows}
         dpr={[1, quality.maxDpr]}
         camera={{ fov: 38, near: 0.1, far: 60, position: [5.5, 3.2, 8.5] }}
+        onCreated={() => requestAnimationFrame(liftIntro)}
       >
         <AboveTheSlip />
         <PickWhatIsDrawn />

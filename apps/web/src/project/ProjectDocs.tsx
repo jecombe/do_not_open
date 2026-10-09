@@ -29,7 +29,7 @@ export function ProjectDocs() {
   const links = (...l: { href: string; label: string }[]) => (
     <p className="hero-links">
       {l.map((x, i) => (
-        <a key={x.href} className={i === 0 ? "stamp-link" : undefined} href={x.href}>
+        <a key={x.href} className={i === 0 ? "sec-btn" : "sec-link"} href={x.href}>
           {x.label}
         </a>
       ))}
