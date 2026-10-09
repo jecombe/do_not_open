@@ -426,6 +426,46 @@
   }
 }
 
+/* The browser's wallets, when there are several. */
+.vault-wallets {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--panel);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.vault-wallets p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font: 12px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vault-wallets ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-wallets img,
+.vault-wallet-blank {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+
+.vault-wallet-blank {
+  display: inline-block;
+  background: var(--line-2);
+}
+
 .vault-hero > .sec-link {
   display: block;
   width: fit-content;

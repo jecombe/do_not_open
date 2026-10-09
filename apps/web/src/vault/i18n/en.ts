@@ -13,6 +13,7 @@ export const vaultEn = {
   "vault.why3.body": "Send the NFT, or the ETH of a sale, to an address with no history. A relayer sends the request: your address shows nowhere.",
   "vault.docs": "How the vault works, and what leaks",
   "vault.connect": "Connect a wallet",
+  "vault.pickWallet": "Pick a wallet",
   "vault.network.mock": "Demo: a vault in memory, with test NFTs. Nothing here is on a chain.",
   "vault.network.sepolia": "Sepolia testnet: test NFTs, test ETH, the real Seaport.",
   "vault.network.missing": "The vault is not deployed on this network yet.",
