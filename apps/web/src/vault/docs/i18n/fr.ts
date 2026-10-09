@@ -2,7 +2,7 @@ import type { VaultDocsKey } from "./en";
 
 export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.title": "Le coffre scellé, la documentation · DO NOT OPEN",
-  "vaultDocs.description": "Comment marche le coffre scellé : un NFT dans une boîte dont le détenteur est chiffré, des cUSDC dans une poche que personne ne peut relier à un wallet, des clés que personne ne lit, des annonces Seaport et des offres d'acheteurs avec le coffre comme vendeur, des ventes privées à prix secret, les avantages du NFT prêtés via delegate.xyz, un relayer, et exactement ce qui fuite.",
+  "vaultDocs.description": "Comment marche le coffre scellé : un NFT dans une boîte dont le détenteur est chiffré, des cUSDC, cUSDT, cWETH ou cZAMA dans une poche que personne ne peut relier à un wallet, des clés que personne ne lit, des annonces Seaport et des offres d'acheteurs avec le coffre comme vendeur, des ventes privées à prix secret, les avantages du NFT prêtés via delegate.xyz, un relayer, et exactement ce qui fuite.",
   "vaultDocs.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, avec un NFT dedans",
   "vaultDocs.homeAria": "DO NOT OPEN, accueil",
   "vaultDocs.site": "Site",
@@ -12,12 +12,12 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.nav.vault": "Ouvrir le coffre",
 
   "vaultDocs.h1": "Le coffre scellé",
-  "vaultDocs.lede": "N'importe quel NFT dans une boîte dont le détenteur est chiffré on-chain, et tes cUSDC dans une poche que personne ne peut relier à ton wallet. Le NFT se vend toujours sur Seaport, en annonce ou à l'offre d'un acheteur, ou en privé pour un prix que seul l'acheteur lit ; ses airdrops arrivent toujours au wallet à qui tu les prêtes ; tes jetons paient toujours n'importe qui, sans montrer qui a payé qui. Voici comment, et ce que tout le monde peut encore voir.",
+  "vaultDocs.lede": "N'importe quel NFT dans une boîte dont le détenteur est chiffré on-chain, et tes cUSDC, cUSDT, cWETH ou cZAMA dans une poche que personne ne peut relier à ton wallet. Le NFT se vend toujours sur Seaport, en annonce ou à l'offre d'un acheteur, ou en privé pour un prix que seul l'acheteur lit ; ses airdrops arrivent toujours au wallet à qui tu les prêtes ; tes jetons paient toujours n'importe qui, sans montrer qui a payé qui. Voici comment, et ce que tout le monde peut encore voir.",
   "vaultDocs.hero.open": "Ouvrir le coffre",
   "vaultDocs.hero.leaks": "Ce qui fuite",
 
   "vaultDocs.section.what": "Ce qu'est le coffre",
-  "vaultDocs.what.p1": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.",
+  "vaultDocs.what.p1": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel, ou des cUSDT, cWETH, cZAMA) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.",
   "vaultDocs.what.p2": "Le coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter.",
   "vaultDocs.what.p3": "La première fois que tu ouvres le coffre, une visite guidée te le fait parcourir : les deux côtés, ce qui reste chiffré, puis chaque onglet dans l'ordre où tu t'en servirais, de sceller un NFT à ce qui fuite. Le « ? » dans la barre du coffre la rejoue.",
 
@@ -63,11 +63,12 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.section.pockets": "Les poches : des jetons que personne ne trace",
   "vaultDocs.pockets.p1": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.",
   "vaultDocs.pockets.p2": "Sur la page du coffre, un sélecteur en haut choisit le côté : NFT (non fongibles, dans des boîtes) ou Jetons (fongibles, dans ta poche). Ouvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas.",
-  "vaultDocs.pockets.p3": "Déposer se fait depuis les cUSDC de ton wallet (la page peut d'abord convertir de l'USDC en cUSDC, et ce montant-là se voit). Le dépôt nomme ton wallet et quelques poches tirées au hasard : laquelle a reçu, et combien, reste chiffré. N'importe qui peut payer n'importe quelle poche ainsi, depuis un wallet.",
+  "vaultDocs.pockets.p3": "Déposer se fait depuis le jeton confidentiel de ton wallet (la page peut d'abord convertir le jeton ordinaire, de l'USDC en cUSDC par exemple, et ce montant-là se voit). Le dépôt nomme ton wallet et quelques poches tirées au hasard : laquelle a reçu, et combien, reste chiffré. N'importe qui peut payer n'importe quelle poche ainsi, depuis un wallet.",
   "vaultDocs.pockets.p4": "Pour être payé, donne ton code. Envoyer nomme ta poche parmi quelques autres, et celle du destinataire parmi quelques autres ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne.",
-  "vaultDocs.pockets.p5": "Retirer envoie les jetons en cUSDC vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit : prends-en une neuve et rien ne la relie à toi.",
+  "vaultDocs.pockets.p5": "Retirer envoie les jetons, toujours confidentiels (des cUSDC restent des cUSDC), vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit : prends-en une neuve et rien ne la relie à toi.",
   "vaultDocs.pockets.p6": "Avec les boîtes du coffre : un vendeur peut proposer une boîte en privé à ta poche en tapant ton code. Tu lis le prix, puis tu achètes avec ta poche : d'abord une vérification sous chiffrement qui ne dit en public que oui ou non (pour qu'un inconnu ne puisse pas gâcher la vente avec une mauvaise clé), puis l'achat. La boîte reste ensuite dans le coffre pour un guichet que toutes les poches partagent, avec ta clé : sors le NFT, mets-le en vente, accepte une offre ou délègue-le, comme pour n'importe quelle boîte. Elle ne peut plus être donnée ni revendue en privé de là. Après une vente privée, « Dans ma poche » met le prix, moins les frais, dans ta poche.",
   "vaultDocs.pockets.p7": "Limites : les poches que nomme chaque action sont publiques, donc nommer peu de leurres, ou toujours les mêmes poches, donne des indices ; plus il y a de poches, mieux chacune se cache. Les poches n'ont pas de frais propres. Elles ne sont pas auditées.",
+  "vaultDocs.pockets.p8": "Quatre jetons vont dans les poches : cUSDC, cUSDT, cWETH et cZAMA, les versions confidentielles par Zama d'USDC, USDT, WETH et ZAMA. Chacun a ses propres poches : choisis le jeton au-dessus de ta poche, son logo s'affiche sur la bourse et sur chaque action. La même signature ouvre ta poche de chaque jeton, chacune avec son propre code et sa propre adresse de lecture, donc rien on-chain ne les relie. Le jeton que déplace une action est public, et une poche ne se cache que parmi les poches de son propre jeton. Les boîtes se vendent en privé en cUSDC, donc seule la poche cUSDC les achète. Sur Sepolia, la page frappe de l'USDT, du WETH et du ZAMA de test (les jetons de test de Zama, pas le WETH des offres) et les convertit pour toi.",
 
   "vaultDocs.section.give": "Donner une boîte",
   "vaultDocs.give.p1": "Envoie une boîte à n'importe quelle adresse. Elle ne bouge que si tu la détiens, et elle arrive sans clé : celui qui la reçoit la trouve dans ses reçus et fait sienne la clé. D'ici là, personne ne peut rien en sortir.",
@@ -94,6 +95,7 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.leaks.public7": "Les offres sur chaque NFT et qui les a faites, et l'acheteur et le montant d'une offre acceptée",
   "vaultDocs.leaks.public8": "Le délégué d'une boîte, le wallet qui agit pour le NFT dans delegate.xyz",
   "vaultDocs.leaks.public9": "Quel wallet a déposé dans quelles poches, les poches que nomme chaque paiement de poche, et l'adresse où va un retrait de poche",
+  "vaultDocs.leaks.public10": "Le jeton que déplace chaque action de poche (cUSDC, cUSDT, cWETH ou cZAMA) : chacun a ses propres poches",
   "vaultDocs.leaks.hidden1": "Qui détient une boîte",
   "vaultDocs.leaks.hidden2": "La clé de la boîte",
   "vaultDocs.leaks.hidden3": "Le prix d'une vente privée, et si elle a abouti",
@@ -112,6 +114,9 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.testnet.c.registry": "Le registre de delegate.xyz",
   "vaultDocs.testnet.c.pockets": "Les poches",
   "vaultDocs.testnet.c.desk": "Le guichet qui achète depuis les poches",
+  "vaultDocs.testnet.c.pocketsUsdt": "Les poches cUSDT",
+  "vaultDocs.testnet.c.pocketsWeth": "Les poches cWETH",
+  "vaultDocs.testnet.c.pocketsZama": "Les poches cZAMA",
 
   "vaultDocs.section.more": "Pour aller plus loin",
   "vaultDocs.more.project": "À propos de DO NOT OPEN",

@@ -10487,7 +10487,69 @@
           }
         ],
         "deployBlock": 11877903
+      },
+      "token": {
+        "address": "0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639",
+        "symbol": "cUSDC",
+        "name": "Confidential USDC (Mock)",
+        "decimals": 6,
+        "rate": "1",
+        "underlying": {
+          "address": "0x9b5Cd13b8eFbB58Dc25A05CF411D8056058aDFfF",
+          "symbol": "USDC",
+          "decimals": 6
+        }
       }
-    }
+    },
+    "otherPockets": [
+      {
+        "address": "0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe",
+        "deployBlock": 11878756,
+        "token": {
+          "address": "0x4E7B06D78965594eB5EF5414c357ca21E1554491",
+          "symbol": "cUSDT",
+          "name": "Confidential USDT (Mock)",
+          "decimals": 6,
+          "rate": "1",
+          "underlying": {
+            "address": "0xa7dA08FafDC9097Cc0E7D4f113A61e31d7e8e9b0",
+            "symbol": "USDT",
+            "decimals": 6
+          }
+        }
+      },
+      {
+        "address": "0x4e8A23DfD7a23677b023E069CB8D3A94993b1350",
+        "deployBlock": 11878757,
+        "token": {
+          "address": "0x46208622DA27d91db4f0393733C8BA082ed83158",
+          "symbol": "cWETH",
+          "name": "Confidential WETH (Mock)",
+          "decimals": 6,
+          "rate": "1000000000000",
+          "underlying": {
+            "address": "0xff54739b16576FA5402F211D0b938469Ab9A5f3F",
+            "symbol": "WETH",
+            "decimals": 18
+          }
+        }
+      },
+      {
+        "address": "0x6D1585c58238DaADF748558051BF368DAA3eceE2",
+        "deployBlock": 11878758,
+        "token": {
+          "address": "0xf2D628d2598aF4eAF94CB76a437Ff86CA78FfbFB",
+          "symbol": "cZAMA",
+          "name": "Confidential ZAMA (Mock)",
+          "decimals": 6,
+          "rate": "1000000000000",
+          "underlying": {
+            "address": "0x75355a85c6FB9df5f0C80FF54e8747EEe9a0BF57",
+            "symbol": "ZAMA",
+            "decimals": 18
+          }
+        }
+      }
+    ]
   }
 }

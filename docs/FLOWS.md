@@ -1319,8 +1319,9 @@ Nothing is decrypted in public: a sale that went through and one that did not lo
 
 ### Pockets: send and take out
 
-A pocket is cUSDC under an encrypted key ([VAULT.md](VAULT.md#pockets)). Every action names a set
-of pockets, the real one among decoys; nothing is decrypted in public.
+A pocket is cUSDC (or cUSDT, cWETH, cZAMA, each in its own pockets contract) under an encrypted
+key ([VAULT.md](VAULT.md#pockets)). Every action names a set of pockets of the same token, the
+real one among decoys; nothing is decrypted in public. Only cUSDC pockets buy private sales.
 
 ```mermaid
 sequenceDiagram

@@ -39,7 +39,7 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     const userDecrypt = async (signer: Signer, handles: string[], contractAddress: string) => {
       const account = await signer.getAddress();
       let p = permits.get(account);
-      const contracts = [String(pockets.target), String(desk.target), String(vault.target), String(cUsdc.target)];
+      const contracts = [String(pockets.target), String(desk.target), String(vault.target), String(cUsdc.target), ...extraPermit];
       if (!p) {
         const keypair = fhevm.generateKeypair();
         // The mock checks the permit against the wall clock, which the chain may run ahead of.
@@ -64,7 +64,8 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     const relay = {
       address: relaySigner.address,
       pockets: async (call: string, args: Record<string, unknown>) => {
-        const p = pockets.connect(relaySigner);
+        // Another token's pockets, when the call names them.
+        const p = (args.pockets ? (pockets.attach(String(args.pockets)) as SealedPockets) : pockets).connect(relaySigner);
         const d = desk.connect(relaySigner);
         const a = args as never as Record<string, never>;
         const input = a.input as never as Record<string, string>;
@@ -113,6 +114,8 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     };
   }
   let chainId: number;
+  /** Contracts the test's permits also name: another token's pockets. */
+  let extraPermit: string[] = [];
 
   /** One wallet's pockets adapter, as the page makes it. The box key is a fixed secret per NFT, as `keyFor` derives one. */
   function adapter(wallet: HardhatEthersSigner, relayed = true) {
@@ -258,5 +261,53 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     expect(code).to.eq("not-yours");
     expect((await vault.saleInfo(saleId)).status).to.eq(1n);
     expect(await buyer.balance()).to.eq(usd("5"));
+  });
+  it("opens another token's pockets (no desk) from the same signature, with their own pocket and viewer", async function () {
+    // A second confidential token and its pockets, as cUSDT's on Sepolia: the same contract, no desk.
+    const usdt = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
+    const cUsdt = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(await usdt.getAddress())) as unknown as TestConfidentialUSDC;
+    const other = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdt.getAddress(), deployer.address)) as unknown as SealedPockets;
+    extraPermit = [String(other.target), String(cUsdt.target)];
+    const input = await fhevm.createEncryptedInput(await other.getAddress(), deployer.address).add256(BigInt(hexlify(ethers.randomBytes(32)))).encrypt();
+    await (await other.open(input.handles[0]!, input.inputProof, ethers.Wallet.createRandom().address)).wait();
+
+    // One signature for both, as the vault's page asks it.
+    let signatures = 0;
+    const base = tools(alice, true);
+    const shared: EvmPocketsTools = {
+      ...base,
+      cUsdc: async () => deployed(cUsdt),
+      pocketSignature: async () => {
+        signatures++;
+        return alice.signMessage("one signature");
+      },
+    };
+    const token = { address: String(cUsdt.target), symbol: "cUSDT", name: "Confidential USDT", decimals: 6, rate: "1", underlying: { address: String(usdt.target), symbol: "USDT", decimals: 6 } };
+    const theirs = new EvmPockets({ ...deployed(other), deployBlock: 0, token }, { vault: deployed(vault), box: async () => ({}) as never, keyFor: async () => 0n }, shared);
+    const mine = new EvmPockets({ ...deployed(pockets), deployBlock: 0, desk: { ...deployed(desk), deployBlock: 0 } }, { vault: deployed(vault), box: async () => ({}) as never, keyFor: async () => 0n }, shared);
+    expect(theirs.token.symbol).to.eq("cUSDT");
+    expect((await theirs.info()).desk).to.eq(null);
+
+    const id = await theirs.open();
+    await mine.open();
+    expect(signatures).to.eq(2);
+    // Their viewers differ: nothing on-chain ties the two pockets together.
+    const viewerOther = await other.viewerOf(id);
+    const viewerMine = await pockets.viewerOf((await mine.mine())!);
+    expect(viewerOther).to.not.eq(viewerMine);
+
+    await (await usdt.mint(alice.address, usd("30"))).wait();
+    expect(await theirs.plainBalance()).to.eq(usd("30"));
+    await theirs.shield(usd("20"));
+    await theirs.deposit(usd("20"), { decoys: 1 });
+    expect(await theirs.balance()).to.eq(usd("20"));
+    await theirs.withdraw(fresh.address, usd("8"));
+    expect(await theirs.balance()).to.eq(usd("12"));
+    expect(await confidentialUsdcOf(cUsdt, fresh)).to.eq(usd("8"));
+    // The withdrawal went out from the relay, to the cUSDT pockets.
+    const out = await other.queryFilter(other.filters.Withdrawn());
+    expect((await out[0]!.getTransaction()).from).to.eq(relaySigner.address);
+    expect(await theirs.sales()).to.deep.eq([]);
+    extraPermit = [];
   });
 });

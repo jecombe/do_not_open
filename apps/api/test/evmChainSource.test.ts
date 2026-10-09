@@ -195,7 +195,7 @@ describe("EvmChainSource", () => {
     // The ACL, only where the protocol's own contracts are the caller: the flea market publishes its "arrived" and "paid" bits too, the sealed vault its requests' "key matched" bit, the pockets' desk its asks' "ok".
     expect(acl!.address).toEqual([d.fhevm.acl.toLowerCase()]);
     expect(acl!.topics[1]).toEqual(
-      [d.collection.address, d.pantry!.address, d.cCroq!.address, d.fleaMarket!.address, ...(d.vault ? [d.vault.address] : []), ...(d.vault?.pockets ? [d.vault.pockets.desk.address] : [])].map(
+      [d.collection.address, d.pantry!.address, d.cCroq!.address, d.fleaMarket!.address, ...(d.vault ? [d.vault.address] : []), ...(d.vault?.pockets ? [d.vault.pockets.desk!.address] : [])].map(
         (a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`,
       ),
     );

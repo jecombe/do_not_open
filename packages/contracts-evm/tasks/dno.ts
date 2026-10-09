@@ -392,6 +392,24 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
     const { resolve } = await import("node:path");
     const deployment = await hre.deployments.get("DoNotOpen");
     const out = resolve(__dirname, `../../chain-adapter/src/evm/deployments/${hre.network.name}.json`);
+    /** The confidential token a SealedPockets holds, and the ERC-20 it wraps, as the page shows them. */
+    const pocketToken = async (pockets: string) => {
+      const token = await hre.ethers.getContractAt(["function token() view returns (address)"], pockets).then((c) => c.token!() as Promise<string>);
+      const wrapper = await hre.ethers.getContractAt(
+        ["function symbol() view returns (string)", "function name() view returns (string)", "function decimals() view returns (uint8)", "function underlying() view returns (address)", "function rate() view returns (uint256)"],
+        token,
+      );
+      const underlying = String(await wrapper.underlying!());
+      const plain = await hre.ethers.getContractAt(["function symbol() view returns (string)", "function decimals() view returns (uint8)"], underlying);
+      return {
+        address: token,
+        symbol: String(await wrapper.symbol!()).replace(/Mock$/, ""),
+        name: String(await wrapper.name!()),
+        decimals: Number(await wrapper.decimals!()),
+        rate: String(await wrapper.rate!()),
+        underlying: { address: underlying, symbol: String(await plain.symbol!()).replace(/Mock$/, ""), decimals: Number(await plain.decimals!()) },
+      };
+    };
     const slim = {
       chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
       address: deployment.address,
@@ -450,8 +468,20 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
               abi: p.abi,
               deployBlock: p.receipt?.blockNumber ?? null,
               desk: { address: desk.address, abi: desk.abi, deployBlock: desk.receipt?.blockNumber ?? null },
+              token: await pocketToken(p.address),
             };
           }),
+          // Pockets of Zama's other confidential tokens (cUSDT, cWETH, cZAMA): the same contract
+          // and ABI as the pockets above, without a desk.
+          otherPockets: await (async () => {
+            const { POCKET_TOKENS, pocketsDeployment } = await import("../lib/pocketTokens");
+            const out = [];
+            for (const { symbol } of POCKET_TOKENS[hre.network.name] ?? []) {
+              const p = await hre.deployments.getOrNull(pocketsDeployment(symbol));
+              if (p) out.push({ address: p.address, deployBlock: p.receipt?.blockNumber ?? null, token: await pocketToken(p.address) });
+            }
+            return out;
+          })(),
         };
       }),
     };

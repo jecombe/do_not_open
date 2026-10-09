@@ -40,7 +40,7 @@ const ACL = new Interface(["event AllowedForDecryption(address indexed caller, b
 /** Handles made publicly decryptable by the contracts that publish some: the collection, the Pantry, cCROQ, the flea market, the sealed vault, and the desk that buys from pockets. */
 export function aclFilterFor(d: ProtocolDeployment): LogFilter {
   // Every contract that calls `makePubliclyDecryptable`: a handle another one publishes is refused at the relayer proxy.
-  const publishers = [d.collection.address, d.pantry?.address, d.cCroq?.address, d.fleaMarket?.address, d.vault?.address, d.vault?.pockets?.desk.address].filter(
+  const publishers = [d.collection.address, d.pantry?.address, d.cCroq?.address, d.fleaMarket?.address, d.vault?.address, d.vault?.pockets?.desk?.address].filter(
     (a): a is string => !!a,
   );
   return {

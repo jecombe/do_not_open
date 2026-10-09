@@ -55,41 +55,58 @@ export class EthersVaultSender implements VaultSender {
   private readonly signer: NonceManager;
   private readonly vault: Contract;
   private readonly pocketsContract: Contract | null;
+  /** Every token's pockets by lowercase address, the cUSDC ones included. */
+  private readonly pocketsByAddress = new Map<string, Contract>();
   private readonly desk: Contract | null;
   private readonly provider: Provider;
 
-  constructor(privateKey: string, vaultAddress: string, provider: Provider, pockets?: { address: string; desk: string } | null) {
+  constructor(privateKey: string, vaultAddress: string, provider: Provider, pockets?: { address: string; desk: string | null; others?: string[] } | null) {
     this.provider = provider;
     const wallet = new Wallet(privateKey, provider);
     this.address = normalizeAddress(wallet.address);
     this.signer = new NonceManager(wallet);
     this.vault = new Contract(vaultAddress, VAULT_ABI, this.signer);
     this.pocketsContract = pockets ? new Contract(pockets.address, POCKETS_ABI, this.signer) : null;
-    this.desk = pockets ? new Contract(pockets.desk, DESK_ABI, this.signer) : null;
+    this.desk = pockets?.desk ? new Contract(pockets.desk, DESK_ABI, this.signer) : null;
+    for (const address of pockets ? [pockets.address, ...(pockets.others ?? [])] : []) {
+      this.pocketsByAddress.set(address.toLowerCase(), new Contract(address, POCKETS_ABI, this.signer));
+    }
   }
 
-  pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string> {
-    if (!this.pocketsContract || !this.desk) return Promise.reject(new VaultRelayRefused("reverted", "There are no pockets on this network."));
+  private theDesk(): Contract {
+    if (!this.desk) throw new VaultRelayRefused("reverted", "There is no pocket desk on this network.");
+    return this.desk;
+  }
+
+  /** The pockets a call names: the cUSDC ones when it names none; refused when it names one not deployed here. */
+  private pocketsFor(address: string | undefined): Contract {
+    const c = address ? this.pocketsByAddress.get(address.toLowerCase()) : this.pocketsContract;
+    if (!c) throw new VaultRelayRefused("reverted", "Those are not this vault's pockets.");
+    return c;
+  }
+
+  async pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string> {
+    if (!this.pocketsContract) throw new VaultRelayRefused("reverted", "There are no pockets on this network.");
     switch (call) {
       case "pocketOpen": {
         const t = tx as PocketTxs["pocketOpen"];
-        return this.sendTo(this.pocketsContract, "open", [t.handle, t.inputProof, t.viewer]);
+        return this.sendTo(this.pocketsFor(t.pockets), "open", [t.handle, t.inputProof, t.viewer]);
       }
       case "pocketSend": {
         const t = tx as PocketTxs["pocketSend"];
-        return this.sendTo(this.pocketsContract, "send", [t.from, t.to, spendTuple(t.input)]);
+        return this.sendTo(this.pocketsFor(t.pockets), "send", [t.from, t.to, spendTuple(t.input)]);
       }
       case "pocketWithdraw": {
         const t = tx as PocketTxs["pocketWithdraw"];
-        return this.sendTo(this.pocketsContract, "withdraw", [t.from, t.to, spendTuple(t.input)]);
+        return this.sendTo(this.pocketsFor(t.pockets), "withdraw", [t.from, t.to, spendTuple(t.input)]);
       }
       case "deskAsk": {
         const t = tx as PocketTxs["deskAsk"];
-        return this.sendTo(this.desk, "ask", [t.saleId, t.handle, t.keyProof, t.boxKey]);
+        return this.sendTo(this.theDesk(), "ask", [t.saleId, t.handle, t.keyProof, t.boxKey]);
       }
       default: {
         const t = tx as PocketTxs["deskBuy"];
-        return this.sendTo(this.desk, "buy", [t.askId, t.cleartexts, t.proof, t.boxKey, t.boxKeyProof]);
+        return this.sendTo(this.theDesk(), "buy", [t.askId, t.cleartexts, t.proof, t.boxKey, t.boxKeyProof]);
       }
     }
   }

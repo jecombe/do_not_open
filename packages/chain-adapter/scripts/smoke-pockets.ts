@@ -1,10 +1,11 @@
 /**
  * End-to-end check of the vault's pockets against the live Sepolia deployment, through the real
  * coprocessor, relayer and KMS: opens two pockets (the deployer's and a kept test wallet's),
- * puts test cUSDC in one, sends part of it to the other, reads both balances as their viewers,
- * and takes some out. Spends testnet ETH for gas and test USDC it mints itself.
+ * puts a test token in one, sends part of it to the other, reads both balances as their viewers,
+ * and takes some out. Spends testnet ETH for gas and test tokens it mints itself (Zama's mocks).
  *
  *   pnpm --filter @dno/chain-adapter smoke:pockets
+ *   POCKET_TOKEN=cZAMA pnpm --filter @dno/chain-adapter smoke:pockets   # cUSDT, cWETH, cZAMA
  *
  * Needs PRIVATE_KEY (and optionally SEPOLIA_RPC_URL) in the repo-root .env.
  */
@@ -16,7 +17,7 @@ import { testWallet } from "./testWallets";
 
 config({ path: resolve(__dirname, "../../../.env") });
 
-const usd = (v: bigint) => formatAmount(v, 6);
+const units = (v: bigint) => formatAmount(v, 6);
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY;
@@ -31,10 +32,13 @@ async function main() {
   await receiver.connect();
   const out = testWallet("pockets-withdrawals", "where smoke:pockets takes cUSDC out of a pocket");
 
-  const pockets = payer.vault()?.pockets();
-  const theirs = receiver.vault()?.pockets();
-  if (!pockets || !theirs) throw new Error("No pockets in sepolia.json: run pnpm export:sepolia.");
-  console.log(`pockets ${(await pockets.info()).address}, ${(await pockets.info()).count} opened; payer ${me}, receiver ${receiverWallet.address}`);
+  const symbol = process.env.POCKET_TOKEN || undefined;
+  const pockets = payer.vault()?.pockets(symbol);
+  const theirs = receiver.vault()?.pockets(symbol);
+  if (!pockets || !theirs) throw new Error(`No ${symbol ?? "cUSDC"} pockets in sepolia.json: run pnpm export:sepolia.`);
+  const token = pockets.token;
+  const sym = token.symbol;
+  console.log(`${sym} pockets ${(await pockets.info()).address}, ${(await pockets.info()).count} opened; payer ${me}, receiver ${receiverWallet.address}`);
 
   // The receiver opens its own pocket from its own wallet: a little ETH for gas.
   const provider = new JsonRpcProvider(rpcUrl || "https://ethereum-sepolia-rpc.publicnode.com");
@@ -50,24 +54,30 @@ async function main() {
   const other = await theirs.open({ onStep });
   console.log(`  pockets P-${mine} and P-${other}`);
 
-  if ((await payer.usdcBalance(me)) < 5_000_000n) {
-    console.log("faucet");
-    await payer.faucetUsdc({ onStep });
+  // Three tokens' worth, in the confidential token's units (6 decimals for every wrapper here),
+  // or what one faucet call covers (1 WETH); a third of it is sent, a sixth taken out.
+  const faucetUnits = token.faucet === null ? null : token.faucet / token.rate;
+  const amount = faucetUnits !== null && faucetUnits < 3_000_000n ? faucetUnits : 3_000_000n;
+  const sent = amount / 3n;
+  const taken = amount / 6n;
+  if ((await pockets.plainBalance()) < amount * token.rate) {
+    console.log(`faucet ${token.underlying.symbol}`);
+    await pockets.faucet({ onStep });
   }
-  console.log("shield 3 USDC");
-  await payer.shieldUsdc(3_000_000n, { onStep });
-  console.log("deposit 3 cUSDC into the payer's pocket, among 2 decoys");
-  await pockets.deposit(3_000_000n, { onStep, decoys: 2 });
-  console.log(`  payer's pocket: ${usd(await pockets.balance({ onStep }))} cUSDC`);
+  console.log(`shield ${units(amount)} ${token.underlying.symbol}`);
+  await pockets.shield(amount, { onStep });
+  console.log(`deposit ${units(amount)} ${sym} into the payer's pocket, among 2 decoys`);
+  await pockets.deposit(amount, { onStep, decoys: 2 });
+  console.log(`  payer's pocket: ${units(await pockets.balance({ onStep }))} ${sym}`);
 
-  console.log(`send 1 cUSDC to P-${other}`);
-  await pockets.send(other, 1_000_000n, { onStep, decoys: 2 });
-  console.log(`  payer's pocket: ${usd(await pockets.balance({ onStep }))} cUSDC`);
-  console.log(`  receiver's pocket: ${usd(await theirs.balance({ onStep }))} cUSDC`);
+  console.log(`send ${units(sent)} ${sym} to P-${other}`);
+  await pockets.send(other, sent, { onStep, decoys: 2 });
+  console.log(`  payer's pocket: ${units(await pockets.balance({ onStep }))} ${sym}`);
+  console.log(`  receiver's pocket: ${units(await theirs.balance({ onStep }))} ${sym}`);
 
-  console.log(`take 0.5 cUSDC out to ${out.address}`);
-  await pockets.withdraw(out.address, 500_000n, { onStep });
-  console.log(`  payer's pocket: ${usd(await pockets.balance({ onStep }))} cUSDC`);
+  console.log(`take ${units(taken)} ${sym} out to ${out.address}`);
+  await pockets.withdraw(out.address, taken, { onStep });
+  console.log(`  payer's pocket: ${units(await pockets.balance({ onStep }))} ${sym}`);
   console.log("done");
   process.exit(0);
 }

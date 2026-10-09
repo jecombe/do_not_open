@@ -222,7 +222,9 @@ deposit, send and withdrawal names a set of pockets (the real one among decoys) 
 under encryption which one moves and by how much: no decryption, one transaction. What leaks:
 the wallet behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
 address, and for a box bought from a pocket (`PocketDesk`) the reserved pocket and the ask's yes
-or no. The box then sits with the desk, a holder all pockets share. See
+or no. The box then sits with the desk, a holder all pockets share. cUSDT, cWETH and cZAMA have
+pockets of their own: which token an action moves is public, never whose pocket moved; a wallet's
+pockets of different tokens have different viewers, so nothing ties them together. See
 [VAULT.md](VAULT.md#pockets).
 
 ## 6. What still leaks
