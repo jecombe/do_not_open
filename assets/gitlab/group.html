@@ -1,0 +1,68 @@
+<!doctype html><meta charset="utf-8"><style>@font-face{font-family:S;src:url(../../node_modules/.pnpm/@fontsource+stardos-stencil@5.3.0/node_modules/@fontsource/stardos-stencil/files/stardos-stencil-latin-700-normal.woff2)}html,body{margin:0;background:#07090c}svg{display:block}</style>
+<!-- The GitLab group's avatar, the same drawing as the X profile picture (assets/x/avatar.html), 400×400. The banner's box across the seam:
+     half the game's cardboard, half the vault's cipher, a cat's eyes in the crack. Kept bold so it reads at 48px. -->
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+<defs>
+ <clipPath id="warm"><polygon points="0,0 170,0 230,400 0,400"/></clipPath>
+ <clipPath id="cold"><polygon points="170,0 400,0 400,400 230,400"/></clipPath>
+ <radialGradient id="lamp" cx="20%" cy="0%" r="90%"><stop offset="0" stop-color="#ffb454" stop-opacity=".6"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <radialGradient id="tealglow" cx="80%" cy="20%" r="80%"><stop offset="0" stop-color="#5be3c2" stop-opacity=".22"/><stop offset="1" stop-color="#5be3c2" stop-opacity="0"/></radialGradient>
+ <linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dba05c"/><stop offset="1" stop-color="#b9783c"/></linearGradient>
+ <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#1c2530" stroke-width="1"/></pattern>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="3" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+
+<!-- backgrounds -->
+<g clip-path="url(#warm)"><rect width="400" height="400" fill="#2a221b"/><rect width="400" height="400" fill="url(#lamp)"/></g>
+<g clip-path="url(#cold)"><rect width="400" height="400" fill="#07090c"/><rect width="400" height="400" fill="url(#grid)"/><rect width="400" height="400" fill="url(#tealglow)"/></g>
+
+<!-- the box: front 70..290 x 160..320, top and side in an oblique -->
+<ellipse cx="200" cy="328" rx="150" ry="14" fill="#000" opacity=".5"/>
+<g clip-path="url(#warm)">
+ <polygon points="70,160 290,160 334,122 114,122" fill="#e6b071"/>
+ <polygon points="290,160 334,122 334,282 290,320" fill="#9a6230"/>
+ <rect x="70" y="160" width="220" height="160" fill="url(#front)"/>
+ <rect x="70" y="160" width="220" height="160" fill="#c08040" filter="url(#grain)" opacity=".8"/>
+ <polygon points="160,160 196,160 240,122 204,122" fill="#f0d79a" opacity=".9"/>
+ <rect x="160" y="160" width="36" height="52" fill="#f0d79a" opacity=".85"/>
+ <g transform="translate(82 262) rotate(-7)">
+  <rect width="92" height="40" fill="none" stroke="#c2261d" stroke-width="3.5" filter="url(#rough)"/>
+  <text x="46" y="18" text-anchor="middle" font-family="S" font-size="15" fill="#c2261d" filter="url(#rough)">DO NOT</text>
+  <text x="46" y="34" text-anchor="middle" font-family="S" font-size="15" fill="#c2261d" filter="url(#rough)">OPEN</text>
+ </g>
+</g>
+<g clip-path="url(#cold)">
+ <polygon points="70,160 290,160 334,122 114,122" fill="#0f1a1d" stroke="#5be3c2" stroke-width="3"/>
+ <polygon points="290,160 334,122 334,282 290,320" fill="#0a1214" stroke="#5be3c2" stroke-width="3"/>
+ <rect x="70" y="160" width="220" height="160" fill="#0d1619" stroke="#5be3c2" stroke-width="3"/>
+ <g font-family="ui-monospace, 'SF Mono', Menlo, monospace" font-size="11" fill="#5be3c2" opacity=".4">
+  <text x="196" y="178">a3 9f 0c 7e</text><text x="196" y="194">e4 d5 bf 2a</text><text x="196" y="210">1c 45 30 fc</text>
+  <text x="196" y="226">7b 7b 0a 2f</text><text x="196" y="242">55 b4 4f ed</text><text x="196" y="258">c8 9c 8f 1b</text>
+  <text x="196" y="274">37 e9 47 f2</text><text x="196" y="290">69 09 75 da</text><text x="196" y="306">4d 2d 25 1b</text>
+ </g>
+ <!-- padlock -->
+ <g transform="translate(222 216)" filter="url(#glow)">
+  <path d="M10 24 V15 a13 13 0 0 1 26 0 V24" fill="none" stroke="#5be3c2" stroke-width="4.5"/>
+  <rect x="2" y="24" width="42" height="32" rx="5" fill="#07090c" stroke="#5be3c2" stroke-width="3.5"/>
+  <circle cx="23" cy="37" r="4" fill="#5be3c2"/><rect x="21" y="39" width="4" height="9" fill="#5be3c2"/>
+ </g>
+</g>
+
+<!-- a cat's ears and eyes peeking out of the lid, right on the seam -->
+<g>
+ <path d="M146 112 L156 62 L188 96 Z" fill="#1c1814"/>
+ <path d="M202 96 L236 62 L244 112 Z" fill="#1c1814"/>
+ <path d="M136 128 C136 76 254 76 254 128 Z" fill="#1c1814"/>
+ <g filter="url(#glow)">
+  <ellipse cx="176" cy="108" rx="9" ry="7" fill="#ffd66b"/>
+  <ellipse cx="214" cy="108" rx="9" ry="7" fill="#5be3c2"/>
+  <ellipse cx="176" cy="108" rx="2" ry="6" fill="#1c1814"/>
+  <ellipse cx="214" cy="108" rx="2" ry="6" fill="#07090c"/>
+ </g>
+</g>
+
+<!-- the seam -->
+<line x1="170" y1="0" x2="230" y2="400" stroke="#5be3c2" stroke-width="2" stroke-dasharray="8 6" opacity=".6"/>
+</svg>
