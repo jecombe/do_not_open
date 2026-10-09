@@ -82,6 +82,16 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.trust.3.k": "10 %",
   "secure.trust.3.v": "il massimo che le commissioni del caveau potranno mai raggiungere, scritto nel contratto. Oggi il 2,5 %.",
 
+  "secure.built.kicker": "Costruito con",
+  "secure.built.zama": "Cifratura (FHE)",
+  "secure.built.ethereum": "La rete",
+  "secure.built.usdc": "Pagamenti, in cUSDC",
+  "secure.built.seaport": "Annunci",
+  "secure.built.uniswap": "Mercato del CROQ",
+  "secure.built.delegate": "Delega",
+  "secure.built.arweave": "Immagini",
+  "secure.built.note": "I protocolli aperti su cui girano il caveau e il gioco. I loro nomi e loghi appartengono ai rispettivi proprietari, e nessuno di loro sostiene DO NOT OPEN.",
+
   "secure.game.kicker": "Fuori servizio",
   "secure.game.experimental": "Sperimentale: un prototipo di cui regole, numeri e schermate cambiano ancora, sulla rete di test.",
   "secure.foot": "DO NOT OPEN gira su una rete di prova. Qui niente vale ancora denaro.",

@@ -81,6 +81,16 @@ export const secureEn = {
   "secure.trust.3.k": "10 %",
   "secure.trust.3.v": "the most the vault's fee can ever be, written in the contract. 2.5 % today.",
 
+  "secure.built.kicker": "Built with",
+  "secure.built.zama": "Encryption (FHE)",
+  "secure.built.ethereum": "The network",
+  "secure.built.usdc": "Payments, as cUSDC",
+  "secure.built.seaport": "Listings",
+  "secure.built.uniswap": "CROQ's market",
+  "secure.built.delegate": "Delegation",
+  "secure.built.arweave": "Images",
+  "secure.built.note": "Open protocols the vault and the game run on. Their names and logos belong to their owners, and none of them endorses DO NOT OPEN.",
+
   "secure.game.kicker": "Off duty",
   "secure.game.experimental": "Experimental: a prototype whose rules, numbers and screens still change, on the test network.",
   "secure.foot": "DO NOT OPEN runs on a test network. Nothing here is worth money yet.",

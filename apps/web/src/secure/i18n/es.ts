@@ -82,6 +82,16 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.trust.3.k": "10 %",
   "secure.trust.3.v": "lo máximo que podrá cobrar nunca la bóveda, escrito en el contrato. Hoy, 2,5 %.",
 
+  "secure.built.kicker": "Construido con",
+  "secure.built.zama": "Cifrado (FHE)",
+  "secure.built.ethereum": "La red",
+  "secure.built.usdc": "Pagos, en cUSDC",
+  "secure.built.seaport": "Anuncios",
+  "secure.built.uniswap": "Mercado de CROQ",
+  "secure.built.delegate": "Delegación",
+  "secure.built.arweave": "Imágenes",
+  "secure.built.note": "Los protocolos abiertos sobre los que funcionan la bóveda y el juego. Sus nombres y logotipos pertenecen a sus dueños, y ninguno de ellos respalda DO NOT OPEN.",
+
   "secure.game.kicker": "Fuera de servicio",
   "secure.game.experimental": "Experimental: un prototipo cuyas reglas, cifras y pantallas aún cambian, en la red de prueba.",
   "secure.foot": "DO NOT OPEN funciona en una red de prueba. Aquí nada vale dinero todavía.",
