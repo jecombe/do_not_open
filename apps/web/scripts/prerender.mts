@@ -79,7 +79,7 @@ try {
 
   const SITE: string = site.SITE_URL;
   const IMAGE = `${SITE}/og.png`;
-  const GAME: string = (await vite.ssrLoadModule("/src/hosts.ts")).partOrigin("do-not-open.app", "game");
+  const GAME: string = (await vite.ssrLoadModule("/src/hosts/index.ts")).partOrigin("do-not-open.app", "game");
   const PAGES = {
     home: { file: "index.html", component: SecureHome, t: secure.t, prefix: "secure", path: site.homePath as (l: Locale) => string },
     docs: { file: "docs.html", component: Manual, t: docs.t, prefix: "docs", path: site.docsPath as (l: Locale) => string },

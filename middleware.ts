@@ -2,7 +2,7 @@
  * Vercel's routing middleware: it runs before the static files, so the root of `game.` and
  * `vault.` can show the game and the vault while `/` stays the home page on the bare domain
  * (a rewrite in vercel.json would only run once `index.html` had already answered). The rules
- * live in apps/web/src/hosts.ts, which the pages share. Off the site's domains it does nothing.
+ * live in apps/web/src/hosts/index.ts, which the pages share. Off the site's domains it does nothing.
  */
 import { hostRoute } from "./apps/web/src/hosts";
 

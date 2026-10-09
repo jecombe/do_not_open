@@ -244,7 +244,7 @@ copied as they are). The testnet stack then keeps the current database, its Sepo
 
 One build serves every name, each added to the Vercel project. Which page a name shows is decided
 at the edge: `middleware.ts` (the repo root, Vercel's routing middleware, which runs before the
-static files) applies `apps/web/src/hosts.ts`: `game.` shows the game at `/`, the game's
+static files) applies `apps/web/src/hosts/index.ts`: `game.` shows the game at `/`, the game's
 manual at `/docs` and the studio at `/studio`, `vault.` the vault and its docs, the bare domain the project's page and its
 docs; the old paths (`/app`, `/vault`, `/studio`, `/fr/app`, a shared box's `/app?box=`) redirect to the
 subdomain, query kept, and the bare domain's pages asked on a subdomain go back to it. Off these
