@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { DEFAULT_POCKET_DECOYS, formatAmount, shortAddress, type ActionOptions, type Address, type PocketSale, type PocketsAdapter, type VaultBox } from "@dno/chain-adapter";
-import { Lock } from "../Balances";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { useT } from "./i18n";
+import { TokenIcon } from "../brand/logos";
 
 /** What the vault page runs an action with: the stage, the steps, the transactions. */
 type Act = <T>(name: string, run: (opts: ActionOptions) => Promise<T>, message?: (r: T) => string) => Promise<T | undefined>;
@@ -160,7 +160,7 @@ export function PocketTab({
             title={t("vault.pocket.reveal")}
           >
             <span className="vault-balance-symbol">
-              <Lock open={balance !== null} />
+              <TokenIcon symbol="cUSDC" size={14} />
               cUSDC
             </span>
             <strong className="vault-balance-value" aria-live="polite">

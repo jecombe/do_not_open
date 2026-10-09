@@ -18,7 +18,8 @@ const whitelistGifts = {
 };
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { REPO, SOURCE_GAME } from "../links";
+import { BrandIcon } from "../brand/logos";
+import { REPO, SOURCE, SOURCE_GAME } from "../links";
 import { appPath, homePath } from "../site";
 import { CatParade } from "./CatParade";
 import { AllocationBar, BuildTable, LeakTable, TokenFlowFigure, TwoTokensFigure } from "./croq";
@@ -634,7 +635,10 @@ export function Manual() {
             <ul className="refs">
               {REFS.map((r) => (
                 <li key={r.key}>
-                  <a href={r.href}>{t(`docs.more.${r.key}`)}</a>
+                  <a href={r.href} className={r.href.startsWith(SOURCE) ? "with-logo" : undefined}>
+                    {r.href.startsWith(SOURCE) && <BrandIcon brand="gitlab" size={16} />}
+                    {t(`docs.more.${r.key}`)}
+                  </a>
                   <span>{t(`docs.more.${r.key}.v`)}</span>
                 </li>
               ))}

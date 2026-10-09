@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { DISCORD_BONUS, REFERRAL_BONUS, REFERRAL_CAP, X_PASS_BONUS } from "@dno/chain-adapter/standings";
+import { BrandIcon } from "../brand/logos";
 import { ANNOUNCEMENT_TWEET_ID, announcementLinks, DISCORD, X_FOLLOW, X_HANDLE, xPost } from "../links";
 import { useLocale } from "../i18n/locale";
 import { canShareFiles, copy, download, intentUrl } from "../share/links";
@@ -480,7 +481,8 @@ function DiscordStep({ pass, ensurePass, onPass, onError }: { pass: XPassView | 
       <span>{joined ? t("home.boarding.discord.doneBody") : t("home.boarding.discord.body")}</span>
       {!joined && (
         <span className="boarding-task-actions">
-          <a className="btn btn-small btn-discord" href={DISCORD} target="_blank" rel="noreferrer">
+          <a className="btn btn-small btn-discord with-logo" href={DISCORD} target="_blank" rel="noreferrer">
+            <BrandIcon brand="discord" size={16} mono />
             {t("home.boarding.discord.join")}&nbsp;↗
           </a>
           {code ? (

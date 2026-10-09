@@ -16,6 +16,7 @@ import {
 } from "@dno/chain-adapter";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { useLocale } from "../i18n/locale";
+import { BrandLink, TokenIcon } from "../brand/logos";
 import { DISCORD, SOURCE_VAULT } from "../links";
 import { vaultDocsPath } from "../site";
 import { SecureTop } from "../secure/SecureTop";
@@ -308,7 +309,10 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           </div>
           <div>
             <dt>{t("vault.stat.floor")}</dt>
-            <dd>{floor === null ? "—" : `${formatAmount(floor, 18)} ${coin}`}</dd>
+            <dd className="with-logo">
+              {floor !== null && <TokenIcon symbol={coin} size={16} />}
+              {floor === null ? "—" : `${formatAmount(floor, 18)} ${coin}`}
+            </dd>
           </div>
           <div>
             <dt>{t("vault.stat.owners")}</dt>
@@ -429,12 +433,10 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
             <a className="sec-link" href={vaultDocsPath(locale)}>
               {t("vault.docs")}&nbsp;→
             </a>
-            <a className="sec-link" href={SOURCE_VAULT} target="_blank" rel="noreferrer">
-              {t("vault.link.source")}&nbsp;↗
-            </a>
-            <a className="sec-link" href={DISCORD} target="_blank" rel="noreferrer">
-              Discord&nbsp;↗
-            </a>
+            <span className="brand-links">
+              <BrandLink brand="gitlab" href={SOURCE_VAULT} label={t("vault.link.source")} />
+              <BrandLink brand="discord" href={DISCORD} />
+            </span>
           </div>
         </aside>
 
@@ -597,7 +599,10 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                           )}
                           <span className="vault-sale-what">{toMe ? t("vault.sales.toYou", { box: s.boxId }) : t("vault.sales.byYou", { box: s.boxId, buyer: shortAddress(s.buyer) })}</span>
                           <span className="vault-chip">{t(`vault.sale.${s.status}`)}</span>
-                          <span className="vault-price">{prices[s.saleId] !== undefined ? t("vault.sales.price", { price: formatAmount(prices[s.saleId]!, 6) }) : <Cipher length={3} />}</span>
+                          <span className="vault-price with-logo">
+                            <TokenIcon symbol="cUSDC" size={14} />
+                            {prices[s.saleId] !== undefined ? t("vault.sales.price", { price: formatAmount(prices[s.saleId]!, 6) }) : <Cipher length={3} />}
+                          </span>
                           {s.status === "open" && toMe && (
                             <button
                               type="button"
@@ -740,7 +745,10 @@ function BoxCard({
           <p className="vault-card-coll">{collection}</p>
           <p className="vault-card-name">{id}</p>
           {box.state === "listed" && box.listing ? (
-            <p className="vault-price">{t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}</p>
+            <p className="vault-price with-logo">
+              <TokenIcon symbol={coin} size={14} />
+              {t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}
+            </p>
           ) : (
             <p className={`vault-state vault-state-${box.state}`}>{box.state === "sealed" ? t("vault.card.notListed") : t(`vault.state.${box.state}`)}</p>
           )}
@@ -901,11 +909,17 @@ function BoxDialog({
             {box.state === "listed" && box.listing ? (
               <>
                 <p className="vault-buybox-label">{t("vault.item.price")}</p>
-                <p className="vault-buybox-price">{t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}</p>
+                <p className="vault-buybox-price with-logo">
+                  <TokenIcon symbol={coin} size={24} />
+                  {t("vault.box.price", { price: formatAmount(box.listing.price, 18), coin })}
+                </p>
                 <p className="vault-meta">{t("vault.box.until", { date: new Date(box.listing.endTime * 1000).toLocaleDateString() })}</p>
               </>
             ) : box.state === "sold" ? (
-              <p className="vault-buybox-price">{t("vault.box.proceeds", { amount: formatAmount(box.proceeds, 18), coin })}</p>
+              <p className="vault-buybox-price with-logo">
+                <TokenIcon symbol={coin} size={24} />
+                {t("vault.box.proceeds", { amount: formatAmount(box.proceeds, 18), coin })}
+              </p>
             ) : (
               inVault && <p className="vault-meta">{t("vault.item.notListed")}</p>
             )}
@@ -1106,6 +1120,7 @@ function Offers({
           {offers.map((o) => (
             <li key={o.orderHash} className={chosen?.orderHash === o.orderHash ? "on" : undefined}>
               <span>
+                <TokenIcon symbol="WETH" size={14} />{" "}
                 {t("vault.offers.row", { amount: formatAmount(o.amount, 18), coin, buyer: shortAddress(o.buyer), date: date(o.endTime) })}
                 {o.anyToken && <span className="vault-chip">{t("vault.offers.any")}</span>}
               </span>

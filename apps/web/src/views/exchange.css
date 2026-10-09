@@ -495,6 +495,18 @@ input.crate-amount[aria-invalid="true"] {
   background: var(--kraft);
 }
 
+/* An official logo fills the coin; a sealed one carries its own padlock instead of the tape. */
+.coin.has-logo {
+  border: 0;
+  background: none;
+}
+
+.coin.has-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* Sealed: a strip of red tape across the coin, and a wax dot. */
 .coin.is-sealed {
   background-image: linear-gradient(-35deg, transparent 42%, var(--ink-red) 42%, var(--ink-red) 58%, transparent 58%);

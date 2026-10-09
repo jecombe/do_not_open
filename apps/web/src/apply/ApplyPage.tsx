@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { BrandLink } from "../brand/logos";
 import { DISCORD } from "../links";
 import { useSeats, useXPass } from "../xpass";
 import { Boarding } from "../home/Boarding";
@@ -64,9 +65,7 @@ export function ApplyPage() {
 
       <footer className="sec-foot">
         <span>{t("home.foot")}</span>
-        <a className="sec-link" href={DISCORD} target="_blank" rel="noreferrer">
-          {t("home.foot.discord")}
-        </a>
+        <BrandLink brand="discord" href={DISCORD} label={t("home.foot.discord")} />
       </footer>
     </div>
   );

@@ -4,6 +4,7 @@ import { detectQuality, ShakeSound } from "@dno/scene";
 import { useChain } from "./chain/ChainProvider";
 import { Clerk } from "./chat/Clerk";
 import { setMuted, startMusicOnFirstGesture, useSoundSettings } from "./home/sound";
+import { BrandLink } from "./brand/logos";
 import { DISCORD, SOURCE_GAME } from "./links";
 import { useT } from "./i18n/app";
 import { isMenuView, Masthead, type View } from "./Masthead";
@@ -154,12 +155,10 @@ export function App() {
         <span className="notice-actions">
           {/* The manual opens in another tab: the game stays where it was. */}
           <Clerk newTab inline />
-          <a className="link" href={DISCORD} target="_blank" rel="noreferrer">
-            {t("footer.discord")}
-          </a>
-          <a className="link" href={SOURCE_GAME} target="_blank" rel="noreferrer">
-            {t("footer.source")}
-          </a>
+          <span className="brand-links">
+            <BrandLink brand="discord" href={DISCORD} label={t("footer.discord")} size={16} />
+            <BrandLink brand="gitlab" href={SOURCE_GAME} label={t("footer.source")} size={16} />
+          </span>
           <button
             type="button"
             className="link"

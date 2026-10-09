@@ -30,6 +30,7 @@ import { ProblemNote } from "./ProblemNote";
 import { BoxSpinner } from "./TxPending";
 import { CreditDesk } from "./CreditDesk";
 import "./exchange.css";
+import { tokenLogoUrl } from "../brand/logos";
 
 /** Kept for gas when "Max" is pressed on the chain's own coin, in thousandths of a coin. */
 const GAS_RESERVE_MILLI = 3n;
@@ -617,6 +618,15 @@ export function ExchangeView() {
 }
 
 function Coin({ token }: { token: TokenInfo }) {
+  // ETH, USDC and cUSDC wear their official logos; the croquettes keep the game's glyph.
+  const logo = tokenLogoUrl(token.symbol);
+  if (logo) {
+    return (
+      <span className={`coin coin-${token.key} has-logo`} aria-hidden="true">
+        <img src={logo} alt="" draggable={false} />
+      </span>
+    );
+  }
   const glyph = token.key === "eth" ? "Ξ" : token.key === "usdc" || token.key === "cusdc" ? "$" : "◆";
   return (
     <span className={`coin coin-${token.key}${token.sealed ? " is-sealed" : ""}`} aria-hidden="true">
