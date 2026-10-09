@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><style>@font-face{font-family:S;src:url(../../node_modules/.pnpm/@fontsource+stardos-stencil@5.3.0/node_modules/@fontsource/stardos-stencil/files/stardos-stencil-latin-700-normal.woff2)}html,body{margin:0;background:#2a221b}svg{display:block}</style>
+<!-- The game's GitLab repository avatar, 400×400: the group's box all in cardboard, under the lamp, a cat
+     peeking out of the lid with both eyes gold. Kept bold so it reads at 48px. -->
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+<defs>
+ <radialGradient id="lamp" cx="30%" cy="0%" r="95%"><stop offset="0" stop-color="#ffb454" stop-opacity=".6"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dba05c"/><stop offset="1" stop-color="#b9783c"/></linearGradient>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="3" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="400" height="400" fill="#2a221b"/><rect width="400" height="400" fill="url(#lamp)"/>
+<ellipse cx="200" cy="328" rx="150" ry="14" fill="#000" opacity=".5"/>
+<!-- the cat behind the lid -->
+<path d="M146 112 L156 62 L188 96 Z" fill="#1c1814"/>
+<path d="M202 96 L236 62 L244 112 Z" fill="#1c1814"/>
+<path d="M136 128 C136 76 254 76 254 128 Z" fill="#1c1814"/>
+<g filter="url(#glow)">
+ <ellipse cx="176" cy="108" rx="9" ry="7" fill="#ffd66b"/><ellipse cx="214" cy="108" rx="9" ry="7" fill="#ffd66b"/>
+ <ellipse cx="176" cy="108" rx="2" ry="6" fill="#1c1814"/><ellipse cx="214" cy="108" rx="2" ry="6" fill="#1c1814"/>
+</g>
+<!-- the box, its flap open at the back -->
+<polygon points="70,160 290,160 334,122 114,122" fill="#e6b071"/>
+<polygon points="290,160 334,122 334,282 290,320" fill="#9a6230"/>
+<rect x="70" y="160" width="220" height="160" fill="url(#front)"/>
+<rect x="70" y="160" width="220" height="160" fill="#c08040" filter="url(#grain)" opacity=".8"/>
+<polygon points="160,160 196,160 240,122 204,122" fill="#f0d79a" opacity=".9"/>
+<rect x="160" y="160" width="36" height="52" fill="#f0d79a" opacity=".85"/>
+<g transform="translate(104 236) rotate(-7)">
+ <rect width="150" height="64" fill="none" stroke="#c2261d" stroke-width="5" filter="url(#rough)"/>
+ <text x="75" y="29" text-anchor="middle" font-family="S" font-size="25" fill="#c2261d" filter="url(#rough)">DO NOT</text>
+ <text x="75" y="55" text-anchor="middle" font-family="S" font-size="25" fill="#c2261d" filter="url(#rough)">OPEN</text>
+</g>
+</svg>
