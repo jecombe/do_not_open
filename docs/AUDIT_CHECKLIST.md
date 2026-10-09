@@ -34,7 +34,7 @@ on 2026-10-04, block 11842636); `FleaMarket.sol`, the players' marketplace for b
 rats (section 12; at `0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92` since 2026-10-08, before it
 `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` on 2026-10-07 and
 `0xb5c799bF626e70DcE6804BDef06199661cDc8665` on 2026-10-05, block 11849253); `SealedVault.sol`
-and `vault/ISeaport.sol`, the sealed vault next to the game (section 15, at `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` on Sepolia since 2026-10-08); plus the parts of
+and `vault/ISeaport.sol`, the sealed vault next to the game (section 15, at `0x27CA3698A34b53900047cD1D0856B954a695C79D` on Sepolia since 2026-10-09, block 11876345; `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08, whose requests locked the box); plus the parts of
 the adapter and the metadata pipeline that could leak or mislead. Since 2026-10-07 the deployer
 `0x590891F269720001435004A1089cAB5b2c20029A` owns every contract (before, the collection's owner
 was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`). The Sepolia deployment at
@@ -462,7 +462,7 @@ through its `guard`. 17 tests in `test/RatTricks.ts` on the FHEVM mock, against 
 
 `SealedVault.sol` puts any NFT of an allowed collection in a box whose holder is encrypted,
 lists it on Seaport 1.5 with the vault as the offerer, and sells boxes privately in cUSDC (see
-[VAULT.md](VAULT.md)). On Sepolia at `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` since 2026-10-08. 44 tests in `test/SealedVault.ts`, on the
+[VAULT.md](VAULT.md)). On Sepolia at `0x27CA3698A34b53900047cD1D0856B954a695C79D` since 2026-10-09 (`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08 until then). 44 tests in `test/SealedVault.ts`, on the
 FHEVM mock, against Seaport 1.5's runtime bytecode read from Sepolia (`test/seaport.ts`,
 `test/fixtures/seaport-1.5.json`); the relayer's in `apps/api/test/vaultRelay.test.ts`.
 

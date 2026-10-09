@@ -6828,7 +6828,7 @@
     ]
   },
   "vault": {
-    "address": "0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18",
+    "address": "0x27CA3698A34b53900047cD1D0856B954a695C79D",
     "abi": [
       {
         "inputs": [
@@ -6869,6 +6869,11 @@
       {
         "inputs": [],
         "name": "BadPrice",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "BadSends",
         "type": "error"
       },
       {
@@ -7039,6 +7044,11 @@
           }
         ],
         "name": "SenderNotAllowedToUseHandle",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "TooEarly",
         "type": "error"
       },
       {
@@ -7509,6 +7519,19 @@
       },
       {
         "inputs": [],
+        "name": "MAX_DEPOSIT_SENDS",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "MAX_FEE_BPS",
         "outputs": [
           {
@@ -7536,6 +7559,19 @@
       {
         "inputs": [],
         "name": "MAX_SALE_PRICE",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "REQUEST_TIMEOUT",
         "outputs": [
           {
             "internalType": "uint64",
@@ -7622,7 +7658,7 @@
               },
               {
                 "internalType": "uint256",
-                "name": "busy",
+                "name": "pending",
                 "type": "uint256"
               },
               {
@@ -7831,6 +7867,16 @@
             "type": "bytes32"
           },
           {
+            "internalType": "address[]",
+            "name": "to",
+            "type": "address[]"
+          },
+          {
+            "internalType": "externalEbool[]",
+            "name": "really",
+            "type": "bytes32[]"
+          },
+          {
             "internalType": "bytes",
             "name": "inputProof",
             "type": "bytes"
@@ -7844,6 +7890,19 @@
             "type": "uint256"
           }
         ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "requestId",
+            "type": "uint256"
+          }
+        ],
+        "name": "expire",
+        "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
       },
@@ -8221,6 +8280,11 @@
               {
                 "internalType": "uint64",
                 "name": "endTime",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "placedAt",
                 "type": "uint64"
               },
               {
@@ -8649,7 +8713,7 @@
         "type": "receive"
       }
     ],
-    "deployBlock": 11872753,
+    "deployBlock": 11876345,
     "seaport": "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC",
     "collections": [
       {

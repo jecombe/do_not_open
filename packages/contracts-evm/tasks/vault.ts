@@ -20,7 +20,7 @@ import { testWallet } from "../../chain-adapter/scripts/testWallets";
  */
 
 const ACTION = { Withdraw: 0, List: 1, Unlist: 2, Claim: 3 } as const;
-const REQUEST_STATUS = ["none", "pending", "done", "refused: wrong key", "stale: the box changed first"];
+const REQUEST_STATUS = ["none", "pending", "done", "refused: wrong key", "stale: the box changed first", "expired: no proof within a day"];
 const BOX_STATE = ["none", "sealed", "listed", "sold", "withdrawn", "claimed"];
 const ZERO = "0x0000000000000000000000000000000000000000";
 

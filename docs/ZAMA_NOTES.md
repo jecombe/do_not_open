@@ -785,7 +785,8 @@ a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
 
 `SealedVault` puts any NFT of an allowed collection in a box whose holder is encrypted: a
 second `ConfidentialERC721`, next to the game and linked to none of its contracts. It lists on
-Seaport 1.5 with the vault as the offerer and sells privately in cUSDC. 21,869 bytes deployed,
+Seaport 1.5 with the vault as the offerer and sells privately in cUSDC. 21,869 bytes deployed
+(20,833 before requests stopped locking the box and the deposit took decoys, 2026-10-09),
 compiled with the default optimizer (200 runs): it needs none of `DoNotOpen`'s size tricks. Not
 deployed on Sepolia yet. The design is in [VAULT.md](VAULT.md); what is specific to the protocol:
 
@@ -858,7 +859,7 @@ change): the rats stay with their owners. `WhitelistGifts` is the giver of both 
 | `RatTricks` (sniffs, shields, jams) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
 | `WhitelistGifts` (root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
 | `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
-| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, 2.5% fee) | [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18) |
+| `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, 2.5% fee; owner and treasury `0x5908…029A`) | [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D) (since 2026-10-09; until then [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), whose requests locked the box) |
 | `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
 
 Deploying took `SEPOLIA_GAS_PRICE=20000000` and `--maxfee 50000000 --priorityfee 2000000`: a

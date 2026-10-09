@@ -15,8 +15,11 @@ them, what leaks, what it costs, and why each choice was made.
 
 **Status.** Done on the mock and in the tests (44 contract tests in `test/SealedVault.ts`,
 against Seaport 1.5's real bytecode), and on Sepolia since 2026-10-08: `SealedVault` at
-`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (block 11872753), its free test collection `VaultTestNFT` at
+`0x27CA3698A34b53900047cD1D0856B954a695C79D` since 2026-10-09 (block 11876345; owner and treasury
+`0x590891F269720001435004A1089cAB5b2c20029A`), its free test collection `VaultTestNFT` at
 `0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`, listing on OpenSea's Seaport 1.5.
+The first deployment, `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (2026-10-08, block 11872753), took one request per box
+and moved the nonce on with every request (see Decisions); it is left as it was.
 
 ## Contracts
 
@@ -439,9 +442,12 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
 
 ## Limits
 
-- On Sepolia the first public decryptions waited on Zama's gateway ("ciphertext not ready" for
-  every new handle, the vault's and a probe's alike, on 2026-10-08): the end-to-end demo is to run
-  again once it answers. Request 0 (box 0, a listing) waits for its proof meanwhile.
+- On Sepolia the public decryptions wait on Zama's gateway ("ciphertext not ready" for every new
+  handle, the vault's and a probe's alike, on 2026-10-08, and again on 2026-10-09 with the
+  redeployed vault, `readiness_check_timed_out` after 90 seconds): the end-to-end demo is to run
+  again once it answers. On the redeployed vault, request 0 (box 0, a listing, placed 2026-10-09
+  09:09 UTC) waits for its proof; anyone may `expire` it from 2026-10-10 09:09 UTC, and the box
+  takes other requests meanwhile.
 - OpenSea's own website lists orders posted to its API; an order validated on-chain may not show
   there, and its testnet site may not show Sepolia orders at all. Not checked. The orders are
   real Seaport orders: any Seaport marketplace, aggregator or script can fill them.

@@ -16,7 +16,7 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
 
 /** The vault's contracts on Sepolia, as `dno:export` last wrote them. */
 const CONTRACTS = [
-  { key: "vault", address: "0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18" },
+  { key: "vault", address: "0x27CA3698A34b53900047cD1D0856B954a695C79D" },
   { key: "nft", address: "0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b" },
   { key: "seaport", address: "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC" },
 ] as const;
