@@ -544,6 +544,8 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
   if (vaultRelay) {
     const hex = z.string().regex(/^0x[0-9a-fA-F]*$/, "hex").max(20_000);
     const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "32 bytes");
+    const pocketSet = z.array(id).min(1).max(5);
+    const spendInput = z.object({ amount: bytes32, target: bytes32, inputProof: hex, boundKey: bytes32, keyProof: hex });
     const body = z.discriminatedUnion("call", [
       z.object({
         call: z.literal("request"),
@@ -560,6 +562,12 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
         }),
       }),
       z.object({ call: z.literal("finalize"), args: z.object({ requestId: id, cleartexts: hex, proof: hex, offer: hex.optional() }) }),
+      // The pockets and their desk.
+      z.object({ call: z.literal("pocketOpen"), args: z.object({ handle: bytes32, inputProof: hex, viewer: address }) }),
+      z.object({ call: z.literal("pocketSend"), args: z.object({ from: pocketSet, to: pocketSet, input: spendInput }) }),
+      z.object({ call: z.literal("pocketWithdraw"), args: z.object({ from: pocketSet, to: address, input: spendInput }) }),
+      z.object({ call: z.literal("deskAsk"), args: z.object({ saleId: id, handle: bytes32, keyProof: hex, boxKey: bytes32 }) }),
+      z.object({ call: z.literal("deskBuy"), args: z.object({ askId: id, cleartexts: hex, proof: hex, boxKey: bytes32, boxKeyProof: hex }) }),
     ]);
     app.post(
       "/v1/vault/relay",
@@ -570,7 +578,13 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
         const parsed = body.safeParse(req.body);
         if (!parsed.success) return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "bad request" });
         try {
-          const hash = parsed.data.call === "request" ? await vaultRelay.request(parsed.data.args) : await vaultRelay.finalize(parsed.data.args);
+          const d = parsed.data;
+          const hash =
+            d.call === "request"
+              ? await vaultRelay.request(d.args)
+              : d.call === "finalize"
+                ? await vaultRelay.finalize(d.args)
+                : await vaultRelay.pockets(d.call, d.args as never);
           return { hash };
         } catch (error) {
           if (error instanceof VaultRelayRefused) return reply.status(error.code === "daily-cap" ? 429 : 400).send({ error: error.message, code: error.code });

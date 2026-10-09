@@ -1376,6 +1376,192 @@ a.vault-me:hover {
   opacity: 0.6;
 }
 
+/* The wallet's pocket: its code and balance, three small forms, the boxes offered to it. */
+.vault-pocket {
+  display: grid;
+  gap: 16px;
+  max-width: 1080px;
+}
+
+.vault-pocket-lede {
+  margin: 0;
+  max-width: 70ch;
+}
+
+.vault-pocket-intro {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  border: 1px dashed var(--line-2);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.vault-pocket-intro h3 {
+  margin: 0;
+  font: 700 22px/1.1 var(--stencil);
+}
+
+.vault-pocket-intro .vault-meta {
+  max-width: 52ch;
+}
+
+.vault-pouch {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  filter: drop-shadow(0 8px 18px rgb(0 0 0 / 0.45));
+}
+
+.vault-pocket-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgb(91 227 194 / 0.08), transparent 55%), var(--panel);
+}
+
+.vault-pocket-id,
+.vault-pocket-balance {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vault-pocket-id {
+  flex: 1 1 260px;
+}
+
+.vault-pocket-label {
+  margin: 0;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-pocket-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.vault-pocket-code strong {
+  color: var(--teal);
+  font: 700 28px/1 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.vault-pocket-id .vault-meta,
+.vault-pocket-balance .vault-meta {
+  margin: 0;
+}
+
+.vault-pocket-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.vault-pocket-form h4 {
+  margin: 0;
+  font: 700 16px/1.1 var(--stencil);
+  letter-spacing: 0.03em;
+}
+
+.vault-pocket-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vault-pocket-form .vault-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  white-space: normal;
+  color: var(--muted);
+  font: 13px var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.vault-pocket-form .vault-check input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  accent-color: var(--teal);
+}
+
+.vault-pocket-form .vault-check span {
+  min-width: 0;
+}
+
+.vault-pocket-form,
+.vault-pocket-card > * {
+  min-width: 0;
+}
+
+.vault-pocket-form > .sec-btn {
+  justify-self: start;
+}
+
+.vault-hint-bad {
+  color: #ffb4ab;
+}
+
+.vault-pocket-decoys > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vault-pocket-decoys .vault-meta {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+}
+
+.vault-pocket-sales h3 {
+  margin: 0;
+  font: 700 16px/1.1 var(--stencil);
+}
+
+.vault-pocket-sales .vault-toolbar {
+  justify-content: space-between;
+}
+
+.vault-sale-box {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(-45deg, var(--kraft) 0 8px, #b88a55 8px 16px);
+  color: #07090c;
+  font: 700 13px var(--mono);
+}
+
+.vault-pocket-public {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--teal);
+  background: var(--teal-dim);
+  border-radius: 0 10px 10px 0;
+}
+
+.vault-pocket-boxhint {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+
 /* Why the vault, then what shows and what does not. */
 .vault-leaks {
   display: grid;

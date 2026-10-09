@@ -123,8 +123,70 @@ export interface VaultDepositOptions extends ActionOptions {
   decoys?: number;
 }
 
+/** The pockets: cUSDC held in pockets locked by a key, not an address. */
+export interface PocketsInfo {
+  address: Address;
+  /** Buys the vault's private sales out of pockets, and holds the boxes it bought. */
+  desk: Address;
+  /** Pockets opened in all: decoys are picked among them. */
+  count: number;
+  /** The most pockets one side of an action may name, the real one included. */
+  maxSet: number;
+}
+
+export interface PocketOptions extends ActionOptions {
+  /** Other pockets to name next to the real one, so nobody can tell which moved. Capped by
+   *  `maxSet - 1` and by the pockets that exist. 2 when left out. */
+  decoys?: number;
+}
+
+/** A private sale offered to the desk and reserved for a pocket. */
+export interface PocketSale extends VaultSale {
+  pocketId: number;
+}
+
+/**
+ * The connected wallet's pocket. Its key and the address that reads its balance (its viewer)
+ * both come from one wallet signature, so nothing is stored and the same wallet finds its pocket
+ * on any device. Spends are relayed when the API has a relayer: the wallet's address shows on
+ * none of them, only on deposits.
+ */
+export interface PocketsAdapter {
+  info(): Promise<PocketsInfo>;
+  /** The wallet's pocket, or null before it is opened. One signature a session. */
+  mine(opts?: ActionOptions): Promise<number | null>;
+  /** Opens the wallet's pocket. Returns its number. */
+  open(opts?: ActionOptions): Promise<number>;
+  /** Decrypts the wallet's pocket balance, in cUSDC's smallest unit. */
+  balance(opts?: ActionOptions): Promise<bigint>;
+  /** Puts `amount` of the wallet's cUSDC into pocket `to` (the wallet's own when left out),
+   *  among decoys. Public: the wallet and the pockets named, not the amount nor which one. */
+  deposit(amount: bigint, opts?: PocketOptions & { to?: number }): Promise<void>;
+  /** Sends `amount` from the wallet's pocket to pocket `to`. Nothing public says who paid whom.
+   *  Moves nothing (no error) when the balance is short: check `balance` first. */
+  send(to: number, amount: bigint, opts?: PocketOptions): Promise<void>;
+  /** Takes `amount` out of the wallet's pocket to `to`, as cUSDC. The address is public. */
+  withdraw(to: Address, amount: bigint, opts?: PocketOptions): Promise<void>;
+  /** The seller's side: offers box `boxId` privately to pocket `pocketId` for `price` cUSDC.
+   *  Returns the sale id. */
+  offerSale(boxId: number, pocketId: number, price: bigint, opts?: ActionOptions): Promise<number>;
+  /** Sales reserved for the wallet's pocket, newest first. */
+  sales(): Promise<PocketSale[]>;
+  /** Decrypts the prices of sales reserved for the wallet's pocket. */
+  salePrices(saleIds: number[], opts?: ActionOptions): Promise<Record<number, bigint>>;
+  /** Buys a sale reserved for the wallet's pocket, with the pocket's cUSDC. The box is then held
+   *  by the desk, with the wallet's key: it is taken out, listed or delegated like any of its
+   *  boxes. Throws `not-yours` (wrong key or short balance: nothing happened, the sale stays
+   *  open). Returns whether the box moved. */
+  buy(saleId: number, opts?: ActionOptions): Promise<boolean>;
+  /** Boxes the wallet's pocket bought, still in the vault. */
+  boxes(): Promise<number[]>;
+}
+
 export interface VaultAdapter {
   info(): Promise<VaultInfo>;
+  /** The pockets, where they are deployed. */
+  pockets(): PocketsAdapter | null;
   /** Every box, newest first. */
   boxes(): Promise<VaultBox[]>;
   box(boxId: number): Promise<VaultBox>;

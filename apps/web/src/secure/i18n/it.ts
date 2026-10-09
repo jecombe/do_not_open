@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureIt: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, il caveau sigillato: NFT che nessuno ti vede possedere",
-  "secure.description": "Metti qualsiasi NFT in una scatola sigillata il cui proprietario è cifrato su Ethereum con l'FHE di Zama. Si vende comunque su Seaport, o in privato a un prezzo che legge solo l'acquirente.",
+  "secure.title": "DO NOT OPEN, il caveau sigillato: NFT e token che nessuno ti vede possedere",
+  "secure.description": "Metti qualsiasi NFT in una scatola sigillata, e i tuoi cUSDC in una tasca sigillata, con il titolare cifrato su Ethereum grazie all'FHE di Zama. L'NFT si vende comunque su Seaport; i token pagano comunque chiunque, senza mostrare chi ha pagato chi.",
   "secure.imageAlt": "Una scatola di cartone sigillata con il timbro DO NOT OPEN dentro uno scudo di cifratura luminoso",
   "secure.nav": "Sito",
   "secure.nav.protocol": "Protocollo",
@@ -21,7 +21,7 @@ export const secureIt: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Caveau sigillato · FHE di Zama · Ethereum",
   "secure.h1": "Quello che possiedi non riguarda nessun altro.",
-  "secure.lede": "Metti qualsiasi NFT in una scatola sigillata. Da lì nessuno sa chi la possiede: né i marketplace, né i tracker, né noi. Si vende comunque su Seaport.",
+  "secure.lede": "Metti qualsiasi NFT in una scatola sigillata, e i tuoi token in una tasca sigillata. Da allora nessuno sa chi li possiede: né i marketplace, né i tracker, né noi. L'NFT si vende comunque su Seaport, i token pagano comunque chiunque.",
   "secure.cta.open": "Apri il caveau",
   "secure.cta.protocol": "Leggi il protocollo",
   "secure.spec.1.k": "Proprietario",
@@ -31,8 +31,15 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.spec.3.k": "Regole",
   "secure.spec.3.v": "applicate, verificabili",
 
-  "secure.story.aria": "Il caveau in quattro passi, in loop: un NFT viene sigillato in una scatola, una chiave nasce da una sola firma, la scatola si vende su Seaport, all'offerta di un acquirente o in privato, si regala o presta i suoi vantaggi a un delegato mentre le sonde rimbalzano, e l'NFT esce verso un indirizzo nuovo. Clicca per passare al passo successivo.",
+  "secure.story.aria": "Il caveau in quattro passi, in loop, una volta con un NFT e una con dei token: viene sigillato in una scatola, una chiave nasce da una firma, si vende, paga o si regala mentre le sonde rimbalzano, ed esce verso un indirizzo nuovo. Clicca per passare al passo successivo.",
   "secure.story.public": "deposito · pubblico",
+  "secure.story.publicTokens": "deposito · importo sigillato",
+  "secure.story.toPocket": "verso una tasca",
+  "secure.story.payBox": "paga una scatola",
+  "secure.story.paidIn": "pagamento ricevuto",
+  "secure.story.saleCash": "cUSDC di una vendita",
+  "secure.story.hiddenBalance": "saldo sigillato",
+  "secure.ledger.ev.pocket": "Pagamento da tasca",
   "secure.story.holder": "proprietario",
   "secure.story.denied": "lettura rifiutata",
   "secure.story.signature": "1 firma",
@@ -50,12 +57,12 @@ export const secureIt: Record<SecureKey, string> = {
 
   "secure.ledger.kicker": "Modello di minaccia",
   "secure.ledger.title": "Cosa vede la catena, cosa vedi tu",
-  "secure.ledger.lede": "Le stesse quattro transazioni. Chiunque può leggere la catena; la colonna del proprietario è cifrata per tutti tranne che per il proprietario.",
+  "secure.ledger.lede": "Le stesse cinque transazioni. Chiunque può leggere la catena; la colonna del titolare è cifrata per tutti tranne che per il titolare.",
   "secure.ledger.public": "Vista pubblica",
   "secure.ledger.yours": "La tua vista",
   "secure.ledger.block": "Blocco",
   "secure.ledger.event": "Evento",
-  "secure.ledger.box": "Scatola",
+  "secure.ledger.box": "Scatola / tasca",
   "secure.ledger.holder": "Proprietario",
   "secure.ledger.ev.seal": "Sigillata",
   "secure.ledger.ev.transfer": "Ha cambiato mano",

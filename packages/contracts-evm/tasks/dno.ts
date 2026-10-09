@@ -441,6 +441,17 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
           weth,
           delegateRegistry: DELEGATE_REGISTRY,
           collections: testNft ? [{ address: testNft.address, name: "Sealed Vault Test NFT", mintable: true }] : [],
+          // The pockets, cUSDC locked by a key, and the desk that buys private sales out of them.
+          pockets: await hre.deployments.getOrNull("SealedPockets").then(async (p) => {
+            if (!p) return null;
+            const desk = await hre.deployments.get("PocketDesk");
+            return {
+              address: p.address,
+              abi: p.abi,
+              deployBlock: p.receipt?.blockNumber ?? null,
+              desk: { address: desk.address, abi: desk.abi, deployBlock: desk.receipt?.blockNumber ?? null },
+            };
+          }),
         };
       }),
     };

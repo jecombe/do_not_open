@@ -7,13 +7,16 @@ import {
   type ContractTransactionResponse,
   type EventLog,
   type InterfaceAbi,
+  type Wallet,
   type Provider,
   type TypedDataDomain,
   type TypedDataField,
 } from "ethers";
 import { ChainError, sameAddress, type ActionOptions, type Address, type TxRecord } from "../types";
 import { decoySends } from "../decoys";
+import { EvmPockets, type PocketsDeployment } from "./EvmPockets";
 import type {
+  PocketsAdapter,
   VaultAdapter,
   VaultBox,
   VaultBoxState,
@@ -41,9 +44,11 @@ export interface VaultDeployment extends Deployed {
   weth: string;
   delegateRegistry: string;
   collections: VaultCollection[];
+  /** The pockets and their desk, where they are deployed. */
+  pockets?: PocketsDeployment | null;
 }
 
-type InputBuilder = { addBool(v: boolean): InputBuilder; add64(v: bigint): InputBuilder; add256(v: bigint): InputBuilder };
+type InputBuilder = { addBool(v: boolean): InputBuilder; add32(v: number): InputBuilder; add64(v: bigint): InputBuilder; add256(v: bigint): InputBuilder };
 type Encrypted = { handles: (string | Uint8Array)[]; inputProof: string | Uint8Array };
 
 /** What the vault borrows from the EVM adapter it sits in: its wallet, its sends and its decryptions. */
@@ -59,6 +64,8 @@ export interface EvmVaultTools {
   encrypt(contract: string, account: Address, fill: (b: InputBuilder) => InputBuilder, what: string, opts?: ActionOptions, inputUser?: string): Promise<Encrypted>;
   publicDecrypt(handles: string[], opts?: ActionOptions): Promise<{ abiEncodedClearValues: string; decryptionProof: string }>;
   userDecrypt(handles: string[], contractAddress: string, opts?: ActionOptions): Promise<Record<string, unknown>>;
+  /** The same, for an address other than the wallet's that this page holds the key of: a pocket's viewer. */
+  userDecryptAs(signer: Wallet, handles: string[], contractAddress: string, opts?: ActionOptions): Promise<Record<string, unknown>>;
   signText(message: string): Promise<string>;
   signTypedData(domain: TypedDataDomain, types: Record<string, TypedDataField[]>, value: Record<string, unknown>): Promise<string>;
   ensureOperator(token: Deployed, account: Address, operator: string, opts?: ActionOptions): Promise<void>;
@@ -166,6 +173,7 @@ export class EvmVault implements VaultAdapter {
   private readonly read: Contract;
   private readonly board: Contract;
   private master: { account: Address; secret: string } | null = null;
+  private pockets_: EvmPockets | null = null;
   private holdings: { account: Address; block: number; held: Set<number>; seen: Set<string> } | null = null;
 
   constructor(
@@ -174,6 +182,17 @@ export class EvmVault implements VaultAdapter {
   ) {
     this.read = new Contract(deployed.address, deployed.abi, t.readProvider);
     this.board = new Contract(deployed.offers.address, deployed.offers.abi, t.readProvider);
+  }
+
+  pockets(): PocketsAdapter | null {
+    const deployed = this.deployed.pockets;
+    if (!deployed) return null;
+    this.pockets_ ??= new EvmPockets(
+      deployed,
+      { vault: this.deployed, box: (boxId) => this.box(boxId), keyFor: (collection, tokenId, opts) => this.keyFor(collection, tokenId, opts) },
+      { ...this.t, relayed: (opts, call, sendIt, announce) => this.relayed(opts, call, sendIt, announce) },
+    );
+    return this.pockets_;
   }
 
   async info(): Promise<VaultInfo> {

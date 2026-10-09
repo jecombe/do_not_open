@@ -2,7 +2,8 @@
  * The API's vault relayer: it sends a holder's request (and its proof) from its own wallet, so
  * the holder's address appears in no transaction. It only ever sees what any observer of the
  * chain would see once the transaction is sent: the box, the action, its terms, and a key
- * encrypted for the vault and bound to those terms, which it cannot change or reuse.
+ * encrypted for the vault and bound to those terms, which it cannot change or reuse. It sends the
+ * pockets' opens and spends, and the desk's purchases, the same way.
  */
 export interface VaultRequestArgs {
   boxId: number;
@@ -22,6 +23,24 @@ export interface VaultFinalizeArgs {
   proof: string;
   /** Accepting an offer: abi.encode(AdvancedOrder, bytes32[] criteriaProof), sent with `finalizeOffer`. */
   offer?: string;
+}
+
+/** A pocket spend's encrypted inputs, as `SealedPockets.SpendInput`. */
+export interface PocketSpendInput {
+  amount: string;
+  target: string;
+  inputProof: string;
+  boundKey: string;
+  keyProof: string;
+}
+
+/** What the relayer sends for the pockets and their desk, by call. */
+export interface PocketRelayCalls {
+  pocketOpen: { handle: string; inputProof: string; viewer: string };
+  pocketSend: { from: number[]; to: number[]; input: PocketSpendInput };
+  pocketWithdraw: { from: number[]; to: string; input: PocketSpendInput };
+  deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
+  deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
 }
 
 export class VaultRelay {
@@ -54,7 +73,12 @@ export class VaultRelay {
     return this.post("finalize", args);
   }
 
-  private async post(call: "request" | "finalize", args: VaultRequestArgs | VaultFinalizeArgs): Promise<string> {
+  /** Sends a pocket's open or spend, or a desk purchase. Returns the transaction hash. */
+  pockets<C extends keyof PocketRelayCalls>(call: C, args: PocketRelayCalls[C]): Promise<string> {
+    return this.post(call, args);
+  }
+
+  private async post(call: string, args: unknown): Promise<string> {
     const res = await fetch(`${this.base}/v1/vault/relay`, {
       method: "POST",
       headers: { "content-type": "application/json" },

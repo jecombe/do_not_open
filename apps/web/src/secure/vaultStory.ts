@@ -5,6 +5,7 @@ import {
   CanvasTexture,
   CircleGeometry,
   Color,
+  CylinderGeometry,
   EdgesGeometry,
   Float32BufferAttribute,
   Group,
@@ -52,6 +53,8 @@ const FRESH = new Vector3(1.85, -0.5, 0.2);
 /** The ways out in step three, on a slow orbit: a listing, a buyer's offer, a private sale, a gift, and the NFT's perks lent to a delegate. */
 const ORBIT = 2.05;
 const ROUTES = ["seaport", "offer", "private", "gift", "delegate"] as const;
+/** The same orbit when the loop seals tokens: where a pocket's cUSDC goes. */
+const TOKEN_ROUTES = ["toPocket", "payBox", "paidIn", "saleCash", "hiddenBalance"] as const;
 /** When the first way out lights up in step three, and how far apart the next ones do. */
 const ROUTE_START = 0.35;
 const ROUTE_GAP = 0.72;
@@ -67,6 +70,13 @@ const KEY_IN = new Vector3(-0.72, 0.62, 0.3).normalize();
 
 export interface StoryLabels {
   public: string;
+  /** The deposit's tag when the loop seals tokens: public, its amount not. */
+  publicTokens: string;
+  toPocket: string;
+  payBox: string;
+  paidIn: string;
+  saleCash: string;
+  hiddenBalance: string;
   holder: string;
   denied: string;
   signature: string;
@@ -126,13 +136,16 @@ function drawArt(canvas: HTMLCanvasElement, token: number): void {
 }
 
 /**
- * The secure home page's picture: the vault's four steps, on a loop.
- * 1. An NFT drops into an open box, the flaps fold, the tape runs, the shield rises.
+ * The secure home page's picture: the vault's four steps, on a loop, one loop with an NFT and
+ * the next with a stack of cUSDC, as the vault takes both.
+ * 1. An NFT (or tokens) drops into an open box, the flaps fold, the tape runs, the shield rises.
  * 2. A wallet signs once, a key comes out of it and dissolves into the box: nobody reads it.
  * 3. Five ways out turn around the box (a Seaport listing, a buyer's offer, a private sale,
- *    a gift, a delegate for its perks) while probes trying to read its holder bounce off the
- *    shield.
- * 4. The key matches, the shield drops, the box opens and the NFT flies to a fresh address.
+ *    a gift, a delegate for its perks; for tokens, another pocket, paying for a box, a payment
+ *    coming in, a sale's cUSDC, a balance nobody reads) while probes trying to read its holder
+ *    bounce off the shield.
+ * 4. The key matches, the shield drops, the box opens and the NFT (or the tokens) flies to a
+ *    fresh address.
  * Every pose is a function of the loop's clock, so a step can be shown at once. Under reduced
  * motion it holds a still of each step.
  */
@@ -150,6 +163,10 @@ export class VaultStoryScene {
   private readonly lattice: LineSegments;
   private readonly glow: ShaderMaterial;
   private readonly card = new Group();
+  /** The tokens a loop seals instead of the NFT: three cUSDC coins, stacked. */
+  private readonly coins = new Group();
+  /** Whether this loop seals tokens rather than an NFT. */
+  private tokens = false;
   private readonly art: CanvasTexture;
   private readonly cardLight: PointLight;
   private readonly wallet = new Group();
@@ -231,6 +248,21 @@ export class VaultStoryScene {
     this.cardLight = new PointLight(TEAL, 0, 3, 1.5);
     this.card.add(slab, rim, this.cardLight);
     stage.scene.add(this.card);
+
+    // The tokens: three coins, a little apart, with the same light.
+    const coinFace = new MeshStandardMaterial({ color: "#2E8C78", emissive: TEAL, emissiveIntensity: 0.35, metalness: 0.7, roughness: 0.35 });
+    const coinEdge = new LineBasicMaterial({ color: TEAL, transparent: true, opacity: 0.9 });
+    const coinGeometry = new CylinderGeometry(0.3, 0.3, 0.07, 40);
+    const coinRim = new EdgesGeometry(coinGeometry, 30);
+    [-0.13, 0, 0.13].forEach((y, i) => {
+      const coin = new Mesh(coinGeometry, coinFace);
+      coin.position.set(i === 1 ? 0.05 : -0.03 * i, y, 0);
+      coin.rotation.x = Math.PI / 2 - 0.25;
+      coin.add(new LineSegments(coinRim, coinEdge));
+      this.coins.add(coin);
+    });
+    this.coins.visible = false;
+    stage.scene.add(this.coins);
 
     // The wallet that signs once, and its signature, drawn as it is made.
     const walletBody = new MeshStandardMaterial({
@@ -450,10 +482,16 @@ export class VaultStoryScene {
     this.pose(this.time);
   }
 
-  /** A new NFT for every loop. */
+  /** Every other loop seals tokens; every NFT loop a new NFT. */
   private newLoop(): void {
-    drawArt(this.art.image as HTMLCanvasElement, Math.floor(Math.random() * 9000) + 1000);
-    this.art.needsUpdate = true;
+    this.tokens = !this.tokens;
+    if (!this.tokens) {
+      drawArt(this.art.image as HTMLCanvasElement, Math.floor(Math.random() * 9000) + 1000);
+      this.art.needsUpdate = true;
+    }
+    const routes = this.tokens ? TOKEN_ROUTES : ROUTES;
+    routes.forEach((route, i) => (this.routeTags[i]!.textContent = this.labels[route]));
+    this.tags.public.textContent = this.tokens ? this.labels.publicTokens : this.labels.public;
   }
 
   private pose(clock: number): void {
@@ -522,7 +560,8 @@ export class VaultStoryScene {
   }
 
   private poseCard(step: number, s1: number, s4: number): void {
-    const card = this.card;
+    const card = this.tokens ? this.coins : this.card;
+    (this.tokens ? this.card : this.coins).visible = false;
     let visible = true;
     let light = 0;
     if (step === 0) {

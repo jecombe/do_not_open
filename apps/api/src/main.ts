@@ -264,7 +264,12 @@ async function main() {
   // The sealed vault's relayer: sends holders' requests from its own wallet, through the first RPC endpoint.
   const vaultRelay =
     config.VAULT_RELAYER_KEY && deployment.vault && config.ROLE !== "indexer"
-      ? new VaultRelay(new EthersVaultSender(config.VAULT_RELAYER_KEY, deployment.vault.address, new JsonRpcProvider(config.RPC_URLS[0], deployment.chainId, { staticNetwork: true })), clock, config.VAULT_RELAY_PER_DAY)
+      ? new VaultRelay(new EthersVaultSender(
+            config.VAULT_RELAYER_KEY,
+            deployment.vault.address,
+            new JsonRpcProvider(config.RPC_URLS[0], deployment.chainId, { staticNetwork: true }),
+            deployment.vault.pockets ? { address: deployment.vault.pockets.address, desk: deployment.vault.pockets.desk.address } : null,
+          ), clock, config.VAULT_RELAY_PER_DAY)
       : undefined;
   if (vaultRelay) log.info({ address: vaultRelay.address }, "the vault relayer sends holders' requests");
 

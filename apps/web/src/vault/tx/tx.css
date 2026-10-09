@@ -1105,6 +1105,149 @@ a.vx-tx-hash:hover {
   }
 }
 
+/* Coins drop into the pouch, which swells; reversed, they jump out. */
+.vx-pouch {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.vx-scene.vx-pouch.is-live .vx-pouch {
+  animation: vx-swell 1.8s ease-in-out infinite;
+}
+
+.vx-scene.vx-pouch .vx-coin {
+  opacity: 0;
+}
+
+.vx-scene.vx-pouch.is-live .vx-coin {
+  animation: vx-coin-in 1.8s cubic-bezier(0.5, 0, 0.75, 1) infinite;
+}
+
+.vx-scene.vx-pouch.is-live.is-reversed .vx-coin {
+  animation-name: vx-coin-out;
+  animation-timing-function: cubic-bezier(0.25, 0, 0.5, 1);
+}
+
+.vx-scene.vx-pouch.is-live .vx-coin-1 {
+  animation-delay: 0.3s;
+}
+
+.vx-scene.vx-pouch.is-live .vx-coin-2 {
+  animation-delay: 0.6s;
+}
+
+.vx-scene.vx-pouch.is-live .vx-stitch path {
+  animation: vx-dash 0.6s linear infinite;
+}
+
+/* A coin hops between pouches; the others twitch so nobody tells which one moved. */
+.vx-scene.vx-pouches .vx-hop {
+  transform: translate(150px, 70px);
+}
+
+.vx-scene.vx-pouches.is-live .vx-hop {
+  animation: vx-hop 2.4s ease-in-out infinite;
+}
+
+.vx-twitch {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.vx-scene.vx-pouches.is-live .vx-twitch {
+  animation: vx-twitch 0.9s ease-in-out infinite;
+}
+
+.vx-scene.vx-pouches.is-live .vx-twitch-1 {
+  animation-delay: 0.2s;
+}
+
+.vx-scene.vx-pouches.is-live .vx-twitch-2 {
+  animation-delay: 0.45s;
+}
+
+.vx-scene.vx-pouches.is-live .vx-twitch-3 {
+  animation-delay: 0.7s;
+}
+
+@keyframes vx-swell {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  55% {
+    transform: scale(1.08, 0.95);
+  }
+  70% {
+    transform: scale(0.97, 1.04);
+  }
+}
+
+@keyframes vx-coin-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(78px);
+  }
+  62%,
+  100% {
+    opacity: 0;
+    transform: translateY(80px);
+  }
+}
+
+@keyframes vx-coin-out {
+  0% {
+    opacity: 0;
+    transform: translate(0, 80px);
+  }
+  20% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+    transform: translate(70px, 10px);
+  }
+  80%,
+  100% {
+    opacity: 0;
+    transform: translate(90px, 40px);
+  }
+}
+
+@keyframes vx-hop {
+  0%,
+  8% {
+    transform: translate(34px, 70px);
+  }
+  45% {
+    transform: translate(92px, 22px);
+  }
+  80%,
+  100% {
+    transform: translate(150px, 70px);
+  }
+}
+
+@keyframes vx-twitch {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30% {
+    transform: rotate(-5deg);
+  }
+  60% {
+    transform: rotate(4deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vx-scene *,
   .vx-overlay,
