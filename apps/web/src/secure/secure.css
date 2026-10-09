@@ -1145,3 +1145,141 @@ button.sec-btn {
     display: none;
   }
 }
+
+/* The cipher field behind the page, lit by the pointer. */
+.sec {
+  isolation: isolate;
+}
+
+.sec-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* The pointer as a padlock (mouse and pen only, see LockCursor). */
+.has-lock,
+.has-lock * {
+  cursor: none !important;
+}
+
+.has-lock :is(input, textarea, [contenteditable="true"]) {
+  cursor: text !important;
+}
+
+.lock-cursor {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.lock-cursor.on {
+  opacity: 1;
+}
+
+.lock-dot,
+.lock-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.lock-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 10px var(--teal);
+  transition: width 0.18s, height 0.18s, margin 0.18s, background 0.18s;
+}
+
+.lock-cursor.is-open .lock-dot {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  background: rgb(91 227 194 / 0.12);
+  box-shadow: inset 0 0 0 1px var(--teal);
+}
+
+.lock-body svg {
+  display: block;
+  margin: -12px 0 0 -10px;
+  overflow: visible;
+  fill: rgb(7 9 12 / 0.9);
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1px #07090c) drop-shadow(0 0 6px rgb(91 227 194 / 0.55));
+  transition: transform 0.15s;
+}
+
+.lock-shackle {
+  fill: none;
+  transform-origin: 17.5px 13px;
+  transition: transform 0.22s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+/* Over something that opens: the shackle lifts and swings. */
+.lock-cursor.is-open .lock-shackle {
+  transform: translateY(-3px) rotate(28deg);
+}
+
+.lock-cursor.is-down svg {
+  transform: scale(0.82);
+}
+
+.lock-cursor.is-down .lock-shackle {
+  transform: none;
+  transition-duration: 0.08s;
+}
+
+.lock-cursor.is-text {
+  opacity: 0;
+}
+
+/* Cards catch the pointer's light where it is. */
+.sec-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.sec-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx, -400px) var(--my, -400px), rgb(91 227 194 / 0.12), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.sec-glow:hover::after {
+  opacity: 1;
+}
+
+/* Sections come up as they reach the screen. */
+.sec-reveal {
+  opacity: 0;
+  translate: 0 28px;
+  transition: opacity 0.7s ease, translate 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.sec-reveal.is-in {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sec-reveal {
+    opacity: 1;
+    translate: none;
+    transition: none;
+  }
+}
