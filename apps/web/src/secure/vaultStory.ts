@@ -43,6 +43,7 @@ const R = 1.35;
 const START = 4.4;
 const SPEED = 2.8;
 const TEAL = new Color("#5BE3C2");
+const UP = new Vector3(0, 1, 0);
 const RED = new Color("#FF4D3D");
 const H = BOX_SIZE.height;
 /** The flaps' open angles, as the opening sequence leaves them. */
@@ -54,15 +55,25 @@ const FRESH = new Vector3(1.85, -0.5, 0.2);
 /** The ways out in step three, on a slow orbit: a listing, a buyer's offer, a private sale, a gift, and the NFT's perks lent to a delegate. */
 const ORBIT = 2.05;
 const ROUTES = ["seaport", "offer", "private", "gift", "delegate"] as const;
-/** The coins a loop seals instead of the NFT, back to front, and where each sits in the fan. */
-const COINS = ["ETH", "WETH", "cZAMA", "cUSDT", "cUSDC"] as const;
-const COIN_FAN = [
-  new Vector3(-0.52, 0.06, -0.26),
-  new Vector3(-0.28, 0.16, -0.16),
-  new Vector3(0.28, 0.16, -0.16),
-  new Vector3(0.52, 0.06, -0.26),
-  new Vector3(0, -0.08, 0.08),
+/** The coins a loop seals instead of the NFT, in the order they drop in. */
+const COINS = ["cZAMA", "WETH", "cUSDC", "cUSDT", "ETH"] as const;
+/** A coin's radius and thickness: five lie apart on the box's floor, well inside its walls. */
+const COIN_R = 0.18;
+const COIN_T = 0.055;
+/** Where each coin lands on the floor, in the box's own frame (x across, z in depth): the back two, the middle, the front two. */
+const COIN_SPOTS = [
+  new Vector3(-0.32, 0, -0.24),
+  new Vector3(0.32, 0, -0.24),
+  new Vector3(0, 0, 0),
+  new Vector3(-0.32, 0, 0.24),
+  new Vector3(0.32, 0, 0.24),
 ];
+/** Step one: when the first coin shows above the box, and how far apart the next ones do. */
+const COIN_FIRST = 0.06;
+const COIN_PACE = 0.38;
+/** Where a coin hovers before it drops, and the tilt that turns its face to the camera. */
+const COIN_HOVER = 1.5;
+const COIN_FACE = Math.PI / 2 - 0.2;
 /** The same orbit when the loop seals tokens: where a pocket's cUSDC goes. */
 const TOKEN_ROUTES = ["toPocket", "payBox", "paidIn", "saleCash", "hiddenBalance"] as const;
 /** When the first way out lights up in step three, and how far apart the next ones do. */
@@ -198,8 +209,11 @@ export class VaultStoryScene {
   private readonly lattice: LineSegments;
   private readonly glow: ShaderMaterial;
   private readonly card = new Group();
-  /** The tokens a loop seals instead of the NFT: ETH, WETH, cZAMA, cUSDT and cUSDC coins, fanned out. */
+  /** The tokens a loop seals instead of the NFT: one coin each, dropped in one after another. */
   private readonly coins = new Group();
+  /** Each coin's spin (about the vertical) and, inside, its tilt from flat to facing the camera. */
+  private readonly coinHolders: { spin: Group; tilt: Mesh }[] = [];
+  private readonly coinLight: PointLight;
   /** Whether this loop seals tokens rather than an NFT. */
   private tokens = false;
   private readonly art: CanvasTexture;
@@ -284,20 +298,23 @@ export class VaultStoryScene {
     this.card.add(slab, rim, this.cardLight);
     stage.scene.add(this.card);
 
-    // The tokens: five coins fanned out, each wearing its token's logo (cUSDC in front, the
-    // pockets' other tokens beside it), the edge in the vault's metal and light.
+    // The tokens: a coin per token, each wearing its token's logo, the edge in the vault's metal
+    // and light. They come one at a time, apart, never as a heap.
     const coinSide = new MeshStandardMaterial({ color: "#2E8C78", emissive: TEAL, emissiveIntensity: 0.35, metalness: 0.7, roughness: 0.35 });
     const coinEdge = new LineBasicMaterial({ color: TEAL, transparent: true, opacity: 0.9 });
-    const coinGeometry = new CylinderGeometry(0.3, 0.3, 0.07, 48);
+    const coinGeometry = new CylinderGeometry(COIN_R, COIN_R, COIN_T, 48);
     const coinRim = new EdgesGeometry(coinGeometry, 30);
-    COINS.forEach((symbol, i) => {
+    for (const symbol of COINS) {
       const face = coinFaceMaterial(symbol);
-      const coin = new Mesh(coinGeometry, [coinSide, face, face]);
-      coin.position.set(COIN_FAN[i]!.x, COIN_FAN[i]!.y, COIN_FAN[i]!.z);
-      coin.rotation.x = Math.PI / 2 - 0.25;
-      coin.add(new LineSegments(coinRim, coinEdge));
-      this.coins.add(coin);
-    });
+      const tilt = new Mesh(coinGeometry, [coinSide, face, face]);
+      tilt.add(new LineSegments(coinRim, coinEdge));
+      const spin = new Group();
+      spin.add(tilt);
+      this.coins.add(spin);
+      this.coinHolders.push({ spin, tilt });
+    }
+    this.coinLight = new PointLight(TEAL, 0, 3, 1.5);
+    this.coins.add(this.coinLight);
     this.coins.visible = false;
     stage.scene.add(this.coins);
 
@@ -597,8 +614,17 @@ export class VaultStoryScene {
   }
 
   private poseCard(step: number, s1: number, s4: number): void {
-    const card = this.tokens ? this.coins : this.card;
-    (this.tokens ? this.card : this.coins).visible = false;
+    this.coins.visible = this.tokens;
+    if (this.tokens) {
+      this.card.visible = false;
+      this.cardLight.intensity = 0;
+      // The card stays where the coins hover, invisible: the deposit's tag follows it.
+      this.card.position.set(0, COIN_HOVER - 0.05, 0);
+      this.poseCoins(step, s1, s4);
+      this.tags.public.style.opacity = String(step === 0 ? window4(s1, 0.4, 0.8, 1.6, 1.9) : 0);
+      return;
+    }
+    const card = this.card;
     let visible = true;
     let light = 0;
     if (step === 0) {
@@ -629,6 +655,65 @@ export class VaultStoryScene {
     card.visible = visible;
     this.cardLight.intensity = light;
     this.tags.public.style.opacity = String(step === 0 ? window4(s1, 0.4, 0.8, 1.6, 1.9) : 0);
+  }
+
+  /** Where a coin lies on the box's floor, in the world, as the box sways and bobs. */
+  private floorSpot(i: number, out: Vector3): Vector3 {
+    const floor = -H / 2 + BOX_SIZE.wall + 0.006 + COIN_T / 2;
+    return out.set(COIN_SPOTS[i]!.x, floor, COIN_SPOTS[i]!.z).applyAxisAngle(UP, this.boxRoot.rotation.y).add(this.boxRoot.position);
+  }
+
+  /**
+   * Step one: each coin pops up above the box facing the camera, turns once, then drops and lies
+   * flat on its own spot of the floor, the next one coming as it lands. Step four: they rise in
+   * turn into a row above the open box, then fly one by one to the fresh address and stack there
+   * with a gap between each.
+   */
+  private poseCoins(step: number, s1: number, s4: number): void {
+    const spot = new Vector3();
+    const from = new Vector3();
+    const to = new Vector3();
+    let light = 0;
+    this.coinHolders.forEach(({ spin, tilt }, i) => {
+      let visible = false;
+      if (step === 0) {
+        const t0 = COIN_FIRST + i * COIN_PACE;
+        const born = easeOutBack(span(s1, t0, t0 + 0.2));
+        const d = span(s1, t0 + 0.28, t0 + 0.56);
+        this.floorSpot(i, spot);
+        from.set(0, COIN_HOVER, 0.1);
+        spin.position.set(from.x + (spot.x - from.x) * easeInOut(d), from.y + (spot.y - from.y) * easeIn(d), from.z + (spot.z - from.z) * easeInOut(d));
+        const turn = (1 - easeInOut(span(s1, t0, t0 + 0.3))) * Math.PI * 2;
+        spin.rotation.y = turn + (this.boxRoot.rotation.y - turn) * easeInOut(d);
+        tilt.rotation.x = COIN_FACE * (1 - easeInOut(span(d, 0, 0.6)));
+        // Shown a size up while it hovers, so its logo reads; its true size as it goes in.
+        spin.scale.setScalar(Math.max(0.001, born * (1.35 - 0.35 * easeInOut(span(d, 0, 0.5)))));
+        visible = s1 >= t0 && s1 < 2.85;
+        light = Math.max(light, 1.6 * window4(s1, t0, t0 + 0.15, t0 + 0.45, t0 + 0.56));
+      } else if (step === 3) {
+        // Rise in turn into a row above the box, faces to the camera, with room between them; the
+        // one nearest the fresh address leaves first, so no path crosses another.
+        const r = easeInOut(span(s4, 1.5 + i * 0.1, 2.0 + i * 0.1));
+        const k = COINS.length - 1 - i;
+        const f = easeInOut(span(s4, 2.55 + k * 0.2, 3.1 + k * 0.2));
+        const out = 1 - span(s4, 4.05, 4.5);
+        this.floorSpot(i, spot);
+        from.set((i - (COINS.length - 1) / 2) * (COIN_R * 2.4 + 0.14), 1.2, 0.1);
+        from.lerpVectors(spot, from, r);
+        // Then to the fresh address, landing flat, one above the other with a gap.
+        to.set(FRESH.x, FRESH.y + 0.12 + k * (COIN_T + 0.08), FRESH.z);
+        spin.position.lerpVectors(from, to, f);
+        spin.position.y += Math.sin(f * Math.PI) * 0.45;
+        spin.rotation.y = this.boxRoot.rotation.y * (1 - r) + f * (s4 - 3.15) * 0.8;
+        tilt.rotation.x = COIN_FACE * r * (1 - f) + 0.18 * f;
+        spin.scale.setScalar(Math.max(0.001, out * (1 + 0.2 * r * (1 - f))));
+        visible = s4 > 1.45;
+        light = Math.max(light, 1.5 * r * (1 - f) * out, 2.5 * window4(f, 0.85, 0.95, 0.95, 1) * out);
+      }
+      spin.visible = visible;
+    });
+    this.coinLight.position.set(0, step === 3 ? 1.2 : COIN_HOVER, 0.5);
+    this.coinLight.intensity = light;
   }
 
   private poseKey(step: number, s2: number, s4: number): void {
