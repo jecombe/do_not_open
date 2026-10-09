@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import pino from "pino";
-import { AskManual, type AnswerModel } from "./application/askManual";
+import { AskManual, warden, type AnswerModel } from "./application/askManual";
 import { SignIn } from "./application/auth";
 import { AcceptTerms } from "./application/terms";
 import { AllowList } from "./application/allowList";
@@ -34,6 +34,7 @@ import { Insights } from "./application/insights";
 import { XOAuth } from "./infrastructure/x/XOAuth";
 import { GeminiModel } from "./infrastructure/chat/GeminiModel";
 import manual from "./infrastructure/chat/manual.json";
+import vaultManual from "./infrastructure/chat/vault-manual.json";
 import { AclPublications } from "./infrastructure/chain/AclPublications";
 import { deploymentFor } from "./infrastructure/chain/deployment";
 import { EvmChainSource } from "./infrastructure/chain/EvmChainSource";
@@ -150,18 +151,17 @@ async function main() {
 
   // The manual's chatbot: Gemini answers from the whole manual; without a key, or past the
   // day's quota, the chat quotes the manual's best paragraphs.
-  const chat = new AskManual(
-    manual.locales,
-    model,
-    { perIpPerDay: config.CHAT_PER_IP_PER_DAY, perDay: config.CHAT_PER_DAY, cacheSize: 500 },
-    Date.now,
-    // The day's total is counted in the store, for every replica together.
-    {
-      take: (day, limit) => store.takeQuota("chat-model", day, limit),
-      giveBack: (day) => store.giveBackQuota("chat-model", day),
-      used: (day) => store.quotaUsed("chat-model", day),
-    },
-  );
+  // The day's total is counted in the store, for every replica together, and shared by both
+  // chats: the clerk and the Warden draw from the same free quota.
+  const chatQuota = {
+    take: (day: string, limit: number) => store.takeQuota("chat-model", day, limit),
+    giveBack: (day: string) => store.giveBackQuota("chat-model", day),
+    used: (day: string) => store.quotaUsed("chat-model", day),
+  };
+  const chatLimits = { perIpPerDay: config.CHAT_PER_IP_PER_DAY, perDay: config.CHAT_PER_DAY, cacheSize: 500 };
+  const chat = new AskManual(manual.locales, model, chatLimits, Date.now, chatQuota);
+  // The Warden, on the home page and the vault's: the same model, the vault's and the project's docs.
+  const vaultChat = new AskManual(vaultManual.locales, model, chatLimits, Date.now, chatQuota, warden);
   if (!config.GEMINI_API_KEY) log.info("GEMINI_API_KEY is not set: the chat quotes the manual instead of answering");
 
   // The same clerk on Discord, as `/ask`.
@@ -313,6 +313,7 @@ async function main() {
           vaultRelay,
           vaultRelayRatePerMinute: config.VAULT_RELAY_RATE_PER_MINUTE,
           chat,
+          vaultChat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,
           discord,
           herald: config.HERALD_DISCORD === "off" ? undefined : { posts: store, adminToken: config.HERALD_ADMIN_TOKEN ?? null },
