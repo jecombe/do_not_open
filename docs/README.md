@@ -5,6 +5,7 @@ in the app (`/docs`): how the game works, the encryption, and the fees, with no 
 
 | Document | What it answers |
 | --- | --- |
+| [GAME.md](GAME.md) | The game's hub: every mechanic with a link to its flow, how a box is opened, the croquettes, the studio and the rats, the flea market, playing on Sepolia, token metadata, the manual |
 | [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md) | The Confidential ERC-721: encrypted owners, finding your boxes, the hidden mint quantity, sale milestones, game actions checked under encryption, what still leaks, what it costs |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Which package does what, what depends on what, how data moves, how a seed becomes a picture |
 | [DATA_MODEL.md](DATA_MODEL.md) | What is encrypted and what is public for each token, its owner included, who may decrypt what, what a transfer changes |
