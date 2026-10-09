@@ -11,10 +11,11 @@ import { useT } from "./i18n";
 
 /** Plain USDC per decryption credit (DecryptionCredits.price). */
 export const CREDIT_PRICE = "0.01";
-/** Free units a player gets each UTC day (the API's RELAYER_FREE_PER_DAY). */
-export const FREE_PER_DAY = 25;
-/** Free units a day for a wallet that has not played yet (RELAYER_NEWCOMER_PER_DAY): one 10-id mint. */
-export const NEWCOMER_PER_DAY = 16;
+/** Free units a player gets each UTC day (the API's RELAYER_FREE_PER_DAY): Sepolia's, from its
+ *  FREE_UNITS. Mainnet's are fewer (25 planned): change these with it (AUDIT_CHECKLIST O48). */
+export const FREE_PER_DAY = 200;
+/** Free units a day for a wallet that has not played yet (RELAYER_NEWCOMER_PER_DAY): Sepolia's (16, one 10-id mint, planned for mainnet). */
+export const NEWCOMER_PER_DAY = 100;
 /** Units an encrypted input costs (RELAYER_INPUT_UNITS): Zama charges an input five times a decryption. */
 export const INPUT_UNITS = 5;
 /** Units a value made public costs the wallet that asks first (RELAYER_PUBLIC_UNITS). */

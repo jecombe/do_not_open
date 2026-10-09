@@ -19,11 +19,12 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.section.what": "Ce qu'est le coffre",
   "vaultDocs.what.p1": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.",
   "vaultDocs.what.p2": "Le coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter.",
+  "vaultDocs.what.p3": "La première fois que tu ouvres le coffre, une visite guidée te le fait parcourir : les deux côtés, ce qui reste chiffré, puis chaque onglet dans l'ordre où tu t'en servirais, de sceller un NFT à ce qui fuite. Le « ? » dans la barre du coffre la rejoue.",
 
   "vaultDocs.section.seal": "Sceller un NFT",
   "vaultDocs.seal.p1": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à ton nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.",
   "vaultDocs.seal.p2": "Le dépôt nomme son déposant, mais il peut aussi envoyer aussitôt la nouvelle boîte, dans la même transaction, à quelques adresses au hasard où chaque transfert ne déplace rien (des leurres : tu choisis combien, de 0 à 5, 3 par défaut). Tout le monde voit les transferts, personne ne voit lequel a déplacé la boîte : même le déposant n'en est plus le détenteur évident. Sans leurres, il l'est tant que la boîte ne bouge pas.",
-  "vaultDocs.seal.p3": "Pour retrouver tes boîtes, la page lit tes propres reçus et déchiffre, pour toi seul, celles qui te sont vraiment arrivées. Une signature.",
+  "vaultDocs.seal.p3": "Pour retrouver tes boîtes, la page lit tes propres reçus et déchiffre, pour toi seul, celles qui te sont vraiment arrivées. Une signature. Chaque valeur lue ainsi consomme un de tes déchiffrements : le compteur à côté de tes soldes les compte, avec un quota gratuit chaque jour (large sur le réseau de test, très probablement bien plus petit sur mainnet) puis des crédits.",
 
   "vaultDocs.section.key": "La clé de la boîte",
   "vaultDocs.key.p1": "Chaque boîte a une clé : un secret de 256 bits, stocké chiffré, que personne ne peut lire, toi compris. Le coffre ne fait jamais que la comparer. Tout ce qui sort du coffre (le NFT, une annonce, l'ETH d'une vente) se demande avec la clé, jamais avec ton adresse.",

@@ -124,13 +124,19 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint."
+     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint.\nThe first time you open the vault, a guided tour walks you through it: the two sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again."
     },
     {
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.\nThe deposit names its depositor, but it can also send the new box on at once, in the same transaction, to a few random addresses where each transfer moves nothing (decoys: you pick how many, 0 to 5, 3 by default). Anyone sees the transfers, nobody sees which moved, so even the depositor is no longer the obvious holder. Without decoys, they are until the box moves.\nTo find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature."
+     "text": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.\nThe deposit names its depositor, but it can also send the new box on at once, in the same transaction, to a few random addresses where each transfer moves nothing (decoys: you pick how many, 0 to 5, 3 by default). Anyone sees the transfers, nobody sees which moved, so even the depositor is no longer the obvious holder. Without decoys, they are until the box moves."
+    },
+    {
+     "id": "vault-seal-1",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "To find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature. Each value read this way spends one of your decryptions: the meter beside your balances counts them, with a free allowance each day (generous on the test network, most likely much smaller on mainnet) and credits after it."
     },
     {
      "id": "vault-key-0",
@@ -449,13 +455,19 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
+     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter.\nLa première fois que tu ouvres le coffre, une visite guidée te le fait parcourir : les deux côtés, ce qui reste chiffré, puis chaque onglet dans l'ordre où tu t'en servirais, de sceller un NFT à ce qui fuite. Le « ? » dans la barre du coffre la rejoue."
     },
     {
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à ton nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.\nLe dépôt nomme son déposant, mais il peut aussi envoyer aussitôt la nouvelle boîte, dans la même transaction, à quelques adresses au hasard où chaque transfert ne déplace rien (des leurres : tu choisis combien, de 0 à 5, 3 par défaut). Tout le monde voit les transferts, personne ne voit lequel a déplacé la boîte : même le déposant n'en est plus le détenteur évident. Sans leurres, il l'est tant que la boîte ne bouge pas.\nPour retrouver tes boîtes, la page lit tes propres reçus et déchiffre, pour toi seul, celles qui te sont vraiment arrivées. Une signature."
+     "text": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à ton nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.\nLe dépôt nomme son déposant, mais il peut aussi envoyer aussitôt la nouvelle boîte, dans la même transaction, à quelques adresses au hasard où chaque transfert ne déplace rien (des leurres : tu choisis combien, de 0 à 5, 3 par défaut). Tout le monde voit les transferts, personne ne voit lequel a déplacé la boîte : même le déposant n'en est plus le détenteur évident. Sans leurres, il l'est tant que la boîte ne bouge pas."
+    },
+    {
+     "id": "vault-seal-1",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "Pour retrouver tes boîtes, la page lit tes propres reçus et déchiffre, pour toi seul, celles qui te sont vraiment arrivées. Une signature. Chaque valeur lue ainsi consomme un de tes déchiffrements : le compteur à côté de tes soldes les compte, avec un quota gratuit chaque jour (large sur le réseau de test, très probablement bien plus petit sur mainnet) puis des crédits."
     },
     {
      "id": "vault-key-0",
@@ -786,13 +798,19 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear."
+     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear.\nLa primera vez que abres la bóveda, una visita guiada te la recorre: los dos lados, lo que sigue cifrado, y luego cada pestaña en el orden en que la usarías, de sellar un NFT a lo que se filtra. El «?» de la barra de la bóveda la vuelve a mostrar."
     },
     {
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.\nEl depósito nombra a su depositante, pero también puede enviar enseguida la nueva caja, en la misma transacción, a unas cuantas direcciones al azar donde cada transferencia no mueve nada (señuelos: eliges cuántos, de 0 a 5, 3 por defecto). Todo el mundo ve las transferencias, nadie ve cuál movió la caja: ni siquiera el depositante es ya su titular evidente. Sin señuelos, lo es mientras la caja no se mueva.\nPara volver a encontrar tus cajas, la página lee tus propios recibos y descifra, solo para ti, cuáles te llegaron de verdad. Una firma."
+     "text": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.\nEl depósito nombra a su depositante, pero también puede enviar enseguida la nueva caja, en la misma transacción, a unas cuantas direcciones al azar donde cada transferencia no mueve nada (señuelos: eliges cuántos, de 0 a 5, 3 por defecto). Todo el mundo ve las transferencias, nadie ve cuál movió la caja: ni siquiera el depositante es ya su titular evidente. Sin señuelos, lo es mientras la caja no se mueva."
+    },
+    {
+     "id": "vault-seal-1",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "Para volver a encontrar tus cajas, la página lee tus propios recibos y descifra, solo para ti, cuáles te llegaron de verdad. Una firma. Cada valor leído así gasta uno de tus descifrados: el contador junto a tus saldos los cuenta, con una cuota gratuita cada día (amplia en la red de prueba, muy probablemente mucho menor en mainnet) y créditos después."
     },
     {
      "id": "vault-key-0",
@@ -1117,13 +1135,19 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare."
+     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare.\nLa prima volta che apri il caveau, una visita guidata te lo fa percorrere: i due lati, ciò che resta cifrato, poi ogni scheda nell'ordine in cui la useresti, dal sigillare un NFT a cosa trapela. Il «?» nella barra del caveau la riproduce."
     },
     {
      "id": "vault-seal-0",
      "section": "vault-seal",
      "heading": null,
-     "text": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.\nIl deposito nomina chi deposita, ma può anche inviare subito la nuova scatola, nella stessa transazione, a qualche indirizzo a caso dove ogni trasferimento non sposta nulla (esche: scegli quante, da 0 a 5, 3 di default). Tutti vedono i trasferimenti, nessuno vede quale ha spostato la scatola: nemmeno chi ha depositato ne è più il detentore ovvio. Senza esche, lo è finché la scatola non si sposta.\nPer ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma."
+     "text": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.\nIl deposito nomina chi deposita, ma può anche inviare subito la nuova scatola, nella stessa transazione, a qualche indirizzo a caso dove ogni trasferimento non sposta nulla (esche: scegli quante, da 0 a 5, 3 di default). Tutti vedono i trasferimenti, nessuno vede quale ha spostato la scatola: nemmeno chi ha depositato ne è più il detentore ovvio. Senza esche, lo è finché la scatola non si sposta."
+    },
+    {
+     "id": "vault-seal-1",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "Per ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma. Ogni valore letto così consuma una delle tue decifrature: il contatore accanto ai tuoi saldi le conta, con una quota gratuita ogni giorno (ampia sulla rete di prova, molto probabilmente molto più piccola su mainnet) e poi i crediti."
     },
     {
      "id": "vault-key-0",

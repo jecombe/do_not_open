@@ -373,9 +373,10 @@ players, so three things keep that bill bounded:
 - **Units and credits.** Everything a wallet asks Zama for is counted in units: a decrypted
   value is one, an encrypted input five (`RELAYER_INPUT_UNITS`: Zama charges an input five
   times a decryption, at every plan). Each player gets free units every day
-  (`RELAYER_FREE_PER_DAY`, 25); a wallet the index has never seen act on-chain or be sent a
-  box gets fewer (`RELAYER_NEWCOMER_PER_DAY`, 16: one 10-id mint), so a farm of fresh
-  wallets is worth little. Past them, the proxy spends credits bought from
+  (`RELAYER_FREE_PER_DAY`, 25 on mainnet); a wallet the index has never seen act on-chain or
+  be sent a box gets fewer (`RELAYER_NEWCOMER_PER_DAY`, 16 on mainnet: one 10-id mint), so a
+  farm of fresh wallets is worth little. Unset, both follow the network (`FREE_UNITS` in
+  `apps/api/src/config.ts`): Sepolia's relayer costs nothing, so there it is 200 and 100. Past them, the proxy spends credits bought from
   `DecryptionCredits` in plain USDC, one credit a unit. Since play is in cUSDC, the bureau
   de change can keep a share of a cUSDC purchase plain (5 to 20%) for those credits.
 - **An input is charged to the wallet it is for**, which proves it is itself with the
@@ -407,7 +408,9 @@ up). It is set at deploy from `CREDIT_PRICE_USDC`, or `ZAMA_DECRYPT_USD` x `CRED
 
 Before mainnet: once the Zama plan is known, `dno:credit-price --zama <price> --margin 2`.
 On pay-as-you-go, set `RELAYER_NEWCOMER_PER_DAY=0`, lower `RELAYER_FREE_PER_DAY` and raise
-the credit price to at least $0.10 x margin.
+the credit price to at least $0.10 x margin. The mainnet network must also get its row in
+`FREE_UNITS` (`apps/api/src/config.ts`), and the manual its figures (`docs/fees.tsx` shows
+Sepolia's): see O48 in `docs/AUDIT_CHECKLIST.md`.
 
 ### Not verified
 

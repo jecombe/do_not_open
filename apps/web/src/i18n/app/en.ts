@@ -138,6 +138,7 @@ export const en = {
   "meter.what": "Reading anything sealed for you (a shake, your boxes after a mint, a sealed balance) costs one each; encrypting an input for a transaction costs more. Without enough, those actions are refused before you pay any gas.",
   "meter.reset": "The free ones come back at {time} (midnight UTC); credits never expire.",
   "meter.buy": "Click to buy credits at the bureau de change.",
+  "meter.testnet": "Test network: the free allowance is generous here. On mainnet it will most likely be much lower, as every decryption is paid to Zama.",
   "pay.short": "Not enough {symbol} for {need}.",
 
   // --- the leaderboard

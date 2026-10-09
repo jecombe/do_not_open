@@ -18,11 +18,12 @@ export const vaultDocsEn = {
   "vaultDocs.section.what": "What the vault is",
   "vaultDocs.what.p1": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar) go in a pocket instead: a balance locked by a key, not by an address.",
   "vaultDocs.what.p2": "The vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint.",
+  "vaultDocs.what.p3": "The first time you open the vault, a guided tour walks you through it: the two sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again.",
 
   "vaultDocs.section.seal": "Sealing an NFT",
   "vaultDocs.seal.p1": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.",
   "vaultDocs.seal.p2": "The deposit names its depositor, but it can also send the new box on at once, in the same transaction, to a few random addresses where each transfer moves nothing (decoys: you pick how many, 0 to 5, 3 by default). Anyone sees the transfers, nobody sees which moved, so even the depositor is no longer the obvious holder. Without decoys, they are until the box moves.",
-  "vaultDocs.seal.p3": "To find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature.",
+  "vaultDocs.seal.p3": "To find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature. Each value read this way spends one of your decryptions: the meter beside your balances counts them, with a free allowance each day (generous on the test network, most likely much smaller on mainnet) and credits after it.",
 
   "vaultDocs.section.key": "The box's key",
   "vaultDocs.key.p1": "Each box has a key: a 256-bit secret, stored encrypted, that nobody can read, you included. The vault only ever compares it. Anything that leaves the vault (the NFT, a listing, the ETH of a sale) is asked with the key, never with your address.",

@@ -138,7 +138,7 @@ export function PocketTab({
 
   return (
     <PocketShell>
-      <div className="vault-pocket-card">
+      <div className="vault-pocket-card" data-tour="pocket">
         <PouchMark />
         <div className="vault-pocket-id">
           <p className="vault-pocket-label">{t("vault.pocket.code")}</p>

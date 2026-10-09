@@ -135,6 +135,7 @@ export const it: Record<AppKey, string> = {
   "meter.what": "Leggere per te un valore sigillato (una scossa, le tue scatole dopo un mint, un saldo cifrato) ne costa una; cifrare un valore per una transazione costa di più. Se non bastano, quelle azioni vengono rifiutate prima che tu paghi gas.",
   "meter.reset": "Le gratuite tornano alle {time} (mezzanotte UTC); i crediti non scadono.",
   "meter.buy": "Clicca per comprare crediti al cambiavalute.",
+  "meter.testnet": "Rete di prova: qui la quota gratuita è ampia. Su mainnet sarà molto probabilmente molto più bassa, perché ogni decifratura si paga a Zama.",
   "pay.short": "Non hai abbastanza {symbol} per {need}.",
 
   "lb.title": "Classifica",

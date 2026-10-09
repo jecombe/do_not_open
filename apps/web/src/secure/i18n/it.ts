@@ -12,6 +12,7 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.nav.apply": "Imbarcati",
   "secure.nav.open": "Apri il caveau",
   "secure.nav.home": "Home",
+  "secure.nav.tour": "Visita guidata",
   "secure.nav.boarding": "Carta d'imbarco",
   "secure.nav.gifts": "Regali",
   "secure.nav.list": "Lista mainnet",

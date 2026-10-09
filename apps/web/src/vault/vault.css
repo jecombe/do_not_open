@@ -2011,3 +2011,202 @@ a.vault-me:hover {
     border-radius: 20px 20px 0 0;
   }
 }
+
+/* The decryptions left, with the balances: amber when few are left, red once none are, and a
+   hover card saying what they are for. */
+.vault-credit-wrap {
+  position: relative;
+  display: flex;
+}
+
+.vault-balance.vault-credit {
+  color: inherit;
+  text-decoration: none;
+  box-shadow: -1px 0 0 var(--line);
+  transition: background-color 0.15s;
+}
+
+.vault-balances-stack .vault-balance.vault-credit {
+  box-shadow: none;
+}
+
+.vault-credit:hover,
+.vault-credit:focus-visible {
+  background: var(--teal-dim);
+}
+
+.vault-credit .vault-balance-value small {
+  color: var(--teal);
+  font-size: 12px;
+}
+
+.vault-credit.is-low .vault-balance-value {
+  color: #f0b44c;
+}
+
+.vault-credit.is-empty .vault-balance-value {
+  color: #ff6b6b;
+}
+
+.vault-credit-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  width: 290px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--muted);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.45);
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.vault-credit-wrap:hover .vault-credit-tip,
+.vault-credit-wrap:focus-within .vault-credit-tip {
+  display: flex;
+}
+
+.vault-credit-tip strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.vault-credit-tip strong.is-low {
+  color: #f0b44c;
+}
+
+.vault-credit-tip strong.is-empty {
+  color: #ff6b6b;
+}
+
+.vault-credit-testnet {
+  padding: 6px 8px;
+  border: 1px dashed #f0b44c;
+  border-radius: 6px;
+  color: #f0b44c;
+}
+
+.vault-credit-go {
+  color: var(--teal);
+  font-weight: 600;
+}
+
+/* --- The walkthrough: the game's spotlight, in the vault's colours (a teal lens, a dark tag) --- */
+.tour-vault .tour-spot {
+  border-radius: 12px;
+  box-shadow: 0 0 0 200vmax rgb(3 5 8 / 0.78);
+  outline-color: var(--teal);
+  animation:
+    vault-tour-zoom 0.55s cubic-bezier(0.2, 0.9, 0.25, 1.15) both,
+    vault-tour-pulse 1.8s ease-in-out 0.6s infinite;
+}
+
+@keyframes vault-tour-zoom {
+  from {
+    transform: scale(3);
+    opacity: 0;
+    box-shadow: 0 0 0 200vmax rgb(3 5 8 / 0.2);
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 200vmax rgb(3 5 8 / 0.78);
+  }
+}
+
+@keyframes vault-tour-pulse {
+  0%,
+  100% {
+    outline-color: var(--teal);
+    outline-offset: 2px;
+  }
+  50% {
+    outline-color: rgb(91 227 194 / 0.3);
+    outline-offset: 7px;
+  }
+}
+
+.tour-vault .tour-card {
+  width: min(340px, calc(100vw - 24px));
+  padding: 14px 16px;
+  border: 1px solid var(--line-2);
+  border-top: 2px solid var(--teal);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 0.6);
+  transform: none;
+  animation-name: vault-tour-card;
+}
+
+@keyframes vault-tour-card {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.tour-vault .tour-count {
+  color: var(--teal);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.12em;
+}
+
+.tour-vault .tour-title {
+  margin: 4px 0 6px;
+  font-family: var(--cond);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tour-vault .tour-body {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.tour-vault .tour-actions button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.tour-vault .tour-actions .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tour-vault .tour-actions .link:hover {
+  color: var(--text);
+}
+
+.tour-vault .plain-button {
+  padding: 7px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.tour-vault .tour-next {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #04110d;
+  font-weight: 600;
+}
+
+.tour-vault.is-still .tour-spot,
+.tour-vault.is-still .tour-card {
+  animation: none;
+}
