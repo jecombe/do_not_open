@@ -153,7 +153,10 @@ key is ever committed.
 <summary><b>The site: hosts, prerendering, sharing tags, analytics</b></summary>
 
 The site opens on the home page at `/` (source `apps/web/src/secure`): the sealed vault first, in a
-dark, security-minded theme, and the game as a small corner at the end. Its bar's "Docs" leads
+dark, security-minded theme, then a "Built with" row of the protocols it runs on (Zama, Ethereum,
+USDC, Seaport, Uniswap, delegate.xyz, Arweave: their own logos in `apps/web/src/brand/protocols`, each
+linked, with what the site uses it for and a line saying none of them endorses it), and the game as
+a small corner at the end. Its bar's "Docs" leads
 straight to the vault's docs (`/docs` on `vault.`, source `apps/web/src/vault/docs`), which share
 that theme with the project's docs (`/docs` on the bare domain, source `apps/web/src/project`): both
 are laid out by `apps/web/src/docs/DocShell.tsx` and styled by `apps/web/src/secure/docs.css`. The

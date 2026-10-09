@@ -5,6 +5,7 @@ import { useLive } from "./chain/useLive";
 import { useSealed, type SealedToken } from "./chain/shielded";
 import { useT } from "./i18n/app";
 import { Delta, Figure, Flash, useLiveValue } from "./LiveValue";
+import { TokenIcon, tokenSvg } from "./brand/logos";
 
 
 interface Plain {
@@ -80,6 +81,7 @@ function Chip({ symbol, value, decimals }: { symbol: string; value: bigint | nul
     <span className="balance">
       <Flash change={change} />
       <span className="balance-symbol">
+        <TokenIcon symbol={symbol} size={14} />
         {symbol}
         <Delta change={change} format={format} />
       </span>
@@ -107,7 +109,7 @@ function SealedChip({ token, symbol, decimals, watch }: { token: SealedToken; sy
     <button type="button" className={`balance sealed${stale ? " is-stale" : ""}${known ? "" : " is-locked"}`} onClick={() => void own.run("reveal", reveal)} disabled={busy} title={title} aria-label={`${symbol}: ${known ? roundAmount(known.value, decimals) : t("nav.encrypted")}. ${title}`}>
       <Flash change={change} />
       <span className="balance-symbol">
-        <Lock open={!!known} />
+        {tokenSvg(symbol) ? <TokenIcon symbol={symbol} size={14} /> : <Lock open={!!known} />}
         {symbol}
         <Delta change={change} format={format} />
       </span>

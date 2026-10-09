@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { spec } from "@dno/game-spec";
 import { DocShell, Prose } from "../docs/DocShell";
 import { useLocale } from "../i18n/locale";
+import { BrandIcon } from "../brand/logos";
 import { SOURCE } from "../links";
 import { appPath, docsPath, homePath, vaultDocsPath, vaultPath } from "../site";
 import { useT } from "./i18n";
@@ -65,7 +66,10 @@ export function ProjectDocs() {
       <ul className="refs">
         {refs.map((r) => (
           <li key={r.key}>
-            <a href={r.href}>{t(`project.more.${r.key}`)}</a>
+            <a href={r.href} className={r.href.startsWith(SOURCE) ? "with-logo" : undefined}>
+              {r.href.startsWith(SOURCE) && <BrandIcon brand="gitlab" size={16} />}
+              {t(`project.more.${r.key}`)}
+            </a>
             <span>{t(`project.more.${r.key}.v`)}</span>
           </li>
         ))}

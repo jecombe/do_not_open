@@ -2,7 +2,8 @@ import { useEffect, type ReactNode } from "react";
 import { DocShell, Prose } from "../../docs/DocShell";
 import { FlowFigure } from "../../docs/figures";
 import { useLocale } from "../../i18n/locale";
-import { REPO, SOURCE_VAULT } from "../../links";
+import { BrandIcon } from "../../brand/logos";
+import { REPO, SOURCE, SOURCE_VAULT } from "../../links";
 import { homePath, projectDocsPath, vaultPath } from "../../site";
 import { useT } from "./i18n";
 
@@ -120,7 +121,10 @@ export function VaultDocs() {
       <ul className="refs">
         {refs.map((r) => (
           <li key={r.key}>
-            <a href={r.href}>{t(`vaultDocs.more.${r.key}`)}</a>
+            <a href={r.href} className={r.href.startsWith(SOURCE) ? "with-logo" : undefined}>
+              {r.href.startsWith(SOURCE) && <BrandIcon brand="gitlab" size={16} />}
+              {t(`vaultDocs.more.${r.key}`)}
+            </a>
             <span>{t(`vaultDocs.more.${r.key}.v`)}</span>
           </li>
         ))}

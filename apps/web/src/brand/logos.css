@@ -1,0 +1,47 @@
+/* Logos the site's pages share: services as icon links, tokens beside their symbols. */
+.brand-icon {
+  display: block;
+  flex: none;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: inherit;
+  opacity: 0.85;
+  transition:
+    opacity 0.15s,
+    background-color 0.15s,
+    transform 0.15s;
+}
+
+.brand-link:hover,
+.brand-link:focus-visible {
+  opacity: 1;
+  background: rgb(255 255 255 / 0.07);
+  transform: translateY(-1px);
+}
+
+.brand-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.token-icon {
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  vertical-align: -0.2em;
+}
+
+/* A logo before a link's text: a call to action keeps its words. */
+.with-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

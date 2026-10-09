@@ -1301,3 +1301,11 @@ button.sec-btn {
     transition: none;
   }
 }
+
+/* The protocols the site is built on: a quiet row of their logos, then whose they are. */
+.sec-built-note {
+  max-width: 70ch;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}

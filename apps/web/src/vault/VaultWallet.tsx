@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { shortAddress, type Address, type VaultAdapter, type VaultLinks } from "@dno/chain-adapter";
 import { Lock, roundAmount } from "../Balances";
+import { TokenIcon, tokenSvg } from "../brand/logos";
 import { useAction, useChain, useLedger } from "../chain/ChainProvider";
 import { useSealed } from "../chain/shielded";
 import { useLive } from "../chain/useLive";
@@ -63,6 +64,7 @@ function Chip({ symbol, value, decimals }: { symbol: string; value: bigint | nul
     <span className="vault-balance">
       <Flash change={change} />
       <span className="vault-balance-symbol">
+        <TokenIcon symbol={symbol} size={14} />
         {symbol}
         <Delta change={change} format={format} />
       </span>
@@ -97,7 +99,7 @@ function SealedChip({ symbol, decimals, watch }: { symbol: string; decimals: num
     >
       <Flash change={change} />
       <span className="vault-balance-symbol">
-        <Lock open={!!known} />
+        {tokenSvg(symbol) ? <TokenIcon symbol={symbol} size={14} /> : <Lock open={!!known} />}
         {symbol}
         <Delta change={change} format={format} />
       </span>
