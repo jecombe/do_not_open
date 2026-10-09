@@ -1,6 +1,6 @@
 /**
- * Renders the site's sharing and install images into public/: the social card (og.png,
- * 1200x630, for Open Graph and Twitter), the app icons drawn from favicon.svg
+ * Renders the site's sharing and install images into public/: the social cards (og.png, the
+ * game's, and og-vault.png, the vault's and the project's, 1200x630, for Open Graph and Twitter), the app icons drawn from favicon.svg
  * (apple-touch-icon.png, icon-192.png, icon-512.png, icon-512-maskable.png) and the
  * site.webmanifest that lists them.
  *
@@ -87,6 +87,61 @@ body{position:relative;font-family:"Barlow Condensed",sans-serif;color:${PAPER};
 <div class="cats">${strip}<div class="cats-note">?</div></div>
 <div class="foot"><span>Confidential NFTs on <b>Zama fhEVM</b></span><span>do-not-open.app</span></div>
 <div class="tape bottom"></div>
+</body></html>`;
+}
+
+/**
+ * The vault's card (og-vault.png), in the dark theme the home page and the vault share: the same
+ * sealed box behind an encryption shield, and a ledger line as the public reads it, holder hidden.
+ */
+function vaultCardHtml(box: Buffer): string {
+  const BG = "#07090C";
+  const TEAL = "#5BE3C2";
+  const TEXT = "#E6EDF3";
+  const MUTED = "#8B97A6";
+  const LINE = "#1C2530";
+  const MONO = `ui-monospace,"SF Mono",Menlo,Consolas,monospace`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+${fontFaces()}
+*{box-sizing:border-box;margin:0}
+html,body{width:1200px;height:630px;overflow:hidden}
+body{position:relative;font-family:"Barlow Condensed",sans-serif;color:${TEXT};-webkit-font-smoothing:antialiased;
+  background:radial-gradient(ellipse 45% 60% at 78% 50%,rgb(91 227 194 / .14),transparent 70%),
+    linear-gradient(${LINE} 1px,transparent 1px) 0 0/48px 48px,linear-gradient(90deg,${LINE} 1px,transparent 1px) 0 0/48px 48px,${BG}}
+.box{position:absolute;right:-10px;top:30px;width:570px;height:570px;
+  -webkit-mask-image:radial-gradient(closest-side at 50% 50%,#000 60%,transparent 100%)}
+.shield{position:absolute;right:0;top:0;width:560px;height:630px}
+.text{position:absolute;left:64px;top:58px;width:640px}
+.kicker{font-family:${MONO};font-size:20px;letter-spacing:.2em;color:${TEAL}}
+.stamp{display:inline-block;margin-top:26px;padding:.16em .42em .06em;border:.1em solid ${RED};outline:.035em solid ${RED};outline-offset:-.22em;
+  background:${PAPER};color:${RED};font-family:"Stardos Stencil",sans-serif;font-weight:700;font-size:44px;line-height:1;white-space:nowrap;
+  letter-spacing:.03em;text-transform:uppercase;transform:rotate(-3deg);transform-origin:left center;box-shadow:6px 6px 0 #000}
+h1{margin-top:30px;font-weight:700;font-size:68px;line-height:1.02}
+h1 em{display:block;font-style:normal;color:${TEAL};text-shadow:0 0 18px rgb(91 227 194 / .45)}
+.ledger{margin-top:34px;width:470px;padding:16px 20px;border:1px solid #2A3644;border-radius:10px;background:#0D1117;
+  font-family:${MONO};font-size:19px;line-height:1.75;display:grid;grid-template-columns:96px 1fr;column-gap:12px}
+.ledger dt{color:${MUTED}}
+.ledger .hidden{display:inline-block;width:170px;height:.9em;vertical-align:-.08em;border-radius:3px;
+  background:repeating-linear-gradient(90deg,rgb(91 227 194 / .55) 0 3px,rgb(91 227 194 / .2) 3px 6px)}
+.ledger .tag{margin-left:12px;color:${TEAL}}
+.foot{position:absolute;left:64px;right:64px;bottom:34px;display:flex;justify-content:space-between;align-items:baseline;
+  font-weight:500;font-size:25px;letter-spacing:.06em;text-transform:uppercase;color:${MUTED}}
+.foot b{font-weight:700;color:${TEAL};text-transform:none;letter-spacing:.03em}
+</style></head><body>
+<img class="box" src="${png(box)}">
+<svg class="shield" viewBox="0 0 560 630" fill="none">
+  <circle cx="275" cy="315" r="228" stroke="${TEAL}" stroke-width="2" stroke-dasharray="8 9" opacity=".55"/>
+  <circle cx="275" cy="315" r="256" stroke="${TEAL}" stroke-width="1.5" stroke-dasharray="2 12" opacity=".4"/>
+  <g stroke="#FF4D3D" stroke-width="2.5" opacity=".85"><path d="M520 70 L438 154 L500 132"/><path d="M40 560 L118 476 L60 500"/></g>
+  <circle cx="438" cy="154" r="4" fill="#FF4D3D"/><circle cx="118" cy="476" r="4" fill="#FF4D3D"/>
+</svg>
+<div class="text">
+  <div class="kicker">● THE SEALED VAULT</div>
+  <div class="stamp">Do not open</div>
+  <h1>The world sees the art.<em>Not the owner.</em></h1>
+  <dl class="ledger"><dt>box</dt><dd>#0007</dd><dt>holds</dt><dd>any NFT you seal</dd><dt>holder</dt><dd><span class="hidden"></span><span class="tag">encrypted</span></dd></dl>
+</div>
+<div class="foot"><span>Confidential NFTs on <b>Zama fhEVM</b></span><span>vault.do-not-open.app</span></div>
 </body></html>`;
 }
 
@@ -229,25 +284,32 @@ async function main() {
       cats.forEach((cat, i) => writeFileSync(resolve(keep, `cat-${CATS[i]}.png`), cat));
     }
 
-    // The card: laid out in HTML, screenshotted, then cut down to an indexed PNG.
-    const card = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-    await card.setContent(cardHtml(box, cats), { waitUntil: "load" });
-    await card.evaluate("document.fonts.ready");
-    const shot = await card.screenshot({ type: "png" });
-    // Decode the screenshot in the page, where a canvas is at hand.
-    const rgba = (await card.evaluate(async (src: string) => {
-      const img = new Image();
-      img.src = src;
-      await img.decode();
-      const c = document.createElement("canvas");
-      c.width = img.width;
-      c.height = img.height;
-      const g = c.getContext("2d")!;
-      g.drawImage(img, 0, 0);
-      return Array.from(g.getImageData(0, 0, c.width, c.height).data);
-    }, png(shot))) as number[];
-    writeFileSync(resolve(pub, "og.png"), quantize(Uint8Array.from(rgba), 1200, 630));
-    console.log("  og.png");
+    // The cards: laid out in HTML, screenshotted, then cut down to an indexed PNG.
+    const cards: [string, string][] = [
+      ["og.png", cardHtml(box, cats)],
+      ["og-vault.png", vaultCardHtml(box)],
+    ];
+    for (const [name, html] of cards) {
+      const card = await browser.newPage({ viewport: { width: 1200, height: 630 } });
+      await card.setContent(html, { waitUntil: "load" });
+      await card.evaluate("document.fonts.ready");
+      const shot = await card.screenshot({ type: "png" });
+      // Decode the screenshot in the page, where a canvas is at hand.
+      const rgba = (await card.evaluate(async (src: string) => {
+        const img = new Image();
+        img.src = src;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+        const g = c.getContext("2d")!;
+        g.drawImage(img, 0, 0);
+        return Array.from(g.getImageData(0, 0, c.width, c.height).data);
+      }, png(shot))) as number[];
+      writeFileSync(resolve(pub, name), quantize(Uint8Array.from(rgba), 1200, 630));
+      await card.close();
+      console.log(`  ${name}`);
+    }
 
     // The icons: the favicon's box on the dock colour. The maskable one keeps its art inside
     // the central 80% circle that every launcher mask leaves visible.

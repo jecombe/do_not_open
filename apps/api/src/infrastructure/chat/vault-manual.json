@@ -1,0 +1,961 @@
+{
+ "source": "apps/web/src/vault/docs and apps/web/src/project, rendered by apps/web/scripts/export-manual.mts",
+ "locales": {
+  "en": {
+   "sections": [
+    {
+     "id": "vault-what",
+     "title": "What the vault is",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seal",
+     "title": "Sealing an NFT",
+     "part": "manual"
+    },
+    {
+     "id": "vault-key",
+     "title": "The box's key",
+     "part": "manual"
+    },
+    {
+     "id": "vault-requests",
+     "title": "Asking for something",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seaport",
+     "title": "Selling on Seaport",
+     "part": "manual"
+    },
+    {
+     "id": "vault-private",
+     "title": "Private sales",
+     "part": "manual"
+    },
+    {
+     "id": "vault-give",
+     "title": "Giving a box",
+     "part": "manual"
+    },
+    {
+     "id": "vault-relayer",
+     "title": "The relayer",
+     "part": "manual"
+    },
+    {
+     "id": "vault-leaks",
+     "title": "What is public, what is not",
+     "part": "manual"
+    },
+    {
+     "id": "vault-testnet",
+     "title": "On the test network",
+     "part": "manual"
+    },
+    {
+     "id": "vault-more",
+     "title": "Further reading",
+     "part": "manual"
+    },
+    {
+     "id": "project-what",
+     "title": "What DO NOT OPEN is",
+     "part": "manual"
+    },
+    {
+     "id": "project-fhe",
+     "title": "How a box stays sealed",
+     "part": "manual"
+    },
+    {
+     "id": "project-vault",
+     "title": "The sealed vault",
+     "part": "manual"
+    },
+    {
+     "id": "project-game",
+     "title": "The game",
+     "part": "manual"
+    },
+    {
+     "id": "project-leaks",
+     "title": "What stays secret, what does not",
+     "part": "manual"
+    },
+    {
+     "id": "project-trust",
+     "title": "Who you have to trust",
+     "part": "manual"
+    },
+    {
+     "id": "project-status",
+     "title": "Where it stands",
+     "part": "manual"
+    },
+    {
+     "id": "project-more",
+     "title": "Further reading",
+     "part": "manual"
+    }
+   ],
+   "passages": [
+    {
+     "id": "vault-what-0",
+     "section": "vault-what",
+     "heading": null,
+     "text": "A contract that holds NFTs. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport, or sells the box privately.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint."
+    },
+    {
+     "id": "vault-seal-0",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.\nUntil the box moves, its depositor is its obvious holder. The doubt comes with a transfer: as soon as boxes change hands, nobody can tell who holds which.\nTo find your boxes again, the page reads your own receipts and decrypts, for you alone, which ones really reached you. One signature."
+    },
+    {
+     "id": "vault-key-0",
+     "section": "vault-key",
+     "heading": null,
+     "text": "Each box has a key: a 256-bit secret, stored encrypted, that nobody can read, you included. The vault only ever compares it. Anything that leaves the vault (the NFT, a listing, the ETH of a sale) is asked with the key, never with your address.\nYou never type the key. Your wallet signs one fixed message, free, and the page derives each box's key from that signature: the same wallet makes the same keys on any device. Sign that message only on DO NOT OPEN: whoever gets the signature can take your NFTs out.\nA key is never sent as is: it is mixed with the exact terms of the request (the box, the action, the address, the price, the end date, and a counter). Change one term, or send the same request again later, and the key no longer matches: the request is refused."
+    },
+    {
+     "id": "vault-key-1",
+     "section": "vault-key",
+     "heading": null,
+     "text": "A box that changes hands gets a random key, so its previous holder can do nothing more with it. Its new holder makes the key theirs with one transaction (\"Make the key mine\"). Anyone may try, but it only takes effect for the holder, and from the outside both look the same."
+    },
+    {
+     "id": "vault-requests-0",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Taking an NFT out, listing it, taking a listing down and collecting a sale's ETH all go the same way, in two steps. A request on-chain: the vault checks the key under encryption. Then a proof from Zama's key management service that the key matched, which anyone can bring back.\nThe request settles one of three ways: done; refused, when the key did not match (nothing happens, nothing reverts, so a stranger learns nothing); or missed, when the box changed in between (sold on Seaport meanwhile, say).\nWhile a request waits for its proof the box is busy: it cannot move or take another request. That usually takes a few seconds.\nWhat the parcels are"
+    },
+    {
+     "id": "vault-requests-1",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "At the sealed vault. The relayer carries your request, the key is checked blind, and the NFT goes where you said. Your address appears nowhere. Your page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches. Handed to the relayer The relayer sends the request Compared blind Anyone may ask for that bit Yes or no, signed The relayer sends the proof The NFT is out Play Next step Ciphertext Transaction Value with proof Clear value\nYour page binds the key It encrypts the box's key mixed with a fingerprint of this exact request: the box, the action, where the NFT goes, and a counter. Changed or sent again, it no longer matches.\nHanded to the relayer\nThe relayer sends the request\nCompared blind\nAnyone may ask for that bit\nYes or no, signed"
+    },
+    {
+     "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "The relayer sends the proof\nThe NFT is out\nCiphertext\nTransaction\nValue with proof\nClear value"
+    },
+    {
+     "id": "vault-seaport-0",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "A listing is a real Seaport 1.5 order, OpenSea's protocol, whose seller is the vault itself: your address appears nowhere. The vault validates the order on-chain, so it signs nothing, and only the orders it validated can sell its NFTs.\nAny Seaport marketplace can fill it. The buyer pays in ETH and gets the NFT straight away. Buyers see the NFT, the price and the end date, like any listing.\nThe ETH waits in the box for whoever holds the key, minus the vault's fee (2.5%, never more than 10%). You collect it to any address. A listing lasts up to 180 days; one that ran out without a buyer goes back to sealed."
+    },
+    {
+     "id": "vault-private-0",
+     "section": "vault-private",
+     "heading": null,
+     "text": "Offer a box to one buyer, for a price in cUSDC (a confidential dollar) that only the two of you can read. The buyer reads it in the page, then pays and takes the box in one transaction.\nEverything settles under encryption: if the price arrived and the seller still held the box, the box moves with a key that is the buyer's, and the seller is paid; otherwise nothing moves and the buyer gets their cUSDC back. To everyone else, a sale that went through and one that did not look the same.\nAnyone may offer any box, so an offer proves nothing about who holds it. The seller can cancel an open offer; only the named buyer can accept it, once."
+    },
+    {
+     "id": "vault-give-0",
+     "section": "vault-give",
+     "heading": null,
+     "text": "Send a box to any address. It only moves if you hold it, and it arrives without a key: the receiver finds it in their receipts and makes the key theirs. Until then nobody can take anything out of it."
+    },
+    {
+     "id": "vault-relayer-0",
+     "section": "vault-relayer",
+     "heading": null,
+     "text": "A request sent from your wallet shows your address. So the site's API can send your requests and their proofs from its own wallet, and pay the gas: then your address appears in no transaction.\nIt learns nothing the chain does not show. The key reaches it encrypted for the vault and bound to the request's terms: it can neither read it, nor change a term, nor reuse it. It sees, like any web server, the IP a request comes from.\nIt can refuse, not cheat. It has limits a day and a minute; if it is down or says no, the page sends the request from your wallet, and tells you your address then shows."
+    },
+    {
+     "id": "vault-leaks-0",
+     "section": "vault-leaks",
+     "heading": "Public",
+     "text": "Who sealed which NFT (the deposit is an NFT transfer)\nThe NFT inside each box, its state, its listing\nSeaport listings and purchases, with the vault as the seller\nThe address an NFT or a sale's ETH goes out to, and the amount\nThat a request was made, on which box, for what, and whether it was done, refused or missed\nThe two addresses of a transfer or a private sale"
+    },
+    {
+     "id": "vault-leaks-1",
+     "section": "vault-leaks",
+     "heading": "Never public",
+     "text": "Who holds a box\nThe box's key\nA private sale's price, and whether it went through\nWhether a transfer moved anything\nWho asked for a listing, a withdrawal or a payout, when the relayer sends it\nIn practice: take things out to an address with no history, let the relayer send your requests, and know that timing can still give hints (a \"Make the key mine\" right after a transfer to the same address, say)."
+    },
+    {
+     "id": "vault-testnet-0",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0x8B07…fb18\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC"
+    },
+    {
+     "id": "vault-more-0",
+     "section": "vault-more",
+     "heading": null,
+     "text": "About DO NOT OPEN The idea, the encryption, who you trust.\nThe design notes Every flow, every check, every leak, for developers.\nThe contract SealedVault.sol, open source."
+    },
+    {
+     "id": "project-what-0",
+     "section": "project-what",
+     "heading": null,
+     "text": "On a public blockchain everything is in the open: every wallet's NFTs, every sale, every balance, forever. Anyone can see what you hold, follow it, price it, and come after it.\nDO NOT OPEN is a confidentiality layer for that. Things go into boxes whose holder, and sometimes whose contents, are encrypted on-chain. The chain still enforces every rule: a box only moves if its holder moved it, a sale only settles if it was paid. It just never says who.\nTwo products share that idea and the same contracts' base: the sealed vault, a serious tool for any NFT, and the game, 10,000 boxes with a cat in each, where the same encryption is put to work for fun."
+    },
+    {
+     "id": "project-fhe-0",
+     "section": "project-fhe",
+     "heading": null,
+     "text": "The encryption is Zama's FHE (fully homomorphic encryption). A smart contract can add, compare and choose between encrypted values without ever reading them: \"is this caller the holder?\" gets an encrypted yes or no, and the box moves or not according to it.\nNobody holds the key that would read everything. Zama's key management service splits it between several independent parties, who decrypt a value only when the contract allows it: to its holder alone, privately, or to everyone when the rules say it becomes public (a cat once its box is opened, a request that was accepted).\nEvery reveal takes two steps: a request on-chain, then a proof signed by those parties that anyone can bring back. That is why some actions wait a few seconds for their proof."
+    },
+    {
+     "id": "project-vault-0",
+     "section": "project-vault",
+     "heading": null,
+     "text": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.\nThe box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller, or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere.\nRead the vault's documentation Open the vault"
+    },
+    {
+     "id": "project-game-0",
+     "section": "project-game",
+     "heading": null,
+     "text": "10,000 sealed boxes, one cat in each, picked at random and encrypted the moment the box is made. Shake a box to get a private clue, open it to show the cat to everyone, duel, feed it croquettes, trade it at the flea market.\nWho holds which box, how many were sold and what is inside all stay encrypted, with the same contracts' base as the vault. The game is where the technology is put to work at scale, and where the community lives until mainnet.\nRead the game's manual Play"
+    },
+    {
+     "id": "project-leaks-0",
+     "section": "project-leaks",
+     "heading": null,
+     "text": "Encryption hides values, not the fact that something happened. A transaction is public: who sent it, to which contract, when. What DO NOT OPEN encrypts is what the transaction does: who ends up holding a box, a price agreed in private, whether a transfer moved anything.\nSome things are public on purpose. An NFT entering the vault is a plain NFT transfer, so the depositor shows. A Seaport listing shows its NFT and its price, with the vault as the seller. The address an NFT or a sale's ETH goes out to shows too: choose one with no history.\nEach product lists exactly what leaks, line by line, in its own documentation."
+    },
+    {
+     "id": "project-trust-0",
+     "section": "project-trust",
+     "heading": null,
+     "text": "The contracts: their code is open source, and they decide everything. Nobody, us included, can move a box, read a holder or change a past sale.\nZama's key management service, for what is decrypted and to whom: its parties would have to collude to read what the contracts did not allow. And for the vault's relayer, nothing: it cannot read a request or change it, only refuse to send it, and then your wallet sends it instead.\nThe contracts' owner can allow a collection in the vault and set its fee, within a cap written in the contract (10%). It cannot touch a box. Before mainnet, that ownership moves to a multisig."
+    },
+    {
+     "id": "project-status-0",
+     "section": "project-status",
+     "heading": null,
+     "text": "Everything runs on Sepolia, Ethereum's test network: test NFTs, test ETH, nothing with money in it. The game is live there with its community; the vault since October 2026.\nMainnet comes once the contracts have been reviewed. The game's whitelist and its gifts carry over; the vault opens to real collections."
+    },
+    {
+     "id": "project-more-0",
+     "section": "project-more",
+     "heading": null,
+     "text": "The vault's documentation Depositing, the key, Seaport, private sales, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code Contracts, app and API, all open source.\nZama's FHEVM The encryption the contracts run on."
+    }
+   ]
+  },
+  "fr": {
+   "sections": [
+    {
+     "id": "vault-what",
+     "title": "Ce qu'est le coffre",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seal",
+     "title": "Sceller un NFT",
+     "part": "manual"
+    },
+    {
+     "id": "vault-key",
+     "title": "La clé de la boîte",
+     "part": "manual"
+    },
+    {
+     "id": "vault-requests",
+     "title": "Demander quelque chose",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seaport",
+     "title": "Vendre sur Seaport",
+     "part": "manual"
+    },
+    {
+     "id": "vault-private",
+     "title": "Les ventes privées",
+     "part": "manual"
+    },
+    {
+     "id": "vault-give",
+     "title": "Donner une boîte",
+     "part": "manual"
+    },
+    {
+     "id": "vault-relayer",
+     "title": "Le relayer",
+     "part": "manual"
+    },
+    {
+     "id": "vault-leaks",
+     "title": "Ce qui est public, ce qui ne l'est pas",
+     "part": "manual"
+    },
+    {
+     "id": "vault-testnet",
+     "title": "Sur le réseau de test",
+     "part": "manual"
+    },
+    {
+     "id": "vault-more",
+     "title": "Pour aller plus loin",
+     "part": "manual"
+    },
+    {
+     "id": "project-what",
+     "title": "Ce qu'est DO NOT OPEN",
+     "part": "manual"
+    },
+    {
+     "id": "project-fhe",
+     "title": "Comment une boîte reste scellée",
+     "part": "manual"
+    },
+    {
+     "id": "project-vault",
+     "title": "Le coffre scellé",
+     "part": "manual"
+    },
+    {
+     "id": "project-game",
+     "title": "Le jeu",
+     "part": "manual"
+    },
+    {
+     "id": "project-leaks",
+     "title": "Ce qui reste secret, ce qui ne l'est pas",
+     "part": "manual"
+    },
+    {
+     "id": "project-trust",
+     "title": "À qui vous faites confiance",
+     "part": "manual"
+    },
+    {
+     "id": "project-status",
+     "title": "Où on en est",
+     "part": "manual"
+    },
+    {
+     "id": "project-more",
+     "title": "Pour aller plus loin",
+     "part": "manual"
+    }
+   ],
+   "passages": [
+    {
+     "id": "vault-what-0",
+     "section": "vault-what",
+     "heading": null,
+     "text": "Un contrat qui garde des NFT. Chaque NFT qui entre reçoit une boîte : un jeton à part dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport ou vende la boîte en privé.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
+    },
+    {
+     "id": "vault-seal-0",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à votre nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.\nTant que la boîte ne bouge pas, son déposant en est le détenteur évident. Le doute vient avec un transfert : dès que des boîtes changent de mains, personne ne peut dire qui détient laquelle.\nPour retrouver vos boîtes, la page lit vos propres reçus et déchiffre, pour vous seul, celles qui vous sont vraiment arrivées. Une signature."
+    },
+    {
+     "id": "vault-key-0",
+     "section": "vault-key",
+     "heading": null,
+     "text": "Chaque boîte a une clé : un secret de 256 bits, stocké chiffré, que personne ne peut lire, vous compris. Le coffre ne fait jamais que la comparer. Tout ce qui sort du coffre (le NFT, une annonce, l'ETH d'une vente) se demande avec la clé, jamais avec votre adresse.\nVous ne tapez jamais la clé. Votre wallet signe un message fixe, gratuitement, et la page en tire la clé de chaque boîte : le même wallet fait les mêmes clés sur n'importe quel appareil. Ne signez ce message que sur DO NOT OPEN : qui obtient la signature peut sortir vos NFT.\nUne clé n'est jamais envoyée telle quelle : elle est mêlée aux termes exacts de la demande (la boîte, l'action, l'adresse, le prix, la date de fin, et un compteur). Changez un terme, ou renvoyez la même demande plus tard, et la clé ne correspond plus : la demande est refusée."
+    },
+    {
+     "id": "vault-key-1",
+     "section": "vault-key",
+     "heading": null,
+     "text": "Une boîte qui change de mains reçoit une clé au hasard, si bien que son ancien détenteur ne peut plus rien en faire. Son nouveau détenteur fait sienne la clé en une transaction (« Prendre la clé »). N'importe qui peut essayer, mais cela ne prend effet que pour le détenteur, et de l'extérieur les deux cas se ressemblent."
+    },
+    {
+     "id": "vault-requests-0",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Sortir un NFT, le mettre en vente, retirer une annonce et encaisser l'ETH d'une vente se passent tous de la même façon, en deux temps. Une demande on-chain : le coffre vérifie la clé sous chiffrement. Puis une preuve du service de gestion des clés de Zama que la clé correspondait, que n'importe qui peut rapporter.\nLa demande se règle de trois façons : faite ; refusée, quand la clé ne correspondait pas (rien ne se passe, rien n'échoue, donc un inconnu n'apprend rien) ; ou manquée, quand la boîte a changé entre-temps (vendue sur Seaport dans l'intervalle, par exemple).\nTant qu'une demande attend sa preuve, la boîte est occupée : elle ne peut ni bouger ni recevoir une autre demande. Cela prend en général quelques secondes.\nCe que sont les colis"
+    },
+    {
+     "id": "vault-requests-1",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Au coffre scellé. Le relayer porte votre demande, la clé est vérifiée à l'aveugle, et le NFT part où vous l'avez dit. Votre adresse n'apparaît nulle part. Votre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus. Confiée au relayer Le relayer envoie la demande Comparée à l'aveugle N'importe qui peut demander ce bit Oui ou non, signé Le relayer envoie la preuve Le NFT est sorti Lecture Étape suivante Chiffré Transaction Valeur avec preuve Valeur en clair\nVotre page lie la clé Elle chiffre la clé de la boîte mêlée à une empreinte de cette demande précise : la boîte, l'action, l'adresse où part le NFT, et un compteur. Modifiée ou renvoyée, elle ne correspond plus.\nConfiée au relayer\nLe relayer envoie la demande\nComparée à l'aveugle"
+    },
+    {
+     "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "N'importe qui peut demander ce bit\nOui ou non, signé\nLe relayer envoie la preuve\nLe NFT est sorti\nChiffré\nTransaction\nValeur avec preuve\nValeur en clair"
+    },
+    {
+     "id": "vault-seaport-0",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "Une annonce est un vrai ordre Seaport 1.5, le protocole d'OpenSea, dont le vendeur est le coffre lui-même : votre adresse n'apparaît nulle part. Le coffre valide l'ordre on-chain, il ne signe donc rien, et seuls les ordres qu'il a validés peuvent vendre ses NFT.\nN'importe quelle marketplace Seaport peut l'exécuter. L'acheteur paie en ETH et reçoit le NFT tout de suite. Les acheteurs voient le NFT, le prix et la date de fin, comme pour toute annonce.\nL'ETH attend dans la boîte celui qui détient la clé, moins les frais du coffre (2,5 %, jamais plus de 10 %). Vous l'encaissez vers n'importe quelle adresse. Une annonce dure jusqu'à 180 jours ; une annonce expirée sans acheteur redevient scellée."
+    },
+    {
+     "id": "vault-private-0",
+     "section": "vault-private",
+     "heading": null,
+     "text": "Proposez une boîte à un seul acheteur, pour un prix en cUSDC (un dollar confidentiel) que vous seuls pouvez lire. L'acheteur le lit dans la page, puis paie et prend la boîte en une transaction.\nTout se règle sous chiffrement : si le prix est arrivé et que le vendeur détenait encore la boîte, la boîte bouge avec une clé qui est celle de l'acheteur, et le vendeur est payé ; sinon rien ne bouge et l'acheteur récupère ses cUSDC. Pour tous les autres, une vente qui a abouti et une vente ratée se ressemblent.\nN'importe qui peut proposer n'importe quelle boîte, donc une offre ne prouve rien sur qui la détient. Le vendeur peut annuler une offre ouverte ; seul l'acheteur désigné peut l'accepter, une fois."
+    },
+    {
+     "id": "vault-give-0",
+     "section": "vault-give",
+     "heading": null,
+     "text": "Envoyez une boîte à n'importe quelle adresse. Elle ne bouge que si vous la détenez, et elle arrive sans clé : celui qui la reçoit la trouve dans ses reçus et fait sienne la clé. D'ici là, personne ne peut rien en sortir."
+    },
+    {
+     "id": "vault-relayer-0",
+     "section": "vault-relayer",
+     "heading": null,
+     "text": "Une demande envoyée depuis votre wallet montre votre adresse. L'API du site peut donc envoyer vos demandes et leurs preuves depuis son propre wallet, et payer le gas : alors votre adresse n'apparaît dans aucune transaction.\nIl n'apprend rien que la chaîne ne montre pas. La clé lui arrive chiffrée pour le coffre et liée aux termes de la demande : il ne peut ni la lire, ni changer un terme, ni la réutiliser. Il voit, comme tout serveur web, l'IP d'où vient une demande.\nIl peut refuser, pas tricher. Il a des limites par jour et par minute ; s'il est en panne ou dit non, la page envoie la demande depuis votre wallet, et vous prévient que votre adresse se voit alors."
+    },
+    {
+     "id": "vault-leaks-0",
+     "section": "vault-leaks",
+     "heading": "Public",
+     "text": "Qui a scellé quel NFT (le dépôt est un transfert de NFT)\nLe NFT dans chaque boîte, son état, son annonce\nLes annonces et les achats Seaport, avec le coffre comme vendeur\nL'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant\nQu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée ou manquée\nLes deux adresses d'un transfert ou d'une vente privée"
+    },
+    {
+     "id": "vault-leaks-1",
+     "section": "vault-leaks",
+     "heading": "Jamais public",
+     "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait ou un encaissement, quand le relayer l'envoie\nEn pratique : sortez vers une adresse sans historique, laissez le relayer envoyer vos demandes, et sachez que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
+    },
+    {
+     "id": "vault-testnet-0",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0x8B07…fb18\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC"
+    },
+    {
+     "id": "vault-more-0",
+     "section": "vault-more",
+     "heading": null,
+     "text": "À propos de DO NOT OPEN L'idée, le chiffrement, à qui vous faites confiance.\nLes notes de conception Chaque flux, chaque vérification, chaque fuite, pour les développeurs.\nLe contrat SealedVault.sol, open source."
+    },
+    {
+     "id": "project-what-0",
+     "section": "project-what",
+     "heading": null,
+     "text": "Sur une blockchain publique, tout est à découvert : les NFT de chaque wallet, chaque vente, chaque solde, pour toujours. N'importe qui peut voir ce que vous détenez, le suivre, l'estimer, et venir le chercher.\nDO NOT OPEN est une couche de confidentialité pour ça. Les choses vont dans des boîtes dont le détenteur, et parfois le contenu, sont chiffrés on-chain. La chaîne fait toujours respecter chaque règle : une boîte ne bouge que si son détenteur l'a bougée, une vente ne se règle que si elle a été payée. Elle ne dit simplement jamais qui.\nDeux produits partagent cette idée et la même base de contrats : le coffre scellé, un vrai outil pour n'importe quel NFT, et le jeu, 10 000 boîtes avec un chat dans chacune, où le même chiffrement sert à s'amuser."
+    },
+    {
+     "id": "project-fhe-0",
+     "section": "project-fhe",
+     "heading": null,
+     "text": "Le chiffrement est le FHE de Zama (chiffrement totalement homomorphe). Un smart contract peut additionner, comparer et choisir entre des valeurs chiffrées sans jamais les lire : « cet appelant est-il le détenteur ? » reçoit un oui ou un non chiffré, et la boîte bouge ou non selon la réponse.\nPersonne ne détient la clé qui lirait tout. Le service de gestion des clés de Zama la partage entre plusieurs parties indépendantes, qui ne déchiffrent une valeur que lorsque le contrat l'autorise : pour son seul détenteur, en privé, ou pour tout le monde quand les règles disent qu'elle devient publique (un chat une fois sa boîte ouverte, une demande acceptée).\nChaque révélation se fait en deux temps : une demande on-chain, puis une preuve signée par ces parties, que n'importe qui peut rapporter. C'est pourquoi certaines actions attendent leur preuve quelques secondes."
+    },
+    {
+     "id": "project-vault-0",
+     "section": "project-vault",
+     "heading": null,
+     "text": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.\nLa boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur, ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part.\nLire la doc du coffre Ouvrir le coffre"
+    },
+    {
+     "id": "project-game-0",
+     "section": "project-game",
+     "heading": null,
+     "text": "10 000 boîtes scellées, un chat dans chacune, tiré au sort et chiffré au moment où la boîte est fabriquée. Secouez une boîte pour obtenir un indice privé, ouvrez-la pour montrer le chat à tous, faites des duels, nourrissez-le de croquettes, échangez-le au marché aux puces.\nQui détient quelle boîte, combien ont été vendues et ce qu'il y a dedans restent chiffrés, avec la même base de contrats que le coffre. Le jeu est l'endroit où la technologie travaille à grande échelle, et où vit la communauté jusqu'au mainnet.\nLire le manuel du jeu Jouer"
+    },
+    {
+     "id": "project-leaks-0",
+     "section": "project-leaks",
+     "heading": null,
+     "text": "Le chiffrement cache des valeurs, pas le fait que quelque chose s'est passé. Une transaction est publique : qui l'a envoyée, vers quel contrat, quand. Ce que DO NOT OPEN chiffre, c'est ce que fait la transaction : qui finit par détenir une boîte, un prix convenu en privé, si un transfert a déplacé quelque chose.\nCertaines choses sont publiques exprès. Un NFT qui entre dans le coffre est un simple transfert de NFT, donc le déposant se voit. Une annonce Seaport montre son NFT et son prix, avec le coffre comme vendeur. L'adresse vers laquelle sort un NFT ou l'ETH d'une vente se voit aussi : choisissez-en une sans historique.\nChaque produit liste exactement ce qui fuite, ligne par ligne, dans sa propre documentation."
+    },
+    {
+     "id": "project-trust-0",
+     "section": "project-trust",
+     "heading": null,
+     "text": "Aux contrats : leur code est open source, et ce sont eux qui décident de tout. Personne, nous compris, ne peut déplacer une boîte, lire un détenteur ou modifier une vente passée.\nAu service de gestion des clés de Zama, pour ce qui est déchiffré et pour qui : ses parties devraient s'entendre pour lire ce que les contrats n'ont pas autorisé. Et au relayer du coffre, pour rien : il ne peut ni lire une demande ni la modifier, seulement refuser de l'envoyer, et alors votre wallet l'envoie à sa place.\nLe propriétaire des contrats peut autoriser une collection dans le coffre et fixer ses frais, dans une limite écrite dans le contrat (10 %). Il ne peut pas toucher à une boîte. Avant le mainnet, cette propriété passe à un multisig."
+    },
+    {
+     "id": "project-status-0",
+     "section": "project-status",
+     "heading": null,
+     "text": "Tout tourne sur Sepolia, le réseau de test d'Ethereum : NFT de test, ETH de test, rien qui contienne de l'argent. Le jeu y est en ligne avec sa communauté ; le coffre depuis octobre 2026.\nLe mainnet viendra une fois les contrats relus. La whitelist du jeu et ses cadeaux sont conservés ; le coffre s'ouvre aux vraies collections."
+    },
+    {
+     "id": "project-more-0",
+     "section": "project-more",
+     "heading": null,
+     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Contrats, app et API, tout est open source.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
+    }
+   ]
+  },
+  "es": {
+   "sections": [
+    {
+     "id": "vault-what",
+     "title": "Qué es la bóveda",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seal",
+     "title": "Sellar un NFT",
+     "part": "manual"
+    },
+    {
+     "id": "vault-key",
+     "title": "La llave de la caja",
+     "part": "manual"
+    },
+    {
+     "id": "vault-requests",
+     "title": "Pedir algo",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seaport",
+     "title": "Vender en Seaport",
+     "part": "manual"
+    },
+    {
+     "id": "vault-private",
+     "title": "Ventas privadas",
+     "part": "manual"
+    },
+    {
+     "id": "vault-give",
+     "title": "Regalar una caja",
+     "part": "manual"
+    },
+    {
+     "id": "vault-relayer",
+     "title": "El relayer",
+     "part": "manual"
+    },
+    {
+     "id": "vault-leaks",
+     "title": "Lo que es público y lo que no",
+     "part": "manual"
+    },
+    {
+     "id": "vault-testnet",
+     "title": "En la red de prueba",
+     "part": "manual"
+    },
+    {
+     "id": "vault-more",
+     "title": "Para saber más",
+     "part": "manual"
+    },
+    {
+     "id": "project-what",
+     "title": "Qué es DO NOT OPEN",
+     "part": "manual"
+    },
+    {
+     "id": "project-fhe",
+     "title": "Cómo se mantiene sellada una caja",
+     "part": "manual"
+    },
+    {
+     "id": "project-vault",
+     "title": "La bóveda sellada",
+     "part": "manual"
+    },
+    {
+     "id": "project-game",
+     "title": "El juego",
+     "part": "manual"
+    },
+    {
+     "id": "project-leaks",
+     "title": "Lo que queda en secreto, lo que no",
+     "part": "manual"
+    },
+    {
+     "id": "project-trust",
+     "title": "En quién tienes que confiar",
+     "part": "manual"
+    },
+    {
+     "id": "project-status",
+     "title": "Dónde estamos",
+     "part": "manual"
+    },
+    {
+     "id": "project-more",
+     "title": "Para saber más",
+     "part": "manual"
+    }
+   ],
+   "passages": [
+    {
+     "id": "vault-what-0",
+     "section": "vault-what",
+     "heading": null,
+     "text": "Un contrato que guarda NFT. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT se queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport o vende la caja en privado.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear."
+    },
+    {
+     "id": "vault-seal-0",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.\nMientras la caja no se mueva, su depositante es su titular evidente. La duda llega con una transferencia: en cuanto las cajas cambian de manos, nadie puede saber quién tiene cuál.\nPara volver a encontrar tus cajas, la página lee tus propios recibos y descifra, solo para ti, cuáles te llegaron de verdad. Una firma."
+    },
+    {
+     "id": "vault-key-0",
+     "section": "vault-key",
+     "heading": null,
+     "text": "Cada caja tiene una llave: un secreto de 256 bits, guardado cifrado, que nadie puede leer, ni siquiera tú. La bóveda solo la compara. Todo lo que sale de la bóveda (el NFT, un anuncio, el ETH de una venta) se pide con la llave, nunca con tu dirección.\nNunca escribes la llave. Tu wallet firma un mensaje fijo, gratis, y la página deriva de esa firma la llave de cada caja: el mismo wallet genera las mismas llaves en cualquier dispositivo. Firma ese mensaje solo en DO NOT OPEN: quien consiga la firma puede sacar tus NFT.\nUna llave nunca se envía tal cual: se mezcla con los términos exactos de la solicitud (la caja, la acción, la dirección, el precio, la fecha de fin y un contador). Cambia un término, o envía la misma solicitud otra vez más tarde, y la llave deja de coincidir: la solicitud se rechaza."
+    },
+    {
+     "id": "vault-key-1",
+     "section": "vault-key",
+     "heading": null,
+     "text": "Una caja que cambia de manos recibe una llave aleatoria, así que su titular anterior ya no puede hacer nada con ella. Su nuevo titular hace suya la llave con una transacción («Quedarme la llave»). Cualquiera puede intentarlo, pero solo surte efecto para el titular, y desde fuera las dos cosas se ven iguales."
+    },
+    {
+     "id": "vault-requests-0",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Sacar un NFT, ponerlo en venta, retirar un anuncio y cobrar el ETH de una venta funcionan igual, en dos pasos. Una solicitud on-chain: la bóveda comprueba la llave bajo cifrado. Luego una prueba del servicio de gestión de llaves de Zama de que la llave coincidió, que cualquiera puede traer de vuelta.\nLa solicitud se resuelve de una de tres maneras: hecha; rechazada, cuando la llave no coincidió (no pasa nada, nada revierte, así que un desconocido no aprende nada); o fallida, cuando la caja cambió entretanto (vendida en Seaport mientras tanto, por ejemplo).\nMientras una solicitud espera su prueba, la caja está ocupada: no puede moverse ni recibir otra solicitud. Eso suele tardar unos segundos.\nQué son los paquetes"
+    },
+    {
+     "id": "vault-requests-1",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "En la bóveda sellada. El relayer lleva tu petición, la llave se comprueba a ciegas, y el NFT va adonde dijiste. Tu dirección no aparece en ninguna parte. Tu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide. Entregada al relayer El relayer envía la petición Comparada a ciegas Cualquiera puede pedir ese bit Sí o no, firmado El relayer envía la prueba El NFT ha salido Reproducir Siguiente paso Texto cifrado Transacción Valor con prueba Valor en claro\nTu página ata la llave Cifra la llave de la caja mezclada con una huella de esta petición exacta: la caja, la acción, adónde va el NFT, y un contador. Cambiada o enviada otra vez, ya no coincide.\nEntregada al relayer\nEl relayer envía la petición\nComparada a ciegas\nCualquiera puede pedir ese bit"
+    },
+    {
+     "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Sí o no, firmado\nEl relayer envía la prueba\nEl NFT ha salido\nTexto cifrado\nTransacción\nValor con prueba\nValor en claro"
+    },
+    {
+     "id": "vault-seaport-0",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "Un anuncio es una orden real de Seaport 1.5, el protocolo de OpenSea, cuyo vendedor es la propia bóveda: tu dirección no aparece en ninguna parte. La bóveda valida la orden on-chain, así que no firma nada, y solo las órdenes que ella validó pueden vender sus NFT.\nCualquier marketplace de Seaport puede completarla. El comprador paga en ETH y recibe el NFT al instante. Los compradores ven el NFT, el precio y la fecha de fin, como en cualquier anuncio.\nEl ETH espera en la caja a quien tenga la llave, menos la comisión de la bóveda (2,5%, nunca más del 10%). Lo cobras en cualquier dirección. Un anuncio dura hasta 180 días; uno que caducó sin comprador vuelve a quedar sellado."
+    },
+    {
+     "id": "vault-private-0",
+     "section": "vault-private",
+     "heading": null,
+     "text": "Ofrece una caja a un solo comprador, por un precio en cUSDC (un dólar confidencial) que solo vosotros dos podéis leer. El comprador lo lee en la página, y luego paga y se lleva la caja en una sola transacción.\nTodo se resuelve bajo cifrado: si el precio llegó y el vendedor aún tenía la caja, la caja se mueve con una llave que es del comprador, y el vendedor cobra; si no, nada se mueve y el comprador recupera sus cUSDC. Para todos los demás, una venta que se hizo y una que no se ven iguales.\nCualquiera puede ofrecer cualquier caja, así que una oferta no demuestra nada sobre quién la tiene. El vendedor puede cancelar una oferta abierta; solo el comprador nombrado puede aceptarla, una vez."
+    },
+    {
+     "id": "vault-give-0",
+     "section": "vault-give",
+     "heading": null,
+     "text": "Envía una caja a cualquier dirección. Solo se mueve si la tienes, y llega sin llave: quien la recibe la encuentra en sus recibos y hace suya la llave. Hasta entonces nadie puede sacar nada de ella."
+    },
+    {
+     "id": "vault-relayer-0",
+     "section": "vault-relayer",
+     "heading": null,
+     "text": "Una solicitud enviada desde tu wallet muestra tu dirección. Por eso la API del sitio puede enviar tus solicitudes y sus pruebas desde su propio wallet, y pagar el gas: así tu dirección no aparece en ninguna transacción.\nNo aprende nada que la cadena no muestre. La llave le llega cifrada para la bóveda y atada a los términos de la solicitud: no puede leerla, ni cambiar un término, ni reutilizarla. Ve, como cualquier servidor web, la IP de la que viene una solicitud.\nPuede negarse, no hacer trampa. Tiene límites por día y por minuto; si está caído o dice que no, la página envía la solicitud desde tu wallet, y te avisa de que entonces se ve tu dirección."
+    },
+    {
+     "id": "vault-leaks-0",
+     "section": "vault-leaks",
+     "heading": "Público",
+     "text": "Quién selló qué NFT (el depósito es una transferencia de NFT)\nEl NFT dentro de cada caja, su estado, su anuncio\nLos anuncios y las compras en Seaport, con la bóveda como vendedora\nLa dirección a la que sale un NFT o el ETH de una venta, y el importe\nQue se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó o falló\nLas dos direcciones de una transferencia o de una venta privada"
+    },
+    {
+     "id": "vault-leaks-1",
+     "section": "vault-leaks",
+     "heading": "Nunca público",
+     "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada o un cobro, cuando lo envía el relayer\nEn la práctica: saca las cosas a una dirección sin historial, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
+    },
+    {
+     "id": "vault-testnet-0",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0x8B07…fb18\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC"
+    },
+    {
+     "id": "vault-more-0",
+     "section": "vault-more",
+     "heading": null,
+     "text": "Sobre DO NOT OPEN La idea, el cifrado, en quién confías.\nLas notas de diseño Cada flujo, cada comprobación, cada filtración, para desarrolladores.\nEl contrato SealedVault.sol, de código abierto."
+    },
+    {
+     "id": "project-what-0",
+     "section": "project-what",
+     "heading": null,
+     "text": "En una blockchain pública todo está a la vista: los NFT de cada wallet, cada venta, cada saldo, para siempre. Cualquiera puede ver lo que tienes, seguirlo, ponerle precio e ir a por ello.\nDO NOT OPEN es una capa de confidencialidad para eso. Las cosas entran en cajas cuyo titular, y a veces su contenido, están cifrados on-chain. La cadena sigue haciendo cumplir cada regla: una caja solo se mueve si su titular la movió, una venta solo se cierra si se pagó. Simplemente nunca dice quién.\nDos productos comparten esa idea y la misma base de contratos: la bóveda sellada, una herramienta seria para cualquier NFT, y el juego, 10.000 cajas con un gato en cada una, donde el mismo cifrado se pone a trabajar por diversión."
+    },
+    {
+     "id": "project-fhe-0",
+     "section": "project-fhe",
+     "heading": null,
+     "text": "El cifrado es el FHE de Zama (cifrado totalmente homomórfico). Un contrato inteligente puede sumar, comparar y elegir entre valores cifrados sin leerlos nunca: \"¿es este llamante el titular?\" recibe un sí o un no cifrado, y la caja se mueve o no según la respuesta.\nNadie tiene la llave que lo leería todo. El servicio de gestión de llaves de Zama la reparte entre varias partes independientes, que descifran un valor solo cuando el contrato lo permite: solo para su titular, en privado, o para todos cuando las reglas dicen que se hace público (un gato una vez abierta su caja, una solicitud que fue aceptada).\nCada revelación tiene dos pasos: una solicitud on-chain, y luego una prueba firmada por esas partes que cualquiera puede traer de vuelta. Por eso algunas acciones esperan unos segundos a su prueba."
+    },
+    {
+     "id": "project-vault-0",
+     "section": "project-vault",
+     "heading": null,
+     "text": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.\nLa caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora, o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte.\nLeer la documentación de la bóveda Abrir la bóveda"
+    },
+    {
+     "id": "project-game-0",
+     "section": "project-game",
+     "heading": null,
+     "text": "10.000 cajas selladas, un gato en cada una, elegido al azar y cifrado en el momento en que se crea la caja. Agita una caja para obtener una pista privada, ábrela para mostrar el gato a todos, haz duelos, dale croquetas, véndela en el mercadillo.\nQuién tiene cada caja, cuántas se vendieron y qué hay dentro siguen cifrados, con la misma base de contratos que la bóveda. El juego es donde la tecnología se pone a trabajar a gran escala, y donde vive la comunidad hasta la mainnet.\nLeer el manual del juego Jugar"
+    },
+    {
+     "id": "project-leaks-0",
+     "section": "project-leaks",
+     "heading": null,
+     "text": "El cifrado oculta valores, no el hecho de que algo ocurrió. Una transacción es pública: quién la envió, a qué contrato, cuándo. Lo que DO NOT OPEN cifra es lo que hace la transacción: quién acaba teniendo una caja, un precio acordado en privado, si una transferencia movió algo.\nAlgunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial.\nCada producto detalla exactamente lo que se filtra, línea por línea, en su propia documentación."
+    },
+    {
+     "id": "project-trust-0",
+     "section": "project-trust",
+     "heading": null,
+     "text": "En los contratos: su código es abierto, y ellos lo deciden todo. Nadie, nosotros incluidos, puede mover una caja, leer un titular o cambiar una venta pasada.\nEn el servicio de gestión de llaves de Zama, para lo que se descifra y para quién: sus partes tendrían que ponerse de acuerdo para leer lo que los contratos no permitieron. Y en el relayer de la bóveda, en nada: no puede leer una solicitud ni cambiarla, solo negarse a enviarla, y entonces la envía tu wallet.\nEl propietario de los contratos puede permitir una colección en la bóveda y fijar su comisión, dentro de un tope escrito en el contrato (10%). No puede tocar una caja. Antes de la mainnet, esa propiedad pasa a una multisig."
+    },
+    {
+     "id": "project-status-0",
+     "section": "project-status",
+     "heading": null,
+     "text": "Todo funciona en Sepolia, la red de prueba de Ethereum: NFT de prueba, ETH de prueba, nada con dinero dentro. El juego está activo allí con su comunidad; la bóveda, desde octubre de 2026.\nLa mainnet llega cuando los contratos hayan sido revisados. La whitelist del juego y sus regalos se mantienen; la bóveda se abre a colecciones reales."
+    },
+    {
+     "id": "project-more-0",
+     "section": "project-more",
+     "heading": null,
+     "text": "La documentación de la bóveda Depositar, la llave, Seaport, ventas privadas, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Contratos, app y API, todo de código abierto.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
+    }
+   ]
+  },
+  "it": {
+   "sections": [
+    {
+     "id": "vault-what",
+     "title": "Cos'è il caveau",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seal",
+     "title": "Sigillare un NFT",
+     "part": "manual"
+    },
+    {
+     "id": "vault-key",
+     "title": "La chiave della scatola",
+     "part": "manual"
+    },
+    {
+     "id": "vault-requests",
+     "title": "Chiedere qualcosa",
+     "part": "manual"
+    },
+    {
+     "id": "vault-seaport",
+     "title": "Vendere su Seaport",
+     "part": "manual"
+    },
+    {
+     "id": "vault-private",
+     "title": "Vendite private",
+     "part": "manual"
+    },
+    {
+     "id": "vault-give",
+     "title": "Regalare una scatola",
+     "part": "manual"
+    },
+    {
+     "id": "vault-relayer",
+     "title": "Il relayer",
+     "part": "manual"
+    },
+    {
+     "id": "vault-leaks",
+     "title": "Cosa è pubblico, cosa no",
+     "part": "manual"
+    },
+    {
+     "id": "vault-testnet",
+     "title": "Sulla rete di prova",
+     "part": "manual"
+    },
+    {
+     "id": "vault-more",
+     "title": "Per saperne di più",
+     "part": "manual"
+    },
+    {
+     "id": "project-what",
+     "title": "Cos'è DO NOT OPEN",
+     "part": "manual"
+    },
+    {
+     "id": "project-fhe",
+     "title": "Come una scatola resta sigillata",
+     "part": "manual"
+    },
+    {
+     "id": "project-vault",
+     "title": "Il caveau sigillato",
+     "part": "manual"
+    },
+    {
+     "id": "project-game",
+     "title": "Il gioco",
+     "part": "manual"
+    },
+    {
+     "id": "project-leaks",
+     "title": "Cosa resta segreto, cosa no",
+     "part": "manual"
+    },
+    {
+     "id": "project-trust",
+     "title": "Di chi ti devi fidare",
+     "part": "manual"
+    },
+    {
+     "id": "project-status",
+     "title": "A che punto siamo",
+     "part": "manual"
+    },
+    {
+     "id": "project-more",
+     "title": "Per saperne di più",
+     "part": "manual"
+    }
+   ],
+   "passages": [
+    {
+     "id": "vault-what-0",
+     "section": "vault-what",
+     "heading": null,
+     "text": "Un contratto che custodisce NFT. Ogni NFT che entra riceve una scatola: un token a sé il cui detentore è cifrato, come le scatole del gioco. L'NFT resta dentro finché il detentore della scatola non lo tira fuori, lo vende su Seaport o vende la scatola in privato.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare."
+    },
+    {
+     "id": "vault-seal-0",
+     "section": "vault-seal",
+     "heading": null,
+     "text": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.\nFinché la scatola non si sposta, chi l'ha depositata è il suo detentore ovvio. Il dubbio arriva con un trasferimento: appena le scatole cambiano mano, nessuno può dire chi detiene quale.\nPer ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma."
+    },
+    {
+     "id": "vault-key-0",
+     "section": "vault-key",
+     "heading": null,
+     "text": "Ogni scatola ha una chiave: un segreto di 256 bit, conservato cifrato, che nessuno può leggere, nemmeno tu. Il caveau si limita a confrontarla. Tutto ciò che esce dal caveau (l'NFT, un annuncio, l'ETH di una vendita) si chiede con la chiave, mai con il tuo indirizzo.\nNon digiti mai la chiave. Il tuo wallet firma un messaggio fisso, gratis, e la pagina ricava da quella firma la chiave di ogni scatola: lo stesso wallet genera le stesse chiavi su qualsiasi dispositivo. Firma quel messaggio solo su DO NOT OPEN: chi ottiene la firma può tirare fuori i tuoi NFT.\nUna chiave non viene mai inviata così com'è: viene mescolata con i termini esatti della richiesta (la scatola, l'azione, l'indirizzo, il prezzo, la data di fine e un contatore). Cambia un termine, o invia di nuovo la stessa richiesta più tardi, e la chiave non corrisponde più: la richiesta viene rifiutata."
+    },
+    {
+     "id": "vault-key-1",
+     "section": "vault-key",
+     "heading": null,
+     "text": "Una scatola che cambia mano riceve una chiave casuale, così il suo detentore precedente non può più farci niente. Il nuovo detentore fa sua la chiave con una transazione («Prendi la chiave»). Chiunque può provarci, ma ha effetto solo per il detentore, e da fuori le due cose sembrano uguali."
+    },
+    {
+     "id": "vault-requests-0",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Tirare fuori un NFT, metterlo in vendita, ritirare un annuncio e incassare l'ETH di una vendita funzionano allo stesso modo, in due passi. Una richiesta on-chain: il caveau verifica la chiave sotto cifratura. Poi una prova del servizio di gestione delle chiavi di Zama che la chiave corrispondeva, che chiunque può riportare.\nLa richiesta si chiude in uno di tre modi: eseguita; rifiutata, quando la chiave non corrispondeva (non succede niente, niente fa revert, quindi un estraneo non scopre nulla); o mancata, quando la scatola è cambiata nel frattempo (venduta su Seaport intanto, per esempio).\nMentre una richiesta aspetta la sua prova la scatola è occupata: non può spostarsi né ricevere un'altra richiesta. Di solito ci vogliono pochi secondi.\nCosa sono i pacchi"
+    },
+    {
+     "id": "vault-requests-1",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Al caveau sigillato. Il relayer porta la tua richiesta, la chiave viene verificata alla cieca, e l'NFT va dove hai detto. Il tuo indirizzo non compare da nessuna parte. La tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più. Affidata al relayer Il relayer invia la richiesta Confrontata alla cieca Chiunque può chiedere quel bit Sì o no, firmato Il relayer invia la prova L'NFT è fuori Riproduci Passo successivo Testo cifrato Transazione Valore con prova Valore in chiaro\nLa tua pagina lega la chiave Cifra la chiave della scatola mescolata a un'impronta di questa richiesta precisa: la scatola, l'azione, dove va l'NFT, e un contatore. Modificata o rinviata, non corrisponde più.\nAffidata al relayer\nIl relayer invia la richiesta"
+    },
+    {
+     "id": "vault-requests-2",
+     "section": "vault-requests",
+     "heading": null,
+     "text": "Confrontata alla cieca\nChiunque può chiedere quel bit\nSì o no, firmato\nIl relayer invia la prova\nL'NFT è fuori\nTesto cifrato\nTransazione\nValore con prova\nValore in chiaro"
+    },
+    {
+     "id": "vault-seaport-0",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "Un annuncio è un vero ordine Seaport 1.5, il protocollo di OpenSea, il cui venditore è il caveau stesso: il tuo indirizzo non compare da nessuna parte. Il caveau convalida l'ordine on-chain, quindi non firma niente, e solo gli ordini che ha convalidato possono vendere i suoi NFT.\nQualsiasi marketplace Seaport può eseguirlo. L'acquirente paga in ETH e riceve subito l'NFT. Chi compra vede l'NFT, il prezzo e la data di fine, come in qualsiasi annuncio.\nL'ETH aspetta nella scatola chi ha la chiave, meno la commissione del caveau (2,5%, mai più del 10%). Lo incassi verso qualsiasi indirizzo. Un annuncio dura fino a 180 giorni; uno scaduto senza acquirente torna sigillato."
+    },
+    {
+     "id": "vault-private-0",
+     "section": "vault-private",
+     "heading": null,
+     "text": "Offri una scatola a un solo acquirente, a un prezzo in cUSDC (un dollaro riservato) che solo voi due potete leggere. L'acquirente lo legge nella pagina, poi paga e prende la scatola in una sola transazione.\nTutto si chiude sotto cifratura: se il prezzo è arrivato e il venditore aveva ancora la scatola, la scatola si sposta con una chiave che è dell'acquirente, e il venditore viene pagato; altrimenti non si muove niente e l'acquirente riceve indietro i suoi cUSDC. Per tutti gli altri, una vendita andata in porto e una no sembrano uguali.\nChiunque può offrire qualsiasi scatola, quindi un'offerta non prova niente su chi la detiene. Il venditore può annullare un'offerta aperta; solo l'acquirente indicato può accettarla, una volta."
+    },
+    {
+     "id": "vault-give-0",
+     "section": "vault-give",
+     "heading": null,
+     "text": "Manda una scatola a qualsiasi indirizzo. Si sposta solo se la detieni, e arriva senza chiave: chi la riceve la trova nelle sue ricevute e fa sua la chiave. Fino ad allora nessuno può tirarne fuori niente."
+    },
+    {
+     "id": "vault-relayer-0",
+     "section": "vault-relayer",
+     "heading": null,
+     "text": "Una richiesta inviata dal tuo wallet mostra il tuo indirizzo. Per questo l'API del sito può inviare le tue richieste e le loro prove dal suo wallet, e pagare il gas: così il tuo indirizzo non compare in nessuna transazione.\nNon scopre niente che la chain non mostri. La chiave gli arriva cifrata per il caveau e legata ai termini della richiesta: non può leggerla, né cambiare un termine, né riusarla. Vede, come qualsiasi server web, l'IP da cui arriva una richiesta.\nPuò rifiutare, non barare. Ha dei limiti al giorno e al minuto; se è giù o dice di no, la pagina invia la richiesta dal tuo wallet, e ti avvisa che allora il tuo indirizzo si vede."
+    },
+    {
+     "id": "vault-leaks-0",
+     "section": "vault-leaks",
+     "heading": "Pubblico",
+     "text": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT)\nL'NFT dentro ogni scatola, il suo stato, il suo annuncio\nGli annunci e gli acquisti su Seaport, con il caveau come venditore\nL'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo\nChe è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata o mancata\nI due indirizzi di un trasferimento o di una vendita privata"
+    },
+    {
+     "id": "vault-leaks-1",
+     "section": "vault-leaks",
+     "heading": "Mai pubblico",
+     "text": "Chi detiene una scatola\nLa chiave della scatola\nIl prezzo di una vendita privata, e se è andata in porto\nSe un trasferimento ha spostato qualcosa\nChi ha chiesto un annuncio, un ritiro o un incasso, quando lo invia il relayer\nIn pratica: tira fuori le cose verso un indirizzo senza storia, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio)."
+    },
+    {
+     "id": "vault-testnet-0",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0x8B07…fb18\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC"
+    },
+    {
+     "id": "vault-more-0",
+     "section": "vault-more",
+     "heading": null,
+     "text": "Su DO NOT OPEN L'idea, la cifratura, di chi ti fidi.\nLe note di progetto Ogni flusso, ogni controllo, ogni fuga, per sviluppatori.\nIl contratto SealedVault.sol, open source."
+    },
+    {
+     "id": "project-what-0",
+     "section": "project-what",
+     "heading": null,
+     "text": "Su una blockchain pubblica tutto è allo scoperto: gli NFT di ogni wallet, ogni vendita, ogni saldo, per sempre. Chiunque può vedere cosa possiedi, seguirlo, dargli un prezzo e venirtelo a prendere.\nDO NOT OPEN è uno strato di riservatezza per questo. Le cose entrano in scatole il cui detentore, e a volte il contenuto, sono cifrati on-chain. La chain fa comunque rispettare ogni regola: una scatola si sposta solo se il suo detentore l'ha spostata, una vendita si chiude solo se è stata pagata. Semplicemente non dice mai chi.\nDue prodotti condividono quest'idea e la stessa base di contratti: il caveau sigillato, uno strumento serio per qualsiasi NFT, e il gioco, 10.000 scatole con un gatto in ognuna, dove la stessa cifratura viene messa al lavoro per divertimento."
+    },
+    {
+     "id": "project-fhe-0",
+     "section": "project-fhe",
+     "heading": null,
+     "text": "La cifratura è l'FHE di Zama (cifratura completamente omomorfica). Uno smart contract può sommare, confrontare e scegliere tra valori cifrati senza mai leggerli: \"chi chiama è il detentore?\" riceve un sì o un no cifrato, e la scatola si sposta o no di conseguenza.\nNessuno ha la chiave che leggerebbe tutto. Il servizio di gestione delle chiavi di Zama la divide tra più parti indipendenti, che decifrano un valore solo quando il contratto lo permette: al solo detentore, in privato, o a tutti quando le regole dicono che diventa pubblico (un gatto una volta aperta la sua scatola, una richiesta che è stata accettata).\nOgni rivelazione richiede due passi: una richiesta on-chain, poi una prova firmata da quelle parti che chiunque può riportare. Per questo alcune azioni aspettano qualche secondo la loro prova."
+    },
+    {
+     "id": "project-vault-0",
+     "section": "project-vault",
+     "heading": null,
+     "text": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.\nLa scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore, o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte.\nLeggi la documentazione del caveau Apri il caveau"
+    },
+    {
+     "id": "project-game-0",
+     "section": "project-game",
+     "heading": null,
+     "text": "10.000 scatole sigillate, un gatto in ognuna, scelto a caso e cifrato nel momento in cui la scatola viene creata. Scuoti una scatola per avere un indizio privato, aprila per mostrare il gatto a tutti, sfidala a duello, dagli le crocchette, scambiala al mercatino.\nChi possiede quale scatola, quante ne sono state vendute e cosa c'è dentro restano tutti cifrati, con la stessa base di contratti del caveau. Il gioco è dove la tecnologia viene messa al lavoro su larga scala, e dove vive la community fino alla mainnet.\nLeggi il manuale del gioco Gioca"
+    },
+    {
+     "id": "project-leaks-0",
+     "section": "project-leaks",
+     "heading": null,
+     "text": "La cifratura nasconde i valori, non il fatto che qualcosa sia successo. Una transazione è pubblica: chi l'ha inviata, a quale contratto, quando. Quello che DO NOT OPEN cifra è ciò che la transazione fa: chi finisce per possedere una scatola, un prezzo concordato in privato, se un trasferimento ha spostato qualcosa.\nAlcune cose sono pubbliche di proposito. Un NFT che entra nel caveau è un semplice trasferimento di NFT, quindi chi lo deposita si vede. Un annuncio su Seaport mostra il suo NFT e il suo prezzo, con il caveau come venditore. Anche l'indirizzo verso cui esce un NFT o l'ETH di una vendita si vede: scegline uno senza storia.\nOgni prodotto elenca esattamente cosa trapela, riga per riga, nella sua documentazione."
+    },
+    {
+     "id": "project-trust-0",
+     "section": "project-trust",
+     "heading": null,
+     "text": "Dei contratti: il loro codice è open source, e decidono tutto loro. Nessuno, noi compresi, può spostare una scatola, leggere un detentore o cambiare una vendita passata.\nDel servizio di gestione delle chiavi di Zama, per cosa viene decifrato e per chi: le sue parti dovrebbero mettersi d'accordo per leggere ciò che i contratti non hanno permesso. E del relayer del caveau, per niente: non può leggere una richiesta né modificarla, solo rifiutarsi di inviarla, e allora la invia il tuo wallet.\nIl proprietario dei contratti può ammettere una collezione nel caveau e fissarne la commissione, entro un tetto scritto nel contratto (10%). Non può toccare una scatola. Prima della mainnet, questa proprietà passa a un multisig."
+    },
+    {
+     "id": "project-status-0",
+     "section": "project-status",
+     "heading": null,
+     "text": "Tutto gira su Sepolia, la rete di prova di Ethereum: NFT di prova, ETH di prova, niente che contenga denaro. Il gioco è attivo lì con la sua community; il caveau da ottobre 2026.\nLa mainnet arriva quando i contratti saranno stati revisionati. La whitelist del gioco e i suoi regali passano alla mainnet; il caveau si apre alle collezioni vere."
+    },
+    {
+     "id": "project-more-0",
+     "section": "project-more",
+     "heading": null,
+     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice Contratti, app e API, tutto open source.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
+    }
+   ]
+  }
+ }
+}

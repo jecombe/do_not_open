@@ -5,6 +5,7 @@ import { useLocale } from "../i18n/locale";
 import { DISCORD } from "../links";
 import { vaultDocsPath } from "../site";
 import { SecureTop } from "../secure/SecureTop";
+import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
@@ -19,7 +20,7 @@ const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 export function VaultPage() {
   const t = useT();
   const locale = useLocale();
-  const { adapter, mode, account, connect, connectError } = useChain();
+  const { adapter, mode, account, connect, connectError, picking, closePicker } = useChain();
   const vault = useMemo(() => adapter.vault(), [adapter]);
 
   useEffect(() => {
@@ -48,10 +49,26 @@ export function VaultPage() {
         <p className="vault-network">{vault ? t(mode === "mock" ? "vault.network.mock" : "vault.network.sepolia") : t("vault.network.missing")}</p>
         {!account && (
           <p className="sec-ctas">
-            <button type="button" className="sec-btn" onClick={() => void connect()}>
+            <button type="button" className="sec-btn" onClick={() => (picking ? closePicker() : void connect())} aria-expanded={!!picking}>
               {t("vault.connect")}
             </button>
           </p>
+        )}
+        {/* Several wallets in the browser: connect() lists them here instead of picking one. */}
+        {!account && picking && (
+          <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
+            <p>{t("vault.pickWallet")}</p>
+            <ul>
+              {picking.map((w) => (
+                <li key={w.id}>
+                  <button type="button" className="sec-btn sec-btn-ghost" onClick={() => void connect(w.id)}>
+                    {w.icon ? <img src={w.icon} alt="" width={20} height={20} /> : <span className="vault-wallet-blank" aria-hidden="true" />}
+                    {w.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {connectError && <p className="vault-error">{connectError}</p>}
       </section>
@@ -67,6 +84,7 @@ export function VaultPage() {
           Discord
         </a>
       </footer>
+      <Warden />
     </div>
   );
 }

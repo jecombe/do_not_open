@@ -43,12 +43,12 @@ the sealed vault on [vault.do-not-open.app](https://vault.do-not-open.app), each
 | Release form | Terms of play initialed clause by clause and signed with the wallet (EIP-191, free) before playing on mainnet, filed by the API (`POST /v1/terms`); on Sepolia a notice says what a redeployment keeps instead | **Done** |
 | Studio | `/studio`: a random procedural rat for free in the browser, rats from a prompt (cartoon sketch, then a 3D model) through AI services paid in USDC packs (`StudioPacks`) | **Done**, live on Sepolia |
 | Rats | Adopt a studio rat (`Rats`, ERC-721, 1 or 3 USDC, capped at 700 free and 300 AI rats, 5 per wallet, the rats left shown on the home page and in the studio), 3 CROQ a day from the `RatPantry`, sniffing boxes through the paid shake, "My rats" in the game | **Done**, live on Sepolia (the pantry waits for its CROQ) |
-| Rat powers | Each rat draws a secret power at its mint (1 cheaper sniffs, 2 blocks one trait, 3 all five); a rat set on a box for 3 days shields it from strangers or jams its holder, decided under encryption (`RatTricks`, the collection's shake guard) | **Live** on Sepolia since 2026-10-08 (`SealedVault` and its test NFT) |
-| Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Done** on the mock and in the tests, not yet deployed on Sepolia |
+| Rat powers | Each rat draws a secret power at its mint (1 cheaper sniffs, 2 blocks one trait, 3 all five); a rat set on a box for 3 days shields it from strangers or jams its holder, decided under encryption (`RatTricks`, the collection's shake guard) | **Live** on Sepolia since 2026-10-08 |
+| Flea market | Players sell each other sealed boxes, cats and rats in cUSDC (`FleaMarket`): an asking price that is public, or a secret offer only the buyer and the seller can read; 2.5% to the treasury; "Flea market" in the game's menu | **Live** on Sepolia since 2026-10-08 |
 | Duel ranking + allow list | Boxes ranked by duels won, a gold, silver or bronze rosette on the top three, and a mainnet allow list players claim with a free signature, scored from public facts only (API migration 15) | **Done** |
 | Whitelist gifts | Each seated wallet collects its class's gift once (`WhitelistGifts`): an encrypted draw of cCROQ, a box minted free out of the 1,000 the sale leaves (`DoNotOpen.gift`), a free rat (`Rats.gift`), against a Merkle root of (wallet, tier) | **Done**, live on Sepolia since 2026-10-08 (root not set yet) |
-| Boarding page | `/apply`, in the home page's dark theme: a sealed box behind its encryption shield (probes cannot read the passenger; once boarded, the player sees their own handle), Sign in with X, five quick tasks on X (declared), the mainnet list's points, a wallet bonus and a referral link with a printable boarding pass; linked from the home page's "Apply" button (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
-| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, or sold privately for an encrypted cUSDC price, every request asked with a key and sent by the API's relayer; 2.5% to the treasury | **Done** on the mock and in the tests, not yet deployed on Sepolia |
+| Boarding page | `/apply`, in the home page's dark theme: a sealed box behind its encryption shield (probes cannot read the passenger; once boarded, the player sees their own handle), Sign in with X, five quick tasks on X (declared), the mainnet list's points, a wallet bonus and a referral link with a printable boarding pass; linked from the home page's bar (API migrations 16 to 18) | **Done**; Sign in with X waits for `X_CLIENT_ID` on the server |
+| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, or sold privately for an encrypted cUSDC price, every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs | **Live** on Sepolia since 2026-10-08 (`SealedVault` and its test NFT, block 11872753) |
 
 ## Layout
 
@@ -410,9 +410,11 @@ Its source is `apps/web/src/docs`.
 The home page, the manual, the studio and the boarding page are prerendered at build time, one file per language
 (`apps/web/scripts/prerender.mts`, run by `pnpm build`), with their title, description,
 canonical, `hreflang`, Open Graph, Twitter and JSON-LD tags; `src/site.ts` holds the site's
-address and paths. `public/robots.txt` and `public/sitemap.xml` list them, and `vercel.json`
+address and paths. The same script writes `sitemap.xml` from their canonical URLs, on every host
+(the bare domain, `game.`, `vault.`) and in every language, plus the vault's page, whose sharing
+tags are in `vault.html` itself; `public/robots.txt` points at it, and `vercel.json`
 serves clean URLs, sends `/fr/app` (and `/es/app`, `/it/app`) to `/app?lang=…`, and marks the testnet site, the game and the render pages `noindex`. The
-social card and app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics
+social cards (`og.png` for the game's manual and the studio, `og-vault.png` for the home page, the project's and the vault's pages and boarding) and app icons come from `pnpm --filter @dno/web render:og`. Vercel Web Analytics
 counts page views without cookies, and every URL is stripped of its query string first
 (`src/analytics.ts`), so a `?box=` link never ties a visitor to a token.
 
