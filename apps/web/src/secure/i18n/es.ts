@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureEs: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, la bóveda sellada: NFT y tokens que nadie te ve tener",
-  "secure.description": "Pon cualquier NFT en una caja sellada, y tus cUSDC en un bolsillo sellado, con su titular cifrado en Ethereum gracias al FHE de Zama. El NFT se sigue vendiendo en Seaport; los tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién.",
+  "secure.title": "DO NOT OPEN, la bóveda sellada: activos que nadie te ve tener, NFT y tokens por igual",
+  "secure.description": "Pon tus activos en la bóveda sellada, un NFT en una caja o tus cUSDC en un bolsillo, su titular cifrado en Ethereum con el FHE de Zama. Los NFT se siguen vendiendo en Seaport; los tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién.",
   "secure.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN dentro de un escudo de cifrado luminoso",
   "secure.nav": "Sitio",
   "secure.nav.protocol": "Protocolo",
@@ -21,7 +21,7 @@ export const secureEs: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Bóveda sellada · FHE de Zama · Ethereum",
   "secure.h1": "Lo que tienes no le importa a nadie más.",
-  "secure.lede": "Pon cualquier NFT en una caja sellada, y tus tokens en un bolsillo sellado. Desde entonces nadie sabe quién los tiene: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT se sigue vendiendo en Seaport, los tokens siguen pagando a cualquiera.",
+  "secure.lede": "Pon tus activos en la bóveda, NFT y tokens por igual: cada NFT en una caja sellada, tus tokens en un bolsillo sellado. Desde ese momento nadie sabe quién los tiene: ni los marketplaces, ni los trackers, ni nosotros. Se siguen vendiendo, pagando y moviendo como cualquier activo.",
   "secure.cta.open": "Abrir la bóveda",
   "secure.cta.protocol": "Leer el protocolo",
   "secure.spec.1.k": "Dueño",
