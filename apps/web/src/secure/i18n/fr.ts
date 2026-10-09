@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureFr: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, le coffre scellé : des NFT et des jetons que personne ne te voit détenir",
-  "secure.description": "Mets n'importe quel NFT dans une boîte scellée, et tes cUSDC dans une poche scellée, leur détenteur chiffré sur Ethereum grâce au FHE de Zama. Le NFT se vend quand même sur Seaport ; les jetons paient quand même n'importe qui, sans montrer qui a payé qui.",
+  "secure.title": "DO NOT OPEN, le coffre scellé : des actifs que personne ne te voit détenir, NFT comme jetons",
+  "secure.description": "Mets tes actifs dans le coffre scellé, un NFT dans une boîte ou tes cUSDC dans une poche, leur détenteur chiffré sur Ethereum grâce au FHE de Zama. Les NFT se vendent quand même sur Seaport ; les jetons paient quand même n'importe qui, sans montrer qui a payé qui.",
   "secure.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, dans un bouclier de chiffrement lumineux",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocole",
@@ -21,7 +21,7 @@ export const secureFr: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Coffre scellé · FHE de Zama · Ethereum",
   "secure.h1": "Ce que tu possèdes ne regarde que toi.",
-  "secure.lede": "Mets n'importe quel NFT dans une boîte scellée, et tes jetons dans une poche scellée. Dès lors, personne ne sait qui les détient : ni les marketplaces, ni les trackers, ni nous. Le NFT se vend quand même sur Seaport, les jetons paient quand même n'importe qui.",
+  "secure.lede": "Mets tes actifs dans le coffre, NFT comme jetons : chaque NFT dans une boîte scellée, tes jetons dans une poche scellée. Dès lors, personne ne sait qui les détient : ni les marketplaces, ni les trackers, ni nous. Ils se vendent, paient et circulent quand même comme n'importe quel actif.",
   "secure.cta.open": "Ouvrir le coffre",
   "secure.cta.protocol": "Lire le protocole",
   "secure.spec.1.k": "Détenteur",
