@@ -18,6 +18,7 @@ export const vaultDocsEn = {
   "vaultDocs.section.what": "What the vault is",
   "vaultDocs.what.p1": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar) go in a pocket instead: a balance locked by a key, not by an address.",
   "vaultDocs.what.p2": "The vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint.",
+  "vaultDocs.what.p3": "The first time you open the vault, a guided tour walks you through it: the two sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again.",
 
   "vaultDocs.section.seal": "Sealing an NFT",
   "vaultDocs.seal.p1": "Sealing is one transaction: the NFT moves into the vault and a box is made for it, held by you. It is public, since it is a plain NFT transfer: anyone sees who sealed which NFT. What happens to the box afterwards is not.",

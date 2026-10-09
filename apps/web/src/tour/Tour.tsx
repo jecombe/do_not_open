@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useChain } from "../chain/ChainProvider";
 import { useT, type AppKey } from "../i18n/app";
 import { useGateUp } from "../terms/terms";
-import "./tour.css";
+import { Spotlight, type SpotStep } from "./Spotlight";
 
 /**
  * The first walk through the depot: once the release form is signed, a spotlight zooms onto a
@@ -20,7 +20,6 @@ const STEPS: { target: string; title: AppKey; body: AppKey }[] = [
 ];
 
 const SEEN = "dno.tour.v1";
-const PAD = 8;
 
 const replays = new Set<() => void>();
 /** The menu's "Guided tour": plays it again from the start. */
@@ -44,34 +43,17 @@ function markSeen(): void {
   }
 }
 
-/** The element a step points at, if it is laid out and not tucked away. */
-function find(target: string): HTMLElement | null {
-  for (const el of document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`)) {
-    const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden") return el;
-  }
-  return null;
-}
-
-interface Box {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
-
-const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 export function Tour() {
   const t = useT();
   const { collection } = useChain();
   const gateUp = useGateUp();
   const [step, setStep] = useState<number | null>(null);
-  const [box, setBox] = useState<Box | null>(null);
-  const card = useRef<HTMLDivElement>(null);
-  const next = useRef<HTMLButtonElement>(null);
-  const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
-  const width = useWindowWidth();
+
+  const steps = useMemo<SpotStep[]>(() => STEPS.map((s) => ({ targets: [s.target], title: t(s.title), body: t(s.body) })), [t]);
+  const labels = useMemo(
+    () => ({ count: (n: number, total: number) => t("tour.count", { n, total }), skip: t("tour.skip"), back: t("tour.back"), next: t("tour.next"), done: t("tour.done") }),
+    [t],
+  );
 
   // Once, with no form in the way: give the depot a moment to settle so the spotlight lands on real things.
   useEffect(() => {
@@ -89,112 +71,7 @@ export function Tour() {
   const close = useCallback(() => {
     markSeen();
     setStep(null);
-    setBox(null);
   }, []);
 
-  /** Moves from `from` in direction `dir` to the next step with something on screen. */
-  const go = useCallback(
-    (from: number, dir: 1 | -1) => {
-      for (let i = from; i >= 0 && i < STEPS.length; i += dir) if (find(STEPS[i]!.target)) return setStep(i);
-      if (dir === 1) close();
-    },
-    [close],
-  );
-
-  // A step whose target is missing hands over to the next one.
-  useEffect(() => {
-    if (step !== null && !find(STEPS[step]!.target)) go(step, 1);
-  }, [step, go]);
-
-  // Follow the target every frame: slips fold, the masthead wraps, the window turns.
-  useEffect(() => {
-    if (step === null) return;
-    let frame = 0;
-    const track = () => {
-      const el = find(STEPS[step]!.target);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        setBox((b) => {
-          const n = { top: r.top - PAD, left: r.left - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 };
-          return b && b.top === n.top && b.left === n.left && b.width === n.width && b.height === n.height ? b : n;
-        });
-      }
-      frame = requestAnimationFrame(track);
-    };
-    track();
-    return () => cancelAnimationFrame(frame);
-  }, [step]);
-
-  // The tag sits under the spotlight when there is room, above it otherwise, always on screen.
-  useLayoutEffect(() => {
-    if (!box || !card.current) return;
-    const c = card.current.getBoundingClientRect();
-    const margin = 12;
-    const below = box.top + box.height + margin;
-    const top = below + c.height < window.innerHeight - margin ? below : Math.max(margin, box.top - c.height - margin);
-    const left = Math.min(Math.max(margin, box.left + box.width / 2 - c.width / 2), window.innerWidth - c.width - margin);
-    setCardPos((p) => (p && p.top === top && p.left === left ? p : { top, left }));
-  }, [box, step, width]);
-
-  useEffect(() => {
-    if (step === null) return;
-    next.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-      else if (e.key === "ArrowRight") go(step + 1, 1);
-      else if (e.key === "ArrowLeft") go(step - 1, -1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [step, go, close]);
-
-  if (step === null || !box) return null;
-  const shown = STEPS.map((s, i) => ({ ...s, i })).filter((s) => find(s.target));
-  const index = shown.findIndex((s) => s.i === step);
-  const last = index === shown.length - 1;
-  const s = STEPS[step]!;
-
-  return (
-    <div className={`tour${reduced() ? " is-still" : ""}`} role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-body">
-      {/* Clicks outside the spotlight are caught; the target itself stays usable. */}
-      <div className="tour-shade" onClick={close} />
-      <div className="tour-spot" style={{ top: box.top, left: box.left, width: box.width, height: box.height }} key={`spot-${step}`} />
-      <div className="tour-card" ref={card} style={cardPos ? { top: cardPos.top, left: cardPos.left } : { visibility: "hidden" }} key={`card-${step}`}>
-        <p className="tour-count">
-          {t("tour.count", { n: index + 1, total: shown.length })}
-        </p>
-        <h2 id="tour-title" className="tour-title">
-          {t(s.title)}
-        </h2>
-        <p id="tour-body" className="tour-body">
-          {t(s.body)}
-        </p>
-        <div className="tour-actions">
-          <button type="button" className="link" onClick={close}>
-            {t("tour.skip")}
-          </button>
-          <span className="tour-nav">
-            {index > 0 && (
-              <button type="button" className="plain-button" onClick={() => go(step - 1, -1)}>
-                {t("tour.back")}
-              </button>
-            )}
-            <button type="button" className="plain-button tour-next" ref={next} onClick={() => (last ? close() : go(step + 1, 1))}>
-              {last ? t("tour.done") : t("tour.next")}
-            </button>
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function useWindowWidth(): number {
-  return useSyncExternalStore(
-    (l) => {
-      window.addEventListener("resize", l);
-      return () => window.removeEventListener("resize", l);
-    },
-    () => window.innerWidth,
-  );
+  return <Spotlight steps={steps} step={step} onStep={setStep} onClose={close} labels={labels} />;
 }

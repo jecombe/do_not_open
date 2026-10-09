@@ -11,6 +11,7 @@ export const secureEn = {
   "secure.nav.apply": "Apply",
   "secure.nav.open": "Open the vault",
   "secure.nav.home": "Home",
+  "secure.nav.tour": "Guided tour",
   "secure.nav.boarding": "Boarding pass",
   "secure.nav.gifts": "Gifts",
   "secure.nav.list": "Mainnet list",

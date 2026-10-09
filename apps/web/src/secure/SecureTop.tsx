@@ -9,11 +9,11 @@ import { useT } from "./i18n";
  * The bar of the secure theme: the stamp, the links of the part the page belongs to, the network,
  * the languages. The home page leads to its anchors, the vault's docs, boarding, the vault, and quietly to
  * the game's corner ("for fun"); the vault's
- * page to what leaks, its docs and home, never to the game; the boarding page to its own parts and
+ * page to what leaks, its docs, home and its guided tour, never to the game; the boarding page to its own parts and
  * home. Below a laptop's width the home page's and boarding's links fold into a menu; the vault's
  * three stay in the bar.
  */
-export function SecureTop({ here = "home" }: { here?: "home" | "vault" | "apply" }) {
+export function SecureTop({ here = "home", onTour }: { here?: "home" | "vault" | "apply"; onTour?: () => void }) {
   const t = useT();
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -73,6 +73,12 @@ export function SecureTop({ here = "home" }: { here?: "home" | "vault" | "apply"
               <a href="#leaks">{t("secure.nav.leaks")}</a>
               <a href={vaultDocsPath(locale)}>{t("secure.nav.docs")}</a>
               <a href={homePath(locale)}>{t("secure.nav.home")}</a>
+              {/* The vault's walkthrough, played again: a "?" small enough to stay in a phone's bar. */}
+              {onTour && (
+                <button type="button" className="sec-nav-tour" data-tour="tour-replay" onClick={onTour} aria-label={t("secure.nav.tour")} title={t("secure.nav.tour")}>
+                  ?
+                </button>
+              )}
             </>
           )}
         </nav>

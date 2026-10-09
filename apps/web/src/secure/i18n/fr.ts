@@ -12,6 +12,7 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.nav.apply": "Embarquer",
   "secure.nav.open": "Ouvrir le coffre",
   "secure.nav.home": "Accueil",
+  "secure.nav.tour": "Visite guidée",
   "secure.nav.boarding": "Carte d'embarquement",
   "secure.nav.gifts": "Cadeaux",
   "secure.nav.list": "Liste mainnet",
