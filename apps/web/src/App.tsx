@@ -126,6 +126,7 @@ export function App() {
 
       <footer className="notice">
         <span>
+          <b className="notice-experimental">{t("footer.experimental")}</b>
           {chain.offline ? (
             t("footer.offline", { reason: chain.offline })
           ) : chain.connectError ? (

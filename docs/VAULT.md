@@ -332,6 +332,19 @@ transaction hash. Details and settings: [`apps/api/README.md`](../apps/api/READM
 - **Replicas share one key and one nonce space**; a nonce taken by another replica is retried
   with a fresh count, twice at most. The indexer role never sends.
 
+## What the team sees
+
+The API's index reads the vault's events and keeps their counts, never an address that could
+name a holder: the depositor, a withdrawal's or a claim's recipient, a private sale's parties and
+a request's sender are public on-chain but dropped when the logs are decoded. The admin site's
+"Coffre" tab shows boxes by state, deposits per collection, Seaport listings, sales and volume,
+private sales offered and settled (their price stays encrypted, to the team too), requests by
+action and outcome, and the latest events. Grafana's "The sealed vault" row shows the same
+counts and the relayer's wallet, its day against its cap and what it sent or refused; Discord
+gets an alert when the relayer runs low (`VaultRelayerLow` under 0.05 ETH, `VaultRelayerEmpty`),
+fails to send, nears its cap, or a request waits over an hour, and an activity post for each
+deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../deploy/README.md#monitoring)).
+
 ## Decisions
 
 - **Requests are asked with a key, not an address.** An address check needs the holder to sign

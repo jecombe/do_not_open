@@ -14,6 +14,7 @@ export const secureEn = {
   "secure.nav.boarding": "Boarding pass",
   "secure.nav.gifts": "Gifts",
   "secure.nav.list": "Mainnet list",
+  "secure.nav.fun": "For fun",
   "secure.nav.menu": "Menu",
   "secure.status": "Sepolia · live",
 
@@ -63,6 +64,7 @@ export const secureEn = {
   "secure.trust.3.v": "the most the vault's fee can ever be, written in the contract. 2.5 % today.",
 
   "secure.game.kicker": "Off duty",
+  "secure.game.experimental": "Experimental: a prototype whose rules, numbers and screens still change, on the test network.",
   "secure.foot": "DO NOT OPEN runs on a test network. Nothing here is worth money yet.",
 } as const;
 

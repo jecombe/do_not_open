@@ -3,6 +3,9 @@ import type { VaultFinalizeTx, VaultRequestTx, VaultSender } from "./ports/vault
 import type { Address } from "../domain/types";
 
 export type VaultRelayRefusal = "reverted" | "daily-cap";
+export type VaultRelayKind = "request" | "finalize";
+/** How a relay ended: sent, refused (the vault would revert, or the day's cap), or failed sending. */
+export type VaultRelayOutcome = "sent" | VaultRelayRefusal | "failed";
 
 /** A relayed transaction turned away: nothing was sent. */
 export class VaultRelayRefused extends Error {
@@ -24,6 +27,8 @@ export class VaultRelayRefused extends Error {
 export class VaultRelay {
   private day = -1;
   private sentToday = 0;
+  /** What this process relayed since it started, by transaction and outcome: the monitoring's counter. */
+  readonly outcomes = new Map<`${VaultRelayKind}:${VaultRelayOutcome}`, number>();
 
   constructor(
     private readonly sender: VaultSender,
@@ -35,23 +40,53 @@ export class VaultRelay {
     return this.sender.address;
   }
 
+  /** Sent today (UTC) by this process, out of its daily cap. */
+  today(): { sent: number; perDay: number } {
+    this.roll();
+    return { sent: this.sentToday, perDay: this.perDay };
+  }
+
+  /** The relayer wallet's balance in wei, or null when the sender cannot tell. */
+  balance(): Promise<bigint | null> {
+    return this.sender.balance ? this.sender.balance() : Promise.resolve(null);
+  }
+
   request(tx: VaultRequestTx): Promise<string> {
-    return this.spend(() => this.sender.request(tx));
+    return this.spend("request", () => this.sender.request(tx));
   }
 
   finalize(tx: VaultFinalizeTx): Promise<string> {
-    return this.spend(() => this.sender.finalize(tx));
+    return this.spend("finalize", () => this.sender.finalize(tx));
   }
 
-  private async spend(send: () => Promise<string>): Promise<string> {
+  private roll() {
     const day = Math.floor(this.clock.now() / 86_400);
     if (day !== this.day) {
       this.day = day;
       this.sentToday = 0;
     }
-    if (this.sentToday >= this.perDay) throw new VaultRelayRefused("daily-cap", "The vault relayer sent all it may today. Send the request from your wallet, or try tomorrow.");
-    const hash = await send();
+  }
+
+  private count(kind: VaultRelayKind, outcome: VaultRelayOutcome) {
+    const key = `${kind}:${outcome}` as const;
+    this.outcomes.set(key, (this.outcomes.get(key) ?? 0) + 1);
+  }
+
+  private async spend(kind: VaultRelayKind, send: () => Promise<string>): Promise<string> {
+    this.roll();
+    if (this.sentToday >= this.perDay) {
+      this.count(kind, "daily-cap");
+      throw new VaultRelayRefused("daily-cap", "The vault relayer sent all it may today. Send the request from your wallet, or try tomorrow.");
+    }
+    let hash: string;
+    try {
+      hash = await send();
+    } catch (error) {
+      this.count(kind, error instanceof VaultRelayRefused ? error.code : "failed");
+      throw error;
+    }
     this.sentToday += 1;
+    this.count(kind, "sent");
     return hash;
   }
 }

@@ -7,12 +7,14 @@ import { Ideas } from "./pages/Ideas";
 import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { Players } from "./pages/Players";
+import { Vault } from "./pages/Vault";
 
 const TABS = [
   { id: "overview", label: "Vue d'ensemble" },
   { id: "boarding", label: "Embarquement" },
   { id: "players", label: "Joueurs" },
   { id: "chain", label: "Jeu on-chain" },
+  { id: "vault", label: "Coffre" },
   { id: "ideas", label: "Idées" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
@@ -120,6 +122,8 @@ export function App() {
           <Players onError={guard} />
         ) : tab === "ideas" ? (
           <Ideas onError={guard} />
+        ) : tab === "vault" ? (
+          <Vault days={days} onError={guard} />
         ) : !data ? (
           <div className="splash">Chargement…</div>
         ) : tab === "boarding" ? (

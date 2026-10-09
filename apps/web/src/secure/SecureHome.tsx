@@ -213,6 +213,7 @@ function GameCorner() {
           <h2>{h("home.game.title")}</h2>
           <p className="sec-lede">{h("home.game.lede")}</p>
           <p className="sec-meta">{h("home.game.kicker", { supply })}</p>
+          <p className="sec-experimental">{t("secure.game.experimental")}</p>
           <p className="sec-ctas">
             <a className="sec-btn sec-btn-ghost" href={appPath(locale)}>
               {h("home.game.play")}

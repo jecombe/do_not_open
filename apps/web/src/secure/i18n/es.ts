@@ -16,6 +16,7 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.nav.boarding": "Tarjeta de embarque",
   "secure.nav.gifts": "Regalos",
   "secure.nav.list": "Lista mainnet",
+  "secure.nav.fun": "Por diversión",
   "secure.nav.menu": "Menú",
   "secure.status": "Sepolia · en servicio",
 
@@ -65,5 +66,6 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.trust.3.v": "lo máximo que podrá cobrar nunca la bóveda, escrito en el contrato. Hoy, 2,5 %.",
 
   "secure.game.kicker": "Fuera de servicio",
+  "secure.game.experimental": "Experimental: un prototipo cuyas reglas, cifras y pantallas aún cambian, en la red de prueba.",
   "secure.foot": "DO NOT OPEN funciona en una red de prueba. Aquí nada vale dinero todavía.",
 };

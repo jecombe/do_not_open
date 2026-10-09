@@ -1,4 +1,5 @@
 import type { ProtocolEvent } from "../domain/events";
+import { feedItemOf, summarizeVault, type VaultEvent, type VaultFeedItem, type VaultSummary } from "../domain/vault";
 import type { Address } from "../domain/types";
 import type { AllowListClaim } from "./allowList";
 import type { Idea } from "./ideas";
@@ -76,6 +77,27 @@ export interface Dashboard {
   ideasByLocale: Record<string, number>;
   recent: FeedItem[];
 }
+
+/** The sealed vault on the admin site: where its boxes stand, its activity by day, its latest events. */
+export interface VaultDashboard {
+  generatedAt: number;
+  days: number;
+  summary: VaultSummary;
+  kpis: Kpi[];
+  /** Per UTC day: deposits, Seaport listings, Seaport sales, private sales settled, withdrawals, requests. */
+  daily: DayRow[];
+  recent: VaultFeedItem[];
+}
+
+/** The vault's events each series counts. */
+const VAULT_SERIES = {
+  deposits: ["VaultDeposited"],
+  listings: ["VaultListed"],
+  seaportSales: ["VaultSoldOnSeaport"],
+  privateSales: ["VaultSaleSettled"],
+  withdrawals: ["VaultWithdrawn"],
+  requests: ["VaultRequestPlaced"],
+} as const;
 
 export interface PlayerRow {
   code: string;
@@ -263,6 +285,53 @@ export class Insights {
       heatmap,
       ideasByLocale,
       recent: recentItems(passes, claims, ideas, recentChain, required).slice(0, 60),
+    };
+  }
+
+  /** The sealed vault, from its public events only: counts, never who holds a box. */
+  async vault(days: number): Promise<VaultDashboard> {
+    const now = this.clock.now();
+    const today = Math.floor(now / DAY) * DAY;
+    const from = today - (days - 1) * DAY;
+    const events = (await this.store.vaultEvents()) as VaultEvent[];
+    const dayList = Array.from({ length: days }, (_, i) => dayOf(from + i * DAY));
+    const perDay = (names: readonly string[]) => {
+      const m = new Map<string, number>();
+      for (const e of events) if (e.timestamp !== null && names.includes(e.name)) m.set(dayOf(e.timestamp), (m.get(dayOf(e.timestamp)) ?? 0) + 1);
+      return m;
+    };
+    const series = Object.fromEntries(Object.entries(VAULT_SERIES).map(([k, names]) => [k, perDay(names)]));
+    const sumSince = (m: Map<string, number>, start: number, end = Infinity) => {
+      let n = 0;
+      for (const [d, c] of m) {
+        const t = Date.parse(`${d}T00:00:00Z`) / 1000;
+        if (t >= start && t < end) n += c;
+      }
+      return n;
+    };
+    const kpis = Object.entries(series).map(([key, m]): Kpi => ({
+      key,
+      total: [...m.values()].reduce((a, b) => a + b, 0),
+      today: m.get(dayOf(today)) ?? 0,
+      yesterday: m.get(dayOf(today - DAY)) ?? 0,
+      last7: sumSince(m, today - 6 * DAY),
+      prev7: sumSince(m, today - 13 * DAY, today - 6 * DAY),
+      spark: dayList.map((d) => m.get(d) ?? 0),
+    }));
+    return {
+      generatedAt: now,
+      days,
+      summary: summarizeVault(events),
+      kpis,
+      daily: dayList.map((day) => {
+        const row: DayRow = { day };
+        for (const [k, m] of Object.entries(series)) row[k] = m.get(day) ?? 0;
+        return row;
+      }),
+      recent: events
+        .slice(-60)
+        .reverse()
+        .map(feedItemOf),
     };
   }
 

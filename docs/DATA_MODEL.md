@@ -230,6 +230,11 @@ A seed rat's picture is rendered from its seed on request (`/rats/:id/image.svg`
 it is stored. `RatTrick` events stay in `events` (source `ratTricks`) and the feeds, folded into
 nothing else.
 
+The sealed vault's events (source `vault`, names prefixed `Vault`: deposits, withdrawals, Seaport
+listings and sales, claims, private sales, requests) stay in `events` too, without any address
+that could name a holder, out of the game's feeds, folded on read (`summarizeVault`) for the
+admin site and the metrics. No table of their own ([`docs/VAULT.md`](VAULT.md#what-the-team-sees)).
+
 ## Flea market
 
 `FleaMarket` keeps three maps, each with a public counter (`listingCount`, `purchaseCount`,

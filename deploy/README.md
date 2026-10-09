@@ -142,14 +142,17 @@ Every series carries `network` (`sepolia`, `mainnet`, or `server` for what they 
 Grafana shows two dashboards with a network picker, "Protocol" (collection, proofs waiting,
 indexer, RPC pool, API replicas (up, traffic and p95 per replica, CPU, memory, event loop lag,
 restarts, the image each runs), API traffic, Zama relayer calls, Arweave, Gemini, herald, the mainnet whitelist
-(seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the studio) and "Server and
+(seats taken, boarding funnel, tasks on X, Sign in with X outcomes, ideas), the sealed vault (boxes by state, deposits, Seaport and private sales, requests, the relayer's wallet, day and outcomes), the studio) and "Server and
 URLs"; Alertmanager posts the alerts of `prometheus/alerts.yml` to a private Discord channel,
 each titled with its network: a replica down (`ApiReplicaDown`, the others carry its traffic),
 none left (`ApiNoReplica`), the indexer down (`IndexerDown`), a process restarting over and over
-(`ApiRestarting`), a saturated replica (`ApiEventLoopBlocked`), among the others. The same
+(`ApiRestarting`), a saturated replica (`ApiEventLoopBlocked`), the vault relayer low on gas or empty
+(`VaultRelayerLow` under 0.05 ETH, `VaultRelayerEmpty`), failing to send (`VaultRelayFailing`), near its
+daily cap (`VaultRelayerCapNear`), or vault requests waiting over an hour (`VaultRequestsStuck`), among the others. The same
 channel follows what players do (the `activity` group, posted with ✨ and no "resolved"
 message): new boarding passes, X accounts connected, seats taken, whitelist claims, ideas, new
-addresses, boxes sold and opened, duels, milestones, rats, studio packs and traffic spikes, each
+addresses, boxes sold and opened, duels, milestones, rats, studio packs, the vault's deposits,
+Seaport sales, private sales and withdrawals, and traffic spikes, each
 compared with 15 minutes earlier and posted again every 30 minutes while it lasts; a 🗞️ recap of
 the last 24 hours at 08:00 UTC, which also proves once a day that alerts still reach Discord; and
 `SiteQuiet` when nobody has called the API for 6 hours. For each player by name (their X handle:
@@ -172,7 +175,8 @@ CI copies `deploy/monitoring` on every deploy and reloads Prometheus and Alertma
 `.env` stays on the server. Dashboards are written by `grafana/dashboards.py`. At mainnet
 launch: uncomment the `dno-api-mainnet` job in `prometheus/prometheus.yml` and rename
 `probes/mainnet.yml.example` (the mainnet replicas and indexer on the edge network as
-`dno-api-mainnet` and `dno-indexer-mainnet`), and move the apex probe out of Sepolia.
+`dno-api-mainnet` and `dno-indexer-mainnet`), and move the bare domain's, `game.`'s and `vault.`'s
+probes out of `probes/sepolia.yml`.
 
 ## The admin site
 

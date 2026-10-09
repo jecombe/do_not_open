@@ -137,6 +137,20 @@ export function storeContract(name: string, make: () => Promise<Store & PostStor
       expect(shaken).toEqual(expect.objectContaining({ name: "Shaken", tokenId: 1, viewer: BOB, paid: true, block: 2, source: "collection" }));
     });
 
+    it("keeps the sealed vault's events to themselves: out of the game's feed, listed in chain order", async () => {
+      const NFT = "0x00000000000000000000000000000000000000f7";
+      await store.transaction(async (tx) => {
+        await tx.insertEvent(ev("VaultListed", 3, { listingId: 0, boxId: 0, price: "5", endTime: 9 }), null);
+        await tx.insertEvent(ev("VaultDeposited", 2, { boxId: 0, collection: NFT, nftTokenId: "7" }), null);
+        await tx.insertEvent(ev("MintPlaced", 1, { firstTokenId: 0, buyer: ALICE, count: 1 }), null);
+      });
+      expect((await store.activity({ limit: 10 })).map((e) => e.name)).toEqual(["MintPlaced"]);
+      expect(await store.vaultEvents()).toEqual([
+        expect.objectContaining({ name: "VaultDeposited", source: "vault", boxId: 0, collection: NFT, nftTokenId: "7" }),
+        expect.objectContaining({ name: "VaultListed", listingId: 0, price: "5" }),
+      ]);
+    });
+
     it("counts events and distinct actors by time bucket, for the dashboard", async () => {
       const day = 86_400;
       const t0 = 20_000 * day;

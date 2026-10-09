@@ -1,12 +1,13 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { applyPath, homePath, projectDocsPath, vaultDocsPath, vaultPath } from "../site";
+import { appPath, applyPath, homePath, projectDocsPath, vaultDocsPath, vaultPath } from "../site";
 import { useT } from "./i18n";
 
 /**
  * The bar of the secure theme: the stamp, the links of the part the page belongs to, the network,
- * the languages. The home page leads to its anchors, the docs, boarding and the vault; the vault's
+ * the languages. The home page leads to its anchors, the docs, boarding, the vault, and quietly to
+ * the game ("for fun"); the vault's
  * page to what leaks, its docs and home, never to the game; the boarding page to its own parts and
  * home. Below a laptop's width the home page's and boarding's links fold into a menu; the vault's
  * three stay in the bar.
@@ -46,6 +47,10 @@ export function SecureTop({ here = "home" }: { here?: "home" | "vault" | "apply"
             <a href="#leaks">{t("secure.nav.leaks")}</a>
             <a href={projectDocsPath(locale)}>{t("secure.nav.docs")}</a>
             <a href={applyPath(locale)}>{t("secure.nav.apply")}</a>
+            {/* The game, kept apart: a quiet link at the end, the vault comes first. */}
+            <a className="sec-nav-fun" href={appPath(locale)}>
+              {t("secure.nav.fun")}
+            </a>
             {/* On a phone the bar has no room for the languages: they come with the menu. */}
             <div className="sec-nav-lang">
               <LangSwitch label={t("secure.nav")} />

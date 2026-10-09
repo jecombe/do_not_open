@@ -15,6 +15,12 @@ export const KPI_LABEL: Record<string, { label: string; hint: string }> = {
   rats: { label: "Rats adoptés", hint: "mints de rats" },
   packs: { label: "Packs studio", hint: "achetés on-chain" },
   active: { label: "Wallets actifs", hint: "distincts / jour · total = record" },
+  deposits: { label: "Dépôts", hint: "NFT mis dans le coffre" },
+  listings: { label: "Mises en vente", hint: "annonces Seaport" },
+  seaportSales: { label: "Ventes Seaport", hint: "boîtes vendues sur OpenSea" },
+  privateSales: { label: "Ventes privées", hint: "réglées (prix chiffré)" },
+  withdrawals: { label: "Retraits", hint: "NFT sortis du coffre" },
+  requests: { label: "Demandes", hint: "retraits, annonces, claims envoyés" },
 };
 
 export const TASK_LABEL: Record<XTask, string> = {

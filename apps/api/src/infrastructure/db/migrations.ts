@@ -636,4 +636,17 @@ export const MIGRATIONS: { version: number; name: string; sql: string }[] = [
       create index if not exists x_passes_referred_by on testnet.x_passes (referred_by) where referred_by is not null;
     `,
   },
+  {
+    version: 27,
+    name: "sealed vault index",
+    sql: /* sql */ `
+      -- The index now reads the sealed vault's events too (source 'vault'). Its contract on
+      -- Sepolia was deployed at block 11,872,753, after the cursor had passed it: the cursor goes
+      -- back there and the indexer reads those blocks again. Every event already recorded is
+      -- skipped (the events table's key), so only the vault's are added and nothing is projected
+      -- twice. A fresh index (no cursor yet, or one before that block) is left as it is. A
+      -- release that does not know the vault's events reads the same blocks and skips them all.
+      update sync_state set block = 11872752 where id = 'chain' and block > 11872752;
+    `,
+  },
 ];

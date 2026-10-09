@@ -477,13 +477,18 @@ export class PgStore implements Store, PostStore, ArchiveStore, StudioStore, Rat
   async activity(q: ActivityQuery): Promise<ProtocolEvent[]> {
     const { rows } = await this.pool.query(
       `select * from events
-       where name <> all($5::text[])
+       where name <> all($5::text[]) and source <> 'vault'
          and ($1::bigint is null or block < $1)
          and ($2::int is null or tokens @> array[$2::int])
          and ($3::text is null or actors @> array[$3::text])
        order by block desc, log_index desc limit $4`,
       [q.beforeBlock ?? null, q.tokenId ?? null, q.account ?? null, q.limit, QUIET_EVENTS],
     );
+    return rows.map(eventFrom);
+  }
+
+  async vaultEvents(): Promise<ProtocolEvent[]> {
+    const { rows } = await this.pool.query("select * from events where source = 'vault' order by block, log_index");
     return rows.map(eventFrom);
   }
 

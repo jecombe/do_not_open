@@ -24,4 +24,6 @@ export interface VaultSender {
   /** Plays it first: a transaction the vault would refuse is never sent (it throws `VaultRelayRefused`). Returns the hash. */
   request(tx: VaultRequestTx): Promise<string>;
   finalize(tx: VaultFinalizeTx): Promise<string>;
+  /** The wallet's balance in wei, for the monitoring: it pays every transaction's gas. */
+  balance?(): Promise<bigint>;
 }

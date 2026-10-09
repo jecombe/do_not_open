@@ -8,7 +8,7 @@ import { openExchange } from "../views/exchangeLink";
 import { setGateUp } from "./terms";
 
 // Read once per browser; a new version of the notice (a new key) shows again.
-const SEEN = "dno:testnet-notice:v2";
+const SEEN = "dno:testnet-notice:v3";
 
 const seen = () => {
   try {
@@ -19,7 +19,8 @@ const seen = () => {
 };
 
 /**
- * What the test network keeps and what it does not, said once when the game opens on Sepolia:
+ * That the game is experimental, then what the test network keeps and what it does not, said once
+ * when the game opens on Sepolia:
  * the contracts can be redeployed and the boxes, cats and tokens start over, but the points, the
  * seat on the whitelist and the X pass are kept apart and survive it. It stands in for the
  * release form, which is signed on mainnet only. It also points at the free test tokens: the
@@ -62,6 +63,10 @@ export function TestnetNotice() {
           </span>
         </header>
         <div className="testnet-body">
+          <div className="testnet-experimental" role="note">
+            <h3>{t("notice.experimental.title")}</h3>
+            <p>{t("notice.experimental.body")}</p>
+          </div>
           <p className="testnet-lede">{t("notice.lede")}</p>
           <div className="testnet-cols">
             <div className="testnet-col is-lost">

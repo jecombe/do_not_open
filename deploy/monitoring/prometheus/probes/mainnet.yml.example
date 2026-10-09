@@ -1,6 +1,8 @@
-# Rename to mainnet.yml at launch (the apex serves Sepolia until then).
+# Rename to mainnet.yml at launch, and take the bare domain, game. and vault. out of sepolia.yml.
 - targets:
     - https://api.do-not-open.app/health
     - https://do-not-open.app/
+    - https://game.do-not-open.app/
+    - https://vault.do-not-open.app/
   labels:
     network: mainnet
