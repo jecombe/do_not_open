@@ -19,6 +19,7 @@ export const vaultDocsEs: Record<VaultDocsKey, string> = {
   "vaultDocs.section.what": "Qué es la bóveda",
   "vaultDocs.what.p1": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.",
   "vaultDocs.what.p2": "La bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear.",
+  "vaultDocs.what.p3": "La primera vez que abres la bóveda, una visita guiada te la recorre: los dos lados, lo que sigue cifrado, y luego cada pestaña en el orden en que la usarías, de sellar un NFT a lo que se filtra. El «?» de la barra de la bóveda la vuelve a mostrar.",
 
   "vaultDocs.section.seal": "Sellar un NFT",
   "vaultDocs.seal.p1": "Sellar es una sola transacción: el NFT entra en la bóveda y se crea una caja para él, que tienes tú. Es pública, porque es una simple transferencia de NFT: todos ven quién selló qué NFT. Lo que le pase a la caja después, no.",

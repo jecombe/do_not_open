@@ -25,6 +25,7 @@ import { useT } from "./i18n";
 import { dismissRun, dropRun, endRun, isOwnRun, runStep, runTx, startRun } from "./tx/runStore";
 import { TxDock, TxStage, useVaultRun } from "./tx/VaultTx";
 import { parsePocketCode, pocketCode, PocketTab } from "./VaultPocket";
+import { replayVaultTour, VaultTour } from "./VaultTour";
 import { VaultBalances, VaultProfile } from "./VaultWallet";
 
 /** How often the public side of the vault (its boxes, Seaport listings) is read again. */
@@ -68,7 +69,7 @@ export function VaultPage() {
 
   return (
     <div className="sec vault">
-      <SecureTop here="vault" />
+      <SecureTop here="vault" onTour={vault ? replayVaultTour : undefined} />
       {vault ? (
         <VaultMarket vault={vault} demo={mode === "mock"} />
       ) : (
@@ -314,7 +315,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               {floor === null ? "—" : `${formatAmount(floor, 18)} ${coin}`}
             </dd>
           </div>
-          <div>
+          <div data-tour="owners">
             <dt>{t("vault.stat.owners")}</dt>
             <dd>
               <Cipher length={4} />
@@ -349,7 +350,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           </dl>
         </div>
         <VaultBalances vault={vault} coin={coin} className="vault-balances-head" />
-        <div className="vault-account">
+        <div className="vault-account" data-tour="account">
           {account ? <VaultProfile account={account} vault={vault} coin={coin} links={links} boxes={mine?.length ?? null} onBoxes={() => go("mine")} /> : connectButton}
           {!account && picking && (
             <div className="vault-wallets" role="group" aria-label={t("vault.pickWallet")}>
@@ -369,7 +370,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
         </div>
       </header>
 
-      <div className="vault-kinds" role="radiogroup" aria-label={t("vault.kind.label")}>
+      <div className="vault-kinds" data-tour="kinds" role="radiogroup" aria-label={t("vault.kind.label")}>
         {KINDS.map((k) => (
           <button key={k} type="button" role="radio" aria-checked={kind === k} className={`vault-kind vault-kind-${k}${kind === k ? " on" : ""}`} onClick={() => pickKind(k)}>
             <span className="vault-kind-icon" aria-hidden="true">
@@ -386,7 +387,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
 
       <nav className="vault-tabs" role="tablist" aria-label={t(`vault.kind.${kind}.title`)}>
         {KIND_TABS[kind].map((k) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : undefined} onClick={() => go(k)}>
+          <button key={k} type="button" role="tab" data-tour={`tab-${k}`} aria-selected={tab === k} className={tab === k ? "on" : undefined} onClick={() => go(k)}>
             {t(`vault.tab.${k}`)}
             {counts[k] !== null && <span className="vault-count">{counts[k]}</span>}
           </button>
@@ -467,7 +468,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               ) : explore.length === 0 ? (
                 <Empty title={t("vault.filtered.empty")} />
               ) : (
-                <ul className="vault-grid">
+                <ul className="vault-grid" data-tour="grid">
                   {explore.map((b) => (
                     <BoxCard
                       key={b.boxId}
@@ -513,7 +514,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               <Empty title={t("vault.connectFirst")}>{!account && connectButton}</Empty>
             ) : (
               <>
-                <div className="vault-toolbar vault-toolbar-wallet">
+                <div className="vault-toolbar vault-toolbar-wallet" data-tour="decoys">
                   <div className="vault-decoys" role="radiogroup" aria-label={t("vault.wallet.decoys")}>
                     <span>{t("vault.wallet.decoys")}</span>
                     {Array.from({ length: MAX_DECOYS + 1 }, (_, n) => (
@@ -699,6 +700,9 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
       ) : (
         <TxDock onShow={() => setStage(true)} />
       )}
+
+      {/* Not over a box opened from a link: it waits for the dialog to close. */}
+      <VaultTour ready={info !== null && opened === null} go={go} />
     </>
   );
 }

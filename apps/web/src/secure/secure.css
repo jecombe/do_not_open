@@ -1309,3 +1309,26 @@ button.sec-btn {
   color: var(--muted);
   font-size: 13px;
 }
+
+/* The vault's "?": plays its guided tour again. */
+.sec-top nav .sec-nav-tour {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: none;
+  color: var(--teal);
+  font: 600 13px var(--mono);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.sec-top nav .sec-nav-tour:hover {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+}

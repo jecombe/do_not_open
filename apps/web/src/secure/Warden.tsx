@@ -169,7 +169,7 @@ export function Warden() {
 
   return (
     <>
-      <button type="button" className={`warden-tab${open ? " is-open" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-label={t("warden.open")} title={t("warden.open")}>
+      <button type="button" data-tour="warden" className={`warden-tab${open ? " is-open" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-label={t("warden.open")} title={t("warden.open")}>
         <Safe mood={open ? mood : waiting ? "thinking" : "idle"} />
         <span className="warden-tab-label">{t("warden.name")}</span>
       </button>

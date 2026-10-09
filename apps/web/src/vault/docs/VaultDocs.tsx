@@ -54,7 +54,7 @@ export function VaultDocs() {
   ] as const;
 
   const body: Record<(typeof SECTIONS)[number], ReactNode> = {
-    what: <Prose>{[t("vaultDocs.what.p1"), t("vaultDocs.what.p2")]}</Prose>,
+    what: <Prose>{[t("vaultDocs.what.p1"), t("vaultDocs.what.p2"), t("vaultDocs.what.p3")]}</Prose>,
     seal: <Prose>{[t("vaultDocs.seal.p1"), t("vaultDocs.seal.p2"), t("vaultDocs.seal.p3")]}</Prose>,
     key: <Prose>{[t("vaultDocs.key.p1"), t("vaultDocs.key.p2"), t("vaultDocs.key.p3"), t("vaultDocs.key.p4")]}</Prose>,
     requests: (

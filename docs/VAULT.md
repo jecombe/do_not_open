@@ -30,6 +30,14 @@ boarding and both docs show it at their foot when the visitor left the vault mid
 that run in the browser (the decryption and the proof) stop with the page, and the next visit
 settles the box's waiting requests.
 
+The first visit plays a guided tour (`apps/web/src/vault/VaultTour.tsx`, on the spotlight the
+game's depot tour uses, `apps/web/src/tour/Spotlight.tsx`): the two sides, the encrypted holders,
+the wallet, then each tab in the order a newcomer uses them (the market, sealing with decoys,
+one's boxes, private sales, the pocket, what leaks) and the Warden. Each tab's step opens that tab
+first, so the spotlight lands on the real thing (without a wallet, on the tab itself). It shows
+once per browser (`localStorage`), never over a box opened from a link, and the "?" in the
+vault's bar plays it again.
+
 The contracts are the source of truth, especially the design notes at the top of
 [`SealedVault.sol`](../packages/contracts-evm/contracts/SealedVault.sol). This file explains
 them, what leaks, what it costs, and why each choice was made.

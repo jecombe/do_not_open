@@ -124,7 +124,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint."
+     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint.\nThe first time you open the vault, a guided tour walks you through it: the two sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again."
     },
     {
      "id": "vault-seal-0",
@@ -455,7 +455,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
+     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter.\nLa première fois que tu ouvres le coffre, une visite guidée te le fait parcourir : les deux côtés, ce qui reste chiffré, puis chaque onglet dans l'ordre où tu t'en servirais, de sceller un NFT à ce qui fuite. Le « ? » dans la barre du coffre la rejoue."
     },
     {
      "id": "vault-seal-0",
@@ -798,7 +798,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear."
+     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear.\nLa primera vez que abres la bóveda, una visita guiada te la recorre: los dos lados, lo que sigue cifrado, y luego cada pestaña en el orden en que la usarías, de sellar un NFT a lo que se filtra. El «?» de la barra de la bóveda la vuelve a mostrar."
     },
     {
      "id": "vault-seal-0",
@@ -1135,7 +1135,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare."
+     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare.\nLa prima volta che apri il caveau, una visita guidata te lo fa percorrere: i due lati, ciò che resta cifrato, poi ogni scheda nell'ordine in cui la useresti, dal sigillare un NFT a cosa trapela. Il «?» nella barra del caveau la riproduce."
     },
     {
      "id": "vault-seal-0",
