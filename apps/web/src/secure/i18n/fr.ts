@@ -2,8 +2,7 @@ import type { SecureKey } from "./en";
 
 export const secureFr: Record<SecureKey, string> = {
   "secure.title": "DO NOT OPEN, le coffre scellé : des NFT que personne ne te voit détenir",
-  "secure.description":
-    "Mets n'importe quel NFT dans une boîte scellée dont le détenteur est chiffré sur Ethereum, grâce au FHE de Zama. Elle se vend quand même sur Seaport, ou en privé pour un prix que seul l'acheteur lit.",
+  "secure.description": "Mets n'importe quel NFT dans une boîte scellée dont le détenteur est chiffré sur Ethereum, grâce au FHE de Zama. Elle se vend quand même sur Seaport, ou en privé pour un prix que seul l'acheteur lit.",
   "secure.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, dans un bouclier de chiffrement lumineux",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocole",
@@ -32,11 +31,22 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.spec.3.k": "Règles",
   "secure.spec.3.v": "appliquées, vérifiables",
 
-  "secure.scene.aria": "Une boîte scellée dans un bouclier de chiffrement. Les sondes qui tentent de lire son détenteur rebondissent. Clique pour en envoyer une.",
-  "secure.scene.holder": "détenteur",
-  "secure.scene.denied": "lecture refusée",
-  "secure.scene.caption": "Chaque tentative de lire le détenteur tombe sur du chiffré.",
-  "secure.scene.hint": "Clique pour essayer",
+  "secure.story.aria": "Le coffre en quatre étapes, en boucle : un NFT est scellé dans une boîte, une clé naît d'une seule signature, la boîte se vend sur Seaport, à l'offre d'un acheteur ou en privé, se donne ou prête ses avantages à un délégué pendant que les sondes rebondissent, et le NFT ressort vers une adresse neuve. Clique pour passer à l'étape suivante.",
+  "secure.story.public": "dépôt · public",
+  "secure.story.holder": "détenteur",
+  "secure.story.denied": "lecture refusée",
+  "secure.story.signature": "1 signature",
+  "secure.story.key": "clé",
+  "secure.story.keyOk": "correspond",
+  "secure.story.seaport": "Seaport",
+  "secure.story.offer": "offre",
+  "secure.story.private": "vente privée",
+  "secure.story.gift": "cadeau",
+  "secure.story.delegate": "délégué",
+  "secure.story.fresh": "adresse neuve",
+  "secure.story.pause": "Pause",
+  "secure.story.play": "Lecture",
+  "secure.story.steps": "Les étapes du coffre",
 
   "secure.ledger.kicker": "Modèle de menace",
   "secure.ledger.title": "Ce que voit la chaîne, ce que tu vois",

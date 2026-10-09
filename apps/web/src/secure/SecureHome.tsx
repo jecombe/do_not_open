@@ -9,7 +9,7 @@ import { useT } from "./i18n";
 import { Icon } from "./Icon";
 import { SecureTop } from "./SecureTop";
 import { Warden } from "./Warden";
-import { ShieldScene } from "./shieldScene";
+import { STEPS, VaultStoryScene, type StoryLabels } from "./vaultStory";
 import { glyphs, hex, reduced, useDecrypt } from "./cipher";
 
 /** Ciphertext that never settles. */
@@ -32,51 +32,93 @@ function Decrypted({ text, className }: { text: string; className?: string }) {
   );
 }
 
-/** The box in its shield, with the holder's tag that never resolves. */
-function Shield() {
+/** The vault's four steps, played on a loop by a 3D scene, with the step under way spelled out below. */
+function Story() {
   const t = useT();
+  const h = useHomeT();
   const host = useRef<HTMLDivElement>(null);
-  const scene = useRef<ShieldScene | null>(null);
+  const bar = useRef<HTMLSpanElement>(null);
+  const scene = useRef<VaultStoryScene | null>(null);
   const [webgl, setWebgl] = useState(true);
-  const labels = useRef({
-    holder: t("secure.scene.holder"),
-    denied: t("secure.scene.denied"),
+  const [step, setStep] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const labels = useRef<StoryLabels>({
+    public: t("secure.story.public"),
+    holder: t("secure.story.holder"),
+    denied: t("secure.story.denied"),
+    signature: t("secure.story.signature"),
+    key: t("secure.story.key"),
+    keyOk: t("secure.story.keyOk"),
+    seaport: t("secure.story.seaport"),
+    offer: t("secure.story.offer"),
+    private: t("secure.story.private"),
+    gift: t("secure.story.gift"),
+    delegate: t("secure.story.delegate"),
+    fresh: t("secure.story.fresh"),
   });
 
   useEffect(() => {
     if (!host.current) return;
+    let made: VaultStoryScene;
     try {
-      scene.current = new ShieldScene(host.current, labels.current);
+      made = new VaultStoryScene(host.current, labels.current);
     } catch {
       setWebgl(false);
+      return;
     }
+    made.onStep = setStep;
+    // Straight to the element: a state update every frame would re-render the page.
+    made.onProgress = (p) => bar.current?.style.setProperty("--p", p.toFixed(3));
+    scene.current = made;
     return () => {
-      scene.current?.dispose();
+      made.dispose();
       scene.current = null;
     };
   }, []);
 
+  const n = String(step + 1) as "1" | "2" | "3" | "4";
   return (
-    <figure className="sec-shield">
+    <figure className="sec-shield sec-story">
       {webgl && (
         <div
           ref={host}
           className="stage sec-shield-stage"
           role="button"
           tabIndex={0}
-          aria-label={t("secure.scene.aria")}
+          aria-label={t("secure.story.aria")}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              scene.current?.probe();
+              scene.current?.go((step + 1) % STEPS);
             }
           }}
         />
       )}
-      <figcaption>
-        <span>{t("secure.scene.caption")}</span>
-        <span className="sec-hint">{t("secure.scene.hint")}</span>
-      </figcaption>
+      {webgl && (
+        <button
+          type="button"
+          className="sec-story-pause"
+          aria-label={paused ? t("secure.story.play") : t("secure.story.pause")}
+          onClick={() => {
+            scene.current?.pause(!paused);
+            setPaused(!paused);
+          }}
+        >
+          {paused ? "▶" : "❚❚"}
+        </button>
+      )}
+      <ol className="sec-story-steps" aria-label={t("secure.story.steps")}>
+        {(["1", "2", "3", "4"] as const).map((k, i) => (
+          <li key={k}>
+            <button type="button" aria-current={i === step ? "step" : undefined} onClick={() => scene.current?.go(i)}>
+              <span className="sec-mono">0{k}</span>
+              {h(`home.steps.${k}`)}
+              {i === step && <span ref={bar} className="sec-story-bar" aria-hidden="true" />}
+            </button>
+          </li>
+        ))}
+      </ol>
+      <figcaption aria-live="polite">{h(`home.steps.${n}.v`)}</figcaption>
     </figure>
   );
 }
@@ -237,7 +279,7 @@ function GameCorner() {
 
 /**
  * A proposal for the home page, in a security mood rather than a cartoon one: the vault first
- * (a box in an encryption shield that probes bounce off, a ledger seen by the public and by the
+ * (its four steps played by a sealed box in an encryption shield, a ledger seen by the public and by the
  * holder, why, the protocol, what leaks, what nobody can do), the game small at the end.
  */
 export function SecureHome() {
@@ -284,7 +326,7 @@ export function SecureHome() {
             ))}
           </dl>
         </div>
-        <Shield />
+        <Story />
       </section>
 
       <div className="sec-band" aria-hidden="true">

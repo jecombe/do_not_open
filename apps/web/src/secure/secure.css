@@ -433,6 +433,129 @@ button.sec-btn {
   font: 12px var(--mono);
 }
 
+/* The vault's steps under the hero's scene. */
+.sec-story-pause {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: rgb(7 9 12 / 0.7);
+  color: var(--muted);
+  font: 11px var(--mono);
+  cursor: pointer;
+}
+
+.sec-story-pause:hover,
+.sec-story-pause:focus-visible {
+  color: var(--teal);
+  border-color: var(--teal);
+}
+
+.sec-story-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sec-story-steps button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--muted);
+  font: 600 13px/1.25 var(--sans);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.sec-story-steps .sec-mono {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.sec-story-steps button:hover {
+  color: var(--text);
+}
+
+.sec-story-steps button[aria-current="step"] {
+  border-color: rgb(91 227 194 / 0.5);
+  color: var(--text);
+}
+
+.sec-story-steps button[aria-current="step"] .sec-mono {
+  color: var(--teal);
+}
+
+.sec-story-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--teal);
+  transform: scaleX(var(--p, 0));
+  transform-origin: left;
+}
+
+.sec-story figcaption {
+  display: block;
+  min-height: 4.8em;
+  margin-top: 10px;
+  color: var(--muted);
+  font: 14px/1.6 var(--sans);
+}
+
+.story-tag {
+  padding: 3px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: rgb(7 9 12 / 0.75);
+  color: var(--text);
+  font: 11px var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.story-public {
+  border-color: var(--kraft);
+  color: var(--kraft);
+}
+
+.story-route.is-lit,
+.story-fresh {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.story-fresh {
+  white-space: pre-line;
+  text-align: center;
+}
+
+.story-key.is-ok {
+  border-color: var(--teal);
+  background: rgb(91 227 194 / 0.15);
+}
+
+.story-denied {
+  animation: none;
+}
+
 /* The band of handles. */
 .sec-band {
   border-block: 1px solid var(--line);
@@ -1000,6 +1123,15 @@ button.sec-btn {
   .sec-foot {
     flex-direction: column;
   }
+  .sec-story-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stage-label.story-tag,
+  .stage-label.shield-holder,
+  .stage-label.shield-denied {
+    font-size: 9.5px;
+    padding: 2px 6px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1008,5 +1140,8 @@ button.sec-btn {
   .sec-shield-stage::after,
   .sec-status i {
     animation: none;
+  }
+  .sec-story-pause {
+    display: none;
   }
 }

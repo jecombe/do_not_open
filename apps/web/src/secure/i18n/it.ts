@@ -2,8 +2,7 @@ import type { SecureKey } from "./en";
 
 export const secureIt: Record<SecureKey, string> = {
   "secure.title": "DO NOT OPEN, il caveau sigillato: NFT che nessuno ti vede possedere",
-  "secure.description":
-    "Metti qualsiasi NFT in una scatola sigillata il cui proprietario è cifrato su Ethereum con l'FHE di Zama. Si vende comunque su Seaport, o in privato a un prezzo che legge solo l'acquirente.",
+  "secure.description": "Metti qualsiasi NFT in una scatola sigillata il cui proprietario è cifrato su Ethereum con l'FHE di Zama. Si vende comunque su Seaport, o in privato a un prezzo che legge solo l'acquirente.",
   "secure.imageAlt": "Una scatola di cartone sigillata con il timbro DO NOT OPEN dentro uno scudo di cifratura luminoso",
   "secure.nav": "Sito",
   "secure.nav.protocol": "Protocollo",
@@ -32,11 +31,22 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.spec.3.k": "Regole",
   "secure.spec.3.v": "applicate, verificabili",
 
-  "secure.scene.aria": "Una scatola sigillata dentro uno scudo di cifratura. Le sonde che cercano di leggerne il proprietario rimbalzano. Clicca per lanciarne una.",
-  "secure.scene.holder": "proprietario",
-  "secure.scene.denied": "lettura rifiutata",
-  "secure.scene.caption": "Ogni tentativo di leggere il proprietario trova solo testo cifrato.",
-  "secure.scene.hint": "Clicca per provare",
+  "secure.story.aria": "Il caveau in quattro passi, in loop: un NFT viene sigillato in una scatola, una chiave nasce da una sola firma, la scatola si vende su Seaport, all'offerta di un acquirente o in privato, si regala o presta i suoi vantaggi a un delegato mentre le sonde rimbalzano, e l'NFT esce verso un indirizzo nuovo. Clicca per passare al passo successivo.",
+  "secure.story.public": "deposito · pubblico",
+  "secure.story.holder": "proprietario",
+  "secure.story.denied": "lettura rifiutata",
+  "secure.story.signature": "1 firma",
+  "secure.story.key": "chiave",
+  "secure.story.keyOk": "corrisponde",
+  "secure.story.seaport": "Seaport",
+  "secure.story.offer": "offerta",
+  "secure.story.private": "vendita privata",
+  "secure.story.gift": "regalo",
+  "secure.story.delegate": "delegato",
+  "secure.story.fresh": "indirizzo nuovo",
+  "secure.story.pause": "Pausa",
+  "secure.story.play": "Riproduci",
+  "secure.story.steps": "I passi del caveau",
 
   "secure.ledger.kicker": "Modello di minaccia",
   "secure.ledger.title": "Cosa vede la catena, cosa vedi tu",

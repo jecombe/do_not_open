@@ -35,7 +35,56 @@ const TEAL = new Color("#5BE3C2");
 const RED = new Color("#FF4D3D");
 const GLYPHS = "0123456789abcdef▓▒░█";
 
-const scramble = (n: number) => Array.from({ length: n }, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]).join("");
+export const scramble = (n: number) => Array.from({ length: n }, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]).join("");
+
+/**
+ * The shield's skin: it glows at its rim, scans slowly, and ripples where it is hit. Each of
+ * `uHits` is a unit direction in the sphere's own frame and the time it landed; `uFade` dims it.
+ */
+export function shieldGlow(hits: number): ShaderMaterial {
+  return new ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0 },
+      uFade: { value: 1 },
+      uColor: { value: TEAL },
+      uHit: { value: new Color("#9FFFE9") },
+      uHits: {
+        value: Array.from({ length: hits }, () => new Vector4(0, 1, 0, -99)),
+      },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vNormal; varying vec3 vView; varying vec3 vLocal;
+      void main() {
+        vLocal = normalize(position);
+        vec4 world = modelViewMatrix * vec4(position, 1.0);
+        vNormal = normalize(normalMatrix * normal);
+        vView = normalize(-world.xyz);
+        gl_Position = projectionMatrix * world;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float uTime; uniform float uFade; uniform vec3 uColor; uniform vec3 uHit; uniform vec4 uHits[${hits}];
+      varying vec3 vNormal; varying vec3 vView; varying vec3 vLocal;
+      void main() {
+        float rim = pow(1.0 - abs(dot(vNormal, vView)), 2.6);
+        float scan = 0.5 + 0.5 * sin(vLocal.y * 40.0 - uTime * 3.0);
+        float a = rim * (0.32 + 0.1 * scan);
+        vec3 color = uColor * a;
+        for (int i = 0; i < ${hits}; i++) {
+          float age = uTime - uHits[i].w;
+          if (age < 0.0 || age > 1.4) continue;
+          float d = acos(clamp(dot(vLocal, uHits[i].xyz), -1.0, 1.0));
+          float ring = smoothstep(0.09, 0.0, abs(d - age * 1.3)) * (1.0 - age / 1.4);
+          float core = smoothstep(0.35, 0.0, d) * max(0.0, 1.0 - age * 3.0);
+          color += uHit * (ring * 0.9 + core * 0.8);
+          a += ring + core;
+        }
+        gl_FragColor = vec4(color * uFade, min(a, 1.0) * uFade);
+      }`,
+  });
+}
 
 interface Probe {
   dot: Mesh;
@@ -91,47 +140,7 @@ export class ShieldScene {
         depthWrite: false,
       })
     );
-    this.glow = new ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: AdditiveBlending,
-      uniforms: {
-        uTime: { value: 0 },
-        uColor: { value: TEAL },
-        uHit: { value: new Color("#9FFFE9") },
-        uHits: {
-          value: Array.from({ length: HITS }, () => new Vector4(0, 1, 0, -99)),
-        },
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vNormal; varying vec3 vView; varying vec3 vLocal;
-        void main() {
-          vLocal = normalize(position);
-          vec4 world = modelViewMatrix * vec4(position, 1.0);
-          vNormal = normalize(normalMatrix * normal);
-          vView = normalize(-world.xyz);
-          gl_Position = projectionMatrix * world;
-        }`,
-      fragmentShader: /* glsl */ `
-        uniform float uTime; uniform vec3 uColor; uniform vec3 uHit; uniform vec4 uHits[${HITS}];
-        varying vec3 vNormal; varying vec3 vView; varying vec3 vLocal;
-        void main() {
-          float rim = pow(1.0 - abs(dot(vNormal, vView)), 2.6);
-          float scan = 0.5 + 0.5 * sin(vLocal.y * 40.0 - uTime * 3.0);
-          float a = rim * (0.32 + 0.1 * scan);
-          vec3 color = uColor * a;
-          for (int i = 0; i < ${HITS}; i++) {
-            float age = uTime - uHits[i].w;
-            if (age < 0.0 || age > 1.4) continue;
-            float d = acos(clamp(dot(vLocal, uHits[i].xyz), -1.0, 1.0));
-            float ring = smoothstep(0.09, 0.0, abs(d - age * 1.3)) * (1.0 - age / 1.4);
-            float core = smoothstep(0.35, 0.0, d) * max(0.0, 1.0 - age * 3.0);
-            color += uHit * (ring * 0.9 + core * 0.8);
-            a += ring + core;
-          }
-          gl_FragColor = vec4(color, min(a, 1.0));
-        }`,
-    });
+    this.glow = shieldGlow(HITS);
     this.shell.add(lattice, new Mesh(new SphereGeometry(R, 64, 40), this.glow));
     stage.scene.add(this.shell);
 
