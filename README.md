@@ -254,7 +254,9 @@ explore, find your boxes, your pocket, seal an NFT, read private sales and what 
 on the side, each box's page in a dialog). Every action plays on a stage with its own animation, its steps
 and its transactions (block, gas, explorer link); folded away, or left behind when the visitor
 goes to another page of the site, it shows at the foot of the page. The header carries the
-wallet's balances, live (ETH, WETH, USDC, and cUSDC decrypted for its holder alone); a click on
+wallet's balances, live (ETH, WETH, USDC, and cUSDC decrypted for its holder alone), and the
+decryptions it has left, as in the game (free today plus credits, read again as soon as one is
+spent; generous on Sepolia, fewer planned for mainnet, O48 in the audit checklist); a click on
 the address opens its profile (copy, explorer, its boxes, switch wallet, disconnect). Addresses
 and NFTs link to Etherscan, and to OpenSea where it shows the chain (mainnet: OpenSea has no
 testnet any more).

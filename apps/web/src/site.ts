@@ -74,6 +74,9 @@ const appViewPath = (locale: Locale, query: string): string => `${appPath(locale
 /** The game opened on its flea market. */
 export const marketPath = (locale: Locale): string => appViewPath(locale, "view=market");
 
+/** The game opened on its bureau de change, where decryption credits are bought. */
+export const exchangePath = (locale: Locale): string => appViewPath(locale, "view=exchange");
+
 /** The game opened on the duel ranking, where the mainnet allow list is claimed. */
 export const duelRankingPath = (locale: Locale): string => appViewPath(locale, "view=leaderboard&board=duels");
 

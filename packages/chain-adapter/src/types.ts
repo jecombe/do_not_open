@@ -872,6 +872,9 @@ export interface ChainAdapter {
   // --- decryption credits ---
   /** The connected account's decryptions left. Null where nobody counts them (the mock, a free relayer). */
   decryptionAllowance(): Promise<DecryptionAllowance | null>;
+  /** Fires once a counted call to the relayer (a decryption, an encrypted input) has settled, so a
+   *  meter can read `decryptionAllowance` again at once. Returns the unsubscribe function. */
+  onAllowanceSpent(listener: () => void): () => void;
   /** Buys decryption credits for the connected account, in plain USDC: the whole price or a revert. */
   buyCredits(credits: number, opts?: ActionOptions): Promise<void>;
 

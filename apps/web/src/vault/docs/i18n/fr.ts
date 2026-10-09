@@ -23,7 +23,7 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.section.seal": "Sceller un NFT",
   "vaultDocs.seal.p1": "Sceller tient en une transaction : le NFT entre dans le coffre et une boîte est créée pour lui, à ton nom. C'est public, puisque c'est un simple transfert de NFT : tout le monde voit qui a scellé quel NFT. Ce qui arrive ensuite à la boîte, non.",
   "vaultDocs.seal.p2": "Le dépôt nomme son déposant, mais il peut aussi envoyer aussitôt la nouvelle boîte, dans la même transaction, à quelques adresses au hasard où chaque transfert ne déplace rien (des leurres : tu choisis combien, de 0 à 5, 3 par défaut). Tout le monde voit les transferts, personne ne voit lequel a déplacé la boîte : même le déposant n'en est plus le détenteur évident. Sans leurres, il l'est tant que la boîte ne bouge pas.",
-  "vaultDocs.seal.p3": "Pour retrouver tes boîtes, la page lit tes propres reçus et déchiffre, pour toi seul, celles qui te sont vraiment arrivées. Une signature.",
+  "vaultDocs.seal.p3": "Pour retrouver tes boîtes, la page lit tes propres reçus et déchiffre, pour toi seul, celles qui te sont vraiment arrivées. Une signature. Chaque valeur lue ainsi consomme un de tes déchiffrements : le compteur à côté de tes soldes les compte, avec un quota gratuit chaque jour (large sur le réseau de test, très probablement bien plus petit sur mainnet) puis des crédits.",
 
   "vaultDocs.section.key": "La clé de la boîte",
   "vaultDocs.key.p1": "Chaque boîte a une clé : un secret de 256 bits, stocké chiffré, que personne ne peut lire, toi compris. Le coffre ne fait jamais que la comparer. Tout ce qui sort du coffre (le NFT, une annonce, l'ETH d'une vente) se demande avec la clé, jamais avec ton adresse.",

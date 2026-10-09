@@ -1132,6 +1132,11 @@ export class MockAdapter implements ChainAdapter {
     return null;
   }
 
+  /** Nothing is counted, so nothing is ever spent. */
+  onAllowanceSpent(_listener: () => void): () => void {
+    return () => undefined;
+  }
+
   async buyCredits(_credits: number, _opts?: ActionOptions): Promise<void> {
     throw new ChainError("unknown", "The demo has no decryption credits: its decryptions are free.");
   }

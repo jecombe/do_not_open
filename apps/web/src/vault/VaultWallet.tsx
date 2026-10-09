@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { shortAddress, type Address, type VaultAdapter, type VaultLinks } from "@dno/chain-adapter";
 import { Lock, roundAmount } from "../Balances";
 import { TokenIcon, tokenSvg } from "../brand/logos";
 import { useAction, useChain, useLedger } from "../chain/ChainProvider";
+import { useAllowance } from "../chain/useAllowance";
 import { useSealed } from "../chain/shielded";
 import { useLive } from "../chain/useLive";
 import { Delta, Figure, Flash, useLiveValue } from "../LiveValue";
+import { useLocale } from "../i18n/locale";
+import { exchangePath } from "../site";
 import { useT } from "./i18n";
 
 interface Plain {
@@ -52,6 +55,7 @@ export function VaultBalances({ vault, coin, className }: { vault: VaultAdapter;
           <SealedChip symbol={payment.confidentialSymbol} decimals={payment.decimals} watch={ledger} />
         </>
       )}
+      <CreditChip />
     </div>
   );
 }
@@ -107,6 +111,53 @@ function SealedChip({ symbol, decimals, watch }: { symbol: string; decimals: num
         {busy ? "…" : shown !== null ? <Figure change={change}>{format(shown)}</Figure> : "••••"}
       </strong>
     </button>
+  );
+}
+
+/** At or under this many units the chip warns: a balance and a few boxes left to read. */
+const LOW = 4;
+
+/**
+ * The decryptions left to the wallet, the game's meter in the vault's look: reading a sealed
+ * balance, a box's key or a pocket spends them, so they sit with the balances, live. Free ones
+ * today over the day's allowance, plus credits bought; a hover says what they are for and, on the
+ * test network, that mainnet will give fewer. Credits are bought at the game's bureau de change.
+ */
+function CreditChip() {
+  const t = useT();
+  const locale = useLocale();
+  const { mode } = useChain();
+  const allowance = useAllowance();
+  const tipId = useId();
+  const units = useLiveValue(allowance ? BigInt(allowance.freeLeft + allowance.credits) : null);
+  if (!allowance) return null;
+  const { freeLeft, freePerDay, credits, resetsAt } = allowance;
+  const total = freeLeft + credits;
+  const state = total === 0 ? "empty" : total <= LOW ? "low" : "ok";
+  const reset = new Date(resetsAt * 1000).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <span className="vault-credit-wrap">
+      <a className={`vault-balance vault-credit is-${state}`} href={exchangePath(locale)} aria-describedby={tipId}>
+        <Flash change={units.change} />
+        <span className="vault-balance-symbol">
+          {t("vault.credits.label")}
+          <Delta change={units.change} format={String} />
+        </span>
+        <strong className="vault-balance-value" aria-live="polite">
+          {freeLeft}/{freePerDay}
+          {credits > 0 && <small> +{credits}</small>}
+        </strong>
+      </a>
+      <span className="vault-credit-tip" id={tipId} role="tooltip">
+        <strong className={`is-${state}`}>{t(`vault.credits.${state}`, { total })}</strong>
+        <span>{t("vault.credits.count", { free: freeLeft, perDay: freePerDay, credits })}</span>
+        <span>{t("vault.credits.what")}</span>
+        <span>{t("vault.credits.reset", { time: reset })}</span>
+        {mode === "sepolia" && <span className="vault-credit-testnet">{t("vault.credits.testnet")}</span>}
+        <span className="vault-credit-go">{t("vault.credits.buy")}</span>
+      </span>
+    </span>
   );
 }
 

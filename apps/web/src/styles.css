@@ -1510,6 +1510,14 @@ button {
   color: var(--ink-red);
 }
 
+/* On the test network: a stamped note that mainnet will be stingier. */
+.credit-tip-testnet {
+  padding: 6px 8px;
+  border: 1px dashed currentColor;
+  color: #8a5a00;
+  font-size: 13px;
+}
+
 .credit-tip-go {
   font-weight: 700;
   text-decoration: underline;

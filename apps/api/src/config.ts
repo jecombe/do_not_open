@@ -76,10 +76,10 @@ const schema = z.object({
   RELAYER_URL: z.string().url().optional(),
   /** The collection's key for Zama's hosted relayer: required on mainnet, unused on Sepolia. Never sent to browsers. */
   RELAYER_API_KEY: z.string().optional(),
-  /** Free units a player gets each UTC day (a decrypted value is one, an input RELAYER_INPUT_UNITS), before its credits are used. */
-  RELAYER_FREE_PER_DAY: z.coerce.number().int().min(0).default(25),
-  /** Free values a day for a wallet the index has never seen act: one 10-id mint (5 + 10 + 1). */
-  RELAYER_NEWCOMER_PER_DAY: z.coerce.number().int().min(0).default(16),
+  /** Free units a player gets each UTC day (a decrypted value is one, an input RELAYER_INPUT_UNITS), before its credits are used. Unset: the network's (`FREE_UNITS`). */
+  RELAYER_FREE_PER_DAY: z.coerce.number().int().min(0).optional(),
+  /** Free units a day for a wallet the index has never seen act. Unset: the network's (`FREE_UNITS`). */
+  RELAYER_NEWCOMER_PER_DAY: z.coerce.number().int().min(0).optional(),
   /** Units an encrypted input costs: Zama's price for one over its price for a decryption. */
   RELAYER_INPUT_UNITS: z.coerce.number().int().min(0).default(5),
   /** Units a value of a public decryption costs, charged to the wallet that asks first (the cache is free). 0: free for everyone, paid by the collection. */
@@ -237,11 +237,31 @@ const schema = z.object({
   DISCORD_GUILD_ID: z.string().regex(/^\d{1,25}$/, "the server's id: digits").optional(),
 });
 
-export type Config = z.infer<typeof schema>;
+/**
+ * The free units a day when the environment names none. Zama's testnet relayer costs the
+ * collection nothing, so Sepolia is generous; mainnet keeps the figures the credit price was
+ * worked out for (16 for a newcomer: one 10-id mint, 5 + 10 + 1). A mainnet network added to
+ * `NETWORK` must get its row here: see "Before mainnet" in docs/AUDIT_CHECKLIST.md.
+ */
+export const FREE_UNITS = {
+  sepolia: { perDay: 200, newcomer: 100 },
+  mainnet: { perDay: 25, newcomer: 16 },
+} as const satisfies Record<string, { perDay: number; newcomer: number }>;
+
+export type Config = Omit<z.infer<typeof schema>, "RELAYER_FREE_PER_DAY" | "RELAYER_NEWCOMER_PER_DAY"> & {
+  RELAYER_FREE_PER_DAY: number;
+  RELAYER_NEWCOMER_PER_DAY: number;
+};
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   // `NAME=` with nothing after it, as .env.example lists them, means unset.
-  const config = schema.parse(Object.fromEntries(Object.entries(env).filter(([, v]) => v !== "")));
+  const parsed = schema.parse(Object.fromEntries(Object.entries(env).filter(([, v]) => v !== "")));
+  const free = FREE_UNITS[parsed.NETWORK];
+  const config: Config = {
+    ...parsed,
+    RELAYER_FREE_PER_DAY: parsed.RELAYER_FREE_PER_DAY ?? free.perDay,
+    RELAYER_NEWCOMER_PER_DAY: parsed.RELAYER_NEWCOMER_PER_DAY ?? free.newcomer,
+  };
   if (config.NODE_ENV === "production" && !config.SESSION_SECRET) throw new Error("SESSION_SECRET is required in production");
   if (config.NODE_ENV === "production" && !config.DATABASE_URL) throw new Error("DATABASE_URL is required in production");
   return config;

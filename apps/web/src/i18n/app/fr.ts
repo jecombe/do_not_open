@@ -135,6 +135,7 @@ export const fr: Record<AppKey, string> = {
   "meter.what": "Lire pour toi une valeur scellée (un secouage, tes boîtes après un mint, un solde chiffré) en coûte un ; chiffrer une valeur pour une transaction en coûte plus. S’il n’en reste pas assez, ces actions sont refusées avant que tu paies le moindre gas.",
   "meter.reset": "Les gratuits reviennent à {time} (minuit UTC) ; les crédits n’expirent pas.",
   "meter.buy": "Clique pour acheter des crédits au bureau de change.",
+  "meter.testnet": "Réseau de test : le quota gratuit est large ici. Sur mainnet, il sera très probablement bien plus bas, car chaque déchiffrement est payé à Zama.",
   "pay.short": "Pas assez d'{symbol} pour {need}.",
 
   "lb.title": "Classement",

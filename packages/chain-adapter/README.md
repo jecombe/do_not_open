@@ -163,7 +163,9 @@ fails with `no-credits` before any gas. `buyCredits(n)` buys more. Only the API 
 `decryptionAllowance()` has no chain fallback and never waits: credits this adapter bought and
 the API has not indexed yet (a purchase shows once its block is indexed, two confirmations
 later) are added on top of the API's count, so the figure is right as soon as `buyCredits`
-resolves.
+resolves. `onAllowanceSpent(listener)` fires once each counted call to the relayer (a user or
+public decryption, an encrypted input) has settled, refused ones included, so a meter reads the
+allowance again at once rather than on its next poll (the web app's `useAllowance`).
 
 The studio's packs (AI sketches and 3D models, `packages/game-spec/studio.json`) are sold by
 the `StudioPacks` contract in plain USDC. `studioPacks()` reads them from the contract (`id`,

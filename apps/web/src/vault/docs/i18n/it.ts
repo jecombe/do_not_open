@@ -23,7 +23,7 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
   "vaultDocs.section.seal": "Sigillare un NFT",
   "vaultDocs.seal.p1": "Sigillare è una sola transazione: l'NFT entra nel caveau e viene creata una scatola per lui, detenuta da te. È pubblica, perché è un semplice trasferimento di NFT: tutti vedono chi ha sigillato quale NFT. Quello che succede dopo alla scatola, no.",
   "vaultDocs.seal.p2": "Il deposito nomina chi deposita, ma può anche inviare subito la nuova scatola, nella stessa transazione, a qualche indirizzo a caso dove ogni trasferimento non sposta nulla (esche: scegli quante, da 0 a 5, 3 di default). Tutti vedono i trasferimenti, nessuno vede quale ha spostato la scatola: nemmeno chi ha depositato ne è più il detentore ovvio. Senza esche, lo è finché la scatola non si sposta.",
-  "vaultDocs.seal.p3": "Per ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma.",
+  "vaultDocs.seal.p3": "Per ritrovare le tue scatole, la pagina legge le tue ricevute e decifra, solo per te, quali ti sono arrivate davvero. Una firma. Ogni valore letto così consuma una delle tue decifrature: il contatore accanto ai tuoi saldi le conta, con una quota gratuita ogni giorno (ampia sulla rete di prova, molto probabilmente molto più piccola su mainnet) e poi i crediti.",
 
   "vaultDocs.section.key": "La chiave della scatola",
   "vaultDocs.key.p1": "Ogni scatola ha una chiave: un segreto di 256 bit, conservato cifrato, che nessuno può leggere, nemmeno tu. Il caveau si limita a confrontarla. Tutto ciò che esce dal caveau (l'NFT, un annuncio, l'ETH di una vendita) si chiede con la chiave, mai con il tuo indirizzo.",
