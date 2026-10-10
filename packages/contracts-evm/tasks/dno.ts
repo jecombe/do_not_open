@@ -486,17 +486,39 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
           // pools the deploy opened between the pockets' tokens.
           positions: await hre.deployments.getOrNull("SealedPositions").then(async (p) => {
             if (!p) return null;
-            const linked = (await hre.deployments.getOrNull("PositionPools"))?.linkedData as
-              | { uniswap: { factory: string; positionManager: string; swapRouter: string }; pools: { address: string; token0: string; token1: string; fee: number }[] }
-              | undefined;
+            const { POSITION_POOLS, POSITIONS_UNISWAP } = await import("../lib/positionPools");
+            const local = async (name: string) => (await hre.deployments.getOrNull(name))?.address ?? "";
+            const uniswap = POSITIONS_UNISWAP[hre.network.name] ?? {
+              factory: await local("UniswapV3Factory"),
+              positionManager: await local("NonfungiblePositionManager"),
+              swapRouter: await local("UniswapV3SwapRouter"),
+            };
+            // The pools as the chain has them: each planned pair whose pool is open and trades.
+            const positions = await hre.ethers.getContractAt(["function tokens() view returns (address[])"], p.address);
+            const bySymbol: Record<string, string> = {};
+            for (const token of (await positions.tokens!()) as string[]) {
+              const erc20 = await hre.ethers.getContractAt(["function symbol() view returns (string)"], token);
+              bySymbol[String(await erc20.symbol!()).replace(/Mock$/, "")] = token;
+            }
+            const factory = await hre.ethers.getContractAt(["function getPool(address, address, uint24) view returns (address)"], uniswap.factory);
+            const pools = [];
+            for (const plan of POSITION_POOLS[hre.network.name] ?? []) {
+              const [a, b] = [bySymbol[plan.base], bySymbol[plan.quote]];
+              if (!a || !b) continue;
+              const [token0, token1] = BigInt(a) < BigInt(b) ? [a, b] : [b, a];
+              const pool = String(await factory.getPool!(token0, token1, plan.fee));
+              if (pool === hre.ethers.ZeroAddress) continue;
+              const liquidity = await (await hre.ethers.getContractAt(["function liquidity() view returns (uint128)"], pool)).liquidity!();
+              if (liquidity > 0n) pools.push({ address: pool, token0, token1, fee: plan.fee });
+            }
             return {
               address: p.address,
               abi: p.abi,
               deployBlock: p.receipt?.blockNumber ?? null,
-              uniswap: linked?.uniswap ?? null,
+              uniswap,
               // SwapRouter02 on live networks (no deadline in its params), Uniswap's first router locally.
               routerVersion: hre.network.config.chainId === 31337 ? 1 : 2,
-              pools: linked?.pools ?? [],
+              pools,
             };
           }),
         };

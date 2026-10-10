@@ -41,7 +41,7 @@ function uniswapArtifact(path: string) {
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
-  const { deploy, execute, read, save, getOrNull } = hre.deployments;
+  const { deploy, execute, read, getOrNull } = hre.deployments;
   const owner = process.env.COLLECTION_OWNER || deployer!;
   const treasury = process.env.STUDIO_TREASURY || owner;
   const signer = await hre.ethers.getSigner(deployer!);
@@ -78,9 +78,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
   console.log(`SealedPositions: ${positions.address} (Uniswap ${uniswap.positionManager}, fee ${positionsFeeBps() / 100}% of trading fees to ${treasury}, tokens ${Object.keys(underlyings).join(", ")})`);
 
-  // The pools, opened and seeded where nobody has.
+  // The pools, opened and seeded where nobody has (`dno:export` reads them back from the factory).
   const factory = new Contract(uniswap.factory, FACTORY_ABI, signer);
-  const pools = [];
   for (const plan of POSITION_POOLS[hre.network.name] ?? []) {
     const base = underlyings[plan.base];
     const quote = underlyings[plan.quote];
@@ -123,9 +122,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       ).wait();
       console.log(`  seeded: ${plan.seedBase} ${plan.base} + ${plan.seedQuote} ${plan.quote}, full range`);
     }
-    pools.push({ address: pool, token0: t0.address, token1: t1.address, fee: plan.fee });
   }
-  await save("PositionPools", { address: positions.address, abi: [], linkedData: { uniswap, pools } });
 };
 
 /** Uniswap V3 on a local node, from Uniswap's own bytecode, deployed once and remembered. */
