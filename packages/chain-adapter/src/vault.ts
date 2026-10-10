@@ -129,10 +129,38 @@ export interface VaultSale {
 }
 
 export interface VaultDepositOptions extends ActionOptions {
-  /** Decoys to send the new box to in the same transaction, 0 to `MAX_DECOYS`: transfers to fresh
-   *  random addresses that move nothing. The deposit names the depositor; with decoys, nobody can
-   *  tell whether the box is still theirs. None when left out. */
+  /** Decoys to send the new box to in the same transaction, 0 to `MAX_DECOYS`: transfers that
+   *  move nothing, to wallets of the vault's crowd (`crowd().wallets`, picked at random) and,
+   *  past the crowd, to fresh random addresses. The deposit names the depositor; with decoys,
+   *  nobody can tell whether the box is still theirs. None when left out. */
   decoys?: number;
+}
+
+/**
+ * The crowd a box hides in, from the vault's public events: an honest measure, not a promise.
+ * Read with the connected account, which is left out of `wallets`.
+ */
+export interface VaultCrowd {
+  /** Wallets that have acted on the vault in their own name: deposited an NFT, sent or adopted a
+   *  box, offered or took a private sale, took an NFT or a sale's ETH out, or fed a pocket. A
+   *  deposit's decoys are picked among them: each could be the box's holder. The vault's own
+   *  contracts, its relayer and the connected account are left out. */
+  wallets: Address[];
+  /** Per box id, how many wallets may hold it, as far as the chain tells: its depositor and the
+   *  wallets of the crowd it was sent to (a transfer to an address that never acts is a decoy
+   *  nobody believes, so it does not count). 1: its depositor is its obvious holder. */
+  holders: Record<number, number>;
+}
+
+/** A pocket's group: the pockets its every action names, always the same, and who is known to feed them. */
+export interface PocketGroup {
+  /** The group's pockets, this one included, by number (`pocketGroup`). */
+  members: number[];
+  /** How many a full group has (`maxSet`): the last group fills as pockets open. */
+  size: number;
+  /** Wallets that have deposited into the group: the deposit names the wallet and the set, so
+   *  these are the wallets anyone can tie to one of its pockets. 1: yours alone. */
+  feeders: number;
 }
 
 /** A confidential token pockets hold: cUSDC, and Zama's other ERC-7984 wrappers (cUSDT, cWETH, cZAMA). */
@@ -160,15 +188,15 @@ export interface PocketsInfo {
   /** Buys the vault's private sales out of pockets, and holds the boxes it bought. Null for a
    *  token other than the vault's cUSDC. */
   desk: Address | null;
-  /** Pockets opened in all: decoys are picked among them. */
+  /** Pockets opened in all: they make groups of `maxSet` by number. */
   count: number;
-  /** The most pockets one side of an action may name, the real one included. */
+  /** The most pockets one side of an action may name, the real one included: a group's size. */
   maxSet: number;
 }
 
 export interface PocketOptions extends ActionOptions {
-  /** Other pockets to name next to the real one, so nobody can tell which moved. Capped by
-   *  `maxSet - 1` and by the pockets that exist. 2 when left out. */
+  /** Other pockets of the group to name next to the real one: the whole group when left out,
+   *  which is what hides best. Fewer still names the same ones every time (`pocketSet`). */
   decoys?: number;
 }
 
@@ -187,6 +215,8 @@ export interface PocketsAdapter {
   /** The token these pockets hold. */
   readonly token: PocketToken;
   info(): Promise<PocketsInfo>;
+  /** Pocket `pocketId`'s group: what its every action names, and the wallets known to feed it. Public events only. */
+  group(pocketId: number): Promise<PocketGroup>;
   /** The wallet's pocket, or null before it is opened. One signature a session. */
   mine(opts?: ActionOptions): Promise<number | null>;
   /** Opens the wallet's pocket. Returns its number. */
@@ -235,6 +265,8 @@ export interface VaultAdapter {
   box(boxId: number): Promise<VaultBox>;
   /** The connected account's boxes, found in its own receipts (one decryption signature). */
   myBoxes(): Promise<number[]>;
+  /** The crowd boxes hide in: the wallets that use the vault, and how many may hold each box. Public events only. */
+  crowd(): Promise<VaultCrowd>;
   /** WETH `owner` holds, in wei: what their offers can pay. Public, as any ERC-20 balance. */
   wethBalance(owner: Address): Promise<bigint>;
   /** Token ids of `collection` the connected wallet holds. */

@@ -1,7 +1,7 @@
 import { Contract, getAddress, hexlify, solidityPackedKeccak256, Wallet, type EventLog, type InterfaceAbi } from "ethers";
-import { DEFAULT_POCKET_DECOYS, pocketSet } from "../pockets";
+import { pocketGroup, pocketSet } from "../pockets";
 import { ChainError, type ActionOptions, type Address } from "../types";
-import type { PocketOptions, PocketSale, PocketsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
+import type { PocketGroup, PocketOptions, PocketSale, PocketsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
 import type { ContractTransactionReceipt } from "ethers";
 import type { EvmVaultTools } from "./EvmVault";
 
@@ -127,6 +127,18 @@ export class EvmPockets implements PocketsAdapter {
   async info(): Promise<PocketsInfo> {
     const [count, maxSet] = await Promise.all([this.t.reading(this.read.pocketCount!()), this.t.reading(this.read.MAX_SET!())]);
     return { address: this.deployed.address as Address, desk: (this.deployed.desk?.address ?? null) as Address | null, count: Number(count), maxSet: Number(maxSet) };
+  }
+
+  async group(pocketId: number): Promise<PocketGroup> {
+    const { count, maxSet } = await this.info();
+    const members = pocketGroup(pocketId, count, maxSet);
+    // A deposit names its wallet and the set it fed: the wallets anyone can tie to the group.
+    const feeders = new Set<string>();
+    for (const l of await this.logs(this.read, this.read.filters.Deposited!(), this.deployed.deployBlock)) {
+      const named = ((l as EventLog).args.pockets as bigint[]).map(Number);
+      if (named.some((p) => members.includes(p))) feeders.add(String((l as EventLog).args.from).toLowerCase());
+    }
+    return { members, size: maxSet, feeders: feeders.size };
   }
 
   async mine(opts?: ActionOptions): Promise<number | null> {
@@ -373,9 +385,10 @@ export class EvmPockets implements PocketsAdapter {
     return id;
   }
 
+  /** The pocket's group, always the same: a set says which group acted, never which pocket. */
   private async set(real: number, opts?: PocketOptions): Promise<number[]> {
     const { count, maxSet } = await this.info();
-    return pocketSet(real, count, opts?.decoys ?? DEFAULT_POCKET_DECOYS, maxSet);
+    return pocketSet(real, count, maxSet, opts?.decoys);
   }
 
   /** A spend: the amount and target, then the key bound to their handles, relayed when there is a relayer. */

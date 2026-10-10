@@ -8,8 +8,8 @@ export { traitIndexAtOffset } from "./layout";
 export { duelSettles, duelUnderway, onShelf, shelfBoxes } from "./duels";
 export * from "./standings";
 export { CLAIM_WINDOW, claimWindows } from "./claims";
-export { decoyPlan, type Send } from "./decoys";
-export { DEFAULT_POCKET_DECOYS, pocketSet } from "./pockets";
+export { decoyPlan, decoySends, type Send } from "./decoys";
+export { pocketGroup, pocketSet } from "./pockets";
 export { ratJob } from "./rats";
 export { MockAdapter, mockRatPower, mockSeedForToken, mockWeighIn, MOCK_YOU, MOCK_NIGHT_SHIFT, MOCK_MARKET, type MockOptions } from "./mock/MockAdapter";
 

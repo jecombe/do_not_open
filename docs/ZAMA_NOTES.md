@@ -889,8 +889,8 @@ specific to the protocol:
   wrapper has 6 decimals, so amounts fit the pockets' `euint64`; cWETH and cZAMA wrap 18-decimal
   ERC-20s at a rate of 10^12. One signature derives every token's pocket, each with its own
   viewer (`"key:"`/`"viewer:"` + the pockets' address for any token but cUSDC). Which token an
-  action moves is public, and its decoys come from that token's pockets only
-  ([VAULT.md](VAULT.md#other-tokens)).
+  action moves is public, and a pocket's group (the fixed five its every action names) is made
+  of that token's pockets only ([VAULT.md](VAULT.md#other-tokens)).
 - **Ten contracts per permit.** Zama's relayer refuses a user-decryption permit naming more than
   10 contracts (`MAX_USER_DECRYPT_CONTRACT_ADDRESSES`), and the wallet's permit already names nine
   (the collection, cUSDC, cCROQ, the Pantry, the flea market, the vault, the pockets, the desk,
