@@ -1,7 +1,7 @@
 /** English is the reference for the project's documentation: every other dictionary must hold exactly these keys. */
 export const projectEn = {
   "project.title": "DO NOT OPEN, the documentation: confidential ownership on a public chain",
-  "project.description": "What DO NOT OPEN is: sealed boxes on Ethereum whose holder and contents stay encrypted, thanks to Zama's FHE. The sealed vault for any NFT, the game of {supply} cats, what stays secret and who you trust.",
+  "project.description": "What DO NOT OPEN is: sealed boxes on Ethereum whose holder and contents stay encrypted, thanks to Zama's FHE. The sealed vault for any NFT, your tokens and your Uniswap liquidity, the game of {supply} cats, what stays secret and who you trust.",
   "project.imageAlt": "A sealed cardboard box stamped DO NOT OPEN",
   "project.homeAria": "DO NOT OPEN, home",
   "project.site": "Site",
@@ -30,6 +30,7 @@ export const projectEn = {
   "project.vault.p1": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.",
   "project.vault.p2": "The box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller, or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere.",
   "project.vault.p3": "The vault holds tokens too. Your cUSDC, a confidential dollar, goes in a pocket locked by a key rather than an address: send it to another pocket, pay for a box with it, or take it out anywhere. Confidential tokens already hide amounts; a pocket also hides who paid whom. cUSDT, cWETH and cZAMA, Zama's other confidential tokens, have pockets of their own; boxes are paid in cUSDC.",
+  "project.vault.p4": "And it holds liquidity. A Uniswap V3 position is paid for out of your pockets, held by the vault and steered by an address your wallet derives and nobody can tie to it: it earns the pool's trading fees like any other position, and you collect them back into your pockets (the vault keeps 5% of those fees, never of the liquidity). Nobody can copy your ranges, watch your capital or link your positions together. What the position does on Uniswap stays public; whose it is does not.",
   "project.vault.docs": "Read the vault's documentation",
   "project.vault.open": "Open the vault",
 
@@ -41,21 +42,21 @@ export const projectEn = {
 
   "project.section.leaks": "What stays secret, what does not",
   "project.leaks.p1": "Encryption hides values, not the fact that something happened. A transaction is public: who sent it, to which contract, when. What DO NOT OPEN encrypts is what the transaction does: who ends up holding a box, a price agreed in private, whether a transfer moved anything.",
-  "project.leaks.p2": "Some things are public on purpose. An NFT entering the vault is a plain NFT transfer, so the depositor shows. A Seaport listing shows its NFT and its price, with the vault as the seller. The address an NFT or a sale's ETH goes out to shows too: choose one with no history.",
+  "project.leaks.p2": "Some things are public on purpose. An NFT entering the vault is a plain NFT transfer, so the depositor shows. A Seaport listing shows its NFT and its price, with the vault as the seller. The address an NFT or a sale's ETH goes out to shows too: choose one with no history. A liquidity position's pool, range, amounts and fees are Uniswap's, public as any position's are; only its holder is hidden.",
   "project.leaks.p3": "Each product lists exactly what leaks, line by line, in its own documentation.",
 
   "project.section.trust": "Who you have to trust",
   "project.trust.p1": "The contracts: their code is open source, and they decide everything. Nobody, us included, can move a box, read a holder or change a past sale.",
   "project.trust.p2": "Zama's key management service, for what is decrypted and to whom: its parties would have to collude to read what the contracts did not allow. And for the vault's relayer, nothing: it cannot read a request or change it, only refuse to send it, and then your wallet sends it instead.",
-  "project.trust.p3": "The contracts' owner can allow a collection in the vault and set its fee, within a cap written in the contract (10%). It cannot touch a box. Before mainnet, that ownership moves to a multisig.",
+  "project.trust.p3": "The contracts' owner can allow a collection in the vault and set its fee, within a cap written in the contract (10%), and add the tokens liquidity positions take and their share of the trading fees (10% at most too). It cannot touch a box, a pocket or a position. Before mainnet, that ownership moves to a multisig.",
 
   "project.section.status": "Where it stands",
-  "project.status.p1": "Everything runs on Sepolia, Ethereum's test network: test NFTs, test ETH, nothing with money in it. The game is live there with its community; the vault since October 2026.",
+  "project.status.p1": "Everything runs on Sepolia, Ethereum's test network: test NFTs, test ETH, nothing with money in it. The game is live there with its community; the vault since October 2026, its liquidity positions since 10 October 2026, on Uniswap V3's own Sepolia deployment.",
   "project.status.p2": "Mainnet comes once the contracts have been reviewed. The game's whitelist and its gifts carry over; the vault opens to real collections.",
 
   "project.section.more": "Further reading",
   "project.more.vault": "The vault's documentation",
-  "project.more.vault.v": "Depositing, the key, Seaport, private sales, pockets, the relayer, what leaks.",
+  "project.more.vault.v": "Depositing, the key, Seaport, private sales, pockets, liquidity positions, the relayer, what leaks.",
   "project.more.game": "The game's manual",
   "project.more.game.v": "Boxes, cats, croquettes, rats, the flea market, the testnet.",
   "project.more.repo": "The code",

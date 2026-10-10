@@ -838,10 +838,14 @@ matched, where an NFT or a sale's ETH goes, `setKey`'s caller, a private sale's 
 the key, a private sale's price, and whether a private sale or a transfer moved anything. HCU
 per call is in [VAULT.md](VAULT.md#cost): ~83k a deposit, ~191k a request, ~225k a `setKey`.
 
-### The vault's pockets (2026-10-09)
+### The vault's pockets (2026-10-09, redeployed 2026-10-10)
 
 `SealedPockets` holds cUSDC in pockets locked by a `euint256` key, and `PocketDesk` buys the
-vault's private sales out of them ([VAULT.md](VAULT.md#pockets)). On Sepolia since 2026-10-09:
+vault's private sales out of them ([VAULT.md](VAULT.md#pockets)). On Sepolia since 2026-10-10:
+`SealedPockets` `0x220635318dDe0517E835D9FdF80AFEaD52720B7C` (9,974 bytes), `PocketDesk`
+`0xd17cB7696236B14C28f51Ef03BEBd133710e4A5f` (7,713 bytes), redeployed so the pockets take any
+number of desks (added by the owner, never removed) and a desk credits only what it pays in
+(`deskGive`, `deskGiveTo` pull from the desk's balance). The first ones, from 2026-10-09:
 `SealedPockets` `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902), `PocketDesk`
 `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903). What is
 specific to the protocol:
@@ -872,10 +876,12 @@ specific to the protocol:
   vault's own `acceptSale`. All under the 20M limit; see [VAULT.md](VAULT.md#cost).
 - **Other confidential tokens.** cUSDT, cWETH and cZAMA, Zama's ERC-7984 wrappers from its
   Confidential Token Wrappers Registry (`0x2f0750Bbb0A246059d80e94c454586a7F27a128e` on
-  Sepolia), each have a `SealedPockets` of their own, without a desk: `SealedPockets_cUSDT`
-  `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`, `SealedPockets_cWETH`
-  `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350`, `SealedPockets_cZAMA`
-  `0x6D1585c58238DaADF748558051BF368DAA3eceE2` (2026-10-09, blocks 11878756 to 11878758). Every
+  Sepolia), each have a `SealedPockets` of their own, without the vault's desk: `SealedPockets_cUSDT`
+  `0x0824f7CF1d3B258d059808cfA7cc3B8FBE1aD9FE`, `SealedPockets_cWETH`
+  `0x4b771718d45F0FD0fc56bbe54099d1fBCb2A85b0`, `SealedPockets_cZAMA`
+  `0x3a294c75f0bf35b06B60f664425F820c801F6158` (2026-10-10; before them
+  `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`, `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and
+  `0x6D1585c58238DaADF748558051BF368DAA3eceE2`, 2026-10-09, blocks 11878756 to 11878758). Every
   wrapper has 6 decimals, so amounts fit the pockets' `euint64`; cWETH and cZAMA wrap 18-decimal
   ERC-20s at a rate of 10^12. One signature derives every token's pocket, each with its own
   viewer (`"key:"`/`"viewer:"` + the pockets' address for any token but cUSDC). Which token an
@@ -886,6 +892,43 @@ specific to the protocol:
   (the collection, cUSDC, cCROQ, the Pantry, the flea market, the vault, the pockets, the desk,
   the Rats). A pocket viewer's permit now names only the vault's contracts (the vault, every
   token's pockets, the desk): the viewer reads nothing else.
+
+### The vault's liquidity positions (2026-10-10)
+
+`SealedPositions` holds Uniswap V3 positions funded out of pockets, steered by derived
+controllers ([VAULT.md](VAULT.md#liquidity-positions)). On Sepolia since 2026-10-10:
+`0x118081c2Cf2719cBe624a818C2ae50961A92aC53` (20,982 bytes deployed, default optimizer), a desk of
+the four tokens' pockets, on Uniswap V3's position manager
+`0x1238536071E1c677A632429e3655c799b22cDA52`; pools WETH/USDC
+`0x061917a4Aa293bC74fE8d9c5341FE7b5E4275285` (0.3%) and ZAMA/USDC
+`0x821E98fAfDB88C16F558A2DC6f45E9A74Dd76D78` (1%) of Zama's test ERC-20s, opened by the deploy.
+What is specific to the protocol:
+
+- **An unwrap is a public decryption.** Uniswap takes plain ERC-20s, so the encrypted amounts a
+  funding took from the pockets are unwrapped through the token's ERC-7984 wrapper
+  (`unwrap(from, to, euint64)`, on a handle the contract computed itself), which makes them
+  publicly decryptable. `settle` brings one proof per side and calls `finalizeUnwrap`; if someone
+  finalized an unwrap on the wrapper first, the ERC-20s came anyway and `settle` checks the proof
+  itself (`FHE.checkSignatures`). Funding is the only part that waits for the gateway.
+- **Both sides or neither, before decrypting.** `ok = eq(got0, asked0) AND eq(got1, asked1)`;
+  `select(ok, 0, got)` goes straight back to its pockets with `deskGiveTo`, `select(ok, got, 0)`
+  is unwrapped: a failed funding reveals zeros, never a lone side's amount.
+- **Wrapping back with a trivial encryption.** What comes out of Uniswap is plain; it is wrapped
+  (older wrappers' `wrap` returns nothing, so the call ignores its result) and credited with
+  `FHE.asEuint64(units)`, allowed transiently to the pockets, which pull it from the contract:
+  the amounts were public anyway; which pocket gets them, the encrypted target decides.
+- **A signature, not a decrypted bit, for actions.** A key compared under encryption would need a
+  public decryption for every collect or withdrawal, whose effects are public on Uniswap anyway:
+  the controller's EIP-712 signature says as much, at once.
+- **Two inputs per funding, bound to the relayer.** The amounts and targets in one, both pocket
+  keys XOR `openHash` (which hashes the first one's handles) in a second; a collect's or a
+  withdrawal's targets in one. All encrypted for `SealedPositions` with the sender (the relayer)
+  as the user; the pockets get the handles through `allowTransient`.
+- **No ACL to anyone.** Nothing of a position is encrypted but its targets, allowed to the
+  contract only; the pockets' balances are read by their viewers as before.
+- **HCU.** An `open` with five pockets a side is ~17.2M HCU (depth ~3.3M), the heaviest call of
+  the vault, under the 20M limit; three a side ~12.4M, one ~7.6M; a settle 2.2M to 4.1M, a
+  collect 4.4M to 8.1M ([VAULT.md](VAULT.md#cost)).
 
 ### Sepolia deployment (2026-10-08): free gift boxes
 
@@ -925,6 +968,10 @@ change): the rats stay with their owners. `WhitelistGifts` is the giver of both 
 | `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, listings and accepted WETH offers, delegate.xyz delegation, 2.5% fee; owner and treasury `0x5908…029A`) | [`0xE22509e741233072aFF4e0c6B56d5e3De8018262`](https://sepolia.etherscan.io/address/0xE22509e741233072aFF4e0c6B56d5e3De8018262) (since 2026-10-09, block 11876575; before it [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D), 2026-10-09, block 11876345, no offers nor delegation, and [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), 2026-10-08, whose requests locked the box) |
 | `VaultOffers` (the vault's offer board, fills the offers it accepts) | [`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`](https://sepolia.etherscan.io/address/0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2) (block 11876574) |
 | `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
+| `SealedPockets` (cUSDC in pockets; since 2026-10-10, before it `0xAfEc…E00C`) | [`0x220635318dDe0517E835D9FdF80AFEaD52720B7C`](https://sepolia.etherscan.io/address/0x220635318dDe0517E835D9FdF80AFEaD52720B7C) |
+| `PocketDesk` (buys private sales out of pockets; since 2026-10-10, before it `0x0939…759b`) | [`0xd17cB7696236B14C28f51Ef03BEBd133710e4A5f`](https://sepolia.etherscan.io/address/0xd17cB7696236B14C28f51Ef03BEBd133710e4A5f) |
+| `SealedPockets_cUSDT`, `_cWETH`, `_cZAMA` (since 2026-10-10) | [`0x0824f7CF1d3B258d059808cfA7cc3B8FBE1aD9FE`](https://sepolia.etherscan.io/address/0x0824f7CF1d3B258d059808cfA7cc3B8FBE1aD9FE), [`0x4b771718d45F0FD0fc56bbe54099d1fBCb2A85b0`](https://sepolia.etherscan.io/address/0x4b771718d45F0FD0fc56bbe54099d1fBCb2A85b0), [`0x3a294c75f0bf35b06B60f664425F820c801F6158`](https://sepolia.etherscan.io/address/0x3a294c75f0bf35b06B60f664425F820c801F6158) |
+| `SealedPositions` (Uniswap V3 positions out of pockets, 5% of trading fees; since 2026-10-10) | [`0x118081c2Cf2719cBe624a818C2ae50961A92aC53`](https://sepolia.etherscan.io/address/0x118081c2Cf2719cBe624a818C2ae50961A92aC53) |
 | WETH (OpenSea's on Sepolia, what offers pay in; not ours) | [`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`](https://sepolia.etherscan.io/address/0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9) |
 | delegate.xyz Delegate Registry v2 (not ours) | [`0x00000000000000447e69651d841bD8D104Bed493`](https://sepolia.etherscan.io/address/0x00000000000000447e69651d841bD8D104Bed493) |
 

@@ -37,6 +37,8 @@ const DEFAULT_SLIPPAGE_BPS = 100;
 /** Controllers looked at past the last one used, when finding a wallet's positions. */
 const LOOK_AHEAD = 3;
 const coder = AbiCoder.defaultAbiCoder();
+/** Blocks per log query: public RPCs refuse wider ones. */
+const LOG_SPAN = 40_000;
 const hex = (v: string | Uint8Array) => (typeof v === "string" ? v : "0x" + Array.from(v, (b) => b.toString(16).padStart(2, "0")).join(""));
 
 const NPM_ABI = [
@@ -108,16 +110,16 @@ export class EvmPositions implements PositionsAdapter {
   async all(): Promise<SealedPosition[]> {
     await this.caughtUp();
     const count = Number(await this.t.reading(this.read.positionCount!()));
-    const pools = await this.pools();
+    const [pools, pending] = await Promise.all([this.pools(), this.pending()]);
     const ids = Array.from({ length: count }, (_, i) => count - 1 - i);
-    return Promise.all(ids.map((id) => this.position(id, pools)));
+    return Promise.all(ids.map((id) => this.position(id, pools, pending)));
   }
 
   async mine(opts?: ActionOptions): Promise<SealedPosition[]> {
     const ids = await this.myIds(opts);
     if (!ids.length) return [];
-    const pools = await this.pools();
-    const out = await Promise.all(ids.map((id) => this.position(id, pools)));
+    const [pools, pending] = await Promise.all([this.pools(), this.pending()]);
+    const out = await Promise.all(ids.map((id) => this.position(id, pools, pending)));
     return out.filter((p) => p.status !== "failed" && p.status !== "closed" && p.status !== "out").sort((a, b) => b.positionId - a.positionId);
   }
 
@@ -201,6 +203,8 @@ export class EvmPositions implements PositionsAdapter {
 
   async takeOut(positionId: number, to: Address, opts?: ActionOptions): Promise<void> {
     const target = getAddress(to);
+    // The contract would take its own NFT back without a position for it: it would be stuck.
+    if (sameAddress(target, this.deployed.address)) throw new ChainError("unknown", "Take it out to a wallet, not to the vault's positions contract.");
     const { controller } = await this.steer(positionId, opts);
     const { deadline, signature } = await this.sign(controller, positionId, ACTION.takeOut, keccak256(coder.encode(["address"], [target])));
     const relay = await this.t.relay();
@@ -271,7 +275,7 @@ export class EvmPositions implements PositionsAdapter {
   }
 
   /** A position as the page shows it: Uniswap's numbers, and its fundings still waiting. */
-  private async position(positionId: number, pools: PositionPool[]): Promise<SealedPosition> {
+  private async position(positionId: number, pools: PositionPool[], pending?: Map<number, number[]>): Promise<SealedPosition> {
     const info = await this.t.reading(this.read.positionInfo!(positionId));
     const r = info.range;
     const pool = pools.find((x) => sameAddress(x.token0.underlying.address, String(r.token0)) && sameAddress(x.token1.underlying.address, String(r.token1)) && x.fee === Number(r.fee));
@@ -300,16 +304,36 @@ export class EvmPositions implements PositionsAdapter {
       fees0: fees.amount0,
       fees1: fees.amount1,
       inRange: !!pool && pool.tick >= Number(r.tickLower) && pool.tick < Number(r.tickUpper),
-      pending: status === "funding" || status === "open" ? await this.pendingOf(positionId) : [],
+      pending: status === "funding" || status === "open" ? ((pending ?? (await this.pending())).get(positionId) ?? []) : [],
       controller: String(info.controller) as Address,
     };
   }
 
-  private async pendingOf(positionId: number): Promise<number[]> {
-    const logs = await this.read.queryFilter(this.read.filters.Funded!(null, positionId), this.deployed.deployBlock ?? 0).catch(() => []);
-    const ids = logs.map((l) => Number((l as unknown as { args: { fundingId: bigint } }).args.fundingId));
-    const statuses = await Promise.all(ids.map(async (id) => Number((await this.t.reading(this.read.fundingInfo!(id))).status)));
-    return ids.filter((_, i) => statuses[i] === FUNDING_PENDING);
+  /** Fundings still waiting for their proofs, by position: from the `Funded` logs, read in spans
+   *  from the last block looked at, and each one's status. */
+  private fundingLogs: { block: number; byFunding: Map<number, number> } | null = null;
+  private async pending(): Promise<Map<number, number[]>> {
+    const latest = await this.t.readProvider.getBlockNumber();
+    const seen = (this.fundingLogs ??= { block: (this.deployed.deployBlock ?? 0) - 1, byFunding: new Map() });
+    for (let start = seen.block + 1; start <= latest; start += LOG_SPAN) {
+      const logs = await this.read.queryFilter(this.read.filters.Funded!(), start, Math.min(latest, start + LOG_SPAN - 1));
+      for (const l of logs) {
+        const args = (l as unknown as { args: { fundingId: bigint; positionId: bigint } }).args;
+        seen.byFunding.set(Number(args.fundingId), Number(args.positionId));
+      }
+      seen.block = Math.min(latest, start + LOG_SPAN - 1);
+    }
+    const out = new Map<number, number[]>();
+    const waiting = [...seen.byFunding.entries()];
+    const statuses = await Promise.all(waiting.map(async ([id]) => Number((await this.t.reading(this.read.fundingInfo!(id))).status)));
+    waiting.forEach(([fundingId, positionId], i) => {
+      if (statuses[i] !== FUNDING_PENDING) {
+        seen.byFunding.delete(fundingId);
+        return;
+      }
+      out.set(positionId, [...(out.get(positionId) ?? []), fundingId]);
+    });
+    return out;
   }
 
   /** The controller of the `index`-th position the wallet opened (`open`) or was given (`receive`). */

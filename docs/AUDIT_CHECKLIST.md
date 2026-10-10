@@ -34,7 +34,10 @@ on 2026-10-04, block 11842636); `FleaMarket.sol`, the players' marketplace for b
 rats (section 12; at `0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92` since 2026-10-08, before it
 `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` on 2026-10-07 and
 `0xb5c799bF626e70DcE6804BDef06199661cDc8665` on 2026-10-05, block 11849253); `SealedVault.sol`,
-`vault/VaultOffers.sol`, `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol`, the sealed vault next to the game (section 15, at `0xE22509e741233072aFF4e0c6B56d5e3De8018262` on Sepolia since 2026-10-09, block 11876575, with `VaultOffers` at `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`; before it `0x27CA3698A34b53900047cD1D0856B954a695C79D`, 2026-10-09, block 11876345, with no offers nor delegation, and `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08, whose requests locked the box); plus the parts of
+`vault/VaultOffers.sol`, `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol`, the sealed vault next to the game (section 15, at `0xE22509e741233072aFF4e0c6B56d5e3De8018262` on Sepolia since 2026-10-09, block 11876575, with `VaultOffers` at `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`; before it `0x27CA3698A34b53900047cD1D0856B954a695C79D`, 2026-10-09, block 11876345, with no offers nor delegation, and `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08, whose requests locked the box); `SealedPockets.sol` and `vault/PocketDesk.sol`, its pockets
+(section 16); `SealedPositions.sol`, `vault/IPositionManager.sol` and
+`vault/IConfidentialWrapper.sol`, its Uniswap V3 liquidity positions (section 17, at
+`0x118081c2Cf2719cBe624a818C2ae50961A92aC53` since 2026-10-10); plus the parts of
 the adapter and the metadata pipeline that could leak or mislead. Since 2026-10-07 the deployer
 `0x590891F269720001435004A1089cAB5b2c20029A` owns every contract (before, the collection's owner
 was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`). The Sepolia deployment at
@@ -97,6 +100,9 @@ mainnet), **Not done** (a check nobody has run).
 | O47 | A box bought from a pocket is held by `PocketDesk`: it can be taken out, listed, sold to an offer and delegated with its key, but not given or sold privately again, and the reserved pocket of a desk sale is public | Low (UX, privacy) | `PocketDesk.reserve`, `buy` |
 | O48 | The free decryptions a day follow the network (`FREE_UNITS` in `apps/api/src/config.ts`): Sepolia gives 200 (100 to a newcomer), since Zama's testnet relayer costs the collection nothing; the mainnet row keeps 25 and 16, the figures the credit price was worked out for. Before mainnet: add the mainnet network to `NETWORK` with its row checked against Zama's plan and the credit price (on pay-as-you-go, newcomer 0 and fewer free units, see `docs/ZAMA_NOTES.md`), and change the manual's figures (`apps/web/src/docs/fees.tsx`), which show Sepolia's | Blocker for mainnet | `apps/api` config, relayer proxy |
 | O49 | Each token's pockets are a contract of their own (cUSDT, cWETH, cZAMA beside cUSDC): which token an action moves is public, and its decoys come only from that token's pockets, so a little-used token hides its pockets among few. The tokens are Zama's wrappers, trusted as the cUSDC is (on Sepolia, mocks anyone may mint) | Medium (privacy, trust) | `lib/pocketTokens.ts`, `SealedPockets_<symbol>` |
+| O50 | Funding a liquidity position takes both sides at once, so one pocket of each set named is the same holder's, and the unwrapped amounts (public, as on Uniswap) match what the sets lost: the same pocket funding many positions, or timing, narrows the guess. A position's controller and its pockets are tied to no wallet, but its size is public | Medium (privacy) | `SealedPositions.open`, `add` |
+| O51 | A position's controller key comes from the pockets' signature (a site that gets it can steer every position, as it can spend the pockets); and pockets now take any number of desks the owner adds: a desk spends a pocket only with its key and credits only what it pays in, but a malicious desk the owner added could still hold a key a holder gave it and spend that pocket later | Medium (keys, trust) | `EvmPositions.controller`, `SealedPockets.addDesk` |
+| O52 | Funding waits for Zama's public decryption of the unwraps: with the gateway down, the tokens taken stay unwrapped-in-flight until `settle` can be sent (it never reverts on Uniswap's account, but it needs the proofs); dust below one confidential unit stays in `SealedPositions` | Low (liveness) | `SealedPositions.settle`, `_givePlain` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -522,12 +528,14 @@ FHEVM mock, against Seaport 1.5's runtime bytecode read from Sepolia (`test/seap
 
 `SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
 buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). On Sepolia at
-`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
-The same contract, unchanged and without a desk, holds cUSDT, cWETH and cZAMA
-([VAULT.md](VAULT.md#other-tokens)): `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`,
-`0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`
-since 2026-10-09.
-45 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
+`0x220635318dDe0517E835D9FdF80AFEaD52720B7C` and `0xd17cB7696236B14C28f51Ef03BEBd133710e4A5f` since 2026-10-10
+(before them `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b`, 2026-10-09,
+with a single desk set once). The same contract, without the vault's desk, holds cUSDT, cWETH and cZAMA
+([VAULT.md](VAULT.md#other-tokens)): `0x0824f7CF1d3B258d059808cfA7cc3B8FBE1aD9FE`,
+`0x4b771718d45F0FD0fc56bbe54099d1fBCb2A85b0` and `0x3a294c75f0bf35b06B60f664425F820c801F6158`
+since 2026-10-10 (before them `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`,
+`0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`).
+46 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
 (itself on Seaport 1.5's and delegate.xyz's bytecode); the relayer's routes in
 `apps/api/test/vaultRelay.test.ts`; the adapter's `EvmPockets` (what the page runs) against the contracts in `test/PocketsAdapter.ts`.
 
@@ -539,7 +547,7 @@ since 2026-10-09.
 | A pocket is paid once per action | Pass | `_checkSet`: 1 to `MAX_SET` pockets, strictly increasing, all opened. Test: "refuses sets out of order, repeated, too long or naming no pocket" |
 | The relayer cannot change a spend or replay it | Pass | The bound key hashes the action, both sets, the destination and the handles of the encrypted amount and target; each bound key's handle is spent once; inputs are bound to their sender. Tests: "moves nothing when the relay changes the receiving set", "moves nothing when the relay changes the paying set or the amount", "pays nothing when the relay changes where it goes", "runs a bound key once…", "refuses a bound key the relay replays in another kind of spend", "refuses inputs encrypted for another sender" |
 | Only the viewer reads a balance; nobody reads a key | Pass | `_setBalance` allows the pockets and the viewer; the key is `allowThis` only. Test: "opens a pocket with a zero balance only its viewer reads" |
-| Only the desk moves balances outside a spend | Pass | `deskTake`, `deskCheck`, `deskGive` revert `OnlyDesk`; `setDesk` is the owner's, once. Tests: "refuses a desk move from anyone but the desk", "leaves the desk unset until the owner sets it, once" |
+| Only a desk moves balances outside a spend, and only what it pays in | Pass | `deskTake`, `deskTakeFrom`, `deskCheck`, `deskGive`, `deskGiveTo` revert `OnlyDesk`; `addDesk` is the owner's, each desk once, never removed; `deskGive` and `deskGiveTo` credit what they pull from the desk's own balance (`_pull`), so a desk cannot credit a pocket out of nothing. Tests: "has no desk until the owner adds one, each once", "refuses a desk move from anyone but the desk", "leaves the desk unset until the owner sets it, once" |
 | A short or wrong pocket buys nothing, and pays for nobody | Pass | The desk holds only what `deskTake` just took; the vault pulls the price all or nothing; tokens sent to the desk do not stand in for a pocket (the ask checks the pocket's own balance). Tests: "buys nothing with a wrong key…", "buys nothing when the pocket cannot cover the price", "does not let tokens sent to the desk pay for a pocket that is short", "buys nothing when the pocket was spent between the ask and the purchase" |
 | A stranger cannot spend a seller's sale | Pass | `ask` makes only the key-and-balance bit public; `buy` runs the sale only with its proof, so a wrong key leaves the sale open. Test: "buys nothing with a wrong key, and the sale stays open for the real buyer" |
 | A refund comes back to the pocket | Pass | `_handBack` sends the desk's whole balance back to the pocket after `acceptSale`. Test: "hands the price back to the pocket when the seller no longer holds the box" |
@@ -548,9 +556,37 @@ since 2026-10-09.
 | Every call fits the HCU limits | Pass | A send between two sets of five ~6.5M HCU, a desk purchase ~6.3M. Tests under "limits and costs" and "buys within the HCU limits" |
 | Another token's pockets are apart from the cUSDC ones | Pass | Its pocket's key and viewer hash the pockets' address in (`EvmPockets.keys`), so its viewer differs; it has no desk (`buy`, `offerSale` refuse); the relayer sends only to this vault's pockets (`EthersVaultSender.pocketsFor`). Test: "opens another token's pockets (no desk) from the same signature, with their own pocket and viewer" (`test/PocketsAdapter.ts`) |
 
+## 17. The vault's liquidity positions: SealedPositions
+
+`SealedPositions.sol` holds Uniswap V3 positions funded out of two tokens' pockets (a desk of
+each), steered by a controller's EIP-712 signature, paying fees and liquidity back into pockets
+(see [VAULT.md](VAULT.md#liquidity-positions)). On Sepolia at
+`0x118081c2Cf2719cBe624a818C2ae50961A92aC53` since 2026-10-10, on Uniswap V3's position manager
+`0x1238536071E1c677A632429e3655c799b22cDA52`. 25 tests in `test/SealedPositions.ts`, on the FHEVM
+mock and Uniswap V3's own bytecode (`@uniswap/v3-core` and `v3-periphery` artifacts); the
+adapter's `EvmPositions` against them in `test/PositionsAdapter.ts`; the relayer's routes in
+`apps/api/test/vaultRelay.test.ts`.
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| A relayer cannot change a funding's terms or replay it | Pass | Each side's key is XOR `openHash` (controller, range, both sets, every input handle, mins, deadline) or `addHash`; each bound key's handle is spent once. Test: "binds the keys to every term: a relayer that swaps the controller or the range moves nothing" |
+| Both sides are paid, or neither | Pass | `_take`: `ok = eq(got0, a0) AND eq(got1, a1)`; what one side paid goes back with `deskGiveTo` when the other did not, before any unwrap. Tests: "takes nothing from either side when one key is wrong…", "takes nothing when one pocket is short" |
+| Only the key's pocket of a set pays; decoys keep their balance | Pass | `deskTakeFrom` runs the pockets' `_debit`. Test: "hides the paying pockets among decoys, whose balances stay as they were" |
+| What Uniswap does not take goes back | Pass | `settle` wraps `in - used` and credits the target; a refused mint (deadline, slippage) refunds everything (`try/catch`). Tests: "opens a Uniswap position out of two pockets… gives the leftovers back", "gives everything back when Uniswap refuses the mint" |
+| A settle runs once, and only on true amounts | Pass | `status` must be `Pending`; the amounts are checked by the wrapper's `finalizeUnwrap` or, if someone finalized it first, by `FHE.checkSignatures`. Tests: "settles once, even when someone finalized an unwrap on the token first", "rejects a forged cleartext" |
+| Only the controller acts, once per signature, before its deadline | Pass | `_authorize`: ECDSA over `actDigest` (position, action, terms, nonce, deadline), nonce moved on. Tests: "only obeys its controller, once per signature", "refuses a signature past its deadline" |
+| The fees go where the controller signed | Pass | `outHash` covers both sets and both target handles. Test: "only obeys its controller…" (a signature for other pockets is refused) and "pays into the target among decoys only" |
+| The treasury takes a share of trading fees only | Pass | `_collectFees` takes `feeBps` of what `collect` returns before `decreaseLiquidity`; the liquidity comes out without it. Tests: "collects the trading fees…", "gives the trading fees' share to the treasury when liquidity comes out, never the liquidity's" |
+| Taking all the liquidity out closes the position | Pass | `decrease` burns the NFT when its liquidity is 0, frees the controller's slot. Test: "takes part of the liquidity out… then the rest, which closes it" |
+| A controller steers one position, once | Pass | `controllerUsed`. Tests: "refuses a used controller…", "hands the position to another controller" |
+| Only Uniswap positions of tokens with pockets come in; its own mints are not counted twice | Pass | `onERC721Received` checks the position manager and both sides, ignores `operator == this`. Tests: "takes an existing Uniswap position…", "refuses an NFT that is not a Uniswap position" |
+| The fee is capped | Pass | `MAX_FEE_BPS` 1,000. Test: "caps the fee at 10% and needs a treasury" |
+| Every call fits the HCU limits | Pass | `open` with five pockets a side ~17.2M HCU, depth ~3.3M. Test: "opens within the HCU limits" |
+| Not done | | An end-to-end run on Sepolia (`smoke:positions`), a fuzz of ranges against Uniswap's rounding, and an external review of the try/catch refund path |
+
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29, O32, O33, O38 to O44. Fix O3, O4, O7, O17 (small and
+1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29, O32, O33, O38 to O44, O50 to O52. Fix O3, O4, O7, O17 (small and
    mechanical), and make room for O18.
 2. Set the relayer key and the credit price from Zama's plan (O9).
 3. Run the "Not done" rows of section 8.

@@ -49,6 +49,11 @@
      "part": "manual"
     },
     {
+     "id": "vault-liquidity",
+     "title": "Liquidity positions: Uniswap without a name",
+     "part": "manual"
+    },
+    {
      "id": "vault-give",
      "title": "Giving a box",
      "part": "manual"
@@ -124,7 +129,13 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar, or cUSDT, cWETH, cZAMA) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint.\nThe first time you open the vault, a guided tour walks you through it: the two sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again."
+     "text": "A contract that holds NFTs, next to it one that holds tokens, and a third that holds Uniswap liquidity positions. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar, or cUSDT, cWETH, cZAMA) go in a pocket instead: a balance locked by a key, not by an address. And a liquidity position is paid for out of pockets, held by the vault and steered by an address nobody can tie to your wallet.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint."
+    },
+    {
+     "id": "vault-what-1",
+     "section": "vault-what",
+     "heading": null,
+     "text": "The first time you open the vault, a guided tour walks you through it: the three sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again."
     },
     {
      "id": "vault-seal-0",
@@ -220,7 +231,7 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "A confidential dollar like cUSDC already hides balances and amounts, but every transfer still names who sent it and who received it. A pocket hides that too. It is a number (your code, like P-12) with an encrypted balance and a key: what is in it, and who holds it, nobody can read.\nOn the vault's page, a switch at the top picks the side: NFTs (non-fungible, in boxes) or Tokens (fungible, in your pocket). Opening your pocket takes one signature, free: from it the page makes the pocket's key and a second address that only ever reads its balance, never your wallet's. Nothing is stored; the same wallet finds the same pocket on any device. The relayer sends the opening, so your address is not on it."
+     "text": "A confidential dollar like cUSDC already hides balances and amounts, but every transfer still names who sent it and who received it. A pocket hides that too. It is a number (your code, like P-12) with an encrypted balance and a key: what is in it, and who holds it, nobody can read.\nOn the vault's page, a switch at the top picks the side: NFTs (non-fungible, in boxes), Tokens (fungible, in your pocket) or LP positions (Uniswap liquidity, paid out of your pockets). Opening your pocket takes one signature, free: from it the page makes the pocket's key and a second address that only ever reads its balance, never your wallet's. Nothing is stored; the same wallet finds the same pocket on any device. The relayer sends the opening, so your address is not on it."
     },
     {
      "id": "vault-pockets-1",
@@ -239,6 +250,36 @@
      "section": "vault-pockets",
      "heading": null,
      "text": "Limits: the pockets each action names are public, so naming few decoys, or the same pockets again and again, gives hints; the more pockets exist, the better each one hides. Pockets have no fee of their own. They are not audited.\nFour tokens go in pockets: cUSDC, cUSDT, cWETH and cZAMA, Zama's confidential versions of USDC, USDT, WETH and ZAMA. Each has its own pockets: pick the token above your pocket, its logo shows on the pouch and on every action. The same signature opens your pocket of every token, each with its own code and its own reading address, so nothing on-chain ties them together. Which token an action moves is public, and a pocket hides among the pockets of its own token only. Boxes sell privately in cUSDC, so only the cUSDC pocket buys them. On Sepolia, the page mints test USDT, WETH and ZAMA (Zama's own test tokens, not the WETH offers pay in) and wraps them for you."
+    },
+    {
+     "id": "vault-liquidity-0",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "On Uniswap, a liquidity position is an NFT in its provider's wallet: its range, its capital, its fees and every move it makes are read off that wallet, copied by bots and tied to everything else the wallet holds. In the vault, a Uniswap V3 position is paid for out of your pockets, held by the vault and steered by an address only your wallet can derive, and its fees come back into your pockets. What the position does on Uniswap stays public, as any position's does; whose it is does not."
+    },
+    {
+     "id": "vault-liquidity-1",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Opening one, on the LP positions side: pick a pool, a range around today's price (±5%, ±15%, ±50%, or the full range: tighter earns more per dollar and stops earning sooner) and one amount; the page works out the other one the range needs at today's price. Both amounts come out of your two tokens' pockets, among decoys and encrypted, with each pocket's key bound to every term of the opening, so the relayer can change none. Both sides pay or neither: if one pocket is short, the other gets its tokens straight back and nothing opens."
+    },
+    {
+     "id": "vault-liquidity-2",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Uniswap only takes plain tokens, so what was taken is unwrapped for it, and the amounts become public there, as every position's are. That waits for Zama's key service to prove the amounts; then the vault mints the position and puts whatever Uniswap did not take back into your pockets. If the price moved too far meanwhile, Uniswap refuses and everything goes back to your pockets: no funding is ever stuck. The position is steered by its own address, derived from the same signature as your pockets: nothing is stored, you find your positions on any device, and since each position has its own address, nothing ties two of your positions together."
+    },
+    {
+     "id": "vault-liquidity-3",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "\"Collect the fees\" sends the trading fees your position earned into your pockets, among decoys; the vault keeps 5% of those fees (never more than 10%), never a share of your liquidity. \"Take out\" (25%, 50% or all) brings the liquidity back into your pockets, the fees with it; taking all of it out closes the position. Your page signs each action with the position's address, and the relayer sends it: no decryption, so it does not wait.\n\"Give it\" hands a position to another holder: they show their receive address (My positions, on their side), good until something is given to it, and nothing says whose it is. \"To a wallet\" takes the Uniswap NFT out of the vault to any address, which shows. A Uniswap position your wallet already holds in one of the vault's pools can come in (\"Bring it in\"): the deposit names your wallet, then nothing does."
+    },
+    {
+     "id": "vault-liquidity-4",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Limits: the amounts are public once unwrapped, so a position hides its holder, not its size. Funding both sides at once says that one pocket of each set is the same holder's, and timing can give hints (a pocket set debited, a position minted minutes later). The fewer positions in a pool, the fewer others yours hides among. Positions are not audited."
     },
     {
      "id": "vault-give-0",
@@ -273,14 +314,26 @@
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
+     "heading": "Public",
+     "text": "Each liquidity position's pool, range, amounts and fees (Uniswap's numbers), which pockets paid for it and were paid by it, and the address that steers it (tied to no wallet)"
+    },
+    {
+     "id": "vault-leaks-2",
+     "section": "vault-leaks",
      "heading": "Never public",
-     "text": "Who holds a box\nThe box's key\nA private sale's price, and whether it went through\nWhether a transfer moved anything\nWho asked for a listing, a withdrawal, a payout, an accepted offer or a delegate, when the relayer sends it\nA pocket's balance, the amounts it moves, which pocket of a set moved, and who holds a pocket\nIn practice: take NFTs and ETH out to an address with no history, name a fresh wallet as the delegate, let the relayer send your requests, and know that timing can still give hints (a \"Make the key mine\" right after a transfer to the same address, say)."
+     "text": "Who holds a box\nThe box's key\nA private sale's price, and whether it went through\nWhether a transfer moved anything\nWho asked for a listing, a withdrawal, a payout, an accepted offer or a delegate, when the relayer sends it\nA pocket's balance, the amounts it moves, which pocket of a set moved, and who holds a pocket\nWho holds a liquidity position, which pocket of a set paid or was paid, and which positions belong to the same holder\nIn practice: take NFTs and ETH out to an address with no history, name a fresh wallet as the delegate, let the relayer send your requests, and know that timing can still give hints (a \"Make the key mine\" right after a transfer to the same address, say)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5, the WETH OpenSea uses there and delegate.xyz's registry. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xE225…8262\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nThe offer board 0x750d…f9E2\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0xAfEc…e00C\nThe desk that buys from pockets 0x0939…759b\nThe cUSDT pockets 0x56ea…7aAe\nThe cWETH pockets 0x4e8A…1350\nThe cZAMA pockets 0x6D15…ceE2"
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5, the WETH OpenSea uses there and delegate.xyz's registry. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nLiquidity positions run on Uniswap V3's own Sepolia deployment, in two pools of Zama's test tokens the vault opened at a made-up price: WETH / USDC (0.3% fee) and ZAMA / USDC (1%). \"Make it trade (test)\" on a pool trades from your wallet both ways, so the positions in range earn fees to collect. The pockets were redeployed on 2026-10-10 for the positions; the first ones (cUSDC 0xAfEc…Be00C) are left as they were.\nThe sealed vault 0xE225…8262\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nThe offer board 0x750d…f9E2\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0x2206…0B7C"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "The desk that buys from pockets 0xd17c…4A5f\nThe cUSDT pockets 0x0824…D9FE\nThe cWETH pockets 0x4b77…85b0\nThe cZAMA pockets 0x3a29…6158\nThe liquidity positions 0x1180…aC53\nUniswap's WETH / USDC pool 0x0619…5285\nUniswap's ZAMA / USDC pool 0x821E…6D78"
     },
     {
      "id": "vault-more-0",
@@ -310,7 +363,7 @@
      "id": "project-vault-1",
      "section": "project-vault",
      "heading": null,
-     "text": "Read the vault's documentation Open the vault"
+     "text": "And it holds liquidity. A Uniswap V3 position is paid for out of your pockets, held by the vault and steered by an address your wallet derives and nobody can tie to it: it earns the pool's trading fees like any other position, and you collect them back into your pockets (the vault keeps 5% of those fees, never of the liquidity). Nobody can copy your ranges, watch your capital or link your positions together. What the position does on Uniswap stays public; whose it is does not.\nRead the vault's documentation Open the vault"
     },
     {
      "id": "project-game-0",
@@ -322,25 +375,25 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "Encryption hides values, not the fact that something happened. A transaction is public: who sent it, to which contract, when. What DO NOT OPEN encrypts is what the transaction does: who ends up holding a box, a price agreed in private, whether a transfer moved anything.\nSome things are public on purpose. An NFT entering the vault is a plain NFT transfer, so the depositor shows. A Seaport listing shows its NFT and its price, with the vault as the seller. The address an NFT or a sale's ETH goes out to shows too: choose one with no history.\nEach product lists exactly what leaks, line by line, in its own documentation."
+     "text": "Encryption hides values, not the fact that something happened. A transaction is public: who sent it, to which contract, when. What DO NOT OPEN encrypts is what the transaction does: who ends up holding a box, a price agreed in private, whether a transfer moved anything.\nSome things are public on purpose. An NFT entering the vault is a plain NFT transfer, so the depositor shows. A Seaport listing shows its NFT and its price, with the vault as the seller. The address an NFT or a sale's ETH goes out to shows too: choose one with no history. A liquidity position's pool, range, amounts and fees are Uniswap's, public as any position's are; only its holder is hidden.\nEach product lists exactly what leaks, line by line, in its own documentation."
     },
     {
      "id": "project-trust-0",
      "section": "project-trust",
      "heading": null,
-     "text": "The contracts: their code is open source, and they decide everything. Nobody, us included, can move a box, read a holder or change a past sale.\nZama's key management service, for what is decrypted and to whom: its parties would have to collude to read what the contracts did not allow. And for the vault's relayer, nothing: it cannot read a request or change it, only refuse to send it, and then your wallet sends it instead.\nThe contracts' owner can allow a collection in the vault and set its fee, within a cap written in the contract (10%). It cannot touch a box. Before mainnet, that ownership moves to a multisig."
+     "text": "The contracts: their code is open source, and they decide everything. Nobody, us included, can move a box, read a holder or change a past sale.\nZama's key management service, for what is decrypted and to whom: its parties would have to collude to read what the contracts did not allow. And for the vault's relayer, nothing: it cannot read a request or change it, only refuse to send it, and then your wallet sends it instead.\nThe contracts' owner can allow a collection in the vault and set its fee, within a cap written in the contract (10%), and add the tokens liquidity positions take and their share of the trading fees (10% at most too). It cannot touch a box, a pocket or a position. Before mainnet, that ownership moves to a multisig."
     },
     {
      "id": "project-status-0",
      "section": "project-status",
      "heading": null,
-     "text": "Everything runs on Sepolia, Ethereum's test network: test NFTs, test ETH, nothing with money in it. The game is live there with its community; the vault since October 2026.\nMainnet comes once the contracts have been reviewed. The game's whitelist and its gifts carry over; the vault opens to real collections."
+     "text": "Everything runs on Sepolia, Ethereum's test network: test NFTs, test ETH, nothing with money in it. The game is live there with its community; the vault since October 2026, its liquidity positions since 10 October 2026, on Uniswap V3's own Sepolia deployment.\nMainnet comes once the contracts have been reviewed. The game's whitelist and its gifts carry over; the vault opens to real collections."
     },
     {
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "The vault's documentation Depositing, the key, Seaport, private sales, pockets, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code The game's and the vault's contracts, their tests and their addresses, open source on GitLab.\nZama's FHEVM The encryption the contracts run on."
+     "text": "The vault's documentation Depositing, the key, Seaport, private sales, pockets, liquidity positions, the relayer, what leaks.\nThe game's manual Boxes, cats, croquettes, rats, the flea market, the testnet.\nThe code The game's and the vault's contracts, their tests and their addresses, open source on GitLab.\nZama's FHEVM The encryption the contracts run on."
     }
    ]
   },
@@ -389,6 +442,11 @@
     {
      "id": "vault-pockets",
      "title": "Les poches : des jetons que personne ne trace",
+     "part": "manual"
+    },
+    {
+     "id": "vault-liquidity",
+     "title": "Positions de liquidité : Uniswap sans nom",
      "part": "manual"
     },
     {
@@ -467,13 +525,13 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel, ou des cUSDT, cWETH, cZAMA) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
+     "text": "Un contrat qui garde des NFT, à côté un autre qui garde des jetons, et un troisième qui garde des positions de liquidité Uniswap. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel, ou des cUSDT, cWETH, cZAMA) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse. Et une position de liquidité est payée avec tes poches, détenue par le coffre et pilotée par une adresse que personne ne peut relier à ton wallet.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
     },
     {
      "id": "vault-what-1",
      "section": "vault-what",
      "heading": null,
-     "text": "La première fois que tu ouvres le coffre, une visite guidée te le fait parcourir : les deux côtés, ce qui reste chiffré, puis chaque onglet dans l'ordre où tu t'en servirais, de sceller un NFT à ce qui fuite. Le « ? » dans la barre du coffre la rejoue."
+     "text": "La première fois que tu ouvres le coffre, une visite guidée te le fait parcourir : les trois côtés, ce qui reste chiffré, puis chaque onglet dans l'ordre où tu t'en servirais, de sceller un NFT à ce qui fuite. Le « ? » dans la barre du coffre la rejoue."
     },
     {
      "id": "vault-seal-0",
@@ -575,7 +633,7 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.\nSur la page du coffre, un sélecteur en haut choisit le côté : NFT (non fongibles, dans des boîtes) ou Jetons (fongibles, dans ta poche). Ouvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas."
+     "text": "Un dollar confidentiel comme le cUSDC cache déjà les soldes et les montants, mais chaque transfert nomme encore qui l'envoie et qui le reçoit. Une poche cache ça aussi. C'est un numéro (ton code, comme P-12) avec un solde chiffré et une clé : ce qu'il y a dedans, et qui la détient, personne ne peut le lire.\nSur la page du coffre, un sélecteur en haut choisit le côté : NFT (non fongibles, dans des boîtes), Jetons (fongibles, dans ta poche) ou Positions LP (de la liquidité Uniswap, payée avec tes poches). Ouvrir ta poche demande une signature, gratuite : la page en tire la clé de la poche et une seconde adresse qui ne sert qu'à lire son solde, jamais celle de ton wallet. Rien n'est stocké ; le même wallet retrouve la même poche sur n'importe quel appareil. Le relayer envoie l'ouverture, donc ton adresse n'y figure pas."
     },
     {
      "id": "vault-pockets-1",
@@ -600,6 +658,36 @@
      "section": "vault-pockets",
      "heading": null,
      "text": "Quatre jetons vont dans les poches : cUSDC, cUSDT, cWETH et cZAMA, les versions confidentielles par Zama d'USDC, USDT, WETH et ZAMA. Chacun a ses propres poches : choisis le jeton au-dessus de ta poche, son logo s'affiche sur la bourse et sur chaque action. La même signature ouvre ta poche de chaque jeton, chacune avec son propre code et sa propre adresse de lecture, donc rien on-chain ne les relie. Le jeton que déplace une action est public, et une poche ne se cache que parmi les poches de son propre jeton. Les boîtes se vendent en privé en cUSDC, donc seule la poche cUSDC les achète. Sur Sepolia, la page frappe de l'USDT, du WETH et du ZAMA de test (les jetons de test de Zama, pas le WETH des offres) et les convertit pour toi."
+    },
+    {
+     "id": "vault-liquidity-0",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Sur Uniswap, une position de liquidité est un NFT dans le wallet de qui la fournit : sa range, son capital, ses frais et chacun de ses gestes se lisent depuis ce wallet, se font copier par des bots et se relient à tout ce que le wallet détient d'autre. Dans le coffre, une position Uniswap V3 est payée avec tes poches, détenue par le coffre et pilotée par une adresse que seul ton wallet peut dériver, et ses frais reviennent dans tes poches. Ce que la position fait sur Uniswap reste public, comme pour toute position ; à qui elle est, non."
+    },
+    {
+     "id": "vault-liquidity-1",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Pour en ouvrir une, côté Positions LP : choisis un pool, une range autour du prix du jour (±5 %, ±15 %, ±50 %, ou la range totale : plus serrée, elle rapporte plus par dollar et s'arrête plus tôt) et un montant ; la page calcule l'autre, celui que la range demande au prix du jour. Les deux montants sortent des poches de tes deux jetons, parmi des leurres et chiffrés, la clé de chaque poche liée à chaque terme de l'ouverture : le relayer ne peut en changer aucun. Les deux côtés paient ou aucun : si une poche ne suffit pas, l'autre récupère aussitôt ses jetons et rien ne s'ouvre."
+    },
+    {
+     "id": "vault-liquidity-2",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Uniswap ne prend que des jetons classiques : ce qui a été pris est donc déchiffré en jetons classiques pour lui, et les montants y deviennent publics, comme ceux de toute position. Cela attend que le service de clés de Zama prouve les montants ; puis le coffre crée la position et remet dans tes poches ce qu'Uniswap n'a pas pris. Si le prix a trop bougé entre-temps, Uniswap refuse et tout revient dans tes poches : aucun financement ne reste bloqué. La position est pilotée par sa propre adresse, dérivée de la même signature que tes poches : rien n'est stocké, tu retrouves tes positions sur n'importe quel appareil, et comme chaque position a sa propre adresse, rien ne relie deux de tes positions entre elles."
+    },
+    {
+     "id": "vault-liquidity-3",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "« Collecter les frais » envoie dans tes poches, parmi des leurres, les frais de trading que ta position a touchés ; le coffre garde 5 % de ces frais (jamais plus de 10 %), jamais une part de ta liquidité. « Retirer » (25 %, 50 % ou tout) ramène la liquidité dans tes poches, les frais avec ; tout retirer ferme la position. Ta page signe chaque geste avec l'adresse de la position, et le relayer l'envoie : pas de déchiffrement, donc pas d'attente."
+    },
+    {
+     "id": "vault-liquidity-4",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "« La donner » passe une position à un autre détenteur : il montre son adresse de réception (Mes positions, de son côté), valable jusqu'à ce qu'on lui donne quelque chose, et rien ne dit à qui elle est. « Vers un wallet » sort le NFT Uniswap du coffre vers n'importe quelle adresse, qui se voit. Une position Uniswap que ton wallet détient déjà dans l'un des pools du coffre peut entrer (« L'apporter ») : le dépôt nomme ton wallet, ensuite plus rien ne le nomme.\nLimites : les montants sont publics une fois déchiffrés, donc une position cache son détenteur, pas sa taille. Financer les deux côtés d'un coup dit qu'une poche de chaque ensemble est au même détenteur, et le moment peut donner des indices (un ensemble de poches débité, une position créée quelques minutes plus tard). Moins il y a de positions dans un pool, moins la tienne se cache parmi d'autres. Les positions ne sont pas auditées."
     },
     {
      "id": "vault-give-0",
@@ -634,14 +722,26 @@
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
+     "heading": "Public",
+     "text": "Le pool, la range, les montants et les frais de chaque position de liquidité (les chiffres d'Uniswap), les poches qui l'ont payée et qu'elle a payées, et l'adresse qui la pilote (reliée à aucun wallet)"
+    },
+    {
+     "id": "vault-leaks-2",
+     "section": "vault-leaks",
      "heading": "Jamais public",
-     "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie\nLe solde d'une poche, les montants qu'elle déplace, la poche d'un groupe qui a bougé, et qui détient une poche\nEn pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
+     "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie\nLe solde d'une poche, les montants qu'elle déplace, la poche d'un groupe qui a bougé, et qui détient une poche\nQui détient une position de liquidité, quelle poche d'un ensemble a payé ou a été payée, et quelles positions sont au même détenteur\nEn pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5, le WETH qu'OpenSea y utilise et le registre de delegate.xyz. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xE225…8262\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLe tableau des offres 0x750d…f9E2\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0xAfEc…e00C\nLe guichet qui achète depuis les poches 0x0939…759b\nLes poches cUSDT 0x56ea…7aAe\nLes poches cWETH 0x4e8A…1350\nLes poches cZAMA 0x6D15…ceE2"
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5, le WETH qu'OpenSea y utilise et le registre de delegate.xyz. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLes positions de liquidité tournent sur le déploiement Sepolia d'Uniswap V3 lui-même, dans deux pools de jetons de test de Zama que le coffre a ouverts à un prix inventé : WETH / USDC (frais 0,3 %) et ZAMA / USDC (1 %). « Faire trader (test) » sur un pool trade depuis ton wallet dans les deux sens, pour que les positions dans la range touchent des frais à collecter. Les poches ont été redéployées le 2026-10-10 pour les positions ; les premières (cUSDC 0xAfEc…Be00C) restent telles quelles.\nLe coffre scellé 0xE225…8262\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLe tableau des offres 0x750d…f9E2"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "WETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0x2206…0B7C\nLe guichet qui achète depuis les poches 0xd17c…4A5f\nLes poches cUSDT 0x0824…D9FE\nLes poches cWETH 0x4b77…85b0\nLes poches cZAMA 0x3a29…6158\nLes positions de liquidité 0x1180…aC53\nLe pool WETH / USDC d'Uniswap 0x0619…5285\nLe pool ZAMA / USDC d'Uniswap 0x821E…6D78"
     },
     {
      "id": "vault-more-0",
@@ -671,7 +771,13 @@
      "id": "project-vault-1",
      "section": "project-vault",
      "heading": null,
-     "text": "Le coffre garde aussi des jetons. Tes cUSDC, un dollar confidentiel, vont dans une poche verrouillée par une clé plutôt que par une adresse : envoie-les vers une autre poche, paie une boîte avec, ou sors-les où tu veux. Les jetons confidentiels cachent déjà les montants ; une poche cache aussi qui a payé qui. Les cUSDT, cWETH et cZAMA, les autres jetons confidentiels de Zama, ont leurs propres poches ; les boîtes se paient en cUSDC.\nLire la doc du coffre Ouvrir le coffre"
+     "text": "Le coffre garde aussi des jetons. Tes cUSDC, un dollar confidentiel, vont dans une poche verrouillée par une clé plutôt que par une adresse : envoie-les vers une autre poche, paie une boîte avec, ou sors-les où tu veux. Les jetons confidentiels cachent déjà les montants ; une poche cache aussi qui a payé qui. Les cUSDT, cWETH et cZAMA, les autres jetons confidentiels de Zama, ont leurs propres poches ; les boîtes se paient en cUSDC."
+    },
+    {
+     "id": "project-vault-2",
+     "section": "project-vault",
+     "heading": null,
+     "text": "Et il garde de la liquidité. Une position Uniswap V3 est payée avec tes poches, détenue par le coffre et pilotée par une adresse que ton wallet dérive et que personne ne peut lui relier : elle touche les frais de trading du pool comme n'importe quelle position, et tu les collectes dans tes poches (le coffre garde 5 % de ces frais, jamais de la liquidité). Personne ne peut copier tes ranges, surveiller ton capital ou relier tes positions entre elles. Ce que la position fait sur Uniswap reste public ; à qui elle est, non.\nLire la doc du coffre Ouvrir le coffre"
     },
     {
      "id": "project-game-0",
@@ -683,25 +789,25 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "Le chiffrement cache des valeurs, pas le fait que quelque chose s'est passé. Une transaction est publique : qui l'a envoyée, vers quel contrat, quand. Ce que DO NOT OPEN chiffre, c'est ce que fait la transaction : qui finit par détenir une boîte, un prix convenu en privé, si un transfert a déplacé quelque chose.\nCertaines choses sont publiques exprès. Un NFT qui entre dans le coffre est un simple transfert de NFT, donc le déposant se voit. Une annonce Seaport montre son NFT et son prix, avec le coffre comme vendeur. L'adresse vers laquelle sort un NFT ou l'ETH d'une vente se voit aussi : choisissez-en une sans historique.\nChaque produit liste exactement ce qui fuite, ligne par ligne, dans sa propre documentation."
+     "text": "Le chiffrement cache des valeurs, pas le fait que quelque chose s'est passé. Une transaction est publique : qui l'a envoyée, vers quel contrat, quand. Ce que DO NOT OPEN chiffre, c'est ce que fait la transaction : qui finit par détenir une boîte, un prix convenu en privé, si un transfert a déplacé quelque chose.\nCertaines choses sont publiques exprès. Un NFT qui entre dans le coffre est un simple transfert de NFT, donc le déposant se voit. Une annonce Seaport montre son NFT et son prix, avec le coffre comme vendeur. L'adresse vers laquelle sort un NFT ou l'ETH d'une vente se voit aussi : choisissez-en une sans historique. Le pool, la range, les montants et les frais d'une position de liquidité sont ceux d'Uniswap, publics comme ceux de toute position ; seul son détenteur est caché.\nChaque produit liste exactement ce qui fuite, ligne par ligne, dans sa propre documentation."
     },
     {
      "id": "project-trust-0",
      "section": "project-trust",
      "heading": null,
-     "text": "Aux contrats : leur code est open source, et ce sont eux qui décident de tout. Personne, nous compris, ne peut déplacer une boîte, lire un détenteur ou modifier une vente passée.\nAu service de gestion des clés de Zama, pour ce qui est déchiffré et pour qui : ses parties devraient s'entendre pour lire ce que les contrats n'ont pas autorisé. Et au relayer du coffre, pour rien : il ne peut ni lire une demande ni la modifier, seulement refuser de l'envoyer, et alors votre wallet l'envoie à sa place.\nLe propriétaire des contrats peut autoriser une collection dans le coffre et fixer ses frais, dans une limite écrite dans le contrat (10 %). Il ne peut pas toucher à une boîte. Avant le mainnet, cette propriété passe à un multisig."
+     "text": "Aux contrats : leur code est open source, et ce sont eux qui décident de tout. Personne, nous compris, ne peut déplacer une boîte, lire un détenteur ou modifier une vente passée.\nAu service de gestion des clés de Zama, pour ce qui est déchiffré et pour qui : ses parties devraient s'entendre pour lire ce que les contrats n'ont pas autorisé. Et au relayer du coffre, pour rien : il ne peut ni lire une demande ni la modifier, seulement refuser de l'envoyer, et alors votre wallet l'envoie à sa place.\nLe propriétaire des contrats peut autoriser une collection dans le coffre et fixer ses frais, dans une limite écrite dans le contrat (10 %), et ajouter les jetons que prennent les positions de liquidité et leur part des frais de trading (10 % au plus aussi). Il ne peut toucher ni à une boîte, ni à une poche, ni à une position. Avant le mainnet, cette propriété passe à un multisig."
     },
     {
      "id": "project-status-0",
      "section": "project-status",
      "heading": null,
-     "text": "Tout tourne sur Sepolia, le réseau de test d'Ethereum : NFT de test, ETH de test, rien qui contienne de l'argent. Le jeu y est en ligne avec sa communauté ; le coffre depuis octobre 2026.\nLe mainnet viendra une fois les contrats relus. La whitelist du jeu et ses cadeaux sont conservés ; le coffre s'ouvre aux vraies collections."
+     "text": "Tout tourne sur Sepolia, le réseau de test d'Ethereum : NFT de test, ETH de test, rien qui contienne de l'argent. Le jeu y est en ligne avec sa communauté ; le coffre depuis octobre 2026, ses positions de liquidité depuis le 10 octobre 2026, sur le déploiement Sepolia d'Uniswap V3 lui-même.\nLe mainnet viendra une fois les contrats relus. La whitelist du jeu et ses cadeaux sont conservés ; le coffre s'ouvre aux vraies collections."
     },
     {
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, les poches, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Les contrats du jeu et du coffre, leurs tests et leurs adresses, open source sur GitLab.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
+     "text": "La doc du coffre Le dépôt, la clé, Seaport, les ventes privées, les poches, les positions de liquidité, le relayer, ce qui fuite.\nLe manuel du jeu Les boîtes, les chats, les croquettes, les rats, le marché aux puces, le testnet.\nLe code Les contrats du jeu et du coffre, leurs tests et leurs adresses, open source sur GitLab.\nLe FHEVM de Zama Le chiffrement sur lequel tournent les contrats."
     }
    ]
   },
@@ -750,6 +856,11 @@
     {
      "id": "vault-pockets",
      "title": "Los bolsillos: tokens que nadie rastrea",
+     "part": "manual"
+    },
+    {
+     "id": "vault-liquidity",
+     "title": "Posiciones de liquidez: Uniswap sin nombre",
      "part": "manual"
     },
     {
@@ -828,7 +939,13 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial, o cUSDT, cWETH, cZAMA) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear.\nLa primera vez que abres la bóveda, una visita guiada te la recorre: los dos lados, lo que sigue cifrado, y luego cada pestaña en el orden en que la usarías, de sellar un NFT a lo que se filtra. El «?» de la barra de la bóveda la vuelve a mostrar."
+     "text": "Un contrato que guarda NFT, a su lado otro que guarda tokens, y un tercero que guarda posiciones de liquidez de Uniswap. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial, o cUSDT, cWETH, cZAMA) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección. Y una posición de liquidez se paga con tus bolsillos, la guarda la bóveda y la dirige una dirección que nadie puede vincular a tu wallet.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear."
+    },
+    {
+     "id": "vault-what-1",
+     "section": "vault-what",
+     "heading": null,
+     "text": "La primera vez que abres la bóveda, una visita guiada te la recorre: los tres lados, lo que sigue cifrado, y luego cada pestaña en el orden en que la usarías, de sellar un NFT a lo que se filtra. El «?» de la barra de la bóveda la vuelve a mostrar."
     },
     {
      "id": "vault-seal-0",
@@ -924,7 +1041,7 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Un dólar confidencial como el cUSDC ya oculta saldos e importes, pero cada transferencia sigue nombrando quién la envía y quién la recibe. Un bolsillo oculta también eso. Es un número (tu código, como P-12) con un saldo cifrado y una llave: lo que hay dentro, y quién lo tiene, nadie puede leerlo.\nEn la página de la bóveda, un selector arriba elige el lado: NFT (no fungibles, en cajas) o Tokens (fungibles, en tu bolsillo). Abrir tu bolsillo requiere una firma, gratis: con ella la página crea la llave del bolsillo y una segunda dirección que solo sirve para leer su saldo, nunca la de tu wallet. No se guarda nada; el mismo wallet encuentra el mismo bolsillo en cualquier dispositivo. El relayer envía la apertura, así que tu dirección no aparece."
+     "text": "Un dólar confidencial como el cUSDC ya oculta saldos e importes, pero cada transferencia sigue nombrando quién la envía y quién la recibe. Un bolsillo oculta también eso. Es un número (tu código, como P-12) con un saldo cifrado y una llave: lo que hay dentro, y quién lo tiene, nadie puede leerlo.\nEn la página de la bóveda, un selector arriba elige el lado: NFT (no fungibles, en cajas), Tokens (fungibles, en tu bolsillo) o Posiciones LP (liquidez de Uniswap, pagada con tus bolsillos). Abrir tu bolsillo requiere una firma, gratis: con ella la página crea la llave del bolsillo y una segunda dirección que solo sirve para leer su saldo, nunca la de tu wallet. No se guarda nada; el mismo wallet encuentra el mismo bolsillo en cualquier dispositivo. El relayer envía la apertura, así que tu dirección no aparece."
     },
     {
      "id": "vault-pockets-1",
@@ -949,6 +1066,36 @@
      "section": "vault-pockets",
      "heading": null,
      "text": "Cuatro tokens van en bolsillos: cUSDC, cUSDT, cWETH y cZAMA, las versiones confidenciales de Zama de USDC, USDT, WETH y ZAMA. Cada uno tiene sus propios bolsillos: elige el token encima de tu bolsillo, su logo aparece en la bolsa y en cada acción. La misma firma abre tu bolsillo de cada token, cada uno con su propio código y su propia dirección de lectura, así que nada on-chain los vincula. Qué token mueve una acción es público, y un bolsillo solo se esconde entre los bolsillos de su propio token. Las cajas se venden en privado en cUSDC, así que solo el bolsillo de cUSDC las compra. En Sepolia, la página acuña USDT, WETH y ZAMA de prueba (los tokens de prueba de Zama, no el WETH de las ofertas) y los convierte por ti."
+    },
+    {
+     "id": "vault-liquidity-0",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "En Uniswap, una posición de liquidez es un NFT en el wallet de quien la aporta: su rango, su capital, sus comisiones y cada uno de sus movimientos se leen desde ese wallet, los copian los bots y quedan vinculados a todo lo demás que el wallet tiene. En la bóveda, una posición de Uniswap V3 se paga con tus bolsillos, la guarda la bóveda y la dirige una dirección que solo tu wallet puede derivar, y sus comisiones vuelven a tus bolsillos. Lo que la posición hace en Uniswap sigue siendo público, como el de cualquier posición; de quién es, no."
+    },
+    {
+     "id": "vault-liquidity-1",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Para abrir una, en el lado Posiciones LP: elige un pool, un rango alrededor del precio de hoy (±5 %, ±15 %, ±50 %, o el rango completo: más estrecho gana más por dólar y deja de ganar antes) y un importe; la página calcula el otro, el que el rango pide al precio de hoy. Ambos importes salen de los bolsillos de tus dos tokens, entre señuelos y cifrados, con la llave de cada bolsillo ligada a cada término de la apertura, así que el relayer no puede cambiar ninguno. Pagan los dos lados o ninguno: si un bolsillo no alcanza, el otro recupera sus tokens al momento y no se abre nada."
+    },
+    {
+     "id": "vault-liquidity-2",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Uniswap solo acepta tokens normales, así que lo tomado se desenvuelve para él, y allí los importes pasan a ser públicos, como los de cualquier posición. Eso espera a que el servicio de llaves de Zama pruebe los importes; luego la bóveda crea la posición y devuelve a tus bolsillos lo que Uniswap no tomó. Si el precio se movió demasiado entretanto, Uniswap lo rechaza y todo vuelve a tus bolsillos: ninguna financiación se queda atascada. La posición la dirige su propia dirección, derivada de la misma firma que tus bolsillos: no se guarda nada, encuentras tus posiciones en cualquier dispositivo, y como cada posición tiene su propia dirección, nada relaciona dos de tus posiciones."
+    },
+    {
+     "id": "vault-liquidity-3",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "«Cobrar las comisiones» envía a tus bolsillos, entre señuelos, las comisiones de trading que ganó tu posición; la bóveda se queda el 5 % de esas comisiones (nunca más del 10 %), nunca una parte de tu liquidez. «Retirar» (25 %, 50 % o todo) devuelve la liquidez a tus bolsillos, con las comisiones; retirarlo todo cierra la posición. Tu página firma cada acción con la dirección de la posición, y el relayer la envía: sin descifrado, así que no espera.\n«Darla» pasa una posición a otro titular: él muestra su dirección de recepción (Mis posiciones, en su lado), válida hasta que se le dé algo, y nada dice de quién es. «A una wallet» saca el NFT de Uniswap de la bóveda hacia cualquier dirección, que se ve. Una posición de Uniswap que tu wallet ya tenga en uno de los pools de la bóveda puede entrar («Traerla»): el depósito nombra tu wallet, y después nada lo hace."
+    },
+    {
+     "id": "vault-liquidity-4",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Límites: los importes son públicos una vez desenvueltos, así que una posición oculta a su titular, no su tamaño. Financiar los dos lados a la vez dice que un bolsillo de cada conjunto es del mismo titular, y el momento puede dar pistas (un conjunto de bolsillos debitado, una posición creada minutos después). Cuantas menos posiciones haya en un pool, entre menos se esconde la tuya. Las posiciones no están auditadas."
     },
     {
      "id": "vault-give-0",
@@ -983,14 +1130,26 @@
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
+     "heading": "Público",
+     "text": "El pool, el rango, los importes y las comisiones de cada posición de liquidez (los números de Uniswap), qué bolsillos la pagaron y a cuáles pagó, y la dirección que la dirige (sin vínculo con ningún wallet)"
+    },
+    {
+     "id": "vault-leaks-2",
+     "section": "vault-leaks",
      "heading": "Nunca público",
-     "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer\nEl saldo de un bolsillo, los importes que mueve, qué bolsillo de un grupo se movió, y quién tiene un bolsillo\nEn la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
+     "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer\nEl saldo de un bolsillo, los importes que mueve, qué bolsillo de un grupo se movió, y quién tiene un bolsillo\nQuién tiene una posición de liquidez, qué bolsillo de un conjunto pagó o cobró, y qué posiciones son del mismo titular\nEn la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real, el WETH que OpenSea usa allí y el registro de delegate.xyz. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xE225…8262\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nEl tablón de ofertas 0x750d…f9E2\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0xAfEc…e00C\nLa ventanilla que compra desde los bolsillos 0x0939…759b\nLos bolsillos de cUSDT 0x56ea…7aAe\nLos bolsillos de cWETH 0x4e8A…1350\nLos bolsillos de cZAMA 0x6D15…ceE2"
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real, el WETH que OpenSea usa allí y el registro de delegate.xyz. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLas posiciones de liquidez funcionan en el propio despliegue de Uniswap V3 en Sepolia, en dos pools de tokens de prueba de Zama que la bóveda abrió a un precio inventado: WETH / USDC (comisión 0,3 %) y ZAMA / USDC (1 %). «Hacer que opere (prueba)» en un pool opera desde tu wallet en ambos sentidos, para que las posiciones en rango ganen comisiones por cobrar. Los bolsillos se redesplegaron el 2026-10-10 para las posiciones; los primeros (cUSDC 0xAfEc…Be00C) quedan como estaban.\nLa bóveda sellada 0xE225…8262\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nEl tablón de ofertas 0x750d…f9E2"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "WETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0x2206…0B7C\nLa ventanilla que compra desde los bolsillos 0xd17c…4A5f\nLos bolsillos de cUSDT 0x0824…D9FE\nLos bolsillos de cWETH 0x4b77…85b0\nLos bolsillos de cZAMA 0x3a29…6158\nLas posiciones de liquidez 0x1180…aC53\nEl pool WETH / USDC de Uniswap 0x0619…5285\nEl pool ZAMA / USDC de Uniswap 0x821E…6D78"
     },
     {
      "id": "vault-more-0",
@@ -1020,7 +1179,13 @@
      "id": "project-vault-1",
      "section": "project-vault",
      "heading": null,
-     "text": "La bóveda guarda también tokens. Tus cUSDC, un dólar confidencial, van a un bolsillo cerrado por una llave en lugar de una dirección: envíalos a otro bolsillo, paga una caja con ellos o sácalos a donde quieras. Los tokens confidenciales ya ocultan los importes; un bolsillo oculta además quién pagó a quién. cUSDT, cWETH y cZAMA, los otros tokens confidenciales de Zama, tienen sus propios bolsillos; las cajas se pagan en cUSDC.\nLeer la documentación de la bóveda Abrir la bóveda"
+     "text": "La bóveda guarda también tokens. Tus cUSDC, un dólar confidencial, van a un bolsillo cerrado por una llave en lugar de una dirección: envíalos a otro bolsillo, paga una caja con ellos o sácalos a donde quieras. Los tokens confidenciales ya ocultan los importes; un bolsillo oculta además quién pagó a quién. cUSDT, cWETH y cZAMA, los otros tokens confidenciales de Zama, tienen sus propios bolsillos; las cajas se pagan en cUSDC."
+    },
+    {
+     "id": "project-vault-2",
+     "section": "project-vault",
+     "heading": null,
+     "text": "Y guarda liquidez. Una posición de Uniswap V3 se paga con tus bolsillos, la guarda la bóveda y la dirige una dirección que tu wallet deriva y que nadie puede vincularle: gana las comisiones de trading del pool como cualquier otra posición, y las cobras en tus bolsillos (la bóveda se queda el 5% de esas comisiones, nunca de la liquidez). Nadie puede copiar tus rangos, vigilar tu capital ni relacionar tus posiciones entre sí. Lo que la posición hace en Uniswap sigue siendo público; de quién es, no.\nLeer la documentación de la bóveda Abrir la bóveda"
     },
     {
      "id": "project-game-0",
@@ -1032,25 +1197,25 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "El cifrado oculta valores, no el hecho de que algo ocurrió. Una transacción es pública: quién la envió, a qué contrato, cuándo. Lo que DO NOT OPEN cifra es lo que hace la transacción: quién acaba teniendo una caja, un precio acordado en privado, si una transferencia movió algo.\nAlgunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial.\nCada producto detalla exactamente lo que se filtra, línea por línea, en su propia documentación."
+     "text": "El cifrado oculta valores, no el hecho de que algo ocurrió. Una transacción es pública: quién la envió, a qué contrato, cuándo. Lo que DO NOT OPEN cifra es lo que hace la transacción: quién acaba teniendo una caja, un precio acordado en privado, si una transferencia movió algo.\nAlgunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial. El pool, el rango, los importes y las comisiones de una posición de liquidez son los de Uniswap, públicos como los de cualquier posición; solo su titular queda oculto.\nCada producto detalla exactamente lo que se filtra, línea por línea, en su propia documentación."
     },
     {
      "id": "project-trust-0",
      "section": "project-trust",
      "heading": null,
-     "text": "En los contratos: su código es abierto, y ellos lo deciden todo. Nadie, nosotros incluidos, puede mover una caja, leer un titular o cambiar una venta pasada.\nEn el servicio de gestión de llaves de Zama, para lo que se descifra y para quién: sus partes tendrían que ponerse de acuerdo para leer lo que los contratos no permitieron. Y en el relayer de la bóveda, en nada: no puede leer una solicitud ni cambiarla, solo negarse a enviarla, y entonces la envía tu wallet.\nEl propietario de los contratos puede permitir una colección en la bóveda y fijar su comisión, dentro de un tope escrito en el contrato (10%). No puede tocar una caja. Antes de la mainnet, esa propiedad pasa a una multisig."
+     "text": "En los contratos: su código es abierto, y ellos lo deciden todo. Nadie, nosotros incluidos, puede mover una caja, leer un titular o cambiar una venta pasada.\nEn el servicio de gestión de llaves de Zama, para lo que se descifra y para quién: sus partes tendrían que ponerse de acuerdo para leer lo que los contratos no permitieron. Y en el relayer de la bóveda, en nada: no puede leer una solicitud ni cambiarla, solo negarse a enviarla, y entonces la envía tu wallet.\nEl propietario de los contratos puede permitir una colección en la bóveda y fijar su comisión, dentro de un tope escrito en el contrato (10%), y añadir los tokens que aceptan las posiciones de liquidez y su parte de las comisiones de trading (10% como máximo también). No puede tocar una caja, un bolsillo ni una posición. Antes de la mainnet, esa propiedad pasa a una multisig."
     },
     {
      "id": "project-status-0",
      "section": "project-status",
      "heading": null,
-     "text": "Todo funciona en Sepolia, la red de prueba de Ethereum: NFT de prueba, ETH de prueba, nada con dinero dentro. El juego está activo allí con su comunidad; la bóveda, desde octubre de 2026.\nLa mainnet llega cuando los contratos hayan sido revisados. La whitelist del juego y sus regalos se mantienen; la bóveda se abre a colecciones reales."
+     "text": "Todo funciona en Sepolia, la red de prueba de Ethereum: NFT de prueba, ETH de prueba, nada con dinero dentro. El juego está activo allí con su comunidad; la bóveda, desde octubre de 2026, y sus posiciones de liquidez, desde el 10 de octubre de 2026, en el propio despliegue de Uniswap V3 en Sepolia.\nLa mainnet llega cuando los contratos hayan sido revisados. La whitelist del juego y sus regalos se mantienen; la bóveda se abre a colecciones reales."
     },
     {
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentación de la bóveda El depósito, la llave, Seaport, las ventas privadas, los bolsillos, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Los contratos del juego y de la bóveda, sus pruebas y sus direcciones, de código abierto en GitLab.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
+     "text": "La documentación de la bóveda El depósito, la llave, Seaport, las ventas privadas, los bolsillos, las posiciones de liquidez, el relayer, lo que se filtra.\nEl manual del juego Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.\nEl código Los contratos del juego y de la bóveda, sus pruebas y sus direcciones, de código abierto en GitLab.\nEl FHEVM de Zama El cifrado sobre el que funcionan los contratos."
     }
    ]
   },
@@ -1099,6 +1264,11 @@
     {
      "id": "vault-pockets",
      "title": "Le tasche: token che nessuno traccia",
+     "part": "manual"
+    },
+    {
+     "id": "vault-liquidity",
+     "title": "Posizioni di liquidità: Uniswap senza nome",
      "part": "manual"
     },
     {
@@ -1177,7 +1347,13 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale, o cUSDT, cWETH, cZAMA) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare.\nLa prima volta che apri il caveau, una visita guidata te lo fa percorrere: i due lati, ciò che resta cifrato, poi ogni scheda nell'ordine in cui la useresti, dal sigillare un NFT a cosa trapela. Il «?» nella barra del caveau la riproduce."
+     "text": "Un contratto che custodisce NFT, accanto un altro che custodisce token, e un terzo che custodisce posizioni di liquidità Uniswap. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale, o cUSDT, cWETH, cZAMA) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo. E una posizione di liquidità si paga con le tue tasche, la custodisce il caveau e la guida un indirizzo che nessuno può collegare al tuo wallet.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare."
+    },
+    {
+     "id": "vault-what-1",
+     "section": "vault-what",
+     "heading": null,
+     "text": "La prima volta che apri il caveau, una visita guidata te lo fa percorrere: i tre lati, ciò che resta cifrato, poi ogni scheda nell'ordine in cui la useresti, dal sigillare un NFT a cosa trapela. Il «?» nella barra del caveau la riproduce."
     },
     {
      "id": "vault-seal-0",
@@ -1273,7 +1449,7 @@
      "id": "vault-pockets-0",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Un dollaro confidenziale come il cUSDC nasconde già saldi e importi, ma ogni trasferimento nomina ancora chi lo invia e chi lo riceve. Una tasca nasconde anche questo. È un numero (il tuo codice, come P-12) con un saldo cifrato e una chiave: cosa c'è dentro, e chi la possiede, nessuno può leggerlo.\nNella pagina del caveau, un selettore in alto sceglie il lato: NFT (non fungibili, in scatole) o Token (fungibili, nella tua tasca). Aprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare."
+     "text": "Un dollaro confidenziale come il cUSDC nasconde già saldi e importi, ma ogni trasferimento nomina ancora chi lo invia e chi lo riceve. Una tasca nasconde anche questo. È un numero (il tuo codice, come P-12) con un saldo cifrato e una chiave: cosa c'è dentro, e chi la possiede, nessuno può leggerlo.\nNella pagina del caveau, un selettore in alto sceglie il lato: NFT (non fungibili, in scatole), Token (fungibili, nella tua tasca) o Posizioni LP (liquidità Uniswap, pagata con le tue tasche). Aprire la tua tasca richiede una firma, gratuita: da essa la pagina ricava la chiave della tasca e un secondo indirizzo che serve solo a leggerne il saldo, mai quello del tuo wallet. Non si salva nulla; lo stesso wallet ritrova la stessa tasca su qualsiasi dispositivo. Il relayer invia l'apertura, quindi il tuo indirizzo non compare."
     },
     {
      "id": "vault-pockets-1",
@@ -1298,6 +1474,36 @@
      "section": "vault-pockets",
      "heading": null,
      "text": "Quattro token vanno nelle tasche: cUSDC, cUSDT, cWETH e cZAMA, le versioni confidenziali di Zama di USDC, USDT, WETH e ZAMA. Ognuno ha le sue tasche: scegli il token sopra la tua tasca, il suo logo appare sul sacchetto e su ogni azione. La stessa firma apre la tua tasca di ogni token, ognuna con il suo codice e il suo indirizzo di lettura, quindi niente on-chain le collega. Quale token muove un'azione è pubblico, e una tasca si nasconde solo tra le tasche del suo token. Le scatole si vendono in privato in cUSDC, quindi solo la tasca cUSDC le compra. Su Sepolia, la pagina conia USDT, WETH e ZAMA di prova (i token di prova di Zama, non il WETH delle offerte) e li converte per te."
+    },
+    {
+     "id": "vault-liquidity-0",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Su Uniswap, una posizione di liquidità è un NFT nel wallet di chi la fornisce: il suo range, il suo capitale, le sue commissioni e ogni sua mossa si leggono da quel wallet, vengono copiati dai bot e collegati a tutto il resto che il wallet detiene. Nel caveau, una posizione Uniswap V3 si paga con le tue tasche, la custodisce il caveau e la guida un indirizzo che solo il tuo wallet può derivare, e le sue commissioni tornano nelle tue tasche. Ciò che la posizione fa su Uniswap resta pubblico, come per ogni posizione; di chi sia, no."
+    },
+    {
+     "id": "vault-liquidity-1",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Per aprirne una, nel lato Posizioni LP: scegli un pool, un range attorno al prezzo di oggi (±5 %, ±15 %, ±50 %, o il range completo: più stretto guadagna di più per dollaro e smette prima) e un importo; la pagina calcola l'altro, quello che il range chiede al prezzo di oggi. Entrambi gli importi escono dalle tasche dei tuoi due token, tra esche e cifrati, con la chiave di ogni tasca legata a ogni termine dell'apertura, così il relayer non può cambiarne nessuno. Pagano entrambi i lati o nessuno: se una tasca non basta, l'altra riprende subito i suoi token e non si apre nulla."
+    },
+    {
+     "id": "vault-liquidity-2",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "Uniswap accetta solo token normali, quindi ciò che è stato preso viene scartato per lui, e lì gli importi diventano pubblici, come quelli di ogni posizione. Questo attende che il servizio di chiavi di Zama provi gli importi; poi il caveau crea la posizione e rimette nelle tue tasche ciò che Uniswap non ha preso. Se nel frattempo il prezzo si è mosso troppo, Uniswap rifiuta e tutto torna nelle tue tasche: nessun finanziamento resta bloccato. La posizione è guidata dal suo indirizzo, derivato dalla stessa firma delle tue tasche: non si salva nulla, ritrovi le tue posizioni su qualsiasi dispositivo, e poiché ogni posizione ha il suo indirizzo, nulla collega due tue posizioni."
+    },
+    {
+     "id": "vault-liquidity-3",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "«Incassa le commissioni» invia nelle tue tasche, tra esche, le commissioni di trading che la tua posizione ha guadagnato; il caveau trattiene il 5 % di queste commissioni (mai più del 10 %), mai una quota della tua liquidità. «Ritira» (25 %, 50 % o tutto) riporta la liquidità nelle tue tasche, con le commissioni; ritirare tutto chiude la posizione. La tua pagina firma ogni azione con l'indirizzo della posizione, e il relayer la invia: nessuna decifratura, quindi nessuna attesa."
+    },
+    {
+     "id": "vault-liquidity-4",
+     "section": "vault-liquidity",
+     "heading": null,
+     "text": "«Cedila» passa una posizione a un altro titolare: lui mostra il suo indirizzo di ricezione (Le mie posizioni, dal suo lato), valido finché non gli viene dato qualcosa, e nulla dice di chi sia. «A un wallet» porta l'NFT Uniswap fuori dal caveau verso qualsiasi indirizzo, che si vede. Una posizione Uniswap che il tuo wallet detiene già in uno dei pool del caveau può entrare («Portala dentro»): il deposito nomina il tuo wallet, poi più nulla lo fa.\nLimiti: gli importi sono pubblici una volta scartati, quindi una posizione nasconde il titolare, non la sua dimensione. Finanziare entrambi i lati insieme dice che una tasca di ogni insieme è dello stesso titolare, e il momento può dare indizi (un insieme di tasche addebitato, una posizione creata minuti dopo). Meno posizioni ci sono in un pool, tra meno si nasconde la tua. Le posizioni non sono verificate da un audit."
     },
     {
      "id": "vault-give-0",
@@ -1333,19 +1539,25 @@
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Pubblico",
-     "text": "Quale token muove ogni azione di tasca (cUSDC, cUSDT, cWETH o cZAMA): ognuno ha le sue tasche"
+     "text": "Quale token muove ogni azione di tasca (cUSDC, cUSDT, cWETH o cZAMA): ognuno ha le sue tasche\nIl pool, il range, gli importi e le commissioni di ogni posizione di liquidità (i numeri di Uniswap), quali tasche l'hanno pagata e quali ha pagato, e l'indirizzo che la guida (non legato ad alcun wallet)"
     },
     {
      "id": "vault-leaks-2",
      "section": "vault-leaks",
      "heading": "Mai pubblico",
-     "text": "Chi detiene una scatola\nLa chiave della scatola\nIl prezzo di una vendita privata, e se è andata in porto\nSe un trasferimento ha spostato qualcosa\nChi ha chiesto un annuncio, un ritiro, un incasso, un'offerta accettata o un delegato, quando lo invia il relayer\nIl saldo di una tasca, gli importi che sposta, quale tasca di un gruppo si è mossa, e chi possiede una tasca\nIn pratica: tira fuori NFT ed ETH verso un indirizzo senza storia, nomina un wallet nuovo come delegato, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio)."
+     "text": "Chi detiene una scatola\nLa chiave della scatola\nIl prezzo di una vendita privata, e se è andata in porto\nSe un trasferimento ha spostato qualcosa\nChi ha chiesto un annuncio, un ritiro, un incasso, un'offerta accettata o un delegato, quando lo invia il relayer\nIl saldo di una tasca, gli importi che sposta, quale tasca di un gruppo si è mossa, e chi possiede una tasca\nChi detiene una posizione di liquidità, quale tasca di un insieme ha pagato o è stata pagata, e quali posizioni sono dello stesso titolare\nIn pratica: tira fuori NFT ed ETH verso un indirizzo senza storia, nomina un wallet nuovo come delegato, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5, il WETH che OpenSea usa lì e il registro di delegate.xyz. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xE225…8262\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLa bacheca delle offerte 0x750d…f9E2\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0xAfEc…e00C\nLo sportello che compra dalle tasche 0x0939…759b\nLe tasche cUSDT 0x56ea…7aAe\nLe tasche cWETH 0x4e8A…1350\nLe tasche cZAMA 0x6D15…ceE2"
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5, il WETH che OpenSea usa lì e il registro di delegate.xyz. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nLe posizioni di liquidità girano sul deployment Sepolia di Uniswap V3 stesso, in due pool di token di prova di Zama che il caveau ha aperto a un prezzo inventato: WETH / USDC (commissione 0,3 %) e ZAMA / USDC (1 %). «Fallo scambiare (test)» su un pool scambia dal tuo wallet nei due sensi, così le posizioni nel range guadagnano commissioni da incassare. Le tasche sono state ridistribuite il 2026-10-10 per le posizioni; le prime (cUSDC 0xAfEc…Be00C) restano com'erano.\nIl caveau sigillato 0xE225…8262\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLa bacheca delle offerte 0x750d…f9E2"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "WETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0x2206…0B7C\nLo sportello che compra dalle tasche 0xd17c…4A5f\nLe tasche cUSDT 0x0824…D9FE\nLe tasche cWETH 0x4b77…85b0\nLe tasche cZAMA 0x3a29…6158\nLe posizioni di liquidità 0x1180…aC53\nIl pool WETH / USDC di Uniswap 0x0619…5285\nIl pool ZAMA / USDC di Uniswap 0x821E…6D78"
     },
     {
      "id": "vault-more-0",
@@ -1375,7 +1587,13 @@
      "id": "project-vault-1",
      "section": "project-vault",
      "heading": null,
-     "text": "Il caveau custodisce anche token. I tuoi cUSDC, un dollaro confidenziale, vanno in una tasca chiusa da una chiave invece che da un indirizzo: mandali a un'altra tasca, paga una scatola, o ritirali dove vuoi. I token confidenziali nascondono già gli importi; una tasca nasconde anche chi ha pagato chi. cUSDT, cWETH e cZAMA, gli altri token confidenziali di Zama, hanno le loro tasche; le scatole si pagano in cUSDC.\nLeggi la documentazione del caveau Apri il caveau"
+     "text": "Il caveau custodisce anche token. I tuoi cUSDC, un dollaro confidenziale, vanno in una tasca chiusa da una chiave invece che da un indirizzo: mandali a un'altra tasca, paga una scatola, o ritirali dove vuoi. I token confidenziali nascondono già gli importi; una tasca nasconde anche chi ha pagato chi. cUSDT, cWETH e cZAMA, gli altri token confidenziali di Zama, hanno le loro tasche; le scatole si pagano in cUSDC."
+    },
+    {
+     "id": "project-vault-2",
+     "section": "project-vault",
+     "heading": null,
+     "text": "E custodisce liquidità. Una posizione Uniswap V3 si paga con le tue tasche, la custodisce il caveau e la guida un indirizzo che il tuo wallet deriva e che nessuno può collegargli: guadagna le commissioni di trading del pool come qualsiasi posizione, e le incassi nelle tue tasche (il caveau trattiene il 5% di quelle commissioni, mai della liquidità). Nessuno può copiare i tuoi range, sorvegliare il tuo capitale o collegare tra loro le tue posizioni. Ciò che la posizione fa su Uniswap resta pubblico; di chi sia, no.\nLeggi la documentazione del caveau Apri il caveau"
     },
     {
      "id": "project-game-0",
@@ -1387,25 +1605,25 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "La cifratura nasconde i valori, non il fatto che qualcosa sia successo. Una transazione è pubblica: chi l'ha inviata, a quale contratto, quando. Quello che DO NOT OPEN cifra è ciò che la transazione fa: chi finisce per possedere una scatola, un prezzo concordato in privato, se un trasferimento ha spostato qualcosa.\nAlcune cose sono pubbliche di proposito. Un NFT che entra nel caveau è un semplice trasferimento di NFT, quindi chi lo deposita si vede. Un annuncio su Seaport mostra il suo NFT e il suo prezzo, con il caveau come venditore. Anche l'indirizzo verso cui esce un NFT o l'ETH di una vendita si vede: scegline uno senza storia.\nOgni prodotto elenca esattamente cosa trapela, riga per riga, nella sua documentazione."
+     "text": "La cifratura nasconde i valori, non il fatto che qualcosa sia successo. Una transazione è pubblica: chi l'ha inviata, a quale contratto, quando. Quello che DO NOT OPEN cifra è ciò che la transazione fa: chi finisce per possedere una scatola, un prezzo concordato in privato, se un trasferimento ha spostato qualcosa.\nAlcune cose sono pubbliche di proposito. Un NFT che entra nel caveau è un semplice trasferimento di NFT, quindi chi lo deposita si vede. Un annuncio su Seaport mostra il suo NFT e il suo prezzo, con il caveau come venditore. Anche l'indirizzo verso cui esce un NFT o l'ETH di una vendita si vede: scegline uno senza storia. Il pool, il range, gli importi e le commissioni di una posizione di liquidità sono quelli di Uniswap, pubblici come per ogni posizione; solo il suo titolare è nascosto.\nOgni prodotto elenca esattamente cosa trapela, riga per riga, nella sua documentazione."
     },
     {
      "id": "project-trust-0",
      "section": "project-trust",
      "heading": null,
-     "text": "Dei contratti: il loro codice è open source, e decidono tutto loro. Nessuno, noi compresi, può spostare una scatola, leggere un detentore o cambiare una vendita passata.\nDel servizio di gestione delle chiavi di Zama, per cosa viene decifrato e per chi: le sue parti dovrebbero mettersi d'accordo per leggere ciò che i contratti non hanno permesso. E del relayer del caveau, per niente: non può leggere una richiesta né modificarla, solo rifiutarsi di inviarla, e allora la invia il tuo wallet.\nIl proprietario dei contratti può ammettere una collezione nel caveau e fissarne la commissione, entro un tetto scritto nel contratto (10%). Non può toccare una scatola. Prima della mainnet, questa proprietà passa a un multisig."
+     "text": "Dei contratti: il loro codice è open source, e decidono tutto loro. Nessuno, noi compresi, può spostare una scatola, leggere un detentore o cambiare una vendita passata.\nDel servizio di gestione delle chiavi di Zama, per cosa viene decifrato e per chi: le sue parti dovrebbero mettersi d'accordo per leggere ciò che i contratti non hanno permesso. E del relayer del caveau, per niente: non può leggere una richiesta né modificarla, solo rifiutarsi di inviarla, e allora la invia il tuo wallet.\nIl proprietario dei contratti può ammettere una collezione nel caveau e fissarne la commissione, entro un tetto scritto nel contratto (10%), e aggiungere i token che le posizioni di liquidità accettano e la loro quota delle commissioni di trading (anch'essa al massimo il 10%). Non può toccare una scatola, una tasca né una posizione. Prima della mainnet, questa proprietà passa a un multisig."
     },
     {
      "id": "project-status-0",
      "section": "project-status",
      "heading": null,
-     "text": "Tutto gira su Sepolia, la rete di prova di Ethereum: NFT di prova, ETH di prova, niente che contenga denaro. Il gioco è attivo lì con la sua community; il caveau da ottobre 2026.\nLa mainnet arriva quando i contratti saranno stati revisionati. La whitelist del gioco e i suoi regali passano alla mainnet; il caveau si apre alle collezioni vere."
+     "text": "Tutto gira su Sepolia, la rete di prova di Ethereum: NFT di prova, ETH di prova, niente che contenga denaro. Il gioco è attivo lì con la sua community; il caveau da ottobre 2026, le sue posizioni di liquidità dal 10 ottobre 2026, sul deployment Sepolia di Uniswap V3 stesso.\nLa mainnet arriva quando i contratti saranno stati revisionati. La whitelist del gioco e i suoi regali passano alla mainnet; il caveau si apre alle collezioni vere."
     },
     {
      "id": "project-more-0",
      "section": "project-more",
      "heading": null,
-     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, le tasche, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice I contratti del gioco e del caveau, i loro test e i loro indirizzi, open source su GitLab.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
+     "text": "La documentazione del caveau Il deposito, la chiave, Seaport, le vendite private, le tasche, le posizioni di liquidità, il relayer, cosa trapela.\nIl manuale del gioco Scatole, gatti, crocchette, ratti, il mercatino, la testnet.\nIl codice I contratti del gioco e del caveau, i loro test e i loro indirizzi, open source su GitLab.\nL'FHEVM di Zama La cifratura su cui girano i contratti."
     }
    ]
   }
