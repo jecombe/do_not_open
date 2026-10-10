@@ -25,9 +25,10 @@ export function decoyPlan(to: Address, decoys: number): Send[] {
 
 /**
  * `decoys` sends that move nothing: a deposit's, which has no real one. Each goes to a wallet
- * of `crowd` (wallets that use the vault, picked at random, none twice), and, when the crowd
- * runs short, to a fresh random address. A wallet that acts on the vault could be the box's
- * holder; a fresh address, which never acts, fools nobody for long.
+ * of `crowd` (wallets that hold an NFT of the same collection and wallets that use the vault,
+ * picked at random, none twice), and, when the crowd runs short, to a fresh random address. A
+ * wallet that owns the same kind of NFT or acts on the vault could be the box's holder; a fresh
+ * address, which never acts and holds nothing, fools nobody for long.
  */
 export function decoySends(decoys: number, crowd: readonly Address[] = []): Send[] {
   const count = Math.max(0, Math.min(MAX_DECOYS, Math.floor(decoys)));

@@ -285,17 +285,23 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 - `walletNfts(collection)` lists the wallet's token ids of a collection; `mintTestNft` mints a
   free one from a test collection.
 - `deposit(collection, tokenId, { decoys })` approves the vault if needed and seals the NFT
-  with the wallet's key, sending the new box to `decoys` (0 to `MAX_DECOYS`) wallets of the
-  vault's crowd in the same transaction, each transfer moving nothing (`decoySends(decoys,
-  crowd)`: picked at random among the crowd, none twice, fresh random addresses past it); it
-  returns the box id. The deposit is public, not who holds the box after it. The mock moves
-  nothing for a decoy but records who it named.
-- `crowd()` reads the vault's and the pockets' public events (on from the last look) into a
-  `VaultCrowd`: `wallets`, every address that acted on the vault in its own name (deposited,
-  set a key, sent a box, offered or took a private sale, took an NFT or ETH out, fed a pocket),
-  less the vault's contracts, the relayer and the connected wallet, and `holders`, per box id,
-  how many wallets may hold it as far as the chain tells (its depositor and the wallets of the
-  crowd it was sent to; 1: its depositor is its obvious holder). The page's anonymity counts.
+  with the wallet's key, sending the new box to `decoys` (0 to `MAX_DECOYS`) wallets in the same
+  transaction, each transfer moving nothing (`decoySends(decoys, pool)`: picked at random among
+  the collection's holders and the vault's crowd, `crowd(collection)`, none twice, fresh random
+  addresses past them); it returns the box id. A crowd that cannot be read fails the deposit
+  (`network`) rather than sending the decoys to fresh addresses on the quiet. The deposit is
+  public, not who holds the box after it. The mock moves nothing for a decoy but records who it
+  named.
+- `crowd(collection?)` reads the vault's and the pockets' public events (on from the last look)
+  into a `VaultCrowd`: `wallets`, every address that acted on the vault in its own name
+  (deposited, set a key, sent a box, offered or took a private sale, took an NFT or ETH out, fed
+  a pocket), less the vault's contracts, the relayer and the connected wallet; `collectors`,
+  with a collection, the wallets its recent `Transfer` logs (the last 200,000 blocks, newest
+  first, 40 at most) show still holding one of its NFTs, the connected wallet left out, empty
+  without one; and `holders`, per box id, how many wallets may hold it as far as the chain tells
+  (its depositor and the wallets it was sent to that use the vault or hold an NFT of its
+  collection, one `balanceOf` each, kept 50 blocks; 1: its depositor is its obvious holder). The
+  page's anonymity counts.
 - `withdraw(boxId, to)`, `list(boxId, price, endTime)`, `unlist(boxId)` and `claim(boxId, to)`
   are requests: the key bound to the request's terms, encrypted for the relayer's address (or the
   wallet's), sent through the API's relayer when there is one, then the public decryption of

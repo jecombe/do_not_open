@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ChainError, decoySends, MOCK_DESK, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, pocketGroup, pocketSet, vaultLinks } from "../src";
+import { ChainError, decoySends, MOCK_DESK, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, mockCollector, pocketGroup, pocketSet, vaultLinks } from "../src";
 
 const ETH = 10n ** 18n;
 const USD = 1_000_000n;
@@ -277,6 +277,24 @@ describe("MockVault crowd", () => {
     const sent = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));
     await vault.send(sent, FRESH);
     expect((await vault.crowd()).holders[sent]).toBe(1);
+    // One sent to a wallet that holds an NFT of the collection does, though it never used the vault.
+    expect(before.wallets).not.toContain(mockCollector(0));
+    const toCollector = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));
+    await vault.send(toCollector, mockCollector(0));
+    expect((await vault.crowd()).holders[toCollector]).toBe(2);
+  });
+
+  it("names the collection's holders, who join the crowd a deposit's decoys go to", async () => {
+    const { vault } = await fresh();
+    const plain = await vault.crowd();
+    expect(plain.collectors).toEqual([]);
+    const { collectors, wallets } = await vault.crowd(MOCK_VAULT_NFT);
+    expect(collectors).toContain(mockCollector(0));
+    expect(collectors).not.toContain(MOCK_YOU);
+    expect(wallets).not.toContain(mockCollector(0));
+    // Every decoy lands on a believable wallet, of the crowd or of the collection.
+    const hidden = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT), { decoys: 5 });
+    expect((await vault.crowd()).holders[hidden]).toBe(6);
   });
 
   it("tells a pocket's group, always the same, and the wallets that fed it", async () => {
