@@ -70,8 +70,8 @@ at `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` (block 11885014, owner
 `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` (block 11885017), on the vault above and Zama's cUSDC; the
 previous pockets, `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902) with their desk
 `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), keep their balances, which their keys
-can still withdraw from that contract; `pnpm --filter @dno/chain-adapter smoke:pockets` (open, deposit, send, withdraw, both
-balances read by their viewers) passed there. Pockets of cUSDT, cWETH and cZAMA, without a desk,
+can still withdraw from that contract. On the new pockets, `pnpm --filter @dno/chain-adapter smoke:pockets`
+(open, deposit, send, withdraw, both balances read by their viewers) passed on 2026-10-10. Pockets of cUSDT, cWETH and cZAMA, without a desk,
 are on Sepolia since 2026-10-09 too (blocks 11878756 to 11878758; `POCKET_TOKEN=cZAMA` runs the
 same smoke test on one of them; it passed there with cZAMA and with cWETH, 1 WETH of 18 decimals
 wrapped to 1 cWETH of 6). See [Pockets](#pockets) and [Other tokens](#other-tokens).
@@ -899,11 +899,13 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   2026-10-09 ("ciphertext not ready" for every new handle), and on 2026-10-10 it answered within a
   minute or two, sometimes only after a retry ("not allowed for public decryption" until it has
   seen the ACL grant: `dno:vault-demo` asks again for up to five minutes). On the current vault
-  the demo ran through listing on Seaport 1.6, the buyer's fill through OpenSea's conduit, the
-  ETH claimed to a fresh address, a wrong key refused and a withdrawal; a delegation request
-  settled `Done` and the registry shows the delegate. A public RPC's nodes lag the one that mined
-  a transaction, so the demo reads until the state is there. The previous vaults' pending
-  listing requests (2026-10-09) can be expired by anyone.
+  the demo ran whole on 2026-10-10: a listing on Seaport 1.6, the buyer's fill through OpenSea's
+  conduit, the ETH claimed to a fresh address, a wrong key refused, a withdrawal, a delegation
+  the registry shows, and a WETH offer posted to the board and accepted (its last request
+  settled in `0xda3b44e7f41ff688e361ac27aa986b60ac8854c589882de5a2f9fa8b8ede37f5`). A public
+  RPC's nodes lag the one that mined a transaction (reads behind, "nonce too low"), so the demo
+  reads until the state is there, and runs best on a single endpoint (`SEPOLIA_RPC_URL`). The
+  previous vaults' pending listing requests (2026-10-09) can be expired by anyone.
 - On mainnet a listing is bought on OpenSea only: it names OpenSea's signed zone, so a fill
   needs OpenSea's signature, which its checkout gives and the vault's page cannot (`buy` refuses
   with "This listing is bought on OpenSea."; the page links to the NFT's OpenSea page instead).
