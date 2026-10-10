@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><style>@font-face{font-family:S;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+stardos-stencil@5.3.0/node_modules/@fontsource/stardos-stencil/files/stardos-stencil-latin-700-normal.woff2)}@font-face{font-family:B;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2)}@font-face{font-family:BM;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-500-normal.woff2)}html,body{margin:0;background:#07090c}svg{display:block}.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace}</style>
+<!-- The bot's profile banner, 680×240 drawn at 2×: the sealed vault first, the /ask stamp, the box taking in tokens and an NFT. Discord lays the avatar over the bottom left, so that corner stays plain. -->
+<svg width="1360" height="480" viewBox="0 0 1360 480" xmlns="http://www.w3.org/2000/svg"><defs>
+ <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#141c24" stroke-width="1"/></pattern>
+ <radialGradient id="warm" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb454" stop-opacity=".28"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d79a55"/><stop offset="1" stop-color="#b47439"/></linearGradient>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="3"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="lift" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".6"/></filter>
+ <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#5be3c2" opacity=".7"/></marker>
+</defs>
+<radialGradient id="tealglow" cx="70%" cy="55%" r="55%"><stop offset="0" stop-color="#5be3c2" stop-opacity=".17"/><stop offset="1" stop-color="#5be3c2" stop-opacity="0"/></radialGradient>
+<rect width="1360" height="480" fill="#07090c"/><rect width="1360" height="480" fill="url(#grid)"/><rect width="1360" height="480" fill="url(#tealglow)"/>
+<g transform="translate(56 0)">
+ <text x="0" y="78" class="mono" font-size="17" fill="#5be3c2" letter-spacing="3">● THE SEALED VAULT · ZAMA FHE</text>
+ <text x="0" y="150" font-family="B" font-size="66" fill="#e6edf3">What you own is</text>
+ <text x="0" y="216" font-family="B" font-size="66" fill="#5be3c2" filter="url(#glow)">nobody's business.</text>
+ <g transform="translate(330 250) rotate(-7)">
+  <rect width="150" height="58" rx="4" fill="none" stroke="#c2261d" stroke-width="4" filter="url(#rough)" opacity=".9"/>
+  <text x="75" y="44" text-anchor="middle" font-family="S" font-size="40" fill="#c2261d" filter="url(#rough)" opacity=".9">/ASK</text>
+ </g>
+</g>
+<g transform="translate(850 210) scale(.95)">
+ <ellipse cx="158" cy="214" rx="230" ry="26" fill="url(#warm)"/>
+ <ellipse cx="158" cy="206" rx="185" ry="16" fill="#000" opacity=".55"/>
+ <g fill="none" stroke="#5be3c2" stroke-width="1.5" opacity=".45"><circle cx="158" cy="80" r="210" stroke-dasharray="6 7"/><circle cx="158" cy="80" r="236" stroke-dasharray="2 10" opacity=".6"/></g>
+ 
+ <polygon points="0,0 260,0 315,-46 55,-46" fill="#e3ad6d" stroke="#5be3c2" stroke-width="2"/>
+ <polygon points="260,0 315,-46 315,150 260,196" fill="#9a6230" stroke="#5be3c2" stroke-width="2"/>
+ <rect width="260" height="196" fill="url(#front)"/>
+ <rect width="260" height="196" fill="#c08040" filter="url(#grain)" opacity=".8"/>
+ <rect width="260" height="196" fill="none" stroke="#5be3c2" stroke-width="2" filter="url(#glow)"/>
+ <polygon points="112,0 148,0 203,-46 167,-46" fill="#f0d79a" opacity=".85"/>
+ <rect x="112" y="0" width="36" height="56" fill="#f0d79a" opacity=".8"/>
+ <g transform="translate(107 34)" filter="url(#glow)">
+  <path d="M15 20 V13 a8 8 0 0 1 16 0 V20" fill="none" stroke="#5be3c2" stroke-width="3"/>
+  <rect x="9" y="20" width="28" height="22" rx="4" fill="#07090c" stroke="#5be3c2" stroke-width="2.5"/>
+  <circle cx="23" cy="29" r="3" fill="#5be3c2"/><rect x="21.5" y="30" width="3" height="7" fill="#5be3c2"/>
+ </g>
+ <g transform="translate(16 82)">
+  <rect width="104" height="58" fill="#f6eedb"/>
+  <text x="7" y="15" font-family="B" font-size="8.5" fill="#1c1814">SEALED VAULT / CONSIGNMENT</text>
+  <text x="7" y="36" font-family="S" font-size="19" fill="#1c1814">DNO-0007</text>
+  <text x="7" y="51" class="mono" font-size="8.5" fill="#1c1814">holder ▒▒▒▒▒▒▒▒▒▒</text>
+ </g>
+ <g transform="translate(140 150) rotate(-6)">
+  <rect width="108" height="26" fill="none" stroke="#c2261d" stroke-width="2.5" filter="url(#rough)" opacity=".9"/>
+  <text x="54" y="19" text-anchor="middle" font-family="S" font-size="16" fill="#c2261d" filter="url(#rough)" opacity=".9">DO NOT OPEN</text>
+ </g></g>
+<g transform="translate(700 40) rotate(-6) scale(.9)" filter="url(#lift)">
+ <rect width="116" height="140" rx="8" fill="#0d1117" stroke="#2a3644"/>
+ <rect x="10" y="10" width="96" height="96" rx="4" fill="#7b6cf0"/>
+ <image href="emoji/dno_tuxedo.png" x="12" y="12" width="92" height="92"/>
+ <text x="10" y="126" class="mono" font-size="12" fill="#e6edf3">NFT #1234</text>
+ <g transform="translate(88 113) scale(.7)" fill="#2081E2"><path d="M12 0C5.374 0 0 5.374 0 12s5.374 12 12 12 12-5.374 12-12S18.629 0 12 0ZM5.92 12.403l.051-.081 3.123-4.884a.107.107 0 0 1 .187.014c.52 1.169.972 2.623.76 3.528-.088.372-.335.876-.614 1.342a2.405 2.405 0 0 1-.117.199.106.106 0 0 1-.09.045H6.013a.106.106 0 0 1-.091-.163zm13.914 1.68a.109.109 0 0 1-.065.101c-.243.103-1.07.485-1.414.962-.878 1.222-1.548 2.97-3.048 2.97H9.053a4.019 4.019 0 0 1-4.013-4.028v-.072c0-.058.048-.106.108-.106h3.485c.07 0 .12.063.115.132-.026.226.017.459.125.67.206.42.636.682 1.099.682h1.726v-1.347H9.99a.11.11 0 0 1-.089-.173l.063-.09c.16-.231.391-.586.621-.992.156-.274.308-.566.43-.86.024-.052.043-.107.065-.16.033-.094.067-.182.091-.269a4.57 4.57 0 0 0 .065-.223c.057-.25.081-.514.081-.787 0-.108-.004-.221-.014-.327-.005-.117-.02-.235-.034-.352a3.415 3.415 0 0 0-.048-.312 6.494 6.494 0 0 0-.098-.468l-.014-.06c-.03-.108-.056-.21-.09-.317a11.824 11.824 0 0 0-.328-.972 5.212 5.212 0 0 0-.142-.355c-.072-.178-.146-.339-.213-.49a3.564 3.564 0 0 1-.094-.197 4.658 4.658 0 0 0-.103-.213c-.024-.053-.053-.104-.072-.152l-.211-.388c-.029-.053.019-.118.077-.101l1.32.357h.01l.173.05.192.054.07.019v-.783c0-.379.302-.686.679-.686a.66.66 0 0 1 .477.202.69.69 0 0 1 .2.484V6.65l.141.039c.01.005.022.01.031.017.034.024.084.062.147.11.05.038.103.086.165.137a10.351 10.351 0 0 1 .574.504c.214.199.454.432.684.691.065.074.127.146.192.226.062.079.132.156.19.232.079.104.16.212.235.324.033.053.074.108.105.161.096.142.178.288.257.435.034.067.067.141.096.213.089.197.159.396.202.598a.65.65 0 0 1 .029.132v.01c.014.057.019.12.024.184a2.057 2.057 0 0 1-.106.874c-.031.084-.06.17-.098.254-.075.17-.161.343-.264.502-.034.06-.075.122-.113.182-.043.063-.089.123-.127.18a3.89 3.89 0 0 1-.173.221c-.053.072-.106.144-.166.209-.081.098-.16.19-.245.278-.048.058-.1.118-.156.17-.052.06-.108.113-.156.161-.084.084-.15.147-.208.202l-.137.122a.102.102 0 0 1-.072.03h-1.051v1.346h1.322c.295 0 .576-.104.804-.298.077-.067.415-.36.816-.802a.094.094 0 0 1 .05-.03l3.65-1.057a.108.108 0 0 1 .138.103z"/></g></g>
+
+ <g transform="translate(1202 42) scale(1.75)" filter="url(#lift)"><circle cx="16" cy="16" r="16" fill="#2775CA"/><g fill="#FFF"><path d="M20.022 18.124c0-2.124-1.28-2.852-3.84-3.156-1.828-.243-2.193-.728-2.193-1.578 0-.85.61-1.396 1.828-1.396 1.097 0 1.707.364 2.011 1.275a.458.458 0 00.427.303h.975a.416.416 0 00.427-.425v-.06a3.04 3.04 0 00-2.743-2.489V9.142c0-.243-.183-.425-.487-.486h-.915c-.243 0-.426.182-.487.486v1.396c-1.829.242-2.986 1.456-2.986 2.974 0 2.002 1.218 2.791 3.778 3.095 1.707.303 2.255.668 2.255 1.639 0 .97-.853 1.638-2.011 1.638-1.585 0-2.133-.667-2.316-1.578-.06-.242-.244-.364-.427-.364h-1.036a.416.416 0 00-.426.425v.06c.243 1.518 1.219 2.61 3.23 2.914v1.457c0 .242.183.425.487.485h.915c.243 0 .426-.182.487-.485V21.34c1.829-.303 3.047-1.578 3.047-3.217z"/><path d="M12.892 24.497c-4.754-1.7-7.192-6.98-5.424-11.653.914-2.55 2.925-4.491 5.424-5.402.244-.121.365-.303.365-.607v-.85c0-.242-.121-.424-.365-.485-.061 0-.183 0-.244.06a10.895 10.895 0 00-7.13 13.717c1.096 3.4 3.717 6.01 7.13 7.102.244.121.488 0 .548-.243.061-.06.061-.122.061-.243v-.85c0-.182-.182-.424-.365-.546zm6.46-18.936c-.244-.122-.488 0-.548.242-.061.061-.061.122-.061.243v.85c0 .243.182.485.365.607 4.754 1.7 7.192 6.98 5.424 11.653-.914 2.55-2.925 4.491-5.424 5.402-.244.121-.365.303-.365.607v.85c0 .242.121.424.365.485.061 0 .183 0 .244-.06a10.895 10.895 0 007.13-13.717c-1.096-3.46-3.778-6.07-7.13-7.162z"/></g><circle cx="25" cy="25" r="7" fill="#07090c" stroke="#5be3c2" stroke-width="1.4"/><path d="M23 24.2v-1.4a2 2 0 0 1 4 0v1.4" fill="none" stroke="#5be3c2" stroke-width="1.3" stroke-linecap="round"/><rect x="22" y="24.2" width="6" height="4.6" rx="1" fill="#5be3c2"/></g>
+ <text x="1230" y="118" text-anchor="middle" class="mono" font-size="13" fill="#8b97a6">cUSDC</text>
+ <g transform="translate(1277 157) scale(1.4375)" filter="url(#lift)"><circle cx="16" cy="16" r="16" fill="#EC1C79"/><g fill="#FFF" fill-rule="nonzero"><path fill-opacity=".602" d="M16.498 4v8.87l7.497 3.35z"/><path d="M16.498 4L9 16.22l7.498-3.35z"/><path fill-opacity=".602" d="M16.498 21.968v6.027L24 17.616z"/><path d="M16.498 27.995v-6.028L9 17.616z"/><path fill-opacity=".2" d="M16.498 20.573l7.497-4.353-7.497-3.348z"/><path fill-opacity=".602" d="M9 16.22l7.498 4.353v-7.701z"/></g><circle cx="25" cy="25" r="7" fill="#07090c" stroke="#5be3c2" stroke-width="1.4"/><path d="M23 24.2v-1.4a2 2 0 0 1 4 0v1.4" fill="none" stroke="#5be3c2" stroke-width="1.3" stroke-linecap="round"/><rect x="22" y="24.2" width="6" height="4.6" rx="1" fill="#5be3c2"/></g>
+ <text x="1300" y="223" text-anchor="middle" class="mono" font-size="13" fill="#8b97a6">cWETH</text>
+ <g transform="translate(1230 270) scale(1.25)" filter="url(#lift)"><circle cx="16" cy="16" r="16" fill="#FFD208"/><g fill="#111111" transform="translate(9.5 9.75) scale(0.6)"><path d="M21.3547 0H0.476175V3.46826H21.3547V0Z"/><path d="M21.7131 17.5733H0V20.8102H21.7131V17.5733Z"/><path d="M0 17.5733L21.3547 3.46826L21.3547 7.65457L6.51413 17.5733L0 17.5733Z"/></g><circle cx="25" cy="25" r="7" fill="#07090c" stroke="#5be3c2" stroke-width="1.4"/><path d="M23 24.2v-1.4a2 2 0 0 1 4 0v1.4" fill="none" stroke="#5be3c2" stroke-width="1.3" stroke-linecap="round"/><rect x="22" y="24.2" width="6" height="4.6" rx="1" fill="#5be3c2"/></g>
+ <text x="1250" y="330" text-anchor="middle" class="mono" font-size="13" fill="#8b97a6">cZAMA</text>
+<g fill="none" stroke="#5be3c2" stroke-width="1.5" stroke-dasharray="5 6" opacity=".55" marker-end="url(#arrow)">
+ <path d="M815 110 C 880 80, 960 90, 990 150"/><path d="M1200 80 C 1140 80, 1090 110, 1070 150"/><path d="M1275 185 C 1220 170, 1160 160, 1120 165"/>
+</g>
+<g transform="translate(560 440)">
+ <g filter="url(#glow)"><ellipse cx="0" cy="0" rx="7" ry="9" fill="#ffd66b"/><ellipse cx="26" cy="0" rx="7" ry="9" fill="#5be3c2"/><ellipse cx="0" cy="0" rx="2" ry="7" fill="#07090c"/><ellipse cx="26" cy="0" rx="2" ry="7" fill="#07090c"/></g>
+ <text x="46" y="6.666666666666667" font-family="BM" font-size="20" fill="#8b97a6" letter-spacing="1.5">+ A GAME INSIDE: 10,000 SEALED BOXES, A CAT IN EACH</text></g>
+</svg>
