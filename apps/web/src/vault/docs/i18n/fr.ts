@@ -109,6 +109,7 @@ export const vaultDocsFr: Record<VaultDocsKey, string> = {
   "vaultDocs.testnet.c.vault": "Le coffre scellé",
   "vaultDocs.testnet.c.nft": "La collection de test gratuite",
   "vaultDocs.testnet.c.seaport": "Seaport",
+  "vaultDocs.testnet.c.listings": "Les annonces (écrites comme OpenSea les affiche)",
   "vaultDocs.testnet.c.offers": "Le tableau des offres",
   "vaultDocs.testnet.c.weth": "WETH, ce en quoi les offres paient",
   "vaultDocs.testnet.c.registry": "Le registre de delegate.xyz",

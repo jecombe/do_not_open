@@ -108,6 +108,7 @@ export const vaultDocsEn = {
   "vaultDocs.testnet.c.vault": "The sealed vault",
   "vaultDocs.testnet.c.nft": "The free test collection",
   "vaultDocs.testnet.c.seaport": "Seaport",
+  "vaultDocs.testnet.c.listings": "The listings (written the way OpenSea shows them)",
   "vaultDocs.testnet.c.offers": "The offer board",
   "vaultDocs.testnet.c.weth": "WETH, what offers pay in",
   "vaultDocs.testnet.c.registry": "delegate.xyz's registry",

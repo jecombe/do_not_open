@@ -46,7 +46,9 @@ const { traitIndex, roll } = await chain.shake(tokenId, { onStep: console.log })
 ```
 
 Every action takes `onStep` and reports its steps, in order, from `encrypting`, `wallet`,
-`confirming`, `decrypting`, `proving`. Failures are `ChainError` with a chain-neutral
+`confirming`, `decrypting`, `proving`. Each transaction is sent with a quarter more gas than
+the node estimates: an FHE call uses a little more on Sepolia than an estimate taken a block
+earlier, and one ran out with the bare estimate (a limit costs nothing unless used). Failures are `ChainError` with a chain-neutral
 `code`, and for contract refusals the contract's error name in `reason`. Three codes come
 from encrypted checks rather than reverts: `unpaid` (the cUSDC did not cover the price,
 or the mint would pass the cap; nothing was taken), `not-yours` (the caller did not

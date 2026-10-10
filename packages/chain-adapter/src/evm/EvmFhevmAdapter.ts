@@ -355,6 +355,27 @@ function revealedFrom(c: { seed: bigint; state: bigint; traits: bigint[]; score:
   };
 }
 
+/**
+ * Sends every transaction with a quarter more gas than the node estimates. An FHE call (an input
+ * proof checked, ACL grants written) uses a little more on Sepolia than the estimate taken a block
+ * earlier, and a pocket's `open` ran out of gas with the estimate as its limit on 2026-10-10
+ * (958,368 used of 958,368); a limit costs nothing unless it is used.
+ */
+function withGasMargin(signer: Signer): Signer {
+  return new Proxy(signer, {
+    get(target, prop) {
+      if (prop === "sendTransaction") {
+        return async (tx: TransactionRequest) => {
+          if (tx.gasLimit == null) tx = { ...tx, gasLimit: ((await target.estimateGas(tx)) * 125n) / 100n };
+          return target.sendTransaction(tx);
+        };
+      }
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
 export class EvmFhevmAdapter implements ChainAdapter {
   readonly kind = "evm" as const;
 
@@ -2237,7 +2258,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     let sent: TxRecord | null = null;
     try {
       if (announce) opts?.onStep?.("wallet");
-      const tx = await call(this.contract.connect(signer) as Contract);
+      const tx = await call(this.contract.connect(withGasMargin(signer)) as Contract);
       if (announce) opts?.onStep?.("confirming");
       const explorer = this.opts.chain.explorerUrl;
       sent = { hash: tx.hash, call: this.callName(tx.data), status: "sent", url: explorer ? `${explorer}/tx/${tx.hash}` : null };

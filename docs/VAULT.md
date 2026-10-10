@@ -44,27 +44,33 @@ them, what leaks, what it costs, and why each choice was made.
 
 **Status.** Done on the mock and in the tests (70 contract tests in `test/SealedVault.ts`,
 against the real bytecode of Seaport 1.5, of Seaport 1.6 with OpenSea's conduit, and of
-delegate.xyz's registry). On Sepolia since 2026-10-08: `SealedVault` at
-`0xE22509e741233072aFF4e0c6B56d5e3De8018262` and `VaultOffers` at
-`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2` since 2026-10-09 (blocks 11876575 and 11876574;
-owner and treasury `0x590891F269720001435004A1089cAB5b2c20029A`), its free test collection
-`VaultTestNFT` at `0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`, on OpenSea's Seaport 1.5, the
-WETH OpenSea uses on Sepolia (`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`) and delegate.xyz's
-registry. That deployment is the previous version: the current one (2026-10-10), whose listings
-are written by `VaultListings` the way OpenSea shows them (Seaport 1.6, OpenSea's conduit, its
-signed zone and fees on mainnet; open orders on Sepolia), is done on the mock and in the tests
-and awaits its Sepolia redeployment, after which the addresses here, in the README and in
-[ZAMA_NOTES.md](ZAMA_NOTES.md) move. Earlier deployments are left as they were:
+delegate.xyz's registry). On Sepolia since 2026-10-08, and since 2026-10-10 in its current
+version, whose listings are written by `VaultListings` the way OpenSea shows them (Seaport 1.6,
+OpenSea's conduit, its signed zone and fees on mainnet; open orders on Sepolia): `SealedVault` at
+`0x79E6a86b448311ec580402701d4cb5B68c56718c` (block 11885012), `VaultListings` at
+`0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb` (block 11885005) and `VaultOffers` at
+`0x43B2e0d7a75100545556BAD1B9Fa6f926721898A` (block 11885004; owner and treasury
+`0x590891F269720001435004A1089cAB5b2c20029A`), its free test collection `VaultTestNFT` at
+`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b` (kept from the first deployment), on Seaport 1.6
+(`0x0000000000000068F116a894984e2DB1123eB395`) with OpenSea's conduit, the WETH OpenSea uses on
+Sepolia (`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`) and delegate.xyz's registry. Earlier
+deployments are left as they were: `0xE22509e741233072aFF4e0c6B56d5e3De8018262` (2026-10-09,
+block 11876575, with `VaultOffers` `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`) listed on
+Seaport 1.5 with orders it wrote itself;
 `0x27CA3698A34b53900047cD1D0856B954a695C79D` (2026-10-09, block 11876345) took no offers and no
 delegation; the first, `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (2026-10-08, block
 11872753), took one request per box and moved the nonce on with every request (see Decisions).
 
 The pockets (`SealedPockets`, and `PocketDesk` that buys private sales out of them) are done on
 the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 6 more running the
-adapter against them), and on Sepolia since 2026-10-09: `SealedPockets` at
-`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902, owner `0x590891F269720001435004A1089cAB5b2c20029A`) and
-`PocketDesk` at `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), on the vault above and Zama's
-cUSDC; `pnpm --filter @dno/chain-adapter smoke:pockets` (open, deposit, send, withdraw, both
+adapter against them), and on Sepolia since 2026-10-09, redeployed with the vault on 2026-10-10
+(the desk is bound to its vault, and a pockets contract takes one desk for good): `SealedPockets`
+at `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` (block 11885014, owner
+`0x590891F269720001435004A1089cAB5b2c20029A`) and `PocketDesk` at
+`0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` (block 11885017), on the vault above and Zama's cUSDC; the
+previous pockets, `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902) with their desk
+`0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), keep their balances, which their keys
+can still withdraw from that contract; `pnpm --filter @dno/chain-adapter smoke:pockets` (open, deposit, send, withdraw, both
 balances read by their viewers) passed there. Pockets of cUSDT, cWETH and cZAMA, without a desk,
 are on Sepolia since 2026-10-09 too (blocks 11878756 to 11878758; `POCKET_TOKEN=cZAMA` runs the
 same smoke test on one of them; it passed there with cZAMA and with cWETH, 1 WETH of 18 decimals
@@ -657,7 +663,7 @@ desk: the vault's private sales settle in cUSDC, so only cUSDC pockets buy boxes
 
 | Token | Its pockets on Sepolia | The token | Its ERC-20 |
 | --- | --- | --- | --- |
-| cUSDC | `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (with `PocketDesk`) | `0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639` | USDC (6 decimals) |
+| cUSDC | `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` (with `PocketDesk`) | `0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639` | USDC (6 decimals) |
 | cUSDT | `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe` | `0x4E7B06D78965594eB5EF5414c357ca21E1554491` | USDT `0xa7dA08FafDC9097Cc0E7D4f113A61e31d7e8e9b0` (6) |
 | cWETH | `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` | `0x46208622DA27d91db4f0393733C8BA082ed83158` | Zama's WETHMock `0xff54739b16576FA5402F211D0b938469Ab9A5f3F` (18, rate 10^12), not OpenSea's WETH the offers pay in |
 | cZAMA | `0x6D1585c58238DaADF748558051BF368DAA3eceE2` | `0xf2D628d2598aF4eAF94CB76a437Ff86CA78FfbFB` | ZAMA `0x75355a85c6FB9df5f0C80FF54e8747EEe9a0BF57` (18, rate 10^12) |
@@ -889,12 +895,15 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
 
 ## Limits
 
-- On Sepolia the public decryptions wait on Zama's gateway ("ciphertext not ready" for every new
-  handle, the vault's and a probe's alike, on 2026-10-08, and again on 2026-10-09 with both
-  redeployed vaults, after 90 seconds): the end-to-end demo is to run again once it answers. It
-  runs whole on a local node (offer and delegation included). On the current vault, requests 0
-  and 1 (boxes 0 and 1, listings, placed 2026-10-09 around 10:30 UTC) wait for their proof;
-  anyone may `expire` them a day later, and the boxes take other requests meanwhile.
+- On Sepolia the public decryptions wait on Zama's gateway: it answered nothing on 2026-10-08 and
+  2026-10-09 ("ciphertext not ready" for every new handle), and on 2026-10-10 it answered within a
+  minute or two, sometimes only after a retry ("not allowed for public decryption" until it has
+  seen the ACL grant: `dno:vault-demo` asks again for up to five minutes). On the current vault
+  the demo ran through listing on Seaport 1.6, the buyer's fill through OpenSea's conduit, the
+  ETH claimed to a fresh address, a wrong key refused and a withdrawal; a delegation request
+  settled `Done` and the registry shows the delegate. A public RPC's nodes lag the one that mined
+  a transaction, so the demo reads until the state is there. The previous vaults' pending
+  listing requests (2026-10-09) can be expired by anyone.
 - On mainnet a listing is bought on OpenSea only: it names OpenSea's signed zone, so a fill
   needs OpenSea's signature, which its checkout gives and the vault's page cannot (`buy` refuses
   with "This listing is bought on OpenSea."; the page links to the NFT's OpenSea page instead).
