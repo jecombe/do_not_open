@@ -277,6 +277,20 @@ button.sec-btn {
   min-height: 2.04em;
 }
 
+.sec-hero-title {
+  position: relative;
+  overflow: hidden;
+}
+
+.sec-hero-title-room {
+  visibility: hidden;
+}
+
+.sec-hero-title-text {
+  position: absolute;
+  inset: 0;
+}
+
 .sec-specs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -514,11 +528,20 @@ button.sec-btn {
 }
 
 .sec-story figcaption {
-  display: block;
-  min-height: 4.8em;
+  display: grid;
   margin-top: 10px;
   color: var(--muted);
   font: 14px/1.6 var(--sans);
+}
+
+/* The steps' texts share one cell; the hidden ones still take their room. */
+.sec-story figcaption > span {
+  grid-area: 1 / 1;
+}
+
+.sec-story figcaption > span[hidden] {
+  display: block;
+  visibility: hidden;
 }
 
 .story-tag {
