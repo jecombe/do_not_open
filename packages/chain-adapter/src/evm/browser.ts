@@ -5,6 +5,7 @@ import { EvmFhevmAdapter } from "./EvmFhevmAdapter";
 import { IndexerClient } from "./indexer";
 import { InjectedWallet } from "./wallet";
 import { VaultRelay } from "./vaultRelay";
+import { VaultMarket } from "./vaultMarket";
 
 export interface BrowserEvmOptions {
   /** Read endpoint. Must allow cross-origin requests. Defaults to a public one. */
@@ -54,6 +55,8 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     vault: SEPOLIA_DEPLOYMENT.vault ?? undefined,
     // The API sends holders' vault requests from its own wallet, when it has one.
     vaultRelay: opts.apiUrl ? () => VaultRelay.find(opts.apiUrl!) : undefined,
+    // The API reads the marketplace's offers (OpenSea's on mainnet) for the page, with its own key.
+    vaultMarket: opts.apiUrl ? () => VaultMarket.find(opts.apiUrl!) : undefined,
     // Decrypted receipts, balances and shakes, kept per collection so a new deployment starts clean.
     decryptCache: new LocalStorageDecryptCache(`dno:decrypted:${(opts.address || SEPOLIA_DEPLOYMENT.address).toLowerCase()}`),
     // A rat adopted in the studio is in "my rats" on the next page, before the API indexes it.

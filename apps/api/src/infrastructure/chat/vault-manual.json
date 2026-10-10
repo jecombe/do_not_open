@@ -208,7 +208,7 @@
      "id": "vault-offers-2",
      "section": "vault-offers",
      "heading": null,
-     "text": "Only Seaport offers paid in WETH can be accepted. Offers made on OpenSea's own site go through OpenSea's signed zone; the vault's contracts take those too (proven by replaying a real one on a copy of mainnet). The page does not read them yet: for now it shows the board's offers only, OpenSea's are on the way. Offers on some of a collection's NFTs only (by trait, say) are not taken."
+     "text": "Only Seaport offers paid in WETH can be accepted. Offers made on OpenSea's own site go through OpenSea's signed zone; on mainnet the page shows them next to the board's (marked \"on OpenSea\"), read from OpenSea by the API with its own key, and when you accept one the API asks OpenSea, right before the proof is sent, for the order signed for the vault. The vault's contracts fill them unchanged (checked by filling a live one on a copy of mainnet). On the test network OpenSea is not there: only the board's offers show. Offers on some of a collection's NFTs only (by trait, say) are not taken."
     },
     {
      "id": "vault-bid-0",
@@ -292,7 +292,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport, OpenSea's conduit, the WETH offers pay in and delegate.xyz's registry. OpenSea closed its testnets, so a listing shows on no marketplace site there: it is bought from the page. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0x79E6…718c\nThe free test collection 0xf72E…6f9b\nSeaport 0x0000…B395\nThe listings (written the way OpenSea shows them) 0xF774…8Ddb\nThe offer board 0x43B2…898A\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0x62E0…A17f\nThe desk that buys from pockets 0x06c0…3D61\nThe cUSDT pockets 0x56ea…7aAe\nThe cWETH pockets 0x4e8A…1350\nThe cZAMA pockets 0x6D15…ceE2"
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport, OpenSea's conduit, the WETH offers pay in and delegate.xyz's registry. OpenSea closed its testnets, so a listing shows on no marketplace site there: it is bought from the page. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xE0Da…e8C3\nThe free test collection 0xf72E…6f9b\nSeaport 0x0000…B395\nThe listings (written the way OpenSea shows them) 0xF774…8Ddb\nThe offer board 0xADaE…FE59\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0xd693…E752\nThe desk that buys from pockets 0x5CB6…6e4B\nThe cUSDT pockets 0x56ea…7aAe\nThe cWETH pockets 0x4e8A…1350\nThe cZAMA pockets 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",
@@ -569,7 +569,7 @@
      "id": "vault-offers-2",
      "section": "vault-offers",
      "heading": null,
-     "text": "Seules les offres Seaport payées en WETH peuvent être acceptées. Les offres faites sur le site d'OpenSea passent par la zone signée d'OpenSea ; les contrats du coffre les prennent aussi (prouvé en rejouant une vraie offre sur une copie du réseau principal). La page ne les lit pas encore : pour l'instant elle ne montre que les offres du tableau, celles d'OpenSea arrivent. Les offres sur une partie seulement des NFT d'une collection (par trait, par exemple) ne sont pas prises."
+     "text": "Seules les offres Seaport payées en WETH peuvent être acceptées. Les offres faites sur le site d'OpenSea passent par la zone signée d'OpenSea ; sur le réseau principal, la page les montre à côté de celles du tableau (marquées « sur OpenSea »), lues chez OpenSea par l'API avec sa propre clé, et quand tu en acceptes une, l'API demande à OpenSea, juste avant d'envoyer la preuve, l'ordre signé pour le coffre. Les contrats du coffre les exécutent tels quels (vérifié en exécutant une vraie offre en cours sur une copie du réseau principal). Sur le réseau de test, OpenSea n'est pas là : seules les offres du tableau s'affichent. Les offres sur une partie seulement des NFT d'une collection (par trait, par exemple) ne sont pas prises."
     },
     {
      "id": "vault-bid-0",
@@ -665,7 +665,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport, le conduit d'OpenSea, le WETH que paient les offres et le registre de delegate.xyz. OpenSea a fermé ses testnets : une annonce n'y apparaît sur aucune marketplace, elle s'achète depuis la page. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0x79E6…718c\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 0x0000…B395\nLes annonces (écrites comme OpenSea les affiche) 0xF774…8Ddb\nLe tableau des offres 0x43B2…898A\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0x62E0…A17f\nLe guichet qui achète depuis les poches 0x06c0…3D61\nLes poches cUSDT 0x56ea…7aAe\nLes poches cWETH 0x4e8A…1350\nLes poches cZAMA 0x6D15…ceE2"
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport, le conduit d'OpenSea, le WETH que paient les offres et le registre de delegate.xyz. OpenSea a fermé ses testnets : une annonce n'y apparaît sur aucune marketplace, elle s'achète depuis la page. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xE0Da…e8C3\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 0x0000…B395\nLes annonces (écrites comme OpenSea les affiche) 0xF774…8Ddb\nLe tableau des offres 0xADaE…FE59\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0xd693…E752\nLe guichet qui achète depuis les poches 0x5CB6…6e4B\nLes poches cUSDT 0x56ea…7aAe\nLes poches cWETH 0x4e8A…1350\nLes poches cZAMA 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",
@@ -942,7 +942,7 @@
      "id": "vault-offers-2",
      "section": "vault-offers",
      "heading": null,
-     "text": "Solo se pueden aceptar ofertas de Seaport pagadas en WETH. Las ofertas hechas en el sitio de OpenSea pasan por la zona firmada de OpenSea; los contratos de la bóveda también las aceptan (probado reproduciendo una oferta real en una copia de la red principal). La página aún no las lee: por ahora muestra solo las ofertas del tablón, las de OpenSea están en camino. Tampoco se aceptan ofertas por solo una parte de los NFT de una colección (por rasgo, por ejemplo)."
+     "text": "Solo se pueden aceptar ofertas de Seaport pagadas en WETH. Las ofertas hechas en el sitio de OpenSea pasan por la zona firmada de OpenSea; en la red principal, la página las muestra junto a las del tablón (marcadas «en OpenSea»), leídas en OpenSea por la API con su propia clave, y cuando aceptas una, la API pide a OpenSea, justo antes de enviar la prueba, la orden firmada para la bóveda. Los contratos de la bóveda las ejecutan sin cambios (comprobado ejecutando una oferta real en curso en una copia de la red principal). En la red de prueba OpenSea no está: solo se muestran las ofertas del tablón. Tampoco se aceptan ofertas por solo una parte de los NFT de una colección (por rasgo, por ejemplo)."
     },
     {
      "id": "vault-bid-0",
@@ -1038,7 +1038,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport real, el conduit de OpenSea, el WETH con el que pagan las ofertas y el registro de delegate.xyz. OpenSea cerró sus testnets: allí un anuncio no aparece en ningún marketplace, se compra desde la página. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0x79E6…718c\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nLos anuncios (escritos como OpenSea los muestra) 0xF774…8Ddb\nEl tablón de ofertas 0x43B2…898A\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0x62E0…A17f\nLa ventanilla que compra desde los bolsillos 0x06c0…3D61\nLos bolsillos de cUSDT 0x56ea…7aAe\nLos bolsillos de cWETH 0x4e8A…1350\nLos bolsillos de cZAMA 0x6D15…ceE2"
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport real, el conduit de OpenSea, el WETH con el que pagan las ofertas y el registro de delegate.xyz. OpenSea cerró sus testnets: allí un anuncio no aparece en ningún marketplace, se compra desde la página. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xE0Da…e8C3\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nLos anuncios (escritos como OpenSea los muestra) 0xF774…8Ddb\nEl tablón de ofertas 0xADaE…FE59\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0xd693…E752\nLa ventanilla que compra desde los bolsillos 0x5CB6…6e4B\nLos bolsillos de cUSDT 0x56ea…7aAe\nLos bolsillos de cWETH 0x4e8A…1350\nLos bolsillos de cZAMA 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",
@@ -1315,7 +1315,7 @@
      "id": "vault-offers-2",
      "section": "vault-offers",
      "heading": null,
-     "text": "Si possono accettare solo offerte Seaport pagate in WETH. Le offerte fatte sul sito di OpenSea passano dalla zona firmata di OpenSea; i contratti del caveau accettano anche quelle (provato rieseguendo un'offerta vera su una copia della rete principale). La pagina non le legge ancora: per ora mostra solo le offerte della bacheca, quelle di OpenSea sono in arrivo. Non si accettano nemmeno offerte solo per una parte degli NFT di una collezione (per tratto, per esempio)."
+     "text": "Si possono accettare solo offerte Seaport pagate in WETH. Le offerte fatte sul sito di OpenSea passano dalla zona firmata di OpenSea; sulla rete principale, la pagina le mostra accanto a quelle della bacheca (segnate «su OpenSea»), lette su OpenSea dall'API con la propria chiave, e quando ne accetti una, l'API chiede a OpenSea, subito prima di inviare la prova, l'ordine firmato per il caveau. I contratti del caveau le eseguono senza modifiche (verificato eseguendo un'offerta vera in corso su una copia della rete principale). Sulla rete di test OpenSea non c'è: si vedono solo le offerte della bacheca. Non si accettano nemmeno offerte solo per una parte degli NFT di una collezione (per tratto, per esempio)."
     },
     {
      "id": "vault-bid-0",
@@ -1411,7 +1411,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport, il conduit di OpenSea, il WETH con cui pagano le offerte e il registro di delegate.xyz. OpenSea ha chiuso le sue testnet: lì un annuncio non compare su nessun marketplace, si compra dalla pagina. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0x79E6…718c\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nGli annunci (scritti come OpenSea li mostra) 0xF774…8Ddb\nLa bacheca delle offerte 0x43B2…898A\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0x62E0…A17f\nLo sportello che compra dalle tasche 0x06c0…3D61\nLe tasche cUSDT 0x56ea…7aAe\nLe tasche cWETH 0x4e8A…1350\nLe tasche cZAMA 0x6D15…ceE2"
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport, il conduit di OpenSea, il WETH con cui pagano le offerte e il registro di delegate.xyz. OpenSea ha chiuso le sue testnet: lì un annuncio non compare su nessun marketplace, si compra dalla pagina. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xE0Da…e8C3\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nGli annunci (scritti come OpenSea li mostra) 0xF774…8Ddb\nLa bacheca delle offerte 0xADaE…FE59\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0xd693…E752\nLo sportello che compra dalle tasche 0x5CB6…6e4B\nLe tasche cUSDT 0x56ea…7aAe\nLe tasche cWETH 0x4e8A…1350\nLe tasche cZAMA 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",

@@ -253,8 +253,11 @@ Nor does it index the sealed vault: the vault's adapter (`EvmVault`) reads its b
 from the RPC. The API's part there is the vault relayer (`POST /v1/vault/relay`, with
 `VAULT_RELAYER_KEY`): it sends holders' requests and proofs from a wallet of its own, so the
 holder's address shows on none, and learns nothing the chain does not show, since the key comes
-encrypted and bound to the request's terms. Its relayer proxy decrypts for the vault too. See
-[VAULT.md](VAULT.md#the-relayer).
+encrypted and bound to the request's terms. Its relayer proxy decrypts for the vault too. On
+mainnet it also reads OpenSea's offers on the NFTs in the vault for the page, with its own key,
+and asks OpenSea the signed fill when a holder accepts one (`GET /v1/vault/offers/…`,
+`POST /v1/vault/offers/fulfillment`, `OPENSEA_API_KEY`). See [VAULT.md](VAULT.md#the-relayer)
+and [the marketplace's offers](VAULT.md#the-marketplaces-offers).
 
 It also runs the manual's chatbot, the depot clerk (`POST /v1/chat`): Google's Gemini, on
 its free tier, answers from the whole manual of the player's language, with the key kept on

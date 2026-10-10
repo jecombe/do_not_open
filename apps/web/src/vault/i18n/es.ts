@@ -153,6 +153,7 @@ export const vaultEs: Record<VaultKey, string> = {
   "vault.offers.empty": "Todavía no hay ofertas.",
   "vault.offers.row": "{amount} {coin} de {buyer}, hasta el {date}",
   "vault.offers.any": "cualquier NFT de la colección",
+  "vault.offers.opensea": "en OpenSea",
   "vault.offers.acceptHint": "El NFT va al comprador, y {amount} {coin}, menos la comisión, a esta dirección. Una nueva no muestra ningún vínculo contigo.",
 
   "vault.sales.lede": "Cajas ofrecidas a un solo comprador, por un precio que solo vosotros dos podéis leer.",

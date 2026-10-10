@@ -1283,6 +1283,38 @@ describe("SealedVault", function () {
       expect(await nft.ownerOf(5)).to.eq(carol.address);
     });
 
+    it("writes the Seaport call a holder sends itself to fill an offer, as the vault does, approving Seaport for the NFT and the fee alone", async function () {
+      // Alice keeps her NFT in her wallet: she is the holder, as the vault is for a box.
+      await (await nft.mint(alice.address, 21)).wait();
+      const market = ethers.Wallet.createRandom().address;
+      const offer = await makeOffer(carol, ETH("1"), { tokenId: 21, fees: [{ to: market, amount: ETH("0.05") }] });
+      const encoded = encodeOffer(offer);
+      const [call, fee] = await offers.fillCall(encoded, await nft.getAddress(), 21, alice.address);
+      expect(fee).to.eq(ETH("0.05"));
+      const parsed = seaport.interface.parseTransaction({ data: call })!;
+      expect(parsed.name).to.eq("fulfillAdvancedOrder");
+      expect(parsed.args[0].numerator).to.eq(1n);
+      expect(parsed.args[0].denominator).to.eq(1n);
+      expect(parsed.args[3]).to.eq(alice.address);
+      // Without the approvals, Seaport cannot take the NFT: nothing moves.
+      await expect(alice.sendTransaction({ to: await seaport.getAddress(), data: call })).to.be.reverted;
+      await (await nft.connect(alice).approve(await seaport.getAddress(), 21)).wait();
+      await (await weth.connect(alice).approve(await seaport.getAddress(), fee)).wait();
+      await (await alice.sendTransaction({ to: await seaport.getAddress(), data: call })).wait();
+      expect(await nft.ownerOf(21)).to.eq(carol.address);
+      expect(await weth.balanceOf(alice.address)).to.eq(ETH("0.95"));
+      expect(await weth.balanceOf(market)).to.eq(ETH("0.05"));
+      // A collection offer: one share, its criteria resolved to the token.
+      await (await nft.mint(alice.address, 22)).wait();
+      const any = await makeOffer(bob, ETH("2"), { units: 2n, fees: [{ to: market, amount: ETH("0.1") }] });
+      const [callAny, feeAny] = await offers.fillCall(encodeOffer(any), await nft.getAddress(), 22, alice.address);
+      expect(feeAny).to.eq(ETH("0.05"));
+      const parsedAny = seaport.interface.parseTransaction({ data: callAny })!;
+      expect(parsedAny.args[0].denominator).to.eq(2n);
+      expect(parsedAny.args[1][0].identifier).to.eq(22n);
+      await expect(offers.fillCall(encodeOffer(offer), await nft.getAddress(), 22, alice.address)).to.be.revertedWithCustomError(offers, "NotFilled");
+    });
+
     it("logs a collection offer under ANY_TOKEN", async function () {
       await makeOffer(carol, ETH("2"), { units: 2n, posted: true });
       const any = await offers.ANY_TOKEN();

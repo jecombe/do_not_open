@@ -4,17 +4,21 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OPENSEA, SEAPORT_1_6 } from "../lib/opensea";
 
 /**
- * Replays a real OpenSea offer, one that a contract accepted on mainnet, with VaultOffers in
- * that contract's place, on a local fork of mainnet taken just before the fill:
+ * Replays a real OpenSea offer, one that a contract accepted on mainnet, the way the vault
+ * accepts one (the NFT's holder sends Seaport the call `VaultOffers.fillCall` writes), on a
+ * local fork of mainnet taken just before the fill:
  *
  *   npx hardhat dno:opensea-replay --tx 0xd49327e0f801e4c9ad58c63096f572b9edbbaafbdf9b471dfd097bd4ff97923f
  *
  * OpenSea's offers live off-chain, and filling one needs a signature from OpenSea's server
- * (its signed zone), made for the one address that fills it: there is no way to make one on a
- * test network. A fill that already happened carries both in its calldata, so the fork puts
- * VaultOffers' code at the address OpenSea signed for, hands it the NFT, and lets it fill the
- * very same order through the real Seaport 1.6, the real zone and the real conduit. Nothing
- * leaves the machine: no key, no gas, no deployment.
+ * (its signed zone), made for the one address that fills it, which must hold the NFT: there is
+ * no way to make one on a test network. A fill that already happened carries both in its
+ * calldata, so the fork impersonates the address OpenSea signed for (the contract that held the
+ * NFT and called Seaport, as the vault does), gives it the NFT if it moved since, and has it send
+ * the very same order through the real Seaport 1.6, the real zone and the real conduit, as the
+ * vault sends it: approve Seaport for the NFT and the order's fee, then the call `VaultOffers`
+ * writes. Nothing leaves the machine: no key, no gas, no deployment. (`opensea:fork` in
+ * chain-adapter does the same with a live offer, through OpenSea's API.)
  *
  * Needs `anvil` (Foundry) on the PATH, or `--rpc` to an anvil already forked at the block before
  * the fill, and a mainnet RPC with archive state and `debug_traceTransaction`
@@ -33,7 +37,8 @@ const SEAPORT_CALLS = [
   `function matchAdvancedOrders(${ADVANCED_ORDER}[] orders,${CRITERIA_RESOLVER}[] criteriaResolvers,((uint256 orderIndex,uint256 itemIndex)[] offerComponents,(uint256 orderIndex,uint256 itemIndex)[] considerationComponents)[] fulfillments,address recipient) payable returns (bool)`,
   `function fulfillAdvancedOrder(${ADVANCED_ORDER} advancedOrder,${CRITERIA_RESOLVER}[] criteriaResolvers,bytes32 fulfillerConduitKey,address recipient) payable returns (bool)`,
 ];
-const NFT_ABI = ["function ownerOf(uint256) view returns (address)", "function transferFrom(address,address,uint256)"];
+const NFT_ABI = ["function ownerOf(uint256) view returns (address)", "function transferFrom(address,address,uint256)", "function approve(address,uint256)"];
+const WETH_ABI = ["function approve(address,uint256) returns (bool)", "function balanceOf(address) view returns (uint256)"];
 
 type Call = { from: string; to?: string; input: string; calls?: Call[] };
 
@@ -103,13 +108,15 @@ task("dno:opensea-replay", "Replays a real OpenSea offer a contract accepted on 
       console.log(`Fork at block ${await fork.getBlockNumber()} (${url})`);
       await fork.send("evm_setNextBlockTimestamp", [Number(timestamp) - 6]);
 
-      // 3. VaultOffers, its code where OpenSea signed for.
+      // 3. VaultOffers on the fork: it writes the fill; the address OpenSea signed for sends it, as the vault does.
       const deployer = await fork.getSigner(0);
       const artifact = await hre.artifacts.readArtifact("VaultOffers");
       const deployed = await (await new ethers.ContractFactory(artifact.abi, artifact.bytecode, deployer).deploy(SEAPORT_1_6, WETH)).waitForDeployment();
-      await fork.send("anvil_setCode", [fulfiller, await fork.getCode(await deployed.getAddress())]);
-      const offers = new ethers.Contract(fulfiller, artifact.abi, deployer);
-      console.log(`VaultOffers (Seaport 1.6, zone ${OPENSEA.zone}) put at ${fulfiller}`);
+      const offers = new ethers.Contract(await deployed.getAddress(), artifact.abi, deployer);
+      console.log(`VaultOffers (Seaport 1.6, zone ${OPENSEA.zone}) deployed at ${await offers.getAddress()}; ${fulfiller} plays the vault`);
+      await fork.send("anvil_impersonateAccount", [fulfiller]);
+      await fork.send("anvil_setBalance", [fulfiller, "0x" + (10n ** 18n).toString(16)]);
+      const holder = await fork.getSigner(fulfiller);
 
       // 4. The NFT, from whoever holds it (the original fulfiller most often).
       const nft = new ethers.Contract(collection, NFT_ABI, fork);
@@ -120,26 +127,25 @@ task("dno:opensea-replay", "Replays a real OpenSea offer a contract accepted on 
         await (await nft.connect(await fork.getSigner(owner)).getFunction("transferFrom")(owner, fulfiller, tokenId)).wait();
       }
 
-      // 5. The fill, with the order exactly as `finalizeOffer` takes it.
+      // 5. The fill, with the order exactly as `finalizeOffer` takes it, sent the way the vault sends it.
       const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
         [ADVANCED_ORDER, "bytes32[]"],
         [[offer.parameters, offer.numerator, offer.denominator, offer.signature, offer.extraData], criteriaProof],
       );
       const [orderHash, buyer, fillable] = (await offers.inspect!(encoded, collection, tokenId, 1n)) as [string, string, boolean];
       console.log(`inspect: order ${orderHash}, buyer ${buyer}, fillable ${fillable}`);
-      // A fresh wallet: anvil's own accounts are real mainnet addresses, some with code of their own.
-      const caller = ethers.Wallet.createRandom().connect(fork);
-      const callerAddress = await caller.getAddress();
-      await fork.send("anvil_setBalance", [callerAddress, "0x" + (10n ** 18n).toString(16)]);
-      const before = await fork.getBalance(callerAddress);
-      const fill = await offers.connect(caller).getFunction("fill")(encoded, collection, tokenId, { gasLimit: 3_000_000 });
-      const r = await fill.wait();
-      const got = (await fork.getBalance(callerAddress)) - before + BigInt(r.gasUsed) * BigInt(r.gasPrice);
+      const [call, fee] = (await offers.fillCall!(encoded, collection, tokenId, fulfiller)) as [string, bigint];
+      const weth = new ethers.Contract(WETH, WETH_ABI, holder);
+      const before = (await weth.balanceOf!(fulfiller)) as bigint;
+      await (await nft.connect(holder).getFunction("approve")(SEAPORT_1_6, tokenId)).wait();
+      await (await weth.approve!(SEAPORT_1_6, fee)).wait();
+      const r = await (await holder.sendTransaction({ to: SEAPORT_1_6, data: call, gasLimit: 1_500_000 })).wait();
+      const got = ((await weth.balanceOf!(fulfiller)) as bigint) - before;
       const newOwner = (await nft.ownerOf!(tokenId)) as string;
-      console.log(`filled in ${r.hash} (${r.gasUsed} gas): the NFT is ${newOwner}'s, ${ethers.formatEther(got)} ETH came to the caller`);
+      console.log(`filled in ${r!.hash} (${r!.gasUsed} gas): the NFT is ${newOwner}'s, ${ethers.formatEther(got)} WETH came to the holder, ${ethers.formatEther(fee)} of fees taken`);
       if (newOwner.toLowerCase() !== (offer.parameters.offerer as string).toLowerCase()) throw new Error("The NFT did not reach the buyer.");
-      if (got <= 0n) throw new Error("No ETH came back.");
-      console.log("OK: VaultOffers filled a real OpenSea offer through OpenSea's signed zone.");
+      if (got <= 0n) throw new Error("No WETH came.");
+      console.log("OK: the NFT's holder filled a real OpenSea offer through OpenSea's signed zone with the call VaultOffers writes, as the vault does.");
     } finally {
       fork.destroy();
       anvil?.kill();

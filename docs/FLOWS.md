@@ -1242,7 +1242,12 @@ A buyer's offer is a plain Seaport order (WETH offered, the NFT asked for; Seapo
 Sepolia and mainnet, 1.5 on a local node, signed for the version Seaport reports), posted to
 the offer board `VaultOffers`. The holder accepts it with an `AcceptOffer` request (`to` the payout
 address, `price` the least WETH it must net, `ref` its order hash); the order itself only comes
-at `finalizeOffer`.
+at `finalizeOffer`. On mainnet an offer made on opensea.io follows the same path: the page reads
+it from the API (`GET /v1/vault/offers/:collection/:tokenId`, OpenSea's API behind it) instead
+of the board, and asks the API the order with OpenSea's zone signature for the vault (OpenSea
+signs for the NFT's holder, which is why the vault sends the fill itself;
+`POST /v1/vault/offers/fulfillment`) right before `finalizeOffer`, as that signature lasts
+minutes ([VAULT.md](VAULT.md#the-marketplaces-offers)).
 
 ```mermaid
 sequenceDiagram
@@ -1264,10 +1269,10 @@ sequenceDiagram
   else the order is dead (cancelled, filled, ended, worth less)
     V->>V: Stale: the box stays
   else
-    V->>V: a listed box is taken down first; the NFT to VaultOffers
-    V->>O: fill: fulfillAdvancedOrder (1/units, criteria resolved to the box's token)
-    O->>S: WETH in, the NFT to the buyer, WETH unwrapped
-    O->>V: ETH (receive: Seaport or VaultOffers only)
+    V->>V: a listed box is taken down first
+    V->>O: fillCall: the fulfillAdvancedOrder call (1/units, criteria resolved to the box's token), the WETH fee
+    V->>S: approve Seaport for the NFT and the fee, send the call (on mainnet with OpenSea's zone signature for the vault)
+    S->>V: WETH in, the NFT to the buyer, the fee out; the vault unwraps (receive: Seaport or WETH only)
     V->>V: less than least: revert OfferShort; fee to feesOwed, delegate cleared
     V-->>H: OfferAccepted(boxId, orderHash, buyer, amount)
     V->>V: proceeds to `to`: Claimed (Sold if `to` refuses ETH, for a Claim)
