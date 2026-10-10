@@ -14,6 +14,7 @@
     "contracts/mocks/TestWETH.sol",
     "contracts/mocks/VaultTestNFT.sol",
     "contracts/mocks/TestZone.sol",
+    "contracts/mocks/TestFakeNFT.sol",
     "test/SealedVault.ts",
     "test/SealedPockets.ts",
     "test/seaport.ts",

@@ -28,7 +28,7 @@ export const projectEs: Record<ProjectKey, string> = {
   "project.fhe.p3": "Cada revelación tiene dos pasos: una solicitud on-chain, y luego una prueba firmada por esas partes que cualquiera puede traer de vuelta. Por eso algunas acciones esperan unos segundos a su prueba.",
 
   "project.section.vault": "La bóveda sellada",
-  "project.vault.p1": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.",
+  "project.vault.p1": "Mete cualquier NFT en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.",
   "project.vault.p2": "La caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora (en la red principal el anuncio aparece en OpenSea), o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte.",
   "project.vault.p3": "La bóveda guarda también tokens. Tus cUSDC, un dólar confidencial, van a un bolsillo cerrado por una llave en lugar de una dirección: envíalos a otro bolsillo, paga una caja con ellos o sácalos a donde quieras. Los tokens confidenciales ya ocultan los importes; un bolsillo oculta además quién pagó a quién. cUSDT, cWETH y cZAMA, los otros tokens confidenciales de Zama, tienen sus propios bolsillos; las cajas se pagan en cUSDC.",
   "project.vault.docs": "Leer la documentación de la bóveda",

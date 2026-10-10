@@ -1,5 +1,5 @@
 /**
- * The sealed vault: any NFT of an allowed collection, in a box whose holder is encrypted. The
+ * The sealed vault: any ERC-721 (the owner can shut a collection out), in a box whose holder is encrypted. The
  * NFT can come out to any address, be sold on Seaport (OpenSea's protocol) with the vault as
  * the seller, by a listing or by accepting a buyer's WETH offer, or change hands privately for
  * an encrypted cUSDC price. Meanwhile its rights (airdrops, token gates) can be lent to a wallet
@@ -14,7 +14,7 @@ import type { ActionOptions, Address } from "./types";
 
 export type VaultBoxState = "sealed" | "listed" | "sold" | "withdrawn" | "claimed";
 
-/** A collection the vault takes. */
+/** A collection the page offers to seal (any ERC-721 goes in; these are the ones it knows and draws). */
 export interface VaultCollection {
   address: Address;
   name: string;

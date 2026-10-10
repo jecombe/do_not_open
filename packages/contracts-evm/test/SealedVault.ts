@@ -324,11 +324,10 @@ describe("SealedVault", function () {
       FEE_BPS,
     )) as unknown as SealedVault;
     vaultAddress = await vault.getAddress();
-    await (await vault.setCollection(await nft.getAddress(), true)).wait();
   });
 
   describe("deposit", function () {
-    it("seals an allowed NFT in a box only its depositor holds", async function () {
+    it("seals any NFT in a box only its depositor holds", async function () {
       const boxId = await deposit(alice, 7, randomKey());
       expect(await nft.ownerOf(7)).to.eq(vaultAddress);
       expect(await holderOf(boxId)).to.eq(alice.address);
@@ -338,15 +337,24 @@ describe("SealedVault", function () {
       expect(await vault.boxOf(await nft.getAddress(), 7)).to.eq(boxId + 1n);
     });
 
-    it("refuses a collection that is not allowed", async function () {
-      await (await vault.setCollection(await nft.getAddress(), false)).wait();
+    it("refuses a collection the owner shut out, and lets it back in", async function () {
+      await (await vault.banCollection(await nft.getAddress(), true)).wait();
       await (await nft.mint(alice.address, 1)).wait();
       await (await nft.connect(alice).approve(vaultAddress, 1)).wait();
       const i = await depositInput(alice, 1n);
       await expect(vault.connect(alice).deposit(await nft.getAddress(), 1, i.key, i.to, i.really, i.proof)).to.be.revertedWithCustomError(
         vault,
-        "CollectionNotAllowed",
+        "CollectionBanned",
       );
+      await (await vault.banCollection(await nft.getAddress(), false)).wait();
+      await (await vault.connect(alice).deposit(await nft.getAddress(), 1, i.key, i.to, i.really, i.proof)).wait();
+      expect(await nft.ownerOf(1)).to.eq(vaultAddress);
+    });
+
+    it("refuses a collection whose transfer moves nothing: the NFT must be here", async function () {
+      const fake = await (await ethers.getContractFactory("TestFakeNFT")).deploy();
+      const i = await depositInput(alice, 1n);
+      await expect(vault.connect(alice).deposit(await fake.getAddress(), 1, i.key, i.to, i.really, i.proof)).to.be.revertedWithCustomError(vault, "NotReceived");
     });
 
     it("refuses an NFT the caller does not hold", async function () {
@@ -612,7 +620,6 @@ describe("SealedVault", function () {
           FEE_BPS,
         )) as unknown as SealedVault;
         vaultAddress = await vault.getAddress();
-        await (await vault.setCollection(await nft.getAddress(), true)).wait();
         await (
           await listings.setFees(await nft.getAddress(), [
             { recipient: OPENSEA.feeRecipient, bps: 100 },
@@ -670,6 +677,31 @@ describe("SealedVault", function () {
         // The next listing pays the new fee.
         const next = await list(boxId, key, ETH("1"));
         expect((await vault.listingInfo(next)).net).to.eq(ETH("0.975"));
+      });
+
+      it("a collection without fees of its own takes the default ones, and its own replace them", async function () {
+        // Another collection, nothing set for it: the default fees (OpenSea's, under collection 0) apply.
+        const other = (await (await ethers.getContractFactory("TestERC721")).deploy()) as unknown as TestERC721;
+        const otherAddress = await other.getAddress();
+        expect((await listings.feesOf(otherAddress)).length).to.eq(0);
+        await (await listings.setFees(ethers.ZeroAddress, [{ recipient: OPENSEA.feeRecipient, bps: 100 }])).wait();
+        expect((await listings.feesOf(otherAddress)).map((f) => [f.recipient, f.bps])).to.deep.eq([[OPENSEA.feeRecipient, 100n]]);
+        // The collection with fees of its own keeps them.
+        expect((await listings.feesOf(await nft.getAddress())).length).to.eq(2);
+        const key = randomKey();
+        await (await other.mint(alice.address, 3)).wait();
+        await (await other.connect(alice).approve(vaultAddress, 3)).wait();
+        const i = await depositInput(alice, key);
+        await (await vault.connect(alice).deposit(otherAddress, 3, i.key, i.to, i.really, i.proof)).wait();
+        const boxId = (await vault.boxOf(otherAddress, 3)) - 1n;
+        const listingId = await list(boxId, key, ETH("1"));
+        expect((await vault.listingInfo(listingId)).net).to.eq(ETH("0.99"));
+        expect((await listings.orderOf((await vault.listingInfo(listingId)).orderHash)).consideration.length).to.eq(2);
+        // Its own fees replace the default, they do not add to it.
+        await (await listings.setFees(otherAddress, [{ recipient: CREATOR, bps: 500 }])).wait();
+        expect(await act(boxId, ACTION.Unlist, key)).to.eq(REQUEST.Done);
+        const next = await list(boxId, key, ETH("1"));
+        expect((await vault.listingInfo(next)).net).to.eq(ETH("0.95"));
       });
 
       it("withdrawing a listed box cancels its order on Seaport 1.6", async function () {
@@ -736,7 +768,6 @@ describe("SealedVault", function () {
           FEE_BPS,
         )) as unknown as SealedVault;
         vaultAddress = await vault.getAddress();
-        await (await vault.setCollection(await nft.getAddress(), true)).wait();
       });
 
       it("lists an open order anyone fills, the NFT moved by OpenSea's conduit, no fee but the vault's", async function () {
@@ -1416,7 +1447,8 @@ describe("SealedVault", function () {
     it("caps the fee and keeps the treasury set", async function () {
       await expect(vault.setFee(1_001)).to.be.revertedWithCustomError(vault, "FeeTooHigh");
       await expect(vault.setTreasury(ethers.ZeroAddress)).to.be.revertedWithCustomError(vault, "ZeroAddress");
-      await expect(vault.connect(alice).setCollection(alice.address, true)).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+      await expect(vault.connect(alice).banCollection(alice.address, true)).to.be.revertedWithCustomError(vault, "OwnableUnauthorizedAccount");
+      await expect(vault.banCollection(ethers.ZeroAddress, true)).to.be.revertedWithCustomError(vault, "ZeroAddress");
     });
   });
 });

@@ -329,7 +329,8 @@ export class MockVault implements VaultAdapter {
   /** Decoys move nothing: the mock only records who they named, as the chain would show. */
   async deposit(collection: Address, tokenId: bigint, opts?: VaultDepositOptions): Promise<number> {
     const me = this.signer();
-    if (!sameAddress(collection, MOCK_VAULT_NFT)) throw revert("CollectionNotAllowed");
+    // The mock knows one collection: anything else is as a collection the owner shut out.
+    if (!sameAddress(collection, MOCK_VAULT_NFT)) throw revert("CollectionBanned");
     if (this.nfts.get(String(tokenId)) !== me) throw revert("ERC721InsufficientApproval");
     await this.host.send(opts, "approve");
     await this.host.send(opts, "deposit");

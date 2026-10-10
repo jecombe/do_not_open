@@ -786,14 +786,14 @@ a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
 
 ### The sealed vault (2026-10-08)
 
-`SealedVault` puts any NFT of an allowed collection in a box whose holder is encrypted: a
+`SealedVault` puts any ERC-721 (the owner can shut a collection out) in a box whose holder is encrypted: a
 second `ConfidentialERC721`, next to the game and linked to none of its contracts. It lists on
-Seaport with the vault as the offerer (its orders written and kept by `VaultListings`, 6,336
+Seaport with the vault as the offerer (its orders written and kept by `VaultListings`, 6,388
 bytes, the way OpenSea shows a contract's listing: Seaport 1.6, OpenSea's conduit, its signed
 zone and fees on mainnet, open orders on Sepolia; Seaport 1.5 on local nodes), accepts buyers'
 WETH offers on the same Seaport (sending the fill `VaultOffers`, 8,909 bytes, also the on-chain
 offer board, writes for it: OpenSea signs a fill for the NFT's holder), names a box's delegate in
-delegate.xyz's registry, and sells privately in cUSDC. 23,650 bytes deployed, 926 under the
+delegate.xyz's registry, and sells privately in cUSDC. 23,795 bytes deployed, 781 under the
 limit (22,712 and 1,864 under before it sent the offers' fills itself, later on 2026-10-10;
 24,322, 254 under, before the listings' orders moved out to `VaultListings` on 2026-10-10; 21,869 before offers and
 delegation, 20,833 before requests stopped locking the box and the deposit took decoys, both
@@ -849,8 +849,9 @@ per call is in [VAULT.md](VAULT.md#cost): ~83k a deposit, ~191k a request, ~225k
 
 `SealedPockets` holds cUSDC in pockets locked by a `euint256` key, and `PocketDesk` buys the
 vault's private sales out of them ([VAULT.md](VAULT.md#pockets)). On Sepolia since 2026-10-09,
-redeployed with the vault twice on 2026-10-10: `SealedPockets` `0xd693433e9E2556bafC6A5B48E37f9994E99bE752`
-(block 11885664), `PocketDesk` `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` (block 11885665); before them
+redeployed with the vault three times on 2026-10-10: `SealedPockets` `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395`
+(block 11885991), `PocketDesk` `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` (block 11885992); before them
+`0xd693433e9E2556bafC6A5B48E37f9994E99bE752` (block 11885664) and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` (block 11885665),
 `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` (block 11885014) and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` (block 11885017), then
 `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902) and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b`
 (block 11877903), each bound to the vault of its day. What is
@@ -932,9 +933,9 @@ change): the rats stay with their owners. `WhitelistGifts` is the giver of both 
 | `RatTricks` (sniffs, shields, jams) | [`0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f`](https://sepolia.etherscan.io/address/0x1E722B5d8581AA71DE6bAf523a95FDB3917B765f) |
 | `WhitelistGifts` (root not set yet) | [`0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a`](https://sepolia.etherscan.io/address/0x09D2382E4E6d15Efa324d89f8c5E39437e0e405a) |
 | `FleaMarket` (boxes, cats and rats between players, 2.5% fee) | [`0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92`](https://sepolia.etherscan.io/address/0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92) |
-| `SealedVault` (any NFT, its holder encrypted; Seaport 1.6 as the vault, listings written by `VaultListings` and accepted WETH offers, delegate.xyz delegation, 2.5% fee; owner and treasury `0x5908…029A`) | [`0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3`](https://sepolia.etherscan.io/address/0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3) (since 2026-10-10, block 11885662, the vault sending an accepted offer's fill itself; before it [`0x79E6a86b448311ec580402701d4cb5B68c56718c`](https://sepolia.etherscan.io/address/0x79E6a86b448311ec580402701d4cb5B68c56718c), the same day, block 11885012, which handed `VaultOffers` the NFT, [`0xE22509e741233072aFF4e0c6B56d5e3De8018262`](https://sepolia.etherscan.io/address/0xE22509e741233072aFF4e0c6B56d5e3De8018262), 2026-10-09, block 11876575, on Seaport 1.5 with listings it wrote itself, [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D), 2026-10-09, block 11876345, no offers nor delegation, and [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), 2026-10-08, whose requests locked the box) |
+| `SealedVault` (any NFT, its holder encrypted; Seaport 1.6 as the vault, listings written by `VaultListings` and accepted WETH offers, delegate.xyz delegation, 2.5% fee; owner and treasury `0x5908…029A`) | [`0xb70740218931B220a06CE1ba1bD58B33f4d45abC`](https://sepolia.etherscan.io/address/0xb70740218931B220a06CE1ba1bD58B33f4d45abC) (since 2026-10-10, block 11885990, taking any ERC-721; before it [`0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3`](https://sepolia.etherscan.io/address/0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3), the same day, block 11885662, the first sending an accepted offer's fill itself but still allowing collections one by one, [`0x79E6a86b448311ec580402701d4cb5B68c56718c`](https://sepolia.etherscan.io/address/0x79E6a86b448311ec580402701d4cb5B68c56718c), the same day, block 11885012, which handed `VaultOffers` the NFT, [`0xE22509e741233072aFF4e0c6B56d5e3De8018262`](https://sepolia.etherscan.io/address/0xE22509e741233072aFF4e0c6B56d5e3De8018262), 2026-10-09, block 11876575, on Seaport 1.5 with listings it wrote itself, [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D), 2026-10-09, block 11876345, no offers nor delegation, and [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), 2026-10-08, whose requests locked the box) |
 | `VaultOffers` (the vault's offer board, writes the fills it sends; Seaport 1.6) | [`0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59`](https://sepolia.etherscan.io/address/0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59) (since 2026-10-10, block 11885657, with `fillCall`; before it [`0x43B2e0d7a75100545556BAD1B9Fa6f926721898A`](https://sepolia.etherscan.io/address/0x43B2e0d7a75100545556BAD1B9Fa6f926721898A), the same day, block 11885004, and [`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`](https://sepolia.etherscan.io/address/0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2), block 11876574, on Seaport 1.5) |
-| `VaultListings` (writes and keeps the listings' orders the way OpenSea shows them; Seaport 1.6 `0x0000000000000068F116a894984e2DB1123eB395` and OpenSea's conduit on Sepolia, no zone; owner `0x5908…029A`) | [`0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb`](https://sepolia.etherscan.io/address/0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb) (since 2026-10-10, block 11885005) |
+| `VaultListings` (writes and keeps the listings' orders the way OpenSea shows them; Seaport 1.6 `0x0000000000000068F116a894984e2DB1123eB395` and OpenSea's conduit on Sepolia, no zone; owner `0x5908…029A`) | [`0x6b9C5204568fdf74a5DcEf7a1be85252358D8Fa6`](https://sepolia.etherscan.io/address/0x6b9C5204568fdf74a5DcEf7a1be85252358D8Fa6) (since 2026-10-10, block 11885989, with default fees; before it [`0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb`](https://sepolia.etherscan.io/address/0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb), the same day, block 11885005) |
 | `VaultTestNFT` (free test NFTs the vault takes) | [`0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b`](https://sepolia.etherscan.io/address/0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b) |
 | WETH (OpenSea's on Sepolia, what offers pay in; not ours) | [`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`](https://sepolia.etherscan.io/address/0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9) |
 | delegate.xyz Delegate Registry v2 (not ours) | [`0x00000000000000447e69651d841bD8D104Bed493`](https://sepolia.etherscan.io/address/0x00000000000000447e69651d841bD8D104Bed493) |

@@ -2,7 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import registryFixture from "../test/fixtures/delegate-registry-v2.json";
 import seaportFixture from "../test/fixtures/seaport-1.5.json";
-import { listingVenue } from "../lib/opensea";
+import { listingVenue, OPENSEA } from "../lib/opensea";
 import { PAYMENT_TOKENS } from "../lib/paymentTokens";
 
 /** delegate.xyz's Delegate Registry v2, at the same address on every chain it is on. */
@@ -15,14 +15,15 @@ export const WETH: Record<string, string> = {
 };
 
 /**
- * The sealed vault: any NFT of an allowed collection, its holder encrypted, sold on Seaport with
- * the vault as the seller (a listing VaultListings writes, or a buyer's offer accepted through
- * VaultOffers, both deployed first), or privately in cUSDC, and delegated through delegate.xyz.
- * On a test network it also deploys VaultTestNFT, free to mint, and allows it.
+ * The sealed vault: any NFT (the owner can shut a collection out), its holder encrypted, sold on
+ * Seaport with the vault as the seller (a listing VaultListings writes, or a buyer's offer
+ * accepted through VaultOffers, both deployed first), or privately in cUSDC, and delegated
+ * through delegate.xyz. On a test network it also deploys VaultTestNFT, free to mint.
  *
  * Where the listings go is `lib/opensea.ts`: on mainnet the way OpenSea shows them (Seaport 1.6,
- * its conduit and signed zone; each allowed collection's fees are then set on VaultListings with
- * `setFees`), elsewhere an open Seaport 1.5 order. Seaport and delegate.xyz's registry are the
+ * its conduit and signed zone, and OpenSea's 1% set as VaultListings' default fees for every
+ * collection; a collection whose creator fee OpenSea enforces gets its own with `setFees`),
+ * elsewhere an open Seaport 1.5 order. Seaport and delegate.xyz's registry are the
  * live deployments; on a local node (`pnpm chain`) their Sepolia code is put at the same
  * addresses first, and a test WETH is deployed. The fee (VAULT_FEE_BPS, 2.5% by default) goes to
  * STUDIO_TREASURY, or the owner. Runs at the end and redeploys nothing else: `--tags Vault`
@@ -59,15 +60,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const weth = WETH[hre.network.name] ?? (await deploy("TestWETH", { from: deployer!, log: true })).address;
   const offers = await deploy("VaultOffers", { from: deployer!, args: [SEAPORT, weth], log: true });
   const listings = await deploy("VaultListings", { from: deployer!, args: [SEAPORT, venue.zone, venue.conduitKey, venue.conduit, owner], log: true });
+  // Where OpenSea is, every listing pays its fee by default: OpenSea shows a listing only with the fees it asks for.
+  if (venue.zone !== "0x0000000000000000000000000000000000000000" && ((await read("VaultListings", "feesOf", "0x0000000000000000000000000000000000000000")) as unknown[]).length === 0) {
+    await execute("VaultListings", { from: deployer!, log: true }, "setFees", "0x0000000000000000000000000000000000000000", [{ recipient: OPENSEA.feeRecipient, bps: OPENSEA.feeBps }]);
+  }
 
   // Owned by the deployer until the test collection is allowed, then by the owner.
   const vault = await deploy("SealedVault", { from: deployer!, args: [listings.address, cUsdc, offers.address, DELEGATE_REGISTRY, treasury, deployer, feeBps], log: true });
-  if (hre.network.name !== "mainnet") {
-    const nft = await deploy("VaultTestNFT", { from: deployer!, log: true });
-    if (!(await read("SealedVault", "allowedCollection", nft.address))) {
-      await execute("SealedVault", { from: deployer!, log: true }, "setCollection", nft.address, true);
-    }
-  }
+  if (hre.network.name !== "mainnet") await deploy("VaultTestNFT", { from: deployer!, log: true });
   if ((await read("SealedVault", "owner")).toLowerCase() !== owner.toLowerCase()) {
     await execute("SealedVault", { from: deployer!, log: true }, "transferOwnership", owner);
   }
