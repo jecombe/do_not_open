@@ -25,8 +25,10 @@ import {
 ///
 ///         Stateless as to who calls: `prepare` writes an order whose offerer is its caller, for
 ///         its caller to send to Seaport; an order only ever exists on Seaport when its offerer
-///         validated it. The owner sets each collection's fees (OpenSea's and its creator's),
-///         capped at `MAX_FEES_BPS`; a listing keeps the fees it was made with.
+///         validated it. The owner sets the fees (OpenSea's and the creator's), capped at
+///         `MAX_FEES_BPS`: the default ones, under collection 0, for every collection, and a
+///         collection's own where OpenSea asks for more (a creator's enforced fee); a listing
+///         keeps the fees it was made with.
 contract VaultListings is Ownable {
     struct Fee {
         address payable recipient;
@@ -84,7 +86,7 @@ contract VaultListings is Ownable {
         external
         returns (bytes memory validateCall, bytes32 orderHash, uint256 net)
     {
-        Fee[] storage fees = _fees[collection];
+        Fee[] storage fees = _feesOf(collection);
         uint256 salt = uint256(keccak256(abi.encode(address(this), listingCount++)));
         uint256 counter = seaport.getCounter(msg.sender);
         OrderComponents memory c = _components(msg.sender, collection, tokenId, price, uint64(block.timestamp), endTime, salt, counter, fees);
@@ -119,12 +121,14 @@ contract VaultListings is Ownable {
         return _listings[orderHash];
     }
 
+    /// @notice What a listing of `collection` pays on top of the seller's share: its own fees, or the default ones.
     function feesOf(address collection) external view returns (Fee[] memory) {
-        return _fees[collection];
+        return _feesOf(collection);
     }
 
     /// @notice Sets what buyers of `collection` pay on top of the seller's share, as OpenSea asks
-    ///         (its own fee, the creator's when enforced). Listings already up keep theirs.
+    ///         (its own fee, the creator's when enforced); under collection 0, the default for
+    ///         every collection without fees of its own. Listings already up keep theirs.
     function setFees(address collection, Fee[] calldata fees) external onlyOwner {
         Fee[] storage stored = _fees[collection];
         delete _fees[collection];
@@ -136,6 +140,12 @@ contract VaultListings is Ownable {
         }
         if (total > MAX_FEES_BPS) revert TooManyFees();
         emit FeesSet(collection, fees);
+    }
+
+    /// @dev A collection's own fees, or the default ones (collection 0) when it has none.
+    function _feesOf(address collection) private view returns (Fee[] storage fees) {
+        fees = _fees[collection];
+        if (fees.length == 0) fees = _fees[address(0)];
     }
 
     function _componentsOf(bytes32 orderHash) private view returns (OrderComponents memory) {

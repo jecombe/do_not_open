@@ -27,7 +27,7 @@ export const projectEn = {
   "project.fhe.p3": "Every reveal takes two steps: a request on-chain, then a proof signed by those parties that anyone can bring back. That is why some actions wait a few seconds for their proof.",
 
   "project.section.vault": "The sealed vault",
-  "project.vault.p1": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.",
+  "project.vault.p1": "Put any NFT in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.",
   "project.vault.p2": "The box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller (on mainnet the listing shows on OpenSea), or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere.",
   "project.vault.p3": "The vault holds tokens too. Your cUSDC, a confidential dollar, goes in a pocket locked by a key rather than an address: send it to another pocket, pay for a box with it, or take it out anywhere. Confidential tokens already hide amounts; a pocket also hides who paid whom. cUSDT, cWETH and cZAMA, Zama's other confidential tokens, have pockets of their own; boxes are paid in cUSDC.",
   "project.vault.docs": "Read the vault's documentation",

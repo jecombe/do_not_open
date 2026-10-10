@@ -786,14 +786,14 @@ a sealed box. Gas and HCU are in the `contracts-evm` README; the heaviest call,
 
 ### The sealed vault (2026-10-08)
 
-`SealedVault` puts any NFT of an allowed collection in a box whose holder is encrypted: a
+`SealedVault` puts any ERC-721 (the owner can shut a collection out) in a box whose holder is encrypted: a
 second `ConfidentialERC721`, next to the game and linked to none of its contracts. It lists on
-Seaport with the vault as the offerer (its orders written and kept by `VaultListings`, 6,336
+Seaport with the vault as the offerer (its orders written and kept by `VaultListings`, 6,388
 bytes, the way OpenSea shows a contract's listing: Seaport 1.6, OpenSea's conduit, its signed
 zone and fees on mainnet, open orders on Sepolia; Seaport 1.5 on local nodes), accepts buyers'
 WETH offers on the same Seaport (sending the fill `VaultOffers`, 8,909 bytes, also the on-chain
 offer board, writes for it: OpenSea signs a fill for the NFT's holder), names a box's delegate in
-delegate.xyz's registry, and sells privately in cUSDC. 23,650 bytes deployed, 926 under the
+delegate.xyz's registry, and sells privately in cUSDC. 23,795 bytes deployed, 781 under the
 limit (22,712 and 1,864 under before it sent the offers' fills itself, later on 2026-10-10;
 24,322, 254 under, before the listings' orders moved out to `VaultListings` on 2026-10-10; 21,869 before offers and
 delegation, 20,833 before requests stopped locking the box and the deposit took decoys, both

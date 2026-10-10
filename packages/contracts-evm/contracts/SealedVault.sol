@@ -225,7 +225,8 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     uint256 public listingCount;
     uint256 public saleCount;
 
-    mapping(address collection => bool) public allowedCollection;
+    /// @notice Collections the owner shut out of the vault; any other ERC-721 goes in.
+    mapping(address collection => bool) public bannedCollection;
     /// @notice The box holding an NFT, + 1; 0 when the vault does not hold it.
     mapping(address collection => mapping(uint256 tokenId => uint256 boxIdPlusOne)) public boxOf;
 
@@ -237,7 +238,8 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
 
     error ZeroAddress();
     error FeeTooHigh();
-    error CollectionNotAllowed(address collection);
+    error CollectionBanned(address collection);
+    error NotReceived();
     error NotABox(uint256 boxId);
     error BoxBusy(uint256 boxId);
     error WrongState(uint256 boxId, BoxState state);
@@ -257,7 +259,7 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     error OfferShort();
     error SeaportRefused();
 
-    event CollectionSet(address indexed collection, bool allowed);
+    event CollectionBanSet(address indexed collection, bool banned);
     event Deposited(uint256 indexed boxId, address indexed collection, uint256 indexed tokenId, address depositor);
     /// @notice `caller` may have changed the box's key: only its holder's call takes effect.
     event KeySet(uint256 indexed boxId, address indexed caller);
@@ -328,8 +330,10 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         bytes calldata inputProof
     ) external nonReentrant returns (uint256 boxId) {
         if (to.length != really.length || to.length > MAX_DEPOSIT_SENDS) revert BadSends();
-        if (!allowedCollection[collection]) revert CollectionNotAllowed(collection);
+        if (bannedCollection[collection]) revert CollectionBanned(collection);
         IERC721(collection).transferFrom(msg.sender, address(this), tokenId);
+        // Any ERC-721 may come in: the one thing asked of it is that the NFT is really here now.
+        if (IERC721(collection).ownerOf(tokenId) != address(this)) revert NotReceived();
         boxId = _mint(msg.sender, FHE.asEbool(true));
         _boxes[boxId] = Box({
             collection: collection,
@@ -558,10 +562,11 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
 
     // ------------------------------------------------------------------ admin
 
-    function setCollection(address collection, bool allowed) external onlyOwner {
+    /// @notice Shuts a collection out of the vault (no new deposits; its boxes still come out), or lets it back in.
+    function banCollection(address collection, bool banned) external onlyOwner {
         if (collection == address(0)) revert ZeroAddress();
-        allowedCollection[collection] = allowed;
-        emit CollectionSet(collection, allowed);
+        bannedCollection[collection] = banned;
+        emit CollectionBanSet(collection, banned);
     }
 
     function setFee(uint16 feeBps_) external onlyOwner {

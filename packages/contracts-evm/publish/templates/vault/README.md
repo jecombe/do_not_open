@@ -1,7 +1,7 @@
 # DO NOT OPEN: the sealed vault
 
-Smart contracts of the sealed vault, built on [Zama's FHEVM](https://docs.zama.ai/protocol): any NFT
-of an allowed collection sits in a box whose holder is encrypted on-chain. The NFT can come out to
+Smart contracts of the sealed vault, built on [Zama's FHEVM](https://docs.zama.ai/protocol): any ERC-721
+sits in a box whose holder is encrypted on-chain (the owner can shut a collection out). The NFT can come out to
 any address, be sold on Seaport 1.5 with the vault as the seller (a listing, or a buyer's WETH offer
 the holder accepts), change hands privately for an encrypted cUSDC price, and lend its rights
 (airdrops, token gates) to a wallet through delegate.xyz. Every holder action is asked with the

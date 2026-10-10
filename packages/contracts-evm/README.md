@@ -103,8 +103,9 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   `whitelist` section (`whitelistParamsFromSpec`, which checks they cover ranks 1 to `places`;
   `milestonesFromSpec` checks the boxes the sale leaves match the box tiers' seats). Never
   writes to `DoNotOpen` beyond `gift`.
-- **`SealedVault`** — the sealed vault, a product next to the game: any NFT of a collection the
-  owner allows (`setCollection`) goes into a box, a `ConfidentialERC721` of its own ("DO NOT OPEN
+- **`SealedVault`** — the sealed vault, a product next to the game: any ERC-721 (the owner can
+  shut a collection out with `banCollection`; `deposit` checks the NFT really arrived,
+  `NotReceived`) goes into a box, a `ConfidentialERC721` of its own ("DO NOT OPEN
   Vault", `SEALED`) whose holder is encrypted. `deposit(collection, tokenId, key, to, really,
   proof)` pulls the NFT (public), stores the box's key, a `euint256` nobody may decrypt, and
   sends the new box on to each of `to` (at most `MAX_DEPOSIT_SENDS`, 5), for real only where the
@@ -137,7 +138,7 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   `offerSale` / `acceptSale` / `cancelSale` sell a box privately for an encrypted cUSDC price,
   settled under encryption. Fee `feeBps` (250 by default, at most `MAX_FEE_BPS`, 1,000) on both:
   ETH kept in `feesOwed` and sent by `sendFees` (anyone), cUSDC at the sale. `receive` takes ETH
-  from Seaport and `VaultOffers` only. The owner (`Ownable`) can only `setCollection`, `setFee` and `setTreasury`.
+  from Seaport and WETH only. The owner (`Ownable`) can only `banCollection`, `setFee` and `setTreasury`.
   Constructor `(listings, cUsdc, offers, registry, treasury, owner, feeBps)`; its Seaport is
   `listings.seaport()`. `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol` are the slices
   of Seaport (1.5 and 1.6, the same calls, `information` included) and delegate.xyz's registry
@@ -153,9 +154,10 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   `cancel` calldata; `orderOf(orderHash)` the order as a buyer passes it to `fulfillOrder`;
   `listingOf`, `feesOf`. Only the offerer can put the order on Seaport, so a stranger's
   `prepare` lists nothing. `setFees(collection, Fee[]{recipient, bps})` (`onlyOwner`, no zero
-  recipient, at most `MAX_FEES_BPS`, 15%, together): what OpenSea asks for the collection (its
-  1%, the creator's enforced fee); a listing keeps the fees it was made with. `lib/opensea.ts`
-  (`listingVenue(network)`) holds the addresses per network. 6,336 bytes; ~1.45M gas to deploy.
+  recipient, at most `MAX_FEES_BPS`, 15%, together): what OpenSea asks (its 1%, the creator's
+  enforced fee); under collection 0, the default fees every collection without its own pays; a
+  listing keeps the fees it was made with. `lib/opensea.ts`
+  (`listingVenue(network)`) holds the addresses per network. 6,388 bytes; ~1.45M gas to deploy.
 - **`VaultOffers`** (`contracts/vault/`) — the vault's helper for buyers' offers, stateless and
   open to anyone, linked to nothing but Seaport and WETH (constructor `(seaport, weth)`; the
   same Seaport as the listings, 1.6 on Sepolia and mainnet). `post` validates a buyer's signed
@@ -281,10 +283,10 @@ takes ~97k gas; the vault ~5.18M to deploy (~5.5M before `VaultListings`), `Vaul
 ~1.45M, `VaultOffers` ~1.9M.
 
 Deployed size: `DoNotOpen` 24,442 bytes (limit 24,576; the token URIs live in `BoxMetadata`, 1,861, and the rules' views in `DoNotOpenConfig`, 2,968), `WhitelistGifts` 4,876, `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
-12,377, `SealedVault` 23,650 (926 under the limit, at the default optimizer; 22,712 before it
+12,377, `SealedVault` 23,795 (781 under the limit, at the default optimizer; 22,712 before it
 sent the offers' fills itself, 24,322 and 254 under before the listings' orders moved out: the
 next feature moves logic out first, as accepting offers did into `VaultOffers`, 8,909, and the
-listings into `VaultListings`, 6,336). To stay under
+listings into `VaultListings`, 6,388). To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
@@ -391,10 +393,11 @@ then `VaultListings(seaport, zone, conduitKey, conduit, owner)`, then `SealedVau
 cUSDC, offers, registry, treasury, owner, feeBps)` against delegate.xyz's Registry v2
 (`0x00000000000000447e69651d841bD8D104Bed493`) and the network's cUSDC, with `VAULT_FEE_BPS`
 (250) paid to `STUDIO_TREASURY` (or the owner), owned by `COLLECTION_OWNER` (or the deployer).
-On a test network it also deploys `VaultTestNFT` and allows it. On mainnet the owner then sets
-each allowed collection's fees with `VaultListings.setFees` (OpenSea's 1% to
-`0x0000a26b00c1F0DF003000390027140000fAa719`, `OPENSEA.feeRecipient`, plus the creator's fee
-where OpenSea enforces one, read from its collection page or API). On a local node (`pnpm
+On a test network it also deploys `VaultTestNFT`. On mainnet it sets `VaultListings`' default
+fees to OpenSea's 1% (`0x0000a26b00c1F0DF003000390027140000fAa719`, `OPENSEA.feeRecipient`,
+under collection 0); the owner then sets a collection's own fees with `setFees` only where
+OpenSea enforces a creator fee (read from its collection page or API). Any ERC-721 may be
+deposited; `banCollection` shuts one out. On a local node (`pnpm
 chain`) it first puts Seaport 1.5's Sepolia runtime code at its address
 (`test/fixtures/seaport-1.5.json`, with storage slot 0, the reentrancy guard, set to 1), and
 the registry's (`test/fixtures/delegate-registry-v2.json`); elsewhere it stops if either is
@@ -403,7 +406,7 @@ mainnet, is for the tests only). It runs at the end and redeploys nothing else (
 reuses the test cUSDC of `deploy.ts`), so `npx hardhat deploy --network sepolia --tags Vault`
 adds it next to a live collection; `dno:export` writes it under `vault` (address, ABI, deploy
 block, Seaport, `listings` with its ABI (null for a vault from before it), `offers` with its
-ABI and deploy block, WETH, the registry, the allowed collections). `npx hardhat --network
+ABI and deploy block, WETH, the registry, the collections the page offers to seal). `npx hardhat --network
 <localhost|sepolia> dno:vault-demo` runs it end to end, the buyer's offer signed for the
 version Seaport's `information()` reports; its fresh addresses are the kept test wallets
 `vault-proceeds`, `vault-withdrawals` and `vault-delegate`. On Sepolia it stops at the first `finalize` while Zama's gateway answers

@@ -124,7 +124,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar, or cUSDT, cWETH, cZAMA) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault accepts the collections its owner allows. On the test network that is a free test collection anyone can mint.\nThe first time you open the vault, a guided tour walks you through it: the two sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again."
+     "text": "A contract that holds NFTs, and next to it one that holds tokens. Each NFT that goes in gets a box: a token of its own whose holder is encrypted, like the game's boxes. The NFT stays inside until the box's holder takes it out, sells it on Seaport (listed, or to a buyer's offer), or sells the box privately. Tokens (cUSDC, a confidential dollar, or cUSDT, cWETH, cZAMA) go in a pocket instead: a balance locked by a key, not by an address.\nThe vault takes any ERC-721; its owner can only shut a collection out. On the test network the page offers a free test collection anyone can mint.\nThe first time you open the vault, a guided tour walks you through it: the two sides, what stays encrypted, then each tab in the order you would use them, from sealing an NFT to what leaks. The “?” in the vault's bar plays it again."
     },
     {
      "id": "vault-seal-0",
@@ -334,13 +334,13 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.\nThe box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller (on mainnet the listing shows on OpenSea), or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere."
+     "text": "Put any NFT in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.\nThe box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller (on mainnet the listing shows on OpenSea), or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere.\nThe vault holds tokens too. Your cUSDC, a confidential dollar, goes in a pocket locked by a key rather than an address: send it to another pocket, pay for a box with it, or take it out anywhere. Confidential tokens already hide amounts; a pocket also hides who paid whom. cUSDT, cWETH and cZAMA, Zama's other confidential tokens, have pockets of their own; boxes are paid in cUSDC."
     },
     {
      "id": "project-vault-1",
      "section": "project-vault",
      "heading": null,
-     "text": "The vault holds tokens too. Your cUSDC, a confidential dollar, goes in a pocket locked by a key rather than an address: send it to another pocket, pay for a box with it, or take it out anywhere. Confidential tokens already hide amounts; a pocket also hides who paid whom. cUSDT, cWETH and cZAMA, Zama's other confidential tokens, have pockets of their own; boxes are paid in cUSDC.\nRead the vault's documentation Open the vault"
+     "text": "Read the vault's documentation Open the vault"
     },
     {
      "id": "project-game-0",
@@ -497,7 +497,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel, ou des cUSDT, cWETH, cZAMA) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre accepte les collections que son propriétaire autorise. Sur le réseau de test, c'est une collection de test gratuite que tout le monde peut minter."
+     "text": "Un contrat qui garde des NFT, et à côté un autre qui garde des jetons. Chaque NFT qui entre reçoit une boîte : un jeton à part entière dont le détenteur est chiffré, comme les boîtes du jeu. Le NFT reste dedans jusqu'à ce que le détenteur de la boîte le sorte, le vende sur Seaport (en annonce, ou à l'offre d'un acheteur), ou vende la boîte en privé. Les jetons (des cUSDC, un dollar confidentiel, ou des cUSDT, cWETH, cZAMA) vont plutôt dans une poche : un solde verrouillé par une clé, pas par une adresse.\nLe coffre prend n'importe quel ERC-721 ; son propriétaire peut seulement en exclure une collection. Sur le réseau de test, la page propose une collection de test gratuite que tout le monde peut minter."
     },
     {
      "id": "vault-what-1",
@@ -719,7 +719,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.\nLa boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur (sur le réseau principal, l'annonce s'affiche sur OpenSea), ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part."
+     "text": "Mettez n'importe quel NFT dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.\nLa boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur (sur le réseau principal, l'annonce s'affiche sur OpenSea), ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part."
     },
     {
      "id": "project-vault-1",
@@ -882,7 +882,7 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial, o cUSDT, cWETH, cZAMA) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta las colecciones que permite su propietario. En la red de prueba es una colección de prueba gratuita que cualquiera puede mintear.\nLa primera vez que abres la bóveda, una visita guiada te la recorre: los dos lados, lo que sigue cifrado, y luego cada pestaña en el orden en que la usarías, de sellar un NFT a lo que se filtra. El «?» de la barra de la bóveda la vuelve a mostrar."
+     "text": "Un contrato que guarda NFT, y a su lado otro que guarda tokens. Cada NFT que entra recibe una caja: un token propio cuyo titular está cifrado, como las cajas del juego. El NFT queda dentro hasta que el titular de la caja lo saca, lo vende en Seaport (anunciado, o a la oferta de un comprador) o vende la caja en privado. Los tokens (cUSDC, un dólar confidencial, o cUSDT, cWETH, cZAMA) van en cambio a un bolsillo: un saldo cerrado por una llave, no por una dirección.\nLa bóveda acepta cualquier ERC-721; su propietario solo puede excluir una colección. En la red de prueba la página ofrece una colección de prueba gratuita que cualquiera puede mintear.\nLa primera vez que abres la bóveda, una visita guiada te la recorre: los dos lados, lo que sigue cifrado, y luego cada pestaña en el orden en que la usarías, de sellar un NFT a lo que se filtra. El «?» de la barra de la bóveda la vuelve a mostrar."
     },
     {
      "id": "vault-seal-0",
@@ -1104,7 +1104,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.\nLa caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora (en la red principal el anuncio aparece en OpenSea), o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte."
+     "text": "Mete cualquier NFT en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.\nLa caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora (en la red principal el anuncio aparece en OpenSea), o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte."
     },
     {
      "id": "project-vault-1",
@@ -1267,7 +1267,13 @@
      "id": "vault-what-0",
      "section": "vault-what",
      "heading": null,
-     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale, o cUSDT, cWETH, cZAMA) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare.\nLa prima volta che apri il caveau, una visita guidata te lo fa percorrere: i due lati, ciò che resta cifrato, poi ogni scheda nell'ordine in cui la useresti, dal sigillare un NFT a cosa trapela. Il «?» nella barra del caveau la riproduce."
+     "text": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale, o cUSDT, cWETH, cZAMA) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.\nIl caveau accetta qualsiasi ERC-721; il suo proprietario può solo escludere una collezione. Sulla rete di prova la pagina propone una collezione di prova gratuita che chiunque può coniare."
+    },
+    {
+     "id": "vault-what-1",
+     "section": "vault-what",
+     "heading": null,
+     "text": "La prima volta che apri il caveau, una visita guidata te lo fa percorrere: i due lati, ciò che resta cifrato, poi ogni scheda nell'ordine in cui la useresti, dal sigillare un NFT a cosa trapela. Il «?» nella barra del caveau la riproduce."
     },
     {
      "id": "vault-seal-0",
@@ -1489,7 +1495,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.\nLa scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore (sulla rete principale l'annuncio compare su OpenSea), o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte."
+     "text": "Metti qualsiasi NFT in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.\nLa scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore (sulla rete principale l'annuncio compare su OpenSea), o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte."
     },
     {
      "id": "project-vault-1",

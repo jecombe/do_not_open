@@ -481,7 +481,6 @@ describe("SealedPockets", function () {
         FEE_BPS,
       )) as unknown as SealedVault;
       vaultAddress = await vault.getAddress();
-      await (await vault.setCollection(await nft.getAddress(), true)).wait();
       desk = (await (await ethers.getContractFactory("PocketDesk")).deploy(addr, vaultAddress)) as unknown as PocketDesk;
       deskAddress = await desk.getAddress();
       await (await pockets.setDesk(deskAddress)).wait();

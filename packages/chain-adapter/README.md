@@ -258,7 +258,7 @@ the account's `PurchaseRequested` logs. The flows are in
 adapter takes it as its `vault` option: `sepolia.json`'s `vault` entry, written by `dno:export`;
 the mock always has one). In the browser, `createSepoliaBrowserAdapter` finds the API's relayer
 through `apiUrl` (its `vaultRelay` option); the Node adapter has none, so its wallet sends. It is
-not part of the game: any NFT of an allowed collection goes into
+not part of the game: any ERC-721 goes into
 a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 
 - `info()`: `address`, `explorerUrl` (the vault's page), `explorer` and `marketplace` (the
