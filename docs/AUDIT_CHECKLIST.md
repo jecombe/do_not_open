@@ -34,7 +34,7 @@ on 2026-10-04, block 11842636); `FleaMarket.sol`, the players' marketplace for b
 rats (section 12; at `0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92` since 2026-10-08, before it
 `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` on 2026-10-07 and
 `0xb5c799bF626e70DcE6804BDef06199661cDc8665` on 2026-10-05, block 11849253); `SealedVault.sol`,
-`vault/VaultListings.sol`, `vault/VaultOffers.sol`, `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol` (with `mocks/TestZone.sol`, `lib/opensea.ts` and `tasks/opensea.ts`), the sealed vault next to the game (section 15, at `0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3` on Sepolia since 2026-10-10, block 11885662, with `VaultListings` at `0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb` and `VaultOffers` at `0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59`; before it `0x79E6a86b448311ec580402701d4cb5B68c56718c` with `VaultOffers` `0x43B2e0d7a75100545556BAD1B9Fa6f926721898A`, earlier the same day, block 11885012, handing `VaultOffers` the NFT to fill an offer, `0xE22509e741233072aFF4e0c6B56d5e3De8018262`, 2026-10-09, block 11876575, with `VaultOffers` `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`, on Seaport 1.5 with listings it wrote itself, then `0x27CA3698A34b53900047cD1D0856B954a695C79D`, 2026-10-09, block 11876345, with no offers nor delegation, and `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08, whose requests locked the box); plus the parts of
+`vault/VaultListings.sol`, `vault/VaultOffers.sol`, `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol` (with `mocks/TestZone.sol`, `lib/opensea.ts` and `tasks/opensea.ts`), the sealed vault next to the game (section 15, at `0xb70740218931B220a06CE1ba1bD58B33f4d45abC` on Sepolia since 2026-10-10, block 11885990, with `VaultListings` at `0x6b9C5204568fdf74a5DcEf7a1be85252358D8Fa6` and `VaultOffers` at `0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59`; before it `0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3` with `VaultListings` `0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb`, the same day, block 11885662, allowing collections one by one, `0x79E6a86b448311ec580402701d4cb5B68c56718c` with `VaultOffers` `0x43B2e0d7a75100545556BAD1B9Fa6f926721898A`, earlier the same day, block 11885012, handing `VaultOffers` the NFT to fill an offer, `0xE22509e741233072aFF4e0c6B56d5e3De8018262`, 2026-10-09, block 11876575, with `VaultOffers` `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`, on Seaport 1.5 with listings it wrote itself, then `0x27CA3698A34b53900047cD1D0856B954a695C79D`, 2026-10-09, block 11876345, with no offers nor delegation, and `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08, whose requests locked the box); plus the parts of
 the adapter and the metadata pipeline that could leak or mislead. Since 2026-10-07 the deployer
 `0x590891F269720001435004A1089cAB5b2c20029A` owns every contract (before, the collection's owner
 was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`). The Sepolia deployment at
@@ -473,9 +473,10 @@ lists it on Seaport with the vault as the offerer (the order written and kept by
 signed zone and fees on mainnet, an open order on Sepolia), accepts buyers' WETH offers through
 `VaultOffers` (also the offer board), names a box's delegate in delegate.xyz's registry, and
 sells boxes privately in cUSDC (see [VAULT.md](VAULT.md)). On Sepolia at
-`0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3`, with `VaultListings` at
-`0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb` and `VaultOffers` at
+`0xb70740218931B220a06CE1ba1bD58B33f4d45abC`, with `VaultListings` at
+`0x6b9C5204568fdf74a5DcEf7a1be85252358D8Fa6` and `VaultOffers` at
 `0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59`, since 2026-10-10 (before it
+`0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3` with `VaultListings` `0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb`, the same day, allowing collections one by one;
 `0x79E6a86b448311ec580402701d4cb5B68c56718c` with `VaultOffers` `0x43B2e0d7a75100545556BAD1B9Fa6f926721898A`, earlier
 that day, handing `VaultOffers` the NFT to fill an offer;
 `0xE22509e741233072aFF4e0c6B56d5e3De8018262` with `VaultOffers` `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`,
@@ -537,7 +538,7 @@ live one is read and filled through OpenSea's API on a fork with `opensea:fork`
 
 `SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
 buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). On Sepolia at
-`0xd693433e9E2556bafC6A5B48E37f9994E99bE752` and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` since 2026-10-10, redeployed with the vault (the desk is bound to it); before them `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` earlier that day, and `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
+`0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` and `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` since 2026-10-10, redeployed with the vault (the desk is bound to it); before them `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` the same day, `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` earlier that day, and `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
 The same contract, unchanged and without a desk, holds cUSDT, cWETH and cZAMA
 ([VAULT.md](VAULT.md#other-tokens)): `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`,
 `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`
