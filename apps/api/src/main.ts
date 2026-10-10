@@ -269,7 +269,12 @@ async function main() {
             deployment.vault.address,
             new JsonRpcProvider(config.RPC_URLS[0], deployment.chainId, { staticNetwork: true }),
             deployment.vault.pockets
-              ? { address: deployment.vault.pockets.address, desk: deployment.vault.pockets.desk?.address ?? null, others: (deployment.vault.otherPockets ?? []).map((p) => p.address) }
+              ? {
+                  address: deployment.vault.pockets.address,
+                  desk: deployment.vault.pockets.desk?.address ?? null,
+                  others: (deployment.vault.otherPockets ?? []).map((p) => p.address),
+                  positions: deployment.vault.positions?.address ?? null,
+                }
               : null,
           ), clock, config.VAULT_RELAY_PER_DAY)
       : undefined;

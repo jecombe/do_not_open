@@ -136,6 +136,49 @@ describe("vault relay routes", () => {
     expect(sender.sent.at(-1)).toEqual({ call: "deskBuy", tx: buy });
   });
 
+  const funds = { set0: [1, 3], set1: [2], amount0: HANDLE, amount1: HANDLE, target0: HANDLE, target1: HANDLE, inputProof: "0xbeef", amount0Min: "990", amount1Min: "0", deadline: 1_790_003_600 };
+  const keys = { boundKey0: HANDLE, boundKey1: HANDLE, keyProof: "0xcafe" };
+  const out = { set0: [1, 3], set1: [2, 4], target0: HANDLE, target1: HANDLE, inputProof: "0xbeef" };
+  const range = { token0: "0x9b5cd13b8efbb58dc25a05cf411d8056058adfff", token1: "0xff54739b16576fa5402f211d0b938469ab9a5f3f", fee: 3000, tickLower: -199_980, tickUpper: -198_000 };
+
+  it("relays a position's open, add and settle, with plain amounts as numbers", async () => {
+    const calls = [
+      { call: "positionOpen", args: { range, controller: RELAYER, funds, keys } },
+      { call: "positionAdd", args: { positionId: 3, funds, keys } },
+      { call: "positionSettle", args: { fundingId: 7, clear0: "4000000000", proof0: "0x01", clear1: "0", proof1: "0x02" } },
+    ];
+    for (const payload of calls) {
+      expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload })).statusCode).toBe(200);
+      expect(sender.sent.at(-1)).toMatchObject({ call: payload.call });
+    }
+    expect(sender.sent.at(-1)).toMatchObject({ tx: { clear0: 4_000_000_000n, clear1: 0n } });
+    expect(sender.sent.at(-3)).toMatchObject({ tx: { funds: { amount0Min: 990n, set0: [1, 3] } } });
+  });
+
+  it("relays a holder's signed collect, decrease, give and take-out", async () => {
+    const signed = { deadline: 1_790_003_600, signature: "0x" + "11".repeat(65) };
+    const calls = [
+      { call: "positionCollect", args: { positionId: 3, out, ...signed } },
+      { call: "positionDecrease", args: { positionId: 3, liquidity: "123456789", amount0Min: "1", amount1Min: "2", out, ...signed } },
+      { call: "positionGive", args: { positionId: 3, to: RELAYER, ...signed } },
+      { call: "positionTakeOut", args: { positionId: 3, to: RELAYER, ...signed } },
+    ];
+    for (const payload of calls) {
+      expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload })).statusCode).toBe(200);
+      expect(sender.sent.at(-1)).toMatchObject({ call: payload.call });
+    }
+  });
+
+  it("refuses a position call with a bad range, pocket set or amount", async () => {
+    const bad = [
+      { call: "positionOpen", args: { range: { ...range, tickLower: 900_000 }, controller: RELAYER, funds, keys } },
+      { call: "positionOpen", args: { range, controller: RELAYER, funds: { ...funds, set0: [] }, keys } },
+      { call: "positionDecrease", args: { positionId: 3, liquidity: "-1", amount0Min: "0", amount1Min: "0", out, deadline: 0, signature: "0x" } },
+      { call: "positionGive", args: { positionId: 3, to: "nobody", deadline: 0, signature: "0x" } },
+    ];
+    for (const payload of bad) expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload })).statusCode).toBe(400);
+  });
+
   it("refuses pocket sets that are empty or longer than five, and says why the pockets would refuse", async () => {
     for (const from of [[], [1, 2, 3, 4, 5, 6]]) {
       const res = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketSend", args: { from, to: [0], input: spend } } });

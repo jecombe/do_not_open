@@ -146,7 +146,7 @@ export class MockPositions implements PositionsAdapter {
     const me = this.signer();
     opts?.onStep?.("wallet");
     this.tick();
-    return this.list.filter((p) => p.owner === me && p.status !== "closed" && p.status !== "out").map((p) => this.view(p)).reverse();
+    return this.list.filter((p) => p.owner === me && (p.status === "open" || p.status === "funding")).map((p) => this.view(p)).reverse();
   }
 
   async open(pool: Address, tickLower: number, tickUpper: number, amount0: bigint, amount1: bigint, opts?: PositionOptions): Promise<number> {

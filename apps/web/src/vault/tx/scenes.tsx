@@ -6,7 +6,7 @@ import { tokenLogoUrl } from "../../brand/logos";
  * it loops while the action runs and freezes under a stamp when it ends. Each action names its
  * scene in `SCENE_OF`; an unknown one gets the vault door.
  */
-export type SceneKind = "press" | "seal" | "door" | "ship" | "trade" | "badge" | "shuffle" | "envelope" | "scan" | "key" | "pouch" | "pouches";
+export type SceneKind = "press" | "seal" | "door" | "ship" | "trade" | "badge" | "shuffle" | "envelope" | "scan" | "key" | "pouch" | "pouches" | "pool" | "harvest" | "handoff";
 
 export const SCENE_OF: Record<string, SceneKind> = {
   mint: "press",
@@ -34,10 +34,19 @@ export const SCENE_OF: Record<string, SceneKind> = {
   pocketSend: "pouches",
   pocketBuy: "trade",
   pocketOffer: "envelope",
+  lpOpen: "pool",
+  lpAdd: "pool",
+  lpDeposit: "pool",
+  lpSettle: "pool",
+  lpCollect: "harvest",
+  lpRemove: "harvest",
+  lpGive: "handoff",
+  lpTakeOut: "handoff",
+  lpTrade: "trade",
 };
 
 /** Actions whose scene runs backwards: the listing sails home, the offer comes back. */
-const REVERSED = new Set(["unlist", "cancelOffer", "cancelSale", "pocketWithdraw"]);
+const REVERSED = new Set(["unlist", "cancelOffer", "cancelSale", "pocketWithdraw", "lpTakeOut"]);
 /** The pouch opening, rather than a coin going in or out. */
 const SEWING = new Set(["pocketOpen"]);
 
@@ -367,8 +376,92 @@ function Pouches({ token }: { token?: string | null }) {
   );
 }
 
+/** A pool: a basin of water under the house's tape, centred on (120, 104). */
+function Basin() {
+  return (
+    <g>
+      <path d="M52 92 Q120 150 188 92 Z" fill="#c99a63" stroke="#07090c" strokeWidth="1.5" />
+      <path className="vx-water" d="M60 96 Q75 90 90 96 T120 96 T150 96 T180 96" fill="none" stroke="#5be3c2" strokeWidth="3" strokeLinecap="round" />
+      <rect className="vx-band" x="48" y="88" width="144" height="8" rx="4" fill="#e8d3a2" stroke="#07090c" strokeWidth="1.2" />
+    </g>
+  );
+}
+
+/** Both coins of a pair drop into the pool; a key nobody can name floats over it. */
+function Pool({ pair }: { pair: (string | null)[] }) {
+  return (
+    <>
+      <Basin />
+      <g transform="translate(96 0)">
+        <g className="vx-coin vx-drop-a">
+          <TokenCoin token={pair[0]} />
+        </g>
+      </g>
+      <g transform="translate(144 0)">
+        <g className="vx-coin vx-drop-b">
+          <TokenCoin token={pair[1] ?? pair[0]} />
+        </g>
+      </g>
+      <g className="vx-tag" transform="translate(186 36)">
+        <circle r="9" fill="none" stroke="#5be3c2" strokeWidth="3" />
+        <rect x="7" y="-1.5" width="18" height="3" fill="#5be3c2" />
+        <rect x="19" y="1.5" width="3" height="5" fill="#5be3c2" />
+      </g>
+    </>
+  );
+}
+
+/** The pool's fees rise out of it, each into a pouch among others: which pouch got them? */
+function Harvest({ pair }: { pair: (string | null)[] }) {
+  return (
+    <>
+      <g transform="translate(0 18)">
+        <Basin />
+      </g>
+      {[34, 206].map((x, i) => (
+        <g key={x} transform={`translate(${x} 40) scale(0.6)`}>
+          <PouchShape className={`vx-twitch vx-twitch-${i}`} token={pair[i] ?? pair[0]} />
+        </g>
+      ))}
+      {[64, 176].map((x, i) => (
+        <g key={x} transform={`translate(${x} 34) scale(0.48)`}>
+          <PouchShape className={`vx-twitch vx-twitch-${i + 2}`} mark={false} />
+        </g>
+      ))}
+      <g className="vx-rise vx-rise-a">
+        <TokenCoin token={pair[0]} />
+      </g>
+      <g className="vx-rise vx-rise-b">
+        <TokenCoin token={pair[1] ?? pair[0]} />
+      </g>
+    </>
+  );
+}
+
+/** A position's ticket slides from one key to another: the position changes hands, nobody says whose. */
+function Handoff() {
+  return (
+    <>
+      <rect x="20" y="122" width="200" height="4" rx="2" fill="#2a3644" />
+      {[40, 200].map((x) => (
+        <g key={x} transform={`translate(${x} 96)`}>
+          <circle r="10" fill="none" stroke="#8b97a6" strokeWidth="3.5" />
+          <rect x="-1.5" y="8" width="3" height="20" fill="#8b97a6" />
+        </g>
+      ))}
+      <g className="vx-ticket">
+        <rect x="-22" y="-15" width="44" height="30" rx="5" fill="#0d1117" stroke="#5be3c2" strokeWidth="1.5" />
+        <path d="M-16 4 Q-8 -2 0 4 T16 4" fill="none" stroke="#5be3c2" strokeWidth="2" />
+        <circle cx="-7" cy="-6" r="4" fill="#c99a63" />
+        <circle cx="3" cy="-6" r="4" fill="#5be3c2" />
+      </g>
+    </>
+  );
+}
+
 /** The scene of an action, looping while `live`, frozen under `stamp` once it ended. A pocket's
- *  scenes wear `token`'s logo: on the pouch, and on the coins going in, out or across. */
+ *  scenes wear `token`'s logo: on the pouch, and on the coins going in, out or across; a
+ *  position's, both of its pair ("cWETH/cUSDC"). */
 export function TxScene({
   name,
   decoys = 0,
@@ -404,6 +497,9 @@ export function TxScene({
         {kind === "key" && <KeyLock />}
         {kind === "pouch" && <Pouch sewing={SEWING.has(name)} token={token} />}
         {kind === "pouches" && <Pouches token={token} />}
+        {kind === "pool" && <Pool pair={(token ?? "").split("/").map((x) => x || null)} />}
+        {kind === "harvest" && <Harvest pair={(token ?? "").split("/").map((x) => x || null)} />}
+        {kind === "handoff" && <Handoff />}
       </svg>
       {stamp && !small && <span className="vx-stamp">{stamp}</span>}
     </div>
