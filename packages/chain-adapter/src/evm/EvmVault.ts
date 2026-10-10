@@ -40,6 +40,9 @@ interface Deployed {
 export interface VaultDeployment extends Deployed {
   deployBlock?: number | null;
   seaport: string;
+  /** VaultListings: writes and keeps the listings' Seaport orders. Null for a vault deployed
+   *  before it (2026-10-10), which kept its own (`seaportOrder`). */
+  listings?: Deployed | null;
   /** VaultOffers: fills the offers the vault accepts, and the board buyers post them to. */
   offers: Deployed & { deployBlock?: number | null };
   weth: string;
@@ -106,6 +109,7 @@ const SEAPORT_ABI = [
   `function fulfillOrder((${ORDER_PARAMETERS} parameters, bytes signature) order, bytes32 fulfillerConduitKey) payable returns (bool)`,
   "function cancel((address offerer,address zone,(uint8 itemType,address token,uint256 identifierOrCriteria,uint256 startAmount,uint256 endAmount)[] offer,(uint8 itemType,address token,uint256 identifierOrCriteria,uint256 startAmount,uint256 endAmount,address recipient)[] consideration,uint8 orderType,uint256 startTime,uint256 endTime,bytes32 zoneHash,uint256 salt,bytes32 conduitKey,uint256 counter)[] orders) returns (bool)",
   "function getCounter(address offerer) view returns (uint256)",
+  "function information() view returns (string version, bytes32 domainSeparator, address conduitController)",
 ];
 /** What `finalizeOffer` and `VaultOffers.fill` take: abi.encode(AdvancedOrder, bytes32[] criteriaProof). */
 const ADVANCED_ORDER = `(${ORDER_PARAMETERS} parameters, uint120 numerator, uint120 denominator, bytes signature, bytes extraData)`;
@@ -237,7 +241,7 @@ export class EvmVault implements VaultAdapter {
   }
 
   async info(): Promise<VaultInfo> {
-    const [feeBps, relay] = await Promise.all([this.t.reading(this.read.feeBps!()), this.t.relay()]);
+    const [feeBps, relay, zone] = await Promise.all([this.t.reading(this.read.feeBps!()), this.t.relay(), this.listingZone()]);
     return {
       address: this.deployed.address,
       explorerUrl: this.t.explorerUrl ? `${this.t.explorerUrl}/address/${this.deployed.address}` : null,
@@ -245,6 +249,8 @@ export class EvmVault implements VaultAdapter {
       marketplace: this.t.marketplaceUrl,
       feeBps: Number(feeBps),
       seaport: this.deployed.seaport,
+      listings: this.deployed.listings?.address ?? null,
+      listingsOnOpenSea: !/^0x0{40}$/i.test(zone),
       weth: this.deployed.weth,
       delegateRegistry: this.deployed.delegateRegistry,
       collections: this.deployed.collections,
@@ -252,6 +258,15 @@ export class EvmVault implements VaultAdapter {
       coin: "ETH",
     };
   }
+
+  /** The zone the listings' orders name (OpenSea's on mainnet), or the zero address: fixed at deployment. */
+  private async listingZone(): Promise<string> {
+    const listings = this.deployed.listings;
+    if (!listings) return "0x" + "0".repeat(40);
+    this.zone ??= this.t.reading(new Contract(listings.address, listings.abi, this.t.readProvider).zone!()).then(String);
+    return this.zone;
+  }
+  private zone: Promise<string> | null = null;
 
   async boxes(): Promise<VaultBox[]> {
     const count = Number(await this.t.reading(this.read.tokenCount!()));
@@ -353,7 +368,14 @@ export class EvmVault implements VaultAdapter {
   async buy(boxId: number, opts?: ActionOptions): Promise<void> {
     const box = await this.box(boxId);
     if (box.state !== "listed" || !box.listing) throw new ChainError("missed", "This NFT is no longer for sale.");
-    const parameters = plain(await this.t.reading(this.read.seaportOrder!(box.listing.listingId)));
+    const listings = this.deployed.listings;
+    const parameters = (
+      listings
+        ? plain(await this.t.reading(new Contract(listings.address, listings.abi, this.t.readProvider).orderOf!(box.listing.orderHash)))
+        : plain(await this.t.reading(this.read.seaportOrder!(box.listing.listingId)))
+    ) as OrderParameters;
+    // Behind OpenSea's signed zone (mainnet), a fill needs OpenSea's signature: OpenSea sells it.
+    if (!/^0x0{40}$/i.test(parameters.zone)) throw new ChainError("missed", "This listing is bought on OpenSea.");
     const seaport = { address: this.deployed.seaport, abi: SEAPORT_ABI };
     await this.t.send(opts, () => this.t.writer(seaport).fulfillOrder!({ parameters, signature: "0x" }, ZERO, { value: box.listing!.price }));
     // Mark it sold now, rather than at the next request on it.
@@ -422,9 +444,11 @@ export class EvmVault implements VaultAdapter {
       totalOriginalConsiderationItems: 1n,
     };
     const { totalOriginalConsiderationItems: _, ...components } = parameters;
+    // The signed domain names Seaport's version: 1.6 on Sepolia and mainnet, 1.5 on a local node.
+    const { version } = await this.t.reading(new Contract(this.deployed.seaport, SEAPORT_ABI, this.t.readProvider).information!());
     opts?.onStep?.("wallet");
     const signature = await this.t.signTypedData(
-      { name: "Seaport", version: "1.5", chainId: this.t.chainId, verifyingContract: this.deployed.seaport },
+      { name: "Seaport", version: String(version), chainId: this.t.chainId, verifyingContract: this.deployed.seaport },
       SEAPORT_TYPES,
       { ...components, counter },
     );
@@ -673,7 +697,8 @@ export class EvmVault implements VaultAdapter {
     if (Number(b.listing) > 0) {
       const listingId = Number(b.listing) - 1;
       const l = await this.t.reading(this.read.listingInfo!(listingId));
-      listing = { listingId, price: BigInt(l.price), endTime: Number(l.endTime), orderHash: String(l.orderHash) };
+      // A vault from before VaultListings (2026-10-10) has no `net`: nothing came off its price.
+      listing = { listingId, price: BigInt(l.price), net: BigInt(l.net ?? l.price), endTime: Number(l.endTime), orderHash: String(l.orderHash) };
     }
     const tokenUri = String(await this.t.reading(this.read.tokenURI!(boxId)).catch(() => ""));
     return {
@@ -740,7 +765,12 @@ function plain(value: unknown): unknown {
   if (!(value instanceof Array)) return value;
   const r = value as unknown[] & { toObject?: () => Record<string, unknown> };
   const items = [...r].map(plain);
-  const keys = r.toObject ? Object.keys(r.toObject()).filter((k) => !/^\d+$/.test(k)) : [];
+  let keys: string[] = [];
+  try {
+    keys = r.toObject ? Object.keys(r.toObject()).filter((k) => !/^\d+$/.test(k)) : [];
+  } catch {
+    // A list (of fees, say) has no names: ethers refuses to name its items.
+  }
   if (!keys.length || keys[0]!.startsWith("_")) return items;
   return Object.fromEntries(keys.map((k, i) => [k, items[i]]));
 }

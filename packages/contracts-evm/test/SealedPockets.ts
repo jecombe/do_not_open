@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { ethers, fhevm } from "hardhat";
 import { IDelegateRegistry, ISeaport, PocketDesk, SealedPockets, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC, VaultOffers } from "../types";
 import { confidentialUsdcOf, usd } from "./tokens";
-import { installDelegateRegistry, installSeaport } from "./seaport";
+import { deployOpenListings, installDelegateRegistry, installSeaport } from "./seaport";
 
 const SPEND = { Send: 0, Withdraw: 1 } as const;
 const ACTION_WITHDRAW = 0;
@@ -472,7 +472,7 @@ describe("SealedPockets", function () {
       const offers = (await (await ethers.getContractFactory("VaultOffers")).deploy(await seaport.getAddress(), await weth.getAddress())) as unknown as VaultOffers;
       nft = (await (await ethers.getContractFactory("TestERC721")).deploy()) as unknown as TestERC721;
       vault = (await (await ethers.getContractFactory("SealedVault")).deploy(
-        await seaport.getAddress(),
+        await (await deployOpenListings(seaport)).getAddress(),
         await cUsdc.getAddress(),
         await offers.getAddress(),
         await registry.getAddress(),

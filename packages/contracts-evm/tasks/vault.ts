@@ -32,11 +32,12 @@ const SEAPORT_ABI = [
   `function fulfillOrder((${ORDER_PARAMETERS} parameters, bytes signature) order, bytes32 fulfillerConduitKey) payable returns (bool)`,
   "function getOrderStatus(bytes32 orderHash) view returns (bool isValidated, bool isCancelled, uint256 totalFilled, uint256 totalSize)",
   "function getCounter(address offerer) view returns (uint256)",
+  "function information() view returns (string version, bytes32 domainSeparator, address conduitController)",
 ];
 const ADVANCED_ORDER = `(${ORDER_PARAMETERS} parameters, uint120 numerator, uint120 denominator, bytes signature, bytes extraData)`;
 const WETH_ABI = ["function deposit() payable", "function approve(address spender, uint256 amount) returns (bool)", "function balanceOf(address) view returns (uint256)"];
 const REGISTRY_ABI = ["function checkDelegateForERC721(address to, address from, address contract_, uint256 tokenId, bytes32 rights) view returns (bool)"];
-/** Seaport 1.5's EIP-712 types, for an order a buyer signs. */
+/** Seaport's EIP-712 types (the same in 1.5 and 1.6), for an order a buyer signs. */
 const SEAPORT_TYPES = {
   OrderComponents: [
     { name: "offerer", type: "address" },
@@ -138,7 +139,8 @@ task("dno:vault-demo", "Seals a test NFT, sells it on Seaport from the vault, an
   console.log(`  listed for ${fmt(price)}: Seaport order ${listing.orderHash}`);
 
   console.log("\n2. A buyer fills the Seaport order, as on any Seaport marketplace");
-  const parameters = plain(await c.vault.seaportOrder(listingId));
+  const listings = await c.ethers.getContractAt("VaultListings", await c.vault.listings());
+  const parameters = plain(await listings.orderOf(listing.orderHash));
   const fill = await c.seaport.fulfillOrder!({ parameters, signature: "0x" }, c.ethers.ZeroHash, { value: price });
   await fill.wait();
   console.log(`  filled in tx ${fill.hash}; the NFT is now ${await c.nft.ownerOf((await c.vault.boxInfo(boxId)).tokenId)}`);
@@ -186,7 +188,9 @@ task("dno:vault-demo", "Seals a test NFT, sells it on Seaport from the vault, an
     conduitKey: c.ethers.ZeroHash,
     counter: (await c.seaport.getCounter!(c.buyer.address)) as bigint,
   };
-  const domain = { name: "Seaport", version: "1.5", chainId: (await c.ethers.provider.getNetwork()).chainId, verifyingContract: await c.seaport.getAddress() };
+  // The signed domain names Seaport's version: 1.5 on a local node, 1.6 on Sepolia and mainnet.
+  const [version] = await c.seaport.information!();
+  const domain = { name: "Seaport", version: String(version), chainId: (await c.ethers.provider.getNetwork()).chainId, verifyingContract: await c.seaport.getAddress() };
   const signature = await c.buyer.signTypedData(domain, SEAPORT_TYPES, components);
   const { counter: _counter, ...rest } = components;
   const offerParameters = { ...rest, totalOriginalConsiderationItems: 1n };
@@ -211,7 +215,12 @@ function plain(value: unknown): unknown {
   if (!(value instanceof Array)) return value;
   const r = value as unknown[] & { toObject?: () => Record<string, unknown> };
   const items = [...r].map(plain);
-  const keys = r.toObject ? Object.keys(r.toObject()).filter((k) => !/^\d+$/.test(k)) : [];
+  let keys: string[] = [];
+  try {
+    keys = r.toObject ? Object.keys(r.toObject()).filter((k) => !/^\d+$/.test(k)) : [];
+  } catch {
+    // A list (of fees, say) has no names: ethers refuses to name its items.
+  }
   if (!keys.length || keys[0]!.startsWith("_")) return items;
   return Object.fromEntries(keys.map((k, i) => [k, items[i]]));
 }

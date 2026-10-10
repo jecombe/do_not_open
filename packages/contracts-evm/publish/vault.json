@@ -13,17 +13,20 @@
     "contracts/mocks/TestUSDC.sol",
     "contracts/mocks/TestWETH.sol",
     "contracts/mocks/VaultTestNFT.sol",
+    "contracts/mocks/TestZone.sol",
     "test/SealedVault.ts",
     "test/SealedPockets.ts",
     "test/seaport.ts",
     "test/tokens.ts",
     "test/fixtures/**",
     "deploy/vault.ts",
+    "tasks/opensea.ts",
     "deploy/pockets.ts",
     "lib/paymentTokens.ts",
-    "lib/pocketTokens.ts"
+    "lib/pocketTokens.ts",
+    "lib/opensea.ts"
   ],
-  "deployments": ["SealedVault", "VaultOffers", "VaultTestNFT", "SealedPockets", "PocketDesk", "SealedPockets_cUSDT", "SealedPockets_cWETH", "SealedPockets_cZAMA"],
+  "deployments": ["SealedVault", "VaultListings", "VaultOffers", "VaultTestNFT", "SealedPockets", "PocketDesk", "SealedPockets_cUSDT", "SealedPockets_cWETH", "SealedPockets_cZAMA"],
   "dependencies": ["@fhevm/solidity", "@openzeppelin/confidential-contracts", "@openzeppelin/contracts", "encrypted-types"],
   "devDependencies": [
     "@fhevm/hardhat-plugin", "@fhevm/mock-utils", "@nomicfoundation/hardhat-chai-matchers", "@nomicfoundation/hardhat-ethers",

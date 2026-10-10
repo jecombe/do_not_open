@@ -113,6 +113,12 @@ interface ISeaport {
 
     function getCounter(address offerer) external view returns (uint256 counter);
 
+    /// @dev Seaport's version ("1.5", "1.6"): what an order's EIP-712 domain names.
+    function information()
+        external
+        view
+        returns (string memory version, bytes32 domainSeparator, address conduitController);
+
     function fulfillOrder(Order calldata order, bytes32 fulfillerConduitKey) external payable returns (bool fulfilled);
 
     /// @dev The offer's items go to `recipient` first, then the fulfiller (msg.sender) hands over

@@ -119,9 +119,12 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   not lock each other out: a stranger's wrong keys never hold back an exit. A box with a waiting
   request cannot move (`pending`), and `expire` (anyone, a day after `placedAt`) settles a
   request whose proof never came (`Expired`). A
-  listing is a Seaport 1.5 order with the vault as offerer, validated on-chain (no signature, no
-  ERC-1271), Seaport approved for that token only; `sync` (anyone, and every request) marks it
-  sold or expired. `AcceptOffer` (`to` the payout address, `price` the least WETH the offer must
+  listing is a Seaport order with the vault as offerer, written by `VaultListings` (`prepare`:
+  the way OpenSea shows a contract's listing, the vault's share `net` first, then the
+  collection's fees), validated on-chain by the vault itself (no signature, no ERC-1271;
+  `SeaportRefused` if Seaport reverts), the listings' operator (OpenSea's conduit, or Seaport)
+  approved for that token only; `Listing {boxId, price, net, endTime, orderHash}`; `sync`
+  (anyone, and every request) marks it sold (the fee on `net`) or expired. `AcceptOffer` (`to` the payout address, `price` the least WETH the offer must
   net) runs only through `finalizeOffer(requestId, cleartexts, proof, offer)` with the order
   (`abi.encode(AdvancedOrder, bytes32[] criteriaProof)`): the vault checks it is the one bound
   (`WrongOrder`), settles a dead one `Stale`, hands `VaultOffers` the box's NFT for one `fill`,
@@ -133,18 +136,36 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   settled under encryption. Fee `feeBps` (250 by default, at most `MAX_FEE_BPS`, 1,000) on both:
   ETH kept in `feesOwed` and sent by `sendFees` (anyone), cUSDC at the sale. `receive` takes ETH
   from Seaport and `VaultOffers` only. The owner (`Ownable`) can only `setCollection`, `setFee` and `setTreasury`.
-  `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol` are the slices of Seaport 1.5 and
-  delegate.xyz's registry it uses, `vault/IWETH.sol` wrapped ether's. See
-  [`docs/VAULT.md`](../../docs/VAULT.md).
+  Constructor `(listings, cUsdc, offers, registry, treasury, owner, feeBps)`; its Seaport is
+  `listings.seaport()`. `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol` are the slices
+  of Seaport (1.5 and 1.6, the same calls, `information` included) and delegate.xyz's registry
+  it uses, `vault/IWETH.sol` wrapped ether's. See [`docs/VAULT.md`](../../docs/VAULT.md).
+- **`VaultListings`** (`contracts/vault/`) — writes the vault's Seaport listings the way OpenSea
+  shows a contract's listing, and keeps them (constructor `(seaport, zone, conduitKey, conduit,
+  owner)`: OpenSea's signed zone and conduit on mainnet, the conduit alone on Sepolia, neither
+  locally; `operator` is the conduit, or Seaport without one). `prepare(collection, tokenId,
+  price, endTime)` writes an order whose offerer is its caller (the NFT on offer; the caller's
+  share first, then one ETH item per fee of the collection; `FULL_RESTRICTED` with a zone,
+  `FULL_OPEN` without; salt `keccak256(this, listingCount++)`), keeps it by order hash and
+  returns the `validate` calldata, the order hash and `net`; `cancelCall(orderHash)` returns the
+  `cancel` calldata; `orderOf(orderHash)` the order as a buyer passes it to `fulfillOrder`;
+  `listingOf`, `feesOf`. Only the offerer can put the order on Seaport, so a stranger's
+  `prepare` lists nothing. `setFees(collection, Fee[]{recipient, bps})` (`onlyOwner`, no zero
+  recipient, at most `MAX_FEES_BPS`, 15%, together): what OpenSea asks for the collection (its
+  1%, the creator's enforced fee); a listing keeps the fees it was made with. `lib/opensea.ts`
+  (`listingVenue(network)`) holds the addresses per network. 6,336 bytes; ~1.45M gas to deploy.
 - **`VaultOffers`** (`contracts/vault/`) — the vault's helper for buyers' offers, stateless and
-  open to anyone, linked to nothing but Seaport and WETH (constructor `(seaport, weth)`). `post`
-  validates a buyer's signed Seaport 1.5 offer (WETH for one ERC-721 token, or any token of a
-  collection, criteria root 0) on Seaport and logs it, `OfferPosted(collection, tokenId or
+  open to anyone, linked to nothing but Seaport and WETH (constructor `(seaport, weth)`; the
+  same Seaport as the listings, 1.6 on Sepolia and mainnet). `post` validates a buyer's signed
+  offer for the Seaport it is on (WETH for one ERC-721 token, or any token of a collection,
+  criteria root 0) and logs it, `OfferPosted(collection, tokenId or
   ANY_TOKEN, orderHash, order)`: the on-chain offer board the page reads. `inspect` says whether
   an offer can still fill one token for at least a price; `fill` (`nonReentrant`) fills one
   token's share with the NFT its caller handed it (`fulfillAdvancedOrder`, criteria resolved to
   that token), unwraps the WETH and sends the ETH back. Only WETH offer and fee items, fixed
-  amounts, no tips (`NotAnOffer`).
+  amounts, no tips (`NotAnOffer`). OpenSea's own offers (its zone, its conduit, its 1% WETH
+  fee) fill through it unchanged: `dno:opensea-replay` replays a real mainnet fill with
+  `VaultOffers` in the filler's place (below). 8,470 bytes.
 - **`SealedPockets`** — the vault's pockets: cUSDC held under encrypted 256-bit keys rather than
   addresses (constructor `(cUsdc, owner)`). `open(key, proof, viewer)`; `deposit(pockets[],
   target, amount, proof)` pulls the caller's cUSDC into the pocket of the set whose number is the
@@ -225,14 +246,12 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `RatTricks.trick` (first on a box / box already tricked) | ~1.06M / ~881k | ~2.27M / ~2.25M |
 | `RatTricks.sniff` (tricked box, power-1 rebate) | ~1.79M | ~4.27M |
 | `SealedVault.deposit` (no decoy / each decoy more / 5 decoys) | ~450k to ~470k / ~230k / ~1.54M | ~83k / ~363k / ~1.90M (depth ~1.23M) |
-| `SealedVault.request` + `finalize` (withdraw / list / unlist / claim) | ~323k + ~152k / ~349k + ~317k / ~321k + ~153k / ~309k + ~122k | ~191k |
-| `SealedVault.request` + `finalize`, a wrong key (`Refused`) | ~326k + ~101k | ~191k |
-| `SealedVault.request` (any action) | ~289k to ~375k | ~191k |
-| `SealedVault.finalizeOffer` (one WETH offer filled, a fee paid, ETH sent) | ~399k | 0 |
-| `SealedVault.finalize`, delegate (first / replacing one) | ~294k / ~269k | 0 |
-| `SealedVault.finalize`, withdraw with a delegate to clear | ~168k | 0 |
-| `VaultOffers.post` (a buyer's offer validated and logged) | ~102k | 0 |
-| `SealedVault.sync` (sold / expired) | ~92k / ~51k | 0 |
+| `SealedVault.request` (any action) | ~291k to ~379k | ~191k |
+| `SealedVault.finalize` (a wrong key the least, a listing the most: since `VaultListings` one more contract call and the conduit's approval, one order item more per fee) | ~101k to ~606k | 0 |
+| `SealedVault.finalizeOffer` (one WETH offer filled, a fee paid, ETH sent; the most through OpenSea's zone and conduit) | ~145k to ~426k | 0 |
+| `VaultListings.setFees` (the owner, per collection) | ~40k to ~98k | 0 |
+| `VaultOffers.post` (a buyer's offer validated and logged) | ~101k | 0 |
+| `SealedVault.sync` (expired / sold) | ~51k to ~113k | 0 |
 | `SealedVault.expire` | ~56k | 0 |
 | `SealedPockets.open` | ~280k to ~317k | 32 |
 | `SealedPockets.deposit` (set of 1 / 3 / 5) | ~835k / ~1.03M / ~1.24M | ~1.63M / ~2.56M / ~3.48M |
@@ -241,7 +260,7 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `PocketDesk.ask` / `buy` | ~432k / ~2.68M | ~0.37M / ~6.28M (depth ~3.28M) |
 | `SealedVault.confidentialTransfer` (with a new random key) | ~209k to ~266k | ~338k |
 | `SealedVault.setKey` | ~185k | ~225k |
-| `SealedVault.offerSale` | ~304k to ~324k | ~150k |
+| `SealedVault.offerSale` | ~304k | ~150k |
 | `SealedVault.acceptSale` | ~1.66M | ~4.34M |
 
 `LiquidityLocker` has no FHE; it took 558,565 gas to deploy on Sepolia.
@@ -251,12 +270,15 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 contract ~641k to deploy (Hardhat).
 The `SealedVault` rows are not in `test/Costs.ts` yet: gas from `REPORT_GAS=1 pnpm test
 test/SealedVault.ts`, HCU from `fhevm.computeTransactionHCU` on the same calls, against Seaport
-1.5's and delegate.xyz's bytecode. A buyer's Seaport `fulfillOrder` of a vault listing takes
-~97k gas; the vault ~5.5M to deploy, `VaultOffers` ~1.9M.
+1.5's, Seaport 1.6's (with OpenSea's conduit) and delegate.xyz's bytecode; the HCU did not
+change with `VaultListings`. A buyer's Seaport `fulfillOrder` of an open vault listing on 1.5
+takes ~97k gas; the vault ~5.18M to deploy (~5.5M before `VaultListings`), `VaultListings`
+~1.45M, `VaultOffers` ~1.9M.
 
 Deployed size: `DoNotOpen` 24,442 bytes (limit 24,576; the token URIs live in `BoxMetadata`, 1,861, and the rules' views in `DoNotOpenConfig`, 2,968), `WhitelistGifts` 4,876, `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
-12,377, `SealedVault` 24,322 (254 under the limit, at the default optimizer: the next feature
-moves logic out first, as accepting offers did into `VaultOffers`, 6,517). To stay under
+12,377, `SealedVault` 22,712 (1,864 under the limit, at the default optimizer; 24,322 and 254
+under before the listings' orders moved out: the next feature moves logic out first, as
+accepting offers did into `VaultOffers`, 8,470, and the listings into `VaultListings`, 6,336). To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
@@ -265,7 +287,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 336 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's and delegate.xyz's bytecode) and its pockets
+pnpm test                 # 344 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's, Seaport 1.6's with OpenSea's conduit, and delegate.xyz's bytecode) and its pockets
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -273,6 +295,7 @@ pnpm deploy:localhost     # terminal 2
 pnpm demo:localhost       # buy a hidden box, shake twice, prove alive, observe
 pnpm demo2:localhost      # mint 3, feed, duel, entangle, observe one and see both open
 npx hardhat --network localhost dno:vault-demo   # the sealed vault: seal, list on Seaport, buy, collect, take out, delegate, accept an offer
+npx hardhat dno:opensea-replay --tx <mainnet tx> # replays a real OpenSea offer a contract filled on mainnet, with VaultOffers in its place, on an anvil fork (needs anvil and MAINNET_RPC_URL with archive state and debug_traceTransaction; eth.drpc.org by default)
 
 # Sepolia (fill MNEMONIC or PRIVATE_KEY in the repo-root .env first)
 pnpm deploy:sepolia
@@ -349,22 +372,35 @@ the API's `GET /v1/allowlist/gifts?token=` answer and run
 with `closesAt` `claimDays` (30) from now, and the same file goes to the API
 (`WHITELIST_GIFTS_TREE`). `dno:export` writes the contract under `whitelistGifts`.
 
-`deploy/vault.ts` (tag `Vault`) deploys `VaultOffers` (Seaport and the network's WETH: `WETH` in
-the script, OpenSea's, `0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9` on Sepolia; a `TestWETH`
-locally), then `SealedVault` against Seaport 1.5
-(`0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC`, OpenSea's deployment on Sepolia and mainnet; 1.6
-is not on Sepolia), `VaultOffers`, delegate.xyz's Registry v2
-(`0x00000000000000447e69651d841bD8D104Bed493`) and the network's cUSDC, with `VAULT_FEE_BPS` (250) paid to
-`STUDIO_TREASURY` (or the owner), owned by `COLLECTION_OWNER` (or the deployer). On a test network
-it also deploys `VaultTestNFT` and allows it. On a local node (`pnpm chain`) it first puts
-Seaport's Sepolia runtime code at its address (`test/fixtures/seaport-1.5.json`, with storage
-slot 0, the reentrancy guard, set to 1), and the registry's
-(`test/fixtures/delegate-registry-v2.json`); elsewhere it stops if either is missing. It runs at the
-end and redeploys nothing else (locally it reuses the test cUSDC of `deploy.ts`), so `npx hardhat deploy --network sepolia --tags Vault` adds it next to
-a live collection; `dno:export` writes it under `vault` (address, ABI, deploy block, Seaport,
-`offers` with its ABI and deploy block, WETH, the registry, the allowed collections). `npx hardhat --network <localhost|sepolia> dno:vault-demo` runs it end
-to end; its fresh addresses are the kept test wallets `vault-proceeds`, `vault-withdrawals` and
-`vault-delegate`. On Sepolia it stops at the first `finalize` while Zama's gateway answers
+`deploy/vault.ts` (tag `Vault`) reads where the listings go from `lib/opensea.ts`
+(`listingVenue(network)`: mainnet, Seaport 1.6 `0x0000000000000068F116a894984e2DB1123eB395`
+with OpenSea's conduit `0x1E0049783F008A0085193E00003D00cd54003c71` (key
+`0x0000007b02…0000`) and its signed zone `0x000056F7000000EcE9003ca63978907a00FFD100`; Sepolia,
+the same Seaport 1.6 and conduit, both there with the conduit's channel open to 1.6 (checked
+on-chain 2026-10-10), but no zone, since OpenSea closed its testnets and nothing signs for it;
+elsewhere Seaport 1.5 `0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC` with no zone and no
+conduit). It deploys `VaultOffers` (that Seaport and the network's WETH: `WETH` in the script,
+OpenSea's, `0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9` on Sepolia; a `TestWETH` locally),
+then `VaultListings(seaport, zone, conduitKey, conduit, owner)`, then `SealedVault(listings,
+cUSDC, offers, registry, treasury, owner, feeBps)` against delegate.xyz's Registry v2
+(`0x00000000000000447e69651d841bD8D104Bed493`) and the network's cUSDC, with `VAULT_FEE_BPS`
+(250) paid to `STUDIO_TREASURY` (or the owner), owned by `COLLECTION_OWNER` (or the deployer).
+On a test network it also deploys `VaultTestNFT` and allows it. On mainnet the owner then sets
+each allowed collection's fees with `VaultListings.setFees` (OpenSea's 1% to
+`0x0000a26b00c1F0DF003000390027140000fAa719`, `OPENSEA.feeRecipient`, plus the creator's fee
+where OpenSea enforces one, read from its collection page or API). On a local node (`pnpm
+chain`) it first puts Seaport 1.5's Sepolia runtime code at its address
+(`test/fixtures/seaport-1.5.json`, with storage slot 0, the reentrancy guard, set to 1), and
+the registry's (`test/fixtures/delegate-registry-v2.json`); elsewhere it stops if either is
+missing (the tests' `test/fixtures/seaport-1.6.json`, Seaport 1.6 and OpenSea's conduit from
+mainnet, is for the tests only). It runs at the end and redeploys nothing else (locally it
+reuses the test cUSDC of `deploy.ts`), so `npx hardhat deploy --network sepolia --tags Vault`
+adds it next to a live collection; `dno:export` writes it under `vault` (address, ABI, deploy
+block, Seaport, `listings` with its ABI (null for a vault from before it), `offers` with its
+ABI and deploy block, WETH, the registry, the allowed collections). `npx hardhat --network
+<localhost|sepolia> dno:vault-demo` runs it end to end, the buyer's offer signed for the
+version Seaport's `information()` reports; its fresh addresses are the kept test wallets
+`vault-proceeds`, `vault-withdrawals` and `vault-delegate`. On Sepolia it stops at the first `finalize` while Zama's gateway answers
 "ciphertext not ready"; the whole run (offer and delegation included) passes on a local node.
 
 `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys `SealedPockets` on the vault's cUSDC

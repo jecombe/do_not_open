@@ -442,19 +442,24 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
         .then((r) => (r ? { address: r.address, abi: r.abi, deployBlock: r.receipt?.blockNumber ?? null } : null)),
       // The whitelist's gifts, collected once per seated wallet.
       whitelistGifts: await hre.deployments.getOrNull("WhitelistGifts").then((r) => (r ? { address: r.address, abi: r.abi } : null)),
-      // The sealed vault, with the Seaport it lists on, the offer board and the WETH buyers'
-      // offers pay in, delegate.xyz's registry, and the collections it takes.
+      // The sealed vault, with the Seaport it lists on and the contract that writes its listings,
+      // the offer board and the WETH buyers' offers pay in, delegate.xyz's registry, and the
+      // collections it takes.
       vault: await hre.deployments.getOrNull("SealedVault").then(async (r) => {
         if (!r) return null;
-        const { SEAPORT, DELEGATE_REGISTRY, WETH } = await import("../deploy/vault");
+        const { DELEGATE_REGISTRY, WETH } = await import("../deploy/vault");
+        const { listingVenue } = await import("../lib/opensea");
         const testNft = await hre.deployments.getOrNull("VaultTestNFT");
         const offers = await hre.deployments.get("VaultOffers");
+        // Vaults deployed before 2026-10-10 wrote their own orders: no VaultListings.
+        const listings = await hre.deployments.getOrNull("VaultListings");
         const weth = WETH[hre.network.name] ?? (await hre.deployments.get("TestWETH")).address;
         return {
           address: r.address,
           abi: r.abi,
           deployBlock: r.receipt?.blockNumber ?? null,
-          seaport: SEAPORT,
+          seaport: listingVenue(hre.network.name).seaport,
+          listings: listings ? { address: listings.address, abi: listings.abi } : null,
           offers: { address: offers.address, abi: offers.abi, deployBlock: offers.receipt?.blockNumber ?? null },
           weth,
           delegateRegistry: DELEGATE_REGISTRY,

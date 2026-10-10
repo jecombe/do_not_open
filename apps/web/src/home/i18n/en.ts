@@ -4,7 +4,7 @@ export const homeEn = {
   "home.why.1.title": "Own without showing.",
   "home.why.1.body": "Who holds an asset in the vault, a box or a pocket, is encrypted on-chain. A wallet full of blue chips or stablecoins stops being a target.",
   "home.why.2.title": "Sell without being seen.",
-  "home.why.2.body": "List it on Seaport in the vault's name, or accept a buyer's offer. Buyers see the NFT and the price, never the seller.",
+  "home.why.2.body": "List it on Seaport in the vault's name (on mainnet it shows on OpenSea), or accept a buyer's offer. Buyers see the NFT and the price, never the seller.",
   "home.why.3.title": "Sell in private.",
   "home.why.3.body": "Offer the box to one buyer, for a price in cUSDC only the two of you can read. It settles under encryption.",
   "home.why.4.title": "Take it out anywhere.",

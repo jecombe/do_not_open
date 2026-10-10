@@ -29,7 +29,7 @@ export const projectIt: Record<ProjectKey, string> = {
 
   "project.section.vault": "Il caveau sigillato",
   "project.vault.p1": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.",
-  "project.vault.p2": "La scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore, o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte.",
+  "project.vault.p2": "La scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore (sulla rete principale l'annuncio compare su OpenSea), o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte.",
   "project.vault.p3": "Il caveau custodisce anche token. I tuoi cUSDC, un dollaro confidenziale, vanno in una tasca chiusa da una chiave invece che da un indirizzo: mandali a un'altra tasca, paga una scatola, o ritirali dove vuoi. I token confidenziali nascondono già gli importi; una tasca nasconde anche chi ha pagato chi. cUSDT, cWETH e cZAMA, gli altri token confidenziali di Zama, hanno le loro tasche; le scatole si pagano in cUSDC.",
   "project.vault.docs": "Leggi la documentazione del caveau",
   "project.vault.open": "Apri il caveau",
@@ -42,7 +42,7 @@ export const projectIt: Record<ProjectKey, string> = {
 
   "project.section.leaks": "Cosa resta segreto, cosa no",
   "project.leaks.p1": "La cifratura nasconde i valori, non il fatto che qualcosa sia successo. Una transazione è pubblica: chi l'ha inviata, a quale contratto, quando. Quello che DO NOT OPEN cifra è ciò che la transazione fa: chi finisce per possedere una scatola, un prezzo concordato in privato, se un trasferimento ha spostato qualcosa.",
-  "project.leaks.p2": "Alcune cose sono pubbliche di proposito. Un NFT che entra nel caveau è un semplice trasferimento di NFT, quindi chi lo deposita si vede. Un annuncio su Seaport mostra il suo NFT e il suo prezzo, con il caveau come venditore. Anche l'indirizzo verso cui esce un NFT o l'ETH di una vendita si vede: scegline uno senza storia.",
+  "project.leaks.p2": "Alcune cose sono pubbliche di proposito. Un NFT che entra nel caveau è un semplice trasferimento di NFT, quindi chi lo deposita si vede. Un annuncio su Seaport mostra il suo NFT e il suo prezzo, con il caveau come venditore, su OpenSea sulla rete principale. Anche l'indirizzo verso cui esce un NFT o l'ETH di una vendita si vede: scegline uno senza storia.",
   "project.leaks.p3": "Ogni prodotto elenca esattamente cosa trapela, riga per riga, nella sua documentazione.",
 
   "project.section.trust": "Di chi ti devi fidare",

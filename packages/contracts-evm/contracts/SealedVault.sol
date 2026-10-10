@@ -9,17 +9,9 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984.sol";
 import {ConfidentialERC721} from "./confidential/ConfidentialERC721.sol";
-import {
-    ConsiderationItem,
-    ISeaport,
-    ItemType,
-    OfferItem,
-    Order,
-    OrderComponents,
-    OrderParameters,
-    OrderType
-} from "./vault/ISeaport.sol";
+import {ISeaport} from "./vault/ISeaport.sol";
 import {IDelegateRegistry} from "./vault/IDelegateRegistry.sol";
+import {VaultListings} from "./vault/VaultListings.sol";
 import {VaultOffers} from "./vault/VaultOffers.sol";
 
 /// @title The sealed vault
@@ -60,11 +52,13 @@ import {VaultOffers} from "./vault/VaultOffers.sol";
 ///     after `REQUEST_TIMEOUT`, so no box waits forever.
 ///
 ///  4. Seaport: listing validates a Seaport order whose offerer is the vault itself (an offerer's
-///     own orders need no signature) for the NFT against `price` wei paid to the vault. The vault
-///     approves Seaport for that one token only. When the order fills, `sync` (or any request on
-///     the box) marks the box sold and holds the ETH, less the fee, for whoever holds the key. The
-///     vault never signs anything and implements no ERC-1271, so the only orders Seaport can fill
-///     on its NFTs are the ones the vault validated.
+///     own orders need no signature) for the NFT against `price` wei, the vault's share first and
+///     then the fees OpenSea's buyers pay (OpenSea's, the creator's). `listings` writes the order
+///     the way OpenSea shows a contract's listing (its conduit and signed zone on mainnet) and
+///     keeps it; the vault sends it to Seaport and approves the conduit for that one token only.
+///     When the order fills, `sync` (or any request on the box) marks the box sold and holds the
+///     ETH, less the fee, for whoever holds the key. The vault never signs anything and implements
+///     no ERC-1271, so the only orders Seaport can fill on its NFTs are the ones it validated.
 ///
 ///  5. Accepting an offer: a buyer's Seaport order that pays WETH for the box's NFT (that token, or
 ///     any of its collection) is filled through `VaultOffers`, which the vault hands the one NFT
@@ -159,10 +153,12 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
 
     struct Listing {
         uint256 boxId;
+        /// What the buyer pays, fees included.
         uint256 price;
-        uint64 startTime;
+        /// What comes to the vault when it fills: the price less OpenSea's and the creator's fees.
+        uint256 net;
         uint64 endTime;
-        uint256 counter;
+        /// Its order on Seaport: `listings.orderOf(orderHash)`.
         bytes32 orderHash;
     }
 
@@ -207,6 +203,8 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     uint256 public constant MAX_DEPOSIT_SENDS = 5;
 
     ISeaport public immutable seaport;
+    /// @notice Writes the listings' Seaport orders, the way OpenSea shows them, and keeps them.
+    VaultListings public immutable listings;
     IERC7984 public immutable confidentialUsdc;
     /// @notice Fills the buyers' offers the vault accepts (in WETH), holding one NFT per call.
     VaultOffers public immutable offers;
@@ -252,6 +250,7 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     error NotAnOffer();
     error WrongOrder();
     error OfferShort();
+    error SeaportRefused();
 
     event CollectionSet(address indexed collection, bool allowed);
     event Deposited(uint256 indexed boxId, address indexed collection, uint256 indexed tokenId, address depositor);
@@ -279,7 +278,7 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     event TreasurySet(address treasury);
 
     constructor(
-        ISeaport seaport_,
+        VaultListings listings_,
         IERC7984 confidentialUsdc_,
         VaultOffers offers_,
         IDelegateRegistry delegateRegistry_,
@@ -288,10 +287,11 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         uint16 feeBps_
     ) ConfidentialERC721("DO NOT OPEN Vault", "SEALED") Ownable(owner_) {
         if (
-            address(seaport_) == address(0) || address(confidentialUsdc_) == address(0) || address(offers_) == address(0)
+            address(listings_) == address(0) || address(confidentialUsdc_) == address(0) || address(offers_) == address(0)
                 || address(delegateRegistry_) == address(0)
         ) revert ZeroAddress();
-        seaport = seaport_;
+        listings = listings_;
+        seaport = listings_.seaport();
         confidentialUsdc = confidentialUsdc_;
         offers = offers_;
         delegateRegistry = delegateRegistry_;
@@ -539,13 +539,6 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         return _sales[saleId];
     }
 
-    /// @notice The Seaport order of a listing, as a buyer passes it to `fulfillOrder` (with an
-    ///         empty signature: the vault validated it).
-    function seaportOrder(uint256 listingId) external view returns (OrderParameters memory) {
-        Listing storage l = _listings[listingId];
-        return _parameters(_components(_boxes[l.boxId], l, listingId));
-    }
-
     /// @notice The NFT's own metadata: what is inside a box is public, only its holder is not.
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireExists(tokenId);
@@ -742,35 +735,29 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     }
 
     function _list(uint256 boxId, Box storage b, uint256 price, uint64 endTime) private {
+        (bytes memory validateCall, bytes32 orderHash, uint256 net) = listings.prepare(b.collection, b.tokenId, price, endTime);
+        IERC721(b.collection).approve(listings.operator(), b.tokenId);
+        _seaport(validateCall);
         uint256 listingId = listingCount++;
-        Listing storage l = _listings[listingId];
-        l.boxId = boxId;
-        l.price = price;
-        l.startTime = uint64(block.timestamp);
-        l.endTime = endTime;
-        l.counter = seaport.getCounter(address(this));
-        OrderComponents memory c = _components(b, l, listingId);
-        l.orderHash = seaport.getOrderHash(c);
-
-        IERC721(b.collection).approve(address(seaport), b.tokenId);
-        Order[] memory orders = new Order[](1);
-        orders[0] = Order({parameters: _parameters(c), signature: ""});
-        seaport.validate(orders);
-
+        _listings[listingId] = Listing({boxId: boxId, price: price, net: net, endTime: endTime, orderHash: orderHash});
         b.state = BoxState.Listed;
         b.listing = listingId + 1;
-        emit Listed(listingId, boxId, price, endTime, l.orderHash);
+        emit Listed(listingId, boxId, price, endTime, orderHash);
     }
 
     function _unlist(uint256 boxId, Box storage b) private {
         uint256 listingId = b.listing - 1;
-        OrderComponents[] memory orders = new OrderComponents[](1);
-        orders[0] = _components(b, _listings[listingId], listingId);
-        seaport.cancel(orders);
+        _seaport(listings.cancelCall(_listings[listingId].orderHash));
         IERC721(b.collection).approve(address(0), b.tokenId);
         b.state = BoxState.Sealed;
         b.listing = 0;
         emit Unlisted(listingId, boxId);
+    }
+
+    /// @dev Sends Seaport a call `listings` wrote: the vault's own `validate` or `cancel`.
+    function _seaport(bytes memory call) private {
+        (bool ok,) = address(seaport).call(call);
+        if (!ok) revert SeaportRefused();
     }
 
     /// @dev A listed box whose order filled is sold; one whose order ran out is sealed again.
@@ -781,9 +768,9 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         Listing storage l = _listings[listingId];
         (,, uint256 filled, uint256 size) = seaport.getOrderStatus(l.orderHash);
         if (size != 0 && filled == size) {
-            uint256 fee = (l.price * feeBps) / 10_000;
+            uint256 fee = (l.net * feeBps) / 10_000;
             feesOwed += fee;
-            b.proceeds = l.price - fee;
+            b.proceeds = l.net - fee;
             b.state = BoxState.Sold;
             delete boxOf[b.collection][b.tokenId];
             _delegate(boxId, b, address(0));
@@ -794,50 +781,6 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
             b.listing = 0;
             emit ListingExpired(listingId, boxId);
         }
-    }
-
-    /// @dev One NFT against `price` wei paid to the vault, open to anyone, no conduit.
-    function _components(Box storage b, Listing storage l, uint256 listingId) private view returns (OrderComponents memory c) {
-        OfferItem[] memory offer = new OfferItem[](1);
-        offer[0] = OfferItem({itemType: ItemType.ERC721, token: b.collection, identifierOrCriteria: b.tokenId, startAmount: 1, endAmount: 1});
-        ConsiderationItem[] memory consideration = new ConsiderationItem[](1);
-        consideration[0] = ConsiderationItem({
-            itemType: ItemType.NATIVE,
-            token: address(0),
-            identifierOrCriteria: 0,
-            startAmount: l.price,
-            endAmount: l.price,
-            recipient: payable(address(this))
-        });
-        c = OrderComponents({
-            offerer: address(this),
-            zone: address(0),
-            offer: offer,
-            consideration: consideration,
-            orderType: OrderType.FULL_OPEN,
-            startTime: l.startTime,
-            endTime: l.endTime,
-            zoneHash: bytes32(0),
-            salt: uint256(keccak256(abi.encode(address(this), listingId))),
-            conduitKey: bytes32(0),
-            counter: l.counter
-        });
-    }
-
-    function _parameters(OrderComponents memory c) private pure returns (OrderParameters memory) {
-        return OrderParameters({
-            offerer: c.offerer,
-            zone: c.zone,
-            offer: c.offer,
-            consideration: c.consideration,
-            orderType: c.orderType,
-            startTime: c.startTime,
-            endTime: c.endTime,
-            zoneHash: c.zoneHash,
-            salt: c.salt,
-            conduitKey: c.conduitKey,
-            totalOriginalConsiderationItems: c.consideration.length
-        });
     }
 
     function _pay(address to, euint64 amount) private {

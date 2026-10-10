@@ -33,6 +33,11 @@ export interface VaultInfo {
   feeBps: number;
   /** The Seaport the listings live on: any Seaport marketplace can fill them. */
   seaport: Address;
+  /** `VaultListings`, which writes and keeps the listings' Seaport orders; null on a vault from before it. */
+  listings: Address | null;
+  /** Listings are made the way OpenSea shows them and are bought there (behind OpenSea's signed zone): `buy` is not
+   *  done from here. Mainnet. Elsewhere a listing is an open order anyone fills, `buy` included. */
+  listingsOnOpenSea: boolean;
   /** What buyers' offers pay in: WETH, wrapped from ETH by the page when needed. */
   weth: Address;
   /** delegate.xyz's registry, where a box's delegate is written. */
@@ -65,8 +70,11 @@ export function vaultLinks(info: Pick<VaultInfo, "explorer" | "marketplace"> | n
 
 export interface VaultListing {
   listingId: number;
-  /** In the chain's coin's smallest unit (wei). Public, as on any marketplace. */
+  /** In the chain's coin's smallest unit (wei): what the buyer pays. Public, as on any marketplace. */
   price: bigint;
+  /** What comes to the box when it sells: the price less the marketplace's and the creator's fees (the vault's own
+   *  fee comes off this). The price itself where there are none. */
+  net: bigint;
   /** Unix seconds. */
   endTime: number;
   /** The Seaport order hash, to find the listing on a marketplace. */

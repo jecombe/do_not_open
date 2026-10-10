@@ -5,7 +5,7 @@ export const homeEs: Record<HomeKey, string> = {
   "home.why.1.title": "Tener sin mostrar.",
   "home.why.1.body": "Quién tiene un activo de la bóveda, caja o bolsillo, está cifrado on-chain. Un wallet lleno de blue chips o de stablecoins deja de ser un blanco.",
   "home.why.2.title": "Vender sin ser visto.",
-  "home.why.2.body": "Ponlo a la venta en Seaport a nombre de la bóveda, o acepta la oferta de un comprador. Los compradores ven el NFT y el precio, nunca al vendedor.",
+  "home.why.2.body": "Ponlo a la venta en Seaport a nombre de la bóveda (en la red principal aparece en OpenSea), o acepta la oferta de un comprador. Los compradores ven el NFT y el precio, nunca al vendedor.",
   "home.why.3.title": "Vender en privado.",
   "home.why.3.body": "Ofrece la caja a un solo comprador, por un precio en cUSDC que solo vosotros dos podéis leer. Se liquida bajo cifrado.",
   "home.why.4.title": "Sácalo donde quieras.",

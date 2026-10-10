@@ -102,7 +102,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault, VaultOffers,<br/>SealedPockets, PocketDesk"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault, VaultListings, VaultOffers,<br/>SealedPockets, PocketDesk"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
   api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
@@ -137,7 +137,7 @@ does not depend on ethers, viem or the Relayer SDK.
 
 ```bash
 pnpm install
-pnpm test        # generator, chain adapter, API, and 336 contract tests on the FHEVM mock
+pnpm test        # generator, chain adapter, API, and 344 contract tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173: home page; the game at /app, the vault at /vault (mock mode, no chain)
 ```
@@ -235,8 +235,8 @@ nothing public about who paid whom, or how much.
 | --- | --- |
 | 📥 **Seal an NFT** in a box, sent to decoys at the same time | [Deposit](docs/VAULT.md#deposit) |
 | 🔑 **Ask with a key**, not an address: requests never lock a box, and expire after a day | [A box and its key](docs/VAULT.md#a-box-and-its-key), [a request](docs/VAULT.md#a-request-take-out-list-take-down-collect-accept-an-offer-delegate) |
-| 🏪 **List it on Seaport 1.5**, the vault as the seller, any Seaport marketplace fills it | [Seaport: list, fill, sync, collect](docs/VAULT.md#seaport-list-fill-sync-collect) |
-| 🤝 **Accept a buyer's WETH offer**, posted on the on-chain board `VaultOffers` | [Accepting an offer](docs/VAULT.md#accepting-an-offer) |
+| 🏪 **List it on Seaport**, the vault as the seller: `VaultListings` writes the order the way OpenSea shows a contract's listing (Seaport 1.6, OpenSea's conduit, its signed zone and fees on mainnet, so it shows on opensea.io and is bought there; an open order anyone fills on Sepolia). Done on the mock and in the tests; awaits its Sepolia redeployment | [Seaport: list, fill, sync, collect](docs/VAULT.md#seaport-list-fill-sync-collect) |
+| 🤝 **Accept a buyer's WETH offer**, posted on the on-chain board `VaultOffers` (Seaport 1.6). OpenSea's own offers fill through it too, proven on a fork of mainnet; reading them from OpenSea's API is not built | [Accepting an offer](docs/VAULT.md#accepting-an-offer) |
 | 🪪 **Name a delegate** in delegate.xyz, so airdrops and token gates still reach you | [Delegation](docs/VAULT.md#delegation) |
 | 🤫 **Sell the box privately** for a cUSDC price only the two sides read | [Private sale](docs/VAULT.md#private-sale) |
 | 🎁 **Give the box**, and make its key yours | [Give a box](docs/VAULT.md#give-a-box-and-make-its-key-yours) |
@@ -260,13 +260,14 @@ decryptions it has left, as in the game (free today plus credits, read again as 
 spent; generous on Sepolia, fewer planned for mainnet, O48 in the audit checklist); a click on
 the address opens its profile (copy, explorer, its boxes, switch wallet, disconnect). Addresses
 and NFTs link to Etherscan, and to OpenSea where it shows the chain (mainnet: OpenSea has no
-testnet any more).
+testnet any more). On mainnet a listing is bought on OpenSea, which signs each purchase of an
+order behind its zone: the page shows "Buy on OpenSea" there, "Buy now" on Sepolia.
 
 ### Status of the vault
 
 | Part | Scope | State |
 | --- | --- | --- |
-| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, sold to a buyer's WETH offer the holder accepts (`VaultOffers`, also an on-chain offer board), or sold privately for an encrypted cUSDC price; meanwhile the NFT's rights (airdrops, token gates) lent to a wallet through delegate.xyz; every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs; a guided tour on the first visit (the "?" in the vault's bar plays it again) | **Live** on Sepolia since 2026-10-08, redeployed twice on 2026-10-09: requests no longer lock a box and a deposit sends decoys (block 11876345), then accepted offers and delegation (`SealedVault` block 11876575, `VaultOffers` 11876574, its test NFT kept) |
+| Sealed vault | `/vault`: any NFT of an allowed collection in a box whose holder is encrypted (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, sold to a buyer's WETH offer the holder accepts (`VaultOffers`, also an on-chain offer board), or sold privately for an encrypted cUSDC price; meanwhile the NFT's rights (airdrops, token gates) lent to a wallet through delegate.xyz; every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs; a guided tour on the first visit (the "?" in the vault's bar plays it again) | **Live** on Sepolia since 2026-10-08, redeployed twice on 2026-10-09: requests no longer lock a box and a deposit sends decoys (block 11876345), then accepted offers and delegation (`SealedVault` block 11876575, `VaultOffers` 11876574, its test NFT kept). The next version (2026-10-10), its listings written by `VaultListings` the way OpenSea shows them, is done on the mock and in the tests and awaits its Sepolia redeployment |
 | Pockets | "My pocket" on `/vault`, on the page's Tokens side (a Non-fungible / Fungible switch at the top; `#tokens` links to it): cUSDC in a pocket locked by a key rather than an address (`SealedPockets`), put in from a wallet, sent pocket to pocket, taken out to any address, each action naming the real pocket among decoys and settled under encryption with no decryption; a private sale offered to a pocket and bought with it (`PocketDesk`: an ask with one public bit, then the purchase; the box then held by the desk with the buyer's key); a sale's cUSDC cashed into the seller's pocket; relayed by the API; the home page's story alternates an NFT and tokens | **Live** on Sepolia since 2026-10-09 (`SealedPockets` block 11877902, `PocketDesk` 11877903); `smoke:pockets` passed there |
 | Pockets of other tokens | A token picker on "My pocket" (each token's logo): cUSDT, cWETH and cZAMA, Zama's ERC-7984 wrappers from its Confidential Token Wrappers Registry, each in its own `SealedPockets` without a desk (`lib/pocketTokens.ts`); one signature finds the wallet's pocket of every token, each with its own viewer; a faucet and a wrap for the test ERC-20s; the pouch, the amounts and each action's scene wear the token's logo; private sales stay in cUSDC | **Live** on Sepolia since 2026-10-09 (blocks 11878756 to 11878758); `smoke:pockets` passed there with cZAMA and cWETH |
 
@@ -311,12 +312,13 @@ Shared with the vault: USDC, cUSDC, `UsdcRamp` and `DecryptionCredits`. The game
 
 ### The vault's contracts
 
-Seaport 1.5 (`0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC`), the WETH OpenSea uses on Sepolia (`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`), delegate.xyz's registry (`0x00000000000000447e69651d841bD8D104Bed493`) and the pockets' confidential tokens (Zama's mocks, listed in its Confidential Token Wrappers Registry `0x2f0750Bbb0A246059d80e94c454586a7F27a128e`) are not ours. The vault's docs: [`docs/VAULT.md`](docs/VAULT.md).
+Seaport 1.5 (`0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC`, what the deployed vault lists on) and 1.6 (`0x0000000000000068F116a894984e2DB1123eB395`, with OpenSea's conduit `0x1E0049783F008A0085193E00003D00cd54003c71`, what the next one lists on), the WETH OpenSea uses on Sepolia (`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`), delegate.xyz's registry (`0x00000000000000447e69651d841bD8D104Bed493`) and the pockets' confidential tokens (Zama's mocks, listed in its Confidential Token Wrappers Registry `0x2f0750Bbb0A246059d80e94c454586a7F27a128e`) are not ours. The vault's docs: [`docs/VAULT.md`](docs/VAULT.md).
 
 | Contract | Address |
 | --- | --- |
 | `SealedVault` (any NFT, its holder encrypted; Seaport 1.5 as the vault, listings and accepted WETH offers, delegate.xyz delegation, 2.5% fee; owner and treasury `0x5908…029A`) | [`0xE22509e741233072aFF4e0c6B56d5e3De8018262`](https://sepolia.etherscan.io/address/0xE22509e741233072aFF4e0c6B56d5e3De8018262) (since 2026-10-09, block 11876575; before it [`0x27CA3698A34b53900047cD1D0856B954a695C79D`](https://sepolia.etherscan.io/address/0x27CA3698A34b53900047cD1D0856B954a695C79D), 2026-10-09, no offers nor delegation, and [`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18`](https://sepolia.etherscan.io/address/0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18), 2026-10-08, whose requests locked the box) |
 | `VaultOffers` (the vault's on-chain offer board; fills the offers the vault accepts) | [`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`](https://sepolia.etherscan.io/address/0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2) |
+| `VaultListings` (writes and keeps the listings' Seaport orders the way OpenSea shows them; on Sepolia Seaport 1.6 and OpenSea's conduit, no zone) | Not deployed yet: comes with the vault's next redeployment, with a new `SealedVault` and `VaultOffers` on Seaport 1.6 |
 | `SealedPockets` (cUSDC in pockets locked by a key; owner `0x5908…029A`) | [`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C`](https://sepolia.etherscan.io/address/0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C) |
 | `PocketDesk` (buys private sales out of pockets, holds what it bought) | [`0x0939D713429FCD1c5AF9589b121a8F77C49F759b`](https://sepolia.etherscan.io/address/0x0939D713429FCD1c5AF9589b121a8F77C49F759b) |
 | `SealedPockets_cUSDT` (cUSDT in pockets, no desk; token `0x4E7B…4491`) | [`0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`](https://sepolia.etherscan.io/address/0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe) |
@@ -450,7 +452,7 @@ index is [`docs/README.md`](docs/README.md).
 | | Document | What it answers |
 | --- | --- | --- |
 | 🐈 | [`docs/GAME.md`](docs/GAME.md) | **The game's hub**: every mechanic, opening a box, croquettes, the studio and the rats, the flea market, playing on Sepolia |
-| 🔐 | [`docs/VAULT.md`](docs/VAULT.md) | **The vault's hub**: any NFT with its holder hidden, keys, Seaport, offers, delegation, private sales, what leaks |
+| 🔐 | [`docs/VAULT.md`](docs/VAULT.md) | **The vault's hub**: any NFT with its holder hidden, keys, Seaport listings the way OpenSea shows them, offers, delegation, private sales, what leaks |
 | 🧱 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Packages, data flow, 3D pipeline |
 | 🕶️ | [`docs/HIDDEN_OWNERS.md`](docs/HIDDEN_OWNERS.md) | Encrypted owners, hidden mint quantity, milestones, what leaks, what it costs |
 | 🗂️ | [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | What is encrypted, who can read what, ACL on transfer |

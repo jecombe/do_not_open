@@ -80,7 +80,8 @@ flowchart LR
   flea -- "transferFrom (approved)" --> rats["Rats<br/>ERC-721"]
   flea -- "pulls and pays" --> cusdc
   base -- "inherited by" --> vault["SealedVault<br/>any NFT in a box, encrypted keys,<br/>requests, private sales"]
-  vault -- "validate, cancel (vault as offerer)" --> seaport["Seaport 1.5"]
+  vault -- "prepare, cancelCall" --> listings["VaultListings<br/>the orders, the way OpenSea shows them"]
+  vault -- "validate, cancel (vault as offerer)" --> seaport["Seaport 1.6 (1.5 locally)"]
   vault -- "pulls and pays (private sales)" --> cusdc
 ```
 
@@ -101,7 +102,9 @@ anyone else, through its encrypted owner slot. It reads the box's public state t
 
 `SealedVault` is a second Confidential ERC-721, next to the game and linked to none of its
 contracts: it inherits `ConfidentialERC721`, holds the NFTs of the collections its owner allows,
-lists them on Seaport 1.5 as their seller, and settles private sales in the same cUSDC. Each box
+lists them on Seaport as their seller (the orders written and kept by `VaultListings` the way
+OpenSea shows a contract's listing, so they show on opensea.io on mainnet), and settles private
+sales in the same cUSDC. Each box
 has an encrypted key, compared under encryption, so a request can come from any wallet. See
 [VAULT.md](VAULT.md).
 
