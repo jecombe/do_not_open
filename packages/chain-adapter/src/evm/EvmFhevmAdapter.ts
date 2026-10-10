@@ -362,7 +362,8 @@ function revealedFrom(c: { seed: bigint; state: bigint; traits: bigint[]; score:
  * Sends every transaction with a quarter more gas than the node estimates. An FHE call (an input
  * proof checked, ACL grants written) uses a little more on Sepolia than the estimate taken a block
  * earlier, and a pocket's `open` ran out of gas with the estimate as its limit on 2026-10-10
- * (958,368 used of 958,368); a limit costs nothing unless it is used.
+ * (958,368 used of 958,368); a limit costs nothing unless it is used. Applied to the collection's
+ * contract in `send` and to every other contract in `writer`.
  */
 function withGasMargin(signer: Signer): Signer {
   return new Proxy(signer, {
@@ -2157,8 +2158,9 @@ export class EvmFhevmAdapter implements ChainAdapter {
     await this.send(opts, () => this.writer(router)["multicall(uint256,bytes[])"]!(deadline, [swap]));
   }
 
+  /** A contract to send to: with the gas margin, as every send (a pocket's `open` from a second wallet ran out without it on 2026-10-10). */
   private writer(deployed: Deployed): Contract {
-    return new Contract(deployed.address, deployed.abi, this.dry ?? this.signer());
+    return new Contract(deployed.address, deployed.abi, this.dry ?? withGasMargin(this.signer()));
   }
 
   private async ensureAllowance(token: Deployed, spender: string, account: Address, amount: bigint, opts?: ActionOptions): Promise<void> {
