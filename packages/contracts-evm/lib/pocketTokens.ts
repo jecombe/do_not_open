@@ -15,3 +15,7 @@ export const POCKET_TOKENS: Record<string, { symbol: string; token: string }[]> 
 
 /** The deployment name of a token's pockets. */
 export const pocketsDeployment = (symbol: string) => `SealedPockets_${symbol}`;
+
+/** The other tokens' symbols with pockets on a network: a local network's test cWETH when none is listed. */
+export const otherPocketSymbols = (network: string, chainId: number | undefined) =>
+  (POCKET_TOKENS[network] ?? []).map((t) => t.symbol).concat(chainId === 31337 && !POCKET_TOKENS[network]?.length ? ["cWETH"] : []);

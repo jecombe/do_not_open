@@ -342,6 +342,7 @@ export class MockAdapter implements ChainAdapter {
     this.vault_ = new MockVault({
       account: () => this.me,
       nightShift: MOCK_NIGHT_SHIFT,
+      you: MOCK_YOU,
       now: this.now,
       send: (o, call) => this.send(o, call),
       publish: (o, call) => this.publish(o, call),

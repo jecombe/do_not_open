@@ -3,7 +3,9 @@ import type { ChainAdapter } from "./types";
 
 export * from "./types";
 export * from "./vault";
+export * from "./liquidity";
 export { MOCK_VAULT, MOCK_VAULT_NFT, MOCK_POCKETS, MOCK_DESK } from "./mock/MockVault";
+export { MOCK_POSITIONS } from "./mock/MockPositions";
 export { traitIndexAtOffset } from "./layout";
 export { duelSettles, duelUnderway, onShelf, shelfBoxes } from "./duels";
 export * from "./standings";

@@ -15,9 +15,11 @@ import {
 import { ChainError, sameAddress, type ActionOptions, type Address, type TxRecord } from "../types";
 import { decoySends } from "../decoys";
 import { EvmPockets, pocketKeyMessage, pocketTokenOf, type PocketsDeployment, type PocketTokenDeployment } from "./EvmPockets";
+import { EvmPositions, type PositionsDeployment } from "./EvmPositions";
 import type {
   PocketsAdapter,
   PocketToken,
+  PositionsAdapter,
   VaultAdapter,
   VaultBox,
   VaultBoxState,
@@ -49,6 +51,8 @@ export interface VaultDeployment extends Deployed {
   pockets?: PocketsDeployment | null;
   /** Pockets of Zama's other confidential tokens: the same contract and ABI, without a desk. */
   otherPockets?: { address: string; deployBlock?: number | null; token: PocketTokenDeployment }[];
+  /** Uniswap V3 positions funded out of the pockets, where they are deployed. */
+  positions?: PositionsDeployment | null;
 }
 
 type InputBuilder = { addBool(v: boolean): InputBuilder; add32(v: number): InputBuilder; add64(v: bigint): InputBuilder; add256(v: bigint): InputBuilder };
@@ -179,6 +183,7 @@ export class EvmVault implements VaultAdapter {
   private readonly board: Contract;
   private master: { account: Address; secret: string } | null = null;
   private readonly pocketsBy = new Map<string, EvmPockets>();
+  private positions_: EvmPositions | null = null;
   /** The signature every token's pocket keys come from, once a session. */
   private pocketSig: { account: Address; signature: Promise<string> } | null = null;
   private holdings: { account: Address; block: number; held: Set<number>; seen: Set<string> } | null = null;
@@ -220,6 +225,24 @@ export class EvmVault implements VaultAdapter {
       this.pocketsBy.set(deployed.address, p);
     }
     return p;
+  }
+
+  positions(): PositionsAdapter | null {
+    const deployed = this.deployed.positions;
+    if (!deployed || !this.deployed.pockets) return null;
+    this.positions_ ??= new EvmPositions(
+      deployed,
+      {
+        pocketTokens: () => this.pocketTokens(),
+        pocketsOf: (underlying) => {
+          const token = this.pocketTokens().find((t) => sameAddress(t.underlying.address, underlying));
+          return token ? (this.pockets(token.symbol) as EvmPockets | null) : null;
+        },
+        pocketSignature: (opts) => this.pocketSignature(opts),
+      },
+      { ...this.t, relayed: (opts, call, sendIt, announce) => this.relayed(opts, call, sendIt, announce), pocketSignature: (opts) => this.pocketSignature(opts) },
+    );
+    return this.positions_;
   }
 
   /** One signature for every token's pocket: the message names the cUSDC pockets, as it always did. */

@@ -474,14 +474,31 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
           // Pockets of Zama's other confidential tokens (cUSDT, cWETH, cZAMA): the same contract
           // and ABI as the pockets above, without a desk.
           otherPockets: await (async () => {
-            const { POCKET_TOKENS, pocketsDeployment } = await import("../lib/pocketTokens");
+            const { otherPocketSymbols, pocketsDeployment } = await import("../lib/pocketTokens");
             const out = [];
-            for (const { symbol } of POCKET_TOKENS[hre.network.name] ?? []) {
+            for (const symbol of otherPocketSymbols(hre.network.name, hre.network.config.chainId)) {
               const p = await hre.deployments.getOrNull(pocketsDeployment(symbol));
               if (p) out.push({ address: p.address, deployBlock: p.receipt?.blockNumber ?? null, token: await pocketToken(p.address) });
             }
             return out;
           })(),
+          // Uniswap V3 positions funded out of the pockets, the Uniswap they live on and the
+          // pools the deploy opened between the pockets' tokens.
+          positions: await hre.deployments.getOrNull("SealedPositions").then(async (p) => {
+            if (!p) return null;
+            const linked = (await hre.deployments.getOrNull("PositionPools"))?.linkedData as
+              | { uniswap: { factory: string; positionManager: string; swapRouter: string }; pools: { address: string; token0: string; token1: string; fee: number }[] }
+              | undefined;
+            return {
+              address: p.address,
+              abi: p.abi,
+              deployBlock: p.receipt?.blockNumber ?? null,
+              uniswap: linked?.uniswap ?? null,
+              // SwapRouter02 on live networks (no deadline in its params), Uniswap's first router locally.
+              routerVersion: hre.network.config.chainId === 31337 ? 1 : 2,
+              pools: linked?.pools ?? [],
+            };
+          }),
         };
       }),
     };

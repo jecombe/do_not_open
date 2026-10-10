@@ -34,8 +34,12 @@ import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984
 ///     the receiving set moves nothing, without a revert: to everyone else, a spend that moved
 ///     and one that did not look the same. No decryption is needed, so nothing waits for a proof.
 ///
-///  4. `desk` (`PocketDesk`) pays and is paid for the sealed vault's private sales out of pockets,
-///     through `deskTake` and `deskGive`; it is the only other contract allowed to move a balance.
+///  4. Desks are the only other contracts allowed to move a balance, added by the owner and never
+///     removed: `PocketDesk` pays and is paid for the sealed vault's private sales out of pockets,
+///     `SealedPositions` funds Uniswap positions out of them and pays their fees back in. A desk
+///     takes only from a pocket whose key it brings (`deskTake`, `deskTakeFrom`), and credits only
+///     what it pays in, pulled from its own balance (`deskGive`, `deskGiveTo`): a desk can neither
+///     spend a pocket without its key nor credit one out of thin air.
 ///
 ///  5. What is public: which wallet deposited into which set of pockets (not the amount when it
 ///     comes as cUSDC from a confidential balance), which sets each spend named, the address a
@@ -68,8 +72,9 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     uint256 public constant MAX_SET = 5;
 
     IERC7984 public immutable token;
-    /// @notice Pays and is paid for the vault's private sales out of pockets. Set once.
-    address public desk;
+    /// @notice The contracts that move balances for their holders (the vault's desk, the
+    ///         positions). Added by the owner, never removed.
+    mapping(address desk => bool) public isDesk;
 
     uint256 public pocketCount;
     mapping(uint256 pocketId => Pocket) private _pockets;
@@ -93,7 +98,7 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     event Sent(uint256[] from, uint256[] to);
     /// @notice A pocket of `from` may have paid `to`.
     event Withdrawn(uint256[] from, address indexed to);
-    event DeskSetTo(address desk);
+    event DeskAdded(address desk);
 
     constructor(IERC7984 token_, address owner_) Ownable(owner_) {
         if (address(token_) == address(0)) revert ZeroAddress();
@@ -159,10 +164,9 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
 
     // ------------------------------------------------------------------- desk
 
-    /// @notice The desk takes `amount` out of `pocketId` if `key` is its key and the balance
-    ///         covers it, nothing otherwise, and receives what it took.
-    function deskTake(uint256 pocketId, euint256 key, euint64 amount) external returns (euint64 taken) {
-        if (msg.sender != desk) revert OnlyDesk();
+    /// @notice A desk takes `amount` out of `pocketId` if `key` is its key and the balance covers
+    ///         it, nothing otherwise, and receives what it took.
+    function deskTake(uint256 pocketId, euint256 key, euint64 amount) external onlyDesk returns (euint64 taken) {
         Pocket storage p = _pocket(pocketId);
         ebool ok = FHE.and(FHE.eq(key, p.key), FHE.ge(p.balance, amount));
         taken = FHE.select(ok, amount, FHE.asEuint64(0));
@@ -171,27 +175,44 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
         FHE.allowTransient(taken, msg.sender);
     }
 
-    /// @notice Whether `key` is `pocketId`'s key and its balance covers `amount`, for the desk to
+    /// @notice A desk takes `amount` out of the pocket of `set` whose key is `key`, if its balance
+    ///         covers it, and receives what it took: `amount` or 0. Which pocket paid is encrypted.
+    function deskTakeFrom(uint256[] calldata set, euint256 key, euint64 amount) external onlyDesk returns (euint64 taken) {
+        _checkSet(set);
+        taken = _debit(set, key, amount, FHE.asEbool(true));
+        _pay(msg.sender, taken);
+        FHE.allowTransient(taken, msg.sender);
+    }
+
+    /// @notice Whether `key` is `pocketId`'s key and its balance covers `amount`, for a desk to
     ///         make public before a purchase.
-    function deskCheck(uint256 pocketId, euint256 key, euint64 amount) external returns (ebool ok) {
-        if (msg.sender != desk) revert OnlyDesk();
+    function deskCheck(uint256 pocketId, euint256 key, euint64 amount) external onlyDesk returns (ebool ok) {
         Pocket storage p = _pocket(pocketId);
         ok = FHE.and(FHE.eq(key, p.key), FHE.ge(p.balance, amount));
         FHE.allowTransient(ok, msg.sender);
     }
 
-    /// @notice The desk pays `amount` into `pocketId`: it sends the tokens first.
-    function deskGive(uint256 pocketId, euint64 amount) external {
-        if (msg.sender != desk) revert OnlyDesk();
+    /// @notice A desk pays `amount` into `pocketId`, pulled from its own balance (this contract is
+    ///         its operator): only what arrives is credited.
+    function deskGive(uint256 pocketId, euint64 amount) external onlyDesk {
         Pocket storage p = _pocket(pocketId);
-        _setBalance(p, FHE.add(p.balance, amount));
+        _setBalance(p, FHE.add(p.balance, _pull(amount)));
     }
 
-    function setDesk(address desk_) external onlyOwner {
-        if (desk != address(0)) revert DeskSet();
+    /// @notice A desk pays `amount` into the pocket of `set` numbered `target`, both encrypted,
+    ///         pulled from its own balance. What finds no pocket (a target outside the set) goes
+    ///         back to the desk.
+    function deskGiveTo(uint256[] calldata set, euint32 target, euint64 amount) external onlyDesk {
+        _checkSet(set);
+        euint64 left = _credit(set, target, _pull(amount));
+        _pay(msg.sender, left);
+    }
+
+    function addDesk(address desk_) external onlyOwner {
         if (desk_ == address(0)) revert ZeroAddress();
-        desk = desk_;
-        emit DeskSetTo(desk_);
+        if (isDesk[desk_]) revert DeskSet();
+        isDesk[desk_] = true;
+        emit DeskAdded(desk_);
     }
 
     // ------------------------------------------------------------------ views
@@ -215,6 +236,17 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     }
 
     // -------------------------------------------------------------- internals
+
+    modifier onlyDesk() {
+        if (!isDesk[msg.sender]) revert OnlyDesk();
+        _;
+    }
+
+    /// @dev What a desk sends this contract out of its own balance: `amount`, or 0 if it holds less.
+    function _pull(euint64 amount) private returns (euint64 pulled) {
+        FHE.allowTransient(amount, address(token));
+        pulled = token.confidentialTransferFrom(msg.sender, address(this), amount);
+    }
 
     function _pocket(uint256 pocketId) private view returns (Pocket storage p) {
         if (pocketId >= pocketCount) revert NotAPocket(pocketId);

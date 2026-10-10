@@ -450,10 +450,13 @@ describe("SealedPockets", function () {
       await expect(pockets.connect(alice).deposit([pa, pb], d.handles[0]!, d.handles[1]!, d.inputProof)).to.emit(pockets, "Deposited").withArgs(alice.address, [pa, pb]);
     });
 
-    it("leaves the desk unset until the owner sets it, once", async function () {
-      expect(await pockets.desk()).to.eq(ethers.ZeroAddress);
-      await expect(pockets.connect(alice).setDesk(alice.address)).to.be.revertedWithCustomError(pockets, "OwnableUnauthorizedAccount");
-      await expect(pockets.setDesk(ethers.ZeroAddress)).to.be.revertedWithCustomError(pockets, "ZeroAddress");
+    it("has no desk until the owner adds one, each once", async function () {
+      expect(await pockets.isDesk(alice.address)).to.eq(false);
+      await expect(pockets.connect(alice).addDesk(alice.address)).to.be.revertedWithCustomError(pockets, "OwnableUnauthorizedAccount");
+      await expect(pockets.addDesk(ethers.ZeroAddress)).to.be.revertedWithCustomError(pockets, "ZeroAddress");
+      await expect(pockets.addDesk(alice.address)).to.emit(pockets, "DeskAdded").withArgs(alice.address);
+      expect(await pockets.isDesk(alice.address)).to.eq(true);
+      await expect(pockets.addDesk(alice.address)).to.be.revertedWithCustomError(pockets, "DeskSet");
     });
   });
 
@@ -484,7 +487,7 @@ describe("SealedPockets", function () {
       await (await vault.setCollection(await nft.getAddress(), true)).wait();
       desk = (await (await ethers.getContractFactory("PocketDesk")).deploy(addr, vaultAddress)) as unknown as PocketDesk;
       deskAddress = await desk.getAddress();
-      await (await pockets.setDesk(deskAddress)).wait();
+      await (await pockets.addDesk(deskAddress)).wait();
     });
 
     /** Bob seals NFT `tokenId` and offers its box to the desk, reserved for `pocket`. */
@@ -753,7 +756,9 @@ describe("SealedPockets", function () {
       await expect(pockets.connect(alice).deskGive(pa, ethers.ZeroHash)).to.be.revertedWithCustomError(pockets, "OnlyDesk");
       await expect(pockets.connect(alice).deskTake(pa, ethers.ZeroHash, ethers.ZeroHash)).to.be.revertedWithCustomError(pockets, "OnlyDesk");
       await expect(pockets.connect(alice).deskCheck(pa, ethers.ZeroHash, ethers.ZeroHash)).to.be.revertedWithCustomError(pockets, "OnlyDesk");
-      await expect(pockets.setDesk(alice.address)).to.be.revertedWithCustomError(pockets, "DeskSet");
+      await expect(pockets.connect(alice).deskTakeFrom([pa], ethers.ZeroHash, ethers.ZeroHash)).to.be.revertedWithCustomError(pockets, "OnlyDesk");
+      await expect(pockets.connect(alice).deskGiveTo([pa], ethers.ZeroHash, ethers.ZeroHash)).to.be.revertedWithCustomError(pockets, "OnlyDesk");
+      await expect(pockets.addDesk(deskAddress)).to.be.revertedWithCustomError(pockets, "DeskSet");
     });
 
     const carolAddress = () => ethers.Wallet.createRandom().address;
