@@ -208,8 +208,10 @@ What it leaks, on top of what any `ConfidentialERC721` leaks: the deposit names 
 (a plain NFT transfer); the address an NFT or a sale's ETH is sent to; a request's sender when
 it is not the relayer; `setKey`'s caller (not whether it took effect); a private sale's seller
 and buyer (not its price, not whether the box moved: that is decided under encryption, readable
-by the two sides only). A Seaport listing shows the NFT and the price with the vault as the
-seller; an accepted offer, as any Seaport fill, its buyer and amount and where the ETH went. A
+by the two sides only). A Seaport listing shows the NFT, the price and the fees (OpenSea's, the
+creator's) with the vault as the seller, on OpenSea itself on mainnet, where it is written the
+way OpenSea shows a contract's listing (`VaultListings`); an accepted offer, as any Seaport
+fill, its buyer and amount and where the ETH went. A
 box's delegate is public: a fresh wallet says nothing about the holder, their main wallet would
 name them. See [VAULT.md](VAULT.md).
 
@@ -248,7 +250,7 @@ pockets of different tokens have different viewers, so nothing ties them togethe
 | The duel ranking and its rosettes | nothing new: boxes ranked by the outcomes `DuelResolved` already publishes, never by holder |
 | Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
 | A whitelist gift (`WhitelistGifts.claim`) | that the wallet is on the frozen list, its tier, the gift box's id (the wallet held it then: `BoxGifted` names it) and its rat. Not how many croquettes it drew |
-| The sealed vault (`SealedVault`) | the depositor of each NFT, the NFT in each box, Seaport listings and their buyers, buyers' offers (`VaultOffers`) and an accepted one's buyer and amount, a box's delegate, a request's sender (the relayer, or the wallet without one), action and terms, whether its key matched, where an NFT or a sale's ETH went, `setKey`'s caller, a private sale's seller and buyer. Not who holds a box, its key, a private sale's price, nor whether a private sale or a transfer moved it |
+| The sealed vault (`SealedVault`) | the depositor of each NFT, the NFT in each box, Seaport listings (price, fees, end time; on OpenSea itself on mainnet) and their buyers, buyers' offers (`VaultOffers`) and an accepted one's buyer and amount, a box's delegate, a request's sender (the relayer, or the wallet without one), action and terms, whether its key matched, where an NFT or a sale's ETH went, `setKey`'s caller, a private sale's seller and buyer. Not who holds a box, its key, a private sale's price, nor whether a private sale or a transfer moved it |
 | An X boarding pass (off-chain, filed by the API) | the boarding tweet itself, public on X: that this X account wants a place. The wallet a player chooses to link to it stays in the API, never shown; that link ties an X identity to the wallet's public facts (duels, openings), so the page says a game-only wallet keeps a player anonymous. The Discord account that ran `/board` is kept the same way, private: the server's members can see that someone ran a command, not the code nor the reply. The pass whose referral link a pass started from is kept by the API too, never public (the code itself is, in the boarding tweet), and no route ranks the referrers |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus
@@ -306,17 +308,15 @@ Measured on the local FHEVM, which runs the same host contracts as Sepolia and m
 | `RatTricks.sniff` (a tricked box, power-1 rebate) | 1,789,000 | 4,269,000 |
 | `FleaMarket.list` (rat) | 139,000 | 0 |
 | `SealedVault.deposit` | 392,000 to 469,000 | 83,000 |
-| `SealedVault.request` + `finalize` (withdraw) | 323,000 + 152,000 | 191,000 |
-| `SealedVault.request` + `finalize` (list on Seaport) | 349,000 + 317,000 to 334,000 | 191,000 |
-| `SealedVault.request` + `finalizeOffer` (accept a WETH offer) | 289,000 to 375,000 + 399,000 | 191,000 |
-| `SealedVault.request` + `finalize` (delegate: first / replacing one) | 289,000 to 375,000 + 294,000 / 269,000 | 191,000 |
+| `SealedVault.request` (any action) + `finalize` (a wrong key the least, a listing the most: since `VaultListings`, one more contract call and the conduit's approval; see [VAULT.md](VAULT.md#cost)) | 291,000 to 379,000 + 101,000 to 606,000 | 191,000 |
+| `SealedVault.request` + `finalizeOffer` (accept a WETH offer; the most through OpenSea's zone and conduit) | 291,000 to 379,000 + 145,000 to 426,000 | 191,000 |
 | `SealedVault.confidentialTransfer` (a new random key) | 209,000 to 266,000 | 338,000 |
 | `SealedVault.setKey` | 185,000 | 225,000 |
 | `SealedVault.acceptSale` (private sale) | 1,660,000 | 4,342,000 |
 
 The `SealedVault` rows are not in `test/Costs.ts` yet: they were measured on the same local
-FHEVM, against Seaport 1.5's bytecode, with `fhevm.computeTransactionHCU` (the rest in
-[VAULT.md](VAULT.md#cost)).
+FHEVM, against Seaport 1.5's and 1.6's bytecode (the latter with OpenSea's conduit), with
+`fhevm.computeTransactionHCU` (the rest in [VAULT.md](VAULT.md#cost)).
 
 Every transaction stays well under the protocol limits (20M HCU, 5M depth); a full 10-box
 `Pantry.claim` measures about 14.8M HCU. The price in dollars is gas × gas price × ETH price:

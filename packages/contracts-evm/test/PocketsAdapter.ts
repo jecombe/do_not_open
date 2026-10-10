@@ -7,7 +7,7 @@ import { EvmPockets, type EvmPocketsTools } from "../../chain-adapter/src/evm/Ev
 import type { VaultBox } from "../../chain-adapter/src/vault";
 import { PocketDesk, SealedPockets, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC } from "../types";
 import { confidentialUsdcOf, usd } from "./helpers";
-import { installDelegateRegistry, installSeaport } from "./seaport";
+import { deployOpenListings, installDelegateRegistry, installSeaport } from "./seaport";
 
 const STATES: VaultBox["state"][] = ["sealed", "sealed", "listed", "sold", "withdrawn", "claimed"];
 const PERMIT_DAYS = 1;
@@ -155,7 +155,7 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     const offers = await (await ethers.getContractFactory("VaultOffers")).deploy(await seaport.getAddress(), await weth.getAddress());
     nft = (await (await ethers.getContractFactory("TestERC721")).deploy()) as unknown as TestERC721;
     vault = (await (await ethers.getContractFactory("SealedVault")).deploy(
-      await seaport.getAddress(), await cUsdc.getAddress(), await offers.getAddress(), await registry.getAddress(), deployer.address, deployer.address, 250,
+      await (await deployOpenListings(seaport)).getAddress(), await cUsdc.getAddress(), await offers.getAddress(), await registry.getAddress(), deployer.address, deployer.address, 250,
     )) as unknown as SealedVault;
     await (await vault.setCollection(await nft.getAddress(), true)).wait();
     pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address)) as unknown as SealedPockets;

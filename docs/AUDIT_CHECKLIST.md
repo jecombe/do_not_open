@@ -34,7 +34,7 @@ on 2026-10-04, block 11842636); `FleaMarket.sol`, the players' marketplace for b
 rats (section 12; at `0xF16bEF038c27C4cE9E7469500B46e1CA60E76F92` since 2026-10-08, before it
 `0x4E9fC2Cb042d7Bd49B559Ad3e1110c200d7081C1` on 2026-10-07 and
 `0xb5c799bF626e70DcE6804BDef06199661cDc8665` on 2026-10-05, block 11849253); `SealedVault.sol`,
-`vault/VaultOffers.sol`, `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol`, the sealed vault next to the game (section 15, at `0xE22509e741233072aFF4e0c6B56d5e3De8018262` on Sepolia since 2026-10-09, block 11876575, with `VaultOffers` at `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`; before it `0x27CA3698A34b53900047cD1D0856B954a695C79D`, 2026-10-09, block 11876345, with no offers nor delegation, and `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08, whose requests locked the box); plus the parts of
+`vault/VaultListings.sol`, `vault/VaultOffers.sol`, `vault/ISeaport.sol` and `vault/IDelegateRegistry.sol` (with `mocks/TestZone.sol`, `lib/opensea.ts` and `tasks/opensea.ts`), the sealed vault next to the game (section 15, at `0x79E6a86b448311ec580402701d4cb5B68c56718c` on Sepolia since 2026-10-10, block 11885012, with `VaultListings` at `0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb` and `VaultOffers` at `0x43B2e0d7a75100545556BAD1B9Fa6f926721898A`; before it `0xE22509e741233072aFF4e0c6B56d5e3De8018262`, 2026-10-09, block 11876575, with `VaultOffers` `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`, on Seaport 1.5 with listings it wrote itself, then `0x27CA3698A34b53900047cD1D0856B954a695C79D`, 2026-10-09, block 11876345, with no offers nor delegation, and `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08, whose requests locked the box); plus the parts of
 the adapter and the metadata pipeline that could leak or mislead. Since 2026-10-07 the deployer
 `0x590891F269720001435004A1089cAB5b2c20029A` owns every contract (before, the collection's owner
 was `0x6a18cFC3fAeef453B295B12246d40a82593b3208`). The Sepolia deployment at
@@ -89,8 +89,8 @@ mainnet), **Not done** (a check nobody has run).
 | O39 | The vault relayer is one hot key on the API, paying the gas: it can refuse or fall behind (the page then sends from the wallet, whose address shows), and its daily cap is per replica | Low (availability, privacy) | `apps/api` `VaultRelay` |
 | O40 | A box key is derived from one wallet signature of a fixed message: a site that gets that signature can take out every NFT the wallet holds in the vault | Medium (keys) | `EvmVault.keyFor`, `vaultKeyMessage` |
 | O41 | The owner allows the vault's collections: `deposit` trusts the collection's `transferFrom`, so a malicious one could mint boxes backed by nothing; and the Seaport fee is read at `sync`, so a fee raised after a listing (at most 10%) cuts the seller's ETH | Medium (trust) | `SealedVault.setCollection`, `setFee`, `_sync` |
-| O42 | Vault listings are validated on-chain and never posted to OpenSea's API: OpenSea's website may not show them (its testnet site may not show Sepolia at all). Not checked | Low (UX) | `SealedVault._list` |
-| O43 | The vault accepts Seaport 1.5 offers in WETH only, with fixed amounts and no tips: OpenSea's mainnet offers (Seaport 1.6, through its zone) cannot be filled, and the board refuses trait offers (a criteria root other than 0) | Low (UX) | `VaultOffers.inspect`, `post` |
+| O42 | Vault listings are validated on-chain and never posted to OpenSea's API. Since 2026-10-10 `VaultListings` writes them the way OpenSea shows a contract's listing on mainnet (Seaport 1.6, OpenSea's conduit, its signed zone, its fee), which OpenSea ingests from `OrderValidated`: verified against two live contract listings (TokenWorks' `0xd0cC2b0eFb168bFe1f94a948D8df70FA10257196` and `0x3ca20831EBea5C99AA6E574D83f0A7C733F7e4D0`, "Buy now" on opensea.io), not yet with a vault listing on mainnet. The trade-off: such a listing is bought on OpenSea only (its zone signs each fill) and OpenSea may decline; the owner must set each collection's fees as OpenSea asks (`setFees`) or it may not show the listing. Sepolia's listings (no zone) show nowhere but the page | Low (UX) | `SealedVault._list`, `VaultListings.prepare`, `setFees` |
+| O43 | The vault accepts WETH offers only, with fixed amounts and no tips, and the board refuses trait offers (a criteria root other than 0). OpenSea's own mainnet offers (Seaport 1.6, through its signed zone and conduit) fill through `VaultOffers` unchanged, proven on a fork of mainnet with `dno:opensea-replay` (a real fill replayed with `VaultOffers` in the filler's place); what is missing is the API side, reading them from OpenSea and asking it the zone's `extraData` right before `finalizeOffer` (an API key) | Low (UX) | `VaultOffers.inspect`, `post`, `tasks/opensea.ts` |
 | O44 | A vault box keeps its delegate when it changes hands (clearing it on a transfer would let anyone clear any box's delegate with a transfer that moves nothing): the previous holder's delegate keeps the NFT's rights in delegate.xyz until the new holder names their own. The delegate is public | Low (rights, privacy) | `SealedVault._delegate`, `_transfer` |
 | O45 | The pockets' sets are public: a pocket named in many actions, or always among the same few, can be singled out by intersecting its sets; a deposit names its wallet, a withdrawal its address. The hiding grows with the number of pockets and the decoys each action names | Medium (privacy) | `SealedPockets`, `pocketSet` |
 | O46 | A pocket's key and viewer come from one wallet signature of a fixed message: a site that gets that signature can spend the pocket and read its balance | Medium (keys) | `EvmPockets.keys`, `pocketKeyMessage` |
@@ -468,24 +468,34 @@ through its `guard`. 17 tests in `test/RatTricks.ts` on the FHEVM mock, against 
 ## 15. The sealed vault: SealedVault
 
 `SealedVault.sol` puts any NFT of an allowed collection in a box whose holder is encrypted,
-lists it on Seaport 1.5 with the vault as the offerer, accepts buyers' WETH offers through
+lists it on Seaport with the vault as the offerer (the order written and kept by
+`VaultListings` the way OpenSea shows a contract's listing: Seaport 1.6, OpenSea's conduit, its
+signed zone and fees on mainnet, an open order on Sepolia), accepts buyers' WETH offers through
 `VaultOffers` (also the offer board), names a box's delegate in delegate.xyz's registry, and
 sells boxes privately in cUSDC (see [VAULT.md](VAULT.md)). On Sepolia at
-`0xE22509e741233072aFF4e0c6B56d5e3De8018262` and `VaultOffers` at
-`0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2` since 2026-10-09 (before it
+`0x79E6a86b448311ec580402701d4cb5B68c56718c`, with `VaultListings` at
+`0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb` and `VaultOffers` at
+`0x43B2e0d7a75100545556BAD1B9Fa6f926721898A`, since 2026-10-10 (before it
+`0xE22509e741233072aFF4e0c6B56d5e3De8018262` with `VaultOffers` `0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2`,
+2026-10-09, on Seaport 1.5 with listings the vault wrote itself;
 `0x27CA3698A34b53900047cD1D0856B954a695C79D`, the same day, and
-`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08). 62 tests in `test/SealedVault.ts`, on the
-FHEVM mock, against Seaport 1.5's runtime bytecode read from Sepolia (`test/seaport.ts`,
-`test/fixtures/seaport-1.5.json`) and delegate.xyz's Registry v2
-(`test/fixtures/delegate-registry-v2.json`), with `TestWETH`; the relayer's in
-`apps/api/test/vaultRelay.test.ts`.
+`0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` from 2026-10-08). 70 tests in
+`test/SealedVault.ts`, on the FHEVM mock, against Seaport 1.5's runtime bytecode read from
+Sepolia (`test/seaport.ts`, `test/fixtures/seaport-1.5.json`), Seaport 1.6's, its
+ConduitController's and OpenSea's conduit's read from mainnet with their storage
+(`test/fixtures/seaport-1.6.json`; `mocks/TestZone.sol` stands in for OpenSea's signed zone at
+its address, saying yes, as the real one wants OpenSea's server's signature) and delegate.xyz's
+Registry v2 (`test/fixtures/delegate-registry-v2.json`), with `TestWETH`; the relayer's in
+`apps/api/test/vaultRelay.test.ts`. OpenSea's own offers are replayed against a fork of mainnet
+with `dno:opensea-replay` (`tasks/opensea.ts`).
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Seaport can fill only the orders the vault validated | Pass | The vault never signs and implements no ERC-1271: an order with the vault as offerer is fillable only once `seaport.validate` ran from the vault (`_list`), and `cancel` (`_unlist`) is the offerer's. Test: "lists with the vault as the seller, and the key's holder collects the ETH" checks `isValidated` and the offerer; "unlisting cancels the order on Seaport" |
-| Seaport is approved for one token, only while it is listed | Pass | `approve(seaport, tokenId)` in `_list`; `approve(0)` in `_unlist` and when `_sync` finds the listing expired; no `setApprovalForAll`, no conduit (`conduitKey` zero). Tests: "unlisting cancels…", "a listing that runs out leaves the box sealed again" |
-| The order pays the vault, in full, in ETH | Pass | One `NATIVE` consideration item, `startAmount == endAmount == price`, recipient the vault; `FULL_OPEN`, no zone. Test: "lists with the vault as the seller…" checks the proceeds and the fee to the wei |
-| Only Seaport and `VaultOffers` send the vault ETH | Pass | `receive` reverts `OnlySeaport` for anyone else; `VaultOffers.receive` takes ETH from WETH only (its unwrap). Test: "takes ETH from Seaport only" |
+| Seaport can fill only the orders the vault validated | Pass | The vault never signs and implements no ERC-1271: `VaultListings.prepare` writes the order with its caller as the offerer and returns the `validate` calldata, which the vault itself sends to Seaport (`_list`, `_seaport`; `SeaportRefused` if Seaport reverts), so an order with the vault as offerer is fillable only once the vault validated it, and `cancel` (`_unlist`, from `cancelCall`) is the offerer's. Tests: "lists with the vault as the seller, and the key's holder collects the ETH" checks `isValidated` and the offerer; "unlisting cancels the order on Seaport"; "withdrawing a listed box cancels its order on Seaport 1.6" |
+| The operator is approved for one token, only while it is listed | Pass | `approve(listings.operator(), tokenId)` in `_list`: OpenSea's conduit on Sepolia and mainnet (the conduit moves the NFT for Seaport, as for any OpenSea listing), Seaport itself where there is no conduit; `approve(0)` in `_unlist` and when `_sync` finds the listing expired; no `setApprovalForAll`. Tests: "unlisting cancels…", "a listing that runs out leaves the box sealed again", "lists on Seaport 1.6 through OpenSea's conduit and signed zone…" |
+| The order pays the vault `net` first, then the fees, in ETH | Pass | `NATIVE` consideration items, `startAmount == endAmount`: the vault's share (`price` less the collection's fees) to the vault first, then one item per fee set on the collection (OpenSea's, the creator's), fixed by `VaultListings` at `prepare` and kept per order hash. `FULL_OPEN` without a zone; `FULL_RESTRICTED` with OpenSea's signed zone on mainnet. Tests: "lists with the vault as the seller…" (no fees: `net == price`) checks the proceeds and the fee to the wei; "lists on Seaport 1.6 through OpenSea's conduit and signed zone, the fees paid to their recipients" checks each recipient's ETH; "a listing keeps the fees it was made with, and still comes down after they change"; "lists an open order anyone fills, the NFT moved by OpenSea's conduit, no fee but the vault's" (as on Sepolia) |
+| Only Seaport and `VaultOffers` send the vault ETH | Pass | `receive` reverts `OnlySeaport` for anyone else (`VaultListings` never holds ETH); `VaultOffers.receive` takes ETH from WETH only (its unwrap). Test: "takes ETH from Seaport only" |
+| `VaultListings` cannot list, cancel or move anything | Pass | Stateless as to who calls: `prepare` writes an order whose offerer is `msg.sender` and only returns calldata; only the offerer can validate or cancel its orders on Seaport, so nothing happens on Seaport unless the vault sends it. `setFees` is `onlyOwner`, refuses a zero recipient (`ZeroAddress`) and more than `MAX_FEES_BPS` (15%, `TooManyFees`); fees are frozen into each listing at `prepare`. Tests: "only the owner sets a collection's fees, never above 15% in all", "a listing keeps the fees it was made with, and still comes down after they change" |
 | A sale is recorded however it is noticed | Pass | `_sync` reads `getOrderStatus` (filled == size): `Sold`, proceeds and fee set once, `boxOf` cleared; called by `sync` (anyone), every `request` and every `finalize`. An expired listing goes back to `Sealed`. Tests: "lists with…", "a listing that runs out…" |
 | A request decided for one holder never runs for the next | Pass | `pending > 0` blocks transfers (`_transfer` reverts `BoxBusy`) and so private sales, until every waiting request is finalized or expired; `finalize` syncs and re-checks the state (`_canRun`) and settles `Stale` when the box changed. Tests: "holds the box still while a request waits, then lets it move", "a withdrawal beaten by a Seaport buyer settles stale, and the ETH waits", "a private sale waits for the box's requests, then goes through" |
 | Requests do not lock each other out | Pass | `request` no longer checks for a waiting request; each is decided alone at `finalize`, and one the box outgrew settles `Stale`. Tests: "a stranger's waiting requests do not stop the holder taking the NFT out", "a stranger's requests do not stop listing, unlisting or collecting either", "two of the holder's own requests at once: the first runs, the second finds the box changed", "finalized in any order, requests leave the box consistent" |
@@ -510,19 +520,19 @@ FHEVM mock, against Seaport 1.5's runtime bytecode read from Sepolia (`test/seap
 | A private sale's price and outcome are readable by the two sides only | Pass | `allowThis`, `allow(seller)`, `allow(buyer)` on the price and on `moved`; `SaleOffered` and `SaleSettled` carry neither. Test: "swaps the box…" |
 | Only the named buyer accepts, only the seller cancels, once | Pass | `NotBuyer`, `NotSeller`, `SaleNotOpen`. Test: "only the named buyer accepts, only the seller cancels" |
 | The encrypted fee cannot overflow | Pass | `FHE.min(price, MAX_SALE_PRICE)` at the offer; `MAX_SALE_PRICE` (10^12) × `MAX_FEE_BPS` (1,000) < 2^64. The Seaport fee is plain arithmetic in 256 bits |
-| Fee math | Pass | Seaport: `price * feeBps / 10000`, rounded down, to `feesOwed`, the rest to the box; `sendFees` (anyone) pays the treasury and zeroes `feesOwed` first. Private: the same formula under encryption, only when `feeBps > 0`. Test: "lists with…" checks both to the wei; "caps the fee and keeps the treasury set" |
+| Fee math | Pass | Seaport: `net * feeBps / 10000` (`net` is the price less the listing's OpenSea and creator fees, what Seaport paid the vault), rounded down, to `feesOwed`, the rest to the box; `sendFees` (anyone) pays the treasury and zeroes `feesOwed` first. Private: the same formula under encryption, only when `feeBps > 0`. Test: "lists with…" checks both to the wei; "caps the fee and keeps the treasury set" |
 | The owner's powers | Accepted | `setCollection`, `setFee` (at most 10%), `setTreasury` (never zero), single-step `Ownable` (O5's questions). No function lets the owner move an NFT, a box or ETH that is not `feesOwed`. A collection allowed by the owner is trusted (O41) |
 | Deposit decoys | Pass | `deposit` takes `to[]` and an encrypted `really[]` under the key's proof, at most `MAX_DEPOSIT_SENDS` (5), and sends each through `_transfer` (a moved box gets a random key). Tests: the five under "deposit with decoys" (the depositor keeps the box and its key; a real send among decoys; a real send after a real send; `BadSends`; 5 sends ~1.9M HCU, 1.23M depth) |
 | Griefing (O38) | Open, reduced | Exits are never held back; transfers and private sales are, for one KMS round per stranger's request (anyone may finalize; the page does), or a day if the proof never comes (`expire`). A cap per box, or a holder-only fast path, would cost privacy |
 | HCU | Pass | `acceptSale` ~4.34M (2.31M depth) of 20M (5M), the heaviest call; a transfer ~338k; accepting an offer and delegating cost a request's ~191k, their finalize none |
-| Contract size | Pass | `SealedVault` 24,322 bytes deployed, 254 under the 24,576-byte limit (default optimizer); `VaultOffers` 6,517 |
+| Contract size | Pass | `SealedVault` 22,712 bytes deployed, 1,864 under the 24,576-byte limit (default optimizer; 24,322 and 254 under before the listings' orders moved out); `VaultListings` 6,336; `VaultOffers` 8,470 |
 | Static analysis, fuzzing | Not done | |
 
 ## 16. The vault's pockets: SealedPockets and PocketDesk
 
 `SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
 buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). On Sepolia at
-`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
+`0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` since 2026-10-10, redeployed with the vault (the desk is bound to it); before them `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
 The same contract, unchanged and without a desk, holds cUSDT, cWETH and cZAMA
 ([VAULT.md](VAULT.md#other-tokens)): `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`,
 `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`

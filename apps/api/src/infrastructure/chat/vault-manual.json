@@ -184,19 +184,31 @@
      "id": "vault-seaport-0",
      "section": "vault-seaport",
      "heading": null,
-     "text": "A listing is a real Seaport 1.5 order, OpenSea's protocol, whose seller is the vault itself: your address appears nowhere. The vault validates the order on-chain, so it signs nothing, and only the orders it validated can sell its NFTs.\nAny Seaport marketplace can fill it. The buyer pays in ETH and gets the NFT straight away. Buyers see the NFT, the price and the end date, like any listing.\nThe ETH waits in the box for whoever holds the key, minus the vault's fee (2.5%, never more than 10%). You collect it to any address. A listing lasts up to 180 days; one that ran out without a buyer goes back to sealed."
+     "text": "A listing is a real Seaport order, OpenSea's protocol, written the way OpenSea shows a contract's listing: on mainnet, OpenSea reads it from the chain and shows it on opensea.io, with the vault as the seller. Your address appears nowhere: the vault validates the order on-chain, so it signs nothing, and only the orders it validated can sell its NFTs.\nOn mainnet the listing is bought on OpenSea, with its \"Buy now\" (OpenSea signs each purchase on its side, and may take a listing down on its side too); the vault's page links to it. On the test network, where OpenSea is not, the listing is an open order anyone fills, from the page's \"Buy now\" or any Seaport script. Either way the buyer pays in ETH and gets the NFT straight away, and sees the NFT, the price and the end date, like any listing."
+    },
+    {
+     "id": "vault-seaport-1",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "The price you set is what the buyer pays. On mainnet, OpenSea's fee and the collection creator's fee come off it when the sale fills, as for any listing there, then the vault's fee (2.5%, never more than 10%) comes off the rest; on the test network there is only the vault's. The rest waits in the box for whoever holds the key. You collect it to any address. A listing lasts up to 180 days; one that ran out without a buyer goes back to sealed."
     },
     {
      "id": "vault-offers-0",
      "section": "vault-offers",
      "heading": null,
-     "text": "Anyone can make an offer on an NFT in the vault, in WETH (ETH wrapped as a token), as on any marketplace. Offers are real Seaport 1.5 orders posted to a public board on the chain, so the page shows them under \"Offers\" on each of your boxes, with their amount, their buyer and their end date. An offer on any NFT of the collection shows there too.\nAccepting is a request like the others, made with the key, through the relayer if you like. You pick the address the ETH goes to. Once the proof is back, the vault fills the offer itself: the NFT goes to the buyer, and the ETH, minus the vault's fee (2.5%, as for a listing), goes straight to your address. A listed box is taken down first. If that address cannot take ETH, the ETH waits in the box for you to collect."
+     "text": "Anyone can make an offer on an NFT in the vault, in WETH (ETH wrapped as a token), as on any marketplace. Offers are real Seaport orders posted to a public board on the chain, so the page shows them under \"Offers\" on each of your boxes, with their amount, their buyer and their end date. An offer on any NFT of the collection shows there too.\nAccepting is a request like the others, made with the key, through the relayer if you like. You pick the address the ETH goes to. Once the proof is back, the vault fills the offer itself: the NFT goes to the buyer, and the ETH, minus the vault's fee (2.5%, as for a listing), goes straight to your address. A listed box is taken down first. If that address cannot take ETH, the ETH waits in the box for you to collect."
     },
     {
      "id": "vault-offers-1",
      "section": "vault-offers",
      "heading": null,
-     "text": "What shows is what any Seaport sale shows: the buyer, the NFT, the amount and the address the ETH went to. You do not: the vault is the seller. Take the ETH to a fresh address and nothing links it to you.\nIf the offer is gone by the time the proof is back (cancelled, already filled, ended, or worth less than when you accepted), nothing happens and you keep the box: the request settles as missed. If the buyer is only short of WETH for now, the request waits: it can be tried again, or expired by anyone after a day.\nOnly Seaport 1.5 offers paid in WETH can be accepted. Offers made on OpenSea's own site on mainnet use a newer Seaport and go through OpenSea's own service: the vault cannot accept those yet. Offers on some of a collection's NFTs only (by trait, say) are not taken either."
+     "text": "What shows is what any Seaport sale shows: the buyer, the NFT, the amount and the address the ETH went to. You do not: the vault is the seller. Take the ETH to a fresh address and nothing links it to you.\nIf the offer is gone by the time the proof is back (cancelled, already filled, ended, or worth less than when you accepted), nothing happens and you keep the box: the request settles as missed. If the buyer is only short of WETH for now, the request waits: it can be tried again, or expired by anyone after a day."
+    },
+    {
+     "id": "vault-offers-2",
+     "section": "vault-offers",
+     "heading": null,
+     "text": "Only Seaport offers paid in WETH can be accepted. Offers made on OpenSea's own site go through OpenSea's signed zone; the vault's contracts take those too (proven by replaying a real one on a copy of mainnet). The page does not read them yet: for now it shows the board's offers only, OpenSea's are on the way. Offers on some of a collection's NFTs only (by trait, say) are not taken."
     },
     {
      "id": "vault-bid-0",
@@ -268,7 +280,7 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Public",
-     "text": "Who sealed which NFT (the deposit is an NFT transfer), and the addresses its decoys went to\nThe NFT inside each box, its state, its listing\nSeaport listings, purchases and accepted offers, with the vault as the seller\nThe address an NFT or a sale's ETH goes out to, and the amount\nThat a request was made, on which box, for what, and whether it was done, refused, missed or expired\nThe two addresses of a transfer or a private sale\nThe offers on each NFT and who made them, and an accepted offer's buyer and amount\nA box's delegate, the wallet that acts for the NFT in delegate.xyz\nWhich wallet deposited into which pockets, which pockets each pocket payment names, and the address a withdrawal from a pocket goes to\nWhich token each pocket action moves (cUSDC, cUSDT, cWETH or cZAMA): each has its own pockets"
+     "text": "Who sealed which NFT (the deposit is an NFT transfer), and the addresses its decoys went to\nThe NFT inside each box, its state, its listing\nSeaport listings, purchases and accepted offers, with the vault as the seller; on mainnet the listing shows on OpenSea\nThe address an NFT or a sale's ETH goes out to, and the amount\nThat a request was made, on which box, for what, and whether it was done, refused, missed or expired\nThe two addresses of a transfer or a private sale\nThe offers on each NFT and who made them, and an accepted offer's buyer and amount\nA box's delegate, the wallet that acts for the NFT in delegate.xyz\nWhich wallet deposited into which pockets, which pockets each pocket payment names, and the address a withdrawal from a pocket goes to\nWhich token each pocket action moves (cUSDC, cUSDT, cWETH or cZAMA): each has its own pockets"
     },
     {
      "id": "vault-leaks-1",
@@ -280,7 +292,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport 1.5, the WETH OpenSea uses there and delegate.xyz's registry. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xE225…8262\nThe free test collection 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nThe offer board 0x750d…f9E2\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0xAfEc…e00C\nThe desk that buys from pockets 0x0939…759b\nThe cUSDT pockets 0x56ea…7aAe\nThe cWETH pockets 0x4e8A…1350\nThe cZAMA pockets 0x6D15…ceE2"
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport, OpenSea's conduit, the WETH offers pay in and delegate.xyz's registry. OpenSea closed its testnets, so a listing shows on no marketplace site there: it is bought from the page. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0x79E6…718c\nThe free test collection 0xf72E…6f9b\nSeaport 0x0000…B395\nThe listings (written the way OpenSea shows them) 0xF774…8Ddb\nThe offer board 0x43B2…898A\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0x62E0…A17f\nThe desk that buys from pockets 0x06c0…3D61\nThe cUSDT pockets 0x56ea…7aAe\nThe cWETH pockets 0x4e8A…1350\nThe cZAMA pockets 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",
@@ -304,13 +316,13 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.\nThe box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller, or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere.\nThe vault holds tokens too. Your cUSDC, a confidential dollar, goes in a pocket locked by a key rather than an address: send it to another pocket, pay for a box with it, or take it out anywhere. Confidential tokens already hide amounts; a pocket also hides who paid whom. cUSDT, cWETH and cZAMA, Zama's other confidential tokens, have pockets of their own; boxes are paid in cUSDC."
+     "text": "Put any NFT of an allowed collection in a box. From then on nobody knows who holds the box: not the marketplaces, not the trackers, not us. The NFT itself stays visible; its holder does not.\nThe box can still be sold on Seaport, OpenSea's protocol, with the vault as the seller (on mainnet the listing shows on OpenSea), or privately to one buyer for a price only the two of them can read. The NFT, or the ETH from a sale, comes out to any address, and a relayer can send the requests so the holder's address appears nowhere."
     },
     {
      "id": "project-vault-1",
      "section": "project-vault",
      "heading": null,
-     "text": "Read the vault's documentation Open the vault"
+     "text": "The vault holds tokens too. Your cUSDC, a confidential dollar, goes in a pocket locked by a key rather than an address: send it to another pocket, pay for a box with it, or take it out anywhere. Confidential tokens already hide amounts; a pocket also hides who paid whom. cUSDT, cWETH and cZAMA, Zama's other confidential tokens, have pockets of their own; boxes are paid in cUSDC.\nRead the vault's documentation Open the vault"
     },
     {
      "id": "project-game-0",
@@ -322,7 +334,7 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "Encryption hides values, not the fact that something happened. A transaction is public: who sent it, to which contract, when. What DO NOT OPEN encrypts is what the transaction does: who ends up holding a box, a price agreed in private, whether a transfer moved anything.\nSome things are public on purpose. An NFT entering the vault is a plain NFT transfer, so the depositor shows. A Seaport listing shows its NFT and its price, with the vault as the seller. The address an NFT or a sale's ETH goes out to shows too: choose one with no history.\nEach product lists exactly what leaks, line by line, in its own documentation."
+     "text": "Encryption hides values, not the fact that something happened. A transaction is public: who sent it, to which contract, when. What DO NOT OPEN encrypts is what the transaction does: who ends up holding a box, a price agreed in private, whether a transfer moved anything.\nSome things are public on purpose. An NFT entering the vault is a plain NFT transfer, so the depositor shows. A Seaport listing shows its NFT and its price, with the vault as the seller, on OpenSea on mainnet. The address an NFT or a sale's ETH goes out to shows too: choose one with no history.\nEach product lists exactly what leaks, line by line, in its own documentation."
     },
     {
      "id": "project-trust-0",
@@ -533,13 +545,19 @@
      "id": "vault-seaport-0",
      "section": "vault-seaport",
      "heading": null,
-     "text": "Une annonce est un vrai ordre Seaport 1.5, le protocole d'OpenSea, dont le vendeur est le coffre lui-même : ton adresse n'apparaît nulle part. Le coffre valide l'ordre on-chain, il ne signe donc rien, et seuls les ordres qu'il a validés peuvent vendre ses NFT.\nN'importe quelle marketplace Seaport peut l'exécuter. L'acheteur paie en ETH et reçoit le NFT tout de suite. Les acheteurs voient le NFT, le prix et la date de fin, comme pour toute annonce.\nL'ETH attend dans la boîte celui qui détient la clé, moins les frais du coffre (2,5 %, jamais plus de 10 %). Tu l'encaisses vers n'importe quelle adresse. Une annonce dure jusqu'à 180 jours ; une annonce expirée sans acheteur redevient scellée."
+     "text": "Une annonce est un vrai ordre Seaport, le protocole d'OpenSea, écrit comme OpenSea affiche l'annonce d'un contrat : sur le réseau principal, OpenSea la lit sur la chaîne et la montre sur opensea.io, avec le coffre comme vendeur. Ton adresse n'apparaît nulle part : le coffre valide l'ordre on-chain, il ne signe donc rien, et seuls les ordres qu'il a validés peuvent vendre ses NFT.\nSur le réseau principal, l'annonce s'achète sur OpenSea, avec son bouton d'achat (OpenSea signe chaque achat de son côté, et peut aussi retirer une annonce de son côté) ; la page du coffre y renvoie. Sur le réseau de test, où OpenSea n'est pas, l'annonce est un ordre ouvert que n'importe qui exécute, depuis l'« Achat immédiat » de la page ou n'importe quel script Seaport. Dans les deux cas, l'acheteur paie en ETH et reçoit le NFT tout de suite, et voit le NFT, le prix et la date de fin, comme pour toute annonce."
+    },
+    {
+     "id": "vault-seaport-1",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "Le prix que tu fixes est ce que paie l'acheteur. Sur le réseau principal, les frais d'OpenSea et ceux du créateur de la collection en sont retirés quand la vente se conclut, comme pour toute annonce là-bas, puis les frais du coffre (2,5 %, jamais plus de 10 %) sur le reste ; sur le réseau de test, il n'y a que ceux du coffre. Le reste attend dans la boîte celui qui détient la clé. Tu l'encaisses vers n'importe quelle adresse. Une annonce dure jusqu'à 180 jours ; une annonce expirée sans acheteur redevient scellée."
     },
     {
      "id": "vault-offers-0",
      "section": "vault-offers",
      "heading": null,
-     "text": "N'importe qui peut faire une offre sur un NFT du coffre, en WETH (de l'ETH emballé en jeton), comme sur n'importe quelle marketplace. Les offres sont de vrais ordres Seaport 1.5 publiés sur un tableau public on-chain : la page les montre sous « Offres » sur chacune de tes boîtes, avec leur montant, leur acheteur et leur date de fin. Une offre sur n'importe quel NFT de la collection s'y affiche aussi.\nAccepter est une demande comme les autres, faite avec la clé, via le relayer si tu veux. Tu choisis l'adresse où va l'ETH. Une fois la preuve revenue, le coffre exécute l'offre lui-même : le NFT part chez l'acheteur, et l'ETH, moins les frais du coffre (2,5 %, comme pour une annonce), va directement à ton adresse. Une boîte en vente est d'abord retirée de la vente. Si cette adresse ne peut pas recevoir d'ETH, l'ETH attend dans la boîte que tu l'encaisses."
+     "text": "N'importe qui peut faire une offre sur un NFT du coffre, en WETH (de l'ETH emballé en jeton), comme sur n'importe quelle marketplace. Les offres sont de vrais ordres Seaport publiés sur un tableau public on-chain : la page les montre sous « Offres » sur chacune de tes boîtes, avec leur montant, leur acheteur et leur date de fin. Une offre sur n'importe quel NFT de la collection s'y affiche aussi.\nAccepter est une demande comme les autres, faite avec la clé, via le relayer si tu veux. Tu choisis l'adresse où va l'ETH. Une fois la preuve revenue, le coffre exécute l'offre lui-même : le NFT part chez l'acheteur, et l'ETH, moins les frais du coffre (2,5 %, comme pour une annonce), va directement à ton adresse. Une boîte en vente est d'abord retirée de la vente. Si cette adresse ne peut pas recevoir d'ETH, l'ETH attend dans la boîte que tu l'encaisses."
     },
     {
      "id": "vault-offers-1",
@@ -551,7 +569,7 @@
      "id": "vault-offers-2",
      "section": "vault-offers",
      "heading": null,
-     "text": "Seules les offres Seaport 1.5 payées en WETH peuvent être acceptées. Les offres faites sur le site d'OpenSea sur le réseau principal utilisent un Seaport plus récent et passent par le service d'OpenSea : le coffre ne peut pas encore les accepter. Les offres sur une partie seulement des NFT d'une collection (par trait, par exemple) ne sont pas prises non plus."
+     "text": "Seules les offres Seaport payées en WETH peuvent être acceptées. Les offres faites sur le site d'OpenSea passent par la zone signée d'OpenSea ; les contrats du coffre les prennent aussi (prouvé en rejouant une vraie offre sur une copie du réseau principal). La page ne les lit pas encore : pour l'instant elle ne montre que les offres du tableau, celles d'OpenSea arrivent. Les offres sur une partie seulement des NFT d'une collection (par trait, par exemple) ne sont pas prises."
     },
     {
      "id": "vault-bid-0",
@@ -629,10 +647,16 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Public",
-     "text": "Qui a scellé quel NFT (le dépôt est un transfert de NFT), et les adresses où sont partis ses leurres\nLe NFT dans chaque boîte, son état, son annonce\nLes annonces, les achats et les offres acceptées sur Seaport, avec le coffre comme vendeur\nL'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant\nQu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée, manquée ou expirée\nLes deux adresses d'un transfert ou d'une vente privée\nLes offres sur chaque NFT et qui les a faites, et l'acheteur et le montant d'une offre acceptée\nLe délégué d'une boîte, le wallet qui agit pour le NFT dans delegate.xyz\nQuel wallet a déposé dans quelles poches, les poches que nomme chaque paiement de poche, et l'adresse où va un retrait de poche\nLe jeton que déplace chaque action de poche (cUSDC, cUSDT, cWETH ou cZAMA) : chacun a ses propres poches"
+     "text": "Qui a scellé quel NFT (le dépôt est un transfert de NFT), et les adresses où sont partis ses leurres\nLe NFT dans chaque boîte, son état, son annonce\nLes annonces, les achats et les offres acceptées sur Seaport, avec le coffre comme vendeur ; sur le réseau principal, l'annonce s'affiche sur OpenSea\nL'adresse vers laquelle sort un NFT ou l'ETH d'une vente, et le montant\nQu'une demande a été faite, sur quelle boîte, pour quoi, et si elle a été faite, refusée, manquée ou expirée\nLes deux adresses d'un transfert ou d'une vente privée\nLes offres sur chaque NFT et qui les a faites, et l'acheteur et le montant d'une offre acceptée\nLe délégué d'une boîte, le wallet qui agit pour le NFT dans delegate.xyz\nQuel wallet a déposé dans quelles poches, les poches que nomme chaque paiement de poche, et l'adresse où va un retrait de poche"
     },
     {
      "id": "vault-leaks-1",
+     "section": "vault-leaks",
+     "heading": "Public",
+     "text": "Le jeton que déplace chaque action de poche (cUSDC, cUSDT, cWETH ou cZAMA) : chacun a ses propres poches"
+    },
+    {
+     "id": "vault-leaks-2",
      "section": "vault-leaks",
      "heading": "Jamais public",
      "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie\nLe solde d'une poche, les montants qu'elle déplace, la poche d'un groupe qui a bougé, et qui détient une poche\nEn pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
@@ -641,7 +665,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport 1.5, le WETH qu'OpenSea y utilise et le registre de delegate.xyz. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xE225…8262\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLe tableau des offres 0x750d…f9E2\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0xAfEc…e00C\nLe guichet qui achète depuis les poches 0x0939…759b\nLes poches cUSDT 0x56ea…7aAe\nLes poches cWETH 0x4e8A…1350\nLes poches cZAMA 0x6D15…ceE2"
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport, le conduit d'OpenSea, le WETH que paient les offres et le registre de delegate.xyz. OpenSea a fermé ses testnets : une annonce n'y apparaît sur aucune marketplace, elle s'achète depuis la page. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0x79E6…718c\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 0x0000…B395\nLes annonces (écrites comme OpenSea les affiche) 0xF774…8Ddb\nLe tableau des offres 0x43B2…898A\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0x62E0…A17f\nLe guichet qui achète depuis les poches 0x06c0…3D61\nLes poches cUSDT 0x56ea…7aAe\nLes poches cWETH 0x4e8A…1350\nLes poches cZAMA 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",
@@ -665,7 +689,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.\nLa boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur, ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part."
+     "text": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.\nLa boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur (sur le réseau principal, l'annonce s'affiche sur OpenSea), ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part."
     },
     {
      "id": "project-vault-1",
@@ -683,7 +707,7 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "Le chiffrement cache des valeurs, pas le fait que quelque chose s'est passé. Une transaction est publique : qui l'a envoyée, vers quel contrat, quand. Ce que DO NOT OPEN chiffre, c'est ce que fait la transaction : qui finit par détenir une boîte, un prix convenu en privé, si un transfert a déplacé quelque chose.\nCertaines choses sont publiques exprès. Un NFT qui entre dans le coffre est un simple transfert de NFT, donc le déposant se voit. Une annonce Seaport montre son NFT et son prix, avec le coffre comme vendeur. L'adresse vers laquelle sort un NFT ou l'ETH d'une vente se voit aussi : choisissez-en une sans historique.\nChaque produit liste exactement ce qui fuite, ligne par ligne, dans sa propre documentation."
+     "text": "Le chiffrement cache des valeurs, pas le fait que quelque chose s'est passé. Une transaction est publique : qui l'a envoyée, vers quel contrat, quand. Ce que DO NOT OPEN chiffre, c'est ce que fait la transaction : qui finit par détenir une boîte, un prix convenu en privé, si un transfert a déplacé quelque chose.\nCertaines choses sont publiques exprès. Un NFT qui entre dans le coffre est un simple transfert de NFT, donc le déposant se voit. Une annonce Seaport montre son NFT et son prix, avec le coffre comme vendeur, sur OpenSea sur le réseau principal. L'adresse vers laquelle sort un NFT ou l'ETH d'une vente se voit aussi : choisissez-en une sans historique.\nChaque produit liste exactement ce qui fuite, ligne par ligne, dans sa propre documentation."
     },
     {
      "id": "project-trust-0",
@@ -888,19 +912,37 @@
      "id": "vault-seaport-0",
      "section": "vault-seaport",
      "heading": null,
-     "text": "Un anuncio es una orden real de Seaport 1.5, el protocolo de OpenSea, cuyo vendedor es la propia bóveda: tu dirección no aparece en ninguna parte. La bóveda valida la orden on-chain, así que no firma nada, y solo las órdenes que ella validó pueden vender sus NFT.\nCualquier marketplace de Seaport puede completarla. El comprador paga en ETH y recibe el NFT al instante. Los compradores ven el NFT, el precio y la fecha de fin, como en cualquier anuncio.\nEl ETH espera en la caja a quien tenga la llave, menos la comisión de la bóveda (2,5%, nunca más del 10%). Lo cobras en cualquier dirección. Un anuncio dura hasta 180 días; uno que caducó sin comprador vuelve a quedar sellado."
+     "text": "Un anuncio es una orden real de Seaport, el protocolo de OpenSea, escrita tal como OpenSea muestra el anuncio de un contrato: en la red principal, OpenSea la lee de la cadena y la muestra en opensea.io, con la bóveda como vendedora. Tu dirección no aparece en ninguna parte: la bóveda valida la orden on-chain, así que no firma nada, y solo las órdenes que ella validó pueden vender sus NFT."
+    },
+    {
+     "id": "vault-seaport-1",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "En la red principal, el anuncio se compra en OpenSea, con su botón de compra (OpenSea firma cada compra por su lado, y también puede retirar un anuncio por su lado); la página de la bóveda enlaza allí. En la red de prueba, donde OpenSea no está, el anuncio es una orden abierta que cualquiera completa, desde la «Compra inmediata» de la página o con cualquier script de Seaport. En ambos casos el comprador paga en ETH y recibe el NFT al instante, y ve el NFT, el precio y la fecha de fin, como en cualquier anuncio."
+    },
+    {
+     "id": "vault-seaport-2",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "El precio que fijas es lo que paga el comprador. En la red principal, la comisión de OpenSea y la del creador de la colección se descuentan cuando se completa la venta, como en cualquier anuncio de allí, y luego la de la bóveda (2,5%, nunca más del 10%) sobre el resto; en la red de prueba solo está la de la bóveda. El resto espera en la caja a quien tenga la llave. Lo cobras en cualquier dirección. Un anuncio dura hasta 180 días; uno que caducó sin comprador vuelve a quedar sellado."
     },
     {
      "id": "vault-offers-0",
      "section": "vault-offers",
      "heading": null,
-     "text": "Cualquiera puede hacer una oferta por un NFT de la bóveda, en WETH (ETH envuelto como token), como en cualquier marketplace. Las ofertas son órdenes reales de Seaport 1.5 publicadas en un tablón público on-chain, así que la página las muestra en «Ofertas» en cada una de tus cajas, con su importe, su comprador y su fecha de fin. Una oferta por cualquier NFT de la colección también aparece ahí.\nAceptar es una solicitud como las demás, hecha con la llave, a través del relayer si quieres. Eliges la dirección adonde va el ETH. Cuando vuelve la prueba, la bóveda ejecuta la oferta ella misma: el NFT va al comprador, y el ETH, menos la comisión de la bóveda (2,5%, como en un anuncio), va directo a tu dirección. Una caja anunciada se retira antes de la venta. Si esa dirección no puede recibir ETH, el ETH espera en la caja a que lo cobres."
+     "text": "Cualquiera puede hacer una oferta por un NFT de la bóveda, en WETH (ETH envuelto como token), como en cualquier marketplace. Las ofertas son órdenes reales de Seaport publicadas en un tablón público on-chain, así que la página las muestra en «Ofertas» en cada una de tus cajas, con su importe, su comprador y su fecha de fin. Una oferta por cualquier NFT de la colección también aparece ahí.\nAceptar es una solicitud como las demás, hecha con la llave, a través del relayer si quieres. Eliges la dirección adonde va el ETH. Cuando vuelve la prueba, la bóveda ejecuta la oferta ella misma: el NFT va al comprador, y el ETH, menos la comisión de la bóveda (2,5%, como en un anuncio), va directo a tu dirección. Una caja anunciada se retira antes de la venta. Si esa dirección no puede recibir ETH, el ETH espera en la caja a que lo cobres."
     },
     {
      "id": "vault-offers-1",
      "section": "vault-offers",
      "heading": null,
-     "text": "Lo que se ve es lo que muestra cualquier venta en Seaport: el comprador, el NFT, el importe y la dirección adonde fue el ETH. Tú no: la vendedora es la bóveda. Cobra en una dirección nueva y nada la relaciona contigo.\nSi la oferta ya no está cuando vuelve la prueba (cancelada, ya ejecutada, terminada, o por menos de lo que valía cuando la aceptaste), no pasa nada y conservas la caja: la solicitud se resuelve como fallida. Si al comprador solo le falta WETH por ahora, la solicitud espera: se puede reintentar, o cualquiera puede expirarla al cabo de un día.\nSolo se pueden aceptar ofertas de Seaport 1.5 pagadas en WETH. Las ofertas hechas en el sitio de OpenSea en la red principal usan un Seaport más reciente y pasan por el servicio de OpenSea: la bóveda aún no puede aceptarlas. Tampoco se aceptan ofertas por solo una parte de los NFT de una colección (por rasgo, por ejemplo)."
+     "text": "Lo que se ve es lo que muestra cualquier venta en Seaport: el comprador, el NFT, el importe y la dirección adonde fue el ETH. Tú no: la vendedora es la bóveda. Cobra en una dirección nueva y nada la relaciona contigo.\nSi la oferta ya no está cuando vuelve la prueba (cancelada, ya ejecutada, terminada, o por menos de lo que valía cuando la aceptaste), no pasa nada y conservas la caja: la solicitud se resuelve como fallida. Si al comprador solo le falta WETH por ahora, la solicitud espera: se puede reintentar, o cualquiera puede expirarla al cabo de un día."
+    },
+    {
+     "id": "vault-offers-2",
+     "section": "vault-offers",
+     "heading": null,
+     "text": "Solo se pueden aceptar ofertas de Seaport pagadas en WETH. Las ofertas hechas en el sitio de OpenSea pasan por la zona firmada de OpenSea; los contratos de la bóveda también las aceptan (probado reproduciendo una oferta real en una copia de la red principal). La página aún no las lee: por ahora muestra solo las ofertas del tablón, las de OpenSea están en camino. Tampoco se aceptan ofertas por solo una parte de los NFT de una colección (por rasgo, por ejemplo)."
     },
     {
      "id": "vault-bid-0",
@@ -978,10 +1020,16 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Público",
-     "text": "Quién selló qué NFT (el depósito es una transferencia de NFT), y las direcciones adonde fueron sus señuelos\nEl NFT dentro de cada caja, su estado, su anuncio\nLos anuncios, las compras y las ofertas aceptadas en Seaport, con la bóveda como vendedora\nLa dirección a la que sale un NFT o el ETH de una venta, y el importe\nQue se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó, falló o expiró\nLas dos direcciones de una transferencia o de una venta privada\nLas ofertas por cada NFT y quién las hizo, y el comprador y el importe de una oferta aceptada\nEl delegado de una caja, el wallet que actúa por el NFT en delegate.xyz\nQué wallet depositó en qué bolsillos, los bolsillos que nombra cada pago de bolsillo, y la dirección a la que va un retiro de bolsillo\nQué token mueve cada acción de bolsillo (cUSDC, cUSDT, cWETH o cZAMA): cada uno tiene sus propios bolsillos"
+     "text": "Quién selló qué NFT (el depósito es una transferencia de NFT), y las direcciones adonde fueron sus señuelos\nEl NFT dentro de cada caja, su estado, su anuncio\nLos anuncios, las compras y las ofertas aceptadas en Seaport, con la bóveda como vendedora; en la red principal, el anuncio aparece en OpenSea\nLa dirección a la que sale un NFT o el ETH de una venta, y el importe\nQue se hizo una solicitud, sobre qué caja, para qué, y si se hizo, se rechazó, falló o expiró\nLas dos direcciones de una transferencia o de una venta privada\nLas ofertas por cada NFT y quién las hizo, y el comprador y el importe de una oferta aceptada\nEl delegado de una caja, el wallet que actúa por el NFT en delegate.xyz\nQué wallet depositó en qué bolsillos, los bolsillos que nombra cada pago de bolsillo, y la dirección a la que va un retiro de bolsillo"
     },
     {
      "id": "vault-leaks-1",
+     "section": "vault-leaks",
+     "heading": "Público",
+     "text": "Qué token mueve cada acción de bolsillo (cUSDC, cUSDT, cWETH o cZAMA): cada uno tiene sus propios bolsillos"
+    },
+    {
+     "id": "vault-leaks-2",
      "section": "vault-leaks",
      "heading": "Nunca público",
      "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer\nEl saldo de un bolsillo, los importes que mueve, qué bolsillo de un grupo se movió, y quién tiene un bolsillo\nEn la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
@@ -990,7 +1038,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport 1.5 real, el WETH que OpenSea usa allí y el registro de delegate.xyz. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xE225…8262\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nEl tablón de ofertas 0x750d…f9E2\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0xAfEc…e00C\nLa ventanilla que compra desde los bolsillos 0x0939…759b\nLos bolsillos de cUSDT 0x56ea…7aAe\nLos bolsillos de cWETH 0x4e8A…1350\nLos bolsillos de cZAMA 0x6D15…ceE2"
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport real, el conduit de OpenSea, el WETH con el que pagan las ofertas y el registro de delegate.xyz. OpenSea cerró sus testnets: allí un anuncio no aparece en ningún marketplace, se compra desde la página. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0x79E6…718c\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nLos anuncios (escritos como OpenSea los muestra) 0xF774…8Ddb\nEl tablón de ofertas 0x43B2…898A\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0x62E0…A17f\nLa ventanilla que compra desde los bolsillos 0x06c0…3D61\nLos bolsillos de cUSDT 0x56ea…7aAe\nLos bolsillos de cWETH 0x4e8A…1350\nLos bolsillos de cZAMA 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",
@@ -1014,7 +1062,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.\nLa caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora, o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte."
+     "text": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.\nLa caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora (en la red principal el anuncio aparece en OpenSea), o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte."
     },
     {
      "id": "project-vault-1",
@@ -1032,7 +1080,7 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "El cifrado oculta valores, no el hecho de que algo ocurrió. Una transacción es pública: quién la envió, a qué contrato, cuándo. Lo que DO NOT OPEN cifra es lo que hace la transacción: quién acaba teniendo una caja, un precio acordado en privado, si una transferencia movió algo.\nAlgunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial.\nCada producto detalla exactamente lo que se filtra, línea por línea, en su propia documentación."
+     "text": "El cifrado oculta valores, no el hecho de que algo ocurrió. Una transacción es pública: quién la envió, a qué contrato, cuándo. Lo que DO NOT OPEN cifra es lo que hace la transacción: quién acaba teniendo una caja, un precio acordado en privado, si una transferencia movió algo.\nAlgunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora, en OpenSea en la red principal. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial.\nCada producto detalla exactamente lo que se filtra, línea por línea, en su propia documentación."
     },
     {
      "id": "project-trust-0",
@@ -1237,19 +1285,37 @@
      "id": "vault-seaport-0",
      "section": "vault-seaport",
      "heading": null,
-     "text": "Un annuncio è un vero ordine Seaport 1.5, il protocollo di OpenSea, il cui venditore è il caveau stesso: il tuo indirizzo non compare da nessuna parte. Il caveau convalida l'ordine on-chain, quindi non firma niente, e solo gli ordini che ha convalidato possono vendere i suoi NFT.\nQualsiasi marketplace Seaport può eseguirlo. L'acquirente paga in ETH e riceve subito l'NFT. Chi compra vede l'NFT, il prezzo e la data di fine, come in qualsiasi annuncio.\nL'ETH aspetta nella scatola chi ha la chiave, meno la commissione del caveau (2,5%, mai più del 10%). Lo incassi verso qualsiasi indirizzo. Un annuncio dura fino a 180 giorni; uno scaduto senza acquirente torna sigillato."
+     "text": "Un annuncio è un vero ordine Seaport, il protocollo di OpenSea, scritto come OpenSea mostra l'annuncio di un contratto: sulla rete principale, OpenSea lo legge dalla chain e lo mostra su opensea.io, con il caveau come venditore. Il tuo indirizzo non compare da nessuna parte: il caveau convalida l'ordine on-chain, quindi non firma niente, e solo gli ordini che ha convalidato possono vendere i suoi NFT."
+    },
+    {
+     "id": "vault-seaport-1",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "Sulla rete principale, l'annuncio si compra su OpenSea, con il suo pulsante d'acquisto (OpenSea firma ogni acquisto dal suo lato, e può anche ritirare un annuncio dal suo lato); la pagina del caveau rimanda lì. Sulla rete di prova, dove OpenSea non c'è, l'annuncio è un ordine aperto che chiunque esegue, dal «Compra subito» della pagina o con qualsiasi script Seaport. In entrambi i casi l'acquirente paga in ETH e riceve subito l'NFT, e vede l'NFT, il prezzo e la data di fine, come in qualsiasi annuncio."
+    },
+    {
+     "id": "vault-seaport-2",
+     "section": "vault-seaport",
+     "heading": null,
+     "text": "Il prezzo che fissi è quello che paga l'acquirente. Sulla rete principale, la commissione di OpenSea e quella del creatore della collezione vengono trattenute quando la vendita si conclude, come per qualsiasi annuncio lì, e poi quella del caveau (2,5%, mai più del 10%) sul resto; sulla rete di prova c'è solo quella del caveau. Il resto aspetta nella scatola chi ha la chiave. Lo incassi verso qualsiasi indirizzo. Un annuncio dura fino a 180 giorni; uno scaduto senza acquirente torna sigillato."
     },
     {
      "id": "vault-offers-0",
      "section": "vault-offers",
      "heading": null,
-     "text": "Chiunque può fare un'offerta per un NFT del caveau, in WETH (ETH avvolto in un token), come su qualsiasi marketplace. Le offerte sono veri ordini Seaport 1.5 pubblicati su una bacheca pubblica on-chain, così la pagina le mostra sotto «Offerte» su ognuna delle tue scatole, con importo, acquirente e data di fine. Anche un'offerta per qualsiasi NFT della collezione compare lì.\nAccettare è una richiesta come le altre, fatta con la chiave, tramite il relayer se vuoi. Scegli l'indirizzo dove va l'ETH. Quando torna la prova, il caveau esegue l'offerta da sé: l'NFT va all'acquirente, e l'ETH, meno la commissione del caveau (2,5%, come per un annuncio), va dritto al tuo indirizzo. Una scatola in vendita viene prima ritirata dalla vendita. Se quell'indirizzo non può ricevere ETH, l'ETH aspetta nella scatola che tu lo incassi."
+     "text": "Chiunque può fare un'offerta per un NFT del caveau, in WETH (ETH avvolto in un token), come su qualsiasi marketplace. Le offerte sono veri ordini Seaport pubblicati su una bacheca pubblica on-chain, così la pagina le mostra sotto «Offerte» su ognuna delle tue scatole, con importo, acquirente e data di fine. Anche un'offerta per qualsiasi NFT della collezione compare lì.\nAccettare è una richiesta come le altre, fatta con la chiave, tramite il relayer se vuoi. Scegli l'indirizzo dove va l'ETH. Quando torna la prova, il caveau esegue l'offerta da sé: l'NFT va all'acquirente, e l'ETH, meno la commissione del caveau (2,5%, come per un annuncio), va dritto al tuo indirizzo. Una scatola in vendita viene prima ritirata dalla vendita. Se quell'indirizzo non può ricevere ETH, l'ETH aspetta nella scatola che tu lo incassi."
     },
     {
      "id": "vault-offers-1",
      "section": "vault-offers",
      "heading": null,
-     "text": "Si vede quello che mostra qualsiasi vendita su Seaport: l'acquirente, l'NFT, l'importo e l'indirizzo dove è andato l'ETH. Tu no: il venditore è il caveau. Incassa verso un indirizzo nuovo e niente lo collega a te.\nSe l'offerta non c'è più quando torna la prova (annullata, già eseguita, finita, o per meno di quando l'hai accettata), non succede niente e tieni la scatola: la richiesta si chiude come mancata. Se all'acquirente manca solo il WETH per ora, la richiesta aspetta: si può ritentare, o chiunque può farla scadere dopo un giorno.\nSi possono accettare solo offerte Seaport 1.5 pagate in WETH. Le offerte fatte sul sito di OpenSea sulla rete principale usano un Seaport più recente e passano dal servizio di OpenSea: il caveau non può ancora accettarle. Non si accettano nemmeno offerte solo per una parte degli NFT di una collezione (per tratto, per esempio)."
+     "text": "Si vede quello che mostra qualsiasi vendita su Seaport: l'acquirente, l'NFT, l'importo e l'indirizzo dove è andato l'ETH. Tu no: il venditore è il caveau. Incassa verso un indirizzo nuovo e niente lo collega a te.\nSe l'offerta non c'è più quando torna la prova (annullata, già eseguita, finita, o per meno di quando l'hai accettata), non succede niente e tieni la scatola: la richiesta si chiude come mancata. Se all'acquirente manca solo il WETH per ora, la richiesta aspetta: si può ritentare, o chiunque può farla scadere dopo un giorno."
+    },
+    {
+     "id": "vault-offers-2",
+     "section": "vault-offers",
+     "heading": null,
+     "text": "Si possono accettare solo offerte Seaport pagate in WETH. Le offerte fatte sul sito di OpenSea passano dalla zona firmata di OpenSea; i contratti del caveau accettano anche quelle (provato rieseguendo un'offerta vera su una copia della rete principale). La pagina non le legge ancora: per ora mostra solo le offerte della bacheca, quelle di OpenSea sono in arrivo. Non si accettano nemmeno offerte solo per una parte degli NFT di una collezione (per tratto, per esempio)."
     },
     {
      "id": "vault-bid-0",
@@ -1327,7 +1393,7 @@
      "id": "vault-leaks-0",
      "section": "vault-leaks",
      "heading": "Pubblico",
-     "text": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT), e gli indirizzi dove sono andate le sue esche\nL'NFT dentro ogni scatola, il suo stato, il suo annuncio\nGli annunci, gli acquisti e le offerte accettate su Seaport, con il caveau come venditore\nL'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo\nChe è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata, mancata o scaduta\nI due indirizzi di un trasferimento o di una vendita privata\nLe offerte per ogni NFT e chi le ha fatte, e l'acquirente e l'importo di un'offerta accettata\nIl delegato di una scatola, il wallet che agisce per l'NFT su delegate.xyz\nQuale wallet ha depositato in quali tasche, le tasche che ogni pagamento da tasca nomina, e l'indirizzo verso cui va un ritiro da tasca"
+     "text": "Chi ha sigillato quale NFT (il deposito è un trasferimento di NFT), e gli indirizzi dove sono andate le sue esche\nL'NFT dentro ogni scatola, il suo stato, il suo annuncio\nGli annunci, gli acquisti e le offerte accettate su Seaport, con il caveau come venditore; sulla rete principale, l'annuncio compare su OpenSea\nL'indirizzo verso cui esce un NFT o l'ETH di una vendita, e l'importo\nChe è stata fatta una richiesta, su quale scatola, per cosa, e se è stata eseguita, rifiutata, mancata o scaduta\nI due indirizzi di un trasferimento o di una vendita privata\nLe offerte per ogni NFT e chi le ha fatte, e l'acquirente e l'importo di un'offerta accettata\nIl delegato di una scatola, il wallet che agisce per l'NFT su delegate.xyz\nQuale wallet ha depositato in quali tasche, le tasche che ogni pagamento da tasca nomina, e l'indirizzo verso cui va un ritiro da tasca"
     },
     {
      "id": "vault-leaks-1",
@@ -1345,7 +1411,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport 1.5, il WETH che OpenSea usa lì e il registro di delegate.xyz. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xE225…8262\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 1.5 0x0000…14dC\nLa bacheca delle offerte 0x750d…f9E2\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0xAfEc…e00C\nLo sportello che compra dalle tasche 0x0939…759b\nLe tasche cUSDT 0x56ea…7aAe\nLe tasche cWETH 0x4e8A…1350\nLe tasche cZAMA 0x6D15…ceE2"
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport, il conduit di OpenSea, il WETH con cui pagano le offerte e il registro di delegate.xyz. OpenSea ha chiuso le sue testnet: lì un annuncio non compare su nessun marketplace, si compra dalla pagina. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0x79E6…718c\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nGli annunci (scritti come OpenSea li mostra) 0xF774…8Ddb\nLa bacheca delle offerte 0x43B2…898A\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0x62E0…A17f\nLo sportello che compra dalle tasche 0x06c0…3D61\nLe tasche cUSDT 0x56ea…7aAe\nLe tasche cWETH 0x4e8A…1350\nLe tasche cZAMA 0x6D15…ceE2"
     },
     {
      "id": "vault-more-0",
@@ -1369,7 +1435,7 @@
      "id": "project-vault-0",
      "section": "project-vault",
      "heading": null,
-     "text": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.\nLa scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore, o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte."
+     "text": "Metti qualsiasi NFT di una collezione ammessa in una scatola. Da quel momento nessuno sa chi possiede la scatola: né i marketplace, né i tracker, né noi. L'NFT resta visibile; il suo detentore no.\nLa scatola si può comunque vendere su Seaport, il protocollo di OpenSea, con il caveau come venditore (sulla rete principale l'annuncio compare su OpenSea), o in privato a un solo acquirente a un prezzo che solo loro due possono leggere. L'NFT, o l'ETH di una vendita, esce verso qualsiasi indirizzo, e un relayer può inviare le richieste perché l'indirizzo del detentore non compaia da nessuna parte."
     },
     {
      "id": "project-vault-1",
@@ -1387,7 +1453,7 @@
      "id": "project-leaks-0",
      "section": "project-leaks",
      "heading": null,
-     "text": "La cifratura nasconde i valori, non il fatto che qualcosa sia successo. Una transazione è pubblica: chi l'ha inviata, a quale contratto, quando. Quello che DO NOT OPEN cifra è ciò che la transazione fa: chi finisce per possedere una scatola, un prezzo concordato in privato, se un trasferimento ha spostato qualcosa.\nAlcune cose sono pubbliche di proposito. Un NFT che entra nel caveau è un semplice trasferimento di NFT, quindi chi lo deposita si vede. Un annuncio su Seaport mostra il suo NFT e il suo prezzo, con il caveau come venditore. Anche l'indirizzo verso cui esce un NFT o l'ETH di una vendita si vede: scegline uno senza storia.\nOgni prodotto elenca esattamente cosa trapela, riga per riga, nella sua documentazione."
+     "text": "La cifratura nasconde i valori, non il fatto che qualcosa sia successo. Una transazione è pubblica: chi l'ha inviata, a quale contratto, quando. Quello che DO NOT OPEN cifra è ciò che la transazione fa: chi finisce per possedere una scatola, un prezzo concordato in privato, se un trasferimento ha spostato qualcosa.\nAlcune cose sono pubbliche di proposito. Un NFT che entra nel caveau è un semplice trasferimento di NFT, quindi chi lo deposita si vede. Un annuncio su Seaport mostra il suo NFT e il suo prezzo, con il caveau come venditore, su OpenSea sulla rete principale. Anche l'indirizzo verso cui esce un NFT o l'ETH di una vendita si vede: scegline uno senza storia.\nOgni prodotto elenca esattamente cosa trapela, riga per riga, nella sua documentazione."
     },
     {
      "id": "project-trust-0",

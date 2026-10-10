@@ -5,7 +5,7 @@ export const homeIt: Record<HomeKey, string> = {
   "home.why.1.title": "Possedere senza mostrare.",
   "home.why.1.body": "Chi detiene un asset del caveau, scatola o tasca, è cifrato on-chain. Un wallet pieno di blue chip o di stablecoin smette di essere un bersaglio.",
   "home.why.2.title": "Vendere senza farsi vedere.",
-  "home.why.2.body": "Mettilo in vendita su Seaport a nome del caveau, oppure accetta l'offerta di un acquirente. Chi compra vede l'NFT e il prezzo, mai il venditore.",
+  "home.why.2.body": "Mettilo in vendita su Seaport a nome del caveau (sulla rete principale compare su OpenSea), oppure accetta l'offerta di un acquirente. Chi compra vede l'NFT e il prezzo, mai il venditore.",
   "home.why.3.title": "Vendere in privato.",
   "home.why.3.body": "Offri la scatola a un solo acquirente, a un prezzo in cUSDC che solo voi due potete leggere. Si regola sotto cifratura.",
   "home.why.4.title": "Ritiralo dove vuoi.",

@@ -192,10 +192,13 @@ box program:
   signer as on the EVM, or carry its own binding. The relayer is native on Solana: a request
   needs no signer but the fee payer, which can be the API's key, so the holder signs nothing on
   chain.
-- **Marketplace.** There is no Seaport on Solana. The vault PDA would list the NFT on a Solana
-  marketplace program that lets a PDA be the seller (a Tensor or Magic Eden listing, or an
-  escrowless order the program validates itself), and `sync` would read that listing's account.
-  This is the part to design from scratch.
+- **Marketplace.** There is no Seaport on Solana. On the EVM, `VaultListings` writes the
+  vault's order the way OpenSea shows a contract's listing (Seaport 1.6, OpenSea's conduit, its
+  signed zone and its fees), so the listing shows on opensea.io and is bought there. The vault
+  PDA would list the NFT on a Solana marketplace program that lets a PDA be the seller (a Tensor
+  or Magic Eden listing, or an escrowless order the program validates itself), in the shape that
+  marketplace's site shows, with its fees, and `sync` would read that listing's account. This is
+  the part to design from scratch.
 - **Offers.** The EVM vault accepts buyers' Seaport offers in WETH through a helper
   (`VaultOffers`) it hands one NFT for one call, and that helper is the offer board. On Solana a
   bid is a marketplace account (a Tensor or Magic Eden bid in SOL or wSOL); accepting it is the
@@ -234,7 +237,7 @@ box program:
 | `buyUsdc`, `trade` with `slippageBps`; `shieldUsdc`, `unshieldUsdc`, `wrap`, `unwrap` | `trade`: Uniswap V3 `QuoterV2` and `SwapRouter02` with a minimum out (`buyUsdc`: the ramp, over a V2 pool); ERC-7984 `wrap`, and `unwrap` + public decryption + `finalizeUnwrap` | a Solana AMM swap with a minimum out (a concentrated-liquidity pool such as Orca Whirlpools or Raydium CLMM takes the same CROQ-only range); the confidential token program's deposit and withdraw, the withdrawn amount made public the same way |
 | `signTerms` (the release form) | EIP-191 `personal_sign` (secp256k1), then `POST /v1/terms` | the Wallet Standard's `signMessage` (ed25519) on the same text naming the base58 address; the API's `AcceptTerms` verifies EIP-191 only, so it needs an ed25519 path and an address format check for Solana keys |
 | `allowList`, `claimAllowList` (the mainnet allow list) | EIP-191 `personal_sign` on `allowListMessage`, then `POST /v1/allowlist` | the same as `signTerms`: `signMessage` on the same text, and an ed25519 path in the API's `AllowList`, whose message names a 0x address today. `playerPoints` compares addresses lower-cased, which base58 must not be |
-| `vault()` (`VaultAdapter`, the sealed vault, and its `pockets()`) | `EvmVault`: `SealedVault`, `VaultOffers` (offers signed with EIP-712, WETH wrapped) and Seaport through ethers; `EvmPockets` for `SealedPockets` and `PocketDesk`, the pocket's key and viewer from a second signature; the box keys from one EIP-191 signature (wallets sign deterministically, RFC 6979, so the same wallet makes the same keys); requests through the API's relayer | a vault over the vault program and a Solana marketplace (its listings and bids); the keys from `signMessage` (ed25519 is deterministic too); the API's key as the fee payer |
+| `vault()` (`VaultAdapter`, the sealed vault, and its `pockets()`) | `EvmVault`: `SealedVault`, `VaultListings` (a listing's order read from it; `buy` refused where OpenSea's zone gates it), `VaultOffers` (offers signed with EIP-712 for the Seaport's version, WETH wrapped) and Seaport through ethers; `EvmPockets` for `SealedPockets` and `PocketDesk`, the pocket's key and viewer from a second signature; the box keys from one EIP-191 signature (wallets sign deterministically, RFC 6979, so the same wallet makes the same keys); requests through the API's relayer | a vault over the vault program and a Solana marketplace (its listings and bids); the keys from `signMessage` (ed25519 is deterministic too); the API's key as the fee payer |
 | steps `wallet`, `confirming`, `decrypting`, `proving` | as is | as is |
 | `ChainError.reason` | Solidity custom error name | Anchor error name, kept identical |
 | `ChainError.detail` | `held`/`needed` from a dry run (`estimateGas`) and the balances; `resumable`/`landed` after the first transaction | `simulateTransaction` for the dry run and the fee; the same flags |

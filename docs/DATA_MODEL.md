@@ -288,7 +288,8 @@ for a sale by offer), `FeeSet`, `TreasurySet`. The API does not index any of the
 holding one NFT of an allowed collection. Its owner is an `eaddress`, as for the game's boxes
 (see [Per token](#per-token) and [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)). Four maps with public
 counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (`boxInfo`,
-`requestInfo`, `listingInfo`, `saleInfo`, `seaportOrder`), plus the keys. Flows in
+`requestInfo`, `listingInfo`, `saleInfo`; a listing's Seaport order is
+`VaultListings.orderOf(orderHash)`), plus the keys. Flows in
 [VAULT.md](VAULT.md).
 
 | Struct | Field | Type | Who can read it | Meaning |
@@ -304,17 +305,26 @@ counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (
 | | `placedAt` | `uint64` | public | When it was placed: `expire` is open to anyone `REQUEST_TIMEOUT` (one day) later |
 | | `status` | `None`, `Pending`, `Done`, `Refused`, `Stale`, `Expired` | public | `Refused`: the key did not match; `Stale`: it matched but the box changed first (or the ETH would not send); `Expired`: no proof within a day, nothing ran |
 | | `ok` | `ebool` | publicly decryptable | `(input XOR requestHash) == key` |
-| `Listing` | `boxId`, `price`, `startTime`, `endTime`, `counter`, `orderHash` | plain | public | The Seaport order the vault validated, in wei, at most 180 days |
+| `Listing` | `boxId`, `price`, `net`, `endTime`, `orderHash` | plain | public | The Seaport order the vault validated: `price` is what the buyer pays in wei, fees included, `net` what comes to the vault (the price less OpenSea's and the creator's fees; the vault's own fee comes off `net`), at most 180 days; the order itself is `VaultListings.orderOf(orderHash)` |
 | `Sale` | `boxId`, `seller`, `buyer`, `status` | plain | public | A private sale offered to one buyer: `Open`, `Settled`, `Cancelled` |
 | | `price` | `euint64` | the vault, the seller, the buyer | cUSDC, capped at `MAX_SALE_PRICE` (1,000,000 USDC) under encryption |
 | | `moved` | `ebool` | the vault, the seller, the buyer, once settled | Whether the box went to the buyer |
 
 Plus `allowedCollection` (public, set by the owner), `treasury`, `feeBps` (at most
 `MAX_FEE_BPS`, 1,000), `feesOwed` (Seaport fees in ETH not yet sent), and the immutables
-`seaport`, `confidentialUsdc`, `offers` (`VaultOffers`) and `delegateRegistry` (delegate.xyz's
-Registry v2). The NFTs themselves are ordinary holdings of the vault (`ownerOf` shows it),
-approved to Seaport one at a time while listed, and handed to `VaultOffers` for the one call that
-fills an accepted offer.
+`listings` (`VaultListings`), `seaport` (read from it), `confidentialUsdc`, `offers`
+(`VaultOffers`) and `delegateRegistry` (delegate.xyz's Registry v2). The NFTs themselves are
+ordinary holdings of the vault (`ownerOf` shows it), approved to the listings' operator
+(OpenSea's conduit on Sepolia and mainnet, Seaport locally) one at a time while listed, and
+handed to `VaultOffers` for the one call that fills an accepted offer.
+
+`VaultListings` keeps what it takes to write each listing's order again, by order hash:
+`Listing {offerer, collection, tokenId, price, startTime, endTime, salt, counter, fees[]}`
+(`Fee {recipient, bps}`, the fees as they were when the listing was made), all public
+(`listingOf`, `orderOf`), plus `_fees` per collection (`feesOf`, set by the owner with
+`setFees`, at most `MAX_FEES_BPS`, 1,500, together), `listingCount` (the salt's counter) and the
+immutables `seaport`, `zone`, `conduitKey` and `operator`. Its events: `Prepared(orderHash,
+offerer, collection, tokenId, price)` and `FeesSet(collection, fees)`.
 
 `VaultOffers` stores nothing: it is the offer board and the helper that fills the offers the
 vault accepts. Its only event is `OfferPosted(collection, tokenId, orderHash, order)` (the first
@@ -372,7 +382,7 @@ pocketId)`. No amount and no balance in any of them. The API does not index them
 | Who asked for a request | Yes | The sender only: the relayer, or the wallet when there is none | `RequestPlaced`, the transaction |
 | Whether the key matched | Yes | Yes | `ok` is decrypted in public; `RequestSettled` |
 | Where an NFT or a sale's ETH went | Yes | Yes | `Withdrawn`, `Claimed` |
-| A Seaport listing and its buyer | Yes | Yes | `Listed`, Seaport's own events |
+| A Seaport listing (its price, its fees, its end time) and its buyer | Yes | Yes | `Listed`, `VaultListings.Prepared`, Seaport's own events; on mainnet, OpenSea's page |
 | An offer, its buyer and amount | Yes | Yes | `OfferPosted`, Seaport's `OrderValidated` |
 | An accepted offer: the buyer, the amount, the payout address | Yes | Yes | `OfferAccepted`, `Claimed`, Seaport's `OrderFulfilled` |
 | A box's delegate | Yes | Yes | `boxInfo`, `Delegated`, the registry |

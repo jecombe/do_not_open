@@ -2,10 +2,8 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import registryFixture from "../test/fixtures/delegate-registry-v2.json";
 import seaportFixture from "../test/fixtures/seaport-1.5.json";
+import { listingVenue } from "../lib/opensea";
 import { PAYMENT_TOKENS } from "../lib/paymentTokens";
-
-/** Seaport 1.5, where OpenSea deployed it on every chain it supports. */
-export const SEAPORT = "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC";
 
 /** delegate.xyz's Delegate Registry v2, at the same address on every chain it is on. */
 export const DELEGATE_REGISTRY = "0x00000000000000447e69651d841bD8D104Bed493";
@@ -18,13 +16,15 @@ export const WETH: Record<string, string> = {
 
 /**
  * The sealed vault: any NFT of an allowed collection, its holder encrypted, sold on Seaport with
- * the vault as the seller (a listing, or a buyer's offer accepted through VaultOffers, deployed
- * first), or privately in cUSDC, and delegated through delegate.xyz. On a test network it also
- * deploys VaultTestNFT, free to mint, and allows it.
+ * the vault as the seller (a listing VaultListings writes, or a buyer's offer accepted through
+ * VaultOffers, both deployed first), or privately in cUSDC, and delegated through delegate.xyz.
+ * On a test network it also deploys VaultTestNFT, free to mint, and allows it.
  *
- * Seaport and delegate.xyz's registry are the live deployments on Sepolia; on a local node
- * (`pnpm chain`) their Sepolia code is put at the same addresses first, and a test WETH is
- * deployed. The fee (VAULT_FEE_BPS, 2.5% by default) goes to
+ * Where the listings go is `lib/opensea.ts`: on mainnet the way OpenSea shows them (Seaport 1.6,
+ * its conduit and signed zone; each allowed collection's fees are then set on VaultListings with
+ * `setFees`), elsewhere an open Seaport 1.5 order. Seaport and delegate.xyz's registry are the
+ * live deployments; on a local node (`pnpm chain`) their Sepolia code is put at the same
+ * addresses first, and a test WETH is deployed. The fee (VAULT_FEE_BPS, 2.5% by default) goes to
  * STUDIO_TREASURY, or the owner. Runs at the end and redeploys nothing else: `--tags Vault`
  * adds the vault next to a live collection.
  */
@@ -39,6 +39,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     PAYMENT_TOKENS[hre.network.name]?.cUsdc ??
     (await deploy("TestConfidentialUSDC", { from: deployer!, args: [(await deploy("TestUSDC", { from: deployer!, log: true })).address], log: true })).address;
 
+  const venue = listingVenue(hre.network.name);
+  const SEAPORT = venue.seaport;
   if ((await hre.ethers.provider.getCode(SEAPORT)) === "0x") {
     if (hre.network.config.chainId !== 31337) throw new Error(`No Seaport at ${SEAPORT} on ${hre.network.name}.`);
     for (const { address, code } of [seaportFixture.seaport, seaportFixture.conduitController]) {
@@ -56,9 +58,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
   const weth = WETH[hre.network.name] ?? (await deploy("TestWETH", { from: deployer!, log: true })).address;
   const offers = await deploy("VaultOffers", { from: deployer!, args: [SEAPORT, weth], log: true });
+  const listings = await deploy("VaultListings", { from: deployer!, args: [SEAPORT, venue.zone, venue.conduitKey, venue.conduit, owner], log: true });
 
   // Owned by the deployer until the test collection is allowed, then by the owner.
-  const vault = await deploy("SealedVault", { from: deployer!, args: [SEAPORT, cUsdc, offers.address, DELEGATE_REGISTRY, treasury, deployer, feeBps], log: true });
+  const vault = await deploy("SealedVault", { from: deployer!, args: [listings.address, cUsdc, offers.address, DELEGATE_REGISTRY, treasury, deployer, feeBps], log: true });
   if (hre.network.name !== "mainnet") {
     const nft = await deploy("VaultTestNFT", { from: deployer!, log: true });
     if (!(await read("SealedVault", "allowedCollection", nft.address))) {
@@ -68,7 +71,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if ((await read("SealedVault", "owner")).toLowerCase() !== owner.toLowerCase()) {
     await execute("SealedVault", { from: deployer!, log: true }, "transferOwnership", owner);
   }
-  console.log(`SealedVault: ${vault.address} (fee ${feeBps / 100}% to ${treasury}, Seaport ${SEAPORT}, offers ${offers.address}, WETH ${weth})`);
+  console.log(`SealedVault: ${vault.address} (fee ${feeBps / 100}% to ${treasury}, Seaport ${SEAPORT}, listings ${listings.address}, offers ${offers.address}, WETH ${weth})`);
 };
 export default func;
 func.id = "deploy_vault";

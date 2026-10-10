@@ -29,7 +29,7 @@ export const projectEs: Record<ProjectKey, string> = {
 
   "project.section.vault": "La bóveda sellada",
   "project.vault.p1": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.",
-  "project.vault.p2": "La caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora, o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte.",
+  "project.vault.p2": "La caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora (en la red principal el anuncio aparece en OpenSea), o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte.",
   "project.vault.p3": "La bóveda guarda también tokens. Tus cUSDC, un dólar confidencial, van a un bolsillo cerrado por una llave en lugar de una dirección: envíalos a otro bolsillo, paga una caja con ellos o sácalos a donde quieras. Los tokens confidenciales ya ocultan los importes; un bolsillo oculta además quién pagó a quién. cUSDT, cWETH y cZAMA, los otros tokens confidenciales de Zama, tienen sus propios bolsillos; las cajas se pagan en cUSDC.",
   "project.vault.docs": "Leer la documentación de la bóveda",
   "project.vault.open": "Abrir la bóveda",
@@ -42,7 +42,7 @@ export const projectEs: Record<ProjectKey, string> = {
 
   "project.section.leaks": "Lo que queda en secreto, lo que no",
   "project.leaks.p1": "El cifrado oculta valores, no el hecho de que algo ocurrió. Una transacción es pública: quién la envió, a qué contrato, cuándo. Lo que DO NOT OPEN cifra es lo que hace la transacción: quién acaba teniendo una caja, un precio acordado en privado, si una transferencia movió algo.",
-  "project.leaks.p2": "Algunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial.",
+  "project.leaks.p2": "Algunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora, en OpenSea en la red principal. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial.",
   "project.leaks.p3": "Cada producto detalla exactamente lo que se filtra, línea por línea, en su propia documentación.",
 
   "project.section.trust": "En quién tienes que confiar",

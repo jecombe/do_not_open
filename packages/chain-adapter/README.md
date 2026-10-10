@@ -9,7 +9,7 @@ flowchart LR
   iface --> mock["MockAdapter<br/>in memory"]
   iface --> evm["EvmFhevmAdapter<br/>ethers + Relayer SDK"]
   iface -.-> sol["solana/<br/>not started"]
-  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC,<br/>Rats, RatTricks, FleaMarket on Sepolia;<br/>SealedVault, VaultOffers,<br/>Seaport 1.5, delegate.xyz"]
+  evm --> contract["DoNotOpen, Pantry, cCROQ, cUSDC,<br/>Rats, RatTricks, FleaMarket on Sepolia;<br/>SealedVault, VaultListings, VaultOffers,<br/>Seaport (1.6, 1.5 locally), delegate.xyz"]
   evm --> market["Uniswap V3: CROQ/USDC<br/>QuoterV2, SwapRouter02"]
   evm --> relayer["Zama relayer + KMS"]
 ```
@@ -21,11 +21,11 @@ flowchart LR
 | `src/evm/EvmFhevmAdapter.ts` | Sepolia: transactions through ethers, decryptions through `@zama-fhe/relayer-sdk` |
 | `src/evm/wallet.ts` | Where signatures come from: an injected browser wallet, or a fixed signer in Node |
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
-| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport, `offers` (`VaultOffers`' address, ABI and deploy block), WETH, delegate.xyz's registry and collections; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
+| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport, `listings` (`VaultListings`' address and ABI; null for a vault from before it), `offers` (`VaultOffers`' address, ABI and deploy block), WETH, delegate.xyz's registry and collections; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
 | `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`); the `PocketsAdapter` interface, its pockets' (`PocketsInfo`, `PocketSale`, `PocketOptions`) |
 | `src/pockets.ts` | `pocketSet`: the real pocket among decoys, as the contract wants a set |
-| `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`), the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
+| `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultListings` (a listing's order, and whether OpenSea's zone gates it), `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`) for the version Seaport's `information()` reports, the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
 | `src/mock/MockVault.ts` | The vault in memory, with the contract's rules: the night shift holds two boxes, one listed on Seaport, buys a listing of yours after 20 mock seconds, offers 0.03 WETH for every NFT you seal and accepts any private sale offered to it. `MOCK_VAULT` and `MOCK_VAULT_NFT` (a free test collection) are exported |
 | `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
@@ -46,7 +46,9 @@ const { traitIndex, roll } = await chain.shake(tokenId, { onStep: console.log })
 ```
 
 Every action takes `onStep` and reports its steps, in order, from `encrypting`, `wallet`,
-`confirming`, `decrypting`, `proving`. Failures are `ChainError` with a chain-neutral
+`confirming`, `decrypting`, `proving`. Each transaction is sent with a quarter more gas than
+the node estimates: an FHE call uses a little more on Sepolia than an estimate taken a block
+earlier, and one ran out with the bare estimate (a limit costs nothing unless used). Failures are `ChainError` with a chain-neutral
 `code`, and for contract refusals the contract's error name in `reason`. Three codes come
 from encrypted checks rather than reverts: `unpaid` (the cUSDC did not cover the price,
 or the mint would pass the cap; nothing was taken), `not-yours` (the caller did not
@@ -260,13 +262,18 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 - `info()`: `address`, `explorerUrl` (the vault's page), `explorer` and `marketplace` (the
   chain's explorer and NFT marketplace bases, null where there is none: OpenSea has no testnet,
   so `marketplace` is null on Sepolia; `vaultLinks(info)` builds the address, transaction, NFT
-  and marketplace links from them), `feeBps`, `seaport`, `weth` (what offers pay in),
-  `delegateRegistry` (delegate.xyz's), `collections` (`VaultCollection`:
+  and marketplace links from them), `feeBps`, `seaport`, `listings` (`VaultListings`' address,
+  null on a vault from before it), `listingsOnOpenSea` (true where the listings name OpenSea's
+  signed zone, mainnet: they are bought on OpenSea, not through `buy`; elsewhere an open order
+  anyone fills), `weth` (what offers pay in), `delegateRegistry` (delegate.xyz's),
+  `collections` (`VaultCollection`:
   `address`, `name`, `mintable` for a free test collection), `relayer` (the API relayer's
   address, or null: requests then go from the wallet, whose address shows) and `coin` ("ETH").
 - `boxes()` (newest first) and `box(boxId)` read `VaultBox`es, all public: `collection`,
   `tokenId`, `state` (`"sealed"`, `"listed"`, `"sold"`, `"withdrawn"`, `"claimed"`),
-  `depositor`, `listing` (`VaultListing`: `listingId`, `price` in wei, `endTime`, `orderHash`),
+  `depositor`, `listing` (`VaultListing`: `listingId`, `price` in wei, what the buyer pays;
+  `net`, what comes to the box when it sells, the price less OpenSea's and the creator's fees,
+  the price itself where there are none; `endTime`, `orderHash`),
   `proceeds`, `delegate` (the wallet acting for the NFT in delegate.xyz, or null; public),
   `busy` (requests wait for their proof: the box cannot move until they settle,
   though requests still go in), `tokenUri`. `myBoxes()` finds the
@@ -289,7 +296,8 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
   logs) for the box's NFT or any NFT of its collection, that their WETH still covers, best first
   (`VaultOffer`: `orderHash`, `buyer`, `amount` in wei of WETH one NFT nets after the order's
   own fees, `endTime`, `anyToken`). `makeOffer(boxId, amount, endTime)` wraps ETH into WETH and
-  approves Seaport when needed, signs the Seaport 1.5 order (EIP-712) and posts it to the board;
+  approves Seaport when needed, signs the Seaport order (EIP-712, for the version Seaport's
+  `information()` reports: 1.6 on Sepolia and mainnet, 1.5 locally) and posts it to the board;
   it returns the order hash, and the buyer's address is public. `cancelOffer(orderHash)` cancels
   one of the wallet's own offers on Seaport.
 - `acceptOffer(boxId, orderHash, to)` is a request (`AcceptOffer`, the order hash bound to the
@@ -300,8 +308,11 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
   NFT in delegate.xyz's registry (null clears it). The delegate is public, so a fresh wallet
   keeps the holder unlinked; it is cleared when the NFT leaves and kept when the box changes
   hands. Throws `not-yours`.
-- `buy(boxId)` fills the box's Seaport order from the wallet, as any marketplace buyer would,
-  then sends `sync` so the box shows as sold at once.
+- `buy(boxId)` fills the box's Seaport order (read from `VaultListings.orderOf`) from the
+  wallet, as any marketplace buyer would, then sends `sync` so the box shows as sold at once.
+  Where the order names OpenSea's signed zone (mainnet, `listingsOnOpenSea`) a fill needs
+  OpenSea's signature, so `buy` throws `missed` ("This listing is bought on OpenSea.") and the
+  page shows "Buy on OpenSea", a link to the NFT's marketplace page, instead of "Buy now".
 - `send(boxId, to)` gives the box (a "maybe" transfer); the receiver calls `adopt(boxId)`, which
   sets their key (`setKey`) before anything can leave the box. `send` and `acceptSale` first
   settle the requests the box waits on, anyone's: `finalize` with their public decryption, or

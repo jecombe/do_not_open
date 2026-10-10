@@ -21,6 +21,7 @@ export const MOCK_VAULT: Address = "0x0000000000000000000000000000000000ba5e00";
 /** The demo's test collection, free to mint. */
 export const MOCK_VAULT_NFT: Address = "0x00000000000000000000000000000000000ca7e5";
 const MOCK_SEAPORT: Address = "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC";
+const MOCK_LISTINGS: Address = "0x0000000000000000000000000000000000001157";
 const MOCK_WETH: Address = "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9";
 const MOCK_REGISTRY: Address = "0x00000000000000447e69651d841bD8D104Bed493";
 /** The pockets' contract in the demo: it holds every pocket's cUSDC. */
@@ -253,6 +254,8 @@ export class MockVault implements VaultAdapter {
       marketplace: null,
       feeBps: Number(FEE_BPS),
       seaport: MOCK_SEAPORT,
+      listings: MOCK_LISTINGS,
+      listingsOnOpenSea: false,
       weth: MOCK_WETH,
       delegateRegistry: MOCK_REGISTRY,
       collections,
@@ -711,7 +714,7 @@ export class MockVault implements VaultAdapter {
 
   private listBox(b: MockVaultBox, price: bigint, endTime: number): VaultListing {
     const listingId = this.listingCount++;
-    b.listing = { listingId, price, endTime, orderHash: `0x${listingId.toString(16).padStart(64, "0")}` };
+    b.listing = { listingId, price, net: price, endTime, orderHash: `0x${listingId.toString(16).padStart(64, "0")}` };
     b.state = "listed";
     return b.listing;
   }
