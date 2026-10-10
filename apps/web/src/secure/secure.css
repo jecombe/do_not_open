@@ -637,10 +637,6 @@ button.sec-btn {
   grid-column: span 2;
 }
 
-.sec-cards li:nth-child(n + 4) {
-  grid-column: span 3;
-}
-
 .sec-cards li:hover {
   border-color: rgb(91 227 194 / 0.5);
   transform: translateY(-2px);
@@ -1105,13 +1101,8 @@ button.sec-btn {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .sec-cards li,
-  .sec-cards li:nth-child(n + 4) {
+  .sec-cards li {
     grid-column: auto;
-  }
-
-  .sec-cards li:last-child {
-    grid-column: 1 / -1;
   }
 }
 
