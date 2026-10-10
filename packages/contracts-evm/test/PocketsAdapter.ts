@@ -160,7 +160,7 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     await (await vault.setCollection(await nft.getAddress(), true)).wait();
     pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address)) as unknown as SealedPockets;
     desk = (await (await ethers.getContractFactory("PocketDesk")).deploy(await pockets.getAddress(), await vault.getAddress())) as unknown as PocketDesk;
-    await (await pockets.setDesk(await desk.getAddress())).wait();
+    await (await pockets.addDesk(await desk.getAddress())).wait();
     for (const who of [alice, bob]) {
       await (await usdc.mint(who.address, usd("100"))).wait();
       await (await usdc.connect(who).approve(await cUsdc.getAddress(), usd("100"))).wait();

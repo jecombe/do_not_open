@@ -2,7 +2,7 @@ import type { ProjectKey } from "./en";
 
 export const projectEs: Record<ProjectKey, string> = {
   "project.title": "DO NOT OPEN, la documentación: propiedad confidencial en una cadena pública",
-  "project.description": "Qué es DO NOT OPEN: cajas selladas en Ethereum cuyo titular y contenido siguen cifrados, gracias al FHE de Zama. La bóveda sellada para cualquier NFT, el juego de {supply} gatos, lo que queda en secreto y en quién confías.",
+  "project.description": "Qué es DO NOT OPEN: cajas selladas en Ethereum cuyo titular y contenido siguen cifrados, gracias al FHE de Zama. La bóveda sellada para cualquier NFT, tus tokens y tu liquidez de Uniswap, el juego de {supply} gatos, lo que queda en secreto y en quién confías.",
   "project.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN",
   "project.homeAria": "DO NOT OPEN, inicio",
   "project.site": "Sitio",
@@ -31,6 +31,7 @@ export const projectEs: Record<ProjectKey, string> = {
   "project.vault.p1": "Mete cualquier NFT de una colección permitida en una caja. Desde ese momento nadie sabe quién tiene la caja: ni los marketplaces, ni los rastreadores, ni nosotros. El NFT sigue a la vista; su titular no.",
   "project.vault.p2": "La caja se puede seguir vendiendo en Seaport, el protocolo de OpenSea, con la bóveda como vendedora, o en privado a un solo comprador por un precio que solo ellos dos pueden leer. El NFT, o el ETH de una venta, sale a cualquier dirección, y un relayer puede enviar las solicitudes para que la dirección del titular no aparezca en ninguna parte.",
   "project.vault.p3": "La bóveda guarda también tokens. Tus cUSDC, un dólar confidencial, van a un bolsillo cerrado por una llave en lugar de una dirección: envíalos a otro bolsillo, paga una caja con ellos o sácalos a donde quieras. Los tokens confidenciales ya ocultan los importes; un bolsillo oculta además quién pagó a quién. cUSDT, cWETH y cZAMA, los otros tokens confidenciales de Zama, tienen sus propios bolsillos; las cajas se pagan en cUSDC.",
+  "project.vault.p4": "Y guarda liquidez. Una posición de Uniswap V3 se paga con tus bolsillos, la guarda la bóveda y la dirige una dirección que tu wallet deriva y que nadie puede vincularle: gana las comisiones de trading del pool como cualquier otra posición, y las cobras en tus bolsillos (la bóveda se queda el 5% de esas comisiones, nunca de la liquidez). Nadie puede copiar tus rangos, vigilar tu capital ni relacionar tus posiciones entre sí. Lo que la posición hace en Uniswap sigue siendo público; de quién es, no.",
   "project.vault.docs": "Leer la documentación de la bóveda",
   "project.vault.open": "Abrir la bóveda",
 
@@ -42,21 +43,21 @@ export const projectEs: Record<ProjectKey, string> = {
 
   "project.section.leaks": "Lo que queda en secreto, lo que no",
   "project.leaks.p1": "El cifrado oculta valores, no el hecho de que algo ocurrió. Una transacción es pública: quién la envió, a qué contrato, cuándo. Lo que DO NOT OPEN cifra es lo que hace la transacción: quién acaba teniendo una caja, un precio acordado en privado, si una transferencia movió algo.",
-  "project.leaks.p2": "Algunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial.",
+  "project.leaks.p2": "Algunas cosas son públicas a propósito. Un NFT que entra en la bóveda es una simple transferencia de NFT, así que el depositante se ve. Un anuncio de Seaport muestra su NFT y su precio, con la bóveda como vendedora. La dirección a la que sale un NFT o el ETH de una venta también se ve: elige una sin historial. El pool, el rango, los importes y las comisiones de una posición de liquidez son los de Uniswap, públicos como los de cualquier posición; solo su titular queda oculto.",
   "project.leaks.p3": "Cada producto detalla exactamente lo que se filtra, línea por línea, en su propia documentación.",
 
   "project.section.trust": "En quién tienes que confiar",
   "project.trust.p1": "En los contratos: su código es abierto, y ellos lo deciden todo. Nadie, nosotros incluidos, puede mover una caja, leer un titular o cambiar una venta pasada.",
   "project.trust.p2": "En el servicio de gestión de llaves de Zama, para lo que se descifra y para quién: sus partes tendrían que ponerse de acuerdo para leer lo que los contratos no permitieron. Y en el relayer de la bóveda, en nada: no puede leer una solicitud ni cambiarla, solo negarse a enviarla, y entonces la envía tu wallet.",
-  "project.trust.p3": "El propietario de los contratos puede permitir una colección en la bóveda y fijar su comisión, dentro de un tope escrito en el contrato (10%). No puede tocar una caja. Antes de la mainnet, esa propiedad pasa a una multisig.",
+  "project.trust.p3": "El propietario de los contratos puede permitir una colección en la bóveda y fijar su comisión, dentro de un tope escrito en el contrato (10%), y añadir los tokens que aceptan las posiciones de liquidez y su parte de las comisiones de trading (10% como máximo también). No puede tocar una caja, un bolsillo ni una posición. Antes de la mainnet, esa propiedad pasa a una multisig.",
 
   "project.section.status": "Dónde estamos",
-  "project.status.p1": "Todo funciona en Sepolia, la red de prueba de Ethereum: NFT de prueba, ETH de prueba, nada con dinero dentro. El juego está activo allí con su comunidad; la bóveda, desde octubre de 2026.",
+  "project.status.p1": "Todo funciona en Sepolia, la red de prueba de Ethereum: NFT de prueba, ETH de prueba, nada con dinero dentro. El juego está activo allí con su comunidad; la bóveda, desde octubre de 2026, y sus posiciones de liquidez, desde el 10 de octubre de 2026, en el propio despliegue de Uniswap V3 en Sepolia.",
   "project.status.p2": "La mainnet llega cuando los contratos hayan sido revisados. La whitelist del juego y sus regalos se mantienen; la bóveda se abre a colecciones reales.",
 
   "project.section.more": "Para saber más",
   "project.more.vault": "La documentación de la bóveda",
-  "project.more.vault.v": "El depósito, la llave, Seaport, las ventas privadas, los bolsillos, el relayer, lo que se filtra.",
+  "project.more.vault.v": "El depósito, la llave, Seaport, las ventas privadas, los bolsillos, las posiciones de liquidez, el relayer, lo que se filtra.",
   "project.more.game": "El manual del juego",
   "project.more.game.v": "Cajas, gatos, croquetas, ratas, el mercadillo, la testnet.",
   "project.more.repo": "El código",

@@ -1,11 +1,13 @@
 import { ChainError, sameAddress, type ActionOptions, type Address } from "../types";
 import { DEFAULT_POCKET_DECOYS, pocketSet } from "../pockets";
+import { MockPositions } from "./MockPositions";
 import type {
   PocketOptions,
   PocketSale,
   PocketsAdapter,
   PocketsInfo,
   PocketToken,
+  PositionsAdapter,
   VaultAdapter,
   VaultBox,
   VaultCollection,
@@ -93,6 +95,8 @@ const NIGHT_OFFER = (3n * ETH) / 100n;
 export interface MockVaultHost {
   account(): Address | null;
   nightShift: Address;
+  /** The demo's own wallet: it holds a Uniswap position outside the vault. */
+  you: Address;
   now(): number;
   send(opts: ActionOptions | undefined, call: string): Promise<void>;
   publish(opts: ActionOptions | undefined, call: string): Promise<void>;
@@ -163,6 +167,7 @@ export class MockVault implements VaultAdapter {
   private readonly buyerAt = new Map<number, number>();
   private readonly books: MockPocketBook[] = [];
   private readonly pocketsBy = new Map<string, PocketsAdapter>();
+  private positions_: MockPositions | null = null;
 
   constructor(private readonly host: MockVaultHost) {
     const night = host.nightShift;
@@ -237,6 +242,21 @@ export class MockVault implements VaultAdapter {
       this.pocketsBy.set(book.token.symbol, p);
     }
     return p;
+  }
+
+  positions(): PositionsAdapter {
+    this.positions_ ??= new MockPositions(
+      {
+        account: () => this.host.account(),
+        now: () => this.host.now(),
+        send: (opts, call) => this.host.send(opts, call),
+        publish: (opts, call) => this.host.publish(opts, call),
+        books: () => this.books.map((b) => ({ token: b.token, list: b.list })),
+      },
+      this.host.nightShift,
+      this.host.you,
+    );
+    return this.positions_;
   }
 
   /** The cUSDC pockets, the only ones the desk buys with. */

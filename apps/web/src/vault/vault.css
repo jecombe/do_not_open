@@ -492,9 +492,9 @@ button.vault-disconnect:hover {
 /* The vault's two sides, picked before the tabs: NFTs in boxes, tokens in pockets. */
 .vault-kinds {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  padding: 4px max(var(--gutter), calc(100% - 640px - var(--gutter))) 12px var(--gutter);
+  padding: 4px max(var(--gutter), calc(100% - 960px - var(--gutter))) 12px var(--gutter);
   background: linear-gradient(90deg, rgb(91 227 194 / 0.08), transparent 60%);
 }
 
@@ -584,8 +584,37 @@ button.vault-disconnect:hover {
   border-radius: 50%;
 }
 
+/* Two coins over a basin: liquidity. */
+.vault-kind-pool {
+  position: relative;
+  width: 22px;
+  height: 18px;
+  border-bottom: 2px solid var(--teal);
+  border-radius: 0 0 11px 11px;
+}
+
+.vault-kind-pool i {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--kraft);
+  border-radius: 50%;
+}
+
+.vault-kind-pool i:first-child {
+  left: 2px;
+}
+
+.vault-kind-pool i:last-child {
+  right: 2px;
+  top: 3px;
+  border-color: var(--teal);
+}
+
 .vault-kind:not(.on) .vault-kind-box,
-.vault-kind:not(.on) .vault-kind-coins i {
+.vault-kind:not(.on) .vault-kind-coins i,
+.vault-kind:not(.on) .vault-kind-pool {
   opacity: 0.6;
 }
 
@@ -2301,4 +2330,416 @@ a.vault-me:hover {
 .tour-vault.is-still .tour-spot,
 .tour-vault.is-still .tour-card {
   animation: none;
+}
+
+/* ---------------------------------------------------------- liquidity positions */
+
+.vault-lp {
+  display: grid;
+  gap: 16px;
+  max-width: 1080px;
+}
+
+.vault-lp-lede {
+  margin: 0;
+  max-width: 72ch;
+}
+
+.vault-lp-pools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-lp-pool,
+.vault-lp-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--panel);
+  transition: border-color 0.15s;
+}
+
+.vault-lp-pool.on {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-dim);
+}
+
+.vault-lp-pair,
+.vault-lp-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vault-lp-pair > div,
+.vault-lp-card-head > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.vault-lp-card-head > .vault-chip {
+  margin-left: auto;
+  align-self: center;
+}
+
+.vault-lp-pair strong,
+.vault-lp-card-head strong {
+  font: 700 16px var(--sans);
+}
+
+.vault-lp-icons {
+  display: inline-flex;
+  flex: none;
+}
+
+.vault-lp-icons > :last-child {
+  margin-left: -8px;
+}
+
+.vault-lp-icons.is-small > :last-child {
+  margin-left: -5px;
+}
+
+.vault-lp-price {
+  margin: 0;
+  font: 600 14px var(--mono);
+}
+
+.vault-lp-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.vault-lp-facts dt {
+  color: var(--muted);
+  font: 600 10px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-lp-facts dd {
+  margin: 2px 0 0;
+  font: 13px/1.5 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.vault-lp-earned {
+  color: var(--teal);
+}
+
+.vault-lp-pool-cta,
+.vault-lp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.vault-lp-remove {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.vault-lp-open {
+  gap: 12px;
+  padding: 16px;
+  border-color: var(--teal);
+}
+
+.vault-lp-open h4,
+.vault-lp-side h4,
+.vault-lp-all h3 {
+  margin: 0;
+  font: 700 16px/1.1 var(--stencil);
+  letter-spacing: 0.03em;
+}
+
+.vault-lp-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vault-lp-ranges button,
+.vault-lp-decoys button {
+  padding: 5px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font: 600 13px var(--mono);
+  cursor: pointer;
+}
+
+.vault-lp-ranges button.on {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+/* The range on a log scale: its two ends, and a mark where the price is today. */
+.vault-lp-bar {
+  position: relative;
+  height: 34px;
+  margin: 0 6px;
+}
+
+.vault-lp-bar-fill {
+  position: absolute;
+  top: 6px;
+  right: 0;
+  left: 0;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgb(91 227 194 / 0.35), rgb(91 227 194 / 0.7), rgb(91 227 194 / 0.35));
+}
+
+.vault-lp-bar.is-out .vault-lp-bar-fill {
+  background: linear-gradient(90deg, rgb(201 154 99 / 0.3), rgb(201 154 99 / 0.55), rgb(201 154 99 / 0.3));
+}
+
+.vault-lp-bar-now {
+  position: absolute;
+  top: 0;
+  width: 3px;
+  height: 20px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 3px var(--bg);
+  transition: left 0.6s ease;
+}
+
+.vault-lp-bar-end {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  color: var(--muted);
+  font: 11px var(--mono);
+}
+
+.vault-lp-bar-end-hi {
+  right: 0;
+  left: auto;
+}
+
+.vault-lp-amounts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+}
+
+.vault-lp-side-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vault-lp-side-pick select {
+  width: auto;
+  padding: 2px 6px;
+}
+
+.vault-lp-plus {
+  padding-bottom: 8px;
+  color: var(--muted);
+  font: 700 18px var(--mono);
+}
+
+.vault-lp-paired {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-lp-paired strong {
+  padding: 8px 0;
+  color: var(--text);
+  font: 600 14px var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.vault-lp-decoys > div {
+  display: flex;
+  gap: 4px;
+}
+
+.vault-lp-decoys button.on {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+.vault-lp-steps {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font: 13px/1.5 var(--sans);
+}
+
+.vault-lp-all {
+  display: grid;
+  gap: 10px;
+}
+
+.vault-lp-rows,
+.vault-lp-mine,
+.vault-lp-outside {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-lp-row {
+  display: grid;
+  grid-template-columns: 48px minmax(120px, 1.2fr) minmax(110px, 1fr) minmax(160px, 1.6fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  font: 13px var(--mono);
+}
+
+.vault-lp-row-id {
+  color: var(--muted);
+}
+
+.vault-lp-row-pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.vault-chip-on {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.vault-chip-warn {
+  border-color: var(--kraft);
+  color: var(--kraft);
+}
+
+.vault-lp-mine {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.vault-lp-inline {
+  gap: 8px;
+}
+
+.vault-lp-side {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.vault-lp-side code {
+  overflow-wrap: anywhere;
+  font: 12px var(--mono);
+}
+
+.vault-lp-outside li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: 13px var(--mono);
+}
+
+.vault-lp-public {
+  margin: 0;
+  max-width: 80ch;
+}
+
+.vault-lp-locked {
+  padding: 24px 0;
+}
+
+@media (max-width: 860px) {
+  .vault-lp-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+
+  .vault-lp-row > :nth-child(3),
+  .vault-lp-row > :nth-child(4) {
+    grid-column: 2 / -1;
+  }
+
+  .vault-lp-row-holder {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .vault-kinds {
+    gap: 6px;
+  }
+
+  .vault-lp-amounts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vault-lp-plus {
+    display: none;
+  }
+
+  .vault-lp-mine {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .vault-kind-icon {
+    display: none;
+  }
+}
+
+.vault-lp .vault-decoys-label {
+  margin-right: 4px;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-lp-open > button[type="submit"],
+.vault-lp-inline > button[type="submit"] {
+  justify-self: start;
+}
+
+.vault-lp .vault-chip {
+  white-space: nowrap;
+}
+
+.vault-lp-side .vault-form > button {
+  justify-self: start;
 }

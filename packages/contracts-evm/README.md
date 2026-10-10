@@ -151,9 +151,12 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   encrypted target (the rest refunded); `send(from[], to[], input)` and `withdraw(from[], to,
   input)` take a `SpendInput` (amount and target under one proof, the key XOR `spendHash(...)`
   under another) and move `select(key matches and balance covers, amount, 0)`, with no
-  decryption. Sets of 1 to 5 pockets, increasing; a bound key's handle is `spent` once. `desk`
-  (set once by the owner) may `deskCheck`, `deskTake` and `deskGive`. The same contract also
-  holds Zama's other confidential tokens, one instance each and no desk (`SealedPockets_cUSDT`,
+  decryption. Sets of 1 to 5 pockets, increasing; a bound key's handle is `spent` once. Desks
+  (`isDesk`, added by the owner with `addDesk`, never removed) may `deskCheck`, `deskTake`,
+  `deskTakeFrom` (from the pocket of a set whose key matches), `deskGive` and `deskGiveTo` (into
+  the pocket of a set an encrypted target names); the last two pull what they credit from the
+  desk's own balance, so a desk credits only what it pays in. The same contract also
+  holds Zama's other confidential tokens, one instance each without the vault's desk (`SealedPockets_cUSDT`,
   `_cWETH`, `_cZAMA` on Sepolia, from `lib/pocketTokens.ts`). See
   [`docs/VAULT.md`](../../docs/VAULT.md#pockets).
 - **`PocketDesk`** (`contracts/vault/`) — buys the vault's private sales out of pockets
@@ -161,10 +164,26 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   box to the desk and `reserve(saleId, pocket)`s it; the buyer `ask`s (the key and the balance
   checked under encryption, one bit made public), then `buy(askId, cleartexts, proof, boxKey,
   boxKeyProof)`: the price taken from the pocket, `acceptSale` on the vault, any refund handed
-  back. Holds the boxes it bought (`ownerOf(box)`, encrypted pocket + 1), never sells.
+  back (pulled by the pockets). Holds the boxes it bought (`ownerOf(box)`, encrypted pocket + 1), never sells.
+- **`SealedPositions`** — the vault's Uniswap V3 liquidity positions (constructor
+  `(positionManager, treasury, owner, feeBps)`). A desk of every token's pockets it takes
+  (`addPockets`, the owner's). `open(range, controller, funds, keys)` takes both sides out of
+  pockets (sets among decoys, encrypted amounts and leftover targets, each side's key XOR
+  `openHash`), both or neither, and unwraps them; `settle(fundingId, clear0, proof0, clear1,
+  proof1)`, anyone's, finalizes the unwraps, mints (or `add`s to) the position in a `try/catch`
+  and wraps the leftovers back into the pockets. A position's controller (an address derived from
+  the pockets' signature) signs `collect`, `decrease` (all of it closes and burns),
+  `give` and `takeOut` (EIP-712 `actDigest`); fees and liquidity come back into the pockets of
+  sets an encrypted target names, `feeBps` (at most 10%) of the trading fees to the treasury. A
+  wallet's own Uniswap position comes in with `safeTransferFrom(..., abi.encode(controller))`.
+  `vault/IPositionManager.sol` and `vault/IConfidentialWrapper.sol` are the slices of Uniswap V3's
+  position manager and of an ERC-7984 wrapper it uses. See
+  [`docs/VAULT.md`](../../docs/VAULT.md#liquidity-positions).
 - **`VaultTestNFT`** (`contracts/mocks/`) — test networks only: an ERC-721 anyone mints for free,
   its picture an SVG drawn on-chain, to try the vault with. **`TestWETH`** (`contracts/mocks/`):
-  local networks only, WETH as WETH9 does it.
+  local networks only, WETH as WETH9 does it. **`TestERC20`** and **`TestConfidentialToken`**
+  (`contracts/mocks/`): local networks only, an ERC-20 of any decimals free to mint and
+  OpenZeppelin's wrapper over it, as Zama's test tokens.
 
 The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 
@@ -236,9 +255,14 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `SealedVault.expire` | ~56k | 0 |
 | `SealedPockets.open` | ~280k to ~317k | 32 |
 | `SealedPockets.deposit` (set of 1 / 3 / 5) | ~835k / ~1.03M / ~1.24M | ~1.63M / ~2.56M / ~3.48M |
+| `SealedPositions.open` (1 / 3 / 5 pockets a side) | ~3.69M / ~4.66M / ~5.73M | ~7.64M / ~12.42M / ~17.19M (depth ~1.99M / ~2.64M / ~3.29M) |
+| `SealedPositions.settle` (unwraps, mint, leftovers; 1 / 3 / 5 a side) | ~1.62M / ~1.86M / ~1.97M | ~2.22M / ~3.14M / ~4.06M |
+| `SealedPositions.collect` (1 / 3 / 5 a side) | ~2.26M / ~2.66M / ~3.04M | ~4.44M / ~6.28M / ~8.13M |
+| `SealedPositions.decrease` (part, or all of it; 1 a side) | ~2.20M to ~2.22M | ~4.44M |
+| `SealedPositions.give` / `takeOut` | ~84k / ~137k | 0 |
 | `SealedPockets.send` (1 / 3 / 5 pockets a side) | ~541k / ~1.08M / ~1.61M | ~1.32M / ~3.92M / ~6.52M (depth ~1.97M) |
 | `SealedPockets.withdraw` (set of 1 / 3 / 5) | ~696k / ~970k / ~1.27M | ~1.36M / ~2.82M / ~4.29M |
-| `PocketDesk.ask` / `buy` | ~432k / ~2.68M | ~0.37M / ~6.28M (depth ~3.28M) |
+| `PocketDesk.ask` / `buy` | ~432k / ~2.67M | ~0.37M / ~6.28M (depth ~3.28M) |
 | `SealedVault.confidentialTransfer` (with a new random key) | ~209k to ~266k | ~338k |
 | `SealedVault.setKey` | ~185k | ~225k |
 | `SealedVault.offerSale` | ~304k to ~324k | ~150k |
@@ -252,10 +276,12 @@ contract ~641k to deploy (Hardhat).
 The `SealedVault` rows are not in `test/Costs.ts` yet: gas from `REPORT_GAS=1 pnpm test
 test/SealedVault.ts`, HCU from `fhevm.computeTransactionHCU` on the same calls, against Seaport
 1.5's and delegate.xyz's bytecode. A buyer's Seaport `fulfillOrder` of a vault listing takes
-~97k gas; the vault ~5.5M to deploy, `VaultOffers` ~1.9M.
+~97k gas; the vault ~5.5M to deploy, `VaultOffers` ~1.9M. The positions' rows come from
+`REPORT_COSTS=1 npx hardhat test test/SealedPositions.ts`, against Uniswap V3's own bytecode; on
+Sepolia `SealedPositions` took ~33.4M gas to deploy, a `SealedPockets` ~16.2M, `PocketDesk` ~12.8M.
 
 Deployed size: `DoNotOpen` 24,442 bytes (limit 24,576; the token URIs live in `BoxMetadata`, 1,861, and the rules' views in `DoNotOpenConfig`, 2,968), `WhitelistGifts` 4,876, `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
-12,377, `SealedVault` 24,322 (254 under the limit, at the default optimizer: the next feature
+12,377, `SealedPockets` 9,974, `PocketDesk` 7,713, `SealedPositions` 20,982, `SealedVault` 24,322 (254 under the limit, at the default optimizer: the next feature
 moves logic out first, as accepting offers did into `VaultOffers`, 6,517). To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
@@ -265,7 +291,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 336 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's and delegate.xyz's bytecode) and its pockets
+pnpm test                 # 364 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's and delegate.xyz's bytecode), its pockets and its liquidity positions (against Uniswap V3's bytecode)
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -368,14 +394,26 @@ to end; its fresh addresses are the kept test wallets `vault-proceeds`, `vault-w
 "ciphertext not ready"; the whole run (offer and delegation included) passes on a local node.
 
 `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys `SealedPockets` on the vault's cUSDC
-and `PocketDesk`, sets the desk and hands the pockets to `COLLECTION_OWNER`; then one more
+and `PocketDesk`, adds the desk and hands the pockets to `COLLECTION_OWNER`; then one more
 `SealedPockets` per token of `lib/pocketTokens.ts` on that network (cUSDT, cWETH, cZAMA on
 Sepolia: Zama's ERC-7984 wrappers from its Confidential Token Wrappers Registry), deployed as
-`SealedPockets_<symbol>`, without a desk. It runs the vault's script first: check its constructor
-arguments (`STUDIO_TREASURY`, `COLLECTION_OWNER`) match the live ones, or `SealedVault` is
-redeployed. `dno:export` writes the cUSDC pockets under `vault.pockets` (with `token`: the
+`SealedPockets_<symbol>`, without the vault's desk; a local network gets a test cWETH
+(`TestERC20_WETH`, `TestConfidentialToken_cWETH`). It runs the vault's script first, whose
+constructor names the deploying key and `STUDIO_TREASURY`: with another key, or other values,
+`SealedVault` is redeployed, unless `KEEP_VAULT=1` keeps the deployed one. `dno:export` writes the cUSDC pockets under `vault.pockets` (with `token`: the
 confidential token, its ERC-20, decimals and rate, read from the chain) and the others under
 `vault.otherPockets` (address, deploy block, token; they share the cUSDC pockets' ABI).
+
+`deploy/positions.ts` (tag `Positions`, after `Pockets`) deploys `SealedPositions` on the
+network's Uniswap V3 (`lib/positionPools.ts`: Sepolia's; on a local node Uniswap's own factory,
+position manager and router, deployed once and saved), with `POSITIONS_FEE_BPS` (500, 5% of the
+trading fees) to `STUDIO_TREASURY` (or the owner); makes it a desk of every token's pockets and
+`addPockets` each; hands it to `COLLECTION_OWNER`; then opens each pool of `lib/positionPools.ts`
+nobody opened (WETH/USDC 0.3%, ZAMA/USDC 1%, USDT/USDC 0.05% on Sepolia) at its planned price and
+seeds it full range from the deployer, minting Zama's test tokens (at most 1,000,000 a call).
+`KEEP_VAULT=1 SEPOLIA_GAS_PRICE=2000000 npx hardhat deploy --network sepolia --tags Positions`
+adds it next to a live vault. `dno:export` writes `vault.positions` (address, ABI, deploy block,
+`uniswap`, `routerVersion`, and the pools it finds open and trading on Uniswap's factory).
 
 `deploy/tricks.ts` (tag `Tricks`) deploys `RatTricks` with the paid shake's fee, the spec's
 rebate (30%), trick and rest days (`studio.json` `rats.powers`, `lib/ratParams.ts`), then makes it

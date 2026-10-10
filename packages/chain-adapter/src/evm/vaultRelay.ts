@@ -3,7 +3,7 @@
  * the holder's address appears in no transaction. It only ever sees what any observer of the
  * chain would see once the transaction is sent: the box, the action, its terms, and a key
  * encrypted for the vault and bound to those terms, which it cannot change or reuse. It sends the
- * pockets' opens and spends, and the desk's purchases, the same way.
+ * pockets' opens and spends, the desk's purchases, and the liquidity positions' calls the same way.
  */
 export interface VaultRequestArgs {
   boxId: number;
@@ -34,6 +34,45 @@ export interface PocketSpendInput {
   keyProof: string;
 }
 
+/** A position's pool and range, as `SealedPositions.Range`. */
+export interface PositionRangeArgs {
+  token0: string;
+  token1: string;
+  fee: number;
+  tickLower: number;
+  tickUpper: number;
+}
+
+/** What funds a position, as `SealedPositions.Funds`: plain amounts as decimal strings. */
+export interface PositionFundsArgs {
+  set0: number[];
+  set1: number[];
+  amount0: string;
+  amount1: string;
+  target0: string;
+  target1: string;
+  inputProof: string;
+  amount0Min: string;
+  amount1Min: string;
+  deadline: number;
+}
+
+/** Both pocket keys, bound to the funding's terms, as `SealedPositions.Keys`. */
+export interface PositionKeysArgs {
+  boundKey0: string;
+  boundKey1: string;
+  keyProof: string;
+}
+
+/** Where a position's tokens go, as `SealedPositions.Out`. */
+export interface PositionOutArgs {
+  set0: number[];
+  set1: number[];
+  target0: string;
+  target1: string;
+  inputProof: string;
+}
+
 /** What the relayer sends for the pockets and their desk, by call. */
 export interface PocketRelayCalls {
   /** `pockets`: another token's pockets contract; the cUSDC ones when left out. */
@@ -42,6 +81,14 @@ export interface PocketRelayCalls {
   pocketWithdraw: { from: number[]; to: string; input: PocketSpendInput; pockets?: string };
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
+  /** The liquidity positions: opening and adding are bound to pocket keys, the rest signed by the position's controller. */
+  positionOpen: { range: PositionRangeArgs; controller: string; funds: PositionFundsArgs; keys: PositionKeysArgs };
+  positionAdd: { positionId: number; funds: PositionFundsArgs; keys: PositionKeysArgs };
+  positionSettle: { fundingId: number; clear0: string; proof0: string; clear1: string; proof1: string };
+  positionCollect: { positionId: number; out: PositionOutArgs; deadline: number; signature: string };
+  positionDecrease: { positionId: number; liquidity: string; amount0Min: string; amount1Min: string; out: PositionOutArgs; deadline: number; signature: string };
+  positionGive: { positionId: number; to: string; deadline: number; signature: string };
+  positionTakeOut: { positionId: number; to: string; deadline: number; signature: string };
 }
 
 export class VaultRelay {
@@ -74,7 +121,7 @@ export class VaultRelay {
     return this.post("finalize", args);
   }
 
-  /** Sends a pocket's open or spend, or a desk purchase. Returns the transaction hash. */
+  /** Sends a pocket's open or spend, a desk purchase, or a position's call. Returns the transaction hash. */
   pockets<C extends keyof PocketRelayCalls>(call: C, args: PocketRelayCalls[C]): Promise<string> {
     return this.post(call, args);
   }

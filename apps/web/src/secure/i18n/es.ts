@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureEs: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, la bóveda sellada: activos que nadie te ve tener, NFT y tokens por igual",
-  "secure.description": "Pon tus activos en la bóveda sellada, un NFT en una caja o tus cUSDC, cUSDT, cWETH o cZAMA en un bolsillo, su titular cifrado en Ethereum con el FHE de Zama. Los NFT se siguen vendiendo en Seaport; los tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién.",
+  "secure.title": "DO NOT OPEN, la bóveda sellada: ten activos sin que nadie vea que son tuyos, NFT, tokens y liquidez",
+  "secure.description": "Pon tus activos en la bóveda sellada, un NFT en una caja, tus cUSDC, cUSDT, cWETH o cZAMA en un bolsillo, tu liquidez de Uniswap en una posición sellada, con su titular cifrado en Ethereum con el FHE de Zama. Los NFT siguen vendiéndose en Seaport; los tokens siguen pagando a cualquiera, sin mostrar quién pagó a quién; las posiciones siguen ganando sus comisiones, sin mostrar de quién son.",
   "secure.imageAlt": "Una caja de cartón sellada con el sello DO NOT OPEN dentro de un escudo de cifrado luminoso",
   "secure.nav": "Sitio",
   "secure.nav.protocol": "Protocolo",
@@ -22,7 +22,7 @@ export const secureEs: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Bóveda sellada · FHE de Zama · Ethereum",
   "secure.h1": "Lo que tienes no le importa a nadie más.",
-  "secure.lede": "Pon tus activos en la bóveda, NFT y tokens por igual: cada NFT en una caja sellada, tus tokens en un bolsillo sellado. Desde ese momento nadie sabe quién los tiene: ni los marketplaces, ni los trackers, ni nosotros. Se siguen vendiendo, pagando y moviendo como cualquier activo.",
+  "secure.lede": "Pon tus activos en la bóveda, NFT, tokens y liquidez: cada NFT en una caja sellada, tus tokens en un bolsillo sellado, tus posiciones de Uniswap sin ninguna wallet detrás. Desde entonces nadie sabe quién los tiene: ni los marketplaces, ni los rastreadores, ni nosotros. Siguen vendiéndose, pagando, rindiendo y moviéndose como cualquier activo.",
   "secure.cta.open": "Abrir la bóveda",
   "secure.cta.protocol": "Leer el protocolo",
   "secure.spec.1.k": "Dueño",
@@ -32,7 +32,7 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.spec.3.k": "Reglas",
   "secure.spec.3.v": "aplicadas, verificables",
 
-  "secure.story.aria": "La bóveda en cuatro pasos, en bucle, una vez con un NFT y otra con tokens: se sella en una caja, una llave nace de una firma, se vende, paga o se regala mientras las sondas rebotan, y sale a una dirección nueva. Haz clic para pasar al paso siguiente.",
+  "secure.story.aria": "La bóveda en cuatro pasos, en bucle, con un NFT, luego tokens, luego una posición de liquidez de Uniswap: se sella en una caja, una clave nace de una sola firma, se vende, paga, rinde o se regala mientras las sondas rebotan, y sale a una dirección nueva o a un bolsillo. Haz clic para pasar al siguiente paso.",
   "secure.story.public": "depósito · público",
   "secure.story.publicTokens": "depósito · importe sellado",
   "secure.story.toPocket": "a un bolsillo",
@@ -58,7 +58,7 @@ export const secureEs: Record<SecureKey, string> = {
 
   "secure.ledger.kicker": "Modelo de amenaza",
   "secure.ledger.title": "Lo que ve la cadena, lo que ves tú",
-  "secure.ledger.lede": "Las mismas cinco transacciones. Cualquiera puede leer la cadena; la columna del titular está cifrada para todos menos para el titular.",
+  "secure.ledger.lede": "Las mismas seis transacciones. Cualquiera puede leer la cadena; la columna del titular es texto cifrado para todos menos para el titular.",
   "secure.ledger.public": "Vista pública",
   "secure.ledger.yours": "Tu vista",
   "secure.ledger.block": "Bloque",
@@ -88,7 +88,7 @@ export const secureEs: Record<SecureKey, string> = {
   "secure.built.ethereum": "La red",
   "secure.built.usdc": "Pagos, en cUSDC",
   "secure.built.seaport": "Anuncios",
-  "secure.built.uniswap": "Mercado de CROQ",
+  "secure.built.uniswap": "Posiciones de liquidez, mercado del CROQ",
   "secure.built.delegate": "Delegación",
   "secure.built.arweave": "Imágenes",
   "secure.built.note": "Los protocolos abiertos sobre los que funcionan la bóveda y el juego. Sus nombres y logotipos pertenecen a sus dueños, y ninguno de ellos respalda DO NOT OPEN.",
@@ -117,4 +117,12 @@ export const secureEs: Record<SecureKey, string> = {
   "warden.busy": "Demasiadas preguntas a la vez. Espera un minuto y vuelve a preguntar.",
   "warden.network": "No se puede contactar al Guardián ahora. Inténtalo de nuevo en un momento.",
   "warden.fine": "Las respuestas salen de la documentación de la bóveda y del proyecto, redactadas por Gemini de Google: pueden equivocarse, y Google puede usar las preguntas. Nunca compartas una clave privada, una frase de recuperación ni la clave de una caja, aquí ni en ningún sitio.",
+  "secure.story.publicLp": "pool y rango · públicos",
+  "secure.story.lpFees": "comisiones a un bolsillo",
+  "secure.story.lpAdd": "añadir",
+  "secure.story.lpRemove": "retirar",
+  "secure.story.lpGive": "darla",
+  "secure.story.lpRange": "rango · público",
+  "secure.story.lpPockets": "a tus bolsillos",
+  "secure.ledger.ev.lp": "Posición de liquidez",
 };

@@ -546,6 +546,24 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "32 bytes");
     const pocketSet = z.array(id).min(1).max(5);
     const spendInput = z.object({ amount: bytes32, target: bytes32, inputProof: hex, boundKey: bytes32, keyProof: hex });
+    const uint = z.string().regex(/^\d{1,78}$/).transform(BigInt);
+    const seconds = z.number().int().min(0).max(2 ** 48);
+    const tick = z.number().int().min(-887272).max(887272);
+    const positionRange = z.object({ token0: address, token1: address, fee: z.number().int().min(1).max(1_000_000), tickLower: tick, tickUpper: tick });
+    const positionFunds = z.object({
+      set0: pocketSet,
+      set1: pocketSet,
+      amount0: bytes32,
+      amount1: bytes32,
+      target0: bytes32,
+      target1: bytes32,
+      inputProof: hex,
+      amount0Min: uint,
+      amount1Min: uint,
+      deadline: seconds,
+    });
+    const positionKeys = z.object({ boundKey0: bytes32, boundKey1: bytes32, keyProof: hex });
+    const positionOut = z.object({ set0: pocketSet, set1: pocketSet, target0: bytes32, target1: bytes32, inputProof: hex });
     const body = z.discriminatedUnion("call", [
       z.object({
         call: z.literal("request"),
@@ -569,6 +587,17 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       z.object({ call: z.literal("pocketWithdraw"), args: z.object({ from: pocketSet, to: address, input: spendInput, pockets: address.optional() }) }),
       z.object({ call: z.literal("deskAsk"), args: z.object({ saleId: id, handle: bytes32, keyProof: hex, boxKey: bytes32 }) }),
       z.object({ call: z.literal("deskBuy"), args: z.object({ askId: id, cleartexts: hex, proof: hex, boxKey: bytes32, boxKeyProof: hex }) }),
+      // The liquidity positions: fundings bound to pocket keys, the rest signed by a position's controller.
+      z.object({ call: z.literal("positionOpen"), args: z.object({ range: positionRange, controller: address, funds: positionFunds, keys: positionKeys }) }),
+      z.object({ call: z.literal("positionAdd"), args: z.object({ positionId: id, funds: positionFunds, keys: positionKeys }) }),
+      z.object({ call: z.literal("positionSettle"), args: z.object({ fundingId: id, clear0: uint, proof0: hex, clear1: uint, proof1: hex }) }),
+      z.object({ call: z.literal("positionCollect"), args: z.object({ positionId: id, out: positionOut, deadline: seconds, signature: hex }) }),
+      z.object({
+        call: z.literal("positionDecrease"),
+        args: z.object({ positionId: id, liquidity: uint, amount0Min: uint, amount1Min: uint, out: positionOut, deadline: seconds, signature: hex }),
+      }),
+      z.object({ call: z.literal("positionGive"), args: z.object({ positionId: id, to: address, deadline: seconds, signature: hex }) }),
+      z.object({ call: z.literal("positionTakeOut"), args: z.object({ positionId: id, to: address, deadline: seconds, signature: hex }) }),
     ]);
     app.post(
       "/v1/vault/relay",

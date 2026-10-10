@@ -340,7 +340,9 @@ decryptions.
 desk, for cUSDT, cWETH and cZAMA), each locked by a key rather than an address
 ([VAULT.md](VAULT.md#pockets)). A public counter (`pocketCount`), `pocketOf(viewer)` (the
 pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views `balanceOf`,
-`viewerOf`, `spendHash`. Its `desk` is set once.
+`viewerOf`, `spendHash`. Its desks (`isDesk`: `PocketDesk` on the cUSDC pockets,
+`SealedPositions` on every token's) are added by the owner and never removed; a desk takes only
+with a pocket's key and credits only what it pays in.
 
 | Struct | Field | Type | Who can read it | Meaning |
 | --- | --- | --- | --- | --- |
@@ -360,9 +362,38 @@ pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views
 | owner (`ownerOf`) | | `euint32` | the desk, the viewers of the pockets that bought it | The pocket that holds a box the desk bought, + 1; 0 until a purchase moved it |
 
 Events: `Opened(pocketId, viewer)`, `Deposited(from, pockets[])`, `Sent(from[], to[])`,
-`Withdrawn(from[], to)`, `DeskSetTo(desk)`; on the desk `Reserved(saleId, pocketId)`,
+`Withdrawn(from[], to)`, `DeskAdded(desk)`; on the desk `Reserved(saleId, pocketId)`,
 `Asked(askId, saleId, pocketId)`, `AskSettled(askId, status)`, `Bought(saleId, boxId,
 pocketId)`. No amount and no balance in any of them. The API does not index them yet.
+
+### Liquidity positions
+
+`SealedPositions` holds Uniswap V3 positions funded out of pockets
+([VAULT.md](VAULT.md#liquidity-positions)). Public: `positionCount`, `fundingCount`,
+`positionOf(controller)` (the position a controller steers, + 1; 0 once closed, given away or
+taken out), `controllerUsed(controller)` (each steers one position, once), `spent(handle)` (bound
+keys already used), `feeBps`, `treasury`, and per token `sideOf(underlying)` (its pockets, its
+wrapper, its rate) and `tokens()`. Views `openHash`, `addHash`, `outHash`, `actDigest`.
+
+| Struct | Field | Type | Who can read it | Meaning |
+| --- | --- | --- | --- | --- |
+| `Position` | `controller` | `address` | public | Signs the holder's actions (EIP-712); derived from the pockets' signature, one per position, tied to no wallet |
+| | `nonce` | `uint64` | public | Moves on with every signed action |
+| | `status` | `None`, `Funding`, `Open`, `Closed`, `Failed`, `Out` | public | `Failed`: its first funding came to nothing and went back; `Out`: the Uniswap NFT left |
+| | `tokenId` | `uint256` | public | Uniswap's NFT, 0 until the first funding settles |
+| | `range` | `token0`, `token1`, `fee`, `tickLower`, `tickUpper` | public | The pool and range, as Uniswap names them |
+| `Funding` | `positionId`, `set0`, `set1`, `amount0Min`, `amount1Min`, `deadline` | plain | public | What it funds, the pockets named, Uniswap's limits |
+| | `unwrap0`, `unwrap1` | `bytes32` (the unwrapped amounts' handles) | publicly decryptable | What each side's pocket paid (0 when the other side did not); public once decrypted |
+| | `target0`, `target1` | `euint32` | the contract only | The pocket of each set the leftovers go back to |
+| | `status` | `None`, `Pending`, `Done`, `Refunded` | public | `Refunded`: nothing went into Uniswap, everything went back |
+
+Events: `Opened(positionId, controller, token0, token1, fee, tickLower, tickUpper)`,
+`Funded(fundingId, positionId, set0[], set1[])`, `Settled(fundingId, positionId, ok, amount0,
+amount1, liquidity)`, `Deposited(positionId, from, tokenId)`, `Collected(positionId, amount0,
+amount1, fee0, fee1, set0[], set1[])`, `Decreased(positionId, liquidity, amount0, amount1,
+set0[], set1[])`, `Closed`, `Given(positionId, controller)`, `TakenOut(positionId, to)`,
+`PocketsAdded`, `FeeSet`, `TreasurySet`. Every amount in them is Uniswap's, public anyway; none
+says which pocket of a set paid or was paid. The API does not index them yet.
 
 | Fact | The holder | Anyone else | How |
 | --- | --- | --- | --- |
@@ -378,6 +409,9 @@ pocketId)`. No amount and no balance in any of them. The API does not index them
 | A box's delegate | Yes | Yes | `boxInfo`, `Delegated`, the registry |
 | A private sale's price | The seller and the buyer | No | User decryption; `SaleOffered` carries no price |
 | Whether a private sale moved the box | The seller and the buyer | No | `moved`; `SaleSettled` says only that it settled |
+| Who holds a liquidity position | Yes (their page derives its controller) | No | `controller` is an address tied to no wallet |
+| A position's pool, range, amounts and fees | Yes | Yes | Uniswap's own state and events, `Settled`, `Collected` |
+| Which pocket of a set funded or was paid by a position | Yes | No | `deskTakeFrom` / `deskGiveTo` under encryption; events name the sets only |
 
 ## Release forms
 

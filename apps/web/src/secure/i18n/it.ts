@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureIt: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, il caveau sigillato: asset che nessuno ti vede possedere, NFT e token allo stesso modo",
-  "secure.description": "Metti i tuoi asset nel caveau sigillato, un NFT in una scatola o i tuoi cUSDC, cUSDT, cWETH o cZAMA in una tasca, il loro titolare cifrato su Ethereum con l'FHE di Zama. Gli NFT si vendono comunque su Seaport; i token pagano comunque chiunque, senza mostrare chi ha pagato chi.",
+  "secure.title": "DO NOT OPEN, il caveau sigillato: possiedi asset senza che nessuno veda che sono tuoi, NFT, token e liquidità",
+  "secure.description": "Metti i tuoi asset nel caveau sigillato, un NFT in una scatola, i tuoi cUSDC, cUSDT, cWETH o cZAMA in una tasca, la tua liquidità Uniswap in una posizione sigillata, con il titolare cifrato su Ethereum con l'FHE di Zama. Gli NFT si vendono sempre su Seaport; i token pagano sempre chiunque, senza mostrare chi ha pagato chi; le posizioni guadagnano sempre le loro commissioni, senza mostrare di chi sono.",
   "secure.imageAlt": "Una scatola di cartone sigillata con il timbro DO NOT OPEN dentro uno scudo di cifratura luminoso",
   "secure.nav": "Sito",
   "secure.nav.protocol": "Protocollo",
@@ -22,7 +22,7 @@ export const secureIt: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Caveau sigillato · FHE di Zama · Ethereum",
   "secure.h1": "Quello che possiedi non riguarda nessun altro.",
-  "secure.lede": "Metti i tuoi asset nel caveau, NFT e token allo stesso modo: ogni NFT in una scatola sigillata, i tuoi token in una tasca sigillata. Da quel momento nessuno sa chi li detiene: né i marketplace, né i tracker, né noi. Si vendono, pagano e si muovono comunque come qualsiasi asset.",
+  "secure.lede": "Metti i tuoi asset nel caveau, NFT, token e liquidità: ogni NFT in una scatola sigillata, i tuoi token in una tasca sigillata, le tue posizioni Uniswap senza alcun wallet dietro. Da allora nessuno sa chi li detiene: né i marketplace, né i tracker, né noi. Si vendono, pagano, rendono e si muovono come qualsiasi asset.",
   "secure.cta.open": "Apri il caveau",
   "secure.cta.protocol": "Leggi il protocollo",
   "secure.spec.1.k": "Proprietario",
@@ -32,7 +32,7 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.spec.3.k": "Regole",
   "secure.spec.3.v": "applicate, verificabili",
 
-  "secure.story.aria": "Il caveau in quattro passi, in loop, una volta con un NFT e una con dei token: viene sigillato in una scatola, una chiave nasce da una firma, si vende, paga o si regala mentre le sonde rimbalzano, ed esce verso un indirizzo nuovo. Clicca per passare al passo successivo.",
+  "secure.story.aria": "Il caveau in quattro passi, a ciclo, con un NFT, poi token, poi una posizione di liquidità Uniswap: viene sigillato in una scatola, una chiave nasce da una sola firma, si vende, paga, rende o si regala mentre le sonde rimbalzano, ed esce verso un indirizzo nuovo o una tasca. Clicca per passare al passo successivo.",
   "secure.story.public": "deposito · pubblico",
   "secure.story.publicTokens": "deposito · importo sigillato",
   "secure.story.toPocket": "verso una tasca",
@@ -58,7 +58,7 @@ export const secureIt: Record<SecureKey, string> = {
 
   "secure.ledger.kicker": "Modello di minaccia",
   "secure.ledger.title": "Cosa vede la catena, cosa vedi tu",
-  "secure.ledger.lede": "Le stesse cinque transazioni. Chiunque può leggere la catena; la colonna del titolare è cifrata per tutti tranne che per il titolare.",
+  "secure.ledger.lede": "Le stesse sei transazioni. Chiunque può leggere la catena; la colonna del titolare è cifrata per tutti tranne che per il titolare.",
   "secure.ledger.public": "Vista pubblica",
   "secure.ledger.yours": "La tua vista",
   "secure.ledger.block": "Blocco",
@@ -88,7 +88,7 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.built.ethereum": "La rete",
   "secure.built.usdc": "Pagamenti, in cUSDC",
   "secure.built.seaport": "Annunci",
-  "secure.built.uniswap": "Mercato del CROQ",
+  "secure.built.uniswap": "Posizioni di liquidità, mercato del CROQ",
   "secure.built.delegate": "Delega",
   "secure.built.arweave": "Immagini",
   "secure.built.note": "I protocolli aperti su cui girano il caveau e il gioco. I loro nomi e loghi appartengono ai rispettivi proprietari, e nessuno di loro sostiene DO NOT OPEN.",
@@ -117,4 +117,12 @@ export const secureIt: Record<SecureKey, string> = {
   "warden.busy": "Troppe domande insieme. Aspetta un minuto e richiedi.",
   "warden.network": "Il Guardiano non è raggiungibile ora. Riprova tra poco.",
   "warden.fine": "Le risposte vengono dalla documentazione del caveau e del progetto, scritte da Gemini di Google: possono sbagliare, e Google può usare le domande. Non condividere mai una chiave privata, una frase di recupero o la chiave di una scatola, qui o altrove.",
+  "secure.story.publicLp": "pool e range · pubblici",
+  "secure.story.lpFees": "commissioni a una tasca",
+  "secure.story.lpAdd": "aggiungi",
+  "secure.story.lpRemove": "ritira",
+  "secure.story.lpGive": "cedila",
+  "secure.story.lpRange": "range · pubblico",
+  "secure.story.lpPockets": "nelle tue tasche",
+  "secure.ledger.ev.lp": "Posizione di liquidità",
 };

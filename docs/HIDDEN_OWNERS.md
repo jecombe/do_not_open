@@ -227,6 +227,20 @@ pockets of their own: which token an action moves is public, never whose pocket 
 pockets of different tokens have different viewers, so nothing ties them together. See
 [VAULT.md](VAULT.md#pockets).
 
+## 5g. The vault's liquidity positions
+
+The same idea for Uniswap V3 liquidity. A Uniswap position is an NFT in its provider's wallet;
+`SealedPositions` holds it instead, funded out of two pockets (each side's set among decoys, the
+keys bound to every term, both sides paid or neither) and steered by a controller, an address
+the holder's page derives from the pockets' signature, one per position: no wallet is tied to
+it, and nothing ties two positions of one holder together. Its fees and liquidity come back
+into pockets, credited under encryption to the pocket of a set an encrypted target names. What
+leaks: everything the position does on Uniswap (pool, range, amounts, fees, as for any
+position), the sets of pockets that funded it and were paid, its controller (tied to nothing), a
+deposit's sender and a take-out's address; and funding both sides at once says one pocket of
+each set is the same holder's. Never public: who holds it, which pocket of a set paid or was
+paid, which positions are the same holder's. See [VAULT.md](VAULT.md#liquidity-positions).
+
 ## 6. What still leaks
 
 | Fact | Visible to everyone |

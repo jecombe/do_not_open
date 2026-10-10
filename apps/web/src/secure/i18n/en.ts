@@ -1,7 +1,7 @@
 /** The secure home page's own messages; the rest (why, how, what shows, the game) are the home page's. */
 export const secureEn = {
-  "secure.title": "DO NOT OPEN, the sealed vault: own assets nobody can see you hold, NFTs and tokens alike",
-  "secure.description": "Put your assets in the sealed vault, an NFT in a box or your cUSDC, cUSDT, cWETH or cZAMA in a pocket, their holder encrypted on Ethereum with Zama's FHE. NFTs still sell on Seaport; tokens still pay anyone, without showing who paid whom.",
+  "secure.title": "DO NOT OPEN, the sealed vault: own assets nobody can see you hold, NFTs, tokens and liquidity alike",
+  "secure.description": "Put your assets in the sealed vault, an NFT in a box, your cUSDC, cUSDT, cWETH or cZAMA in a pocket, your Uniswap liquidity in a sealed position, their holder encrypted on Ethereum with Zama's FHE. NFTs still sell on Seaport; tokens still pay anyone, without showing who paid whom; positions still earn their fees, without showing whose they are.",
   "secure.imageAlt": "A sealed cardboard box stamped DO NOT OPEN inside a glowing encryption shield",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocol",
@@ -21,7 +21,7 @@ export const secureEn = {
 
   "secure.eyebrow": "Sealed vault · Zama FHE · Ethereum",
   "secure.h1": "What you own is nobody's business.",
-  "secure.lede": "Put your assets in the vault, NFTs and tokens alike: each NFT in a sealed box, your tokens in a sealed pocket. From then on nobody knows who holds them: not marketplaces, not trackers, not us. They still sell, pay and move like any asset.",
+  "secure.lede": "Put your assets in the vault, NFTs, tokens and liquidity alike: each NFT in a sealed box, your tokens in a sealed pocket, your Uniswap positions held by no wallet. From then on nobody knows who holds them: not marketplaces, not trackers, not us. They still sell, pay, earn and move like any asset.",
   "secure.cta.open": "Open the vault",
   "secure.cta.protocol": "Read the protocol",
   "secure.spec.1.k": "Holder",
@@ -31,7 +31,7 @@ export const secureEn = {
   "secure.spec.3.k": "Rules",
   "secure.spec.3.v": "enforced, verifiable",
 
-  "secure.story.aria": "The vault in four steps, on a loop, once with an NFT and once with tokens: it is sealed in a box, a key is made from one signature, it sells, pays or is given away while probes bounce off, and it comes out to a fresh address. Click to skip to the next step.",
+  "secure.story.aria": "The vault in four steps, on a loop, with an NFT, then tokens, then a Uniswap liquidity position: it is sealed in a box, a key is made from one signature, it sells, pays, earns or is given away while probes bounce off, and it comes out to a fresh address or a pocket. Click to skip to the next step.",
   "secure.story.public": "deposit · public",
   "secure.story.publicTokens": "deposit · amount sealed",
   "secure.story.toPocket": "to a pocket",
@@ -57,7 +57,7 @@ export const secureEn = {
 
   "secure.ledger.kicker": "Threat model",
   "secure.ledger.title": "What the chain sees, what you see",
-  "secure.ledger.lede": "The same five transactions. Anyone can read the chain; the holder column is ciphertext to everyone but the holder.",
+  "secure.ledger.lede": "The same six transactions. Anyone can read the chain; the holder column is ciphertext to everyone but the holder.",
   "secure.ledger.public": "Public view",
   "secure.ledger.yours": "Your view",
   "secure.ledger.block": "Block",
@@ -87,7 +87,7 @@ export const secureEn = {
   "secure.built.ethereum": "The network",
   "secure.built.usdc": "Payments, as cUSDC",
   "secure.built.seaport": "Listings",
-  "secure.built.uniswap": "CROQ's market",
+  "secure.built.uniswap": "Liquidity positions, CROQ's market",
   "secure.built.delegate": "Delegation",
   "secure.built.arweave": "Images",
   "secure.built.note": "Open protocols the vault and the game run on. Their names and logos belong to their owners, and none of them endorses DO NOT OPEN.",
@@ -116,6 +116,14 @@ export const secureEn = {
   "warden.busy": "Too many questions at once. Wait a minute and ask again.",
   "warden.network": "The Warden can't be reached right now. Try again in a moment.",
   "warden.fine": "Answers come from the vault's and the project's docs, worded by Google's Gemini: they can be wrong, and Google may use the questions. Never share a private key, a recovery phrase or a box's key, here or anywhere.",
+  "secure.story.publicLp": "pool & range · public",
+  "secure.story.lpFees": "fees to a pocket",
+  "secure.story.lpAdd": "add liquidity",
+  "secure.story.lpRemove": "take it out",
+  "secure.story.lpGive": "give it",
+  "secure.story.lpRange": "range · public",
+  "secure.story.lpPockets": "into your pockets",
+  "secure.ledger.ev.lp": "Liquidity position",
 } as const;
 
 export type SecureKey = keyof typeof secureEn;

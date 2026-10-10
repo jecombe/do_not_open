@@ -212,12 +212,126 @@ export interface PocketsAdapter {
   boxes(): Promise<number[]>;
 }
 
+/** A Uniswap V3 pool positions can be opened in: two of the pockets' tokens. */
+export interface PositionPool {
+  address: Address;
+  /** Uniswap's order: token0's ERC-20 sorts below token1's. Each is the pockets' token wrapping it. */
+  token0: PocketToken;
+  token1: PocketToken;
+  /** Uniswap's fee tier, in hundredths of a bip: 3000 is 0.3% of every trade, paid to positions in range. */
+  fee: number;
+  tickSpacing: number;
+  /** Live: the pool's price as Uniswap keeps it, and its tick. */
+  sqrtPriceX96: bigint;
+  tick: number;
+  /** Live: the liquidity trading at the current price. */
+  liquidity: bigint;
+}
+
+export type PositionStatus = "funding" | "open" | "closed" | "failed" | "out";
+
+/** A liquidity position. Everything here is public, as on Uniswap; who holds it is not. */
+export interface SealedPosition {
+  positionId: number;
+  status: PositionStatus;
+  /** The pool's address. */
+  pool: Address;
+  fee: number;
+  tickLower: number;
+  tickUpper: number;
+  /** Uniswap's NFT, null until its first funding settles. */
+  tokenId: bigint | null;
+  liquidity: bigint;
+  /** What its liquidity is worth now, in each ERC-20's smallest units. */
+  amount0: bigint;
+  amount1: bigint;
+  /** Trading fees earned and not collected yet, before the vault's share, in the ERC-20s' units. */
+  fees0: bigint;
+  fees1: bigint;
+  /** Whether the pool's price is inside its range: only then does it earn fees. */
+  inRange: boolean;
+  /** Fundings waiting for their proofs (anyone may settle them; the page does). */
+  pending: number[];
+  /** The address that signs its holder's actions: derived from the holder's signature, tied to no wallet. Public. */
+  controller: Address;
+}
+
+export interface PositionsInfo {
+  address: Address;
+  positionManager: Address;
+  /** Share of the trading fees a collect keeps, in basis points (never of the liquidity). */
+  feeBps: number;
+  /** Positions opened in all. */
+  count: number;
+  pools: PositionPool[];
+  /** Sends opens, settles and holders' actions, so no wallet shows. Null: the wallet sends them. */
+  relayer: Address | null;
+}
+
+export interface PositionOptions extends ActionOptions {
+  /** Other pockets to name next to each real one, so nobody can tell which paid or is paid. 2 when left out. */
+  decoys?: number;
+  /** How far the price may move before Uniswap refuses the deposit, in basis points of each amount. 100 (1%) when left out. */
+  slippageBps?: number;
+}
+
+/** A Uniswap position the wallet holds itself, in one of the pools here: it can come in. */
+export interface WalletPosition {
+  tokenId: bigint;
+  pool: Address;
+  tickLower: number;
+  tickUpper: number;
+  liquidity: bigint;
+}
+
+/**
+ * Uniswap V3 liquidity nobody can tie to a wallet. A position is paid for out of the wallet's
+ * pockets of its two tokens, held by the vault's positions contract, steered by an address
+ * derived from the same signature as the pockets' keys (one per position, so nothing ties a
+ * wallet's positions together), and pays its fees and its liquidity back into pockets. Every
+ * transaction goes through the vault's relayer when the API has one.
+ */
+export interface PositionsAdapter {
+  info(): Promise<PositionsInfo>;
+  /** Every position, newest first: public, as on Uniswap. */
+  all(): Promise<SealedPosition[]>;
+  /** The wallet's positions, found from its signature on any device, newest first. */
+  mine(opts?: ActionOptions): Promise<SealedPosition[]>;
+  /** Opens a position in `pool` on [tickLower, tickUpper] with `amount0` and `amount1` (the pockets' confidential units)
+   *  out of the wallet's pockets of the two tokens (opened when missing). Waits for the unwraps' proofs and settles:
+   *  whatever Uniswap does not take goes back to the pockets. Throws `not-yours` when a pocket is short (nothing moved)
+   *  and `missed` when Uniswap refused (the price moved: everything went back). Returns the position's id. */
+  open(pool: Address, tickLower: number, tickUpper: number, amount0: bigint, amount1: bigint, opts?: PositionOptions): Promise<number>;
+  /** Adds liquidity to one of the wallet's positions, out of its pockets, the same way. */
+  add(positionId: number, amount0: bigint, amount1: bigint, opts?: PositionOptions): Promise<void>;
+  /** Sends the position's trading fees into the wallet's pockets, the vault's share taken. Returns what the pockets got, in the ERC-20s' units. */
+  collect(positionId: number, opts?: PositionOptions): Promise<{ amount0: bigint; amount1: bigint }>;
+  /** Takes `shareBps` of the liquidity out (10,000 closes the position) and the fees earned, into the wallet's pockets. */
+  remove(positionId: number, shareBps: number, opts?: PositionOptions): Promise<{ amount0: bigint; amount1: bigint }>;
+  /** Hands the position to another holder: `to` is their receive address (`receiveAddress`). */
+  give(positionId: number, to: Address, opts?: ActionOptions): Promise<void>;
+  /** A fresh address of the wallet's that a position can be given to: good until something is given to it. */
+  receiveAddress(opts?: ActionOptions): Promise<Address>;
+  /** Sends the Uniswap NFT to `to`, out of the vault: the address is public. */
+  takeOut(positionId: number, to: Address, opts?: ActionOptions): Promise<void>;
+  /** Uniswap positions the wallet holds in the pools here. */
+  walletPositions(): Promise<WalletPosition[]>;
+  /** Brings one of the wallet's own Uniswap positions in: the deposit names the wallet. Returns the position's id. */
+  deposit(tokenId: bigint, opts?: ActionOptions): Promise<number>;
+  /** Settles a funding left waiting (a page closed mid-way): anyone may. */
+  settle(fundingId: number, opts?: ActionOptions): Promise<void>;
+  /** Test networks: the wallet trades back and forth in the pool, so the positions in range earn fees. Null where it cannot. */
+  trade: ((pool: Address, opts?: ActionOptions) => Promise<void>) | null;
+}
+
 export interface VaultAdapter {
   info(): Promise<VaultInfo>;
   /** The tokens pockets hold where they are deployed, the vault's cUSDC first. */
   pocketTokens(): PocketToken[];
   /** The pockets of `symbol` (the vault's cUSDC when left out), where they are deployed. */
   pockets(symbol?: string): PocketsAdapter | null;
+  /** Uniswap liquidity positions funded out of the pockets, where they are deployed. */
+  positions(): PositionsAdapter | null;
   /** Every box, newest first. */
   boxes(): Promise<VaultBox[]>;
   box(boxId: number): Promise<VaultBox>;

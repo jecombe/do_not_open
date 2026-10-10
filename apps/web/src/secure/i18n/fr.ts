@@ -1,8 +1,8 @@
 import type { SecureKey } from "./en";
 
 export const secureFr: Record<SecureKey, string> = {
-  "secure.title": "DO NOT OPEN, le coffre scellé : des actifs que personne ne te voit détenir, NFT comme jetons",
-  "secure.description": "Mets tes actifs dans le coffre scellé, un NFT dans une boîte ou tes cUSDC, cUSDT, cWETH ou cZAMA dans une poche, leur détenteur chiffré sur Ethereum grâce au FHE de Zama. Les NFT se vendent quand même sur Seaport ; les jetons paient quand même n'importe qui, sans montrer qui a payé qui.",
+  "secure.title": "DO NOT OPEN, le coffre scellé : détiens des actifs sans que personne ne voie que c'est toi, NFT, jetons et liquidité",
+  "secure.description": "Mets tes actifs dans le coffre scellé, un NFT dans une boîte, tes cUSDC, cUSDT, cWETH ou cZAMA dans une poche, ta liquidité Uniswap dans une position scellée, leur détenteur chiffré sur Ethereum avec le FHE de Zama. Les NFT se vendent toujours sur Seaport ; les jetons paient toujours n'importe qui, sans montrer qui a payé qui ; les positions touchent toujours leurs frais, sans montrer à qui elles sont.",
   "secure.imageAlt": "Une boîte en carton scellée, tamponnée DO NOT OPEN, dans un bouclier de chiffrement lumineux",
   "secure.nav": "Site",
   "secure.nav.protocol": "Protocole",
@@ -22,7 +22,7 @@ export const secureFr: Record<SecureKey, string> = {
 
   "secure.eyebrow": "Coffre scellé · FHE de Zama · Ethereum",
   "secure.h1": "Ce que tu possèdes ne regarde que toi.",
-  "secure.lede": "Mets tes actifs dans le coffre, NFT comme jetons : chaque NFT dans une boîte scellée, tes jetons dans une poche scellée. Dès lors, personne ne sait qui les détient : ni les marketplaces, ni les trackers, ni nous. Ils se vendent, paient et circulent quand même comme n'importe quel actif.",
+  "secure.lede": "Mets tes actifs dans le coffre, NFT, jetons et liquidité : chaque NFT dans une boîte scellée, tes jetons dans une poche scellée, tes positions Uniswap détenues par aucun wallet. Dès lors personne ne sait qui les détient : ni les marketplaces, ni les trackers, ni nous. Ils se vendent, paient, rapportent et circulent toujours comme n'importe quel actif.",
   "secure.cta.open": "Ouvrir le coffre",
   "secure.cta.protocol": "Lire le protocole",
   "secure.spec.1.k": "Détenteur",
@@ -32,7 +32,7 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.spec.3.k": "Règles",
   "secure.spec.3.v": "appliquées, vérifiables",
 
-  "secure.story.aria": "Le coffre en quatre étapes, en boucle, une fois avec un NFT et une fois avec des jetons : on le scelle dans une boîte, une clé naît d'une signature, il se vend, paie ou se donne pendant que les sondes rebondissent, et il sort vers une adresse neuve. Clique pour passer à l'étape suivante.",
+  "secure.story.aria": "Le coffre en quatre étapes, en boucle, avec un NFT, puis des jetons, puis une position de liquidité Uniswap : il est scellé dans une boîte, une clé naît d'une seule signature, il se vend, paie, rapporte ou se donne pendant que les sondes rebondissent, et il ressort vers une adresse neuve ou une poche. Clique pour passer à l'étape suivante.",
   "secure.story.public": "dépôt · public",
   "secure.story.publicTokens": "dépôt · montant scellé",
   "secure.story.toPocket": "vers une poche",
@@ -58,7 +58,7 @@ export const secureFr: Record<SecureKey, string> = {
 
   "secure.ledger.kicker": "Modèle de menace",
   "secure.ledger.title": "Ce que voit la chaîne, ce que tu vois",
-  "secure.ledger.lede": "Les cinq mêmes transactions. Tout le monde peut lire la chaîne ; la colonne du détenteur est chiffrée pour tous, sauf pour le détenteur.",
+  "secure.ledger.lede": "Les six mêmes transactions. N'importe qui peut lire la chaîne ; la colonne du détenteur est chiffrée pour tous sauf pour le détenteur.",
   "secure.ledger.public": "Vue publique",
   "secure.ledger.yours": "Ta vue",
   "secure.ledger.block": "Bloc",
@@ -88,7 +88,7 @@ export const secureFr: Record<SecureKey, string> = {
   "secure.built.ethereum": "Le réseau",
   "secure.built.usdc": "Paiements, en cUSDC",
   "secure.built.seaport": "Annonces",
-  "secure.built.uniswap": "Marché du CROQ",
+  "secure.built.uniswap": "Positions de liquidité, marché du CROQ",
   "secure.built.delegate": "Délégation",
   "secure.built.arweave": "Images",
   "secure.built.note": "Les protocoles ouverts sur lesquels tournent le coffre et le jeu. Leurs noms et logos appartiennent à leurs propriétaires, et aucun d'eux ne cautionne DO NOT OPEN.",
@@ -117,4 +117,12 @@ export const secureFr: Record<SecureKey, string> = {
   "warden.busy": "Trop de questions d'un coup. Attends une minute et redemande.",
   "warden.network": "Le Gardien est injoignable pour l'instant. Réessaie dans un moment.",
   "warden.fine": "Les réponses viennent de la doc du coffre et du projet, rédigées par Gemini de Google : elles peuvent se tromper, et Google peut utiliser les questions. Ne partage jamais une clé privée, une phrase de récupération ou la clé d'une boîte, ici ou ailleurs.",
+  "secure.story.publicLp": "pool et range · publics",
+  "secure.story.lpFees": "frais vers une poche",
+  "secure.story.lpAdd": "ajouter",
+  "secure.story.lpRemove": "retirer",
+  "secure.story.lpGive": "la donner",
+  "secure.story.lpRange": "range · publique",
+  "secure.story.lpPockets": "dans tes poches",
+  "secure.ledger.ev.lp": "Position de liquidité",
 };

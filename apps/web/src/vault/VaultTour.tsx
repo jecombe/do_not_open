@@ -3,12 +3,12 @@ import { Spotlight, firstStep, type SpotStep } from "../tour/Spotlight";
 import { useT } from "./i18n";
 import type { VaultKey } from "./i18n/en";
 
-export type TourTab = "explore" | "mine" | "pocket" | "wallet" | "sales" | "leaks";
+export type TourTab = "explore" | "mine" | "pocket" | "pools" | "wallet" | "sales" | "leaks";
 
 /**
  * The vault's walkthrough, the way a game shows its first level: the two safes, what stays hidden,
  * the wallet, then each tab in the order a newcomer uses them (look, seal, hold and sell, sell
- * privately, pockets, what leaks), and where to ask. Each tab's step opens it first, so the
+ * privately, pockets, liquidity positions, what leaks), and where to ask. Each tab's step opens it first, so the
  * spotlight lands on the real thing; without a wallet it falls back on the tab itself.
  * Shown once per browser, after the vault's door has opened; the bar's "?" plays it again.
  */
@@ -21,12 +21,13 @@ const STEPS: { targets: string[]; key: string; tab?: TourTab }[] = [
   { targets: ["tab-mine"], key: "mine", tab: "mine" },
   { targets: ["tab-sales"], key: "sales", tab: "sales" },
   { targets: ["pocket", "tab-pocket"], key: "pocket", tab: "pocket" },
+  { targets: ["lp-pools", "tab-pools"], key: "lp", tab: "pools" },
   { targets: ["tab-leaks"], key: "leaks", tab: "leaks" },
   { targets: ["warden"], key: "warden" },
   { targets: ["tour-replay"], key: "again" },
 ];
 
-const SEEN = "dno.vault-tour.v1";
+const SEEN = "dno.vault-tour.v2";
 
 const replays = new Set<() => void>();
 /** The bar's "?": plays the walkthrough again from the start. */

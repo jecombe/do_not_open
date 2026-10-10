@@ -1193,8 +1193,8 @@ delegate in delegate.xyz are asked with the key, bound to the request's terms, s
 carry the request: the API's vault relayer, when there is one. The deposit, Seaport (list, fill,
 sync, collect), giving a box and making its key yours, the state diagram, what leaks and why
 are in [VAULT.md](VAULT.md). The flows below are the ones with encryption in them, the two that
-ride on a request (accepting an offer and delegating), and the pockets, where the vault holds
-cUSDC under a key.
+ride on a request (accepting an offer and delegating), the pockets, where the vault holds
+cUSDC under a key, and the liquidity positions, Uniswap V3 positions paid for out of pockets.
 
 ### A request: take out, list, take down, collect, accept an offer, delegate
 
@@ -1363,9 +1363,67 @@ sequenceDiagram
     D->>P: deskTake: select(key and balance still hold, price, 0) to the desk
     D->>V: acceptSale(saleId, box key): pulls the price from the desk, all or nothing
     V->>V: moved = paid AND the seller holds the box; the box and key go to the desk
-    D->>P: deskGive(pocket, the desk's balance: a refund, or 0)
+    D->>P: deskGive(pocket, the desk's balance: a refund, or 0), pulled by the pockets
     D->>D: ownerOf(box) = pocket + 1 if moved, readable by its viewer
   end
+```
+
+### Liquidity positions: open, settle, collect
+
+A position is funded out of two pockets, one per token ([VAULT.md](VAULT.md#liquidity-positions)).
+`SealedPositions` is a desk of every token's pockets: it takes from the pocket of a set whose key
+matches and credits the pocket of a set an encrypted target names. Funding needs a public
+decryption (Uniswap takes plain ERC-20s); every later action is signed by the position's
+controller, an address derived from the pockets' signature, and needs none.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder's page
+  participant R as API relayer
+  participant S as SealedPositions
+  participant P as SealedPockets (each token)
+  participant W as ERC-7984 wrappers
+  participant K as Zama relayer + KMS
+  participant U as Uniswap V3
+  H->>H: controller = key from the signature (open:n); amounts and leftover targets encrypted; key0, key1 XOR openHash(terms)
+  H->>R: open(range, controller, funds, keys)
+  R->>S: open
+  S->>P: deskTakeFrom(set0, key0, amount0), deskTakeFrom(set1, key1, amount1)
+  S->>S: ok = got0 == amount0 AND got1 == amount1
+  S->>P: deskGiveTo(set, target, select(ok, 0, got)): a lone side goes back
+  S->>W: unwrap(select(ok, got, 0)) on each side, publicly decryptable
+  H->>K: publicDecrypt(unwrap0), publicDecrypt(unwrap1)
+  H->>R: settle(fundingId, both amounts, both proofs)
+  R->>S: settle
+  S->>W: finalizeUnwrap: the ERC-20s come to S
+  S->>U: try mint(range, amounts, slippage limits, deadline)
+  alt Uniswap minted
+    S->>W: wrap what it did not take
+    S->>P: deskGiveTo(set, target, leftovers)
+  else refused (price moved, deadline, both zero)
+    S->>W: wrap everything
+    S->>P: deskGiveTo(set, target, all of it): the position Failed
+  end
+  Note over H,U: later: collect, decrease, give, takeOut
+  H->>H: controller signs actDigest(position, action, terms, nonce, deadline)
+  H->>R: collect(position, out sets and encrypted targets, deadline, signature)
+  R->>S: collect
+  S->>U: collect the fees
+  S->>S: feeBps of the fees to the treasury, in the clear
+  S->>W: wrap the rest
+  S->>P: deskGiveTo(set0, target0, ...), deskGiveTo(set1, target1, ...)
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Funding: open
+  Funding --> Open: settle, minted
+  Funding --> Failed: settle, a pocket did not pay or Uniswap refused (all back to the pockets)
+  Open --> Open: add, collect, decrease part, give
+  Open --> Closed: decrease all (NFT burnt)
+  Open --> Out: takeOut (NFT to an address)
+  [*] --> Open: a Uniswap position sent in (safeTransferFrom, controller as data)
 ```
 
 ## Where the money goes
@@ -1379,6 +1437,7 @@ sequenceDiagram
 | Adopting a rat (1 a free rat, 3 an AI rat) | plain USDC | the treasury address set in `Rats`, at once; Arweave storage of AI rats is paid from it |
 | A flea market sale (2.5%, at most 10%) | cUSDC | the treasury address set in `FleaMarket`, at the sale; the rest to the seller. For a sale by offer the fee is computed encrypted and stays secret |
 | A sealed vault sale (2.5%, at most 10%) | ETH on Seaport (a listing, or an accepted WETH offer, unwrapped); cUSDC privately | Seaport: kept in `SealedVault` (`feesOwed`) and sent to its treasury by `sendFees`, which anyone may call; the rest waits in the box for the key's holder (an accepted offer pays it straight to the address the holder named). Private: to the treasury at the sale, computed encrypted |
+| A liquidity position's collected trading fees (5%, at most 10%; never the liquidity) | the pool's ERC-20s | the treasury address set in `SealedPositions`, at each collect (and at the fees a `decrease` collects first); the rest, wrapped, into the holder's pockets |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 
@@ -1396,6 +1455,7 @@ flowchart LR
   F -- "2.5%" --> T
   F -- "the rest" --> SE[Seller]
   V[Sealed vault sales] -- "2.5%, ETH or cUSDC" --> T
+  LP[Liquidity positions' trading fees] -- "5%, the pool's tokens" --> T
   T -- "free daily decryptions" --> Z[Zama]
   T --> I[Indexer and API servers]
   T -- "sketches and 3D models" --> AI[AI services]

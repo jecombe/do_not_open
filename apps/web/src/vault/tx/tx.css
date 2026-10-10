@@ -1248,6 +1248,150 @@ a.vx-tx-hash:hover {
   }
 }
 
+/* A pool: both coins drop in, the water moves, a nameless key floats over it. */
+.vx-scene.vx-pool .vx-coin {
+  opacity: 0;
+}
+
+.vx-scene.vx-pool.is-live .vx-drop-a,
+.vx-scene.vx-pool.is-live .vx-drop-b {
+  animation: vx-pool-drop 2s cubic-bezier(0.5, 0, 0.75, 1) infinite;
+}
+
+.vx-scene.vx-pool.is-live .vx-drop-b {
+  animation-delay: 0.5s;
+}
+
+.vx-scene.vx-pool.is-live .vx-water,
+.vx-scene.vx-harvest.is-live .vx-water {
+  animation: vx-water 1.6s ease-in-out infinite;
+}
+
+.vx-scene.vx-pool.is-live .vx-tag {
+  animation: vx-tag 2.4s ease-in-out infinite;
+}
+
+/* The fees rise out of the pool into a pouch among others. */
+.vx-scene.vx-harvest .vx-rise {
+  opacity: 0;
+}
+
+.vx-scene.vx-harvest.is-live .vx-rise-a {
+  animation: vx-rise-a 2.2s ease-in-out infinite;
+}
+
+.vx-scene.vx-harvest.is-live .vx-rise-b {
+  animation: vx-rise-b 2.2s ease-in-out 0.6s infinite;
+}
+
+.vx-scene.vx-harvest.is-live .vx-twitch {
+  animation: vx-twitch 0.9s ease-in-out infinite;
+}
+
+/* A position's ticket slides from one key to another (back to a wallet, reversed). */
+.vx-scene.vx-handoff .vx-ticket {
+  transform: translate(40px, 66px);
+}
+
+.vx-scene.vx-handoff.is-live .vx-ticket {
+  animation: vx-ticket 2.4s ease-in-out infinite;
+}
+
+.vx-scene.vx-handoff.is-live.is-reversed .vx-ticket {
+  animation-direction: reverse;
+}
+
+@keyframes vx-pool-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(96px);
+  }
+  62%,
+  100% {
+    opacity: 0;
+    transform: translateY(104px);
+  }
+}
+
+@keyframes vx-water {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-6px);
+  }
+}
+
+@keyframes vx-tag {
+  0%,
+  100% {
+    transform: translate(186px, 36px) rotate(-8deg);
+  }
+  50% {
+    transform: translate(186px, 28px) rotate(8deg);
+  }
+}
+
+@keyframes vx-rise-a {
+  0% {
+    opacity: 0;
+    transform: translate(108px, 112px);
+  }
+  20% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+    transform: translate(40px, 44px);
+  }
+  85%,
+  100% {
+    opacity: 0;
+    transform: translate(36px, 52px);
+  }
+}
+
+@keyframes vx-rise-b {
+  0% {
+    opacity: 0;
+    transform: translate(132px, 112px);
+  }
+  20% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+    transform: translate(200px, 44px);
+  }
+  85%,
+  100% {
+    opacity: 0;
+    transform: translate(204px, 52px);
+  }
+}
+
+@keyframes vx-ticket {
+  0%,
+  10% {
+    transform: translate(40px, 66px);
+  }
+  50% {
+    transform: translate(120px, 40px) rotate(-4deg);
+  }
+  90%,
+  100% {
+    transform: translate(200px, 66px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vx-scene *,
   .vx-overlay,

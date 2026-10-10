@@ -12,7 +12,10 @@ offer, or sells the box privately for an encrypted cUSDC price. Meanwhile the ho
 the NFT's rights (airdrops, holder-only access) to a wallet of theirs through delegate.xyz.
 Tokens go in too: cUSDC in a [pocket](#pockets) locked by a key rather than an address, sent to
 another pocket, used to buy a box, or taken out anywhere, without anything public saying who paid
-whom or how much. The page (a switch at its top picks a side: NFTs, non-fungible, in boxes, or tokens, fungible, in "My pocket"; `#tokens` opens the second) is `vault.do-not-open.app` (`/vault` off the site's domains), and its
+whom or how much. And liquidity: a Uniswap V3 [position](#liquidity-positions) paid for out of
+pockets, held by the vault, steered by an address tied to no wallet, its fees paid back into
+pockets. The page (a switch at its top picks a side: NFTs, non-fungible, in boxes; tokens,
+fungible, in "My pocket"; or LP positions; `#tokens` opens the second, `#liquidity` the third) is `vault.do-not-open.app` (`/vault` off the site's domains), and its
 docs for holders, in four languages, are `vault.do-not-open.app/docs` (`apps/web/src/vault/docs`):
 they follow this file, so a change here goes there too.
 
@@ -55,15 +58,24 @@ registry. Earlier deployments are left as they were: `0x27CA3698A34b53900047cD1D
 box and moved the nonce on with every request (see Decisions).
 
 The pockets (`SealedPockets`, and `PocketDesk` that buys private sales out of them) are done on
-the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 6 more running the
-adapter against them), and on Sepolia since 2026-10-09: `SealedPockets` at
-`0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902, owner `0x590891F269720001435004A1089cAB5b2c20029A`) and
-`PocketDesk` at `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), on the vault above and Zama's
-cUSDC; `pnpm --filter @dno/chain-adapter smoke:pockets` (open, deposit, send, withdraw, both
-balances read by their viewers) passed there. Pockets of cUSDT, cWETH and cZAMA, without a desk,
-are on Sepolia since 2026-10-09 too (blocks 11878756 to 11878758; `POCKET_TOKEN=cZAMA` runs the
-same smoke test on one of them; it passed there with cZAMA and with cWETH, 1 WETH of 18 decimals
-wrapped to 1 cWETH of 6). See [Pockets](#pockets) and [Other tokens](#other-tokens).
+the mock and in the tests (46 contract tests in `test/SealedPockets.ts`, 5 more running the
+adapter against them), and on Sepolia: redeployed on 2026-10-10 so that they take several desks
+(the positions are one) and a desk credits only what it pays in, `SealedPockets` at
+`0x220635318dDe0517E835D9FdF80AFEaD52720B7C` (owner `0x590891F269720001435004A1089cAB5b2c20029A`) and
+`PocketDesk` at `0xd17cB7696236B14C28f51Ef03BEBd133710e4A5f`, on the vault above and Zama's
+cUSDC, and pockets of cUSDT, cWETH and cZAMA, without the vault's desk (see
+[Other tokens](#other-tokens)). The first ones, from 2026-10-09 (cUSDC `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C`
+and its desk `0x0939D713429FCD1c5AF9589b121a8F77C49F759b`, blocks 11877902 and 11877903; cUSDT, cWETH,
+cZAMA blocks 11878756 to 11878758), are left as they were: `pnpm --filter @dno/chain-adapter smoke:pockets`
+(open, deposit, send, withdraw, both balances read by their viewers) passed on them, with cUSDC,
+cZAMA and cWETH (1 WETH of 18 decimals wrapped to 1 cWETH of 6). A redeploy on 2026-10-10 also
+left a vault `0x9f11433238DaC70198085c9f8f273fdfBD777FDf` with its desk `0xdBD563Edce8BF578F6aAF744e20b342c1909efAD`
+and pockets `0x37025bB7369B0D7F1845a3d81802669c6eF0Bc46` that nothing uses (the vault's script
+redeployed it under another key; `KEEP_VAULT=1` now keeps the live one).
+
+The liquidity positions (`SealedPositions`) are done on the mock and in the tests (25 contract
+tests in `test/SealedPositions.ts` against Uniswap V3's own bytecode, 3 more running the adapter
+against them), and on Sepolia since 2026-10-10: see [Positions on Sepolia](#positions-on-sepolia).
 
 ## Contracts
 
@@ -75,7 +87,10 @@ wrapped to 1 cWETH of 6). See [Pockets](#pockets) and [Other tokens](#other-toke
 | `vault/IDelegateRegistry.sol` | The slice of delegate.xyz's Delegate Registry v2 the vault uses (`delegateERC721`, `checkDelegateForERC721`). The registry is at `0x00000000000000447e69651d841bD8D104Bed493` on Ethereum, Sepolia and most other chains |
 | `vault/IWETH.sol` | Wrapped ether (`deposit`, `withdraw`): what offers pay in |
 | `mocks/TestWETH.sol` | Local networks only: WETH as WETH9 does it |
-| `SealedPockets` | The pockets: one confidential token (cUSDC; cUSDT, cWETH and cZAMA in instances of their own, without a desk) held under encrypted 256-bit keys, not addresses. `open`, `deposit` (from a wallet, into one pocket of a set), `send` (from one pocket of a set to one pocket of another, the key bound to the terms), `withdraw` (to any address, as cUSDC), and `deskTake`, `deskCheck`, `deskGive` for the desk only. No decryption anywhere: every spend settles under encryption in one transaction. `ZamaEthereumConfig`, `Ownable` (only to set the desk, once), `ReentrancyGuard` |
+| `SealedPockets` | The pockets: one confidential token (cUSDC; cUSDT, cWETH and cZAMA in instances of their own, without the vault's desk) held under encrypted 256-bit keys, not addresses. `open`, `deposit` (from a wallet, into one pocket of a set), `send` (from one pocket of a set to one pocket of another, the key bound to the terms), `withdraw` (to any address, as cUSDC), and for desks only `deskTake`, `deskTakeFrom` (from the pocket of a set whose key matches), `deskCheck`, `deskGive` and `deskGiveTo` (into the pocket of a set an encrypted target names), both pulling what they credit from the desk's own balance. No decryption anywhere: every spend settles under encryption in one transaction. `ZamaEthereumConfig`, `Ownable` (only to add desks, never removed), `ReentrancyGuard`. 9,974 bytes |
+| `SealedPositions` | The liquidity positions: Uniswap V3 positions funded out of two tokens' pockets (a desk of each), held here, steered by a controller's EIP-712 signature, paying fees and liquidity back into pockets. `open`, `add`, `settle` (the unwraps' proofs, then the mint), `collect`, `decrease`, `give`, `takeOut`, and Uniswap positions sent in. `ZamaEthereumConfig`, `Ownable` (tokens, fee, treasury), `ReentrancyGuard`, `EIP712`. 20,982 bytes |
+| `vault/IPositionManager.sol`, `vault/IConfidentialWrapper.sol` | The slice of Uniswap V3's NonfungiblePositionManager the positions use (`mint`, `increaseLiquidity`, `decreaseLiquidity`, `collect`, `burn`, `positions`), and of an ERC-7984 wrapper (`unwrap`, `finalizeUnwrap`, `unwrapRequester`, `wrap` without its return value, as older wrappers have none) |
+| `mocks/TestERC20.sol`, `mocks/TestConfidentialToken.sol` | Local networks only: an ERC-20 of any decimals, free to mint, and OpenZeppelin's wrapper over it, as Zama's test tokens on Sepolia |
 | `vault/PocketDesk.sol` | Buys the vault's private sales out of pockets. A seller offers a box to the desk and `reserve`s the sale for a pocket; its holder `ask`s (the key and the balance checked under encryption, one bit made public), then `buy`s with the proof: the desk takes the price from the pocket, accepts the sale on the vault, and hands back any refund. The box stays with the desk, its vault key the buyer's. Holds tokens only during `buy`, never sells |
 | `mocks/VaultTestNFT.sol` | Test networks only: "Sealed Vault Test NFT" (`VTEST`), free to mint for anyone, its picture an SVG drawn on-chain from its id, so a marketplace shows something |
 
@@ -93,10 +108,16 @@ flowchart LR
   vault -- "delegateERC721" --> registry["delegate.xyz<br/>Delegate Registry v2"]
   vault -- "pulls and pays (private sales)" --> cusdc["cUSDC<br/>ERC-7984"]
   vault -- "sendFees (ETH)" --> treasury["Treasury"]
+  relayer -- "open, settle, collect, decrease, give, takeOut" --> positions["SealedPositions<br/>Uniswap positions, derived controllers"]
+  positions -- "deskTakeFrom, deskGiveTo" --> pockets["SealedPockets<br/>(one per token)"]
+  positions -- "unwrap, finalizeUnwrap, wrap" --> wrappers["ERC-7984 wrappers<br/>cUSDC, cUSDT, cWETH, cZAMA"]
+  positions -- "mint, collect, decreaseLiquidity, burn" --> uniswap["Uniswap V3<br/>position manager"]
+  positions -- "share of trading fees" --> treasury
 ```
 
 `SealedVault` has no link to `DoNotOpen`, the Pantry or any other contract of the game: it only
-shares the base contract and the cUSDC. `VaultOffers` knows nothing of the vault either: it
+shares the base contract and the cUSDC. `SealedPositions` has no link to `SealedVault` either:
+it shares its pockets and its relayer. `VaultOffers` knows nothing of the vault either: it
 sells whatever NFT its caller hands it.
 
 ## A box and its key
@@ -680,6 +701,213 @@ people use hides its pockets among fewer.
 - Not audited. A purchase from a pocket has not run on Sepolia yet: it waits for the gateway like
   the boxes' requests.
 
+## Liquidity positions
+
+The vault's third side: Uniswap V3 liquidity nobody can tie to a wallet. On Uniswap a position is
+an NFT in its provider's wallet: its range, its capital, its fees and every move it makes are
+read off that wallet, copied by bots and tied to everything else the wallet holds. Here a position
+is paid for out of pockets, held by `SealedPositions`, steered by an address the holder's page
+derives and nobody can tie to the wallet, and it pays its fees and its liquidity back into
+pockets. What the position does on Uniswap stays public, as any position's does; whose it is does
+not. The design notes at the top of
+[`SealedPositions.sol`](../packages/contracts-evm/contracts/SealedPositions.sol) are the
+reference.
+
+**Funded out of pockets.** `open` names the pool and range, a fresh controller (below), and a
+set of pockets on each side (the real one among decoys) with the encrypted amounts (in the
+pockets' units) and the encrypted pocket of each set that gets the leftovers back, in one input;
+then each side's pocket key XOR `openHash(...)`, the hash of every term, in a second one (`add`
+does the same for more liquidity, bound to `addHash(positionId, ...)`). `SealedPositions` is a
+desk of every token's pockets: `deskTakeFrom` takes the amount from the pocket of the set whose
+key matches. Both sides are taken or neither: when one side's pocket did not pay what was asked
+(a wrong key, a short balance), the other side's tokens go straight back, under encryption, and
+the funding unwraps nothing. A relayer cannot change a term (the keys would not match) nor send
+the inputs twice (each bound key's handle is spent once).
+
+**Unwrapped for Uniswap, then minted.** Uniswap needs plain ERC-20s, so what was taken is
+unwrapped (`unwrap` on the token's ERC-7984 wrapper), and its amount becomes public, as every
+position's amounts are on Uniswap. The unwrap waits for Zama's public decryption: `settle`
+(anyone may send it, with the KMS's proof of each side) finalizes both unwraps, mints the
+position (or adds to it), and wraps what Uniswap did not take back into the pockets the encrypted
+targets name. When Uniswap refuses (the price moved past the slippage limits, or the deadline
+passed), everything goes back the same way: `settle` never reverts on Uniswap's account, so no
+funding is ever stuck. Someone who finalized an unwrap on the token first changes nothing: the
+ERC-20s came here anyway, and `settle` checks the proof itself.
+
+**Steered by a derived controller.** Each position has a controller, an address whose key the
+page derives from the pockets' one signature: `keccak256(signature, "position:<contract>:open:<n>")`
+for the `n`-th position the wallet opened, `...:receive:<n>` for the `n`-th it was given.
+Nothing is stored: the page walks both lists (`controllerUsed`, `positionOf`) and finds the
+wallet's positions on any device, and since each position has its own controller, nothing ties
+two positions of one wallet together. The controller never holds ETH nor sends a transaction: it
+signs (EIP-712, `actDigest`: the position, the action, the action's terms, a nonce and a
+deadline), and the relayer sends.
+
+**Why a signature here, and not a key compared under encryption.** The boxes' keys are compared
+under encryption because whether a box moved must stay secret. A position's actions are public
+anyway (a collect, a withdrawal, a take-out happen on Uniswap for all to see): a public bit
+decrypted by the KMS would say as much as a signature checked in the clear, minutes later. So
+the controller signs, the check costs a few thousand gas, and only funding waits for Zama's
+gateway (because of the unwrap).
+
+**Fees and liquidity back into pockets.** `collect` and `decrease` name a set of pockets per
+token and an encrypted target in each (`Out`); the ERC-20s are wrapped again and credited to the
+target's pocket under encryption (`deskGiveTo`), the others in the set get new handles for the
+same balance. `feeBps` of the trading fees (5% on Sepolia, at most 10%) goes to the treasury in
+the clear, as Uniswap's amounts are; never a share of the liquidity: `decrease` collects the fees
+first (that share taken), then takes the liquidity out. Taking all of it out burns the Uniswap
+NFT and closes the position. `give` hands the position to another holder's receive address;
+`takeOut` sends the Uniswap NFT to any address, out of the vault. A wallet's own Uniswap position
+comes in with `safeTransferFrom(wallet, SealedPositions, tokenId, abi.encode(controller))`.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant P as Holder's page
+  participant R as Relayer
+  participant S as SealedPositions
+  participant K as Pockets (two tokens)
+  participant W as ERC-7984 wrappers
+  participant U as Uniswap V3
+  participant Z as Zama KMS
+  P->>P: controller = derived key, amounts and targets encrypted,<br/>both pocket keys XOR openHash(...)
+  P->>R: open(range, controller, funds, keys)
+  R->>S: open
+  S->>K: deskTakeFrom(set, key, amount) on each side
+  Note over S,K: both sides paid, or what one paid goes back (deskGiveTo)
+  S->>W: unwrap(what was taken), publicly decryptable
+  P->>Z: publicDecrypt(each unwrap)
+  P->>R: settle(fundingId, amounts, proofs)
+  R->>S: settle
+  S->>W: finalizeUnwrap: the ERC-20s come here
+  S->>U: mint (or increaseLiquidity), try/catch
+  S->>W: wrap the leftovers
+  S->>K: deskGiveTo(set, target, leftovers)
+  Note over P,U: later, signed by the controller
+  P->>R: collect(position, out, deadline, signature)
+  R->>S: collect
+  S->>U: collect the fees
+  S-->>S: feeBps to the treasury
+  S->>K: wrap, deskGiveTo the pockets' targets
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Funding: open
+  Funding --> Open: settle, Uniswap minted
+  Funding --> Failed: settle, a pocket did not pay or Uniswap refused (all went back)
+  Open --> Open: add, collect, decrease (part), give
+  Open --> Closed: decrease (all of it), the NFT burnt
+  Open --> Out: takeOut, the NFT to an address
+  [*] --> Open: a Uniswap position sent in
+```
+
+### Positions on Sepolia
+
+Live since 2026-10-10: `SealedPositions` at `0x118081c2Cf2719cBe624a818C2ae50961A92aC53` (owner and
+treasury `0x590891F269720001435004A1089cAB5b2c20029A`, 5% of the trading fees), on Uniswap V3's
+Sepolia deployment (position manager `0x1238536071E1c677A632429e3655c799b22cDA52`, factory
+`0x0227628f3F023bb0B980b67D528571c95c6DaC1c`, SwapRouter02 `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`),
+a desk of the four tokens' pockets. Uniswap's own pools of Zama's test ERC-20s did not exist; the
+deploy opened them, each seeded with a full-range position of the deployer's at a made-up price:
+
+| Pool | Fee | Opened at | Address |
+| --- | --- | --- | --- |
+| WETH / USDC (cWETH, cUSDC) | 0.3% | 2,500 USDC a WETH | `0x061917a4Aa293bC74fE8d9c5341FE7b5E4275285` |
+| ZAMA / USDC (cZAMA, cUSDC) | 1% | 0.05 USDC a ZAMA | `0x821E98fAfDB88C16F558A2DC6f45E9A74Dd76D78` |
+| USDT / USDC (cUSDT, cUSDC) | 0.05% | 1 | not opened yet: the deployer ran out of test ETH; the next `--tags Positions` opens it |
+
+On the page, "Make it trade (test)" mints a slice of the pool's token from the connected wallet,
+sells it and buys it back through SwapRouter02, so the positions in range earn fees to collect.
+`pnpm --filter @dno/chain-adapter smoke:positions` fills the deployer's cUSDC and cWETH pockets,
+opens a position in WETH/USDC, finds it again from the signature, makes the pool trade, collects
+and closes it; it waits for Zama's gateway (the unwraps) and has not run on Sepolia yet.
+
+### On the page
+
+A third side, "LP positions", next to NFTs and tokens (`#liquidity`, `apps/web/src/vault/VaultLiquidity.tsx`):
+
+- **Pools**: each pool the pockets' tokens trade in, its price, the positions the vault holds in
+  it and what they hold; every position in the vault, public as on Uniswap, its holder a cipher;
+  and the form that opens one: a range (±5%, ±15%, ±50% around today's price, or the full range,
+  drawn as a bar with today's price on it), one amount and the other one it needs at today's
+  price (`pairedAmount`, rounded up: the rest comes back), the decoys on each side.
+- **My positions**: found from the pockets' signature (none in the demo), each with its range, what
+  it holds now, the fees to collect (Uniswap's own count, a static `collect` from the contract's
+  address), and its actions: collect the fees, add, take 25%, 50% or all of it out, give it to a
+  receive address, take it out to a wallet. A funding left waiting can be settled from there. A
+  receive address to be given positions, and the wallet's own Uniswap positions in these pools,
+  to bring in.
+
+Every action plays on the stage like the others: two coins dropping into a sealed pool, the fees
+rising into pouches among others, a position's ticket passing from key to key.
+
+### What is public
+
+| Fact | Visible to everyone | How |
+| --- | --- | --- |
+| A position's pool, range, liquidity, amounts and fees | yes, as any Uniswap position | Uniswap's own events and `positions(tokenId)` |
+| Which sets of pockets funded it, and which were paid by a collect or a withdrawal | yes, not which pocket of each set | `Funded`, `Collected`, `Decreased` |
+| What went into Uniswap, and what came back out | yes, once the unwraps are decrypted | `Settled`, Uniswap's events, the wrapper's `UnwrapFinalized` |
+| The treasury's share of each collect | yes | `Collected` (`fee0`, `fee1`) |
+| A position's controller | yes: an address tied to no wallet | `Opened`, `Given`, `positionInfo` |
+| A deposit's sender, a take-out's address | yes | `Deposited`, `TakenOut` |
+| Who sent each transaction | the relayer, or the wallet without one | the transaction itself |
+
+Never public: who holds a position, which pocket of a set paid or was paid, and which positions
+belong to the same holder.
+
+What that means in practice:
+
+- **Funding both sides at once says one pocket of each set is the same holder's.** Among decoys,
+  that is a guess among the pairs of the two sets; the same pocket funding many positions makes
+  the guess better.
+- **Timing still talks.** A pocket set debited, a position minted, minutes apart, by the relayer:
+  the amounts match what went into Uniswap. The pockets' encrypted balances keep the rest: how
+  much the holder has left, and where it goes next.
+- **Bringing a position in names the wallet**, as a vault deposit does; taking it out names the
+  address it goes to.
+- **The anonymity set is the vault's.** With few positions in a pool, decoys and controllers hide
+  among few: more holders hide each other better.
+
+### Positions' decisions
+
+- **A new contract, not the vault.** `SealedVault` is 254 bytes under the size limit and its
+  actions are fixed; positions share its relayer and its pockets, not its bytecode.
+- **A desk of the pockets, for sets.** `deskTakeFrom` and `deskGiveTo` take a set and an
+  encrypted key or target, as `send` does, so a funding hides which pocket paid. The pockets now
+  take any number of desks (the owner adds them, never removes them), and a desk can only credit
+  what it pays in (`deskGive` and `deskGiveTo` pull from the desk's own balance): a desk cannot
+  spend a pocket without its key, nor credit one out of nothing. That is why the pockets and
+  `PocketDesk` were redeployed alongside.
+- **Both sides or neither, decided under encryption.** A position paid on one side only would
+  either fail at Uniswap or be one-sided by accident; `ok = (got0 == asked0) && (got1 == asked1)`
+  sends back what one side paid when the other did not, before anything is unwrapped.
+- **A settle that never reverts on Uniswap.** The mint is a `try/catch`: a price that moved or a
+  late proof refunds the pockets instead of leaving ERC-20s stuck in the contract.
+- **A signature for actions, not an encrypted key.** See above: what an action does is public,
+  so the decryption would only add minutes. Funding keeps the pocket keys, bound by XOR as
+  everywhere else, because it spends pockets.
+- **Fees on fees only.** A share of the liquidity would tax capital; a share of trading fees is
+  how liquidity managers are paid, and it grows with what the positions earn.
+- **Dust stays.** Wrapping back rounds down to the confidential unit (10^12 wei of an 18-decimal
+  token): what is below it stays in the contract, less than a millionth of a token a move.
+
+### Positions' limits
+
+- Uniswap V3 only (not V4), and pools between two tokens with pockets (cUSDC, cUSDT, cWETH,
+  cZAMA on Sepolia); the pools the page shows are the ones `dno:export` finds.
+- Funding waits for Zama's gateway (the unwraps' public decryption); collects, withdrawals, gifts
+  and take-outs do not.
+- Amounts are public once unwrapped: the position hides its holder, not its size.
+- The controller's key comes from the pockets' signature: a site that tricks a wallet into
+  signing that message can steer its positions, as it can spend its pockets.
+- A receive address is good until something is given to it; the next one is the wallet's next.
+- The page's "fees to collect" is a static call of Uniswap's `collect` from the contract's
+  address: it needs an RPC that allows calls from a contract address (public ones do).
+- Not audited. Not run end to end on Sepolia yet (`smoke:positions` waits for test ETH and the
+  gateway).
+
 ## What is public, what is not
 
 | Fact | Visible to everyone | How |
@@ -888,18 +1116,36 @@ The pockets, measured the same way (`REPORT_COSTS=1 npx hardhat test test/Sealed
 | `send`, 1 / 3 / 5 pockets a side | 541,000 / 1,079,000 / 1,614,000 | 1,315,000 / 3,915,000 / 6,515,000 (depth 1,971,000) |
 | `withdraw`, set of 1 / 3 / 5 | 696,000 / 970,000 / 1,268,000 | 1,358,000 / 2,824,000 / 4,290,000 |
 | `PocketDesk.ask` | 432,000 | 368,000 |
-| `PocketDesk.buy` (the sale accepted on the vault) | 2,679,000 | 6,277,000 (depth 3,277,000) |
+| `PocketDesk.buy` (the sale accepted on the vault) | 2,667,000 | 6,277,000 (depth 3,277,000) |
 
-Deploying the vault takes about 5.5M gas, `VaultOffers` about 1.9M. Every call is far under the protocol's 20M HCU (5M
+The positions, against Uniswap V3's own bytecode (`REPORT_COSTS=1 npx hardhat test test/SealedPositions.ts`):
+
+| Action | Gas | HCU |
+| --- | --- | --- |
+| `open`, 1 / 3 / 5 pockets a side | 3,689,000 / 4,655,000 / 5,731,000 | 7,640,000 / 12,415,000 / 17,191,000 (depth 1,989,000 / 2,637,000 / 3,285,000) |
+| `settle` (both unwraps, the mint, the leftovers back), 1 / 3 / 5 a side | 1,617,000 / 1,859,000 / 1,968,000 | 2,219,000 / 3,141,000 / 4,063,000 |
+| `collect`, 1 / 3 / 5 a side | 2,259,000 / 2,657,000 / 3,040,000 | 4,438,000 / 6,282,000 / 8,126,000 |
+| `decrease` (part, or all of it and the NFT burnt), 1 a side | 2,200,000 to 2,217,000 | 4,438,000 |
+| `give` / `takeOut` | 84,000 / 137,000 | 0 |
+
+An `open` with five pockets a side is the heaviest call of the vault, at 86% of the 20M HCU a
+transaction may use; the page names two decoys a side by default (12.4M).
+
+Deploying the vault takes about 5.5M gas, `VaultOffers` about 1.9M; on Sepolia, where the
+coprocessor's contracts are live, a `SealedPockets` took 16.2M gas, `PocketDesk` 12.8M and
+`SealedPositions` 33.4M. Every call is far under the protocol's 20M HCU (5M
 depth) a transaction.
 
 ## Run it
 
 ```bash
 pnpm --filter @dno/contracts-evm test test/SealedVault.ts   # 62 tests, Seaport 1.5's and delegate.xyz's real bytecode
-pnpm --filter @dno/contracts-evm test test/SealedPockets.ts # 45 tests: the pockets and the desk, on the real vault
+pnpm --filter @dno/contracts-evm test test/SealedPockets.ts # 46 tests: the pockets and the desk, on the real vault
+pnpm --filter @dno/contracts-evm test test/SealedPositions.ts # 25 tests: the positions, on Uniswap V3's own bytecode
+pnpm --filter @dno/contracts-evm test test/PositionsAdapter.ts # 3: the adapter's EvmPositions against them, relayed
 pnpm --filter @dno/contracts-evm test test/PocketsAdapter.ts # 5: the adapter's EvmPockets against them, relayed or not
 pnpm --filter @dno/chain-adapter exec vitest run test/vault.test.ts   # the mock vault
+pnpm --filter @dno/chain-adapter exec vitest run test/positions.test.ts # Uniswap's math and the mock positions
 pnpm --filter @dno/api exec vitest run test/vaultRelay.test.ts        # the relayer and its routes
 pnpm dev                                                    # http://localhost:5173/vault, on the mock
 ```
@@ -942,9 +1188,17 @@ writes `vault` (address, ABI, deploy block, Seaport, `offers` with its ABI and d
 WETH, the registry, the allowed collections, `pockets` with its `desk` and its `token` when they
 are deployed, and `otherPockets`: each other token's pockets, deploy block and token) for the
 adapter and the API. `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys
-`SealedPockets` on the vault's cUSDC and `PocketDesk` on the vault, sets the desk once and hands
+`SealedPockets` on the vault's cUSDC and `PocketDesk` on the vault, adds the desk and hands
 the pockets to `COLLECTION_OWNER`, then one `SealedPockets_<symbol>` per token of
 `lib/pocketTokens.ts`: `npx hardhat deploy --network sepolia --tags Pockets` adds them next to a
-live vault (with `STUDIO_TREASURY` and `COLLECTION_OWNER` set as the live vault's, or the vault's
-script redeploys it). Set `VAULT_RELAYER_KEY` on the API, and
+live vault (with `KEEP_VAULT=1`, or the vault's script redeploys a vault another key deployed).
+`deploy/positions.ts` (tag `Positions`, after `Pockets`) deploys `SealedPositions` on the
+network's Uniswap V3 (`lib/positionPools.ts`; Uniswap's own bytecode on a local node, with a test
+cWETH the pockets' script adds there), makes it a desk of every token's pockets and adds them,
+hands it to `COLLECTION_OWNER`, and opens the pools of `lib/positionPools.ts` nobody has, each
+seeded full range from the deployer (`POSITIONS_FEE_BPS`, 500 by default, is its fee on trading
+fees): `KEEP_VAULT=1 npx hardhat deploy --network sepolia --tags Positions`. `dno:export` writes
+`positions` (address, ABI, deploy block, the Uniswap it uses, the router's version, and the pools
+it finds open on Uniswap's factory). Sepolia's fees can sit far below the default tip:
+`SEPOLIA_GAS_PRICE=2000000` paid for that deploy. Set `VAULT_RELAYER_KEY` on the API, and
 fund that address with a little ETH, for the relayer.

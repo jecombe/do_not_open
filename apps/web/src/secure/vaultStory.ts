@@ -76,6 +76,11 @@ const COIN_HOVER = 1.5;
 const COIN_FACE = Math.PI / 2 - 0.2;
 /** The same orbit when the loop seals tokens: where a pocket's cUSDC goes. */
 const TOKEN_ROUTES = ["toPocket", "payBox", "paidIn", "saleCash", "hiddenBalance"] as const;
+/** And when it seals a liquidity position: what its holder does with it, the range Uniswap shows. */
+const LP_ROUTES = ["lpFees", "lpAdd", "lpRemove", "lpGive", "lpRange"] as const;
+/** What a loop seals, in turn: an NFT, tokens, a Uniswap position. */
+type Mode = "nft" | "tokens" | "lp";
+const NEXT: Record<Mode, Mode> = { nft: "tokens", tokens: "lp", lp: "nft" };
 /** When the first way out lights up in step three, and how far apart the next ones do. */
 const ROUTE_START = 0.35;
 const ROUTE_GAP = 0.72;
@@ -98,6 +103,15 @@ export interface StoryLabels {
   paidIn: string;
   saleCash: string;
   hiddenBalance: string;
+  /** The deposit's tag when the loop seals a liquidity position, and its ways out. */
+  publicLp: string;
+  lpFees: string;
+  lpAdd: string;
+  lpRemove: string;
+  lpGive: string;
+  lpRange: string;
+  /** Where a position's fees and liquidity land in step four. */
+  lpPockets: string;
   holder: string;
   denied: string;
   signature: string;
@@ -119,7 +133,6 @@ const easeIn = (x: number) => x * x;
 /** Rises over [a, b], holds, falls over [c, d]. */
 const window4 = (t: number, a: number, b: number, c: number, d: number) => span(t, a, b) * (1 - span(t, c, d));
 
-/** A little pixel portrait, mirrored like an identicon, on a card: some NFT, any NFT. */
 /** A coin's face: its token's official logo, painted on a canvas once the SVG has loaded. */
 function coinFaceMaterial(symbol: string): MeshStandardMaterial {
   const canvas = document.createElement("canvas");
@@ -145,6 +158,52 @@ function coinFaceMaterial(symbol: string): MeshStandardMaterial {
   return new MeshStandardMaterial({ map: texture, emissive: new Color("#ffffff"), emissiveMap: texture, emissiveIntensity: 0.45, metalness: 0.25, roughness: 0.45 });
 }
 
+/**
+ * A liquidity position, as a card: the pool's liquidity in bars, the position's range lit over
+ * them, today's price as a line, the pair on top and the fee tier below.
+ */
+function drawPosition(canvas: HTMLCanvasElement, seed: number): void {
+  const g = canvas.getContext("2d")!;
+  const S = canvas.width;
+  let s = seed || 1;
+  const rand = () => {
+    s = (s * 16_807) % 2_147_483_647;
+    return s / 2_147_483_647;
+  };
+  g.fillStyle = "#0b1016";
+  g.fillRect(0, 0, S, S);
+  const bars = 22;
+  const left = S * 0.08;
+  const width = S * 0.84;
+  const base = S * 0.78;
+  const lo = 7 + Math.floor(rand() * 3);
+  const hi = lo + 6 + Math.floor(rand() * 3);
+  for (let i = 0; i < bars; i++) {
+    const h = S * (0.12 + 0.4 * Math.exp(-(((i - bars / 2) / 5) ** 2)) + rand() * 0.06);
+    g.fillStyle = i >= lo && i <= hi ? "#5BE3C2" : "#24443d";
+    g.fillRect(left + (i * width) / bars + 1, base - h, width / bars - 3, h);
+  }
+  // Today's price, inside the range.
+  const at = left + ((lo + (hi - lo) * (0.35 + rand() * 0.3)) * width) / bars;
+  g.strokeStyle = "#ffffff";
+  g.lineWidth = S * 0.012;
+  g.beginPath();
+  g.moveTo(at, base - S * 0.6);
+  g.lineTo(at, base);
+  g.stroke();
+  g.fillStyle = "#e6edf3";
+  g.font = `700 ${Math.round(S * 0.1)}px ui-sans-serif, system-ui, sans-serif`;
+  g.textAlign = "center";
+  g.fillText("WETH / USDC", S / 2, S * 0.15);
+  g.fillStyle = "#5BE3C2";
+  g.font = `600 ${Math.round(S * 0.07)}px ui-monospace, monospace`;
+  g.fillText("LP · 0.3%", S / 2, S * 0.92);
+  g.strokeStyle = "#5BE3C2";
+  g.lineWidth = S * 0.012;
+  g.strokeRect(S * 0.03, S * 0.03, S * 0.94, S * 0.94);
+}
+
+/** A little pixel portrait, mirrored like an identicon, on a card: some NFT, any NFT. */
 function drawArt(canvas: HTMLCanvasElement, token: number): void {
   const g = canvas.getContext("2d")!;
   const S = canvas.width;
@@ -182,14 +241,15 @@ function drawArt(canvas: HTMLCanvasElement, token: number): void {
 }
 
 /**
- * The secure home page's picture: the vault's four steps, on a loop, one loop with an NFT and
- * the next with a stack of cUSDC, as the vault takes both.
+ * The secure home page's picture: the vault's four steps, on a loop, one loop with an NFT, the
+ * next with tokens, the next with a Uniswap liquidity position, as the vault takes all three.
  * 1. An NFT (or tokens) drops into an open box, the flaps fold, the tape runs, the shield rises.
  * 2. A wallet signs once, a key comes out of it and dissolves into the box: nobody reads it.
  * 3. Five ways out turn around the box (a Seaport listing, a buyer's offer, a private sale,
  *    a gift, a delegate for its perks; for tokens, another pocket, paying for a box, a payment
- *    coming in, a sale's cUSDC, a balance nobody reads) while probes trying to read its holder
- *    bounce off the shield.
+ *    coming in, a sale's cUSDC, a balance nobody reads; for a position, its fees to a pocket,
+ *    adding to it, taking it out, giving it, its public range) while probes trying to read its
+ *    holder bounce off the shield.
  * 4. The key matches, the shield drops, the box opens and the NFT (or the tokens) flies to a
  *    fresh address.
  * Every pose is a function of the loop's clock, so a step can be shown at once. Under reduced
@@ -214,8 +274,8 @@ export class VaultStoryScene {
   /** Each coin's spin (about the vertical) and, inside, its tilt from flat to facing the camera. */
   private readonly coinHolders: { spin: Group; tilt: Mesh }[] = [];
   private readonly coinLight: PointLight;
-  /** Whether this loop seals tokens rather than an NFT. */
-  private tokens = false;
+  /** What this loop seals: an NFT, tokens, or a liquidity position (a card, as the NFT). */
+  private mode: Mode = "nft";
   private readonly art: CanvasTexture;
   private readonly cardLight: PointLight;
   private readonly wallet = new Group();
@@ -536,16 +596,22 @@ export class VaultStoryScene {
     this.pose(this.time);
   }
 
-  /** Every other loop seals tokens; every NFT loop a new NFT. */
+  /** The loops take turns: an NFT (a new one each time), tokens, a liquidity position. */
   private newLoop(): void {
-    this.tokens = !this.tokens;
-    if (!this.tokens) {
-      drawArt(this.art.image as HTMLCanvasElement, Math.floor(Math.random() * 9000) + 1000);
-      this.art.needsUpdate = true;
-    }
-    const routes = this.tokens ? TOKEN_ROUTES : ROUTES;
+    this.mode = NEXT[this.mode];
+    const seed = Math.floor(Math.random() * 9000) + 1000;
+    if (this.mode === "nft") drawArt(this.art.image as HTMLCanvasElement, seed);
+    if (this.mode === "lp") drawPosition(this.art.image as HTMLCanvasElement, seed);
+    this.art.needsUpdate = true;
+    const routes = this.mode === "tokens" ? TOKEN_ROUTES : this.mode === "lp" ? LP_ROUTES : ROUTES;
     routes.forEach((route, i) => (this.routeTags[i]!.textContent = this.labels[route]));
-    this.tags.public.textContent = this.tokens ? this.labels.publicTokens : this.labels.public;
+    this.tags.public.textContent = this.mode === "tokens" ? this.labels.publicTokens : this.mode === "lp" ? this.labels.publicLp : this.labels.public;
+    // A position's fees and liquidity land in a pocket among others; an asset at a fresh address.
+    const pocket = () => `P-${Math.floor(Math.random() * 90) + 10}`;
+    this.tags.fresh.textContent =
+      this.mode === "lp"
+        ? `${this.labels.lpPockets}\n${pocket()} · ${pocket()} · ${pocket()}`
+        : `${this.labels.fresh}\n0x${scramble(4).replace(/[^0-9a-f]/g, "c")}…${scramble(4).replace(/[^0-9a-f]/g, "e")}`;
   }
 
   private pose(clock: number): void {
@@ -614,8 +680,8 @@ export class VaultStoryScene {
   }
 
   private poseCard(step: number, s1: number, s4: number): void {
-    this.coins.visible = this.tokens;
-    if (this.tokens) {
+    this.coins.visible = this.mode === "tokens";
+    if (this.mode === "tokens") {
       this.card.visible = false;
       this.cardLight.intensity = 0;
       // The card stays where the coins hover, invisible: the deposit's tag follows it.

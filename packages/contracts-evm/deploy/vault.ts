@@ -26,7 +26,9 @@ export const WETH: Record<string, string> = {
  * (`pnpm chain`) their Sepolia code is put at the same addresses first, and a test WETH is
  * deployed. The fee (VAULT_FEE_BPS, 2.5% by default) goes to
  * STUDIO_TREASURY, or the owner. Runs at the end and redeploys nothing else: `--tags Vault`
- * adds the vault next to a live collection.
+ * adds the vault next to a live collection. KEEP_VAULT=1 leaves a deployed vault as it is (its
+ * constructor names the key that deployed it, so another key would otherwise redeploy it): what
+ * builds on it (`--tags Pockets`, `--tags Positions`) then goes next to the live one.
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -71,6 +73,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(`SealedVault: ${vault.address} (fee ${feeBps / 100}% to ${treasury}, Seaport ${SEAPORT}, offers ${offers.address}, WETH ${weth})`);
 };
 export default func;
+func.skip = async (hre) => process.env.KEEP_VAULT === "1" && !!(await hre.deployments.getOrNull("SealedVault"));
 func.id = "deploy_vault";
 func.tags = ["Vault"];
 func.runAtTheEnd = true;

@@ -16,13 +16,13 @@ export const homeEn = {
   "home.steps.title": "How it works",
   "home.steps.lede": "Four steps, and one signature to start.",
   "home.steps.1": "Seal your assets",
-  "home.steps.1.v": "Put an asset in the vault: an NFT from your wallet goes in a sealed box, your cUSDC, cUSDT, cWETH or cZAMA in your pocket. That deposit is public; everything after it is not.",
+  "home.steps.1.v": "Put an asset in the vault: an NFT from your wallet goes in a sealed box, your cUSDC, cUSDT, cWETH or cZAMA in your pocket, and from your pockets a Uniswap position. That deposit is public; everything after it is not.",
   "home.steps.2": "Keep the key",
   "home.steps.2.v": "Your wallet signs one message and the page makes each box's key, and your pocket's, from it. Nobody can read a key, you included: the vault only ever compares it.",
   "home.steps.3": "Sell, pay or keep",
-  "home.steps.3.v": "An NFT sells on Seaport with the vault as the seller, to a buyer's offer or privately, is given away, or stays out of sight with its airdrops sent to a fresh wallet you name through delegate.xyz. Tokens pay another pocket or a box, without a trail.",
+  "home.steps.3.v": "An NFT sells on Seaport with the vault as the seller, to a buyer's offer or privately, is given away, or stays out of sight with its airdrops sent to a fresh wallet you name through delegate.xyz. Tokens pay another pocket or a box, without a trail. A liquidity position earns the pool's fees, which you collect into your pockets.",
   "home.steps.4": "Take them out",
-  "home.steps.4.v": "Every asset comes out to any address: an NFT, a sale's ETH or your tokens. Pick a fresh one and nothing links it to you.",
+  "home.steps.4.v": "Every asset comes out to any address: an NFT, a sale's ETH or your tokens; a position's fees and liquidity come back into your pockets. Pick a fresh address and nothing links it to you.",
   "home.steps.docs": "The vault's docs",
   "home.leaks.title": "What shows, what doesn't",
   "home.leaks.public": "Public",
@@ -225,6 +225,10 @@ export const homeEn = {
   "home.gifts.seat": "Seats",
   "home.gifts.fine": "Your class is set when the list closes: points first, then who claimed first. Gifts are collected on mainnet within {days} days, by a wallet that claimed its place: an X seat with no wallet has nowhere to send them.",
   "home.gifts.yours": "If the list closed now, you would fly {class}.",
+  "home.why.6.title": "Earn without a name.",
+  "home.why.6.body": "Open a Uniswap V3 position out of your pockets: it earns the pool's trading fees, its fees come back into your pockets, and no wallet is tied to it. Nobody copies your ranges or watches your capital.",
+  "home.leaks.public5": "Each liquidity position's pool, range, amounts and fees, as on Uniswap",
+  "home.leaks.hidden5": "Who holds a liquidity position, and which positions are the same holder's",
 } as const satisfies Record<string, string>;
 
 export type HomeKey = keyof typeof homeEn;

@@ -78,6 +78,8 @@ contract PocketDesk is ZamaEthereumConfig, ReentrancyGuard {
         token = pockets_.token();
         // The vault pulls a sale's price from its buyer: here, only ever what `buy` just took.
         token.setOperator(address(vault_), type(uint48).max);
+        // The pockets pull what the desk hands back.
+        token.setOperator(address(pockets_), type(uint48).max);
     }
 
     /// @notice The seller of a private sale offered to this desk names the pocket that may buy it,
@@ -166,13 +168,12 @@ contract PocketDesk is ZamaEthereumConfig, ReentrancyGuard {
         return FHE.xor(FHE.fromExternal(boundKey, keyProof), terms);
     }
 
-    /// @dev A refund (the seller no longer held the box) goes back to the pocket; otherwise this is 0.
+    /// @dev A refund (the seller no longer held the box) goes back to the pocket, which pulls it;
+    ///      otherwise this is 0.
     function _handBack(uint256 pocketId) private {
         euint64 back = token.confidentialBalanceOf(address(this));
-        FHE.allowTransient(back, address(token));
-        euint64 sent = token.confidentialTransfer(address(pockets), back);
-        FHE.allowTransient(sent, address(pockets));
-        pockets.deskGive(pocketId, sent);
+        FHE.allowTransient(back, address(pockets));
+        pockets.deskGive(pocketId, back);
     }
 
     /// @dev The box is the pocket's if it moved; the pocket's viewer may read both.

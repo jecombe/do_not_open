@@ -13,6 +13,7 @@ import {
   type VaultLinks,
   type VaultOffer,
   type VaultSale,
+  type PositionsInfo,
 } from "@dno/chain-adapter";
 import { useAction, useChain } from "../chain/ChainProvider";
 import { useLocale } from "../i18n/locale";
@@ -24,6 +25,7 @@ import { Warden } from "../secure/Warden";
 import { useT } from "./i18n";
 import { dismissRun, dropRun, endRun, isOwnRun, runStep, runTx, startRun } from "./tx/runStore";
 import { TxDock, TxStage, useVaultRun } from "./tx/VaultTx";
+import { LiquidityTab } from "./VaultLiquidity";
 import { parsePocketCode, pocketCode, PocketTab } from "./VaultPocket";
 import { replayVaultTour, VaultTour } from "./VaultTour";
 import { VaultBalances, VaultProfile } from "./VaultWallet";
@@ -34,14 +36,18 @@ const LIST_DAYS = [1, 7, 30];
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 /** Decoys a deposit sends the new box to unless the holder picks another count (0 to MAX_DECOYS). */
 const DEFAULT_DECOYS = 3;
-const TABS = ["explore", "mine", "pocket", "wallet", "sales", "leaks"] as const;
+const TABS = ["explore", "mine", "pocket", "pools", "positions", "wallet", "sales", "leaks"] as const;
 type Tab = (typeof TABS)[number];
-/** The vault's two sides: NFTs in boxes (non-fungible), tokens in pockets (fungible). */
-const KINDS = ["nft", "token"] as const;
+/** The vault's three sides: NFTs in boxes (non-fungible), tokens in pockets (fungible), Uniswap liquidity in sealed positions. */
+const KINDS = ["nft", "token", "lp"] as const;
 type Kind = (typeof KINDS)[number];
-const KIND_TABS: Record<Kind, readonly Tab[]> = { nft: ["explore", "mine", "wallet", "sales", "leaks"], token: ["pocket", "leaks"] };
-/** The tab a link opens: `#tokens` the pockets, `#leaks` what leaks, anything else the NFTs. */
-const hashTab = (): Tab => (location.hash === "#leaks" ? "leaks" : location.hash === "#tokens" ? "pocket" : "explore");
+const KIND_TABS: Record<Kind, readonly Tab[]> = { nft: ["explore", "mine", "wallet", "sales", "leaks"], token: ["pocket", "leaks"], lp: ["pools", "positions", "leaks"] };
+/** The side a tab belongs to ("What leaks" keeps the side it was opened from). */
+const kindOf = (tab: Tab): Kind => (tab === "pocket" ? "token" : tab === "pools" || tab === "positions" ? "lp" : "nft");
+/** The hash each side's link carries. */
+const KIND_HASH: Record<Kind, string> = { nft: "", token: "#tokens", lp: "#liquidity" };
+/** The tab a link opens: `#tokens` the pockets, `#liquidity` the pools, `#leaks` what leaks, anything else the NFTs. */
+const hashTab = (): Tab => (location.hash === "#leaks" ? "leaks" : location.hash === "#tokens" ? "pocket" : location.hash === "#liquidity" ? "pools" : "explore");
 type Status = "all" | "listed" | "unlisted";
 type Sort = "recent" | "low" | "high";
 /** The box a `?box=` link opens. */
@@ -84,14 +90,17 @@ export function VaultPage() {
 }
 
 /**
- * Two wordings in one grid cell, the other one hidden but still taking its room: the header keeps
- * the size of the longer one, so the NFT / token switch never moves it.
+ * A wording per side in one grid cell, the others hidden but still taking their room: the header
+ * keeps the size of the longest one, so the NFT / token / LP switch never moves it.
  */
-function Swap({ on, off, onText }: { on: boolean; off: string; onText: string }) {
+function Swap({ at, texts }: { at: number; texts: string[] }) {
   return (
     <span className="vault-swap">
-      <span aria-hidden={on}>{off}</span>
-      <span aria-hidden={!on}>{onText}</span>
+      {texts.map((text, i) => (
+        <span key={i} aria-hidden={i !== at}>
+          {text}
+        </span>
+      ))}
     </span>
   );
 }
@@ -104,15 +113,15 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   const { account, connect, connectError, picking, closePicker } = useChain();
   const [tab, setTab] = useState<Tab>(hashTab);
   // "What leaks" sits on both sides: it keeps the side it was opened from.
-  const [kind, setKind] = useState<Kind>(() => (hashTab() === "pocket" ? "token" : "nft"));
+  const [kind, setKind] = useState<Kind>(() => kindOf(hashTab()));
   const go = useCallback((next: Tab) => {
     setTab(next);
-    if (next !== "leaks") setKind(next === "pocket" ? "token" : "nft");
+    if (next !== "leaks") setKind(kindOf(next));
   }, []);
   const pickKind = (k: Kind) => {
     setKind(k);
     setTab(KIND_TABS[k][0]!);
-    history.replaceState(null, "", `${location.pathname}${location.search}${k === "token" ? "#tokens" : ""}`);
+    history.replaceState(null, "", `${location.pathname}${location.search}${KIND_HASH[k]}`);
   };
   const [info, setInfo] = useState<VaultInfo | null>(null);
   const [boxes, setBoxes] = useState<VaultBox[]>([]);
@@ -135,20 +144,23 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
 
   // The bar's "What leaks" link opens its tab.
   useEffect(() => {
-    const onHash = () => (location.hash === "#leaks" || location.hash === "#tokens") && go(hashTab());
+    const onHash = () => (location.hash === "#leaks" || location.hash === "#tokens" || location.hash === "#liquidity") && go(hashTab());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, [go]);
 
   const pockets = useMemo(() => vault.pockets(), [vault]);
+  const lp = useMemo(() => vault.positions(), [vault]);
+  const [lpInfo, setLpInfo] = useState<PositionsInfo | null>(null);
 
   const readPublic = useCallback(async () => {
-    const [i, b, p] = await Promise.all([vault.info(), vault.boxes(), pockets?.info().catch(() => null) ?? null]);
+    const [i, b, p, l] = await Promise.all([vault.info(), vault.boxes(), pockets?.info().catch(() => null) ?? null, lp?.info().catch(() => null) ?? null]);
     setInfo(i);
     setBoxes(b);
     setPocketCount(p?.count ?? null);
+    setLpInfo(l);
     return i;
-  }, [vault, pockets]);
+  }, [vault, pockets, lp]);
 
   const readPocketBoxes = useCallback(() => void pockets?.boxes().then(setPocketBoxes, () => undefined), [pockets]);
 
@@ -272,6 +284,8 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
     explore: inVault.length,
     mine: mine === null && !pocketBoxes.length ? null : myBoxes.length,
     pocket: null,
+    pools: lpInfo ? lpInfo.pools.length : null,
+    positions: null,
     wallet: account ? nfts.length : null,
     sales: account ? sales.length : null,
     leaks: null,
@@ -291,10 +305,10 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
         </div>
         <div className="vault-id">
           <h1>
-            <Swap on={kind === "token"} off={t("vault.h1")} onText={t("vault.h1.token")} /> <span className="vault-verified" title={t("vault.network.sepolia")} aria-hidden="true" />
+            <Swap at={KINDS.indexOf(kind)} texts={[t("vault.h1"), t("vault.h1.token"), t("vault.h1.lp")]} /> <span className="vault-verified" title={t("vault.network.sepolia")} aria-hidden="true" />
           </h1>
           <p>
-            <Swap on={kind === "token"} off={t("vault.tagline")} onText={t("vault.tagline.token")} />
+            <Swap at={KINDS.indexOf(kind)} texts={[t("vault.tagline"), t("vault.tagline.token"), t("vault.tagline.lp")]} />
           </p>
         </div>
         {/* Both sides' numbers sit in one cell, the other side's hidden: switching moves nothing. */}
@@ -348,6 +362,26 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               <dd>cUSDC</dd>
             </div>
           </dl>
+          <dl className="vault-stats" aria-hidden={kind !== "lp"}>
+            <div>
+              <dt>{t("vault.stat.pools")}</dt>
+              <dd>{lpInfo ? lpInfo.pools.length : "…"}</dd>
+            </div>
+            <div>
+              <dt>{t("vault.stat.positions")}</dt>
+              <dd>{lpInfo ? lpInfo.count : "…"}</dd>
+            </div>
+            <div>
+              <dt>{t("vault.stat.holders")}</dt>
+              <dd>
+                <Cipher length={4} />
+              </dd>
+            </div>
+            <div>
+              <dt>{t("vault.stat.lpFee")}</dt>
+              <dd>{lpInfo ? `${lpInfo.feeBps / 100}%` : "…"}</dd>
+            </div>
+          </dl>
         </div>
         <VaultBalances vault={vault} coin={coin} className="vault-balances-head" />
         <div className="vault-account" data-tour="account">
@@ -374,7 +408,20 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
         {KINDS.map((k) => (
           <button key={k} type="button" role="radio" aria-checked={kind === k} className={`vault-kind vault-kind-${k}${kind === k ? " on" : ""}`} onClick={() => pickKind(k)}>
             <span className="vault-kind-icon" aria-hidden="true">
-              {k === "nft" ? <span className="vault-kind-box" /> : <span className="vault-kind-coins"><i /><i /><i /></span>}
+              {k === "nft" ? (
+                <span className="vault-kind-box" />
+              ) : k === "token" ? (
+                <span className="vault-kind-coins">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              ) : (
+                <span className="vault-kind-pool">
+                  <i />
+                  <i />
+                </span>
+              )}
             </span>
             <span className="vault-kind-text">
               <span className="vault-kind-tag">{t(`vault.kind.${k}.tag`)}</span>
@@ -667,6 +714,10 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                 onPocket={readPocketBoxes}
               />
             ))}
+
+          {(tab === "pools" || tab === "positions") && (
+            <LiquidityTab vault={vault} account={account} act={act} busy={!!action.busy} demo={demo} view={tab} connect={connectButton} onPockets={() => go("pocket")} />
+          )}
 
           {tab === "leaks" && <Leaks />}
         </main>
@@ -1421,7 +1472,7 @@ function Leaks() {
     <section className="vault-leaks" id="leaks">
       <p className="vault-meta vault-leaks-lede">{t("vault.lede")}</p>
       <ol className="vault-why">
-        {(["1", "2", "3", "4", "5"] as const).map((n) => (
+        {(["1", "2", "3", "4", "5", "6"] as const).map((n) => (
           <li key={n}>
             <strong>{t(`vault.why${n}.title`)}</strong> {t(`vault.why${n}.body`)}
           </li>
@@ -1431,7 +1482,7 @@ function Leaks() {
         <div>
           <h3>{t("vault.leaks.public")}</h3>
           <ul>
-            {(["1", "2", "3", "4", "5"] as const).map((n) => (
+            {(["1", "2", "3", "4", "5", "6"] as const).map((n) => (
               <li key={n}>{t(`vault.leaks.public${n}`)}</li>
             ))}
           </ul>
@@ -1439,7 +1490,7 @@ function Leaks() {
         <div>
           <h3>{t("vault.leaks.hidden")}</h3>
           <ul>
-            {(["1", "2", "3", "4"] as const).map((n) => (
+            {(["1", "2", "3", "4", "5"] as const).map((n) => (
               <li key={n}>{t(`vault.leaks.hidden${n}`)}</li>
             ))}
           </ul>

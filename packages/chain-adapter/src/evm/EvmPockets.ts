@@ -320,6 +320,28 @@ export class EvmPockets implements PocketsAdapter {
     return mine.filter((_, i) => states[i] !== "withdrawn" && states[i] !== "claimed").sort((a, b) => a - b);
   }
 
+  // --- for the vault's other parts (the positions), not the page ---
+
+  /** The pockets contract's address. */
+  get address(): string {
+    return this.deployed.address;
+  }
+
+  /** The pocket's key, from the session's signature. */
+  async pocketKey(opts?: ActionOptions): Promise<bigint> {
+    return (await this.keys(opts)).key;
+  }
+
+  /** The wallet's pocket, opened when it has none. */
+  async ensureMine(opts?: ActionOptions): Promise<number> {
+    return (await this.mine(opts)) ?? (await this.open(opts));
+  }
+
+  /** The set an action names for pocket `real`: decoys picked at random. */
+  setFor(real: number, opts?: PocketOptions): Promise<number[]> {
+    return this.set(real, opts);
+  }
+
   // --- internals ---
 
   /** The pocket's key and viewer, from one signature a session. The cUSDC pockets (the ones with

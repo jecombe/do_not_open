@@ -18,6 +18,7 @@
     "smoke:croq": "tsx scripts/smoke-croq.ts",
     "smoke:rats": "tsx scripts/smoke-rats.ts",
     "smoke:pockets": "tsx scripts/smoke-pockets.ts",
+    "smoke:positions": "tsx scripts/smoke-positions.ts",
     "test-wallets": "tsx scripts/testWallets.ts"
   },
   "dependencies": {

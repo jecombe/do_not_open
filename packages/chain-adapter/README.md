@@ -25,6 +25,9 @@ flowchart LR
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
 | `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`); the `PocketsAdapter` interface, its pockets' (`PocketsInfo`, `PocketSale`, `PocketOptions`) |
 | `src/pockets.ts` | `pocketSet`: the real pocket among decoys, as the contract wants a set |
+| `src/liquidity.ts` | Uniswap V3's position math, no chain library: `liquidityForAmounts`, `amountsForLiquidity`, `pairedAmount` (the other side a deposit needs on a range), `priceOf`, `priceAtTick`, `tickForPrice`, `rangeAround`, `fullRange`, `TICK_SPACING`. Exported from the package root |
+| `src/evm/EvmPositions.ts` | The liquidity positions on an EVM chain: `SealedPositions` and Uniswap V3's position manager through ethers, the controllers derived from the pockets' signature, the holder's EIP-712 signatures, everything through the relayer |
+| `src/mock/MockPositions.ts` | The positions in memory: three pools whose prices wander and whose positions in range earn fees as mock time goes by, the night shift's position, and one Uniswap position the demo wallet holds outside the vault |
 | `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`), the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
 | `src/mock/MockVault.ts` | The vault in memory, with the contract's rules: the night shift holds two boxes, one listed on Seaport, buys a listing of yours after 20 mock seconds, offers 0.03 WETH for every NFT you seal and accepts any private sale offered to it. `MOCK_VAULT` and `MOCK_VAULT_NFT` (a free test collection) are exported |
@@ -359,6 +362,35 @@ shift's, which buys any box offered to it; opening a cUSDC pocket brings an offe
 night shift's boxes for 5 cUSDC. `POCKET_TOKEN=cUSDT|cWETH|cZAMA pnpm smoke:pockets` runs the
 Sepolia smoke test on another token's pockets.
 
+`vault.positions()` returns the `PositionsAdapter` where `SealedPositions` is deployed (null
+elsewhere): Uniswap V3 positions paid for out of the wallet's pockets
+([`docs/VAULT.md`](../../docs/VAULT.md#liquidity-positions)).
+
+- `info()`: `address`, `positionManager`, `feeBps` (of the trading fees), `count`, `pools`
+  (`PositionPool`: the two `PocketToken`s in Uniswap's order, `fee`, `tickSpacing`, the live
+  `sqrtPriceX96`, `tick` and `liquidity`), `relayer`.
+- `all()` lists every position (`SealedPosition`: status `funding | open | closed | failed | out`,
+  pool, range, Uniswap's `tokenId`, `liquidity`, what it holds now `amount0`/`amount1`, the fees to
+  collect `fees0`/`fees1` from a static `collect` sent from the contract's address, `inRange`,
+  the fundings `pending`, the `controller`); `mine()` the wallet's, found by walking its
+  controllers: `keccak256(signature, "position:<contract>:open:<n>")` for the `n`-th it opened,
+  `...:receive:<n>` for the `n`-th it was given, from the pockets' one signature.
+- `open(pool, tickLower, tickUpper, amount0, amount1, { decoys, slippageBps })` (amounts in the
+  pockets' units; the wallet's pockets of both tokens opened when missing) encrypts the amounts
+  and leftover targets, then both pocket keys XOR `openHash`, sends `open`, waits for the two
+  unwraps' public decryptions and sends `settle`. Throws `not-yours` when a pocket was short
+  (nothing moved) and `missed` when Uniswap refused (everything went back). `add` does the same
+  for an open position.
+- `collect`, `remove(positionId, shareBps)` (10,000 closes it), `give(positionId, to)`,
+  `takeOut(positionId, to)`: signed by the position's controller (`actDigest`), relayed; tokens
+  come back into the wallet's pockets among decoys. `receiveAddress()` is the next fresh
+  "receive" controller, to be given a position.
+- `walletPositions()` lists the wallet's own Uniswap positions in these pools; `deposit(tokenId)`
+  brings one in. `settle(fundingId)` settles a funding left waiting. `trade(pool)`, on test
+  networks only (null elsewhere), mints a slice of the pool's token0, sells it and buys it back
+  through the router (`routerVersion` 1 locally, 2 for SwapRouter02), so the positions in range
+  earn fees.
+
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its
 account picker again (EIP-2255 `wallet_requestPermissions`) rather than handing back the
 account it shared last time; the app's "Use another one" on the release form uses it.
@@ -431,10 +463,12 @@ boxes and reading a mint's result use the same user decryption as a shake.
 ## Tests
 
 ```bash
-pnpm --filter @dno/chain-adapter test            # the mock, the mock vault and the V3 math, no network
+pnpm --filter @dno/chain-adapter test            # the mock, the mock vault and its positions, the V3 math, no network (138 tests)
 pnpm --filter @dno/chain-adapter smoke:sepolia   # every mechanic on the deployed contracts
 pnpm --filter @dno/chain-adapter smoke:croq      # welcome bag, meal, buy, wrap, unwrap, transfer, sell
 pnpm --filter @dno/chain-adapter smoke:rats      # a rat's power, a sniff, a shield, a rest, a jam on a second wallet
+pnpm --filter @dno/chain-adapter smoke:pockets   # open, deposit, send, withdraw, on two wallets' pockets
+pnpm --filter @dno/chain-adapter smoke:positions # fill two pockets, open a WETH/USDC position, trade, collect, close
 pnpm --filter @dno/chain-adapter test-wallets    # the kept throwaway wallets (.test-wallets.json), for TEAM_WALLETS
 ```
 
@@ -444,4 +478,5 @@ on 2026-10-01. Both passed in full against the contracts deployed on 2026-10-03 
 11836238), and a box sent there with three decoys left the sender's holdings. `smoke:rats`
 passed against the contracts of 2026-10-07: a power read, a sniff, a shield, `Recharging` on a
 resting rat, and a power-2 jam scrambling half of a throwaway wallet's shakes (it sends that
-wallet 0.003 ETH).
+wallet 0.003 ETH). `smoke:positions` has not run on Sepolia yet: the deployer ran out of test
+ETH after the 2026-10-10 deploy, and its funding waits for Zama's gateway.
