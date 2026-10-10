@@ -23,10 +23,19 @@ export function decoyPlan(to: Address, decoys: number): Send[] {
   return plan;
 }
 
-/** `decoys` sends that move nothing, each to a fresh random address: a deposit's, which has no real one. */
-export function decoySends(decoys: number): Send[] {
+/**
+ * `decoys` sends that move nothing: a deposit's, which has no real one. Each goes to a wallet
+ * of `crowd` (wallets that use the vault, picked at random, none twice), and, when the crowd
+ * runs short, to a fresh random address. A wallet that acts on the vault could be the box's
+ * holder; a fresh address, which never acts, fools nobody for long.
+ */
+export function decoySends(decoys: number, crowd: readonly Address[] = []): Send[] {
   const count = Math.max(0, Math.min(MAX_DECOYS, Math.floor(decoys)));
-  return Array.from({ length: count }, () => ({ to: randomAddress(), really: false }));
+  const pool = [...new Set(crowd.map((a) => a.toLowerCase() as Address))];
+  const sends: Send[] = [];
+  while (sends.length < count && pool.length) sends.push({ to: pool.splice(randomBelow(pool.length), 1)[0]!, really: false });
+  while (sends.length < count) sends.push({ to: randomAddress(), really: false });
+  return sends;
 }
 
 function randomAddress(): Address {

@@ -220,7 +220,8 @@ name them. See [VAULT.md](VAULT.md).
 The same idea for tokens. ERC-7984 already hides balances and amounts; `SealedPockets` hides
 the address graph too. A pocket is a number with an encrypted key and balance, read by a viewer
 address the holder's page derives from one signature, so no wallet is ever tied to it. Every
-deposit, send and withdrawal names a set of pockets (the real one among decoys) and decides
+deposit, send and withdrawal names a set of pockets (the real one's fixed group of five by
+number, the same every time, so comparing a pocket's sets tells its group and no more) and decides
 under encryption which one moves and by how much: no decryption, one transaction. What leaks:
 the wallet behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
 address, and for a box bought from a pocket (`PocketDesk`) the reserved pocket and the ask's yes

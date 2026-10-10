@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { DEFAULT_POCKET_DECOYS, formatAmount, shortAddress, type ActionOptions, type Address, type PocketSale, type PocketToken, type VaultAdapter, type VaultBox } from "@dno/chain-adapter";
+import { formatAmount, shortAddress, type ActionOptions, type Address, type PocketGroup, type PocketSale, type PocketToken, type VaultAdapter, type VaultBox } from "@dno/chain-adapter";
 import { useAction } from "../chain/ChainProvider";
 import { useT } from "./i18n";
 import { TokenIcon, tokenLogoUrl } from "../brand/logos";
@@ -81,8 +81,8 @@ export function PocketTab({
   const [balance, setBalance] = useState<bigint | null>(null);
   const [sales, setSales] = useState<PocketSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
-  const [decoys, setDecoys] = useState(DEFAULT_POCKET_DECOYS);
-  const [maxDecoys, setMaxDecoys] = useState(4);
+  /** The pocket's group: what its every action names, and who is known to feed it. */
+  const [group, setGroup] = useState<PocketGroup | null>(null);
   const [copied, setCopied] = useState(false);
 
   const find = useCallback(
@@ -90,9 +90,8 @@ export function PocketTab({
       const mine = await pockets.mine(opts);
       unlocked.current = true;
       setId(mine);
-      const info = await pockets.info();
-      setMaxDecoys(Math.max(0, Math.min(info.maxSet - 1, info.count - 1)));
       if (mine !== null) {
+        setGroup(await pockets.group(mine).catch(() => null));
         setSales(await pockets.sales());
         if (pockets.token.desk) onPocket();
       }
@@ -113,6 +112,7 @@ export function PocketTab({
   useEffect(() => {
     setId(undefined);
     setBalance(null);
+    setGroup(null);
     setSales([]);
     setPrices({});
     setPlain(null);
@@ -248,7 +248,7 @@ export function PocketTab({
               "pocketDeposit",
               async (o) => {
                 if (shield) await pockets.shield(amount, o);
-                await pockets.deposit(amount, { ...o, decoys });
+                await pockets.deposit(amount, o);
               },
               () => t("vault.done.pocketDeposit", done),
             )
@@ -262,7 +262,7 @@ export function PocketTab({
           token={token}
           target={{ label: t("vault.pocket.sendTo"), placeholder: "P-0", parse: (v) => parsePocketCode(v), bad: t("vault.pocket.badCode") }}
           onSubmit={(amount, _shield, to) =>
-            void run("pocketSend", (o) => pockets.send(to as number, amount, { ...o, decoys }), () => t("vault.done.pocketSend", { id: pocketCode(to as number) }))
+            void run("pocketSend", (o) => pockets.send(to as number, amount, o), () => t("vault.done.pocketSend", { id: pocketCode(to as number) }))
           }
         />
         <AmountForm
@@ -275,26 +275,14 @@ export function PocketTab({
           onSubmit={(amount, _shield, to) =>
             void run(
               "pocketWithdraw",
-              (o) => pockets.withdraw(to as Address, amount, { ...o, decoys }),
+              (o) => pockets.withdraw(to as Address, amount, o),
               () => t("vault.done.pocketWithdraw", { address: shortAddress(to as Address) }),
             )
           }
         />
       </div>
 
-      <div className="vault-decoys vault-pocket-decoys">
-        <span className="vault-decoys-label" id="pocket-decoys">
-          {t("vault.pocket.decoys")}
-        </span>
-        <div role="radiogroup" aria-labelledby="pocket-decoys">
-          {Array.from({ length: maxDecoys + 1 }, (_, n) => (
-            <button key={n} type="button" role="radio" aria-checked={decoys === n} className={decoys === n ? "on" : undefined} disabled={busy} onClick={() => setDecoys(n)}>
-              {n}
-            </button>
-          ))}
-        </div>
-        <p className="vault-meta">{t("vault.pocket.decoysHint", { n: Math.min(decoys, maxDecoys) })}</p>
-      </div>
+      {group && <GroupNote group={group} id={id} />}
 
       {!token.desk ? (
         <p className="vault-meta vault-pocket-nodesk">{t("vault.pocket.noDesk")}</p>
@@ -349,6 +337,29 @@ export function PocketTab({
 
       <p className="vault-meta vault-pocket-public">{t("vault.pocket.public")}</p>
     </PocketShell>
+  );
+}
+
+/**
+ * The pocket's group: the same pockets its every action names, so a set says which group acted
+ * and never which pocket, and how many wallets anyone can tie to the group. An honest count,
+ * not a promise: it grows as pockets open and wallets feed them.
+ */
+function GroupNote({ group, id }: { group: PocketGroup; id: number }) {
+  const t = useT();
+  const n = group.members.length;
+  const fed = group.feeders === 0 ? "vault.pocket.groupFedNone" : group.feeders === 1 ? "vault.pocket.groupFedOne" : "vault.pocket.groupFed";
+  return (
+    <div className="vault-crowd vault-pocket-group" data-tour="group">
+      <p className="vault-crowd-line">
+        <span className="vault-crowd-label">{t("vault.pocket.group")}</span>
+        <strong>{t("vault.pocket.groupOf", { n, size: group.size })}</strong>
+        <span className="vault-crowd-codes">{group.members.map((m) => (m === id ? `${pocketCode(m)} ★` : pocketCode(m))).join(" · ")}</span>
+      </p>
+      <p className="vault-meta">{t(n > 1 ? "vault.pocket.groupHint" : "vault.pocket.groupAlone")}</p>
+      {n > 1 && n < group.size && <p className="vault-meta vault-crowd-warn">{t("vault.pocket.groupFilling", { n, size: group.size })}</p>}
+      <p className={`vault-meta${group.feeders <= 1 ? " vault-crowd-warn" : ""}`}>{t(fed, { n: group.feeders })}</p>
+    </div>
   );
 }
 

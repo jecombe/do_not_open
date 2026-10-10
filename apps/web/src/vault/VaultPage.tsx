@@ -9,6 +9,7 @@ import {
   type Address,
   type VaultAdapter,
   type VaultBox,
+  type VaultCrowd,
   type VaultInfo,
   type VaultLinks,
   type VaultOffer,
@@ -120,6 +121,8 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   /** Boxes the wallet's pocket bought: held by the desk, with the wallet's key. */
   const [pocketBoxes, setPocketBoxes] = useState<number[]>([]);
   const [pocketCount, setPocketCount] = useState<number | null>(null);
+  /** The wallets that use the vault (a deposit's decoys), and how many may hold each box. */
+  const [crowd, setCrowd] = useState<VaultCrowd | null>(null);
   const [nfts, setNfts] = useState<{ collection: Address; name: string; id: bigint }[]>([]);
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
@@ -160,6 +163,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
       setSales(await vault.sales());
       if (findBoxes) setMine(await vault.myBoxes());
       if (pockets) setPocketBoxes(await pockets.boxes().catch(() => []));
+      setCrowd(await vault.crowd().catch(() => null));
     },
     [vault, account],
   );
@@ -168,6 +172,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   useEffect(() => {
     setMine(null);
     setPocketBoxes([]);
+    setCrowd(null);
     setNfts([]);
     setSales([]);
     setPrices({});
@@ -504,7 +509,18 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
             ) : (
               <ul className="vault-grid">
                 {myBoxes.map((b) => (
-                  <BoxCard key={b.boxId} box={b} label={labelOf(b)} coin={coin} mine viaPocket={pocketBoxes.includes(b.boxId)} onOpen={() => setOpened(b.boxId)} onBuy={null} busy={!!action.busy} />
+                  <BoxCard
+                    key={b.boxId}
+                    box={b}
+                    label={labelOf(b)}
+                    coin={coin}
+                    mine
+                    viaPocket={pocketBoxes.includes(b.boxId)}
+                    holders={crowd?.holders[b.boxId]}
+                    onOpen={() => setOpened(b.boxId)}
+                    onBuy={null}
+                    busy={!!action.busy}
+                  />
                 ))}
               </ul>
             ))}
@@ -524,6 +540,15 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                     ))}
                   </div>
                   <p className="vault-meta">{decoys > 0 ? t("vault.wallet.decoysOn", { n: decoys }) : t("vault.wallet.decoysOff")}</p>
+                  {crowd && decoys > 0 && (
+                    <p className={`vault-meta vault-crowd-note${crowd.wallets.length < decoys ? " vault-crowd-warn" : ""}`}>
+                      {crowd.wallets.length >= decoys
+                        ? t("vault.wallet.crowd", { n: crowd.wallets.length })
+                        : crowd.wallets.length === 0
+                          ? t("vault.wallet.crowdNone")
+                          : t("vault.wallet.crowdShort", { n: crowd.wallets.length, fresh: decoys - crowd.wallets.length })}
+                    </p>
+                  )}
                 </div>
                 <ul className="vault-grid">
                   {info.collections
@@ -681,6 +706,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           account={account}
           holder={isMine(box.boxId)}
           viaPocket={pocketBoxes.includes(box.boxId)}
+          holders={crowd?.holders[box.boxId]}
           busy={!!action.busy}
           act={act}
           vault={vault}
@@ -721,6 +747,7 @@ function BoxCard({
   coin,
   mine,
   viaPocket = false,
+  holders,
   onOpen,
   onBuy,
   busy,
@@ -731,6 +758,8 @@ function BoxCard({
   mine: boolean;
   /** Bought with the wallet's pocket: the desk holds it, with the wallet's key. */
   viaPocket?: boolean;
+  /** How many wallets may hold it, as far as the chain tells (`VaultCrowd.holders`). */
+  holders?: number;
   onOpen: () => void;
   onBuy: (() => void) | null;
   busy: boolean;
@@ -759,6 +788,11 @@ function BoxCard({
             </p>
           ) : (
             <p className={`vault-state vault-state-${box.state}`}>{box.state === "sealed" ? t("vault.card.notListed") : t(`vault.state.${box.state}`)}</p>
+          )}
+          {mine && holders !== undefined && (
+            <p className={`vault-card-holders${holders <= 1 ? " is-alone" : ""}`} title={t("vault.item.holdersTitle")}>
+              {holders <= 1 ? t("vault.card.holdersOne") : t("vault.card.holders", { n: holders })}
+            </p>
           )}
         </div>
       </button>
@@ -831,6 +865,7 @@ function BoxDialog({
   account,
   holder,
   viaPocket,
+  holders,
   busy,
   act,
   vault,
@@ -846,6 +881,8 @@ function BoxDialog({
   account: Address | null;
   holder: boolean;
   viaPocket: boolean;
+  /** How many wallets may hold it, as far as the chain tells; unknown before the crowd is read. */
+  holders?: number;
   busy: boolean;
   act: Act;
   vault: VaultAdapter;
@@ -903,6 +940,12 @@ function BoxDialog({
                 <AddressLink address={box.depositor} links={links} />
               </dd>
             </div>
+            {holders !== undefined && inVault && (
+              <div title={t("vault.item.holdersTitle")}>
+                <dt>{t("vault.item.holders")}</dt>
+                <dd className={holders <= 1 ? "vault-crowd-warn" : undefined}>{t("vault.item.holdersCount", { n: holders })}</dd>
+              </div>
+            )}
             {box.delegate && (
               <div>
                 <dt>delegate.xyz</dt>
@@ -914,6 +957,7 @@ function BoxDialog({
           </dl>
           <NftLinks box={box} links={links} />
           <p className="vault-meta">{holder ? t("vault.item.ownerYou") : t("vault.item.ownerHidden")}</p>
+          {holder && holders !== undefined && inVault && <p className={`vault-meta${holders <= 1 ? " vault-crowd-warn" : ""}`}>{holders <= 1 ? t("vault.item.holdersOne") : t("vault.item.holdersHint", { n: holders })}</p>}
 
           <div className="vault-buybox">
             <p className={`vault-state vault-state-${box.state}`}>{t(`vault.state.${box.state}`)}</p>

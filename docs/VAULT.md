@@ -201,7 +201,7 @@ sequenceDiagram
   participant V as Vault
   H->>H: key = keccak256(secret, collection, tokenId), encrypted for the vault
   H->>N: approve(vault, tokenId)
-  H->>H: decoys: up to 5 fresh random addresses, really = false for each, encrypted with the key
+  H->>H: decoys: up to 5 wallets of the crowd (fresh random addresses past it), really = false for each, encrypted with the key
   H->>V: deposit(collection, tokenId, key, to[], really[], proof)
   V->>V: allowedCollection[collection], else CollectionNotAllowed; to and really pair up, 5 at most, else BadSends
   V->>N: transferFrom(holder, vault, tokenId)
@@ -216,14 +216,29 @@ sequenceDiagram
 The deposit is public: it is a plain NFT transfer, and `Deposited` names the depositor. What
 happens to the box next is not, and it can start in the same transaction: `deposit` sends the
 new box on to each of `to`, for real only where the encrypted `really` is true. The page lets
-the holder pick how many decoys, 0 to 5, three by default (`decoys` in the adapter, `decoySends`): fresh random addresses nobody
-holds a key of, `really` false for each, so the depositor keeps the box, but to anyone else each
+the holder pick how many decoys, 0 to 5, three by default (`decoys` in the adapter, `decoySends`): wallets of the vault's
+crowd, `really` false for each, so the depositor keeps the box, but to anyone else each
 transfer is a "maybe" and the depositor is no longer its obvious holder. One of them may be real
 (a gift, or the holder's own fresh wallet): the box then moves and gets a random key, as on any
 transfer, and its receiver sets theirs with `setKey`. Each send costs a transfer's gas and HCU
 (Cost, below). The holder finds their boxes the way a player finds theirs:
 by replaying their own `ConfidentialTransfer` receipts and user-decrypting the "moved" bits
 (`myBoxes`, one signature), see [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md#finding-your-boxes).
+
+**The crowd.** A decoy is only as good as the doubt it leaves, and a transfer to a fresh random
+address leaves little: that address never acts, never sets a key, never asks anything, so an
+observer bets the box stayed with the depositor. The decoys go instead to wallets that use the
+vault (`crowd()` in the adapter, from the public events: every `Deposited` depositor, `KeySet`
+caller, `ConfidentialTransfer` sender, `SaleOffered` party, `Withdrawn` or `Claimed` recipient,
+and every wallet that fed a pocket, less the vault's own contracts, the relayer and the connected
+wallet), picked at random, none twice; past the crowd, to fresh addresses, and the page says so.
+Each could be the box's holder: it acts on the vault. The page also tells a holder, on each of
+their boxes, how many wallets may hold it as far as the chain tells (`crowd().holders`: its
+depositor and the wallets of the crowd it was sent to; 1 means "you are its obvious holder"),
+read on from the last look like the receipts. What a decoy costs its wallet: one more "moved"
+bit to user-decrypt the next time it looks for its boxes, false. What it still does not hide: a
+`KeySet` from one of the decoys names a real receiver, and the absence of any from all of them
+is a hint the box stayed (below).
 
 ### A request: take out, list, take down, collect, accept an offer, delegate
 
@@ -563,9 +578,14 @@ wallet appears in none of it. The design notes at the top of
 decryption permits and never a transaction. Nothing is stored: `pocketOf(viewer)` finds the
 pocket again on any device. A wallet has one pocket per token (see [Other tokens](#other-tokens)).
 
-**Sets, not pockets.** Every action names a set of pockets (`MAX_SET`, 5 at most, in increasing
-order, all opened): the real one and decoys the page picks at random among the pockets that
-exist. A deposit credits the pocket of its set whose number equals an encrypted target; a send
+**Groups, not pockets.** Every action names a set of pockets (`MAX_SET`, 5 at most, in increasing
+order, all opened): the real one's group, always the same. Pockets make groups of `MAX_SET` by
+number (0 to 4, 5 to 9...; `pocketGroup`, `pocketSet`), and every action of a pocket names its
+whole group, so a set says which group acted and never which pocket, however many of a pocket's
+actions are compared. The page first picked decoys at random among every pocket: that hides one
+action, not a series, since the real pocket is the one in every set and two or three sets
+intersect down to it. The last group holds the pockets opened so far and fills as pockets open
+(the page says how far). A deposit credits the pocket of its set whose number equals an encrypted target; a send
 debits the pocket of its paying set whose key matches and credits the pocket of its receiving
 set whose number matches; a withdrawal debits the matching pocket and pays the amount out. Every
 pocket named gets a new balance handle, moved or not, so nobody can tell which one moved.
@@ -595,7 +615,7 @@ sequenceDiagram
   P->>P: key, viewer from the signature
   P->>R: open(key encrypted, viewer)
   R->>S: open
-  W->>S: deposit([decoys + mine], target, amount) (setOperator first)
+  W->>S: deposit([my group], target, amount) (setOperator first)
   S->>C: confidentialTransferFrom(wallet, pockets, amount)
   S->>S: credit select(target == id) to each pocket of the set; refund what found no pocket
   P->>R: send(from set, to set, amount + target, key XOR spendHash)
@@ -653,18 +673,20 @@ deposit does.
 | Fact | Visible to everyone |
 | --- | --- |
 | A pocket | its number and its viewer (an address tied to no wallet), when it was opened, by which sender |
-| A deposit | the wallet, and the set of pockets it named; not the amount when it comes from cUSDC, nor which pocket got it |
-| A send | the paying set and the receiving set, the sender (the relayer); not who paid whom, nor how much |
-| A withdrawal | the paying set, the address paid; not the amount, nor which pocket paid |
+| A deposit | the wallet, and the group it named; not the amount when it comes from cUSDC, nor which pocket of the group got it |
+| A send | the paying group and the receiving group, the sender (the relayer); not who paid whom, nor how much |
+| A withdrawal | the paying group, the address paid; not the amount, nor which pocket paid |
 | A purchase from a pocket | the sale, its seller, the pocket it is reserved for, the ask's yes or no; not the price, nor whether the box moved |
 
-Never public: a pocket's balance, an amount, which pocket of a set moved, who holds a pocket.
+Never public: a pocket's balance, an amount, which pocket of a group moved, who holds a pocket.
 
-In practice: the sets are public, so few decoys, or the same pockets named again and again, give
-hints, and a pocket's sets can be followed over time; the more pockets exist, the better each one
-hides. A deposit from plain USDC shows the amount when it is shielded; a withdrawal to a known
-address names its receiver. The reserved pocket of a desk sale is public (the seller chose it):
-that pocket tried to buy that box.
+In practice: a group is public, so a pocket hides among its group's five at most, and a deposit
+ties its wallet to the group, not to a pocket: the wallets that fed a group are the ones anyone
+can tie to one of its pockets (`group().feeders`, which the page shows, 1 meaning "yours
+alone"), and a group still filling hides among fewer. The sets being fixed, following a pocket's
+actions over time tells nothing more than one of them. A deposit from plain USDC shows the
+amount when it is shielded; a withdrawal to a known address names its receiver. The reserved
+pocket of a desk sale is public (the seller chose it): that pocket tried to buy that box.
 
 ### Other tokens
 
@@ -705,6 +727,14 @@ people use hides its pockets among fewer.
 - **Sets and an encrypted target, not one pocket.** Naming one pocket per side would make every
   send a public edge between two pseudonyms. A set of five with the real one hidden costs a few
   more encrypted operations per pocket (6.5M HCU for five on each side, under the 20M limit).
+- **Fixed groups, not random decoys.** Decoys drawn afresh for each action hide that action and
+  betray the series: the real pocket is in every set, the decoys change, so the intersection of
+  two or three of a pocket's sets is the pocket. A group fixed by number names the same five
+  every time, so the sets of a pocket intersect to its group and nothing less; it guarantees
+  one in five, for good, where random decoys promised more and delivered one. The contract did
+  not change: the page picks the set, and `MAX_SET` sets the group's size. Overlapping groups
+  (Monero's rings) would raise the ceiling at the cost of a far more complex pick; one in five,
+  guaranteed, came first.
 - **A spent-handle list, not a nonce.** A nonce would have to move only when the key matched,
   which is encrypted here (the boxes make that bit public; a spend does not decrypt anything).
   A bound key's handle can be used once instead: a fresh encryption gives a fresh handle, and
@@ -731,6 +761,9 @@ people use hides its pockets among fewer.
 
 - One token per pockets contract (cUSDC, cUSDT, cWETH, cZAMA on Sepolia), one pocket per wallet
   and token, five pockets a side at most; only cUSDC pockets buy boxes.
+- A pocket hides among its group's five at most, fewer while its group fills (the last group,
+  until five pockets are open past the previous one), and a deposit names the wallet and the
+  group: a group few wallets have fed hides those few. The page shows both counts.
 - A box bought from a pocket cannot be given or sold privately again (its holder is the desk).
 - A purchase needs a public decryption, so it waits for Zama's gateway like the boxes' requests;
   deposits, sends and withdrawals do not.
@@ -764,9 +797,12 @@ What that means in practice:
 
 - **The deposit names the depositor.** With its decoys (the page's default) the depositor is not
   its obvious holder: any of the transfers may have moved the box. Without them, they are until
-  the box moves. Decoys are only as good as the doubt they leave: someone who sees a "Make the
+  the box moves. Decoys are only as good as the doubt they leave, which is why they go to wallets
+  that use the vault and not to fresh addresses (a fresh address never acts: nobody believes it
+  holds anything): someone who sees a "Make the
   key mine" (`KeySet`) from none of the decoy addresses may bet the box stayed; a real send among
-  them, followed by a `setKey`, names its receiver.
+  them, followed by a `setKey`, names its receiver. The page tells each holder how many wallets
+  may hold each of their boxes, as far as the chain tells.
 - **A request hides its sender only when the relayer sends it.** Sent from the holder's wallet,
   it ties that wallet to the box (it held the key).
 - **The exit is public**: the address an NFT or a sale's ETH goes to, and the amount. An address
@@ -983,6 +1019,12 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   transfer sent in the same block as such a request reverts and must be sent again. Exits
   (withdraw, list, unlist, claim) are never held back.
 - The deposit, the exit and the request's sender without the relayer are public (above).
+- The crowd is what it is: a deposit's decoys hide the box among the wallets that use the vault,
+  and while few do, the rest go to fresh addresses that fool nobody for long; a box hides among
+  its depositor and its decoys, a pocket among its group's five at most. The page shows the
+  counts rather than promise more. A decoy's wallet is named, on-chain, as the "maybe" receiver
+  of a box it never asked for; it is a wallet that already acts on the vault, never a stranger
+  to it, and it costs it one false bit to decrypt.
 - The relayer is one hot key on the API; its daily cap is per replica, so the stack's is
   `VAULT_RELAY_PER_DAY` times the replicas.
 - The key comes from one signature of a fixed message: a site that tricks a wallet into signing
