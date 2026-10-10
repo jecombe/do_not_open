@@ -60,6 +60,8 @@ import { JpegShrinker } from "./infrastructure/rats/JpegShrinker";
 import { EthersAdoptionSigner } from "./infrastructure/rats/EthersAdoptionSigner";
 import { JsonRpcProvider } from "ethers";
 import { VaultRelay } from "./application/vaultRelay";
+import { VaultMarket } from "./application/vaultMarket";
+import { OPENSEA_CHAINS, OpenSeaOffers } from "@dno/chain-adapter/opensea";
 import { EthersVaultSender } from "./infrastructure/vault/EthersVaultSender";
 import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 
@@ -275,6 +277,16 @@ async function main() {
       : undefined;
   if (vaultRelay) log.info({ address: vaultRelay.address }, "the vault relayer sends holders' requests");
 
+  // The marketplace's offers for the vault's page: OpenSea's, where OpenSea is (mainnet; it closed its testnets).
+  const openSeaChain = OPENSEA_CHAINS[config.NETWORK];
+  // OpenSea signs a fill for the address that holds the NFT and calls Seaport: the vault itself.
+  const vaultMarket =
+    config.OPENSEA_API_KEY && deployment.vault && openSeaChain && config.ROLE !== "indexer"
+      ? new VaultMarket("opensea", new OpenSeaOffers({ apiKey: config.OPENSEA_API_KEY, chain: openSeaChain }), deployment.vault.address, clock)
+      : undefined;
+  if (vaultMarket) log.info({ fulfiller: vaultMarket.fulfiller }, "OpenSea's offers are read for the vault's page");
+  else if (config.OPENSEA_API_KEY && config.ROLE !== "indexer") log.info({ network: config.NETWORK }, "OpenSea serves no offers on this network: the vault's page shows the board's only");
+
   // What the index holds is reported by one process only, the one that indexes: API replicas
   // report their own traffic, memory and RPC calls.
   const reports = config.ROLE !== "api";
@@ -319,6 +331,7 @@ async function main() {
           rats,
           vaultRelay,
           vaultRelayRatePerMinute: config.VAULT_RELAY_RATE_PER_MINUTE,
+          vaultMarket,
           chat,
           vaultChat,
           chatRatePerMinute: config.CHAT_RATE_PER_MINUTE,

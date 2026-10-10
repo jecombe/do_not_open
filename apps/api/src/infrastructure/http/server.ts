@@ -17,6 +17,8 @@ import { RelayerRefused, type RelayerGate, type RelayerOp } from "../../applicat
 import { StudioRefused, type Studio } from "../../application/studio";
 import { RatRefused, type Rats } from "../../application/rats";
 import { VaultRelayRefused, type VaultRelay } from "../../application/vaultRelay";
+import { VaultMarketRefused, type VaultMarket } from "../../application/vaultMarket";
+import { marketOfferJson, OpenSeaError } from "@dno/chain-adapter/opensea";
 import type { StudioJob } from "../../domain/studio";
 import { normalizeAddress, type Address } from "../../domain/types";
 import { signedByDiscord, type DiscordClerk } from "../discord/DiscordClerk";
@@ -58,6 +60,8 @@ export interface HttpDeps {
   vaultRelay?: VaultRelay;
   /** Vault relays per minute per IP. */
   vaultRelayRatePerMinute?: number;
+  /** The marketplace whose offers are read for the vault's page (OpenSea on mainnet). Absent: the page shows the board's offers only. */
+  vaultMarket?: VaultMarket;
   /** The manual's chatbot. */
   chat?: AskManual;
   /** The Warden: the same chat on the vault's and the project's docs (`book: "vault"`). */
@@ -593,6 +597,48 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
         }
       },
     );
+  }
+
+  // --- the marketplace's offers, for the vault's page ---
+
+  // Asked by every vault page: null when the API reads no marketplace (a test network, no key).
+  app.get("/v1/vault/market", async (_req, reply) =>
+    send(reply, deps.vaultMarket ? { name: deps.vaultMarket.name, fulfiller: deps.vaultMarket.fulfiller } : { name: null, fulfiller: null }, "public, max-age=60"),
+  );
+
+  const vaultMarket = deps.vaultMarket;
+  if (vaultMarket) {
+    const tokenId = z.string().regex(/^\d{1,78}$/, "token id").transform(BigInt);
+    const orderHash = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "order hash");
+    const marketError = (reply: FastifyReply, error: unknown) => {
+      if (error instanceof VaultMarketRefused) return reply.status(404).send({ error: error.message, code: error.code });
+      if (error instanceof OpenSeaError) return reply.status(error.status >= 500 || error.status === 503 ? 502 : error.status === 429 ? 429 : 502).send({ error: error.message, code: "marketplace" });
+      throw error;
+    };
+
+    // The marketplace's live offers on one token, as the board's are listed: read once every few seconds for everyone.
+    app.get("/v1/vault/offers/:collection/:tokenId", async (req, reply) => {
+      const p = z.object({ collection: address, tokenId }).parse(req.params);
+      try {
+        const offers = await vaultMarket.offers(p.collection, p.tokenId);
+        return send(reply, { offers: offers.map(marketOfferJson) }, "public, max-age=10");
+      } catch (error) {
+        return marketError(reply, error);
+      }
+    });
+
+    // The order that fills one offer, signed by the marketplace for `VaultOffers` for a few minutes: asked right before `finalizeOffer`.
+    app.post("/v1/vault/offers/fulfillment", { config: { rateLimit: { max: deps.vaultRelayRatePerMinute ?? 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+      reply.header("cache-control", "no-store");
+      const parsed = z.object({ orderHash, collection: address, tokenId }).safeParse(req.body);
+      if (!parsed.success) return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "bad request" });
+      try {
+        const { offer, expiresAt } = await vaultMarket.fulfillment(parsed.data.orderHash, parsed.data.collection, parsed.data.tokenId);
+        return { offer, expiresAt };
+      } catch (error) {
+        return marketError(reply, error);
+      }
+    });
   }
 
   // --- the studio ---

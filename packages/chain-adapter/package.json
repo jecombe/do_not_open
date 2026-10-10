@@ -9,7 +9,8 @@
     "./node": "./src/evm/node.ts",
     "./deployments": "./src/evm/chains.ts",
     "./uniswap-v3": "./src/evm/uniswapV3.ts",
-    "./standings": "./src/standings.ts"
+    "./standings": "./src/standings.ts",
+    "./opensea": "./src/opensea.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -18,7 +19,8 @@
     "smoke:croq": "tsx scripts/smoke-croq.ts",
     "smoke:rats": "tsx scripts/smoke-rats.ts",
     "smoke:pockets": "tsx scripts/smoke-pockets.ts",
-    "test-wallets": "tsx scripts/testWallets.ts"
+    "test-wallets": "tsx scripts/testWallets.ts",
+    "opensea:fork": "tsx scripts/opensea-fork.ts"
   },
   "dependencies": {
     "@dno/game-spec": "workspace:*",

@@ -27,6 +27,8 @@ flowchart LR
 | `src/pockets.ts` | `pocketSet`: the real pocket among decoys, as the contract wants a set |
 | `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultListings` (a listing's order, and whether OpenSea's zone gates it), `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`) for the version Seaport's `information()` reports, the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
+| `src/evm/vaultMarket.ts` | `VaultMarket`: finds the marketplace the API reads offers from (`GET /v1/vault/market`, OpenSea on mainnet), reads a token's offers (`GET /v1/vault/offers/:collection/:tokenId`) and asks the order that fills one, signed for the vault (`POST /v1/vault/offers/fulfillment`), right before `finalizeOffer` |
+| `src/opensea.ts` | OpenSea's API for the vault (`OpenSeaOffers`: a token's and its collection's WETH offers, the fulfillment of one signed by OpenSea's zone for a fulfiller), the Seaport order types and their abi encoding (`encodeAdvancedOrder`, `decodeAdvancedOrder`, as `finalizeOffer` takes them), the zone's `extraData` read (`zoneExpiration`, `zoneFulfiller`). Exported as `@dno/chain-adapter/opensea`, used by the API and by `scripts/opensea-fork.ts`; the key is the API's, never the page's |
 | `src/mock/MockVault.ts` | The vault in memory, with the contract's rules: the night shift holds two boxes, one listed on Seaport, buys a listing of yours after 20 mock seconds, offers 0.03 WETH for every NFT you seal and accepts any private sale offered to it. `MOCK_VAULT` and `MOCK_VAULT_NFT` (a free test collection) are exported |
 | `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
 | `src/standings.ts` | The duel ranking (`duelStandings`, `rosettePlace`, `ROSETTES`) and the mainnet allow list's points and claim message (`playerPoints`, `ALLOW_LIST_POINTS`, `allowListMessage`, `allowListAddress`, `byClaimRank`), and the boarding pass bonuses (`X_PASS_BONUS`, `DISCORD_BONUS`, `REFERRAL_BONUS`, `REFERRAL_CAP`, `xPassWalletMessage`). Pure, exported as `@dno/chain-adapter/standings`, also used by the API, so every reader ranks the same way |
@@ -295,14 +297,20 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 - `offers(boxId)` lists the live offers buyers posted to the board (`VaultOffers`' `OfferPosted`
   logs) for the box's NFT or any NFT of its collection, that their WETH still covers, best first
   (`VaultOffer`: `orderHash`, `buyer`, `amount` in wei of WETH one NFT nets after the order's
-  own fees, `endTime`, `anyToken`). `makeOffer(boxId, amount, endTime)` wraps ETH into WETH and
+  own fees, `endTime`, `anyToken`, `source`), and, where the API reads a marketplace
+  (`VaultInfo.market`, "opensea" on mainnet), OpenSea's offers on the token with them
+  (`source: "opensea"`; `inspect`ed on `VaultOffers` and the buyer's WETH balance read, as the
+  board's; their allowance is the conduit's, left to Seaport). An OpenSea offer is not cancelled
+  from the page. `makeOffer(boxId, amount, endTime)` wraps ETH into WETH and
   approves Seaport when needed, signs the Seaport order (EIP-712, for the version Seaport's
   `information()` reports: 1.6 on Sepolia and mainnet, 1.5 locally) and posts it to the board;
   it returns the order hash, and the buyer's address is public. `cancelOffer(orderHash)` cancels
   one of the wallet's own offers on Seaport.
 - `acceptOffer(boxId, orderHash, to)` is a request (`AcceptOffer`, the order hash bound to the
   key as `ref`, the offer's current net as the least it must fetch), finalized with
-  `finalizeOffer` and the order: the NFT goes to the buyer, the ETH, less the fee, to `to`. It
+  `finalizeOffer` and the order: the board's, from its log; OpenSea's, asked of the API right
+  before the proof is sent (its signature for the vault lasts minutes; `network` when the API
+  could not give it). The NFT goes to the buyer, the ETH, less the fee, to `to`. It
   returns the wei sent; throws `not-yours`, or `missed` when the offer is gone.
 - `delegate(boxId, wallet | null)` is a request too: it names the wallet acting for the box's
   NFT in delegate.xyz's registry (null clears it). The delegate is public, so a fresh wallet
@@ -410,6 +418,18 @@ out of `ratSupply`.
 signature, filed nowhere: the app sends it where it belongs, such as linking a wallet to an X
 boarding pass (`xPassWalletMessage` in `@dno/chain-adapter/standings`). The mock returns a
 stand-in signature.
+
+### OpenSea's offers on a fork
+
+`pnpm --filter @dno/chain-adapter opensea:fork -- --collection <address> --token <id>` checks
+the API side of accepting an OpenSea offer without deploying anything: it reads the token's
+live offers from OpenSea (`OpenSeaOffers`, with `OPENSEA_API_KEY` from `.env`), forks mainnet
+with anvil (`MAINNET_RPC_URL`, eth.drpc.org by default; the contracts compiled first), deploys
+`VaultOffers` on the fork, has the NFT's mainnet holder play the vault (OpenSea signs a fill only
+for the address that holds the NFT, which must be Seaport's caller), asks OpenSea the fill signed
+for it, and sends Seaport the call `VaultOffers.fillCall` wrote from that holder: the NFT reaches
+the buyer, the WETH, less OpenSea's fee, comes to the holder. Pick a token with offers on
+opensea.io (BAYC #1 on 2026-10-10: 9.504 WETH net, 217,748 gas).
 
 ## What happens in a shake
 

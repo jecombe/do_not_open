@@ -13,6 +13,7 @@ import {ISeaport} from "./vault/ISeaport.sol";
 import {IDelegateRegistry} from "./vault/IDelegateRegistry.sol";
 import {VaultListings} from "./vault/VaultListings.sol";
 import {VaultOffers} from "./vault/VaultOffers.sol";
+import {IWETH} from "./vault/IWETH.sol";
 
 /// @title The sealed vault
 /// @notice Any NFT of an allowed collection, put in a box whose owner is encrypted. The box
@@ -61,11 +62,13 @@ import {VaultOffers} from "./vault/VaultOffers.sol";
 ///     no ERC-1271, so the only orders Seaport can fill on its NFTs are the ones it validated.
 ///
 ///  5. Accepting an offer: a buyer's Seaport order that pays WETH for the box's NFT (that token, or
-///     any of its collection) is filled through `VaultOffers`, which the vault hands the one NFT
-///     for that call: an order can only take what that contract holds, never another box's NFT. The
-///     request binds the order's hash and the least WETH it must net after the order's own fees;
-///     the order itself comes with `finalizeOffer`. The WETH comes back as ETH and goes, less the
-///     fee, straight to the request's address. A dead order (cancelled, filled, ended, or worth
+///     any of its collection) is filled by the vault itself, with the call `VaultOffers` writes
+///     for it (`fillCall`), as OpenSea's signed zone wants the NFT's holder to be Seaport's caller.
+///     `VaultOffers.inspect` lets through only an order that pays WETH and asks for that one NFT
+///     (and its WETH fees), and the vault approves Seaport for that token alone, so an order can
+///     never take another box's NFT. The request binds the order's hash and the least WETH it must
+///     net after the order's own fees; the order itself comes with `finalizeOffer`. The WETH is
+///     unwrapped and goes, less the fee, straight to the request's address. A dead order (cancelled, filled, ended, or worth
 ///     less than asked) settles `Stale`; one that only fails to fill reverts and stays pending, so
 ///     a stranger cannot spoil it by finalizing it with bad data.
 ///
@@ -206,8 +209,10 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
     /// @notice Writes the listings' Seaport orders, the way OpenSea shows them, and keeps them.
     VaultListings public immutable listings;
     IERC7984 public immutable confidentialUsdc;
-    /// @notice Fills the buyers' offers the vault accepts (in WETH), holding one NFT per call.
+    /// @notice Writes the Seaport call that fills an offer the vault accepts, and is the offer board.
     VaultOffers public immutable offers;
+    /// @notice What offers pay in: unwrapped here when one fills.
+    IWETH public immutable weth;
     /// @notice delegate.xyz's Delegate Registry v2.
     IDelegateRegistry public immutable delegateRegistry;
 
@@ -294,15 +299,16 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         seaport = listings_.seaport();
         confidentialUsdc = confidentialUsdc_;
         offers = offers_;
+        weth = offers_.weth();
         delegateRegistry = delegateRegistry_;
         _setTreasury(treasury_);
         _setFee(feeBps_);
     }
 
-    /// @dev Only Seaport pays the vault (the ETH of a filled listing), and `offers` (an accepted
-    ///      offer's WETH, unwrapped).
+    /// @dev Only Seaport pays the vault (the ETH of a filled listing), and WETH (an accepted
+    ///      offer's, unwrapped).
     receive() external payable {
-        if (msg.sender != address(seaport) && msg.sender != address(offers)) revert OnlySeaport();
+        if (msg.sender != address(seaport) && msg.sender != address(weth)) revert OnlySeaport();
     }
 
     // ---------------------------------------------------------------- deposit
@@ -697,8 +703,9 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         return true;
     }
 
-    /// @dev Fills the buyer's order with the box's NFT, through `offers`, which holds it for this
-    ///      one call. Returns false (the request settles `Stale`) when the order can never fill
+    /// @dev Fills the buyer's order with the box's NFT: the vault sends Seaport the call `offers`
+    ///      writes, approving Seaport for that token and the order's WETH fees alone, and unwraps
+    ///      what came. Returns false (the request settles `Stale`) when the order can never fill
     ///      as asked; reverts when it only cannot fill now.
     function _acceptOffer(Request storage r, bytes calldata offer) private returns (bool) {
         uint256 boxId = r.boxId;
@@ -708,8 +715,7 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         if (!fillable) return false;
 
         if (b.state == BoxState.Listed) _unlist(boxId, b);
-        IERC721(b.collection).transferFrom(address(this), address(offers), b.tokenId);
-        uint256 amount = offers.fill(offer, b.collection, b.tokenId);
+        uint256 amount = _fillOffer(b, offer);
         if (amount < r.price) revert OfferShort();
 
         uint256 fee = (amount * feeBps) / 10_000;
@@ -722,6 +728,20 @@ contract SealedVault is ConfidentialERC721, ZamaEthereumConfig, Ownable, Reentra
         // If the ETH will not go to `to`, it waits in the box for a `Claim`.
         _claim(boxId, b, r.to);
         return true;
+    }
+
+    /// @dev Sends Seaport the fill `offers` writes, approving it for the box's NFT and the order's
+    ///      WETH fees alone, and unwraps the WETH held (the buyer's; the vault keeps none
+    ///      otherwise, and any sent to it only adds to this payout). Reverts if the NFT stays.
+    function _fillOffer(Box storage b, bytes calldata offer) private returns (uint256 amount) {
+        (bytes memory call, uint256 orderFee) = offers.fillCall(offer, b.collection, b.tokenId, address(this));
+        IERC721(b.collection).approve(address(seaport), b.tokenId);
+        weth.approve(address(seaport), orderFee);
+        _seaport(call);
+        weth.approve(address(seaport), 0);
+        if (IERC721(b.collection).ownerOf(b.tokenId) == address(this)) revert SeaportRefused();
+        amount = weth.balanceOf(address(this));
+        weth.withdraw(amount);
     }
 
     /// @dev Names `to` (0: nobody) as the one wallet acting for the box's NFT in delegate.xyz.

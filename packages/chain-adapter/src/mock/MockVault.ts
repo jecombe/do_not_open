@@ -260,6 +260,7 @@ export class MockVault implements VaultAdapter {
       delegateRegistry: MOCK_REGISTRY,
       collections,
       relayer: "0x000000000000000000000000000000000000a11e",
+      market: null,
       coin: "ETH",
     };
   }
@@ -708,7 +709,7 @@ export class MockVault implements VaultAdapter {
 
   private postOffer(boxId: number, buyer: Address, amount: bigint, endTime: number): string {
     const orderHash = `0x0ffe${this.offerList.length.toString(16).padStart(60, "0")}`;
-    this.offerList.push({ orderHash, boxId, buyer, amount, endTime, anyToken: false, status: "open" });
+    this.offerList.push({ orderHash, boxId, buyer, amount, endTime, anyToken: false, source: "board", status: "open" });
     return orderHash;
   }
 

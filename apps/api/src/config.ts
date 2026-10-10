@@ -210,6 +210,12 @@ const schema = z.object({
   VAULT_RELAY_PER_DAY: z.coerce.number().int().min(0).default(500),
   /** Vault relays per minute per IP. */
   VAULT_RELAY_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
+  /**
+   * OpenSea's API key: the API reads the offers made on opensea.io for the NFTs in the vault,
+   * and asks OpenSea the signed order that fills one, for the vault's page. Only where OpenSea
+   * is (mainnet): nothing on Sepolia. Never sent to browsers.
+   */
+  OPENSEA_API_KEY: z.string().optional(),
   /** The site, e.g. https://do-not-open.app: rats' metadata links its studio. */
   SITE_URL: z.string().url().optional(),
 
