@@ -477,7 +477,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                       coin={coin}
                       mine={isMine(b.boxId)}
                       onOpen={() => setOpened(b.boxId)}
-                      onBuy={account && !isMine(b.boxId) && b.state === "listed" ? () => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy")) : null}
+                      onBuy={account && !isMine(b.boxId) && b.state === "listed" && !info?.listingsOnOpenSea ? () => void act("buy", (o) => vault.buy(b.boxId, o), () => t("vault.done.buy")) : null}
                       busy={!!action.busy}
                     />
                   ))}
@@ -685,6 +685,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
           act={act}
           vault={vault}
           links={links}
+          onOpenSea={!!info?.listingsOnOpenSea}
           connect={connectButton}
           onClose={() => setOpened(null)}
         />
@@ -834,6 +835,7 @@ function BoxDialog({
   act,
   vault,
   links,
+  onOpenSea,
   connect,
   onClose,
 }: {
@@ -848,6 +850,8 @@ function BoxDialog({
   act: Act;
   vault: VaultAdapter;
   links: VaultLinks;
+  /** Listings sell on OpenSea (behind its signed zone), not from here. */
+  onOpenSea: boolean;
   connect: ReactNode;
   onClose: () => void;
 }) {
@@ -936,11 +940,17 @@ function BoxDialog({
                   connect
                 ) : (
                   <>
-                    {box.state === "listed" && (
-                      <button type="button" className="sec-btn" disabled={busy} onClick={() => void act("buy", (o) => vault.buy(box.boxId, o), () => t("vault.done.buy"))}>
-                        {t("vault.action.buyNow")}
-                      </button>
-                    )}
+                    {box.state === "listed" &&
+                      (onOpenSea ? (
+                        // Behind OpenSea's signed zone, the listing sells on OpenSea, which signs each purchase.
+                        <a className="sec-btn" href={links.marketplace(box.collection, box.tokenId) ?? undefined} target="_blank" rel="noreferrer">
+                          {t("vault.action.buyOnOpenSea")}&nbsp;↗
+                        </a>
+                      ) : (
+                        <button type="button" className="sec-btn" disabled={busy} onClick={() => void act("buy", (o) => vault.buy(box.boxId, o), () => t("vault.done.buy"))}>
+                          {t("vault.action.buyNow")}
+                        </button>
+                      ))}
                     <button type="button" className="sec-btn sec-btn-ghost" aria-expanded={offering} onClick={() => setOffering((o) => !o)}>
                       {t("vault.action.offer")}
                     </button>

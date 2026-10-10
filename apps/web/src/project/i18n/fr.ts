@@ -29,7 +29,7 @@ export const projectFr: Record<ProjectKey, string> = {
 
   "project.section.vault": "Le coffre scellé",
   "project.vault.p1": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.",
-  "project.vault.p2": "La boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur, ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part.",
+  "project.vault.p2": "La boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur (sur le réseau principal, l'annonce s'affiche sur OpenSea), ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part.",
   "project.vault.p3": "Le coffre garde aussi des jetons. Tes cUSDC, un dollar confidentiel, vont dans une poche verrouillée par une clé plutôt que par une adresse : envoie-les vers une autre poche, paie une boîte avec, ou sors-les où tu veux. Les jetons confidentiels cachent déjà les montants ; une poche cache aussi qui a payé qui. Les cUSDT, cWETH et cZAMA, les autres jetons confidentiels de Zama, ont leurs propres poches ; les boîtes se paient en cUSDC.",
   "project.vault.docs": "Lire la doc du coffre",
   "project.vault.open": "Ouvrir le coffre",
@@ -42,7 +42,7 @@ export const projectFr: Record<ProjectKey, string> = {
 
   "project.section.leaks": "Ce qui reste secret, ce qui ne l'est pas",
   "project.leaks.p1": "Le chiffrement cache des valeurs, pas le fait que quelque chose s'est passé. Une transaction est publique : qui l'a envoyée, vers quel contrat, quand. Ce que DO NOT OPEN chiffre, c'est ce que fait la transaction : qui finit par détenir une boîte, un prix convenu en privé, si un transfert a déplacé quelque chose.",
-  "project.leaks.p2": "Certaines choses sont publiques exprès. Un NFT qui entre dans le coffre est un simple transfert de NFT, donc le déposant se voit. Une annonce Seaport montre son NFT et son prix, avec le coffre comme vendeur. L'adresse vers laquelle sort un NFT ou l'ETH d'une vente se voit aussi : choisissez-en une sans historique.",
+  "project.leaks.p2": "Certaines choses sont publiques exprès. Un NFT qui entre dans le coffre est un simple transfert de NFT, donc le déposant se voit. Une annonce Seaport montre son NFT et son prix, avec le coffre comme vendeur, sur OpenSea sur le réseau principal. L'adresse vers laquelle sort un NFT ou l'ETH d'une vente se voit aussi : choisissez-en une sans historique.",
   "project.leaks.p3": "Chaque produit liste exactement ce qui fuite, ligne par ligne, dans sa propre documentation.",
 
   "project.section.trust": "À qui vous faites confiance",

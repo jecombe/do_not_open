@@ -32,11 +32,12 @@ const SEAPORT_ABI = [
   `function fulfillOrder((${ORDER_PARAMETERS} parameters, bytes signature) order, bytes32 fulfillerConduitKey) payable returns (bool)`,
   "function getOrderStatus(bytes32 orderHash) view returns (bool isValidated, bool isCancelled, uint256 totalFilled, uint256 totalSize)",
   "function getCounter(address offerer) view returns (uint256)",
+  "function information() view returns (string version, bytes32 domainSeparator, address conduitController)",
 ];
 const ADVANCED_ORDER = `(${ORDER_PARAMETERS} parameters, uint120 numerator, uint120 denominator, bytes signature, bytes extraData)`;
 const WETH_ABI = ["function deposit() payable", "function approve(address spender, uint256 amount) returns (bool)", "function balanceOf(address) view returns (uint256)"];
 const REGISTRY_ABI = ["function checkDelegateForERC721(address to, address from, address contract_, uint256 tokenId, bytes32 rights) view returns (bool)"];
-/** Seaport 1.5's EIP-712 types, for an order a buyer signs. */
+/** Seaport's EIP-712 types (the same in 1.5 and 1.6), for an order a buyer signs. */
 const SEAPORT_TYPES = {
   OrderComponents: [
     { name: "offerer", type: "address" },
@@ -86,6 +87,16 @@ async function setup(hre: HardhatRuntimeEnvironment) {
 
 type Ctx = Awaited<ReturnType<typeof setup>>;
 
+/** Reads until `ready` says the state is there: a public RPC's nodes can lag the one that mined the transaction. */
+async function settled<T>(read: () => Promise<T>, ready: (value: T) => boolean, what: string): Promise<T> {
+  for (let i = 0; i < 30; i++) {
+    const value = await read();
+    if (ready(value)) return value;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  throw new Error(`${what}: the RPC still shows the old state after a minute.`);
+}
+
 /** Mints a test NFT to the holder and seals it with `key`. Returns the box id. */
 async function seal(c: Ctx, key: bigint) {
   const tokenId = BigInt(c.ethers.hexlify(c.ethers.randomBytes(6)));
@@ -95,11 +106,26 @@ async function seal(c: Ctx, key: bigint) {
   const boxId = await c.vault.tokenCount();
   const tx = await c.vault.deposit(await c.nft.getAddress(), tokenId, input.handles[0]!, [], [], input.inputProof);
   await tx.wait();
+  await settled(() => c.vault.boxInfo(boxId), (b) => b.tokenId === tokenId, `box ${boxId}`);
   console.log(`  sealed test NFT #${tokenId} in box ${boxId} (tx ${tx.hash})`);
   return boxId;
 }
 
 type Terms = { to?: string; price?: bigint; endTime?: number; ref?: string; offer?: string };
+
+/** The public decryption of `handle`, asked again while Zama's relayer has not yet seen the ACL grant or the ciphertext (up to five minutes). */
+async function decrypted(c: Ctx, handle: string) {
+  for (let i = 0; ; i++) {
+    try {
+      return await c.fhevm.publicDecrypt([handle]);
+    } catch (error) {
+      const message = String((error as Error).message ?? error);
+      if (i >= 60 || !/not allowed|not ready|not found|no ciphertext/i.test(message)) throw error;
+      if (i === 0) console.log(`  the relayer does not see it yet (${message.slice(0, 80)}); asking again...`);
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+  }
+}
 
 /** Asks for `action` with the key bound to its terms, then relays the proof (with the offer, to accept one). Returns the status. */
 async function ask(c: Ctx, boxId: bigint, action: number, key: bigint, terms: Terms = {}) {
@@ -111,13 +137,14 @@ async function ask(c: Ctx, boxId: bigint, action: number, key: bigint, terms: Te
   const tx = await c.vault.request(boxId, action, to, price, endTime, ref, input.handles[0]!, input.inputProof);
   await tx.wait();
   console.log(`  request ${requestId} sent (tx ${tx.hash}); fetching the "key matched" bit and its KMS proof...`);
-  const { ok } = await c.vault.requestInfo(requestId);
-  const result = await c.fhevm.publicDecrypt([ok]);
+  const { ok } = await settled(() => c.vault.requestInfo(requestId), (r) => r.ok !== c.ethers.ZeroHash, `request ${requestId}`);
+  const result = await decrypted(c, ok);
   const fin = terms.offer
     ? await c.vault.finalizeOffer(requestId, result.abiEncodedClearValues, result.decryptionProof, terms.offer)
     : await c.vault.finalize(requestId, result.abiEncodedClearValues, result.decryptionProof);
   await fin.wait();
-  const status = REQUEST_STATUS[Number((await c.vault.requestInfo(requestId)).status)];
+  const settledRequest = await settled(() => c.vault.requestInfo(requestId), (r) => Number(r.status) !== 1, `request ${requestId}`);
+  const status = REQUEST_STATUS[Number(settledRequest.status)];
   console.log(`  finalised in tx ${fin.hash}: ${status}`);
   return status;
 }
@@ -133,17 +160,18 @@ task("dno:vault-demo", "Seals a test NFT, sells it on Seaport from the vault, an
   const price = c.ethers.parseEther("0.0001");
   const endTime = Math.floor(Date.now() / 1000) + 86_400;
   await ask(c, boxId, ACTION.List, key, { price, endTime });
-  const listingId = (await c.vault.boxInfo(boxId)).listing - 1n;
-  const listing = await c.vault.listingInfo(listingId);
+  const listingId = (await settled(() => c.vault.boxInfo(boxId), (b) => b.listing > 0n, `box ${boxId}`)).listing - 1n;
+  const listing = await settled(() => c.vault.listingInfo(listingId), (l) => l.orderHash !== c.ethers.ZeroHash, `listing ${listingId}`);
   console.log(`  listed for ${fmt(price)}: Seaport order ${listing.orderHash}`);
 
   console.log("\n2. A buyer fills the Seaport order, as on any Seaport marketplace");
-  const parameters = plain(await c.vault.seaportOrder(listingId));
+  const listings = await c.ethers.getContractAt("VaultListings", await c.vault.listings());
+  const parameters = plain(await settled(() => listings.orderOf(listing.orderHash), (o) => o.offerer !== ZERO, `order ${listing.orderHash}`));
   const fill = await c.seaport.fulfillOrder!({ parameters, signature: "0x" }, c.ethers.ZeroHash, { value: price });
   await fill.wait();
   console.log(`  filled in tx ${fill.hash}; the NFT is now ${await c.nft.ownerOf((await c.vault.boxInfo(boxId)).tokenId)}`);
   await (await c.vault.sync(boxId)).wait();
-  const sold = await c.vault.boxInfo(boxId);
+  const sold = await settled(() => c.vault.boxInfo(boxId), (b) => Number(b.state) === 3, `box ${boxId}`);
   console.log(`  box ${boxId} is ${BOX_STATE[Number(sold.state)]}: ${fmt(sold.proceeds)} wait for the key's holder`);
 
   console.log("\n3. The ETH goes to an address with no history");
@@ -186,7 +214,9 @@ task("dno:vault-demo", "Seals a test NFT, sells it on Seaport from the vault, an
     conduitKey: c.ethers.ZeroHash,
     counter: (await c.seaport.getCounter!(c.buyer.address)) as bigint,
   };
-  const domain = { name: "Seaport", version: "1.5", chainId: (await c.ethers.provider.getNetwork()).chainId, verifyingContract: await c.seaport.getAddress() };
+  // The signed domain names Seaport's version: 1.5 on a local node, 1.6 on Sepolia and mainnet.
+  const [version] = await c.seaport.information!();
+  const domain = { name: "Seaport", version: String(version), chainId: (await c.ethers.provider.getNetwork()).chainId, verifyingContract: await c.seaport.getAddress() };
   const signature = await c.buyer.signTypedData(domain, SEAPORT_TYPES, components);
   const { counter: _counter, ...rest } = components;
   const offerParameters = { ...rest, totalOriginalConsiderationItems: 1n };
@@ -211,7 +241,12 @@ function plain(value: unknown): unknown {
   if (!(value instanceof Array)) return value;
   const r = value as unknown[] & { toObject?: () => Record<string, unknown> };
   const items = [...r].map(plain);
-  const keys = r.toObject ? Object.keys(r.toObject()).filter((k) => !/^\d+$/.test(k)) : [];
+  let keys: string[] = [];
+  try {
+    keys = r.toObject ? Object.keys(r.toObject()).filter((k) => !/^\d+$/.test(k)) : [];
+  } catch {
+    // A list (of fees, say) has no names: ethers refuses to name its items.
+  }
   if (!keys.length || keys[0]!.startsWith("_")) return items;
   return Object.fromEntries(keys.map((k, i) => [k, items[i]]));
 }

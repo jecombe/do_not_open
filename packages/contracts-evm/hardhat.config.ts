@@ -10,6 +10,7 @@ import type { HardhatUserConfig } from "hardhat/config";
 import { resolve } from "node:path";
 
 import "./tasks/dno";
+import "./tasks/opensea";
 import "./tasks/vault";
 
 // Secrets live in the repo-root .env (see .env.example). Nothing is hardcoded here.

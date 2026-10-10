@@ -4,9 +4,10 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import type { ContractTransactionReceipt } from "ethers";
 import { ethers, fhevm } from "hardhat";
-import { IDelegateRegistry, ISeaport, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC, TestWETH, VaultOffers } from "../types";
+import { IDelegateRegistry, ISeaport, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC, TestWETH, VaultListings, VaultOffers } from "../types";
 import { confidentialUsdcOf, usd } from "./tokens";
-import { installDelegateRegistry, installSeaport } from "./seaport";
+import { OPENSEA } from "../lib/opensea";
+import { deployOpenListings, installDelegateRegistry, installOpenSea, installSeaport } from "./seaport";
 
 const BOX = { None: 0n, Sealed: 1n, Listed: 2n, Sold: 3n, Withdrawn: 4n, Claimed: 5n } as const;
 const ACTION = { Withdraw: 0, List: 1, Unlist: 2, Claim: 3, AcceptOffer: 4, Delegate: 5 } as const;
@@ -51,7 +52,13 @@ const ETH = (amount: string) => ethers.parseEther(amount);
 /** An ethers Result as plain objects and arrays, the way a contract call takes it back. */
 const plain = (value: unknown): unknown => {
   if (!(value instanceof ethers.Result)) return value;
-  const keys = Object.keys(value.toObject()).filter((k) => !/^\d+$/.test(k));
+  let keys: string[];
+  try {
+    keys = Object.keys(value.toObject()).filter((k) => !/^\d+$/.test(k));
+  } catch {
+    // A list (of fees, say) has no names: ethers refuses to name its items.
+    keys = [];
+  }
   const items = [...value].map(plain);
   if (!keys.length || keys[0]!.startsWith("_")) return items;
   return Object.fromEntries(keys.map((k, i) => [k, items[i]]));
@@ -77,6 +84,7 @@ describe("SealedVault", function () {
   let cUsdc: TestConfidentialUSDC;
   let nft: TestERC721;
   let seaport: ISeaport;
+  let listings: VaultListings;
   let weth: TestWETH;
   let registry: IDelegateRegistry;
   let offers: VaultOffers;
@@ -152,8 +160,8 @@ describe("SealedVault", function () {
 
   /** What any Seaport buyer (OpenSea's included) sends: the vault's order, no signature. */
   async function fill(listingId: bigint, buyer: HardhatEthersSigner) {
-    const parameters = plain(await vault.seaportOrder(listingId)) as Awaited<ReturnType<SealedVault["seaportOrder"]>>;
-    const { price } = await vault.listingInfo(listingId);
+    const { price, orderHash } = await vault.listingInfo(listingId);
+    const parameters = plain(await listings.orderOf(orderHash)) as Awaited<ReturnType<VaultListings["orderOf"]>>;
     return seaport.connect(buyer).fulfillOrder({ parameters, signature: "0x" }, ethers.ZeroHash, { value: price });
   }
 
@@ -198,12 +206,15 @@ describe("SealedVault", function () {
     endTime?: number;
     /** Leaves the buyer's WETH unapproved: Seaport cannot take it. */
     noAllowance?: boolean;
+    /** As OpenSea makes its offers: through OpenSea's conduit and behind its signed zone. */
+    opensea?: boolean;
   };
 
   /** A buyer's Seaport offer: `price` WETH for one or more NFTs, as a marketplace makes one. */
   async function makeOffer(buyer: HardhatEthersSigner, price: bigint, opts: OfferOpts = {}) {
     await (await weth.connect(buyer).deposit({ value: price })).wait();
-    if (!opts.noAllowance) await (await weth.connect(buyer).approve(await seaport.getAddress(), price)).wait();
+    const spender = opts.opensea ? OPENSEA.conduit : await seaport.getAddress();
+    if (!opts.noAllowance) await (await weth.connect(buyer).approve(spender, price)).wait();
     const units = opts.units ?? 1n;
     const nftItem = {
       itemType: opts.tokenId === undefined ? 4 : 2, // ERC721_WITH_CRITERIA : ERC721
@@ -223,15 +234,16 @@ describe("SealedVault", function () {
     }));
     const components = {
       offerer: buyer.address,
-      zone: ethers.ZeroAddress,
+      zone: opts.opensea ? OPENSEA.zone : ethers.ZeroAddress,
       offer: [{ itemType: 1, token: wethAddress, identifierOrCriteria: 0n, startAmount: price, endAmount: price }],
       consideration: [nftItem, ...fees],
-      orderType: units > 1n ? 1 : 0, // PARTIAL_OPEN : FULL_OPEN
+      // PARTIAL_OPEN : FULL_OPEN; behind a zone, their RESTRICTED kinds.
+      orderType: (units > 1n ? 1 : 0) + (opts.opensea ? 2 : 0),
       startTime: BigInt((await time.latest()) - 1),
       endTime: BigInt(opts.endTime ?? (await inAWeek())),
       zoneHash: ethers.ZeroHash,
       salt: BigInt(ethers.hexlify(ethers.randomBytes(32))),
-      conduitKey: ethers.ZeroHash,
+      conduitKey: opts.opensea ? OPENSEA.conduitKey : ethers.ZeroHash,
       counter: await seaport.getCounter(buyer.address),
     };
     const orderHash = await seaport.getOrderHash(components);
@@ -239,7 +251,9 @@ describe("SealedVault", function () {
     const parameters = { ...rest, totalOriginalConsiderationItems: BigInt(components.consideration.length) };
     let signature = "0x";
     if (opts.signed || opts.posted) {
-      const domain = { name: "Seaport", version: "1.5", chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: await seaport.getAddress() };
+      // The signed domain names Seaport's version: 1.5 here, 1.6 as on Sepolia and mainnet.
+      const [version] = await seaport.information();
+      const domain = { name: "Seaport", version, chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: await seaport.getAddress() };
       signature = await buyer.signTypedData(domain, SEAPORT_TYPES, components);
       if (opts.posted) {
         await (await offers.connect(relay).post(parameters, signature)).wait();
@@ -298,8 +312,10 @@ describe("SealedVault", function () {
     usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     cUsdc = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(await usdc.getAddress())) as unknown as TestConfidentialUSDC;
     nft = (await (await ethers.getContractFactory("TestERC721")).deploy()) as unknown as TestERC721;
+    // As on Sepolia: no OpenSea there, so no zone, no conduit, no fees.
+    listings = await deployOpenListings(seaport);
     vault = (await (await ethers.getContractFactory("SealedVault")).deploy(
-      await seaport.getAddress(),
+      await listings.getAddress(),
       await cUsdc.getAddress(),
       await offers.getAddress(),
       await registry.getAddress(),
@@ -465,7 +481,7 @@ describe("SealedVault", function () {
       const listing = await vault.listingInfo(listingId);
       const status = await seaport.getOrderStatus(listing.orderHash);
       expect(status.isValidated).to.eq(true);
-      expect((await vault.seaportOrder(listingId)).offerer).to.eq(vaultAddress);
+      expect((await listings.orderOf(listing.orderHash)).offerer).to.eq(vaultAddress);
       // A listed box stays put.
       await expect(vault.connect(alice).confidentialTransfer(bob.address, boxId)).to.be.revertedWithCustomError(vault, "WrongState");
 
@@ -574,6 +590,182 @@ describe("SealedVault", function () {
 
     it("takes ETH from Seaport only", async function () {
       await expect(alice.sendTransaction({ to: vaultAddress, value: 1n })).to.be.revertedWithCustomError(vault, "OnlySeaport");
+    });
+
+    describe("the way OpenSea shows it (mainnet)", function () {
+      const CREATOR = "0x00000000000000000000000000000000000c4ea7";
+      /** OpenSea's 1% and a 5% creator fee, as its listings of an enforcing collection pay. */
+      const osFee = (price: bigint) => (price * 100n) / 10_000n;
+      const creatorFee = (price: bigint) => (price * 500n) / 10_000n;
+      const netOf = (price: bigint) => price - osFee(price) - creatorFee(price);
+
+      beforeEach(async function () {
+        ({ seaport, listings } = await installOpenSea());
+        offers = (await (await ethers.getContractFactory("VaultOffers")).deploy(await seaport.getAddress(), wethAddress)) as unknown as VaultOffers;
+        vault = (await (await ethers.getContractFactory("SealedVault")).deploy(
+          await listings.getAddress(),
+          await cUsdc.getAddress(),
+          await offers.getAddress(),
+          await registry.getAddress(),
+          treasury.address,
+          deployer.address,
+          FEE_BPS,
+        )) as unknown as SealedVault;
+        vaultAddress = await vault.getAddress();
+        await (await vault.setCollection(await nft.getAddress(), true)).wait();
+        await (
+          await listings.setFees(await nft.getAddress(), [
+            { recipient: OPENSEA.feeRecipient, bps: 100 },
+            { recipient: CREATOR, bps: 500 },
+          ])
+        ).wait();
+      });
+
+      it("lists on Seaport 1.6 through OpenSea's conduit and signed zone, the fees paid to their recipients", async function () {
+        const key = randomKey();
+        const boxId = await deposit(alice, 5, key);
+        const price = ETH("1");
+        const listingId = await list(boxId, key, price);
+        const listing = await vault.listingInfo(listingId);
+        expect(listing.net).to.eq(netOf(price));
+
+        const order = await listings.orderOf(listing.orderHash);
+        expect(order.offerer).to.eq(vaultAddress);
+        expect(order.zone).to.eq(OPENSEA.zone);
+        expect(order.orderType).to.eq(2n); // FULL_RESTRICTED, as OpenSea's signed zone wants
+        expect(order.conduitKey).to.eq(OPENSEA.conduitKey);
+        expect(order.consideration.map((c) => [c.recipient, c.startAmount])).to.deep.eq([
+          [vaultAddress, netOf(price)],
+          [OPENSEA.feeRecipient, osFee(price)],
+          [CREATOR, creatorFee(price)],
+        ]);
+        expect((await seaport.getOrderStatus(listing.orderHash)).isValidated).to.eq(true);
+        // The conduit, not Seaport, moves the NFT, and only this one.
+        expect(await nft.getApproved(5)).to.eq(OPENSEA.conduit);
+
+        const openseaBefore = await ethers.provider.getBalance(OPENSEA.feeRecipient);
+        await (await fill(listingId, carol)).wait();
+        expect(await nft.ownerOf(5)).to.eq(carol.address);
+        expect((await ethers.provider.getBalance(OPENSEA.feeRecipient)) - openseaBefore).to.eq(osFee(price));
+        expect(await ethers.provider.getBalance(CREATOR)).to.eq(creatorFee(price));
+
+        await (await vault.sync(boxId)).wait();
+        const box = await vault.boxInfo(boxId);
+        expect(box.state).to.eq(BOX.Sold);
+        // The vault's own fee is on what it netted.
+        expect(box.proceeds).to.eq(netOf(price) - feeOf(netOf(price)));
+        const before = await ethers.provider.getBalance(fresh.address);
+        expect(await act(boxId, ACTION.Claim, key, { to: fresh.address })).to.eq(REQUEST.Done);
+        expect((await ethers.provider.getBalance(fresh.address)) - before).to.eq(netOf(price) - feeOf(netOf(price)));
+      });
+
+      it("a listing keeps the fees it was made with, and still comes down after they change", async function () {
+        const key = randomKey();
+        const boxId = await deposit(alice, 5, key);
+        const listingId = await list(boxId, key, ETH("1"));
+        await (await listings.setFees(await nft.getAddress(), [{ recipient: OPENSEA.feeRecipient, bps: 250 }])).wait();
+        expect(await act(boxId, ACTION.Unlist, key)).to.eq(REQUEST.Done);
+        expect((await seaport.getOrderStatus((await vault.listingInfo(listingId)).orderHash)).isCancelled).to.eq(true);
+        expect(await nft.getApproved(5)).to.eq(ethers.ZeroAddress);
+        // The next listing pays the new fee.
+        const next = await list(boxId, key, ETH("1"));
+        expect((await vault.listingInfo(next)).net).to.eq(ETH("0.975"));
+      });
+
+      it("withdrawing a listed box cancels its order on Seaport 1.6", async function () {
+        const key = randomKey();
+        const boxId = await deposit(alice, 5, key);
+        const listingId = await list(boxId, key, ETH("1"));
+        expect(await act(boxId, ACTION.Withdraw, key, { to: fresh.address })).to.eq(REQUEST.Done);
+        expect(await nft.ownerOf(5)).to.eq(fresh.address);
+        expect((await seaport.getOrderStatus((await vault.listingInfo(listingId)).orderHash)).isCancelled).to.eq(true);
+      });
+
+      it("only the owner sets a collection's fees, never above 15% in all", async function () {
+        const collection = await nft.getAddress();
+        await expect(listings.connect(alice).setFees(collection, [])).to.be.revertedWithCustomError(listings, "OwnableUnauthorizedAccount");
+        await expect(
+          listings.setFees(collection, [
+            { recipient: OPENSEA.feeRecipient, bps: 1_000 },
+            { recipient: CREATOR, bps: 501 },
+          ]),
+        ).to.be.revertedWithCustomError(listings, "TooManyFees");
+        await expect(listings.setFees(collection, [{ recipient: ethers.ZeroAddress, bps: 1 }])).to.be.revertedWithCustomError(listings, "ZeroAddress");
+        expect((await listings.feesOf(collection)).length).to.eq(2);
+      });
+
+      it("accepts a buyer's OpenSea offer: through OpenSea's conduit and signed zone, its fee paid in WETH", async function () {
+        const key = randomKey();
+        const boxId = await deposit(alice, 5, key);
+        // 1 WETH for the NFT, OpenSea's 1% out of it, as its offers are made.
+        const offer = await makeOffer(carol, ETH("1"), { tokenId: 5, opensea: true, signed: true, fees: [{ to: OPENSEA.feeRecipient, amount: ETH("0.01") }] });
+        expect(offer.parameters.orderType).to.eq(2); // FULL_RESTRICTED
+        const net = ETH("0.99");
+        const before = await ethers.provider.getBalance(fresh.address);
+        const { status } = await acceptOffer(boxId, key, offer, net, fresh.address);
+        expect(status).to.eq(REQUEST.Done);
+        expect(await nft.ownerOf(5)).to.eq(carol.address);
+        expect(await weth.balanceOf(OPENSEA.feeRecipient)).to.eq(ETH("0.01"));
+        expect((await ethers.provider.getBalance(fresh.address)) - before).to.eq(net - feeOf(net));
+        expect(await weth.balanceOf(await offers.getAddress())).to.eq(0n);
+      });
+
+      it("accepts a collection offer made on OpenSea, one share of it", async function () {
+        const key = randomKey();
+        const boxId = await deposit(alice, 8, key);
+        const offer = await makeOffer(carol, ETH("2"), { units: 2n, opensea: true, signed: true, fees: [{ to: OPENSEA.feeRecipient, amount: ETH("0.02") }] });
+        expect(offer.parameters.orderType).to.eq(3); // PARTIAL_RESTRICTED
+        const { status } = await acceptOffer(boxId, key, offer, ETH("0.99"), fresh.address);
+        expect(status).to.eq(REQUEST.Done);
+        expect(await nft.ownerOf(8)).to.eq(carol.address);
+        expect((await seaport.getOrderStatus(offer.orderHash)).totalFilled).to.eq(1n);
+      });
+    });
+
+    describe("as on Sepolia (Seaport 1.6 and OpenSea's conduit, no zone: OpenSea is not there)", function () {
+      beforeEach(async function () {
+        ({ seaport, listings } = await installOpenSea(false));
+        offers = (await (await ethers.getContractFactory("VaultOffers")).deploy(await seaport.getAddress(), wethAddress)) as unknown as VaultOffers;
+        vault = (await (await ethers.getContractFactory("SealedVault")).deploy(
+          await listings.getAddress(),
+          await cUsdc.getAddress(),
+          await offers.getAddress(),
+          await registry.getAddress(),
+          treasury.address,
+          deployer.address,
+          FEE_BPS,
+        )) as unknown as SealedVault;
+        vaultAddress = await vault.getAddress();
+        await (await vault.setCollection(await nft.getAddress(), true)).wait();
+      });
+
+      it("lists an open order anyone fills, the NFT moved by OpenSea's conduit, no fee but the vault's", async function () {
+        const key = randomKey();
+        const boxId = await deposit(alice, 5, key);
+        const price = ETH("1");
+        const listingId = await list(boxId, key, price);
+        const listing = await vault.listingInfo(listingId);
+        expect(listing.net).to.eq(price);
+        const order = await listings.orderOf(listing.orderHash);
+        expect(order.zone).to.eq(ethers.ZeroAddress);
+        expect(order.orderType).to.eq(0n); // FULL_OPEN
+        expect(order.conduitKey).to.eq(OPENSEA.conduitKey);
+        expect(order.consideration.length).to.eq(1);
+        expect(await nft.getApproved(5)).to.eq(OPENSEA.conduit);
+        await (await fill(listingId, carol)).wait();
+        expect(await nft.ownerOf(5)).to.eq(carol.address);
+        await (await vault.sync(boxId)).wait();
+        expect((await vault.boxInfo(boxId)).proceeds).to.eq(price - feeOf(price));
+      });
+
+      it("accepts a buyer's offer signed for Seaport 1.6 and posted to the board", async function () {
+        const key = randomKey();
+        const boxId = await deposit(alice, 5, key);
+        const offer = await makeOffer(carol, ETH("1"), { tokenId: 5, posted: true });
+        const { status } = await acceptOffer(boxId, key, offer, ETH("1"), fresh.address);
+        expect(status).to.eq(REQUEST.Done);
+        expect(await nft.ownerOf(5)).to.eq(carol.address);
+      });
     });
   });
 

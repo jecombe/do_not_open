@@ -6828,13 +6828,13 @@
     ]
   },
   "vault": {
-    "address": "0xE22509e741233072aFF4e0c6B56d5e3De8018262",
+    "address": "0x79E6a86b448311ec580402701d4cb5B68c56718c",
     "abi": [
       {
         "inputs": [
           {
-            "internalType": "contract ISeaport",
-            "name": "seaport_",
+            "internalType": "contract VaultListings",
+            "name": "listings_",
             "type": "address"
           },
           {
@@ -7048,6 +7048,11 @@
       {
         "inputs": [],
         "name": "SaleNotOpen",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "SeaportRefused",
         "type": "error"
       },
       {
@@ -8165,19 +8170,14 @@
                 "type": "uint256"
               },
               {
-                "internalType": "uint64",
-                "name": "startTime",
-                "type": "uint64"
+                "internalType": "uint256",
+                "name": "net",
+                "type": "uint256"
               },
               {
                 "internalType": "uint64",
                 "name": "endTime",
                 "type": "uint64"
-              },
-              {
-                "internalType": "uint256",
-                "name": "counter",
-                "type": "uint256"
               },
               {
                 "internalType": "bytes32",
@@ -8188,6 +8188,19 @@
             "internalType": "struct SealedVault.Listing",
             "name": "",
             "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "listings",
+        "outputs": [
+          {
+            "internalType": "contract VaultListings",
+            "name": "",
+            "type": "address"
           }
         ],
         "stateMutability": "view",
@@ -8533,141 +8546,6 @@
         "type": "function"
       },
       {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "listingId",
-            "type": "uint256"
-          }
-        ],
-        "name": "seaportOrder",
-        "outputs": [
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "offerer",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "zone",
-                "type": "address"
-              },
-              {
-                "components": [
-                  {
-                    "internalType": "enum ItemType",
-                    "name": "itemType",
-                    "type": "uint8"
-                  },
-                  {
-                    "internalType": "address",
-                    "name": "token",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "identifierOrCriteria",
-                    "type": "uint256"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "startAmount",
-                    "type": "uint256"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "endAmount",
-                    "type": "uint256"
-                  }
-                ],
-                "internalType": "struct OfferItem[]",
-                "name": "offer",
-                "type": "tuple[]"
-              },
-              {
-                "components": [
-                  {
-                    "internalType": "enum ItemType",
-                    "name": "itemType",
-                    "type": "uint8"
-                  },
-                  {
-                    "internalType": "address",
-                    "name": "token",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "identifierOrCriteria",
-                    "type": "uint256"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "startAmount",
-                    "type": "uint256"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "endAmount",
-                    "type": "uint256"
-                  },
-                  {
-                    "internalType": "address payable",
-                    "name": "recipient",
-                    "type": "address"
-                  }
-                ],
-                "internalType": "struct ConsiderationItem[]",
-                "name": "consideration",
-                "type": "tuple[]"
-              },
-              {
-                "internalType": "enum OrderType",
-                "name": "orderType",
-                "type": "uint8"
-              },
-              {
-                "internalType": "uint256",
-                "name": "startTime",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "endTime",
-                "type": "uint256"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "zoneHash",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "uint256",
-                "name": "salt",
-                "type": "uint256"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "conduitKey",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "uint256",
-                "name": "totalOriginalConsiderationItems",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct OrderParameters",
-            "name": "",
-            "type": "tuple"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
         "inputs": [],
         "name": "sendFees",
         "outputs": [],
@@ -8867,10 +8745,613 @@
         "type": "receive"
       }
     ],
-    "deployBlock": 11876575,
-    "seaport": "0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC",
+    "deployBlock": 11885012,
+    "seaport": "0x0000000000000068F116a894984e2DB1123eB395",
+    "listings": {
+      "address": "0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb",
+      "abi": [
+        {
+          "inputs": [
+            {
+              "internalType": "contract ISeaport",
+              "name": "seaport_",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "zone_",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "conduitKey_",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "address",
+              "name": "conduit_",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "owner_",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "constructor"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            }
+          ],
+          "name": "OwnableInvalidOwner",
+          "type": "error"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "OwnableUnauthorizedAccount",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "TooManyFees",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "ZeroAddress",
+          "type": "error"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "collection",
+              "type": "address"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "address payable",
+                  "name": "recipient",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint16",
+                  "name": "bps",
+                  "type": "uint16"
+                }
+              ],
+              "indexed": false,
+              "internalType": "struct VaultListings.Fee[]",
+              "name": "fees",
+              "type": "tuple[]"
+            }
+          ],
+          "name": "FeesSet",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "previousOwner",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "OwnershipTransferred",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "bytes32",
+              "name": "orderHash",
+              "type": "bytes32"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "offerer",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "collection",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "tokenId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            }
+          ],
+          "name": "Prepared",
+          "type": "event"
+        },
+        {
+          "inputs": [],
+          "name": "MAX_FEES_BPS",
+          "outputs": [
+            {
+              "internalType": "uint16",
+              "name": "",
+              "type": "uint16"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "orderHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "cancelCall",
+          "outputs": [
+            {
+              "internalType": "bytes",
+              "name": "",
+              "type": "bytes"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "conduitKey",
+          "outputs": [
+            {
+              "internalType": "bytes32",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "collection",
+              "type": "address"
+            }
+          ],
+          "name": "feesOf",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "address payable",
+                  "name": "recipient",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint16",
+                  "name": "bps",
+                  "type": "uint16"
+                }
+              ],
+              "internalType": "struct VaultListings.Fee[]",
+              "name": "",
+              "type": "tuple[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "listingCount",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "orderHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "listingOf",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "offerer",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "collection",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "tokenId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "price",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "startTime",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "endTime",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "salt",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "counter",
+                  "type": "uint256"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "address payable",
+                      "name": "recipient",
+                      "type": "address"
+                    },
+                    {
+                      "internalType": "uint16",
+                      "name": "bps",
+                      "type": "uint16"
+                    }
+                  ],
+                  "internalType": "struct VaultListings.Fee[]",
+                  "name": "fees",
+                  "type": "tuple[]"
+                }
+              ],
+              "internalType": "struct VaultListings.Listing",
+              "name": "",
+              "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "operator",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "orderHash",
+              "type": "bytes32"
+            }
+          ],
+          "name": "orderOf",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "offerer",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "zone",
+                  "type": "address"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "enum ItemType",
+                      "name": "itemType",
+                      "type": "uint8"
+                    },
+                    {
+                      "internalType": "address",
+                      "name": "token",
+                      "type": "address"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "identifierOrCriteria",
+                      "type": "uint256"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "startAmount",
+                      "type": "uint256"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "endAmount",
+                      "type": "uint256"
+                    }
+                  ],
+                  "internalType": "struct OfferItem[]",
+                  "name": "offer",
+                  "type": "tuple[]"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "enum ItemType",
+                      "name": "itemType",
+                      "type": "uint8"
+                    },
+                    {
+                      "internalType": "address",
+                      "name": "token",
+                      "type": "address"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "identifierOrCriteria",
+                      "type": "uint256"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "startAmount",
+                      "type": "uint256"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "endAmount",
+                      "type": "uint256"
+                    },
+                    {
+                      "internalType": "address payable",
+                      "name": "recipient",
+                      "type": "address"
+                    }
+                  ],
+                  "internalType": "struct ConsiderationItem[]",
+                  "name": "consideration",
+                  "type": "tuple[]"
+                },
+                {
+                  "internalType": "enum OrderType",
+                  "name": "orderType",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "startTime",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "endTime",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bytes32",
+                  "name": "zoneHash",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "salt",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bytes32",
+                  "name": "conduitKey",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "totalOriginalConsiderationItems",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct OrderParameters",
+              "name": "",
+              "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "owner",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "collection",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "tokenId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint64",
+              "name": "endTime",
+              "type": "uint64"
+            }
+          ],
+          "name": "prepare",
+          "outputs": [
+            {
+              "internalType": "bytes",
+              "name": "validateCall",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "orderHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "net",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "renounceOwnership",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "seaport",
+          "outputs": [
+            {
+              "internalType": "contract ISeaport",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "collection",
+              "type": "address"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "address payable",
+                  "name": "recipient",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint16",
+                  "name": "bps",
+                  "type": "uint16"
+                }
+              ],
+              "internalType": "struct VaultListings.Fee[]",
+              "name": "fees",
+              "type": "tuple[]"
+            }
+          ],
+          "name": "setFees",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "transferOwnership",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "zone",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        }
+      ]
+    },
     "offers": {
-      "address": "0x750d5B8E8A0f55b8E1F74bA3387B59cc8080f9E2",
+      "address": "0x43B2e0d7a75100545556BAD1B9Fa6f926721898A",
       "abi": [
         {
           "inputs": [
@@ -9312,7 +9793,7 @@
           "type": "receive"
         }
       ],
-      "deployBlock": 11876574
+      "deployBlock": 11885004
     },
     "weth": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
     "delegateRegistry": "0x00000000000000447e69651d841bD8D104Bed493",
@@ -9324,7 +9805,7 @@
       }
     ],
     "pockets": {
-      "address": "0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C",
+      "address": "0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f",
       "abi": [
         {
           "inputs": [
@@ -10010,9 +10491,9 @@
           "type": "function"
         }
       ],
-      "deployBlock": 11877902,
+      "deployBlock": 11885014,
       "desk": {
-        "address": "0x0939D713429FCD1c5AF9589b121a8F77C49F759b",
+        "address": "0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61",
         "abi": [
           {
             "inputs": [
@@ -10486,7 +10967,7 @@
             "type": "function"
           }
         ],
-        "deployBlock": 11877903
+        "deployBlock": 11885017
       },
       "token": {
         "address": "0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639",

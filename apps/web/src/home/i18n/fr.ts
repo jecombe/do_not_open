@@ -5,7 +5,7 @@ export const homeFr: Record<HomeKey, string> = {
   "home.why.1.title": "Détenir sans montrer.",
   "home.why.1.body": "Le détenteur d'un actif du coffre, boîte ou poche, est chiffré on-chain. Un wallet plein de blue chips ou de stablecoins n'est plus une cible.",
   "home.why.2.title": "Vendre sans être vu.",
-  "home.why.2.body": "Mets-le en vente sur Seaport au nom du coffre, ou accepte l'offre d'un acheteur. Les acheteurs voient le NFT et le prix, jamais le vendeur.",
+  "home.why.2.body": "Mets-le en vente sur Seaport au nom du coffre (sur le réseau principal, il s'affiche sur OpenSea), ou accepte l'offre d'un acheteur. Les acheteurs voient le NFT et le prix, jamais le vendeur.",
   "home.why.3.title": "Vendre en privé.",
   "home.why.3.body": "Propose la boîte à un seul acheteur, pour un prix en cUSDC que vous seuls pouvez lire. Tout se règle sous chiffrement.",
   "home.why.4.title": "Sortir où tu veux.",

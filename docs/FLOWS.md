@@ -1191,8 +1191,10 @@ holder is encrypted, a Confidential ERC-721 of its own. Every box has an encrypt
 leaves the vault (the NFT, a Seaport listing, an accepted offer, a sale's ETH) and the box's
 delegate in delegate.xyz are asked with the key, bound to the request's terms, so any wallet can
 carry the request: the API's vault relayer, when there is one. The deposit, Seaport (list, fill,
-sync, collect), giving a box and making its key yours, the state diagram, what leaks and why
-are in [VAULT.md](VAULT.md). The flows below are the ones with encryption in them, the two that
+sync, collect: the order written by `VaultListings` the way OpenSea shows a contract's listing,
+Seaport 1.6 and OpenSea's conduit approved for the one token, its signed zone and fees on
+mainnet, validated and cancelled by the vault itself), giving a box and making its key yours,
+the state diagram, what leaks and why are in [VAULT.md](VAULT.md). The flows below are the ones with encryption in them, the two that
 ride on a request (accepting an offer and delegating), and the pockets, where the vault holds
 cUSDC under a key.
 
@@ -1236,8 +1238,9 @@ zero for every other action. See [VAULT.md](VAULT.md#a-request-take-out-list-tak
 
 ### Accepting an offer
 
-A buyer's offer is a plain Seaport 1.5 order (WETH offered, the NFT asked for), posted to the
-offer board `VaultOffers`. The holder accepts it with an `AcceptOffer` request (`to` the payout
+A buyer's offer is a plain Seaport order (WETH offered, the NFT asked for; Seaport 1.6 on
+Sepolia and mainnet, 1.5 on a local node, signed for the version Seaport reports), posted to
+the offer board `VaultOffers`. The holder accepts it with an `AcceptOffer` request (`to` the payout
 address, `price` the least WETH it must net, `ref` its order hash); the order itself only comes
 at `finalizeOffer`.
 
@@ -1246,7 +1249,7 @@ sequenceDiagram
   autonumber
   actor B as Buyer
   participant O as VaultOffers
-  participant S as Seaport 1.5
+  participant S as Seaport 1.6 (1.5 locally)
   actor H as Holder
   participant V as Vault
   B->>B: wrap ETH, approve Seaport, sign the order (EIP-712)
@@ -1378,7 +1381,7 @@ sequenceDiagram
 | Studio packs (Starter 2, Litter 8) | plain USDC | the treasury address set in `StudioPacks`, at once; the AI services are paid from it |
 | Adopting a rat (1 a free rat, 3 an AI rat) | plain USDC | the treasury address set in `Rats`, at once; Arweave storage of AI rats is paid from it |
 | A flea market sale (2.5%, at most 10%) | cUSDC | the treasury address set in `FleaMarket`, at the sale; the rest to the seller. For a sale by offer the fee is computed encrypted and stays secret |
-| A sealed vault sale (2.5%, at most 10%) | ETH on Seaport (a listing, or an accepted WETH offer, unwrapped); cUSDC privately | Seaport: kept in `SealedVault` (`feesOwed`) and sent to its treasury by `sendFees`, which anyone may call; the rest waits in the box for the key's holder (an accepted offer pays it straight to the address the holder named). Private: to the treasury at the sale, computed encrypted |
+| A sealed vault sale (2.5%, at most 10%) | ETH on Seaport (a listing's `net`, what the buyer paid less OpenSea's and the creator's fees, which Seaport pays them straight; or an accepted WETH offer, unwrapped); cUSDC privately | Seaport: kept in `SealedVault` (`feesOwed`) and sent to its treasury by `sendFees`, which anyone may call; the rest waits in the box for the key's holder (an accepted offer pays it straight to the address the holder named). Private: to the treasury at the sale, computed encrypted |
 | USDC ramp | 0.3% of the ETH | `UsdcRamp`, withdrawn by the owner |
 | A croquette meal | cCROQ | 20% treasury (sent by `collect`, at most once a week), 20% burnt, 60% back to the reserve that pays the purr (`Pantry`) |
 

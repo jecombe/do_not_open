@@ -2,7 +2,7 @@ import type { SecureKey } from "./en";
 
 export const secureIt: Record<SecureKey, string> = {
   "secure.title": "DO NOT OPEN, il caveau sigillato: asset che nessuno ti vede possedere, NFT e token allo stesso modo",
-  "secure.description": "Metti i tuoi asset nel caveau sigillato, un NFT in una scatola o i tuoi cUSDC, cUSDT, cWETH o cZAMA in una tasca, il loro titolare cifrato su Ethereum con l'FHE di Zama. Gli NFT si vendono comunque su Seaport; i token pagano comunque chiunque, senza mostrare chi ha pagato chi.",
+  "secure.description": "Metti i tuoi asset nel caveau sigillato, un NFT in una scatola o i tuoi cUSDC, cUSDT, cWETH o cZAMA in una tasca, il loro titolare cifrato su Ethereum con l'FHE di Zama. Gli NFT si vendono comunque su Seaport e compaiono su OpenSea; i token pagano comunque chiunque, senza mostrare chi ha pagato chi.",
   "secure.imageAlt": "Una scatola di cartone sigillata con il timbro DO NOT OPEN dentro uno scudo di cifratura luminoso",
   "secure.nav": "Sito",
   "secure.nav.protocol": "Protocollo",
