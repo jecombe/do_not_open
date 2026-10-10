@@ -426,6 +426,51 @@ describe("SealedPositions", function () {
     });
   });
 
+  // REPORT_COSTS=1: the table in docs/VAULT.md, sets of 1, 3 and 5 pockets a side.
+  (process.env.REPORT_COSTS ? it : it.skip)("reports what each action costs", async function () {
+    const rows: [string, Awaited<ReturnType<typeof settle>>][] = [];
+    const [a0, a1] = amounts("4000", "2");
+    const others = [];
+    for (let i = 1; i <= 4; i++) others.push(await holder(i, bob, 0n, 0n));
+    const h = await holder(0, alice, a0, a1);
+    for (const size of [1, 3, 5]) {
+      const set0 = [h.p0, ...others.slice(0, size - 1).map((d) => d.p0)].sort((x, y) => Number(x - y));
+      const set1 = [h.p1, ...others.slice(0, size - 1).map((d) => d.p1)].sort((x, y) => Number(x - y));
+      const controller = freshController();
+      const r = range();
+      const { f, k } = await funds(h, a0, a1, (f) => positions.openHash(controller.address, r, f), { set0, set1 });
+      const positionId = await positions.positionCount();
+      const fundingId = await positions.fundingCount();
+      rows.push([`open, ${size} + ${size} pockets`, (await (await positions.connect(relay).open(r, controller.address, f, k)).wait())!]);
+      rows.push([`settle (mint), ${size} + ${size}`, (await settle(fundingId))!]);
+      await trade();
+      rows.push([`collect, ${size} + ${size}`, (await collect(controller, positionId, await out(h, set0, set1)))!]);
+      if (size === 1) {
+        const tokenId = (await positions.positionInfo(positionId)).tokenId;
+        const liq = await liquidityOf(tokenId);
+        rows.push(["decrease half, 1 + 1", (await decrease(controller, positionId, liq / 2n, await out(h)))!]);
+        rows.push(["decrease the rest (closes), 1 + 1", (await decrease(controller, positionId, liq - liq / 2n, await out(h)))!]);
+      }
+      // Pockets are refilled for the next size: the position took them.
+      await deposit(pockets0, alice, [h.p0], h.p0, a0);
+      await deposit(pockets1, alice, [h.p1], h.p1, a1);
+      if (size === 3) {
+        const next = freshController();
+        const g = await sign(controller, positionId, ACTION.Give, ethers.keccak256(coder.encode(["address"], [next.address])));
+        rows.push(["give", (await (await positions.connect(relay).give(positionId, next.address, g.deadline, g.signature)).wait())!]);
+        const to = freshController().address;
+        const o = await sign(next, positionId, ACTION.TakeOut, ethers.keccak256(coder.encode(["address"], [to])));
+        rows.push(["takeOut", (await (await positions.connect(relay).takeOut(positionId, to, o.deadline, o.signature)).wait())!]);
+      }
+    }
+    console.table(
+      rows.map(([action, r]) => {
+        const h = fhevm.computeTransactionHCU(r!);
+        return { action, gas: Number(r!.gasUsed), hcu: h.globalHCU, depth: h.maxHCUDepth };
+      }),
+    );
+  });
+
   describe("holders", function () {
     let h: Holder;
     let controller: Wallet;
