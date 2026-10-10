@@ -128,7 +128,15 @@ function Story() {
           </li>
         ))}
       </ol>
-      <figcaption aria-live="polite">{h(`home.steps.${n}.v`)}</figcaption>
+      {/* Every step's text in the same cell, only the current one shown: the caption keeps the
+          longest one's height, so the hero beside it never moves as the steps go by. */}
+      <figcaption aria-live="polite">
+        {(["1", "2", "3", "4"] as const).map((k) => (
+          <span key={k} hidden={k !== n}>
+            {h(`home.steps.${k}.v`)}
+          </span>
+        ))}
+      </figcaption>
     </figure>
   );
 }
@@ -375,8 +383,15 @@ export function SecureHome() {
             <Icon name="shield" />
             {t("secure.eyebrow")}
           </p>
-          <h1 aria-label={t("secure.h1")}>
-            <span aria-hidden="true">{title}</span>
+          {/* The plain title, invisible, sets the size; the ciphertext lies over it, so the
+              wider glyphs never add a line and push the hero around while it decrypts. */}
+          <h1 className="sec-hero-title" aria-label={t("secure.h1")}>
+            <span className="sec-hero-title-room" aria-hidden="true">
+              {t("secure.h1")}
+            </span>
+            <span className="sec-hero-title-text" aria-hidden="true">
+              {title}
+            </span>
           </h1>
           <p className="sec-lede">{t("secure.lede")}</p>
           <p className="sec-ctas">
