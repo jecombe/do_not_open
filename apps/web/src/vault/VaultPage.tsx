@@ -121,8 +121,10 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
   /** Boxes the wallet's pocket bought: held by the desk, with the wallet's key. */
   const [pocketBoxes, setPocketBoxes] = useState<number[]>([]);
   const [pocketCount, setPocketCount] = useState<number | null>(null);
-  /** The wallets that use the vault (a deposit's decoys), and how many may hold each box. */
+  /** The wallets that use the vault, and how many may hold each box. */
   const [crowd, setCrowd] = useState<VaultCrowd | null>(null);
+  /** Per collection the wallet holds NFTs of, how many wallets hold one of its NFTs: a deposit's decoys go to them and to the crowd. */
+  const [pools, setPools] = useState<{ collection: Address; name: string; collectors: number }[]>([]);
   const [nfts, setNfts] = useState<{ collection: Address; name: string; id: bigint }[]>([]);
   const [sales, setSales] = useState<VaultSale[]>([]);
   const [prices, setPrices] = useState<Record<number, bigint>>({});
@@ -160,10 +162,14 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
       if (!account || !i) return;
       const held = await Promise.all(i.collections.map(async (c) => (await vault.walletNfts(c.address)).map((id) => ({ collection: c.address, name: c.name, id }))));
       setNfts(held.flat());
+      // The crowd once per collection the wallet could seal from: its holders join the decoys' pool.
+      const sealable = i.collections.filter((_, k) => held[k]!.length > 0);
+      const crowds = await Promise.all(sealable.map((c) => vault.crowd(c.address).catch(() => null)));
+      setPools(sealable.flatMap((c, k) => (crowds[k] ? [{ collection: c.address, name: c.name, collectors: crowds[k]!.collectors.length }] : [])));
+      setCrowd(crowds.find((c) => c) ?? (await vault.crowd().catch(() => null)));
       setSales(await vault.sales());
       if (findBoxes) setMine(await vault.myBoxes());
       if (pockets) setPocketBoxes(await pockets.boxes().catch(() => []));
-      setCrowd(await vault.crowd().catch(() => null));
     },
     [vault, account],
   );
@@ -173,6 +179,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
     setMine(null);
     setPocketBoxes([]);
     setCrowd(null);
+    setPools([]);
     setNfts([]);
     setSales([]);
     setPrices({});
@@ -540,15 +547,17 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
                     ))}
                   </div>
                   <p className="vault-meta">{decoys > 0 ? t("vault.wallet.decoysOn", { n: decoys }) : t("vault.wallet.decoysOff")}</p>
-                  {crowd && decoys > 0 && (
-                    <p className={`vault-meta vault-crowd-note${crowd.wallets.length < decoys ? " vault-crowd-warn" : ""}`}>
-                      {crowd.wallets.length >= decoys
-                        ? t("vault.wallet.crowd", { n: crowd.wallets.length })
-                        : crowd.wallets.length === 0
-                          ? t("vault.wallet.crowdNone")
-                          : t("vault.wallet.crowdShort", { n: crowd.wallets.length, fresh: decoys - crowd.wallets.length })}
-                    </p>
-                  )}
+                  {crowd &&
+                    decoys > 0 &&
+                    pools.map((p) => {
+                      const n = p.collectors + crowd.wallets.length;
+                      const args = { collection: p.name, n, collectors: p.collectors, vault: crowd.wallets.length };
+                      return (
+                        <p key={p.collection} className={`vault-meta vault-crowd-note${n < decoys ? " vault-crowd-warn" : ""}`}>
+                          {n >= decoys ? t("vault.wallet.crowd", args) : n === 0 ? t("vault.wallet.crowdNone", args) : t("vault.wallet.crowdShort", { ...args, fresh: decoys - n })}
+                        </p>
+                      );
+                    })}
                 </div>
                 <ul className="vault-grid">
                   {info.collections

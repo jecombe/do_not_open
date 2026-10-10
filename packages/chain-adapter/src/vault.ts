@@ -130,25 +130,33 @@ export interface VaultSale {
 
 export interface VaultDepositOptions extends ActionOptions {
   /** Decoys to send the new box to in the same transaction, 0 to `MAX_DECOYS`: transfers that
-   *  move nothing, to wallets of the vault's crowd (`crowd().wallets`, picked at random) and,
-   *  past the crowd, to fresh random addresses. The deposit names the depositor; with decoys,
-   *  nobody can tell whether the box is still theirs. None when left out. */
+   *  move nothing, to wallets that hold an NFT of the same collection and wallets of the vault's
+   *  crowd (`crowd(collection)`, picked at random) and, past them, to fresh random addresses.
+   *  The deposit names the depositor; with decoys, nobody can tell whether the box is still
+   *  theirs. None when left out. */
   decoys?: number;
 }
 
 /**
- * The crowd a box hides in, from the vault's public events: an honest measure, not a promise.
- * Read with the connected account, which is left out of `wallets`.
+ * The crowd a box hides in, from public events: an honest measure, not a promise. Read with the
+ * connected account, which is left out of `wallets` and `collectors`.
  */
 export interface VaultCrowd {
   /** Wallets that have acted on the vault in their own name: deposited an NFT, sent or adopted a
-   *  box, offered or took a private sale, took an NFT or a sale's ETH out, or fed a pocket. A
-   *  deposit's decoys are picked among them: each could be the box's holder. The vault's own
-   *  contracts, its relayer and the connected account are left out. */
+   *  box, offered or took a private sale, took an NFT or a sale's ETH out, or fed a pocket. Each
+   *  could be a box's holder. The vault's own contracts, its relayer and the connected account
+   *  are left out. */
   wallets: Address[];
+  /** Wallets that hold an NFT of the collection `crowd` was asked about (its recent receivers
+   *  that still hold their token), the connected account left out; empty when none was asked.
+   *  Someone who owns the same kind of NFT could be the box's holder: a deposit's decoys are
+   *  picked among them and `wallets`, so the box hides in the collection from the first day,
+   *  not only among the wallets that already use the vault. */
+  collectors: Address[];
   /** Per box id, how many wallets may hold it, as far as the chain tells: its depositor and the
-   *  wallets of the crowd it was sent to (a transfer to an address that never acts is a decoy
-   *  nobody believes, so it does not count). 1: its depositor is its obvious holder. */
+   *  wallets it was sent to that use the vault or hold an NFT of its collection (a transfer to
+   *  an address that never acts and holds nothing is a decoy nobody believes, so it does not
+   *  count). 1: its depositor is its obvious holder. */
   holders: Record<number, number>;
 }
 
@@ -265,8 +273,9 @@ export interface VaultAdapter {
   box(boxId: number): Promise<VaultBox>;
   /** The connected account's boxes, found in its own receipts (one decryption signature). */
   myBoxes(): Promise<number[]>;
-  /** The crowd boxes hide in: the wallets that use the vault, and how many may hold each box. Public events only. */
-  crowd(): Promise<VaultCrowd>;
+  /** The crowd boxes hide in: the wallets that use the vault, those that hold an NFT of `collection`
+   *  when one is given, and how many may hold each box. Public events only. */
+  crowd(collection?: Address): Promise<VaultCrowd>;
   /** WETH `owner` holds, in wei: what their offers can pay. Public, as any ERC-20 balance. */
   wethBalance(owner: Address): Promise<bigint>;
   /** Token ids of `collection` the connected wallet holds. */

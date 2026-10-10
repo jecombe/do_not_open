@@ -35,6 +35,9 @@ const POCKETS_MAX_SET = 5;
 /** Strangers who use the demo's vault: pockets of their own, and the decoys your deposits go to. */
 const STRANGERS = 7;
 const stranger = (i: number): Address => `0x00000000000000000000000000000000000c0c${i.toString(16).padStart(2, "0")}` as Address;
+/** Collectors: wallets that hold a Mock Kitten and never touched the vault. A deposit's decoys go to them too. */
+const COLLECTORS = 4;
+export const mockCollector = (i: number): Address => `0x0000000000000000000000000000000000c011${i.toString(16).padStart(2, "0")}` as Address;
 /** Plain units per confidential unit, for an 18-decimal token wrapped to 6. */
 const RATE_18 = 10n ** 12n;
 
@@ -197,6 +200,7 @@ export class MockVault implements VaultAdapter {
       for (const [id, p] of book.list.entries()) book.fed.push({ from: p.owner, set: pocketGroup(id, book.list.length, POCKETS_MAX_SET) });
     }
     for (let i = 0; i < STRANGERS; i++) this.actors.add(stranger(i));
+    for (let i = 0; i < COLLECTORS; i++) this.mintTo(mockCollector(i));
   }
 
   /** The cUSDC pockets' book: the demo's own USDC and cUSDC. */
@@ -299,13 +303,17 @@ export class MockVault implements VaultAdapter {
     return this.all.flatMap((b, id) => (me && b.holder === me && !gone(b) ? [id] : []));
   }
 
-  async crowd(): Promise<VaultCrowd> {
+  async crowd(collection?: Address): Promise<VaultCrowd> {
     const me = this.host.account();
-    const wallets = [...this.actors].filter((a) => a !== me && a !== MOCK_DESK && a !== MOCK_VAULT);
-    const believed = new Set(me ? [...wallets, me] : wallets);
+    const own = (a: Address) => a === me || a === MOCK_DESK || a === MOCK_VAULT;
+    const wallets = [...this.actors].filter((a) => !own(a));
+    // The mock knows one collection: its holders are whoever its token map says, the vault aside.
+    const holding = new Set([...this.nfts.values()].filter((a) => !own(a)));
+    const collectors = collection && sameAddress(collection, MOCK_VAULT_NFT) ? [...holding] : [];
+    const believed = new Set([...wallets, ...holding, ...(me ? [me] : [])]);
     const holders: Record<number, number> = {};
     for (const b of this.all) holders[b.boxId] = new Set([b.depositor, ...[...b.sentTo].filter((a) => believed.has(a))]).size;
-    return { wallets, holders };
+    return { wallets, collectors, holders };
   }
 
   /** The demo keeps no WETH: its offers are paid from the buyer's ETH, as if wrapped on the spot. */
@@ -337,7 +345,8 @@ export class MockVault implements VaultAdapter {
     this.nfts.set(String(tokenId), MOCK_VAULT);
     this.actors.add(me);
     const box = this.newBox(me, tokenId);
-    for (const s of decoySends(opts?.decoys ?? 0, (await this.crowd()).wallets)) box.sentTo.add(s.to);
+    const crowd = await this.crowd(collection);
+    for (const s of decoySends(opts?.decoys ?? 0, [...crowd.collectors, ...crowd.wallets])) box.sentTo.add(s.to);
     this.all.push(box);
     const boxId = this.all.length - 1;
     this.postOffer(boxId, this.host.nightShift, NIGHT_OFFER, Math.floor(this.host.now() / 1000) + 7 * 86_400);
