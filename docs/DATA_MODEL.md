@@ -285,7 +285,7 @@ for a sale by offer), `FeeSet`, `TreasurySet`. The API does not index any of the
 ## Sealed vault
 
 `SealedVault` is a Confidential ERC-721 of its own, next to the game: each token is a box
-holding one NFT of an allowed collection. Its owner is an `eaddress`, as for the game's boxes
+holding one NFT of any ERC-721 (the owner can shut a collection out). Its owner is an `eaddress`, as for the game's boxes
 (see [Per token](#per-token) and [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md)). Four maps with public
 counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (`boxInfo`,
 `requestInfo`, `listingInfo`, `saleInfo`; a listing's Seaport order is
@@ -310,7 +310,7 @@ counters (`tokenCount`, `requestCount`, `listingCount`, `saleCount`) and views (
 | | `price` | `euint64` | the vault, the seller, the buyer | cUSDC, capped at `MAX_SALE_PRICE` (1,000,000 USDC) under encryption |
 | | `moved` | `ebool` | the vault, the seller, the buyer, once settled | Whether the box went to the buyer |
 
-Plus `allowedCollection` (public, set by the owner), `treasury`, `feeBps` (at most
+Plus `bannedCollection` (public, set by the owner), `treasury`, `feeBps` (at most
 `MAX_FEE_BPS`, 1,000), `feesOwed` (Seaport fees in ETH not yet sent), and the immutables
 `listings` (`VaultListings`), `seaport` (read from it), `confidentialUsdc`, `offers`
 (`VaultOffers`) and `delegateRegistry` (delegate.xyz's Registry v2). The NFTs themselves are
@@ -322,7 +322,8 @@ handed to `VaultOffers` for the one call that fills an accepted offer.
 `Listing {offerer, collection, tokenId, price, startTime, endTime, salt, counter, fees[]}`
 (`Fee {recipient, bps}`, the fees as they were when the listing was made), all public
 (`listingOf`, `orderOf`), plus `_fees` per collection (`feesOf`, set by the owner with
-`setFees`, at most `MAX_FEES_BPS`, 1,500, together), `listingCount` (the salt's counter) and the
+`setFees`, at most `MAX_FEES_BPS`, 1,500, together; collection 0 holds the default fees, what a
+collection without fees of its own pays), `listingCount` (the salt's counter) and the
 immutables `seaport`, `zone`, `conduitKey` and `operator`. Its events: `Prepared(orderHash,
 offerer, collection, tokenId, price)` and `FeesSet(collection, fees)`.
 

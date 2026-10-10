@@ -18,7 +18,7 @@ export const vaultDocsIt: Record<VaultDocsKey, string> = {
 
   "vaultDocs.section.what": "Cos'è il caveau",
   "vaultDocs.what.p1": "Un contratto che custodisce NFT, e accanto un altro che custodisce token. Ogni NFT che entra riceve una scatola: un token a sé il cui titolare è cifrato, come le scatole del gioco. L'NFT resta dentro finché il titolare della scatola non lo ritira, lo vende su Seaport (in annuncio, o all'offerta di un acquirente) o vende la scatola in privato. I token (cUSDC, un dollaro confidenziale, o cUSDT, cWETH, cZAMA) vanno invece in una tasca: un saldo chiuso da una chiave, non da un indirizzo.",
-  "vaultDocs.what.p2": "Il caveau accetta le collezioni che il suo proprietario ammette. Sulla rete di prova è una collezione di prova gratuita che chiunque può coniare.",
+  "vaultDocs.what.p2": "Il caveau accetta qualsiasi ERC-721; il suo proprietario può solo escludere una collezione. Sulla rete di prova la pagina propone una collezione di prova gratuita che chiunque può coniare.",
   "vaultDocs.what.p3": "La prima volta che apri il caveau, una visita guidata te lo fa percorrere: i due lati, ciò che resta cifrato, poi ogni scheda nell'ordine in cui la useresti, dal sigillare un NFT a cosa trapela. Il «?» nella barra del caveau la riproduce.",
 
   "vaultDocs.section.seal": "Sigillare un NFT",

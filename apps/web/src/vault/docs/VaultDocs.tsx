@@ -17,15 +17,15 @@ const EXPLORER = "https://sepolia.etherscan.io/address/";
 
 /** The vault's contracts on Sepolia, as `dno:export` last wrote them. */
 const CONTRACTS = [
-  { key: "vault", address: "0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3" },
+  { key: "vault", address: "0xb70740218931B220a06CE1ba1bD58B33f4d45abC" },
   { key: "nft", address: "0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b" },
   { key: "seaport", address: "0x0000000000000068F116a894984e2DB1123eB395" },
-  { key: "listings", address: "0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb" },
+  { key: "listings", address: "0x6b9C5204568fdf74a5DcEf7a1be85252358D8Fa6" },
   { key: "offers", address: "0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59" },
   { key: "weth", address: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9" },
   { key: "registry", address: "0x00000000000000447e69651d841bD8D104Bed493" },
-  { key: "pockets", address: "0xd693433e9E2556bafC6A5B48E37f9994E99bE752" },
-  { key: "desk", address: "0x5CB63624d9216E19C155771a3123b6aa9B716e4B" },
+  { key: "pockets", address: "0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395" },
+  { key: "desk", address: "0x37e9D6b2180323D5a01a42e2FD911aE017F70430" },
   { key: "pocketsUsdt", address: "0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe" },
   { key: "pocketsWeth", address: "0x4e8A23DfD7a23677b023E069CB8D3A94993b1350" },
   { key: "pocketsZama", address: "0x6D1585c58238DaADF748558051BF368DAA3eceE2" },

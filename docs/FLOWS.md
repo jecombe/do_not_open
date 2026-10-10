@@ -1186,7 +1186,7 @@ inside a sealed box.
 
 ## The sealed vault
 
-`SealedVault` is not part of the game: any NFT of an allowed collection goes into a box whose
+`SealedVault` is not part of the game: any ERC-721 (the owner can shut a collection out) goes into a box whose
 holder is encrypted, a Confidential ERC-721 of its own. Every box has an encrypted key; what
 leaves the vault (the NFT, a Seaport listing, an accepted offer, a sale's ETH) and the box's
 delegate in delegate.xyz are asked with the key, bound to the request's terms, so any wallet can

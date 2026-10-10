@@ -46,16 +46,19 @@ them, what leaks, what it costs, and why each choice was made.
 against the real bytecode of Seaport 1.5, of Seaport 1.6 with OpenSea's conduit, and of
 delegate.xyz's registry). On Sepolia since 2026-10-08, and since 2026-10-10 in its current
 version, whose listings are written by `VaultListings` the way OpenSea shows them (Seaport 1.6,
-OpenSea's conduit, its signed zone and fees on mainnet; open orders on Sepolia) and which sends
-an accepted offer's fill itself: `SealedVault` at
-`0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3` (block 11885662), `VaultListings` at
-`0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb` (block 11885005) and `VaultOffers` at
+OpenSea's conduit, its signed zone and fees on mainnet; open orders on Sepolia), which sends
+an accepted offer's fill itself and takes any ERC-721: `SealedVault` at
+`0xb70740218931B220a06CE1ba1bD58B33f4d45abC` (block 11885990), `VaultListings` at
+`0x6b9C5204568fdf74a5DcEf7a1be85252358D8Fa6` (block 11885989, with default fees) and `VaultOffers` at
 `0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59` (block 11885657; owner and treasury
 `0x590891F269720001435004A1089cAB5b2c20029A`), its free test collection `VaultTestNFT` at
 `0xf72Eb38f816B1B8Effa8B6036C0BA6A38D6d6f9b` (kept from the first deployment), on Seaport 1.6
 (`0x0000000000000068F116a894984e2DB1123eB395`) with OpenSea's conduit, the WETH OpenSea uses on
 Sepolia (`0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9`) and delegate.xyz's registry. Earlier
-deployments are left as they were: `0x79E6a86b448311ec580402701d4cb5B68c56718c` (earlier on 2026-10-10,
+deployments are left as they were: `0xE0Da20977484Ba48c0902B3686b7A9F999f0e8C3` (earlier on 2026-10-10,
+block 11885662, with `VaultListings` `0xF7742C1f4610C6629A7488E771Bb39dcC4408Ddb`, the first to
+send an accepted offer's fill itself) allowed collections one by one;
+`0x79E6a86b448311ec580402701d4cb5B68c56718c` (earlier still on 2026-10-10,
 block 11885012, with `VaultOffers` `0x43B2e0d7a75100545556BAD1B9Fa6f926721898A`, the first on
 `VaultListings`) handed `VaultOffers` the NFT to fill an accepted offer, which OpenSea's signed
 zone would not sign for; `0xE22509e741233072aFF4e0c6B56d5e3De8018262` (2026-10-09,
@@ -67,12 +70,13 @@ delegation; the first, `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (2026-10-08,
 
 The pockets (`SealedPockets`, and `PocketDesk` that buys private sales out of them) are done on
 the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 6 more running the
-adapter against them), and on Sepolia since 2026-10-09, redeployed with the vault twice on 2026-10-10
+adapter against them), and on Sepolia since 2026-10-09, redeployed with the vault three times on 2026-10-10
 (the desk is bound to its vault, and a pockets contract takes one desk for good): `SealedPockets`
-at `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` (block 11885664, owner
+at `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` (block 11885991, owner
 `0x590891F269720001435004A1089cAB5b2c20029A`) and `PocketDesk` at
-`0x5CB63624d9216E19C155771a3123b6aa9B716e4B` (block 11885665), on the vault above and Zama's cUSDC; the
-previous pockets, `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` (block 11885014) with their desk
+`0x37e9D6b2180323D5a01a42e2FD911aE017F70430` (block 11885992), on the vault above and Zama's cUSDC; the
+previous pockets, `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` (block 11885664) with their desk
+`0x5CB63624d9216E19C155771a3123b6aa9B716e4B` (block 11885665), `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` (block 11885014) with their desk
 `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` (block 11885017), and before them
 `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902) with
 `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` (block 11877903), keep their balances, which their keys
@@ -86,8 +90,8 @@ wrapped to 1 cWETH of 6). See [Pockets](#pockets) and [Other tokens](#other-toke
 
 | Contract | What it is |
 | --- | --- |
-| `SealedVault` | The vault. `ConfidentialERC721` (encrypted owners, transfers that never revert on ownership), `ZamaEthereumConfig`, `Ownable`, `ReentrancyGuard`. 23,650 bytes deployed, 926 under the 24,576-byte limit, compiled with the default optimizer (200 runs): a new feature has to move logic out first, as accepting offers did into `VaultOffers` and writing the listings' orders into `VaultListings` |
-| `vault/VaultListings.sol` | Writes the vault's Seaport listings the way OpenSea shows a contract's listing, and keeps them. `prepare(collection, tokenId, price, endTime)` writes an order whose offerer is its caller (the NFT on offer; in ETH, the caller's share `net` first, then one item per fee of the collection) and returns the `validate` call for the caller to send to Seaport, the order hash and `net`; `cancelCall(orderHash)` the `cancel` call; `orderOf(orderHash)` the order as a buyer passes it to `fulfillOrder`; `listingOf`, `feesOf`. Immutable `seaport`, `zone` (OpenSea's signed zone, or zero: the order is then `FULL_OPEN` rather than `FULL_RESTRICTED`), `conduitKey` and `operator` (OpenSea's conduit, or Seaport where there is no conduit: what the offerer approves on the NFT). The owner sets each collection's fees (`setFees`, recipient and bps, together at most `MAX_FEES_BPS`, 15%); a listing keeps the fees it was made with, stored by order hash. Nothing happens on Seaport unless the offerer itself sends the call: the vault never signs anything. 6,336 bytes |
+| `SealedVault` | The vault. `ConfidentialERC721` (encrypted owners, transfers that never revert on ownership), `ZamaEthereumConfig`, `Ownable`, `ReentrancyGuard`. 23,795 bytes deployed, 781 under the 24,576-byte limit, compiled with the default optimizer (200 runs): a new feature has to move logic out first, as accepting offers did into `VaultOffers` and writing the listings' orders into `VaultListings` |
+| `vault/VaultListings.sol` | Writes the vault's Seaport listings the way OpenSea shows a contract's listing, and keeps them. `prepare(collection, tokenId, price, endTime)` writes an order whose offerer is its caller (the NFT on offer; in ETH, the caller's share `net` first, then one item per fee of the collection) and returns the `validate` call for the caller to send to Seaport, the order hash and `net`; `cancelCall(orderHash)` the `cancel` call; `orderOf(orderHash)` the order as a buyer passes it to `fulfillOrder`; `listingOf`, `feesOf`. Immutable `seaport`, `zone` (OpenSea's signed zone, or zero: the order is then `FULL_OPEN` rather than `FULL_RESTRICTED`), `conduitKey` and `operator` (OpenSea's conduit, or Seaport where there is no conduit: what the offerer approves on the NFT). The owner sets each collection's fees (`setFees`, recipient and bps, together at most `MAX_FEES_BPS`, 15%); a listing keeps the fees it was made with, stored by order hash. Nothing happens on Seaport unless the offerer itself sends the call: the vault never signs anything. 6,388 bytes |
 | `vault/VaultOffers.sol` | Writes the Seaport call that fills a buyer's offer the vault accepts, and is the board buyers post them to. Stateless and open to anyone. `fillCall(offer, collection, tokenId, recipient)` returns the `fulfillAdvancedOrder` call (one token's share, criteria resolved to the token) the NFT's holder sends to Seaport, and the WETH fee it lets Seaport take: the vault sends it itself, as OpenSea's signed zone signs a fill for the address that holds the NFT, which must be Seaport's caller. `inspect` says whether an offer can still fill one token for at least a price; `fill` does the whole fill for a holder that hands it the NFT for one call; `post` validates a buyer's signed offer on Seaport and logs it by NFT (`OfferPosted`). Deployed on the same Seaport as the listings. 8,909 bytes |
 | `vault/ISeaport.sol` | The slice of Seaport 1.5 and 1.6 (the same calls) the vault, `VaultListings` and `VaultOffers` use (`validate`, `cancel`, `getOrderHash`, `getOrderStatus`, `getCounter`, `fulfillOrder`, `fulfillAdvancedOrder`, `information`) and its structs, as Seaport defines them. Seaport 1.6 is at `0x0000000000000068F116a894984e2DB1123eB395` on Sepolia and mainnet (OpenSea's conduit and signed zone are on both too, checked on-chain 2026-10-10), 1.5 at `0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC`; local networks run 1.5 from the Sepolia fixture |
 | `mocks/TestZone.sol` | Tests only: a stand-in for OpenSea's signed zone, put at the zone's address, that says yes to every order (the real one wants a signature from OpenSea's server) |
@@ -203,8 +207,8 @@ sequenceDiagram
   H->>N: approve(vault, tokenId)
   H->>H: decoys: up to 5 wallets of the crowd (fresh random addresses past it), really = false for each, encrypted with the key
   H->>V: deposit(collection, tokenId, key, to[], really[], proof)
-  V->>V: allowedCollection[collection], else CollectionNotAllowed; to and really pair up, 5 at most, else BadSends
-  V->>N: transferFrom(holder, vault, tokenId)
+  V->>V: bannedCollection[collection]: CollectionBanned; to and really pair up, 5 at most, else BadSends
+  V->>N: transferFrom(holder, vault, tokenId); ownerOf(tokenId) must be the vault, else NotReceived
   V->>V: mint box: owner = holder (moved = true), key stored, allowThis only
   V-->>H: Deposited(boxId, collection, tokenId, depositor), ConfidentialTransfer(boxId, 0x0, holder, moved)
   loop each of to[]
@@ -358,9 +362,9 @@ sequenceDiagram
 
 The order is one ERC-721 offered against `price` wei (`NATIVE`), from the block of the listing
 to `endTime`, salt `keccak256(listings, listingCount)`: the vault's share (`net`) first, then one
-ETH item per fee set on the collection (`VaultListings.setFees`: OpenSea's 1% and the creator's
-fee where OpenSea enforces one, set by the owner on mainnet; nothing on Sepolia, where `net` is
-the price). On mainnet the order names OpenSea's signed zone (`FULL_RESTRICTED`) and conduit,
+ETH item per fee of the collection (`VaultListings.setFees`: the default fees, under collection
+0, for every collection, OpenSea's 1% set at deployment on mainnet; a collection's own where
+OpenSea enforces a creator fee, set by the owner; nothing on Sepolia, where `net` is the price). On mainnet the order names OpenSea's signed zone (`FULL_RESTRICTED`) and conduit,
 which is how OpenSea's own contracts-as-sellers list: OpenSea reads it from Seaport's
 `OrderValidated` event and shows it, and sells it from its site, with its zone's signature on
 each purchase. Without a zone (Sepolia, local networks) the order is `FULL_OPEN`: anyone fills
@@ -448,7 +452,7 @@ sequenceDiagram
   `NeedsOrder` when the key matched.
 - **The offer board.** Buyers post their offers to `VaultOffers.post`, which validates them on
   Seaport with the buyer's signature and logs them by NFT, so the page finds the offers on a box
-  without a marketplace's API. Any signed offer for an NFT of an allowed collection, on the
+  without a marketplace's API. Any signed offer for an NFT, on the
   Seaport `VaultOffers` is deployed on (1.6 on Sepolia and mainnet, as the listings; the page
   signs for the version Seaport's `information()` reports), can be posted there, from any
   marketplace or script. An offer the vault accepts does not have to be on the board: the holder
@@ -699,7 +703,7 @@ desk: the vault's private sales settle in cUSDC, so only cUSDC pockets buy boxes
 
 | Token | Its pockets on Sepolia | The token | Its ERC-20 |
 | --- | --- | --- | --- |
-| cUSDC | `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` (with `PocketDesk`) | `0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639` | USDC (6 decimals) |
+| cUSDC | `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` (with `PocketDesk`) | `0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639` | USDC (6 decimals) |
 | cUSDT | `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe` | `0x4E7B06D78965594eB5EF5414c357ca21E1554491` | USDT `0xa7dA08FafDC9097Cc0E7D4f113A61e31d7e8e9b0` (6) |
 | cWETH | `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` | `0x46208622DA27d91db4f0393733C8BA082ed83158` | Zama's WETHMock `0xff54739b16576FA5402F211D0b938469Ab9A5f3F` (18, rate 10^12), not OpenSea's WETH the offers pay in |
 | cZAMA | `0x6D1585c58238DaADF748558051BF368DAA3eceE2` | `0xf2D628d2598aF4eAF94CB76a437Ff86CA78FfbFB` | ZAMA `0x75355a85c6FB9df5f0C80FF54e8747EEe9a0BF57` (18, rate 10^12) |
@@ -746,7 +750,7 @@ people use hides its pockets among fewer.
   balance; the pockets' contract holds everyone's tokens, so a short pocket would have been paid
   for by the others. The desk holds only what `buy` just took.
 - **No change to `SealedVault`.** It was 254 bytes under the size limit when the pockets came
-  (926 since the listings' orders moved out to `VaultListings` and the vault sends the offers'
+  (781 since the listings' orders moved out to `VaultListings` and the vault sends the offers'
   fills itself); the desk works with the vault as it is deployed.
 - **One contract per token, not one for all.** One contract holding every token would share the
   decoys but would show which token moved anyway, unless every action touched every token (the
@@ -965,11 +969,15 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   the key and the money together, and only the two sides may read `moved`.
 - **A failed ETH payout is not a revert.** A `to` that refuses ETH settles the claim `Stale` and
   leaves the proceeds in the box, so a mistaken address costs a retry, not the money.
-- **Collections are allowed one by one.** `deposit` trusts the collection's `transferFrom` and
-  `tokenURI` (the latter called through `try/catch`): a malicious ERC-721 could mint boxes backed
-  by nothing. Disallowing a collection stops new deposits only; its boxes still come out.
+- **Any ERC-721 comes in; the owner can shut a collection out.** Until 2026-10-10 the owner
+  allowed collections one by one, as `deposit` trusts the collection's `transferFrom` and
+  `tokenURI` (the latter called through `try/catch`). Now `deposit` checks the NFT is really the
+  vault's after the transfer (`NotReceived`), so a contract that moves nothing mints no box; a
+  worthless collection mints a worthless box, which its collection's address shows, as on any
+  marketplace. `banCollection` stops new deposits from one; its boxes still come out. Nothing to
+  set up per collection, on mainnet as on Sepolia.
 - **Its own contract, at the default optimizer.** It shares nothing with `DoNotOpen` but the
-  base and needs no privilege in it; at 23,650 bytes (22,712 before it sent the offers' fills
+  base and needs no privilege in it; at 23,795 bytes (23,650 before the deposit opened to any ERC-721 and checked the NFT arrived, 22,712 before it sent the offers' fills
   itself, 24,322 before the listings' orders moved out to `VaultListings`) it is under the limit without the size tricks `DoNotOpen` needs (an
   optimizer at 1 run saved 440 bytes only). The next feature moves logic out first, as offers
   and listings did.
@@ -984,8 +992,10 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   conduit, the ETH claimed to a fresh address, a wrong key refused, a withdrawal, a delegation
   the registry shows, and a WETH offer posted to the board and accepted, the vault sending the
   fill itself (its last request settled in
-  `0x55058ea1c8e13c3ead32e738bc2514c9813f035b2ac1d6388219f0abd39a02c0`; on the morning's vault,
-  `0xda3b44e7f41ff688e361ac27aa986b60ac8854c589882de5a2f9fa8b8ede37f5`). A public
+  `0xf2aef92850bcd5f40c42e03701fe9abba591ba2bac02508e945dd355e73c7295` on the vault taking any
+  ERC-721; `0x55058ea1c8e13c3ead32e738bc2514c9813f035b2ac1d6388219f0abd39a02c0` and
+  `0xda3b44e7f41ff688e361ac27aa986b60ac8854c589882de5a2f9fa8b8ede37f5` on the day's earlier
+  vaults). A public
   RPC's nodes lag the one that mined a transaction (reads behind, "nonce too low"), so the demo
   reads until the state is there, and runs best on a single endpoint (`SEPOLIA_RPC_URL`). The
   previous vaults' pending listing requests (2026-10-09) can be expired by anyone.
@@ -999,10 +1009,11 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   boxes and NFTs to Etherscan only there; on mainnet the chain's `marketplaceUrl` adds the
   OpenSea link. The orders are real Seaport orders: any Seaport marketplace, aggregator or
   script can fill an open one.
-- The fees on a listing are set by the owner per collection (`VaultListings.setFees`) and must
-  match what OpenSea asks for that collection (its 1%, the creator's enforced fee, read from
-  OpenSea's collection page or API), or OpenSea may not show the listing. They are capped at
-  15% together; a listing keeps the fees it was made with.
+- The fees on a listing are what the owner set (`VaultListings.setFees`): the default ones, under
+  collection 0, for every collection (OpenSea's 1%, set at deployment on mainnet), and a
+  collection's own where OpenSea enforces a creator fee (read from its collection page or API),
+  which replace the default. They must match what OpenSea asks, or OpenSea may not show the
+  listing. Capped at 15% together; a listing keeps the fees it was made with.
 - OpenSea's own offers (made on opensea.io, behind its signed zone) fill through `VaultOffers`
   as they are, and on mainnet the API reads them for the page and asks OpenSea the signed fill
   (`OPENSEA_API_KEY`, [The marketplace's offers](#the-marketplaces-offers)); not yet exercised
@@ -1151,13 +1162,14 @@ owner)` from `listingVenue(network)` in `lib/opensea.ts` (mainnet: Seaport 1.6, 
 conduit and signed zone; Sepolia: the same Seaport and conduit, no zone; elsewhere Seaport 1.5,
 no zone, no conduit), then `SealedVault(listings, cUSDC, offers, registry, treasury, owner,
 feeBps)`, which reads its Seaport from `VaultListings`. On a test network it deploys
-`VaultTestNFT` and allows it; on a local node it first puts Seaport 1.5's and delegate.xyz's
-Sepolia code at their addresses. On mainnet the owner then sets each allowed collection's fees
-with `VaultListings.setFees` (OpenSea's 1% to `0x0000a26b00c1F0DF003000390027140000fAa719`, and
-the creator's fee where OpenSea enforces one, read from its collection page or API). Payments
+`VaultTestNFT`; on a local node it first puts Seaport 1.5's and delegate.xyz's
+Sepolia code at their addresses. On mainnet it sets `VaultListings`' default fees to OpenSea's 1%
+(`0x0000a26b00c1F0DF003000390027140000fAa719`, under collection 0); the owner then sets a
+collection's own fees with `setFees` only where OpenSea enforces a creator fee (read from its
+collection page or API). Payments
 are in the network's cUSDC (Zama's on Sepolia, a test one locally). `dno:export` writes `vault`
 (address, ABI, deploy block, Seaport, `listings` with its ABI (null for a vault from before it),
-`offers` with its ABI and deploy block, WETH, the registry, the allowed collections, `pockets`
+`offers` with its ABI and deploy block, WETH, the registry, the collections the page offers to seal, `pockets`
 with its `desk` and its `token` when they are deployed, and `otherPockets`: each other token's
 pockets, deploy block and token) for the adapter and the API. `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys
 `SealedPockets` on the vault's cUSDC and `PocketDesk` on the vault, sets the desk once and hands

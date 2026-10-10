@@ -28,7 +28,7 @@ export const projectFr: Record<ProjectKey, string> = {
   "project.fhe.p3": "Chaque révélation se fait en deux temps : une demande on-chain, puis une preuve signée par ces parties, que n'importe qui peut rapporter. C'est pourquoi certaines actions attendent leur preuve quelques secondes.",
 
   "project.section.vault": "Le coffre scellé",
-  "project.vault.p1": "Mettez n'importe quel NFT d'une collection autorisée dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.",
+  "project.vault.p1": "Mettez n'importe quel NFT dans une boîte. Dès lors, personne ne sait qui détient la boîte : ni les marketplaces, ni les trackers, ni nous. Le NFT reste visible ; son détenteur, non.",
   "project.vault.p2": "La boîte peut quand même se vendre sur Seaport, le protocole d'OpenSea, avec le coffre comme vendeur (sur le réseau principal, l'annonce s'affiche sur OpenSea), ou en privé à un seul acheteur pour un prix que vous seuls pouvez lire. Le NFT, ou l'ETH d'une vente, sort vers n'importe quelle adresse, et un relayer peut envoyer les demandes pour que l'adresse du détenteur n'apparaisse nulle part.",
   "project.vault.p3": "Le coffre garde aussi des jetons. Tes cUSDC, un dollar confidentiel, vont dans une poche verrouillée par une clé plutôt que par une adresse : envoie-les vers une autre poche, paie une boîte avec, ou sors-les où tu veux. Les jetons confidentiels cachent déjà les montants ; une poche cache aussi qui a payé qui. Les cUSDT, cWETH et cZAMA, les autres jetons confidentiels de Zama, ont leurs propres poches ; les boîtes se paient en cUSDC.",
   "project.vault.docs": "Lire la doc du coffre",

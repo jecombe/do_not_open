@@ -194,7 +194,7 @@ right). See O34 in [AUDIT_CHECKLIST.md](AUDIT_CHECKLIST.md).
 
 ## 5e. The sealed vault
 
-`SealedVault` uses the same base for any NFT: a box per NFT of an allowed collection, its owner
+`SealedVault` uses the same base for any NFT: a box per NFT of any ERC-721, its owner
 an `eaddress`, transfers that never revert on ownership, and holders who find their boxes in
 their own receipts. What it adds is a way to act **without sending anything from the holder's
 address**. Each box has an encrypted key (`euint256`) that nobody may decrypt; a request to take
