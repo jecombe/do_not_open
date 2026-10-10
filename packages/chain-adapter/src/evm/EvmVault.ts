@@ -22,6 +22,7 @@ import type {
   VaultBox,
   VaultBoxState,
   VaultCollection,
+  VaultCrowd,
   VaultDepositOptions,
   VaultInfo,
   VaultListing,
@@ -192,6 +193,8 @@ export class EvmVault implements VaultAdapter {
   /** The signature every token's pocket keys come from, once a session. */
   private pocketSig: { account: Address; signature: Promise<string> } | null = null;
   private holdings: { account: Address; block: number; held: Set<number>; seen: Set<string> } | null = null;
+  /** The crowd's public events, read on from the last look: wallets that acted, each box's depositor and where it was sent. */
+  private crowdSeen: { block: number; wallets: Set<string>; depositor: Map<number, string>; sentTo: Map<number, Set<string>> } | null = null;
 
   constructor(
     private readonly deployed: VaultDeployment,
@@ -321,6 +324,71 @@ export class EvmVault implements VaultAdapter {
     return held.filter((_, i) => states[i] !== "withdrawn" && states[i] !== "claimed");
   }
 
+  /**
+   * Who uses the vault, from what the chain shows: every address that sent a transaction to it
+   * in its own name or took something out of it, and every wallet that fed a pocket. Read on
+   * from the last look, as `myBoxes` reads the receipts.
+   */
+  async crowd(): Promise<VaultCrowd> {
+    const latest = await this.t.readProvider.getBlockNumber();
+    const c = (this.crowdSeen ??= { block: (this.deployed.deployBlock ?? 1) - 1, wallets: new Set(), depositor: new Map(), sentTo: new Map() });
+    if (latest > c.block) {
+      const from = c.block + 1;
+      const f = this.read.filters;
+      const acted = (a: unknown) => c.wallets.add(String(a).toLowerCase());
+      const [deposited, keys, transfers, sales, withdrawn, claimed] = await Promise.all(
+        [f.Deposited!(), f.KeySet!(), f.ConfidentialTransfer!(), f.SaleOffered!(), f.Withdrawn!(), f.Claimed!()].map((filter) => this.logs(filter, from, latest)),
+      );
+      for (const l of deposited as EventLog[]) {
+        acted(l.args.depositor);
+        c.depositor.set(Number(l.args.boxId), String(l.args.depositor).toLowerCase());
+      }
+      for (const l of keys as EventLog[]) acted(l.args.caller);
+      for (const l of sales as EventLog[]) {
+        acted(l.args.seller);
+        acted(l.args.buyer);
+      }
+      for (const l of [...(withdrawn as EventLog[]), ...(claimed as EventLog[])]) acted(l.args.to);
+      for (const l of transfers as EventLog[]) {
+        // A transfer's sender sent it (or deposited, at the mint); its receiver may never act.
+        if (!/^0x0{40}$/i.test(String(l.args.from))) acted(l.args.from);
+        const id = Number(l.args.tokenId);
+        if (!c.sentTo.has(id)) c.sentTo.set(id, new Set());
+        c.sentTo.get(id)!.add(String(l.args.to).toLowerCase());
+      }
+      for (const d of this.pocketDeployments()) {
+        const pockets = new Contract(d.address, d.abi, this.t.readProvider);
+        for (const l of await this.logsOf(pockets, pockets.filters.Deposited!(), Math.max(from, d.deployBlock ?? 0), latest)) acted((l as EventLog).args.from);
+      }
+      c.block = latest;
+    }
+    const account = (await this.t.account().catch(() => null))?.toLowerCase() ?? null;
+    const relayer = (await this.t.relay().catch(() => null))?.address;
+    const own = new Set(
+      [
+        this.deployed.address,
+        this.deployed.offers.address,
+        this.deployed.listings?.address,
+        this.deployed.seaport,
+        this.deployed.weth,
+        this.deployed.delegateRegistry,
+        relayer,
+        ...this.pocketDeployments().flatMap((d) => [d.address, d.desk?.address]),
+        "0x" + "0".repeat(40),
+      ].flatMap((a) => (a ? [a.toLowerCase()] : [])),
+    );
+    const wallets = [...c.wallets].filter((w) => !own.has(w) && w !== account);
+    const believed = new Set(wallets);
+    if (account) believed.add(account);
+    const holders: Record<number, number> = {};
+    for (const [boxId, depositor] of c.depositor) {
+      const may = new Set([depositor]);
+      for (const to of c.sentTo.get(boxId) ?? []) if (believed.has(to)) may.add(to);
+      holders[boxId] = may.size;
+    }
+    return { wallets: wallets.map((w) => getAddress(w)), holders };
+  }
+
   async wethBalance(owner: Address): Promise<bigint> {
     const weth = new Contract(this.deployed.weth, WETH_ABI, this.t.readProvider);
     return BigInt(await this.t.reading(weth.balanceOf!(owner)));
@@ -353,8 +421,10 @@ export class EvmVault implements VaultAdapter {
     const nft = { address: collection, abi: NFT_ABI };
     const approved = await this.t.reading(new Contract(collection, NFT_ABI, this.t.readProvider).getApproved!(tokenId));
     if (!sameAddress(String(approved), this.deployed.address)) await this.t.send(opts, () => this.t.writer(nft).approve!(this.deployed.address, tokenId));
-    // The key, then each decoy's "really" (false), under one proof.
-    const sends = decoySends(opts?.decoys ?? 0);
+    // The decoys go to wallets that use the vault, when there are enough; the key, then each
+    // decoy's "really" (false), under one proof.
+    const crowd = opts?.decoys ? (await this.crowd().catch(() => null))?.wallets ?? [] : [];
+    const sends = decoySends(opts?.decoys ?? 0, crowd);
     const input = await this.t.encrypt(this.deployed.address, account, (b) => sends.reduce((acc, s) => acc.addBool(s.really), b.add256(key)), "the box key", opts);
     const receipt = await this.t.send(opts, () =>
       this.t.writer(this.deployed).deposit!(collection, tokenId, input.handles[0], sends.map((s) => s.to), input.handles.slice(1), input.inputProof),

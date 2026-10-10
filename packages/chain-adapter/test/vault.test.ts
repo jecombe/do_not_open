@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ChainError, MOCK_DESK, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, pocketSet, vaultLinks } from "../src";
+import { ChainError, decoySends, MOCK_DESK, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, pocketGroup, pocketSet, vaultLinks } from "../src";
 
 const ETH = 10n ** 18n;
 const USD = 1_000_000n;
@@ -213,18 +213,87 @@ describe("MockVault pockets", () => {
   });
 });
 
-describe("pocketSet", () => {
-  it("names the real pocket among sorted, distinct decoys, never more than the cap", () => {
-    for (let i = 0; i < 50; i++) {
-      const set = pocketSet(3, 9, 4, 5);
-      expect(set).toContain(3);
-      expect(set).toHaveLength(5);
-      expect(new Set(set).size).toBe(5);
-      expect([...set].sort((a, b) => a - b)).toEqual(set);
-    }
-    expect(pocketSet(0, 1, 4, 5)).toEqual([0]);
-    expect(pocketSet(1, 3, 9, 5)).toHaveLength(3);
-    expect(pocketSet(2, 6, 0, 5)).toEqual([2]);
+describe("pocketGroup and pocketSet", () => {
+  it("groups pockets by number, the same set for every member, however many times it is asked", () => {
+    expect(pocketGroup(7, 20, 5)).toEqual([5, 6, 7, 8, 9]);
+    for (const member of [5, 6, 8, 9]) expect(pocketGroup(member, 20, 5)).toEqual([5, 6, 7, 8, 9]);
+    expect(pocketGroup(3, 20, 5)).toEqual([0, 1, 2, 3, 4]);
+    expect(pocketSet(7, 20, 5)).toEqual(pocketSet(7, 20, 5));
+    expect(pocketSet(7, 20, 5)).toEqual([5, 6, 7, 8, 9]);
+  });
+
+  it("gives the last group the pockets opened so far, and never names one that does not exist", () => {
+    expect(pocketGroup(12, 13, 5)).toEqual([10, 11, 12]);
+    expect(pocketGroup(0, 1, 5)).toEqual([0]);
+    expect(pocketGroup(10, 11, 5)).toEqual([10]);
+  });
+
+  it("names fewer others, when asked, still the same ones every time, in order", () => {
+    expect(pocketSet(7, 20, 5, 2)).toEqual([5, 6, 7]);
+    expect(pocketSet(9, 20, 5, 2)).toEqual([5, 6, 9]);
+    expect(pocketSet(7, 20, 5, 0)).toEqual([7]);
+    expect(pocketSet(7, 20, 5, 9)).toEqual([5, 6, 7, 8, 9]);
+  });
+});
+
+describe("decoySends", () => {
+  const crowd = ["0x00000000000000000000000000000000000000A1", "0x00000000000000000000000000000000000000a2", "0x00000000000000000000000000000000000000A3"] as const;
+
+  it("sends to the crowd's wallets first, none twice, then to fresh addresses", () => {
+    const sends = decoySends(5, [...crowd]);
+    expect(sends).toHaveLength(5);
+    expect(sends.every((s) => !s.really)).toBe(true);
+    const named = sends.map((s) => s.to.toLowerCase());
+    expect(new Set(named).size).toBe(5);
+    expect(crowd.every((a) => named.includes(a.toLowerCase()))).toBe(true);
+  });
+
+  it("picks at random among a crowd larger than the decoys, and caps the count", () => {
+    const big = Array.from({ length: 40 }, (_, i) => `0x${(i + 1).toString(16).padStart(40, "0")}`);
+    const picks = new Set<string>();
+    for (let i = 0; i < 30; i++) for (const s of decoySends(2, big)) picks.add(s.to);
+    expect(picks.size).toBeGreaterThan(4);
+    expect(decoySends(9, big)).toHaveLength(5);
+    expect(decoySends(0, big)).toEqual([]);
+  });
+});
+
+describe("MockVault crowd", () => {
+  it("counts the wallets that use the vault, the connected one left out, and who may hold each box", async () => {
+    const { vault } = await fresh();
+    const before = await vault.crowd();
+    expect(before.wallets).not.toContain(MOCK_YOU);
+    expect(before.wallets).toContain(MOCK_NIGHT_SHIFT);
+    expect(before.wallets.length).toBeGreaterThanOrEqual(3);
+    // The night shift's boxes went to nobody else: it is their obvious holder.
+    for (const b of await vault.boxes()) expect(before.holders[b.boxId]).toBe(1);
+
+    const alone = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));
+    const hidden = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT), { decoys: 3 });
+    const after = await vault.crowd();
+    expect(after.holders[alone]).toBe(1);
+    expect(after.holders[hidden]).toBe(4);
+    // A decoy sent to a fresh address nobody uses does not count as a holder.
+    const sent = await vault.deposit(MOCK_VAULT_NFT, await vault.mintTestNft(MOCK_VAULT_NFT));
+    await vault.send(sent, FRESH);
+    expect((await vault.crowd()).holders[sent]).toBe(1);
+  });
+
+  it("tells a pocket's group, always the same, and the wallets that fed it", async () => {
+    const { vault } = await fresh();
+    const pockets = vault.pockets()!;
+    const id = await pockets.open();
+    const { count, maxSet } = await pockets.info();
+    const group = await pockets.group(id);
+    expect(group.size).toBe(maxSet);
+    expect(group.members).toEqual(pocketGroup(id, count, maxSet));
+    expect(group.members).toContain(id);
+    // The strangers fed their own pockets; this wallet has not yet.
+    const feeders = group.feeders;
+    await pockets.deposit(3n * USD);
+    expect((await pockets.group(id)).feeders).toBe(feeders + 1);
+    await pockets.deposit(3n * USD);
+    expect((await pockets.group(id)).feeders).toBe(feeders + 1);
   });
 });
 

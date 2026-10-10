@@ -1630,15 +1630,57 @@ a.vault-me:hover {
   color: #ffb4ab;
 }
 
-.vault-pocket-decoys > div {
-  display: flex;
-  flex-wrap: wrap;
+/* The crowd a box or a pocket hides in: an honest count, amber where it is thin. */
+.vault-crowd {
+  display: grid;
   gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--panel);
 }
 
-.vault-pocket-decoys .vault-meta {
-  flex-basis: 100%;
-  margin: 2px 0 0;
+.vault-crowd .vault-meta {
+  margin: 0;
+}
+
+.vault-crowd-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.vault-crowd-label {
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-crowd-codes {
+  color: var(--muted);
+  font: 500 12px var(--mono);
+}
+
+.vault-crowd-warn {
+  color: #ffd38a;
+}
+
+.vault-toolbar .vault-crowd-note {
+  flex: 1 1 100%;
+}
+
+.vault-card-holders {
+  margin-top: 4px;
+  color: var(--teal);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.vault-card-holders.is-alone {
+  color: #ffd38a;
 }
 
 /* The token the pocket below holds: one chip per token, each with its logo. */

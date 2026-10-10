@@ -24,7 +24,7 @@ flowchart LR
 | `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport, `listings` (`VaultListings`' address and ABI; null for a vault from before it), `offers` (`VaultOffers`' address, ABI and deploy block), WETH, delegate.xyz's registry and collections; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
 | `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`); the `PocketsAdapter` interface, its pockets' (`PocketsInfo`, `PocketSale`, `PocketOptions`) |
-| `src/pockets.ts` | `pocketSet`: the real pocket among decoys, as the contract wants a set |
+| `src/pockets.ts` | `pocketGroup`, `pocketSet`: a pocket's fixed group, the set its every action names, as the contract wants a set |
 | `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultListings` (a listing's order, and whether OpenSea's zone gates it), `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`) for the version Seaport's `information()` reports, the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
 | `src/evm/vaultMarket.ts` | `VaultMarket`: finds the marketplace the API reads offers from (`GET /v1/vault/market`, OpenSea on mainnet), reads a token's offers (`GET /v1/vault/offers/:collection/:tokenId`) and asks the order that fills one, signed for the vault (`POST /v1/vault/offers/fulfillment`), right before `finalizeOffer` |
@@ -285,9 +285,17 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 - `walletNfts(collection)` lists the wallet's token ids of a collection; `mintTestNft` mints a
   free one from a test collection.
 - `deposit(collection, tokenId, { decoys })` approves the vault if needed and seals the NFT
-  with the wallet's key, sending the new box to `decoys` (0 to `MAX_DECOYS`) fresh random
-  addresses in the same transaction, each transfer moving nothing (`decoySends`); it returns the
-  box id. The deposit is public, not who holds the box after it. The mock ignores decoys.
+  with the wallet's key, sending the new box to `decoys` (0 to `MAX_DECOYS`) wallets of the
+  vault's crowd in the same transaction, each transfer moving nothing (`decoySends(decoys,
+  crowd)`: picked at random among the crowd, none twice, fresh random addresses past it); it
+  returns the box id. The deposit is public, not who holds the box after it. The mock moves
+  nothing for a decoy but records who it named.
+- `crowd()` reads the vault's and the pockets' public events (on from the last look) into a
+  `VaultCrowd`: `wallets`, every address that acted on the vault in its own name (deposited,
+  set a key, sent a box, offered or took a private sale, took an NFT or ETH out, fed a pocket),
+  less the vault's contracts, the relayer and the connected wallet, and `holders`, per box id,
+  how many wallets may hold it as far as the chain tells (its depositor and the wallets of the
+  crowd it was sent to; 1: its depositor is its obvious holder). The page's anonymity counts.
 - `withdraw(boxId, to)`, `list(boxId, price, endTime)`, `unlist(boxId)` and `claim(boxId, to)`
   are requests: the key bound to the request's terms, encrypted for the relayer's address (or the
   wallet's), sent through the API's relayer when there is one, then the public decryption of
@@ -345,7 +353,10 @@ left out), or null where it is not deployed. A pocket holds its token under a ke
 address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
 
 - `token`: the `PocketToken` it holds. `info()`: `address`, `desk` (null but for cUSDC), `count`
-  (pockets opened, the decoys' pool), `maxSet` (5).
+  (pockets opened), `maxSet` (5, a group's size). `group(pocketId)`: its `PocketGroup`,
+  `members` (the pockets its every action names, `pocketGroup(id, count, maxSet)`: groups of
+  `maxSet` by number, the last one holding the pockets opened so far), `size` and `feeders`
+  (wallets that deposited into the group: the ones anyone can tie to one of its pockets).
 - `mine()` finds the wallet's pocket (null before it is opened); `open()` opens it (relayed when
   there is a relayer). The wallet signs `pocketKeyMessage(pockets, chainId)` once a session
   (naming the cUSDC pockets, for every token): `keccak256(signature, "key")` is the key,
@@ -358,11 +369,13 @@ address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
 - `balance()` user-decrypts the pocket's balance as its viewer (`userDecryptAs`: the adapter
   keeps a permit per account).
 - `deposit(amount, { to?, decoys? })` pulls the wallet's confidential token (making the pockets its operator
-  if needed) into pocket `to` (the wallet's own by default) among decoys; `send(to, amount, {
+  if needed) into pocket `to` (the wallet's own by default), naming its group; `send(to, amount, {
   decoys? })` and `withdraw(address, amount, { decoys? })` encrypt the amount and target, then
   the key XOR `spendHash(...)` in a second input, and go through the relayer. A short balance
-  moves nothing and throws nothing. `pocketSet(real, count, decoys, maxSet)` picks the sets
-  (`DEFAULT_POCKET_DECOYS`, 2 decoys).
+  moves nothing and throws nothing. `pocketSet(real, count, maxSet, others?)` picks the sets: the
+  pocket's whole group when `others` is left out (what hides best: a set tells the group, never
+  the pocket, however many sets are compared), else the real one and the group's first `others`,
+  still the same every time.
 - `offerSale(boxId, pocketId, price)` (the seller) offers a box privately to the desk and
   reserves it for a pocket; `sales()` lists the sales reserved for the wallet's pocket
   (`PocketSale`, with `pocketId`); `salePrices(saleIds)` decrypts them as the viewer;
