@@ -205,7 +205,7 @@ sequenceDiagram
   participant V as Vault
   H->>H: key = keccak256(secret, collection, tokenId), encrypted for the vault
   H->>N: approve(vault, tokenId)
-  H->>H: decoys: up to 5 wallets of the crowd (fresh random addresses past it), really = false for each, encrypted with the key
+  H->>H: decoys: up to 5 wallets holding an NFT of the collection or using the vault (fresh random addresses past them), really = false for each, encrypted with the key
   H->>V: deposit(collection, tokenId, key, to[], really[], proof)
   V->>V: bannedCollection[collection]: CollectionBanned; to and really pair up, 5 at most, else BadSends
   V->>N: transferFrom(holder, vault, tokenId); ownerOf(tokenId) must be the vault, else NotReceived
@@ -220,8 +220,8 @@ sequenceDiagram
 The deposit is public: it is a plain NFT transfer, and `Deposited` names the depositor. What
 happens to the box next is not, and it can start in the same transaction: `deposit` sends the
 new box on to each of `to`, for real only where the encrypted `really` is true. The page lets
-the holder pick how many decoys, 0 to 5, three by default (`decoys` in the adapter, `decoySends`): wallets of the vault's
-crowd, `really` false for each, so the depositor keeps the box, but to anyone else each
+the holder pick how many decoys, 0 to 5, three by default (`decoys` in the adapter, `decoySends`): wallets that hold an
+NFT of the same collection and wallets of the vault's crowd, `really` false for each, so the depositor keeps the box, but to anyone else each
 transfer is a "maybe" and the depositor is no longer its obvious holder. One of them may be real
 (a gift, or the holder's own fresh wallet): the box then moves and gets a random key, as on any
 transfer, and its receiver sets theirs with `setKey`. Each send costs a transfer's gas and HCU
@@ -231,18 +231,26 @@ by replaying their own `ConfidentialTransfer` receipts and user-decrypting the "
 
 **The crowd.** A decoy is only as good as the doubt it leaves, and a transfer to a fresh random
 address leaves little: that address never acts, never sets a key, never asks anything, so an
-observer bets the box stayed with the depositor. The decoys go instead to wallets that use the
-vault (`crowd()` in the adapter, from the public events: every `Deposited` depositor, `KeySet`
-caller, `ConfidentialTransfer` sender, `SaleOffered` party, `Withdrawn` or `Claimed` recipient,
-and every wallet that fed a pocket, less the vault's own contracts, the relayer and the connected
-wallet), picked at random, none twice; past the crowd, to fresh addresses, and the page says so.
-Each could be the box's holder: it acts on the vault. The page also tells a holder, on each of
-their boxes, how many wallets may hold it as far as the chain tells (`crowd().holders`: its
-depositor and the wallets of the crowd it was sent to; 1 means "you are its obvious holder"),
-read on from the last look like the receipts. What a decoy costs its wallet: one more "moved"
-bit to user-decrypt the next time it looks for its boxes, false. What it still does not hide: a
-`KeySet` from one of the decoys names a real receiver, and the absence of any from all of them
-is a hint the box stayed (below).
+observer bets the box stayed with the depositor. The decoys go instead to two kinds of wallets
+(`crowd(collection)` in the adapter), picked at random among both, none twice: the collection's
+holders (`collectors`: the receivers of its last 200,000 blocks of `Transfer` logs, newest first,
+40 at most, that still own the token they received, one `ownerOf` each) and the wallets that use
+the vault (`wallets`, from the public events: every `Deposited` depositor, `KeySet` caller,
+`ConfidentialTransfer` sender, `SaleOffered` party, `Withdrawn` or `Claimed` recipient, and every
+wallet that fed a pocket), less the vault's own contracts, the relayer and the connected wallet;
+past them, to fresh addresses, and the page says so. Each could be the box's holder: it owns the
+same kind of NFT, or it acts on the vault. The collection's holders are what lets a box hide from
+the first day: a vault few use yet has a thin crowd, but a collection of thousands has thousands
+of plausible holders, as Monero's rings draw their decoys from the whole chain rather than from
+those who opted into privacy. A crowd the adapter cannot read fails the deposit (`network`)
+rather than sending the decoys to fresh addresses on the quiet, which would cost a transfer's gas
+each for no doubt. The page also tells a holder, on each of their boxes, how many wallets may hold
+it as far as the chain tells (`crowd().holders`: its depositor and the wallets it was sent to that
+use the vault or hold an NFT of its collection, one `balanceOf` per receiver, kept 50 blocks; 1
+means "you are its obvious holder"), read on from the last look like the receipts. What a decoy
+costs its wallet: one more "moved" bit to user-decrypt the next time it looks for its boxes,
+false. What it still does not hide: a `KeySet` from one of the decoys names a real receiver, and
+the absence of any from all of them is a hint the box stayed (below).
 
 ### A request: take out, list, take down, collect, accept an offer, delegate
 
@@ -802,8 +810,8 @@ What that means in practice:
 - **The deposit names the depositor.** With its decoys (the page's default) the depositor is not
   its obvious holder: any of the transfers may have moved the box. Without them, they are until
   the box moves. Decoys are only as good as the doubt they leave, which is why they go to wallets
-  that use the vault and not to fresh addresses (a fresh address never acts: nobody believes it
-  holds anything): someone who sees a "Make the
+  that hold an NFT of the same collection or use the vault and not to fresh addresses (a fresh
+  address never acts and holds nothing: nobody believes it holds anything): someone who sees a "Make the
   key mine" (`KeySet`) from none of the decoy addresses may bet the box stayed; a real send among
   them, followed by a `setKey`, names its receiver. The page tells each holder how many wallets
   may hold each of their boxes, as far as the chain tells.
@@ -1030,12 +1038,15 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   transfer sent in the same block as such a request reverts and must be sent again. Exits
   (withdraw, list, unlist, claim) are never held back.
 - The deposit, the exit and the request's sender without the relayer are public (above).
-- The crowd is what it is: a deposit's decoys hide the box among the wallets that use the vault,
-  and while few do, the rest go to fresh addresses that fool nobody for long; a box hides among
-  its depositor and its decoys, a pocket among its group's five at most. The page shows the
-  counts rather than promise more. A decoy's wallet is named, on-chain, as the "maybe" receiver
-  of a box it never asked for; it is a wallet that already acts on the vault, never a stranger
-  to it, and it costs it one false bit to decrypt.
+- The crowd is what it is: a deposit's decoys hide the box among the wallets that hold an NFT of
+  its collection and the wallets that use the vault, and while both are few, the rest go to
+  fresh addresses that fool nobody for long; a box hides among its depositor and its decoys, a
+  pocket among its group's five at most. The page shows the counts rather than promise more. A
+  decoy's wallet is named, on-chain, as the "maybe" receiver of a box it never asked for; it is a
+  wallet that holds the same kind of NFT or already acts on the vault, never a stranger to both,
+  and it costs it one false bit to decrypt. A collection's holders are read from its recent
+  transfers only (about a month, 40 wallets at most), so the pool is its active holders, not all
+  of them.
 - The relayer is one hot key on the API; its daily cap is per replica, so the stack's is
   `VAULT_RELAY_PER_DAY` times the replicas.
 - The key comes from one signature of a fixed message: a site that tricks a wallet into signing

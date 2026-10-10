@@ -99,6 +99,14 @@ const REQUEST_STALE = 4;
 const REQUEST_TIMEOUT = 86_400;
 const SALE_STATUS: (VaultSaleStatus | "none")[] = ["none", "open", "settled", "cancelled"];
 const LOG_SPAN = 40_000;
+/** How far back a collection's `Transfer` logs are read for its holders: about a month of blocks. */
+const COLLECTORS_SPAN = 200_000;
+/** Blocks per log read of a collection: public RPCs cap a busy collection.s logs well under the vault.s span. */
+const COLLECTORS_CHUNK = 10_000;
+/** How many of a collection's holders a deposit's decoys are picked among, at most. */
+const COLLECTORS_WANTED = 40;
+/** Blocks a collection's holders, and whether a wallet holds one of its tokens, are kept before being read again. */
+const HOLDING_TTL = 50;
 const ZERO = "0x" + "0".repeat(64);
 
 /** The part of an ERC-721 the vault page uses; a test collection also has `mint(to, id)`. */
@@ -106,6 +114,7 @@ const NFT_ABI = [
   "function approve(address to, uint256 tokenId)",
   "function getApproved(uint256 tokenId) view returns (address)",
   "function ownerOf(uint256 tokenId) view returns (address)",
+  "function balanceOf(address owner) view returns (uint256)",
   "function mint(address to, uint256 tokenId)",
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
 ];
@@ -193,8 +202,12 @@ export class EvmVault implements VaultAdapter {
   /** The signature every token's pocket keys come from, once a session. */
   private pocketSig: { account: Address; signature: Promise<string> } | null = null;
   private holdings: { account: Address; block: number; held: Set<number>; seen: Set<string> } | null = null;
-  /** The crowd's public events, read on from the last look: wallets that acted, each box's depositor and where it was sent. */
-  private crowdSeen: { block: number; wallets: Set<string>; depositor: Map<number, string>; sentTo: Map<number, Set<string>> } | null = null;
+  /** The crowd's public events, read on from the last look: wallets that acted, each box's depositor and collection, and where it was sent. */
+  private crowdSeen: { block: number; wallets: Set<string>; deposit: Map<number, { depositor: string; collection: string }>; sentTo: Map<number, Set<string>> } | null = null;
+  /** Per collection, the wallets its recent transfers show still holding a token, as of a block. */
+  private readonly collectorsSeen = new Map<string, { block: number; wallets: string[] }>();
+  /** Per `collection:wallet`, whether the wallet held a token of the collection, as of a block. */
+  private readonly holdingSeen = new Map<string, { block: number; held: boolean }>();
 
   constructor(
     private readonly deployed: VaultDeployment,
@@ -327,11 +340,12 @@ export class EvmVault implements VaultAdapter {
   /**
    * Who uses the vault, from what the chain shows: every address that sent a transaction to it
    * in its own name or took something out of it, and every wallet that fed a pocket. Read on
-   * from the last look, as `myBoxes` reads the receipts.
+   * from the last look, as `myBoxes` reads the receipts. With a collection, also the wallets
+   * that hold one of its NFTs (`collectors`), the pool a deposit's decoys are drawn from first.
    */
-  async crowd(): Promise<VaultCrowd> {
+  async crowd(collection?: Address): Promise<VaultCrowd> {
     const latest = await this.t.readProvider.getBlockNumber();
-    const c = (this.crowdSeen ??= { block: (this.deployed.deployBlock ?? 1) - 1, wallets: new Set(), depositor: new Map(), sentTo: new Map() });
+    const c = (this.crowdSeen ??= { block: (this.deployed.deployBlock ?? 1) - 1, wallets: new Set(), deposit: new Map(), sentTo: new Map() });
     if (latest > c.block) {
       const from = c.block + 1;
       const f = this.read.filters;
@@ -341,7 +355,7 @@ export class EvmVault implements VaultAdapter {
       );
       for (const l of deposited as EventLog[]) {
         acted(l.args.depositor);
-        c.depositor.set(Number(l.args.boxId), String(l.args.depositor).toLowerCase());
+        c.deposit.set(Number(l.args.boxId), { depositor: String(l.args.depositor).toLowerCase(), collection: String(l.args.collection).toLowerCase() });
       }
       for (const l of keys as EventLog[]) acted(l.args.caller);
       for (const l of sales as EventLog[]) {
@@ -380,13 +394,67 @@ export class EvmVault implements VaultAdapter {
     const wallets = [...c.wallets].filter((w) => !own.has(w) && w !== account);
     const believed = new Set(wallets);
     if (account) believed.add(account);
+    // A receiver nobody saw act may still hold an NFT of the box's collection: a collector is a
+    // believable holder too. One `balanceOf` per (collection, receiver), kept for a while.
+    const holds = async (coll: string, wallet: string) => {
+      const k = `${coll}:${wallet}`;
+      const seen = this.holdingSeen.get(k);
+      if (seen && latest - seen.block < HOLDING_TTL) return seen.held;
+      const nft = new Contract(coll, NFT_ABI, this.t.readProvider);
+      const held = await this.t
+        .reading(nft.balanceOf!(wallet))
+        .then((b) => BigInt(b as bigint) > 0n)
+        .catch(() => false);
+      this.holdingSeen.set(k, { block: latest, held });
+      return held;
+    };
     const holders: Record<number, number> = {};
-    for (const [boxId, depositor] of c.depositor) {
-      const may = new Set([depositor]);
-      for (const to of c.sentTo.get(boxId) ?? []) if (believed.has(to)) may.add(to);
-      holders[boxId] = may.size;
+    await Promise.all(
+      [...c.deposit].map(async ([boxId, d]) => {
+        const may = new Set([d.depositor]);
+        for (const to of c.sentTo.get(boxId) ?? []) {
+          if (believed.has(to) || (!own.has(to) && (await holds(d.collection, to)))) may.add(to);
+        }
+        holders[boxId] = may.size;
+      }),
+    );
+    const collectors = collection ? (await this.collectors(collection, latest)).filter((w) => !own.has(w) && w !== account) : [];
+    return { wallets: wallets.map((w) => getAddress(w)), collectors: collectors.map((w) => getAddress(w)), holders };
+  }
+
+  /**
+   * Wallets that hold an NFT of `collection`, from its recent `Transfer` logs: the receivers of
+   * the last `COLLECTORS_SPAN` blocks (newest first, enough to find `COLLECTORS_WANTED`) that
+   * still own the token they received. Bounded, so a large collection costs a few log reads and
+   * one `ownerOf` per candidate, not its whole history. Kept for `HOLDING_TTL` blocks.
+   */
+  private async collectors(collection: Address, latest: number): Promise<string[]> {
+    const key = collection.toLowerCase();
+    const seen = this.collectorsSeen.get(key);
+    if (seen && latest - seen.block < HOLDING_TTL) return seen.wallets;
+    const nft = new Contract(collection, NFT_ABI, this.t.readProvider);
+    const candidates = new Map<string, bigint>();
+    const floor = Math.max(0, latest - COLLECTORS_SPAN);
+    for (let hi = latest; hi >= floor && candidates.size < COLLECTORS_WANTED; hi -= COLLECTORS_CHUNK) {
+      const lo = Math.max(floor, hi - COLLECTORS_CHUNK + 1);
+      // A busy collection has many more logs than the vault: smaller spans, and a public RPC that
+      // caps them ends the walk with what was found (the vault's crowd still stands).
+      const logs = (await this.t.reading(nft.queryFilter(nft.filters.Transfer!(), lo, hi)).catch(() => null)) as EventLog[] | null;
+      if (!logs) break;
+      for (const l of logs.sort((a, b) => b.blockNumber - a.blockNumber || b.index - a.index)) {
+        const to = String(l.args.to).toLowerCase();
+        if (!/^0x0{40}$/i.test(to) && !candidates.has(to)) candidates.set(to, BigInt(l.args.tokenId));
+      }
     }
-    return { wallets: wallets.map((w) => getAddress(w)), holders };
+    const checks = await Promise.all(
+      [...candidates].slice(0, COLLECTORS_WANTED).map(async ([to, tokenId]) => {
+        const owner = await this.t.reading(nft.ownerOf!(tokenId)).catch(() => null);
+        return sameAddress(owner as string | null, to) ? to : null;
+      }),
+    );
+    const wallets = checks.filter((w): w is string => w !== null);
+    this.collectorsSeen.set(key, { block: latest, wallets });
+    return wallets;
   }
 
   async wethBalance(owner: Address): Promise<bigint> {
@@ -421,10 +489,18 @@ export class EvmVault implements VaultAdapter {
     const nft = { address: collection, abi: NFT_ABI };
     const approved = await this.t.reading(new Contract(collection, NFT_ABI, this.t.readProvider).getApproved!(tokenId));
     if (!sameAddress(String(approved), this.deployed.address)) await this.t.send(opts, () => this.t.writer(nft).approve!(this.deployed.address, tokenId));
-    // The decoys go to wallets that use the vault, when there are enough; the key, then each
-    // decoy's "really" (false), under one proof.
-    const crowd = opts?.decoys ? (await this.crowd().catch(() => null))?.wallets ?? [] : [];
-    const sends = decoySends(opts?.decoys ?? 0, crowd);
+    // The decoys go to wallets that hold an NFT of this collection and wallets that use the
+    // vault, when there are enough; the key, then each decoy's "really" (false), under one proof.
+    // A crowd that cannot be read is an error, not fresh addresses on the quiet: they would cost
+    // a transfer's gas each and fool nobody.
+    let pool: Address[] = [];
+    if (opts?.decoys) {
+      const crowd = await this.crowd(collection).catch(() => {
+        throw new ChainError("network", "The wallets the decoys would go to could not be read. Try again, or seal without decoys.");
+      });
+      pool = [...crowd.collectors, ...crowd.wallets];
+    }
+    const sends = decoySends(opts?.decoys ?? 0, pool);
     const input = await this.t.encrypt(this.deployed.address, account, (b) => sends.reduce((acc, s) => acc.addBool(s.really), b.add256(key)), "the box key", opts);
     const receipt = await this.t.send(opts, () =>
       this.t.writer(this.deployed).deposit!(collection, tokenId, input.handles[0], sends.map((s) => s.to), input.handles.slice(1), input.inputProof),
