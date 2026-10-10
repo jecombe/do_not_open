@@ -1242,7 +1242,11 @@ A buyer's offer is a plain Seaport order (WETH offered, the NFT asked for; Seapo
 Sepolia and mainnet, 1.5 on a local node, signed for the version Seaport reports), posted to
 the offer board `VaultOffers`. The holder accepts it with an `AcceptOffer` request (`to` the payout
 address, `price` the least WETH it must net, `ref` its order hash); the order itself only comes
-at `finalizeOffer`.
+at `finalizeOffer`. On mainnet an offer made on opensea.io follows the same path: the page reads
+it from the API (`GET /v1/vault/offers/:collection/:tokenId`, OpenSea's API behind it) instead
+of the board, and asks the API the order with OpenSea's zone signature for `VaultOffers`
+(`POST /v1/vault/offers/fulfillment`) right before `finalizeOffer`, as that signature lasts
+minutes ([VAULT.md](VAULT.md#the-marketplaces-offers)).
 
 ```mermaid
 sequenceDiagram

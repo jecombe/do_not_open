@@ -1140,13 +1140,14 @@ function Offers({
                 <TokenIcon symbol="WETH" size={14} />{" "}
                 {t("vault.offers.row", { amount: formatAmount(o.amount, 18), coin, buyer: shortAddress(o.buyer), date: date(o.endTime) })}
                 {o.anyToken && <span className="vault-chip">{t("vault.offers.any")}</span>}
+                {o.source === "opensea" && <span className="vault-chip">{t("vault.offers.opensea")}</span>}
               </span>
               {holder && (
                 <button type="button" className="sec-btn sec-btn-small" aria-pressed={chosen?.orderHash === o.orderHash} disabled={busy} onClick={() => setChosen(o)}>
                   {t("vault.action.acceptOffer")}
                 </button>
               )}
-              {!holder && account && sameAddress(o.buyer, account) && (
+              {!holder && account && o.source === "board" && sameAddress(o.buyer, account) && (
                 <button
                   type="button"
                   className="sec-btn sec-btn-ghost sec-btn-small"

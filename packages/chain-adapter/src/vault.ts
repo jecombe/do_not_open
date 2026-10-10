@@ -45,6 +45,8 @@ export interface VaultInfo {
   collections: VaultCollection[];
   /** Sends holders' requests, so their address shows nowhere. Null: the wallet sends them, and its address shows. */
   relayer: Address | null;
+  /** The marketplace whose offers the API reads for the page ("opensea" on mainnet), or null: the board's offers only. */
+  market: string | null;
   /** The chain's coin, for Seaport prices: "ETH". */
   coin: string;
 }
@@ -111,6 +113,8 @@ export interface VaultOffer {
   endTime: number;
   /** An offer on any NFT of the collection, not on this one alone. */
   anyToken: boolean;
+  /** Where it was found: the on-chain board (`VaultOffers`), or OpenSea, read by the API (mainnet). */
+  source: "board" | "opensea";
 }
 
 export type VaultSaleStatus = "open" | "settled" | "cancelled";

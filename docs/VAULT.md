@@ -433,10 +433,11 @@ sequenceDiagram
   fill a contract made, putting `VaultOffers`' code at that contract's address (the one OpenSea's
   zone signature names) and filling the same order through the real Seaport 1.6, zone and
   conduit (transaction `0xd49327e0f801e4c9ad58c63096f572b9edbbaafbdf9b471dfd097bd4ff97923f`, a
-  collection offer of 0.0047 WETH, 1% to OpenSea, 0.004653 ETH came back, 222,000 gas). What is
-  missing is the API side: reading an NFT's offers from OpenSea's API and asking it the zone's
-  `extraData` for `VaultOffers`' address right before `finalizeOffer`, which needs an OpenSea API
-  key. Not built yet (see Limits).
+  collection offer of 0.0047 WETH, 1% to OpenSea, 0.004653 ETH came back, 222,000 gas). The API
+  side is built too: on mainnet the API reads an NFT's offers from OpenSea with its key and, right
+  before `finalizeOffer`, asks OpenSea the order signed by its zone for `VaultOffers`' address
+  (see [The marketplace's offers](#the-marketplaces-offers)); `pnpm --filter @dno/chain-adapter
+  opensea:fork` runs that path against a live offer on a fork of mainnet.
 
 ### Delegation
 
@@ -786,6 +787,33 @@ with `offer` (the encoded order) is sent as `finalizeOffer`. Details and setting
 - **Replicas share one key and one nonce space**; a nonce taken by another replica is retried
   with a fresh count, twice at most. The indexer role never sends.
 
+## The marketplace's offers
+
+OpenSea's offers live off-chain: a buyer signs a Seaport order, OpenSea keeps it, and its signed
+zone lets Seaport fill it only with `extraData` OpenSea's server signs for the one address that
+fills it, for a few minutes. The page cannot read them from the chain as it reads the board's,
+so on mainnet the API reads them for it, with its own key (`OPENSEA_API_KEY`; the key never
+reaches a browser): `GET /v1/vault/market` names the marketplace and the address OpenSea signs
+for (`VaultOffers`; `{ name: null }` where there is none), `GET /v1/vault/offers/:collection/:tokenId`
+lists the live WETH offers on a token and on its collection as the board's are listed (the order
+included, without the zone's signature, so the page can `inspect` it), and
+`POST /v1/vault/offers/fulfillment` answers the encoded order with the zone's signature for
+`VaultOffers`, which the page asks for right before `finalizeOffer`, since the signature lasts
+minutes (`OpenSeaOffers` in `packages/chain-adapter/src/opensea.ts`, `VaultMarket` in
+`apps/api/src/application/vaultMarket.ts`). The page shows them next to the board's, marked "on
+OpenSea"; accepting one is the same request, the order hash as `ref`. Details:
+[`apps/api/README.md`](../apps/api/README.md#openseas-offers).
+
+- **The API learns nothing about the holder.** It reads what opensea.io shows anyone, for a
+  token anyone can name; the fill is asked for the vault's contract, never for a wallet.
+- **OpenSea closed its testnets**: on Sepolia the API reads no marketplace and the page shows
+  the board's offers only. The path is checked against a live mainnet offer on a local fork:
+  `pnpm --filter @dno/chain-adapter opensea:fork -- --collection <address> --token <id>` reads the
+  token's offers, forks mainnet with anvil, deploys `VaultOffers` there, hands it the NFT, asks
+  OpenSea the fill signed for that `VaultOffers`, and fills it.
+- **Trait offers are left out** (an offer on some of a collection's NFTs, by trait): the
+  contracts could fill one with its criteria proof, but the page does not list them.
+
 ## What the team sees
 
 The API's index reads the vault's events and keeps their counts, never an address that could
@@ -921,10 +949,13 @@ deposit, Seaport sale, private sale and withdrawal ([`deploy/README.md`](../depl
   OpenSea's collection page or API), or OpenSea may not show the listing. They are capped at
   15% together; a listing keeps the fees it was made with.
 - OpenSea's own offers (made on opensea.io, behind its signed zone) fill through `VaultOffers`
-  as they are, but the page cannot show or accept them yet: reading an NFT's offers from
-  OpenSea's API and asking it the zone's `extraData` for `VaultOffers`' address right before
-  `finalizeOffer` needs an OpenSea API key and is not built. Today offers come from the vault's
-  board, or any Seaport order that pays WETH and that the holder names.
+  as they are, and on mainnet the API reads them for the page and asks OpenSea the signed fill
+  (`OPENSEA_API_KEY`, [The marketplace's offers](#the-marketplaces-offers)); not yet exercised
+  with a vault on mainnet, only with a live offer on a fork. OpenSea's signature lasts minutes:
+  the page asks for it right before the proof is sent, and a `finalizeOffer` that arrives after it
+  expired reverts, leaving the request to a later try. OpenSea may also decline to sign. Where
+  OpenSea is not (Sepolia), offers come from the vault's board, or any Seaport order that pays
+  WETH and that the holder names.
 - Offers on some of a collection's tokens (a criteria root other than 0, as for trait offers)
   are refused by the board; the vault would fill one only with its Merkle proof.
 - A stranger's wrong-key requests can still hold a box's transfers and private sales back until

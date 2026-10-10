@@ -154,6 +154,7 @@ export const vaultEn = {
   "vault.offers.empty": "No offer yet.",
   "vault.offers.row": "{amount} {coin} from {buyer}, until {date}",
   "vault.offers.any": "any NFT of the collection",
+  "vault.offers.opensea": "on OpenSea",
   "vault.offers.acceptHint": "The NFT goes to the buyer, and {amount} {coin}, less the fee, to this address. A fresh one shows no link to you.",
 
   "vault.sales.lede": "Boxes offered to one buyer for a price only the two of you can read.",

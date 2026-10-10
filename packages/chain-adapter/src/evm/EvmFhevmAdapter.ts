@@ -95,6 +95,7 @@ import { rangePerThousand, virtualReserves } from "./uniswapV3";
 import type { IndexedTransfer, IndexerClient } from "./indexer";
 import { EvmVault, type VaultDeployment } from "./EvmVault";
 import type { VaultRelay } from "./vaultRelay";
+import type { VaultMarket } from "./vaultMarket";
 import type { VaultAdapter } from "../vault";
 import type { ChainParams, WalletSource } from "./wallet";
 
@@ -182,6 +183,8 @@ export interface EvmAdapterOptions {
   vault?: VaultDeployment;
   /** Finds the API's vault relayer, which sends holders' requests from its own wallet. */
   vaultRelay?: () => Promise<VaultRelay | null>;
+  /** Finds the marketplace the API reads offers from (OpenSea on mainnet). */
+  vaultMarket?: () => Promise<VaultMarket | null>;
 }
 
 /** Uniswap's SwapRouter02: `exactInputSingle` has no deadline, so it goes through a `multicall` with one. */
@@ -407,6 +410,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private readonly decryptCache: DecryptCache;
   private vault_: EvmVault | null = null;
   private vaultRelay_: Promise<VaultRelay | null> | null = null;
+  private vaultMarket_: Promise<VaultMarket | null> | null = null;
 
   constructor(private readonly opts: EvmAdapterOptions) {
     this.decryptCache = opts.decryptCache ?? new MemoryDecryptCache();
@@ -1809,6 +1813,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
         if (!this.opts.vaultRelay) return Promise.resolve(null);
         this.vaultRelay_ ??= this.opts.vaultRelay();
         return this.vaultRelay_;
+      },
+      market: () => {
+        if (!this.opts.vaultMarket) return Promise.resolve(null);
+        this.vaultMarket_ ??= this.opts.vaultMarket();
+        return this.vaultMarket_;
       },
     });
     return this.vault_;

@@ -89,6 +89,10 @@ nightly dump), so no Turbo credits are needed. `SITE_URL=https://do-not-open.app
 from each rat's metadata. Ship the API that knows the `Rats` address before the first rat is
 minted. See [`apps/api/README.md`](../apps/api/README.md#the-depots-rats).
 
+On mainnet the sealed vault's page lists OpenSea's offers on the NFTs it holds, read by the API
+with `OPENSEA_API_KEY=...` in `/opt/dno/.env` (a key from OpenSea's developer portal; nothing is
+read on Sepolia, where OpenSea is not). See [`apps/api/README.md`](../apps/api/README.md#openseas-offers).
+
 The collection speaks in a Discord channel (see [`apps/api/README.md`](../apps/api/README.md#the-collections-discord-channel-the-herald)):
 in the channel's settings, Integrations, Webhooks, create one and copy its URL, then add
 `HERALD_DISCORD=live` and `DISCORD_WEBHOOK_URL=...` to `/opt/dno/.env` (`HERALD_DISCORD=rehearse`

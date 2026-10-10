@@ -30,6 +30,7 @@ import type {
   VaultSaleStatus,
 } from "../vault";
 import type { VaultRelay } from "./vaultRelay";
+import type { VaultMarket } from "./vaultMarket";
 
 interface Deployed {
   address: string;
@@ -80,7 +81,12 @@ export interface EvmVaultTools {
   faucets?: boolean;
   /** The API's relayer, when it has one: requests are sent from its wallet. */
   relay(): Promise<VaultRelay | null>;
+  /** The marketplace whose offers the API reads (OpenSea on mainnet), when it reads one. */
+  market?(): Promise<VaultMarket | null>;
 }
+
+/** An offer's order for `finalizeOffer`: the board's, encoded; a marketplace's, asked right before sending (its signature lasts minutes). */
+type OfferOrder = string | (() => Promise<string>);
 
 /** SealedVault's enums, in their contract order. */
 const STATES: (VaultBoxState | "none")[] = ["none", "sealed", "listed", "sold", "withdrawn", "claimed"];
@@ -241,7 +247,7 @@ export class EvmVault implements VaultAdapter {
   }
 
   async info(): Promise<VaultInfo> {
-    const [feeBps, relay, zone] = await Promise.all([this.t.reading(this.read.feeBps!()), this.t.relay(), this.listingZone()]);
+    const [feeBps, relay, zone, market] = await Promise.all([this.t.reading(this.read.feeBps!()), this.t.relay(), this.listingZone(), this.market()]);
     return {
       address: this.deployed.address,
       explorerUrl: this.t.explorerUrl ? `${this.t.explorerUrl}/address/${this.deployed.address}` : null,
@@ -255,8 +261,14 @@ export class EvmVault implements VaultAdapter {
       delegateRegistry: this.deployed.delegateRegistry,
       collections: this.deployed.collections,
       relayer: relay?.address ?? null,
+      market: market?.name ?? null,
       coin: "ETH",
     };
+  }
+
+  /** The API's marketplace, or null: none configured, or the API down. */
+  private market(): Promise<VaultMarket | null> {
+    return this.t.market ? this.t.market().catch(() => null) : Promise.resolve(null);
   }
 
   /** The zone the listings' orders name (OpenSea's on mainnet), or the zero address: fixed at deployment. */
@@ -408,10 +420,26 @@ export class EvmVault implements VaultAdapter {
         ]);
         if (BigInt(balance) < share || BigInt(allowance) < share) return null;
         const anyToken = parameters.consideration.some((c) => c.itemType === ITEM.ERC721_WITH_CRITERIA);
-        return { orderHash, buyer: getAddress(parameters.offerer), amount, endTime: Number(parameters.endTime), anyToken } satisfies VaultOffer;
+        return { orderHash, buyer: getAddress(parameters.offerer), amount, endTime: Number(parameters.endTime), anyToken, source: "board" } satisfies VaultOffer;
       }),
     );
-    return rows.filter((r): r is VaultOffer => r !== null).sort((a, b) => (a.amount === b.amount ? 0 : a.amount > b.amount ? -1 : 1));
+    // The marketplace's (OpenSea's on mainnet), read by the API: alive on Seaport, the buyer's
+    // WETH covering a share (their allowance is the conduit's, not read here; Seaport checks it).
+    const market = await this.market();
+    const theirs = market ? await market.offers(box.collection, box.tokenId).catch(() => []) : [];
+    const onBoard = new Set(rows.filter((r) => r !== null).map((r) => r!.orderHash.toLowerCase()));
+    const marketRows = await Promise.all(
+      theirs.map(async (o) => {
+        if (o.endTime <= now || onBoard.has(o.orderHash.toLowerCase())) return null;
+        const parameters = o.parameters as OrderParameters;
+        const { fillable } = await this.t.reading(this.board.inspect!(encodeOffer(parameters), box.collection, box.tokenId, 0));
+        if (!fillable) return null;
+        const { units, paid } = offerTerms(parameters);
+        if (BigInt(await this.t.reading(weth.balanceOf!(o.buyer))) < paid / units) return null;
+        return { orderHash: o.orderHash, buyer: getAddress(o.buyer), amount: o.amount, endTime: o.endTime, anyToken: o.anyToken, source: "opensea" } satisfies VaultOffer;
+      }),
+    );
+    return [...rows, ...marketRows].filter((r): r is VaultOffer => r !== null).sort((a, b) => (a.amount === b.amount ? 0 : a.amount > b.amount ? -1 : 1));
   }
 
   async makeOffer(boxId: number, amount: bigint, endTime: number, opts?: ActionOptions): Promise<string> {
@@ -469,9 +497,8 @@ export class EvmVault implements VaultAdapter {
 
   async acceptOffer(boxId: number, orderHash: string, to: Address, opts?: ActionOptions): Promise<bigint> {
     const box = await this.box(boxId);
-    const parameters = await this.postedOrder(orderHash);
-    const offer = encodeOffer(parameters);
-    const { fillable } = await this.t.reading(this.board.inspect!(offer, box.collection, box.tokenId, 0));
+    const { parameters, offer } = await this.offerOrder(orderHash, box.collection, box.tokenId);
+    const { fillable } = await this.t.reading(this.board.inspect!(encodeOffer(parameters), box.collection, box.tokenId, 0));
     if (!fillable) throw new ChainError("missed", "This offer is gone: cancelled, filled or ended.");
     const { amount } = offerTerms(parameters);
     await this.ask(boxId, "acceptOffer", { to, price: amount, ref: orderHash }, opts, offer);
@@ -555,7 +582,7 @@ export class EvmVault implements VaultAdapter {
     action: keyof typeof ACTIONS,
     terms: { to?: Address; price?: bigint; endTime?: number; ref?: string },
     opts?: ActionOptions,
-    offer?: string,
+    offer?: OfferOrder,
   ): Promise<void> {
     const account = await this.t.account();
     const box = await this.t.reading(this.read.boxInfo!(boxId));
@@ -597,9 +624,16 @@ export class EvmVault implements VaultAdapter {
   }
 
   /** Step 2 of a request: its proof, with the buyer's order when it accepts an offer. Relayed when there is a relayer. */
-  private async finalize(requestId: number, decrypted: { abiEncodedClearValues: string; decryptionProof: string }, opts?: ActionOptions, offer?: string): Promise<void> {
+  private async finalize(requestId: number, decrypted: { abiEncodedClearValues: string; decryptionProof: string }, opts?: ActionOptions, order?: OfferOrder): Promise<void> {
     const relay = await this.t.relay();
     const [cleartexts, proof] = [decrypted.abiEncodedClearValues, decrypted.decryptionProof];
+    // A marketplace's order is asked now: its signature is for the next few minutes.
+    let offer: string | undefined;
+    try {
+      offer = typeof order === "function" ? await order() : order;
+    } catch (error) {
+      throw new ChainError("network", `The marketplace did not give the order to fill: ${(error as Error).message}`);
+    }
     if (relay) {
       await this.relayed(opts, offer ? "finalizeOffer" : "finalize", () => relay.finalize({ requestId, cleartexts, proof, ...(offer ? { offer } : {}) }), false);
     } else if (offer) {
@@ -628,12 +662,27 @@ export class EvmVault implements VaultAdapter {
   }
 
   /**
+   * The order behind an offer's hash: the board's, logged on-chain; else the marketplace's, whose
+   * fill is asked of the API right before it is sent (OpenSea signs it for `VaultOffers` for a few
+   * minutes). Throws `missed` when neither has it.
+   */
+  private async offerOrder(orderHash: string, collection: Address, tokenId: bigint): Promise<{ parameters: OrderParameters; offer: OfferOrder }> {
+    const posted = await this.postedOrder(orderHash).catch(() => null);
+    if (posted) return { parameters: posted, offer: encodeOffer(posted) };
+    const market = await this.market();
+    const found = market ? (await market.offers(collection, tokenId).catch(() => [])).find((o) => o.orderHash.toLowerCase() === orderHash.toLowerCase()) : undefined;
+    if (!market || !found) throw new ChainError("missed", "No such offer on the board.");
+    return { parameters: found.parameters as OrderParameters, offer: () => market.fulfillment(orderHash, collection, tokenId).then((f) => f.offer) };
+  }
+
+  /**
    * Settles whatever requests the box waits on, so it can move: anyone's, a stranger's with a
    * wrong key included. Each gets its proof (finalize) or, after a day without one, is expired.
    * Sent by the relayer when there is one, by the wallet otherwise.
    */
   private async settlePending(boxId: number, opts?: ActionOptions): Promise<void> {
-    if (Number((await this.t.reading(this.read.boxInfo!(boxId))).pending) === 0) return;
+    const box = await this.t.reading(this.read.boxInfo!(boxId));
+    if (Number(box.pending) === 0) return;
     const latest = await this.t.readProvider.getBlockNumber();
     const placed = await this.logs(this.read.filters.RequestPlaced!(null, boxId), this.deployed.deployBlock ?? 0, latest);
     const now = Math.floor(Date.now() / 1000);
@@ -646,8 +695,8 @@ export class EvmVault implements VaultAdapter {
       }
       const decrypted = await this.t.publicDecrypt([String(info.ok)], opts);
       opts?.onStep?.("proving");
-      // An offer whose key matched needs its order: the one the request named, from the board.
-      const offer = Number(info.action) === ACTIONS.acceptOffer ? await this.postedOrder(String(info.ref)).then(encodeOffer, () => undefined) : undefined;
+      // An offer whose key matched needs its order: the one the request named, from the board or the marketplace.
+      const offer = Number(info.action) === ACTIONS.acceptOffer ? await this.offerOrder(String(info.ref), String(box.collection) as Address, BigInt(box.tokenId)).then((o) => o.offer, () => undefined) : undefined;
       await this.finalize(requestId, decrypted, opts, offer).catch((error) => {
         // A wrong key, or an offer that cannot fill yet: it waits for its day, then anyone expires it.
         if (!offer) throw error;
