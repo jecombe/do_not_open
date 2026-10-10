@@ -17,17 +17,19 @@ import {
 } from "./ISeaport.sol";
 import {IWETH} from "./IWETH.sol";
 
-/// @title Fills buyers' Seaport offers for the sealed vault
-/// @notice The vault hands this contract one NFT and calls `fill` in the same transaction: the
-///         offer's WETH comes here, Seaport takes the NFT and the order's fees out of it, and the
-///         rest goes back to the caller in ETH. It holds nothing between two calls, so an order
-///         can only ever take the one NFT it was given: never another box's.
+/// @title Writes and fills buyers' Seaport offers for the sealed vault
+/// @notice The vault accepts an offer by sending Seaport the `fulfillAdvancedOrder` call this
+///         contract writes for it (`fillCall`): the NFT's holder is the one that calls Seaport,
+///         which is what OpenSea's signed zone wants (OpenSea signs a fill for the address that
+///         holds the NFT, and Seaport's caller must be that address). The offer's WETH comes to
+///         the holder, Seaport takes the NFT and the order's fees, and the holder unwraps the rest.
+///         `fill` does the same for a holder that would rather hand this contract the NFT for one
+///         call (nothing stays here between two calls).
 ///
 ///         It is also where buyers post their offers (`post`): validated on Seaport, then logged
 ///         by NFT, so the vault's page finds the offers on a box without a marketplace's API.
-/// @dev Stateless and open to anyone: whoever sends it an NFT and calls `fill` sells their own.
-///      An offer travels as abi.encode(AdvancedOrder, bytes32[] criteriaProof), so the vault
-///      passes it on without decoding it.
+/// @dev Stateless and open to anyone. An offer travels as abi.encode(AdvancedOrder, bytes32[]
+///      criteriaProof), so the vault passes it on without decoding it.
 contract VaultOffers is ReentrancyGuard {
     ISeaport public immutable seaport;
     IWETH public immutable weth;
@@ -93,17 +95,52 @@ contract VaultOffers is ReentrancyGuard {
         fillable = good && paid >= fees && (paid - fees) / units >= least;
     }
 
+    /// @notice The `fulfillAdvancedOrder` call the NFT's holder sends to Seaport to fill one
+    ///         token's share of the offer with `tokenId` of `collection`, the WETH coming to
+    ///         `recipient` (the holder), and the WETH `fee` the holder lets Seaport take for the
+    ///         order's own fees (out of what arrives: Seaport moves the offer first). The holder
+    ///         approves Seaport on the NFT first. For an item with criteria, the offer's
+    ///         `criteriaProof` proves the token is one the order takes (empty when it takes any).
+    function fillCall(bytes calldata offer, address collection, uint256 tokenId, address recipient)
+        external
+        view
+        returns (bytes memory call, uint256 fee)
+    {
+        (AdvancedOrder memory order, CriteriaResolver[] memory resolvers, uint256 fees, uint256 units) = _order(offer, collection, tokenId);
+        fee = fees / units;
+        call = abi.encodeCall(ISeaport.fulfillAdvancedOrder, (order, resolvers, bytes32(0), recipient));
+    }
+
     /// @notice Fills one token's share of the offer's order with `tokenId` of `collection`, which
-    ///         this contract must hold, and sends the caller the WETH left, unwrapped. For an
-    ///         item with criteria, the offer's `criteriaProof` proves the token is one the order
-    ///         takes (empty when it takes any). Reverts if the order does not fill or the NFT stays.
+    ///         this contract must hold, and sends the caller the WETH left, unwrapped. Reverts if
+    ///         the order does not fill or the NFT stays.
     function fill(bytes calldata offer, address collection, uint256 tokenId) external nonReentrant returns (uint256 amount) {
-        (AdvancedOrder memory order, bytes32[] memory criteriaProof) = abi.decode(offer, (AdvancedOrder, bytes32[]));
-        (bool good, uint256 fees, uint256 units, uint256 nftIndex) = _items(order.parameters, collection, tokenId);
+        (AdvancedOrder memory order, CriteriaResolver[] memory resolvers, uint256 fees, uint256 units) = _order(offer, collection, tokenId);
+        IERC721(collection).approve(address(seaport), tokenId);
+        weth.approve(address(seaport), fees / units);
+        seaport.fulfillAdvancedOrder(order, resolvers, bytes32(0), address(this));
+        weth.approve(address(seaport), 0);
+        if (IERC721(collection).ownerOf(tokenId) == address(this)) revert NotFilled();
+        amount = weth.balanceOf(address(this));
+        weth.withdraw(amount);
+        (bool sent,) = msg.sender.call{value: amount}("");
+        if (!sent) revert SendFailed();
+    }
+
+    /// @dev The order for one token's share (1/units), its criteria resolved to `tokenId`.
+    function _order(bytes calldata offer, address collection, uint256 tokenId)
+        private
+        view
+        returns (AdvancedOrder memory order, CriteriaResolver[] memory resolvers, uint256 fees, uint256 units)
+    {
+        bytes32[] memory criteriaProof;
+        (order, criteriaProof) = abi.decode(offer, (AdvancedOrder, bytes32[]));
+        bool good;
+        uint256 nftIndex;
+        (good, fees, units, nftIndex) = _items(order.parameters, collection, tokenId);
         if (!good) revert NotFilled();
         order.numerator = 1;
         order.denominator = uint120(units);
-        CriteriaResolver[] memory resolvers;
         if (order.parameters.consideration[nftIndex].itemType == ItemType.ERC721_WITH_CRITERIA) {
             resolvers = new CriteriaResolver[](1);
             resolvers[0] = CriteriaResolver({
@@ -114,15 +151,6 @@ contract VaultOffers is ReentrancyGuard {
                 criteriaProof: criteriaProof
             });
         }
-        IERC721(collection).approve(address(seaport), tokenId);
-        weth.approve(address(seaport), fees / units);
-        seaport.fulfillAdvancedOrder(order, resolvers, bytes32(0), address(this));
-        weth.approve(address(seaport), 0);
-        if (IERC721(collection).ownerOf(tokenId) == address(this)) revert NotFilled();
-        amount = weth.balanceOf(address(this));
-        weth.withdraw(amount);
-        (bool sent,) = msg.sender.call{value: amount}("");
-        if (!sent) revert SendFailed();
     }
 
     /// @dev Every consideration item is WETH (the order's fees) or the one NFT, with fixed

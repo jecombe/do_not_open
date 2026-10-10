@@ -279,9 +279,10 @@ async function main() {
 
   // The marketplace's offers for the vault's page: OpenSea's, where OpenSea is (mainnet; it closed its testnets).
   const openSeaChain = OPENSEA_CHAINS[config.NETWORK];
+  // OpenSea signs a fill for the address that holds the NFT and calls Seaport: the vault itself.
   const vaultMarket =
-    config.OPENSEA_API_KEY && deployment.vault?.offers && openSeaChain && config.ROLE !== "indexer"
-      ? new VaultMarket("opensea", new OpenSeaOffers({ apiKey: config.OPENSEA_API_KEY, chain: openSeaChain }), deployment.vault.offers.address, clock)
+    config.OPENSEA_API_KEY && deployment.vault && openSeaChain && config.ROLE !== "indexer"
+      ? new VaultMarket("opensea", new OpenSeaOffers({ apiKey: config.OPENSEA_API_KEY, chain: openSeaChain }), deployment.vault.address, clock)
       : undefined;
   if (vaultMarket) log.info({ fulfiller: vaultMarket.fulfiller }, "OpenSea's offers are read for the vault's page");
   else if (config.OPENSEA_API_KEY && config.ROLE !== "indexer") log.info({ network: config.NETWORK }, "OpenSea serves no offers on this network: the vault's page shows the board's only");

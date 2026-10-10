@@ -149,7 +149,7 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
 | `GET /v1/vault/relayer` · `POST /v1/vault/relay` | The sealed vault's relayer (below): its address, or null; sends a holder's request or proof, a pocket's open or spend, or a desk purchase from its own wallet |
-| `GET /v1/vault/market` · `GET /v1/vault/offers/:collection/:tokenId` · `POST /v1/vault/offers/fulfillment` | OpenSea's offers for the vault's page (below, mainnet only): the marketplace read and the address it signs fills for; a token's live offers; the order that fills one, signed by OpenSea for `VaultOffers` |
+| `GET /v1/vault/market` · `GET /v1/vault/offers/:collection/:tokenId` · `POST /v1/vault/offers/fulfillment` | OpenSea's offers for the vault's page (below, mainnet only): the marketplace read and the address it signs fills for (the vault); a token's live offers; the order that fills one, signed by OpenSea for the vault |
 | `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
 | `GET /v1/rats?owner=` · `GET /v1/rats/supply` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
 | `POST /v1/chat` | The manual's chatbot (below): `{ question, locale, history, book? }` in, `{ mode, answer, sources, passages, reason }` out; `book: "vault"` asks the Warden (the vault's and the project's docs), the game's clerk otherwise |
@@ -444,14 +444,14 @@ it closed its testnets, so nothing on Sepolia), the API replicas read them for t
 
 | Route | What it does |
 | --- | --- |
-| `GET /v1/vault/market` | `{ data: { name, fulfiller } }`: `"opensea"` and `VaultOffers`' address, the one OpenSea signs the fills for; `{ name: null, fulfiller: null }` where no marketplace is read. Always served, cached 60 s |
+| `GET /v1/vault/market` | `{ data: { name, fulfiller } }`: `"opensea"` and the vault's address, the one OpenSea signs the fills for (OpenSea signs only for the address that holds the NFT, and the vault sends the fill itself); `{ name: null, fulfiller: null }` where no marketplace is read. Always served, cached 60 s |
 | `GET /v1/vault/offers/:collection/:tokenId` | Only with a marketplace. `{ data: { offers } }`: the live WETH offers on the token and on its collection (trait offers left out), best first, each `{ orderHash, protocolAddress, buyer, amount (wei one NFT nets after OpenSea's and the creator's fees, decimal string), endTime, anyToken, parameters }`, `parameters` the Seaport order without the zone's signature (enough for `VaultOffers.inspect`). OpenSea is asked once every 15 s per token for everyone; cached 10 s at the edge. `400` for a bad address or id; `429` when OpenSea rate-limits, `502` when it is down or answers oddly (`code: "marketplace"`) |
-| `POST /v1/vault/offers/fulfillment` | Only with a marketplace. `{ orderHash, collection, tokenId }` → `{ offer, expiresAt }`: `offer` is `abi.encode(AdvancedOrder, bytes32[] criteriaProof)` with OpenSea's `extraData` signed for `VaultOffers`, what `finalizeOffer` takes (sent through `POST /v1/vault/relay` as `finalize` with `offer`, or from the wallet); `expiresAt` when that signature ends (unix seconds, a few minutes). Asked of OpenSea every time, never cached, right before the proof is sent. `404 { code: "not-found" }` for an order OpenSea does not hold on that token; `400` for a malformed body; `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP |
+| `POST /v1/vault/offers/fulfillment` | Only with a marketplace. `{ orderHash, collection, tokenId }` → `{ offer, expiresAt }`: `offer` is `abi.encode(AdvancedOrder, bytes32[] criteriaProof)` with OpenSea's `extraData` signed for the vault, what `finalizeOffer` takes (sent through `POST /v1/vault/relay` as `finalize` with `offer`, or from the wallet); `expiresAt` when that signature ends (unix seconds, a few minutes). Asked of OpenSea every time, never cached, right before the proof is sent. `404 { code: "not-found" }` for an order OpenSea does not hold on that token; `400` for a malformed body; `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP |
 
 The API learns nothing about the holder: it reads what opensea.io shows anyone, for a token
-anyone can name, and asks the fill for the vault's contract, never for a wallet. Checked
-end-to-end against a live mainnet offer on a local fork with
-`pnpm --filter @dno/chain-adapter opensea:fork` ([`docs/VAULT.md`](../../docs/VAULT.md#the-marketplaces-offers)).
+anyone can name, and asks the fill for the vault, never for a wallet. Checked end-to-end
+against a live mainnet offer on a local fork with `pnpm --filter @dno/chain-adapter opensea:fork`
+on 2026-10-10 ([`docs/VAULT.md`](../../docs/VAULT.md#the-marketplaces-offers)).
 
 ### The vault in the index
 

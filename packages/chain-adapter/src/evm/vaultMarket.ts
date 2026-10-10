@@ -3,14 +3,14 @@ import { marketOfferFromJson, type MarketFulfillment, type MarketOffer, type Mar
 /**
  * The marketplace's offers, through the API: OpenSea's on mainnet, read with the API's key (it
  * never reaches the page). The offers on a token come as the board's do; the order that fills
- * one, signed by OpenSea's zone for `VaultOffers`, is asked right before `finalizeOffer`.
+ * one, signed by OpenSea's zone for the vault, is asked right before `finalizeOffer`.
  */
 export class VaultMarket {
   constructor(
     private readonly base: string,
     /** The marketplace's name: "opensea". */
     readonly name: string,
-    /** The address OpenSea signs the fills for: `VaultOffers`. */
+    /** The address OpenSea signs the fills for: the vault, which holds the NFT and sends the fill. */
     readonly fulfiller: string,
   ) {}
 

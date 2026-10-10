@@ -40,7 +40,7 @@ const order = (hash: string, paid: bigint, tokenId: string | null, units = "1", 
     },
     signature: "0x" + "ab".repeat(65),
   },
-  criteria: tokenId === null ? { collection: { slug: "bayc" }, contract: { address: COLLECTION }, trait: null } : undefined,
+  criteria: tokenId === null ? { collection: { slug: "bayc" }, contract: { address: COLLECTION }, traits: null, numeric_traits: null, encoded_token_ids: null } : undefined,
 });
 
 /** OpenSea's signed zone's extraData (SIP-7): version 0, the fulfiller, the expiration, a 64-byte signature, context. */
@@ -57,22 +57,18 @@ function fakeOpenSea(calls: { url: string; body?: unknown }[] = []) {
       calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
       const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
       if (url.includes("/chain/ethereum/contract/")) return json({ address: COLLECTION, collection: "bayc" });
-      if (url.includes("/orders/ethereum/seaport/offers")) {
-        return json({
-          orders: [
-            order("0x" + "01".repeat(32), 10n ** 18n, "1"),
-            { ...order("0x" + "02".repeat(32), 2n * 10n ** 18n, "1"), cancelled: true },
-            order("0x" + "03".repeat(32), 3n * 10n ** 18n, "1", "1", NOW - 1),
-            order("0x" + "04".repeat(32), 10n ** 18n, "2"),
-          ],
-        });
-      }
-      if (url.includes("/offers/collection/bayc/all")) {
+      if (url.endsWith("/offers/collection/bayc/nfts/1/best")) return json(order("0x" + "01".repeat(32), 10n ** 18n, "1"));
+      if (url.endsWith("/offers/collection/bayc/nfts/2/best")) return json({ errors: ["not found"] }, 404);
+      if (url.endsWith("/offers/collection/bayc")) {
         return json({
           offers: [
             order("0x" + "05".repeat(32), 4n * 10n ** 18n, null, "2"),
-            { ...order("0x" + "06".repeat(32), 9n * 10n ** 18n, null), criteria: { trait: { type: "Fur", value: "Gold" } } },
+            { ...order("0x" + "06".repeat(32), 9n * 10n ** 18n, null), criteria: { traits: [{ type: "Fur", value: "Gold" }], encoded_token_ids: "1,2,3" } },
+            { ...order("0x" + "02".repeat(32), 2n * 10n ** 18n, null), status: "cancelled" },
+            order("0x" + "03".repeat(32), 3n * 10n ** 18n, null, "1", NOW - 1),
+            order("0x" + "04".repeat(32), 10n ** 18n, "2"),
           ],
+          next: null,
         });
       }
       if (url.endsWith("/offers/fulfillment_data")) {
@@ -105,7 +101,7 @@ function fakeOpenSea(calls: { url: string; body?: unknown }[] = []) {
 }
 
 describe("OpenSeaOffers", () => {
-  it("lists the live WETH offers on a token and on its collection, best first, trait, dead and ended ones left out", async () => {
+  it("lists the best WETH offer on a token and the collection's, best first, trait, dead, ended and other tokens' ones left out", async () => {
     const sea = fakeOpenSea();
     const client = new OpenSeaOffers({ apiKey: "k", fetch: sea.fetch });
     const offers = await client.offers(COLLECTION, 1n, NOW);
@@ -116,7 +112,9 @@ describe("OpenSeaOffers", () => {
     expect(offers[1]!.parameters.consideration[0]!.identifierOrCriteria).toBe(1n);
     // The key goes in the header, never in the URL.
     expect(sea.calls.every((c) => !c.url.includes("k="))).toBe(true);
-    expect(sea.calls.map((c) => c.url)).toEqual(expect.arrayContaining([expect.stringContaining("/orders/ethereum/seaport/offers?asset_contract_address=" + COLLECTION), expect.stringContaining("/offers/collection/bayc/all")]));
+    expect(sea.calls.map((c) => c.url)).toEqual(expect.arrayContaining([expect.stringContaining("/chain/ethereum/contract/" + COLLECTION), expect.stringContaining("/offers/collection/bayc/nfts/1/best"), expect.stringMatching(/\/offers\/collection\/bayc$/)]));
+    // A token OpenSea has no offer on: the collection's still show.
+    expect((await client.offers(COLLECTION, 2n, NOW)).map((o) => o.orderHash)).toEqual(["0x" + "05".repeat(32), "0x" + "04".repeat(32)]);
   });
 
   it("asks OpenSea the order that fills an offer for the fulfiller, and encodes it with its criteria proof as finalizeOffer takes it", async () => {

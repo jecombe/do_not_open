@@ -6,8 +6,9 @@
  * OpenSea's signed zone: Seaport fills one only with `extraData` OpenSea's server signs for the
  * one address that fills it, for a few minutes. So the vault's page cannot read them from the
  * chain as it reads the board's, and the API, which holds the key, reads them for it: the offers
- * on a token (`offers`), and, right before `finalizeOffer`, the order with its signature for
- * `VaultOffers`' address (`fulfillment`). The key never reaches a browser.
+ * on a token (`offers`), and, right before `finalizeOffer`, the order with its signature for the
+ * vault's address (`fulfillment`: OpenSea signs for the NFT's holder, which must be the one that
+ * calls Seaport, so the vault sends the fill `VaultOffers` writes). The key never reaches a browser.
  *
  * Used by the API (`apps/api`), by the fork check (`scripts/opensea-fork.ts`: a live offer filled
  * by `VaultOffers` on a fork of mainnet) and, for the order's shape, by the EVM adapter. Nothing
@@ -141,14 +142,18 @@ export class OpenSeaOffers {
 
   /**
    * The live offers OpenSea holds for `tokenId` of `collection`, paid in WETH, that `VaultOffers`
-   * could fill: the offers on this token and the collection's (any token), trait offers left out,
-   * best first. What the buyer can pay is Seaport's to check when it fills.
+   * could fill: the best offer on this token and the collection's offers (any token; OpenSea's
+   * first page, its best), trait offers left out, best first. What the buyer can pay is Seaport's
+   * to check when it fills. OpenSea's API (read on 2026-10-10) lists a token's offers only as
+   * its best one; `/orders/{chain}/seaport/offers`, which listed them all, is gone (405).
    */
   async offers(collection: string, tokenId: bigint, now = Math.floor(Date.now() / 1000)): Promise<MarketOffer[]> {
-    const [items, whole] = await Promise.all([this.itemOffers(collection, tokenId), this.collectionOffers(collection)]);
+    const slug = await this.slugOf(collection);
+    if (!slug) return [];
+    const [best, whole] = await Promise.all([this.bestOffer(slug, tokenId), this.collectionOffers(slug)]);
     const seen = new Set<string>();
     const rows: MarketOffer[] = [];
-    for (const raw of [...items, ...whole]) {
+    for (const raw of [...best, ...whole]) {
       const offer = this.usable(raw, collection, tokenId, now);
       if (!offer || seen.has(offer.orderHash)) continue;
       seen.add(offer.orderHash);
@@ -159,8 +164,9 @@ export class OpenSeaOffers {
 
   /**
    * The order to fill offer `orderHash` with `tokenId` of `collection`, signed by OpenSea's zone
-   * for `fulfiller` (the contract that calls Seaport: `VaultOffers`): what `finalizeOffer` takes.
-   * Ask right before sending: the signature lasts minutes.
+   * for `fulfiller` (the NFT's holder, which calls Seaport: the vault): what `finalizeOffer`
+   * takes. OpenSea signs only for the address that holds the NFT. Ask right before sending: the
+   * signature lasts minutes.
    */
   async fulfillment(orderHash: string, protocolAddress: string, fulfiller: string, collection: string, tokenId: bigint): Promise<MarketFulfillment> {
     const data = (await this.call("/offers/fulfillment_data", {
@@ -178,16 +184,20 @@ export class OpenSeaOffers {
     return { offer: encodeAdvancedOrder(order, criteriaProof), expiresAt };
   }
 
-  private async itemOffers(collection: string, tokenId: bigint): Promise<RawOrder[]> {
-    const q = new URLSearchParams({ asset_contract_address: collection, token_ids: tokenId.toString(), order_by: "eth_price", order_direction: "desc", limit: "50" });
-    const data = (await this.call(`/orders/${this.chain}/seaport/offers?${q}`)) as { orders?: RawOrder[] };
-    return data.orders ?? [];
+  /** The best offer on one token (an item offer, or a criteria offer that takes it), or none. */
+  private async bestOffer(slug: string, tokenId: bigint): Promise<RawOrder[]> {
+    try {
+      const data = (await this.call(`/offers/collection/${encodeURIComponent(slug)}/nfts/${tokenId}/best`)) as RawOrder;
+      return data.order_hash ? [data] : [];
+    } catch (error) {
+      if (error instanceof OpenSeaError && error.status === 404) return [];
+      throw error;
+    }
   }
 
-  private async collectionOffers(collection: string): Promise<RawOrder[]> {
-    const slug = await this.slugOf(collection);
-    if (!slug) return [];
-    const data = (await this.call(`/offers/collection/${encodeURIComponent(slug)}/all?limit=100`)) as { offers?: RawOrder[] };
+  /** The collection's offers (on any of its tokens), OpenSea's first page: its best. */
+  private async collectionOffers(slug: string): Promise<RawOrder[]> {
+    const data = (await this.call(`/offers/collection/${encodeURIComponent(slug)}`)) as { offers?: RawOrder[] };
     return data.offers ?? [];
   }
 
@@ -214,8 +224,10 @@ export class OpenSeaOffers {
     const p = raw.protocol_data?.parameters;
     if (!raw.order_hash || !raw.protocol_address || !p) return null;
     if (raw.cancelled || raw.finalized || raw.marked_invalid) return null;
-    if (raw.remaining_quantity !== undefined && Number(raw.remaining_quantity) === 0) return null;
-    if (raw.criteria?.trait) return null;
+    if (raw.remaining_quantity !== undefined && raw.remaining_quantity !== null && Number(raw.remaining_quantity) === 0) return null;
+    if (typeof raw.status === "string" && DEAD.has(raw.status.toLowerCase())) return null;
+    const criteria = raw.criteria;
+    if (criteria?.trait || criteria?.traits?.length || criteria?.numeric_traits?.length || criteria?.encoded_token_ids) return null;
     let parameters: SeaportOrderParameters;
     try {
       parameters = orderParameters(p);
@@ -277,9 +289,14 @@ interface RawOrder {
   cancelled?: boolean;
   finalized?: boolean;
   marked_invalid?: boolean;
-  remaining_quantity?: number | string;
-  criteria?: { trait?: unknown } | null;
+  remaining_quantity?: number | string | null;
+  status?: string;
+  /** A criteria offer's scope: the collection, or some of its tokens (traits, or listed ids): those are left out. */
+  criteria?: { trait?: unknown; traits?: unknown[] | null; numeric_traits?: unknown[] | null; encoded_token_ids?: string | null } | null;
 }
+
+/** `status` values OpenSea gives an offer that will not fill. */
+const DEAD = new Set(["cancelled", "canceled", "expired", "filled", "fulfilled", "inactive", "invalid"]);
 
 const big = (v: unknown): bigint => BigInt(typeof v === "string" || typeof v === "number" || typeof v === "bigint" ? v : String(v));
 const str = (v: unknown): string => {

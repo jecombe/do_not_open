@@ -11,8 +11,8 @@ export interface OfferSource {
  * The marketplace's offers for the sealed vault's page: OpenSea's on mainnet, read with the
  * API's key, which never reaches a browser. The offers on a token are read once every
  * `ttl` seconds for everyone who asks (the page reads them when a box opens); the order that fills one,
- * signed by OpenSea's zone for `VaultOffers` (`fulfiller`) for a few minutes, is asked for each
- * fill, right before `finalizeOffer`. Nothing here learns who holds the box: it reads what
+ * signed by OpenSea's zone for the vault (`fulfiller`: the NFT's holder, which sends the fill to
+ * Seaport) for a few minutes, is asked for each fill, right before `finalizeOffer`. Nothing here learns who holds the box: it reads what
  * opensea.io shows anyone.
  */
 export class VaultMarket {
@@ -21,7 +21,7 @@ export class VaultMarket {
   constructor(
     readonly name: string,
     private readonly source: OfferSource,
-    /** The contract that fills the offers, which OpenSea signs for: `VaultOffers`. */
+    /** The address OpenSea signs the fills for: the vault, which holds the NFT and calls Seaport. */
     readonly fulfiller: string,
     private readonly clock: Clock,
     private readonly ttl = 15,

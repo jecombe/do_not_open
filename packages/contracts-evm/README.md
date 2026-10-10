@@ -127,7 +127,9 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   (anyone, and every request) marks it sold (the fee on `net`) or expired. `AcceptOffer` (`to` the payout address, `price` the least WETH the offer must
   net) runs only through `finalizeOffer(requestId, cleartexts, proof, offer)` with the order
   (`abi.encode(AdvancedOrder, bytes32[] criteriaProof)`): the vault checks it is the one bound
-  (`WrongOrder`), settles a dead one `Stale`, hands `VaultOffers` the box's NFT for one `fill`,
+  (`WrongOrder`), settles a dead one `Stale`, sends Seaport the fill `VaultOffers.fillCall`
+  writes (Seaport approved for that token and the order's WETH fee alone; the vault is the
+  caller, as OpenSea signs a fill for the NFT's holder), unwraps the WETH,
   takes the fee and pays the rest straight to `to`; a fill that only fails now reverts and the
   request waits (plain `finalize` reverts `NeedsOrder`). `Delegate` names one wallet for the NFT
   in delegate.xyz's Registry v2 (`delegateERC721`, every right; zero clears it), cleared when the
@@ -162,10 +164,13 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   ANY_TOKEN, orderHash, order)`: the on-chain offer board the page reads. `inspect` says whether
   an offer can still fill one token for at least a price; `fill` (`nonReentrant`) fills one
   token's share with the NFT its caller handed it (`fulfillAdvancedOrder`, criteria resolved to
-  that token), unwraps the WETH and sends the ETH back. Only WETH offer and fee items, fixed
-  amounts, no tips (`NotAnOffer`). OpenSea's own offers (its zone, its conduit, its 1% WETH
-  fee) fill through it unchanged: `dno:opensea-replay` replays a real mainnet fill with
-  `VaultOffers` in the filler's place (below). 8,470 bytes.
+  that token), unwraps the WETH and sends the ETH back; `fillCall(offer, collection, tokenId,
+  recipient)` writes that `fulfillAdvancedOrder` call and the WETH fee for the NFT's holder to
+  send itself, which is what the vault does (OpenSea's signed zone signs a fill for the address
+  that holds the NFT, and Seaport's caller must be that address). Only WETH offer and fee items,
+  fixed amounts, no tips (`NotAnOffer`). OpenSea's own offers (its zone, its conduit, its 1%
+  WETH fee) fill this way unchanged: `dno:opensea-replay` replays a real mainnet fill the
+  vault's way (below). 8,909 bytes.
 - **`SealedPockets`** — the vault's pockets: cUSDC held under encrypted 256-bit keys rather than
   addresses (constructor `(cUsdc, owner)`). `open(key, proof, viewer)`; `deposit(pockets[],
   target, amount, proof)` pulls the caller's cUSDC into the pocket of the set whose number is the
@@ -248,7 +253,7 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `SealedVault.deposit` (no decoy / each decoy more / 5 decoys) | ~450k to ~470k / ~230k / ~1.54M | ~83k / ~363k / ~1.90M (depth ~1.23M) |
 | `SealedVault.request` (any action) | ~291k to ~379k | ~191k |
 | `SealedVault.finalize` (a wrong key the least, a listing the most: since `VaultListings` one more contract call and the conduit's approval, one order item more per fee) | ~101k to ~606k | 0 |
-| `SealedVault.finalizeOffer` (one WETH offer filled, a fee paid, ETH sent; the most through OpenSea's zone and conduit) | ~145k to ~426k | 0 |
+| `SealedVault.finalizeOffer` (one WETH offer filled by the vault itself, a fee paid, ETH sent; the most through OpenSea's zone and conduit) | ~145k to ~400k | 0 |
 | `VaultListings.setFees` (the owner, per collection) | ~40k to ~98k | 0 |
 | `VaultOffers.post` (a buyer's offer validated and logged) | ~101k | 0 |
 | `SealedVault.sync` (expired / sold) | ~51k to ~113k | 0 |
@@ -276,9 +281,10 @@ takes ~97k gas; the vault ~5.18M to deploy (~5.5M before `VaultListings`), `Vaul
 ~1.45M, `VaultOffers` ~1.9M.
 
 Deployed size: `DoNotOpen` 24,442 bytes (limit 24,576; the token URIs live in `BoxMetadata`, 1,861, and the rules' views in `DoNotOpenConfig`, 2,968), `WhitelistGifts` 4,876, `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
-12,377, `SealedVault` 22,712 (1,864 under the limit, at the default optimizer; 24,322 and 254
-under before the listings' orders moved out: the next feature moves logic out first, as
-accepting offers did into `VaultOffers`, 8,470, and the listings into `VaultListings`, 6,336). To stay under
+12,377, `SealedVault` 23,650 (926 under the limit, at the default optimizer; 22,712 before it
+sent the offers' fills itself, 24,322 and 254 under before the listings' orders moved out: the
+next feature moves logic out first, as accepting offers did into `VaultOffers`, 8,909, and the
+listings into `VaultListings`, 6,336). To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.

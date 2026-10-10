@@ -27,7 +27,7 @@ flowchart LR
 | `src/pockets.ts` | `pocketSet`: the real pocket among decoys, as the contract wants a set |
 | `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultListings` (a listing's order, and whether OpenSea's zone gates it), `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`) for the version Seaport's `information()` reports, the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
-| `src/evm/vaultMarket.ts` | `VaultMarket`: finds the marketplace the API reads offers from (`GET /v1/vault/market`, OpenSea on mainnet), reads a token's offers (`GET /v1/vault/offers/:collection/:tokenId`) and asks the order that fills one, signed for `VaultOffers` (`POST /v1/vault/offers/fulfillment`), right before `finalizeOffer` |
+| `src/evm/vaultMarket.ts` | `VaultMarket`: finds the marketplace the API reads offers from (`GET /v1/vault/market`, OpenSea on mainnet), reads a token's offers (`GET /v1/vault/offers/:collection/:tokenId`) and asks the order that fills one, signed for the vault (`POST /v1/vault/offers/fulfillment`), right before `finalizeOffer` |
 | `src/opensea.ts` | OpenSea's API for the vault (`OpenSeaOffers`: a token's and its collection's WETH offers, the fulfillment of one signed by OpenSea's zone for a fulfiller), the Seaport order types and their abi encoding (`encodeAdvancedOrder`, `decodeAdvancedOrder`, as `finalizeOffer` takes them), the zone's `extraData` read (`zoneExpiration`, `zoneFulfiller`). Exported as `@dno/chain-adapter/opensea`, used by the API and by `scripts/opensea-fork.ts`; the key is the API's, never the page's |
 | `src/mock/MockVault.ts` | The vault in memory, with the contract's rules: the night shift holds two boxes, one listed on Seaport, buys a listing of yours after 20 mock seconds, offers 0.03 WETH for every NFT you seal and accepts any private sale offered to it. `MOCK_VAULT` and `MOCK_VAULT_NFT` (a free test collection) are exported |
 | `src/evm/uniswapV3.ts` | Reading the V3 pool like a constant-product one: `sqrtRatioAtTick` (a port of `TickMath`), `virtualReserves`, `rangePerThousand`. Exported as `@dno/chain-adapter/uniswap-v3`, also used by the API |
@@ -309,7 +309,7 @@ a box whose holder is encrypted. See [`docs/VAULT.md`](../../docs/VAULT.md).
 - `acceptOffer(boxId, orderHash, to)` is a request (`AcceptOffer`, the order hash bound to the
   key as `ref`, the offer's current net as the least it must fetch), finalized with
   `finalizeOffer` and the order: the board's, from its log; OpenSea's, asked of the API right
-  before the proof is sent (its signature for `VaultOffers` lasts minutes; `network` when the API
+  before the proof is sent (its signature for the vault lasts minutes; `network` when the API
   could not give it). The NFT goes to the buyer, the ETH, less the fee, to `to`. It
   returns the wei sent; throws `not-yours`, or `missed` when the offer is gone.
 - `delegate(boxId, wallet | null)` is a request too: it names the wallet acting for the box's
@@ -425,9 +425,11 @@ stand-in signature.
 the API side of accepting an OpenSea offer without deploying anything: it reads the token's
 live offers from OpenSea (`OpenSeaOffers`, with `OPENSEA_API_KEY` from `.env`), forks mainnet
 with anvil (`MAINNET_RPC_URL`, eth.drpc.org by default; the contracts compiled first), deploys
-`VaultOffers` on the fork and hands it the NFT from its holder, asks OpenSea the fill signed for
-that `VaultOffers`, and fills it: the NFT reaches the buyer, the WETH comes back unwrapped. Pick a
-token with offers on opensea.io.
+`VaultOffers` on the fork, has the NFT's mainnet holder play the vault (OpenSea signs a fill only
+for the address that holds the NFT, which must be Seaport's caller), asks OpenSea the fill signed
+for it, and sends Seaport the call `VaultOffers.fillCall` wrote from that holder: the NFT reaches
+the buyer, the WETH, less OpenSea's fee, comes to the holder. Pick a token with offers on
+opensea.io (BAYC #1 on 2026-10-10: 9.504 WETH net, 217,748 gas).
 
 ## What happens in a shake
 
