@@ -881,6 +881,21 @@ specific to the protocol:
 - **HCU.** A send between two full sets of five is ~6.5M HCU (depth ~2M), a deposit into five
   ~3.5M, a withdrawal from five ~4.3M; a desk purchase ~6.3M (depth ~3.3M), most of it the
   vault's own `acceptSale`. All under the 20M limit; see [VAULT.md](VAULT.md#cost).
+- **A group's size, measured (2026-10-11).** `MAX_SET` is a constructor immutable now (2 to 12).
+  Every pocket named costs about 0.65M HCU a side on a send (one `eq` on a `euint256`, one `ge`,
+  two `and`s, a `select`, a `sub`, an `add`), 0.46M on a deposit, 0.64M on a withdrawal. Full
+  groups of 8 / 10 / 12: a send 10.4M / 13.0M / 15.6M HCU (depth 3.0M / 3.7M / 4.4M), a deposit
+  4.9M / 5.8M / 6.7M, a withdrawal 6.5M / 8.0M / 9.4M. Twelve is the ceiling under 20M (and 5M
+  depth) with room for the savings' `save` (about 1.4M a pocket); the next deployment takes ten.
+- **Side addresses read their own balance.** A stealth or entry address
+  ([VAULT.md](VAULT.md#doors-stealth-exits-and-entry-addresses)) reads its cUSDC balance with
+  its own key, as any holder of an ERC-7984 token may: the adapter signs a user-decryption permit
+  as that wallet naming the token alone (`permitFor(..., reading)`), since the viewer's list of
+  the vault's contracts does not include the tokens and a permit takes 10 at most. Its deposit
+  into the pocket is encrypted in the page with the wallet's permit (and credits) for the side
+  address as the contract's caller: `createEncryptedInput(pockets, sideAddress)`, the same way
+  a desk purchase encrypts for the desk. Nothing of the stealth scheme touches the FHE: the
+  addresses are secp256k1 arithmetic in the page, the announcements plain events.
 - **Other confidential tokens.** cUSDT, cWETH and cZAMA, Zama's ERC-7984 wrappers from its
   Confidential Token Wrappers Registry (`0x2f0750Bbb0A246059d80e94c454586a7F27a128e` on
   Sepolia), each have a `SealedPockets` of their own, without a desk: `SealedPockets_cUSDT`

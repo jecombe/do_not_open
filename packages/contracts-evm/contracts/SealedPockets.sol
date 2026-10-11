@@ -21,11 +21,14 @@ import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984
 ///     the same signature as the key, used only to read the balance (user decryption). Nothing
 ///     on-chain ties the viewer to the holder's wallet.
 ///
-///  2. Every action names a set of pockets, not one: the real one and decoys (existing pockets the
-///     page picks at random). Sending debits the set's pocket whose key matches, credits the
-///     receiving set's pocket whose number matches an encrypted target, and gives every other
-///     pocket of both sets a new handle for the same balance. Everyone sees which pockets were
-///     named; nobody sees which ones moved, nor by how much.
+///  2. Every action names a set of pockets, not one: the real one's fixed group of `MAX_SET` by
+///     number, the same every time, so comparing a pocket's sets tells its group and no more
+///     (`MAX_SET` is chosen at deployment and measured in test/SealedPockets.ts: every pocket
+///     named costs one more comparison and select under encryption). Sending debits the set's
+///     pocket whose key matches, credits the receiving set's pocket whose number matches an
+///     encrypted target, and gives every other pocket of both sets a new handle for the same
+///     balance. Everyone sees which pockets were named; nobody sees which ones moved, nor by how
+///     much.
 ///
 ///  3. A spend is asked with the key XOR `spendHash(...)`, the hash of the action, both sets, the
 ///     destination and the handles of the encrypted amount and target. A relayer (or any wallet)
@@ -66,8 +69,13 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
         address viewer;
     }
 
-    /// @notice The most pockets one side of an action may name, the real one included.
-    uint256 public constant MAX_SET = 5;
+    /// @notice The most pockets one side of an action may name, the real one included: a group's
+    ///         size, fixed at deployment (`MIN_MAX_SET` to `MAX_MAX_SET`). A pocket hides among its
+    ///         group, so a larger group hides better and costs more: every pocket named is one
+    ///         more FHE comparison and select (about 0.7M HCU a pocket a side on a send).
+    uint256 public immutable MAX_SET;
+    uint256 public constant MIN_MAX_SET = 2;
+    uint256 public constant MAX_MAX_SET = 12;
 
     IERC7984 public immutable token;
     /// @notice Pays and is paid for the vault's private sales out of pockets. Set once.
@@ -90,6 +98,7 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     error OnlyDesk();
     error DeskSet();
     error SavingsSet();
+    error BadMaxSet(uint256 maxSet);
 
     event Opened(uint256 indexed pocketId, address indexed viewer);
     /// @notice `from` put tokens in one of `pockets`; which one, and how much, is encrypted.
@@ -101,9 +110,11 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     event DeskSetTo(address desk);
     event SavingsSetTo(address savings);
 
-    constructor(IERC7984 token_, address owner_) Ownable(owner_) {
+    constructor(IERC7984 token_, address owner_, uint256 maxSet_) Ownable(owner_) {
         if (address(token_) == address(0)) revert ZeroAddress();
+        if (maxSet_ < MIN_MAX_SET || maxSet_ > MAX_MAX_SET) revert BadMaxSet(maxSet_);
         token = token_;
+        MAX_SET = maxSet_;
     }
 
     /// @notice Opens a pocket locked by `key` (encrypted for this contract), whose balance `viewer`

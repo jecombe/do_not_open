@@ -1,7 +1,8 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { POCKET_TOKENS, pocketsDeployment } from "../lib/pocketTokens";
+import { POCKET_TOKENS, POCKETS_MAX_SET, pocketsDeployment } from "../lib/pocketTokens";
 import { SAVINGS_BATCHERS, TEST_DEPOSIT_RATE, TEST_REDEEM_RATE, TEST_SHARE_PRICE } from "../lib/savings";
+import { STEALTH } from "../lib/stealth";
 
 /**
  * The vault's pockets: cUSDC in pockets locked by a key, not an address (SealedPockets), the
@@ -10,7 +11,9 @@ import { SAVINGS_BATCHERS, TEST_DEPOSIT_RATE, TEST_REDEEM_RATE, TEST_SHARE_PRICE
  * (PocketSavings, on the batchers of lib/savings.ts; test batchers, a test share and a test
  * yield vault on a local network, funded to pay their claims).
  * Then one SealedPockets for each of Zama's other confidential tokens on the network
- * (lib/pocketTokens.ts: cUSDT, cWETH, cZAMA on Sepolia), without a desk.
+ * (lib/pocketTokens.ts: cUSDT, cWETH, cZAMA on Sepolia), without a desk. The pockets' exits go
+ * to stealth addresses through ERC-5564's announcer and ERC-6538's registry (lib/stealth.ts),
+ * deployed once for everyone on Sepolia and mainnet; a local network gets test ones.
  * Runs after the vault and redeploys nothing else: `--tags Pockets` adds them next to a live vault.
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -21,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const cUsdc = await read("SealedVault", "confidentialUsdc");
 
   // Owned by the deployer until the desk is set, then by the owner.
-  const pockets = await deploy("SealedPockets", { from: deployer!, args: [cUsdc, deployer], log: true });
+  const pockets = await deploy("SealedPockets", { from: deployer!, args: [cUsdc, deployer, POCKETS_MAX_SET], log: true });
   const desk = await deploy("PocketDesk", { from: deployer!, args: [pockets.address, vault.address], log: true });
   if ((await read("SealedPockets", "desk")) === "0x0000000000000000000000000000000000000000") {
     await execute("SealedPockets", { from: deployer!, log: true }, "setDesk", desk.address);
@@ -52,10 +55,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if ((await read("SealedPockets", "owner")).toLowerCase() !== owner.toLowerCase()) {
     await execute("SealedPockets", { from: deployer!, log: true }, "transferOwnership", owner);
   }
-  console.log(`SealedPockets: ${pockets.address} (cUSDC ${cUsdc}), PocketDesk: ${desk.address} (vault ${vault.address}), PocketSavings: ${savings.address} (${batchers.vault})`);
+  console.log(`SealedPockets: ${pockets.address} (cUSDC ${cUsdc}, groups of ${POCKETS_MAX_SET}), PocketDesk: ${desk.address} (vault ${vault.address}), PocketSavings: ${savings.address} (${batchers.vault})`);
+
+  if (!STEALTH[hre.network.name]) {
+    await deploy("TestStealthAnnouncer", { from: deployer!, args: [], log: true });
+    await deploy("TestStealthRegistry", { from: deployer!, args: [], log: true });
+  }
 
   for (const { symbol, token } of POCKET_TOKENS[hre.network.name] ?? []) {
-    const more = await deploy(pocketsDeployment(symbol), { contract: "SealedPockets", from: deployer!, args: [token, owner], log: true });
+    const more = await deploy(pocketsDeployment(symbol), { contract: "SealedPockets", from: deployer!, args: [token, owner, POCKETS_MAX_SET], log: true });
     console.log(`SealedPockets (${symbol}): ${more.address} (token ${token})`);
   }
 };

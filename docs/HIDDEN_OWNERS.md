@@ -220,12 +220,18 @@ name them. See [VAULT.md](VAULT.md).
 The same idea for tokens. ERC-7984 already hides balances and amounts; `SealedPockets` hides
 the address graph too. A pocket is a number with an encrypted key and balance, read by a viewer
 address the holder's page derives from one signature, so no wallet is ever tied to it. Every
-deposit, send and withdrawal names a set of pockets (the real one's fixed group of five by
-number, the same every time, so comparing a pocket's sets tells its group and no more) and decides
+deposit, send and withdrawal names a set of pockets (the real one's fixed group by number,
+`MAX_SET` apiece, fixed at deployment, five on the pockets deployed so far and ten on the next;
+the same every time, so comparing a pocket's sets tells its group and no more) and decides
 under encryption which one moves and by how much: no decryption, one transaction. What leaks:
-the wallet behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
+the address behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
 address, and for a box bought from a pocket (`PocketDesk`) the reserved pocket and the ask's yes
-or no. The box then sits with the desk, a holder all pockets share. cUSDT, cWETH and cZAMA have
+or no. The two addresses that remained a person's, a withdrawal's and a deposit's, have doors
+([VAULT.md](VAULT.md#doors-stealth-exits-and-entry-addresses)): a withdrawal pays a stealth
+address (ERC-5564) that only the payee's keys spend or recognise, announced by the relayer; a
+deposit comes from an entry address derived from the holder's signature and fed from outside (a
+privacy pool, an exchange), which empties itself into the pocket. Both are nobody's on-chain;
+the page derives their keys from the pocket signature and stores nothing. The box then sits with the desk, a holder all pockets share. cUSDT, cWETH and cZAMA have
 pockets of their own: which token an action moves is public, never whose pocket moved; a wallet's
 pockets of different tokens have different viewers, so nothing ties them together. See
 [VAULT.md](VAULT.md#pockets).

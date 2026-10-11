@@ -174,16 +174,19 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   WETH fee) fill this way unchanged: `dno:opensea-replay` replays a real mainnet fill the
   vault's way (below). 8,909 bytes.
 - **`SealedPockets`** — the vault's pockets: cUSDC held under encrypted 256-bit keys rather than
-  addresses (constructor `(cUsdc, owner)`). `open(key, proof, viewer)`; `deposit(pockets[],
+  addresses (constructor `(cUsdc, owner, maxSet)`, `maxSet` a group's size, 2 to 12, fixed for
+  good: `POCKETS_MAX_SET` at deploy, 10 by default, 5 on the pockets deployed so far). `open(key, proof, viewer)`; `deposit(pockets[],
   target, amount, proof)` pulls the caller's cUSDC into the pocket of the set whose number is the
   encrypted target (the rest refunded); `send(from[], to[], input)` and `withdraw(from[], to,
   input)` take a `SpendInput` (amount and target under one proof, the key XOR `spendHash(...)`
   under another) and move `select(key matches and balance covers, amount, 0)`, with no
-  decryption. Sets of 1 to 5 pockets, increasing; a bound key's handle is `spent` once. `desk`
+  decryption. Sets of 1 to `MAX_SET` pockets, increasing; a bound key's handle is `spent` once. `desk`
   and `savings` (each set once by the owner) may `deskCheck`, `deskTake` and `deskGive`. The same contract also
   holds Zama's other confidential tokens, one instance each and no desk (`SealedPockets_cUSDT`,
-  `_cWETH`, `_cZAMA` on Sepolia, from `lib/pocketTokens.ts`). See
-  [`docs/VAULT.md`](../../docs/VAULT.md#pockets).
+  `_cWETH`, `_cZAMA` on Sepolia, from `lib/pocketTokens.ts`). The pockets' doors (stealth exits
+  and entry addresses) use ERC-5564's announcer and ERC-6538's registry as deployed for everyone
+  (`vault/IStealth.sol`, `lib/stealth.ts`; `mocks/TestStealth.sol` stands in on a local network):
+  no contract of ours. See [`docs/VAULT.md`](../../docs/VAULT.md#pockets).
 - **`PocketDesk`** (`contracts/vault/`) — buys the vault's private sales out of pockets
   (constructor `(pockets, vault)`; it makes the vault its cUSDC operator). The seller offers a
   box to the desk and `reserve(saleId, pocket)`s it; the buyer `ask`s (the key and the balance
@@ -291,6 +294,7 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `SealedPockets.deposit` (set of 1 / 3 / 5) | ~835k / ~1.03M / ~1.24M | ~1.63M / ~2.56M / ~3.48M |
 | `SealedPockets.send` (1 / 3 / 5 pockets a side) | ~541k / ~1.08M / ~1.61M | ~1.32M / ~3.92M / ~6.52M (depth ~1.97M) |
 | `SealedPockets.withdraw` (set of 1 / 3 / 5) | ~696k / ~970k / ~1.27M | ~1.36M / ~2.82M / ~4.29M |
+| `SealedPockets.deposit` / `send` / `withdraw`, full groups of 10 | ~1.78M / ~2.96M / ~2.01M | ~5.78M / ~13.0M (depth ~3.67M) / ~7.96M; groups of 12: ~6.70M / ~15.6M (depth ~4.37M) / ~9.42M |
 | `PocketDesk.ask` / `buy` | ~432k / ~2.68M | ~0.37M / ~6.28M (depth ~3.28M) |
 | `PocketSavings.save` (set of 1 / 3 / 5) | ~855k / ~1.81M / ~2.76M | ~1.33M / ~4.25M / ~7.16M (depth ~0.64M / ~1.07M / ~1.51M) |
 | `PocketSavings.join` / `settle` | ~547k / ~454k | ~0.59M / ~2.51M (depth ~0.37M / ~2.29M) |
@@ -329,7 +333,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 356 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's, Seaport 1.6's with OpenSea's conduit, and delegate.xyz's bytecode), its pockets and their savings (against test batchers that play Zama's)
+pnpm test                 # 361 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's, Seaport 1.6's with OpenSea's conduit, and delegate.xyz's bytecode), its pockets and their savings (against test batchers that play Zama's)
 
 # Local walkthrough
 pnpm chain                # terminal 1

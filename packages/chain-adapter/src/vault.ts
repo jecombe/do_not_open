@@ -292,6 +292,73 @@ export interface PocketSavingsAdapter {
 }
 
 /**
+ * An address next to the wallet whose key the page holds and nothing on-chain ties to the wallet:
+ * a stealth address a pocket paid for the wallet's meta-address (ERC-5564), or the fresh address
+ * the wallet feeds its pocket from. Its balances are read with its own key.
+ */
+export interface SideAddress {
+  address: Address;
+  /** `stealth`: announced for the wallet's meta-address; `entry`: derived from the wallet's signature, to be funded from outside. */
+  kind: "stealth" | "entry";
+  /** The confidential token it holds, in the token's units. */
+  sealed: bigint;
+  /** The plain ERC-20 it holds (USDC for cUSDC), in the plain token's units: collected after a wrap. */
+  plain: bigint;
+  /** ETH in wei: what pays the transactions it sends itself. */
+  gas: bigint;
+  /** Whether `gas` covers a collect (`PocketDoorsInfo.gasNeeded`). */
+  fueled: boolean;
+  /** The entry address's index: the first one never used. */
+  index?: number;
+  /** The block the stealth payment was announced in. */
+  block?: number;
+}
+
+export interface PocketDoorsInfo {
+  /** ERC-5564's announcer and ERC-6538's registry on this chain. */
+  announcer: Address;
+  registry: Address;
+  /** ETH a side address needs to collect what it holds into the pocket, in wei, at today's gas price. */
+  gasNeeded: bigint;
+  /** What the API's relayer gives a side address once, in wei, so it can collect; null when it gives none. */
+  fuel: bigint | null;
+}
+
+/**
+ * The pockets' doors: the way out to a fresh address and the way in from one. A withdrawal pays
+ * a stealth address (ERC-5564): drawn for the wallet's own meta-address, or for a payee's, and
+ * announced so the payee's page finds it; the address shows, as any withdrawal's does, but
+ * nothing ties it to anyone. The way in is an entry address derived from the wallet's signature:
+ * funded from outside (a privacy pool such as Privacy Pools, an exchange) and emptied into the
+ * pocket as itself, so the deposit names an address that never was the wallet's. Both kinds are
+ * side addresses: the page derives their keys from the pocket signature, stores nothing, and
+ * finds them again on any device.
+ */
+export interface PocketDoorsAdapter {
+  info(): Promise<PocketDoorsInfo>;
+  /** The wallet's stealth meta-address (`st:eth:0x…`): what a payer makes stealth addresses from. One signature a session. */
+  metaAddress(opts?: ActionOptions): Promise<string>;
+  /** Whether the wallet published its meta-address in the registry, where a payer finds it by the wallet's address. */
+  published(opts?: ActionOptions): Promise<boolean>;
+  /** Publishes it: a wallet transaction, public (it ties the meta-address to the wallet, never the stealth addresses). */
+  publish(opts?: ActionOptions): Promise<void>;
+  /** A payee as typed: a meta-address, or a wallet address whose meta-address is in the registry. Null: nobody to pay stealthily. */
+  resolve(text: string): Promise<string | null>;
+  /** Takes `amount` out of the wallet's pocket to a fresh stealth address of `to` (the wallet's own when left out) and
+   *  announces it. Returns the address paid. Moves nothing (no error) when the balance is short. */
+  withdrawStealth(amount: bigint, to?: string | null, opts?: PocketOptions): Promise<Address>;
+  /** Stealth addresses announced for the wallet, newest first, with what they hold. */
+  inbox(opts?: ActionOptions): Promise<SideAddress[]>;
+  /** The wallet's current entry address: the first never used, with what it holds so far. */
+  entry(opts?: ActionOptions): Promise<SideAddress>;
+  /** Puts everything a side address holds into the wallet's pocket, as that address (wrapping the plain token first):
+   *  it needs `gasNeeded` of ETH there. Throws `insufficient-funds` otherwise. */
+  collect(address: Address, opts?: PocketOptions): Promise<void>;
+  /** Asks the relayer for `fuel` on a side address, once, so it can collect. Throws when there is no relayer or it gives none. */
+  fuel(address: Address, opts?: ActionOptions): Promise<void>;
+}
+
+/**
  * The connected wallet's pocket. Its key and the address that reads its balance (its viewer)
  * both come from one wallet signature, so nothing is stored and the same wallet finds its pocket
  * on any device. Spends are relayed when the API has a relayer: the wallet's address shows on
@@ -340,6 +407,8 @@ export interface PocketsAdapter {
   boxes(): Promise<number[]>;
   /** The pocket's savings, where they are deployed: the vault's cUSDC pockets only. */
   savings(): PocketSavingsAdapter | null;
+  /** The pockets' doors (stealth exits, entry addresses), where ERC-5564's contracts are known. */
+  doors(): PocketDoorsAdapter | null;
 }
 
 export interface VaultAdapter {

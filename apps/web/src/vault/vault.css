@@ -2461,3 +2461,82 @@ a.vault-me:hover {
 .tour-vault.is-still .tour-card {
   animation: none;
 }
+
+/* The pockets' doors: the wallet's stealth meta-address, what fresh addresses received, and the
+   entry address to feed the pocket from outside. */
+.vault-pocket-doors {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgb(43 170 150 / 0.08), transparent 55%), var(--panel);
+}
+
+.vault-pocket-doors h3 {
+  margin: 0;
+  font: 700 18px/1.1 var(--stencil);
+}
+
+.vault-pocket-doors h4 {
+  margin: 0;
+  font: 700 14px/1.2 var(--stencil);
+}
+
+.vault-pocket-doors .vault-meta {
+  margin: 0;
+}
+
+.vault-doors-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--panel-2, transparent);
+}
+
+.vault-doors-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+}
+
+.vault-doors-line code {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 12px var(--mono);
+}
+
+.vault-doors-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-doors-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+
+.vault-doors-list li .vault-meta {
+  flex-basis: 100%;
+}
+
+.vault-doors-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

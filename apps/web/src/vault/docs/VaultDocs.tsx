@@ -34,8 +34,8 @@ const CONTRACTS = [
 /** The manual's animated flow of a withdrawal through the relayer. */
 const VAULT_FLOW = ["vault"] as const;
 
-const PUBLIC = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"] as const;
-const HIDDEN = ["1", "2", "3", "4", "5", "6", "7"] as const;
+const PUBLIC = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] as const;
+const HIDDEN = ["1", "2", "3", "4", "5", "6", "7", "8"] as const;
 
 /**
  * The sealed vault's documentation, at `/docs` on `vault.`: for holders and buyers, no code.
@@ -77,7 +77,18 @@ export function VaultDocs() {
     private: <Prose>{[t("vaultDocs.private.p1"), t("vaultDocs.private.p2"), t("vaultDocs.private.p3")]}</Prose>,
     pockets: (
       <Prose>
-        {[t("vaultDocs.pockets.p1"), t("vaultDocs.pockets.p2"), t("vaultDocs.pockets.p3"), t("vaultDocs.pockets.p4"), t("vaultDocs.pockets.p5"), t("vaultDocs.pockets.p6"), t("vaultDocs.pockets.p7"), t("vaultDocs.pockets.p8")]}
+        {[
+          t("vaultDocs.pockets.p1"),
+          t("vaultDocs.pockets.p2"),
+          t("vaultDocs.pockets.p3"),
+          t("vaultDocs.pockets.p4"),
+          t("vaultDocs.pockets.p5"),
+          t("vaultDocs.pockets.p6"),
+          t("vaultDocs.pockets.p7"),
+          t("vaultDocs.pockets.p8"),
+          t("vaultDocs.pockets.p9"),
+          t("vaultDocs.pockets.p10"),
+        ]}
       </Prose>
     ),
     savings: (

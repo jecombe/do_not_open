@@ -70,7 +70,7 @@ delegation; the first, `0x8B07846CaB181E1D010D2a9E39d7FDF60087fb18` (2026-10-08,
 11872753), took one request per box and moved the nonce on with every request (see Decisions).
 
 The pockets (`SealedPockets`, and `PocketDesk` that buys private sales out of them) are done on
-the mock and in the tests (45 contract tests in `test/SealedPockets.ts`, 6 more running the
+the mock and in the tests (47 contract tests in `test/SealedPockets.ts`, 9 more running the
 adapter against them), and on Sepolia since 2026-10-09, redeployed with the vault three times on 2026-10-10
 (the desk is bound to its vault, and a pockets contract takes one desk for good): `SealedPockets`
 at `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` (block 11885991, owner
@@ -86,6 +86,15 @@ can still withdraw from those contracts. On the pockets of 2026-10-10, `pnpm --f
 are on Sepolia since 2026-10-09 too (blocks 11878756 to 11878758; `POCKET_TOKEN=cZAMA` runs the
 same smoke test on one of them; it passed there with cZAMA and with cWETH, 1 WETH of 18 decimals
 wrapped to 1 cWETH of 6). See [Pockets](#pockets) and [Other tokens](#other-tokens).
+
+The pockets' doors (stealth exits and entry addresses, [Doors](#doors-stealth-exits-and-entry-addresses))
+are done on the mock and in the tests (3 adapter scenarios in `test/PocketsAdapter.ts` against
+ERC-5564's and ERC-6538's test contracts): they need no new contract of ours, as the announcer
+and the registry are deployed once for everyone on Sepolia and mainnet, and the live pockets take
+them as they are; the API's relayer announces the payments and fuels a side address once
+`POCKET_FUEL_WEI` is set. A group's size is now a deployment parameter (`MAX_SET`, 2 to 12,
+measured: a send between two full groups of 12 costs 15.6M HCU of the 20M allowed), 5 on the
+pockets deployed so far and 10 by default for the next ones (`POCKETS_MAX_SET`).
 
 The pockets' savings (`PocketSavings`: a pocket's cUSDC put to work in one of Zama's
 confidential vaults on Morpho, and brought back, as one participant of Zama's batches) are done
@@ -106,7 +115,9 @@ redeployed with them (`SealedPockets` takes its savings once, as it takes its de
 | `vault/IDelegateRegistry.sol` | The slice of delegate.xyz's Delegate Registry v2 the vault uses (`delegateERC721`, `checkDelegateForERC721`). The registry is at `0x00000000000000447e69651d841bD8D104Bed493` on Ethereum, Sepolia and most other chains |
 | `vault/IWETH.sol` | Wrapped ether (`deposit`, `withdraw`): what offers pay in |
 | `mocks/TestWETH.sol` | Local networks only: WETH as WETH9 does it |
-| `SealedPockets` | The pockets: one confidential token (cUSDC; cUSDT, cWETH and cZAMA in instances of their own, without a desk) held under encrypted 256-bit keys, not addresses. `open`, `deposit` (from a wallet, into one pocket of a set), `send` (from one pocket of a set to one pocket of another, the key bound to the terms), `withdraw` (to any address, as cUSDC), and `deskTake`, `deskCheck`, `deskGive` for the desk and the savings only. No decryption anywhere: every spend settles under encryption in one transaction. `ZamaEthereumConfig`, `Ownable` (only to set the desk and the savings, each once), `ReentrancyGuard`. 9,393 bytes |
+| `SealedPockets` | The pockets: one confidential token (cUSDC; cUSDT, cWETH and cZAMA in instances of their own, without a desk) held under encrypted 256-bit keys, not addresses. `open`, `deposit` (from a wallet, into one pocket of a set), `send` (from one pocket of a set to one pocket of another, the key bound to the terms), `withdraw` (to any address, as cUSDC), and `deskTake`, `deskCheck`, `deskGive` for the desk and the savings only. No decryption anywhere: every spend settles under encryption in one transaction. A group's size, `MAX_SET` (2 to 12), is fixed at deployment. `ZamaEthereumConfig`, `Ownable` (only to set the desk and the savings, each once), `ReentrancyGuard`. 9,393 bytes |
+| `vault/IStealth.sol` | The slices of ERC-5564 (the announcer: `announce`, `Announcement`) and ERC-6538 (the registry: `registerKeys`, `stealthMetaAddressOf`) the pockets' doors use, deployed once for everyone at `0x55649E01B5Df198D18D95b5cc5051630cfD45564` and `0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538` on Ethereum, Sepolia and most other chains (`lib/stealth.ts`). Nothing of ours is deployed for them |
+| `mocks/TestStealth.sol` | Local networks only: `TestStealthAnnouncer` and `TestStealthRegistry`, the two contracts as the reference ones behave |
 | `vault/PocketDesk.sol` | Buys the vault's private sales out of pockets. A seller offers a box to the desk and `reserve`s the sale for a pocket; its holder `ask`s (the key and the balance checked under encryption, one bit made public), then `buy`s with the proof: the desk takes the price from the pocket, accepts the sale on the vault, and hands back any refund. The box stays with the desk, its vault key the buyer's. Holds tokens only during `buy`, never sells |
 | `vault/PocketSavings.sol` | The pockets' savings: a pocket's cUSDC put to work in one of Zama's confidential vaults on Morpho, and brought back. `save(from[], input)` and `unsave(from[], input)` (a set of pockets and the key XOR `saveHash(side, set, amount handle)`; `deskTake` on a save, `deskCheck` and the pocket's share balance on an unsave) put commitments in the open window of their side; `join(side)`, `settle(windowId)` and `settlePockets(windowId, ids[])` are permissionless: one window joins each of Zama's batches as one participant, claims (or recovers) once the batch is done, and hands each pocket `committed × rate / 1e6`, computed on 128 bits, as shares or as cUSDC back in the pocket. Shares never leave it: `sharesOf(pocket)` is read by the pocket's viewer only. `ZamaEthereumConfig`, `ReentrancyGuard`, no owner. 10,773 bytes |
 | `vault/IVaultBatcher.sol` | The slice of Zama's `DepositVaultBatcherConfidential` / `RedeemVaultBatcherConfidential` (OpenZeppelin's `BatcherConfidential`) the savings use: `join`, `claim`, `recover`, `currentBatchId`, `batchState`, `exchangeRate`, `fromToken`, `toToken`, `vault`, `minBatchAge`, `paused` |
@@ -601,8 +612,9 @@ wallet appears in none of it. The design notes at the top of
 decryption permits and never a transaction. Nothing is stored: `pocketOf(viewer)` finds the
 pocket again on any device. A wallet has one pocket per token (see [Other tokens](#other-tokens)).
 
-**Groups, not pockets.** Every action names a set of pockets (`MAX_SET`, 5 at most, in increasing
-order, all opened): the real one's group, always the same. Pockets make groups of `MAX_SET` by
+**Groups, not pockets.** Every action names a set of pockets (`MAX_SET` at most, in increasing
+order, all opened; `MAX_SET` is fixed at deployment, 5 on the pockets deployed so far, 10 by
+default for the next ones): the real one's group, always the same. Pockets make groups of `MAX_SET` by
 number (0 to 4, 5 to 9...; `pocketGroup`, `pocketSet`), and every action of a pocket names its
 whole group, so a set says which group acted and never which pocket, however many of a pocket's
 actions are compared. The page first picked decoys at random among every pocket: that hides one
@@ -691,6 +703,76 @@ readable by the buyers' viewers) tells the page which bought boxes are its pocke
 price, less the fee, from the seller's cUSDC. The deposit names the seller's wallet, as any
 deposit does.
 
+### Doors: stealth exits and entry addresses
+
+Two things still tie a pocket to a person: the address a withdrawal pays, and the wallet a
+deposit comes from. The doors cut both, with no new contract of ours: the page holds keys for
+addresses that are nobody's on-chain (`EvmPocketDoors`, `PocketDoorsAdapter`, `doors()` on a
+token's pockets), derived from the same pocket signature as the key and the viewer, so nothing is
+stored and the same wallet finds them again anywhere.
+
+**Out: stealth addresses (ERC-5564, scheme 1).** The wallet has a *stealth meta-address*: two
+public keys, spending and viewing (`keccak256(signature, "stealth-spend")` and `"stealth-view"`,
+`st:eth:0x` + 66 bytes). To pay it, a payer draws an ephemeral key, computes a shared secret with
+the viewing key (ECDH on secp256k1), and pays `address(spendingPub + keccak256(secret) × G)`: an
+address only the holder of the spending key can spend (`spendingKey + keccak256(secret)`) and only
+the holder of the viewing key can recognise. The ephemeral public key and a one-byte *view tag*
+(the secret's first byte) go on ERC-5564's announcer, so the payee's page scans announcements
+cheaply (one hash turns most strangers' away). The pockets' withdrawal takes any address, so a
+stealth withdrawal is a plain `withdraw` to that address, then an `announce` the relayer sends
+(`stealthAnnounce`); the page's inbox reads the announcer's `Announcement` logs whose caller is the
+relayer or the wallet (what the page's own payments go through; a payment announced by another
+sender is not seen), keeps those its viewing key opens, and reads each address's confidential
+balance with that address's own key (the token lets a holder read its balance; the adapter makes
+that wallet a permit naming the token alone). An empty address in the page's withdrawal form means
+"a fresh address of mine"; a meta-address, or a wallet address that published one in ERC-6538's
+registry (`registerKeys`, one public wallet transaction, `publish`), means "a fresh address of
+theirs"; any other address is paid in the open as before. The announcement's metadata follows the
+ERC's convention for a token payment (view tag, `transfer` selector, the token, an amount) with
+the amount at zero: it is encrypted.
+
+**In: entry addresses.** `keccak256(signature, "entry:" + i)` is the key of entry address `i`;
+the current one is the first that never sent a transaction (`getTransactionCount` is 0). The
+holder funds it from outside, in plain USDC (and a little ETH): a privacy pool such as Privacy
+Pools, an exchange, another person. Nothing on-chain says whose it is. `collect` then has the
+address act as itself: `approve` and `wrap` the plain token, `setOperator` for the pockets, and
+`deposit` into the holder's pocket among its group, the amount and target encrypted with the
+wallet's permit for the entry address as the contract's caller (`inputUser`). The deposit names
+the entry address, never the wallet. Once used (its nonce moved), the page shows the next one.
+Stealth addresses the wallet received are collected the same way (without the wrap when they
+hold the confidential token already).
+
+**Gas for a side address.** An address that acts as itself needs ETH. A collect costs 2.6M gas at
+most (approve, wrap, setOperator, a deposit into a full group); `PocketDoorsInfo.gasNeeded` is
+that at the day's fee with a 20% margin, and each side address says whether it is `fueled`. The
+holder may send ETH there from anywhere that is not their wallet, or ask the relayer: `fuel`
+sends `POCKET_FUEL_WEI` once to an address that never sent a transaction, holds less than the
+fuel, and either was paid by a pocket (a `Withdrawn` to it on any of the pockets' contracts) or
+holds at least `POCKET_FUEL_MIN_USDC` of the plain token (an entry address fed from outside).
+The two conditions keep the fuel from being farmed with fresh addresses; the relayer's daily
+cap and per-IP rate limit apply as to every relay. With `POCKET_FUEL_WEI` at 0 (the default) the
+relayer gives none and the page says to send ETH oneself.
+
+```mermaid
+sequenceDiagram
+  actor W as Holder's page
+  participant R as Relayer
+  participant P as SealedPockets
+  participant A as ERC-5564 announcer
+  participant C as cUSDC
+  W->>W: stealth address for my meta-address (ephemeral key, view tag)
+  W->>R: withdraw(my group, stealth address, amount, key XOR spendHash)
+  R->>P: withdraw
+  P->>C: confidentialTransfer(stealth address, amount)
+  W->>R: stealthAnnounce(stealth address, ephemeral key, view tag + token)
+  R->>A: announce
+  Note over W: later, on any device: scan Announcement(caller = relayer or me), open mine with the viewing key
+  W->>R: fuel(stealth address)
+  R->>P: Withdrawn(*, stealth address)? yes
+  R-->>W: ETH to the stealth address, once
+  W->>P: as the stealth address: setOperator, deposit(my group, target, amount)
+```
+
 ### What is public
 
 | Fact | Visible to everyone |
@@ -700,13 +782,20 @@ deposit does.
 | A send | the paying group and the receiving group, the sender (the relayer); not who paid whom, nor how much |
 | A withdrawal | the paying group, the address paid; not the amount, nor which pocket paid |
 | A purchase from a pocket | the sale, its seller, the pocket it is reserved for, the ask's yes or no; not the price, nor whether the box moved |
+| A stealth exit | the stealth address paid (as any withdrawal's), its announcement (the ephemeral key, the view tag, the token; the relayer as caller); not whose it is |
+| A published meta-address | the wallet that published it, in ERC-6538's registry; never the addresses paid to it |
+| An entry address | that it fed a group (as any deposit's address), the plain amount it wrapped; not whose it is |
 
-Never public: a pocket's balance, an amount, which pocket of a group moved, who holds a pocket.
+Never public: a pocket's balance, an amount, which pocket of a group moved, who holds a pocket,
+whose a stealth or entry address is.
 
-In practice: a group is public, so a pocket hides among its group's five at most, and a deposit
-ties its wallet to the group, not to a pocket: the wallets that fed a group are the ones anyone
-can tie to one of its pockets (`group().feeders`, which the page shows, 1 meaning "yours
-alone"), and a group still filling hides among fewer. The sets being fixed, following a pocket's
+In practice: a group is public, so a pocket hides among its group at most (`MAX_SET`: five on
+the pockets deployed so far), and a deposit ties the address that fed it to the group, not to a
+pocket: the addresses that fed a group are the ones anyone can tie to one of its pockets
+(`group().feeders`, which the page shows, 1 meaning "yours alone"), and a group still filling
+hides among fewer. An entry address fed from outside is such an address that is nobody's;
+a withdrawal to a stealth address names an address that is nobody's either, so the group's exits
+tell nothing more than its entries. The sets being fixed, following a pocket's
 actions over time tells nothing more than one of them. A deposit from plain USDC shows the
 amount when it is shielded; a withdrawal to a known address names its receiver. The reserved
 pocket of a desk sale is public (the seller chose it): that pocket tried to buy that box.
@@ -901,10 +990,33 @@ to what a pocket's group already tells.
   betray the series: the real pocket is in every set, the decoys change, so the intersection of
   two or three of a pocket's sets is the pocket. A group fixed by number names the same five
   every time, so the sets of a pocket intersect to its group and nothing less; it guarantees
-  one in five, for good, where random decoys promised more and delivered one. The contract did
-  not change: the page picks the set, and `MAX_SET` sets the group's size. Overlapping groups
-  (Monero's rings) would raise the ceiling at the cost of a far more complex pick; one in five,
-  guaranteed, came first.
+  one in `MAX_SET`, for good, where random decoys promised more and delivered one. The page
+  picks the set, and `MAX_SET` sets the group's size. Overlapping groups (Monero's rings) would
+  raise the ceiling at the cost of a far more complex pick; one in five, guaranteed, came first.
+- **A group's size is a deployment choice, measured.** `MAX_SET` was a constant of 5; it is an
+  immutable of the constructor now (2 to 12), since every pocket named is one more comparison and
+  select under encryption and the right size is a cost question. Measured on the local FHEVM
+  (`REPORT_COSTS=1 npx hardhat test test/SealedPockets.ts`): a send between two full groups
+  costs 6.5M HCU at 5, 10.4M at 8, 13.0M at 10 and 15.6M at 12 (depth 4.4M), all under the 20M
+  (5M depth) a transaction allows; a deposit 3.5M / 4.9M / 5.8M / 6.7M, a withdrawal 4.3M / 6.5M /
+  8.0M / 9.4M. The savings' `save` names a group too (7.2M at 5, about 1.4M a pocket): 12 would
+  be tight. The next deployment takes 10 (`POCKETS_MAX_SET`), one in ten for twice the gas of
+  one in five; the pockets deployed so far stay at 5, and the adapter reads `MAX_SET` from each.
+- **Stealth addresses, not a mixer.** The address a withdrawal pays was the one public fact a
+  pocket could not hide. ERC-5564 gives a fresh address per payment that only the payee can spend
+  or recognise, with nothing of ours on-chain (the announcer and the registry are deployed once
+  for everyone) and keys from the same signature as the pocket's. A pooled mixer in front of the
+  pockets would have added a contract, a trust, and a regulatory profile; the entry address plays
+  the same role for the way in and lets the holder pick their source (Privacy Pools, an exchange).
+- **The inbox scans by caller.** Announcements are many on mainnet (other apps use the same
+  announcer); the page reads those its relayer or its wallet sent, which is where its own payments
+  go, so the scan stays a topic filter from the pockets' deploy block. A payment announced by
+  another sender is missed: a limit, not a leak.
+- **The side address acts as itself.** A relayed deposit on behalf of an address would need a
+  signature the contract verifies, and the token's `setOperator` is the holder's call anyway, so
+  a side address sends its own transactions and needs gas. The relayer fuels it once, under two
+  conditions a chain observer can check (paid by a pocket, or holding the plain token), rather
+  than keeping a list of addresses it fueled.
 - **A spent-handle list, not a nonce.** A nonce would have to move only when the key matched,
   which is encrypted here (the boxes make that bit public; a spend does not decrypt anything).
   A bound key's handle can be used once instead: a fresh encryption gives a fresh handle, and
@@ -930,10 +1042,17 @@ to what a pocket's group already tells.
 ### Pockets' limits
 
 - One token per pockets contract (cUSDC, cUSDT, cWETH, cZAMA on Sepolia), one pocket per wallet
-  and token, five pockets a side at most; only cUSDC pockets buy boxes.
-- A pocket hides among its group's five at most, fewer while its group fills (the last group,
-  until five pockets are open past the previous one), and a deposit names the wallet and the
-  group: a group few wallets have fed hides those few. The page shows both counts.
+  and token, `MAX_SET` pockets a side at most (5 on the pockets deployed so far); only cUSDC
+  pockets buy boxes.
+- A pocket hides among its group at most, fewer while its group fills (the last group, until
+  `MAX_SET` pockets are open past the previous one), and a deposit names the address that fed it
+  and the group: a group few addresses have fed hides those few. The page shows both counts.
+- A stealth exit still shows an address and the announcement's timing; a wrap on an entry
+  address shows the plain amount, and the time between a pool's withdrawal and the deposit
+  correlates them: round amounts and a pause hide best. The inbox sees only announcements the
+  page's relayer or wallet sent. A side address needs ETH; the relayer's fuel is a service the
+  team pays for, bounded by its two conditions, its daily cap and its rate limit, and off by
+  default. The stealth keys come from the pocket signature: whoever has it has them too.
 - A box bought from a pocket cannot be given or sold privately again (its holder is the desk).
 - A purchase needs a public decryption, so it waits for Zama's gateway like the boxes' requests;
   deposits, sends and withdrawals do not.
@@ -1251,6 +1370,9 @@ The pockets, measured the same way (`REPORT_COSTS=1 npx hardhat test test/Sealed
 | `deposit`, set of 1 / 3 / 5 | 835,000 / 1,026,000 / 1,242,000 | 1,633,000 / 2,555,000 / 3,477,000 |
 | `send`, 1 / 3 / 5 pockets a side | 541,000 / 1,079,000 / 1,614,000 | 1,315,000 / 3,915,000 / 6,515,000 (depth 1,971,000) |
 | `withdraw`, set of 1 / 3 / 5 | 696,000 / 970,000 / 1,268,000 | 1,358,000 / 2,824,000 / 4,290,000 |
+| `deposit`, full group of 8 / 10 / 12 | 1,574,000 / 1,785,000 / 1,996,000 | 4,860,000 / 5,782,000 / 6,704,000 |
+| `send`, 8 / 10 / 12 pockets a side | 2,421,000 / 2,958,000 / 3,496,000 | 10,415,000 / 13,015,000 / 15,615,000 (depth 2,977,000 / 3,673,000 / 4,369,000) |
+| `withdraw`, full group of 8 / 10 / 12 | 1,713,000 / 2,010,000 / 2,307,000 | 6,489,000 / 7,955,000 / 9,421,000 |
 | `PocketDesk.ask` | 432,000 | 368,000 |
 | `PocketDesk.buy` (the sale accepted on the vault) | 2,679,000 | 6,277,000 (depth 3,277,000) |
 

@@ -23,7 +23,8 @@ export class VaultRelayRefused extends Error {
  * not: the key arrives encrypted for the vault and bound to the request's terms, so the relayer
  * can neither read it, change the terms, nor reuse it. It sends the pockets' opens and spends and
  * the desk's purchases the same way: keys bound to their terms, amounts encrypted, so it learns
- * neither who pays whom nor how much. It pays the gas, so it keeps a daily cap
+ * neither who pays whom nor how much; it announces the pockets' stealth payments and hands a
+ * side address its first gas. It pays the gas, so it keeps a daily cap
  * per process (the per-IP rate limit is the HTTP layer's).
  */
 export class VaultRelay {
@@ -46,6 +47,11 @@ export class VaultRelay {
   today(): { sent: number; perDay: number } {
     this.roll();
     return { sent: this.sentToday, perDay: this.perDay };
+  }
+
+  /** What a side address gets as gas, once, in wei; null when the relayer gives none. */
+  get fuel(): bigint | null {
+    return this.sender.fuel ?? null;
   }
 
   /** The relayer wallet's balance in wei, or null when the sender cannot tell. */
