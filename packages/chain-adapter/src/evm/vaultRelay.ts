@@ -34,12 +34,22 @@ export interface PocketSpendInput {
   keyProof: string;
 }
 
-/** What the relayer sends for the pockets and their desk, by call. */
+/** A save's or an unsave's encrypted inputs, as `PocketSavings.SpendInput`. */
+export interface SavingsSpendInput {
+  amount: string;
+  inputProof: string;
+  boundKey: string;
+  keyProof: string;
+}
+
+/** What the relayer sends for the pockets, their desk and their savings, by call. */
 export interface PocketRelayCalls {
   /** `pockets`: another token's pockets contract; the cUSDC ones when left out. */
   pocketOpen: { handle: string; inputProof: string; viewer: string; pockets?: string };
   pocketSend: { from: number[]; to: number[]; input: PocketSpendInput; pockets?: string };
   pocketWithdraw: { from: number[]; to: string; input: PocketSpendInput; pockets?: string };
+  pocketSave: { from: number[]; input: SavingsSpendInput };
+  pocketUnsave: { from: number[]; input: SavingsSpendInput };
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
 }
@@ -74,7 +84,7 @@ export class VaultRelay {
     return this.post("finalize", args);
   }
 
-  /** Sends a pocket's open or spend, or a desk purchase. Returns the transaction hash. */
+  /** Sends a pocket's open or spend, a desk purchase, or a save. Returns the transaction hash. */
   pockets<C extends keyof PocketRelayCalls>(call: C, args: PocketRelayCalls[C]): Promise<string> {
     return this.post(call, args);
   }

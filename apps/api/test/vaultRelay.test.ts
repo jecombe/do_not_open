@@ -8,7 +8,9 @@ import { VaultRelay, VaultRelayRefused } from "../src/application/vaultRelay";
 import type { PocketCall, PocketTxs, VaultFinalizeTx, VaultRequestTx, VaultSender } from "../src/application/ports/vault";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
 import { buildServer } from "../src/infrastructure/http/server";
+import { EthersVaultSender } from "../src/infrastructure/vault/EthersVaultSender";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
+import { JsonRpcProvider } from "ethers";
 import { FakeChainState } from "./fixtures";
 
 const RELAYER = "0x00000000000000000000000000000000000a11e0";
@@ -127,6 +129,19 @@ describe("vault relay routes", () => {
     expect(bad.statusCode).toBe(400);
   });
 
+  it("relays a pocket's save and unsave as given, a set of pockets and the savings' inputs", async () => {
+    const input = { amount: HANDLE, inputProof: "0xbeef", boundKey: HANDLE, keyProof: "0xcafe" };
+    for (const call of ["pocketSave", "pocketUnsave"] as const) {
+      const payload = { call, args: { from: [2, 5, 6], input } };
+      const res = await app.inject({ method: "POST", url: "/v1/vault/relay", payload });
+      expect(res.statusCode).toBe(200);
+      expect(sender.sent.at(-1)).toEqual({ call, tx: payload.args });
+    }
+    // An input short of its key proof is refused, as is a long set.
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketSave", args: { from: [1], input: { amount: HANDLE, inputProof: "0x", boundKey: HANDLE } } } })).statusCode).toBe(400);
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketUnsave", args: { from: [1, 2, 3, 4, 5, 6], input } } })).statusCode).toBe(400);
+  });
+
   it("relays the desk's ask and purchase", async () => {
     const ask = { saleId: 5, handle: HANDLE, keyProof: "0xdead", boxKey: HANDLE };
     expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "deskAsk", args: ask } })).statusCode).toBe(200);
@@ -155,5 +170,21 @@ describe("vault relay routes", () => {
     const refused = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "request", args } });
     expect(refused.statusCode).toBe(400);
     expect(refused.json().code).toBe("reverted");
+  });
+});
+
+describe("EthersVaultSender", () => {
+  const KEY = "0x" + "11".repeat(32);
+  const VAULT = "0x00000000000000000000000000000000000000a1";
+  const POCKETS = "0x00000000000000000000000000000000000000a2";
+  const provider = new JsonRpcProvider("http://127.0.0.1:1", 1, { staticNetwork: true });
+  const input = { amount: HANDLE, inputProof: "0x", boundKey: HANDLE, keyProof: "0x" };
+
+  it("refuses a save where the pockets have no savings, and the pockets' calls where there are no pockets, without touching the chain", async () => {
+    const noSavings = new EthersVaultSender(KEY, VAULT, provider, { address: POCKETS, desk: null });
+    await expect(noSavings.pockets("pocketSave", { from: [1], input })).rejects.toMatchObject({ code: "reverted", message: /no savings/ });
+    await expect(noSavings.pockets("pocketUnsave", { from: [1], input })).rejects.toMatchObject({ code: "reverted", message: /no savings/ });
+    const noPockets = new EthersVaultSender(KEY, VAULT, provider, null);
+    await expect(noPockets.pockets("pocketSave", { from: [1], input })).rejects.toMatchObject({ code: "reverted", message: /no pockets/ });
   });
 });

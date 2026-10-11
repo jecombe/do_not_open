@@ -25,6 +25,8 @@ export const vaultTxFr: Record<VaultTxKey, string> = {
   "vtx.title.pocketWithdraw": "On vide ta poche",
   "vtx.title.pocketBuy": "Paiement depuis ta poche",
   "vtx.title.pocketOffer": "Proposée à une poche",
+  "vtx.title.pocketSave": "On met de côté",
+  "vtx.title.pocketUnsave": "On reprend ton épargne",
   "vtx.title.faucet": "Impression de dollars de test",
   "vtx.stamp.pocketOpen": "Cousue",
   "vtx.stamp.pocketDeposit": "Dedans",
@@ -32,6 +34,8 @@ export const vaultTxFr: Record<VaultTxKey, string> = {
   "vtx.stamp.pocketWithdraw": "Sorti",
   "vtx.stamp.pocketBuy": "Acheté",
   "vtx.stamp.pocketOffer": "Proposé",
+  "vtx.stamp.pocketSave": "De côté",
+  "vtx.stamp.pocketUnsave": "Repris",
   "vtx.stamp.faucet": "Imprimé",
   "vtx.title.other": "Le coffre travaille",
 

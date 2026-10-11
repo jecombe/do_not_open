@@ -33,8 +33,8 @@ them, duel them, open them. Who holds what is encrypted.
 ### 🔐 The sealed vault
 
 Put any NFT in a box whose holder is encrypted, and your tokens in a pocket. Take the NFT out,
-sell it on Seaport, accept an offer, lend its rights, or pay anyone from your pocket, without
-your address showing.
+sell it on Seaport, accept an offer, lend its rights, pay anyone from your pocket, or put its
+cUSDC to work in a confidential vault, without your address showing.
 
 **[Open the vault](https://vault.do-not-open.app)** · [Docs](https://vault.do-not-open.app/docs) ·
 **[Developer docs → `docs/VAULT.md`](docs/VAULT.md)**
@@ -102,7 +102,7 @@ flowchart LR
   gen["packages/generator<br/>seed -> CatSpec / BoxSpec"]
   scene["packages/scene<br/>three.js builders"]
   web["apps/web<br/>React Three Fiber app"]
-  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault, VaultListings, VaultOffers,<br/>SealedPockets, PocketDesk"]
+  evm["packages/contracts-evm<br/>Hardhat + FHEVM<br/>ConfidentialERC721, DoNotOpen,<br/>Croq, cCROQ, Pantry,<br/>Rats, RatTricks, FleaMarket,<br/>SealedVault, VaultListings, VaultOffers,<br/>SealedPockets, PocketDesk, PocketSavings"]
   adapter["packages/chain-adapter<br/>ChainAdapter: mock, EVM, (Solana)"]
   api["apps/api<br/>indexer + HTTP API<br/>Postgres"]
 
@@ -137,7 +137,7 @@ does not depend on ethers, viem or the Relayer SDK.
 
 ```bash
 pnpm install
-pnpm test        # generator, chain adapter, API, and 345 contract tests on the FHEVM mock
+pnpm test        # generator, chain adapter, API, and 356 contract tests on the FHEVM mock
 pnpm typecheck
 pnpm dev         # http://localhost:5173: home page; the game at /app, the vault at /vault (mock mode, no chain)
 ```
@@ -228,8 +228,9 @@ encrypted key the holder's wallet derives from one signature, not with an addres
 relayer can send it and the holder's address shows on none. 2.5% of each sale goes to the
 treasury. Tokens go in pockets: `SealedPockets` holds cUSDC, cUSDT, cWETH or cZAMA (Zama's
 confidential tokens, one pockets contract each) under a key rather than an address, so sending
-them to another pocket, buying a box with cUSDC (through `PocketDesk`) or taking them out says
-nothing public about who paid whom, or how much.
+them to another pocket, buying a box with cUSDC (through `PocketDesk`), putting the cUSDC to
+work in one of Zama's confidential vaults on Morpho (through `PocketSavings`) or taking them out
+says nothing public about who paid whom, or how much.
 
 | What a holder can do | Where to read more |
 | --- | --- |
@@ -242,6 +243,7 @@ nothing public about who paid whom, or how much.
 | 🎁 **Give the box**, and make its key yours | [Give a box](docs/VAULT.md#give-a-box-and-make-its-key-yours) |
 | 👛 **Keep tokens in a pocket**: put cUSDC, cUSDT, cWETH or cZAMA in, send it pocket to pocket, take it out, nothing public says who paid whom; every action names the pocket's fixed group of five, so comparing actions tells the group, never the pocket, and the page shows how far the group is filled and fed | [Pockets](docs/VAULT.md#pockets), [other tokens](docs/VAULT.md#other-tokens) |
 | 🛒 **Pay for a box from a pocket**, and cash a private sale into one | [With the vault's boxes](docs/VAULT.md#with-the-vaults-boxes) |
+| 🌱 **Put a pocket's cUSDC to work** in one of Zama's confidential vaults on Morpho, and bring it back: the savings join Zama's batch as one participant for every pocket, so nothing says which pocket saved nor how much; a save settles after the batch (about an hour), never at once | [Savings](docs/VAULT.md#savings) |
 | 👁️ **What leaks**, and what never does | [What is public, what is not](docs/VAULT.md#what-is-public-what-is-not) |
 | ⚙️ The relayer, the team's view, the decisions, the limits, the costs | [Relayer](docs/VAULT.md#the-relayer) · [Team](docs/VAULT.md#what-the-team-sees) · [Decisions](docs/VAULT.md#decisions) · [Limits](docs/VAULT.md#limits) · [Cost](docs/VAULT.md#cost) |
 | 📜 **The contracts and their addresses** | [The vault's contracts](#the-vaults-contracts) |
@@ -249,7 +251,7 @@ nothing public about who paid whom, or how much.
 Public: the deposit, the NFT in each box, Seaport listings, offers and who made them, a box's
 delegate, where an NFT or a sale's ETH goes. Never public: who holds a box (even right after the
 deposit, with decoys), its key, a private sale's price and whether it went through, a pocket's
-balance, an amount it moved, which pocket of a group moved. The page is
+balance, an amount it moved, which pocket of a group moved, what a pocket saved and its shares. The page is
 `/vault`, laid out as a marketplace that fits the screen (the collection's numbers, tabs to
 explore, find your boxes, your pocket, seal an NFT, read private sales and what leaks, filters
 on the side, each box's page in a dialog). Every action plays on a stage with its own animation, its steps
@@ -270,6 +272,7 @@ order behind its zone: the page shows "Buy on OpenSea" there, "Buy now" on Sepol
 | Sealed vault | `/vault`: any ERC-721 in a box whose holder is encrypted (the owner can shut a collection out) (`SealedVault`, a Confidential ERC-721 of its own); taken out, listed on Seaport with the vault as the seller, sold to a buyer's WETH offer the holder accepts (`VaultOffers`, also an on-chain offer board), or sold privately for an encrypted cUSDC price; meanwhile the NFT's rights (airdrops, token gates) lent to a wallet through delegate.xyz; every request asked with a key and sent by the API's relayer; 2.5% to the treasury; followed on the team's admin site, in Grafana and in Discord alerts; the Warden, a chat on the home page and the vault's that answers from their docs; a guided tour on the first visit (the "?" in the vault's bar plays it again) | **Live** on Sepolia since 2026-10-08, redeployed twice on 2026-10-09: requests no longer lock a box and a deposit sends decoys (block 11876345), then accepted offers and delegation (`SealedVault` block 11876575, `VaultOffers` 11876574, its test NFT kept). Redeployed on 2026-10-10 with its listings written by `VaultListings` the way OpenSea shows them, on Seaport 1.6 with OpenSea's conduit (`SealedVault` block 11885012, `VaultListings` 11885005, `VaultOffers` 11885004; the cUSDC pockets and their desk followed, the desk being bound to the vault), then again later that day so the vault sends an accepted offer's Seaport fill itself, as OpenSea's signed zone signs for the NFT's holder (`SealedVault` block 11885662, `VaultOffers` 11885657; `VaultListings` kept; the pockets and desk followed once more), and a third time that day to take any ERC-721 (a ban list instead of an allow list, the NFT checked to have arrived) with default fees on `VaultListings` (`SealedVault` block 11885990, `VaultListings` 11885989; `VaultOffers` kept; the pockets and desk followed) |
 | Pockets | "My pocket" on `/vault`, on the page's Tokens side (a Non-fungible / Fungible switch at the top; `#tokens` links to it): cUSDC in a pocket locked by a key rather than an address (`SealedPockets`), put in from a wallet, sent pocket to pocket, taken out to any address, each action naming the real pocket's fixed group of five (a set tells the group, never the pocket, however many actions are compared) and settled under encryption with no decryption; a private sale offered to a pocket and bought with it (`PocketDesk`: an ask with one public bit, then the purchase; the box then held by the desk with the buyer's key); a sale's cUSDC cashed into the seller's pocket; relayed by the API; the home page's story alternates an NFT and tokens | **Live** on Sepolia since 2026-10-09 (`SealedPockets` block 11877902, `PocketDesk` 11877903); `smoke:pockets` passed there. Redeployed on 2026-10-10 with the vault (`SealedPockets` block 11885014, `PocketDesk` 11885017; the previous pockets left as they were); `smoke:pockets` passed on them the same day. Redeployed again later that day with the vault (`SealedPockets` block 11885664, `PocketDesk` 11885665); `smoke:pockets` passed on them too; and once more with the vault's third deployment (`SealedPockets` block 11885991, `PocketDesk` 11885992), where `smoke:pockets` passed again |
 | Pockets of other tokens | A token picker on "My pocket" (each token's logo): cUSDT, cWETH and cZAMA, Zama's ERC-7984 wrappers from its Confidential Token Wrappers Registry, each in its own `SealedPockets` without a desk (`lib/pocketTokens.ts`); one signature finds the wallet's pocket of every token, each with its own viewer; a faucet and a wrap for the test ERC-20s; the pouch, the amounts and each action's scene wear the token's logo; private sales stay in cUSDC | **Live** on Sepolia since 2026-10-09 (blocks 11878756 to 11878758); `smoke:pockets` passed there with cZAMA and cWETH |
+| Savings | A cUSDC pocket's savings (`PocketSavings`): its cUSDC put to work in one of Zama's confidential vaults on Morpho (Steakhouse USDC Prime, through Zama's deposit and redeem batchers) and brought back, asked with the pocket's key among its group like a send and relayed by the API; the saves of a window join Zama's batch as one participant with one encrypted total, and once the batch settles each pocket gets its part from the public rate, under encryption, as an encrypted share balance only its viewer reads; a keeper on the API's indexer joins, settles and settles the pockets (anyone may); `SealedPockets` takes the savings as a second desk, set once | **Done** on the mock and in the tests (8 in `test/PocketSavings.ts`, on test batchers that play Zama's); **not deployed**: the cUSDC pockets and their desk will be redeployed with it |
 
 ## On Sepolia
 

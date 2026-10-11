@@ -468,12 +468,52 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
           pockets: await hre.deployments.getOrNull("SealedPockets").then(async (p) => {
             if (!p) return null;
             const desk = await hre.deployments.get("PocketDesk");
+            // The savings, when deployed: Zama's batchers, the Morpho vault behind them and its
+            // confidential shares, which the page prices with the vault's `convertToAssets`.
+            const savings = await hre.deployments.getOrNull("PocketSavings");
+            const savingsOut = savings
+              ? await (async () => {
+                  const s = await hre.ethers.getContractAt(
+                    ["function depositBatcher() view returns (address)", "function redeemBatcher() view returns (address)", "function share() view returns (address)"],
+                    savings.address,
+                  );
+                  const depositBatcher = String(await s.depositBatcher!());
+                  const batcher = await hre.ethers.getContractAt(["function vault() view returns (address)", "function minBatchAge() view returns (uint256)"], depositBatcher);
+                  return {
+                    address: savings.address,
+                    abi: savings.abi,
+                    deployBlock: savings.receipt?.blockNumber ?? null,
+                    depositBatcher,
+                    redeemBatcher: String(await s.redeemBatcher!()),
+                    vault: String(await batcher.vault!()),
+                    minBatchAge: Number(await batcher.minBatchAge!()),
+                    share: await (async () => {
+                      const share = String(await s.share!());
+                      const wrapper = await hre.ethers.getContractAt(
+                        ["function symbol() view returns (string)", "function name() view returns (string)", "function decimals() view returns (uint8)", "function underlying() view returns (address)", "function rate() view returns (uint256)"],
+                        share,
+                      );
+                      const underlying = String(await wrapper.underlying!());
+                      const plain = await hre.ethers.getContractAt(["function symbol() view returns (string)", "function decimals() view returns (uint8)"], underlying);
+                      return {
+                        address: share,
+                        symbol: String(await wrapper.symbol!()),
+                        name: String(await wrapper.name!()),
+                        decimals: Number(await wrapper.decimals!()),
+                        rate: String(await wrapper.rate!()),
+                        underlying: { address: underlying, symbol: String(await plain.symbol!()), decimals: Number(await plain.decimals!()) },
+                      };
+                    })(),
+                  };
+                })()
+              : null;
             return {
               address: p.address,
               abi: p.abi,
               deployBlock: p.receipt?.blockNumber ?? null,
               desk: { address: desk.address, abi: desk.abi, deployBlock: desk.receipt?.blockNumber ?? null },
               token: await pocketToken(p.address),
+              savings: savingsOut,
             };
           }),
           // Pockets of Zama's other confidential tokens (cUSDT, cWETH, cZAMA): the same contract

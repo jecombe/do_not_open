@@ -24,6 +24,8 @@ export const vaultTxEn = {
   "vtx.title.pocketWithdraw": "Emptying your pocket",
   "vtx.title.pocketBuy": "Paying from your pocket",
   "vtx.title.pocketOffer": "Offering it to a pocket",
+  "vtx.title.pocketSave": "Putting it aside",
+  "vtx.title.pocketUnsave": "Taking it back",
   "vtx.title.faucet": "Printing test dollars",
   "vtx.stamp.pocketOpen": "Sewn",
   "vtx.stamp.pocketDeposit": "In",
@@ -31,6 +33,8 @@ export const vaultTxEn = {
   "vtx.stamp.pocketWithdraw": "Out",
   "vtx.stamp.pocketBuy": "Bought",
   "vtx.stamp.pocketOffer": "Offered",
+  "vtx.stamp.pocketSave": "Aside",
+  "vtx.stamp.pocketUnsave": "Back",
   "vtx.stamp.faucet": "Printed",
   "vtx.title.other": "Working on the vault",
 
