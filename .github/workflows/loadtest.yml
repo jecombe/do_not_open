@@ -1,22 +1,11 @@
 name: Load test
 
 # The API under load, behind the same Caddy balancing as production, with 1 then N replicas on
-# a seeded index (loadtest/README.md). Runs on pull requests into main that touch the backend
-# (dev into main: not on the pull requests into dev), and by hand with other replica counts,
-# players or durations. Nothing outside the runner is loaded, except
-# the few cached reads the API makes of the free Sepolia RPCs.
+# a seeded index (loadtest/README.md). Runs by hand only (Actions, "Load test", Run workflow),
+# before a release that changes the backend, with the replica counts, players and duration
+# asked: the runner's minutes are billed, and no pull request starts it on its own. Nothing
+# outside the runner is loaded, except the few cached reads the API makes of the free Sepolia RPCs.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - apps/api/**
-      - packages/game-spec/**
-      - packages/generator/**
-      - packages/chain-adapter/**
-      - loadtest/**
-      - deploy/**
-      - pnpm-lock.yaml
-      - .github/workflows/loadtest.yml
   workflow_dispatch:
     inputs:
       replicas:

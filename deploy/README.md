@@ -7,12 +7,12 @@ green on that push: a red `main` deploys nothing. The deploy starts when the CI 
 (`workflow_run`) rather than waiting beside it, and a push that changes nothing the image or its
 stack is built from deploys nothing: the repo is private, every runner minute counts. CI runs
 once per pull request and on the pushes to `dev` and `main`, not on a working branch alone, and
-not for docs alone; the load test only on pull requests into `main`.
+not for docs alone; the load test only by hand (Actions, "Load test", Run workflow).
 
 ```mermaid
 flowchart LR
   pr["pull request"] --> ci["CI<br/>typecheck, tests,<br/>Postgres tests"]
-  prmain["pull request into main<br/>touching the API"] --> lt["Load test<br/>k6 on 1 and 3 replicas"]
+  hand["Run workflow, by hand"] --> lt["Load test<br/>k6 on 1 and 3 replicas"]
   merge["merge to dev or main"] --> ci2["CI on the push"] -- "green" --> wf["Deploy API<br/>builds the image<br/>if the API changed"]
   wf -- "push" --> ghcr["ghcr.io/jecombe/<br/>do_not_open-api:SHA"]
   wf -- "ssh: deploy.sh SHA" --> server
@@ -132,8 +132,8 @@ them, and the edge Caddy (`dno.caddy.template`) reads that list every 2 s:
   `bash /opt/dno/deploy.sh`. Grafana's "API replicas" row says when one is full (its CPU near
   100%, its event loop lagging: the `ApiEventLoopBlocked` alert).
 - **Measured, not guessed.** `.github/workflows/loadtest.yml` runs the same proxy settings in
-  front of 1 and 3 replicas on every pull request into `main` that touches the API, and fails it when reads
-  get slow ([`loadtest/README.md`](../loadtest/README.md)).
+  front of 1 and 3 replicas when run by hand from Actions, before a release that changes the API,
+  and fails when reads get slow ([`loadtest/README.md`](../loadtest/README.md)).
 
 ## Monitoring
 
