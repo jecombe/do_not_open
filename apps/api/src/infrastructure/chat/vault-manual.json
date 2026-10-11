@@ -255,7 +255,7 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "To be paid, give your code. Every action names a group, not a pocket: pockets make groups of a fixed size by number (five today: P-0 to P-4, P-5 to P-9...), and every action of a pocket names its whole group, always the same pockets. A set then says which group acted, never which pocket, however many actions are compared; decoys picked at random would not, since the real pocket is the one in every set. The page shows your group, how many of its pockets exist (the last group fills as pockets open) and how many addresses have put tokens into it. Sending names your group and the receiver's; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody."
+     "text": "To be paid, give your code. Every action names a group, not a pocket: pockets make groups of a fixed size by number (ten on today's pockets: P-0 to P-9, P-10 to P-19...; five on the earlier ones), and every action of a pocket names its whole group, always the same pockets. A set then says which group acted, never which pocket, however many actions are compared; decoys picked at random would not, since the real pocket is the one in every set. The page shows your group, how many of its pockets exist (the last group fills as pockets open) and how many addresses have put tokens into it. Sending names your group and the receiver's; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody."
     },
     {
      "id": "vault-pockets-3",
@@ -267,7 +267,7 @@
      "id": "vault-pockets-4",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Limits: a group is public, so a pocket hides among its group at most (five on today's pockets; the size is fixed when the pockets are deployed, and the next ones are measured for ten), and a deposit ties the address that fed it to the group (not to a pocket): the fewer addresses feed a group, the thinner its cover, and a group still filling hides among fewer. Pockets have no fee of their own. They are not audited."
+     "text": "Limits: a group is public, so a pocket hides among its group at most (ten on today's pockets, five on the earlier ones; the size is fixed when the pockets are deployed, and measured up to twelve), and a deposit ties the address that fed it to the group (not to a pocket): the fewer addresses feed a group, the thinner its cover, and a group still filling hides among fewer. Pockets have no fee of their own. They are not audited."
     },
     {
      "id": "vault-pockets-5",
@@ -369,7 +369,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport, OpenSea's conduit, the WETH offers pay in and delegate.xyz's registry. OpenSea closed its testnets, so a listing shows on no marketplace site there: it is bought from the page. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xb707…5abC\nThe free test collection 0xf72E…6f9b\nSeaport 0x0000…B395\nThe listings (written the way OpenSea shows them) 0x6b9C…8Fa6\nThe offer board 0xADaE…FE59\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0x3c92…4395\nThe desk that buys from pockets 0x37e9…0430\nThe cUSDT pockets 0x56ea…7aAe\nThe cWETH pockets 0x4e8A…1350\nThe cZAMA pockets 0x6D15…ceE2"
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport, OpenSea's conduit, the WETH offers pay in and delegate.xyz's registry. OpenSea closed its testnets, so a listing shows on no marketplace site there: it is bought from the page. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xb707…5abC\nThe free test collection 0xf72E…6f9b\nSeaport 0x0000…B395\nThe listings (written the way OpenSea shows them) 0x6b9C…8Fa6\nThe offer board 0xADaE…FE59\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0x73F0…794C\nThe desk that buys from pockets 0x3BA5…4Aa3\nThe savings (a pocket's cUSDC in Zama's vault on Morpho) 0xE84c…A670\nThe cUSDT pockets 0xB586…c35D\nThe cWETH pockets 0x731E…FAb5\nThe cZAMA pockets 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",
@@ -693,7 +693,7 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Pour être payé, donne ton code. Chaque action nomme un groupe, pas une poche : les poches forment par numéro des groupes de taille fixe (cinq aujourd'hui : P-0 à P-4, P-5 à P-9…), et chaque action d'une poche nomme tout son groupe, toujours les mêmes poches. Un ensemble dit alors quel groupe a agi, jamais quelle poche, quel que soit le nombre d'actions comparées ; des leurres tirés au hasard ne le feraient pas, puisque la vraie poche est celle présente dans chaque ensemble. La page montre ton groupe, combien de ses poches existent (le dernier groupe se remplit à mesure que des poches s'ouvrent) et combien d'adresses y ont mis des jetons. Envoyer nomme ton groupe et celui du destinataire ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne."
+     "text": "Pour être payé, donne ton code. Chaque action nomme un groupe, pas une poche : les poches forment par numéro des groupes de taille fixe (dix sur les poches d'aujourd'hui : P-0 à P-9, P-10 à P-19… ; cinq sur les précédentes), et chaque action d'une poche nomme tout son groupe, toujours les mêmes poches. Un ensemble dit alors quel groupe a agi, jamais quelle poche, quel que soit le nombre d'actions comparées ; des leurres tirés au hasard ne le feraient pas, puisque la vraie poche est celle présente dans chaque ensemble. La page montre ton groupe, combien de ses poches existent (le dernier groupe se remplit à mesure que des poches s'ouvrent) et combien d'adresses y ont mis des jetons. Envoyer nomme ton groupe et celui du destinataire ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne."
     },
     {
      "id": "vault-pockets-3",
@@ -711,7 +711,7 @@
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Limites : un groupe est public, donc une poche se cache parmi son groupe au plus (cinq sur les poches d'aujourd'hui ; la taille est fixée au déploiement des poches, et les prochaines sont dimensionnées pour dix), et un dépôt relie l'adresse qui l'a alimenté au groupe (pas à une poche) : moins d'adresses alimentent un groupe, plus sa couverture est mince, et un groupe encore en train de se remplir cache parmi moins. Les poches n'ont pas de frais propres. Elles ne sont pas auditées."
+     "text": "Limites : un groupe est public, donc une poche se cache parmi son groupe au plus (dix sur les poches d'aujourd'hui, cinq sur les précédentes ; la taille est fixée au déploiement des poches, et mesurée jusqu'à douze), et un dépôt relie l'adresse qui l'a alimenté au groupe (pas à une poche) : moins d'adresses alimentent un groupe, plus sa couverture est mince, et un groupe encore en train de se remplir cache parmi moins. Les poches n'ont pas de frais propres. Elles ne sont pas auditées."
     },
     {
      "id": "vault-pockets-6",
@@ -813,7 +813,13 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport, le conduit d'OpenSea, le WETH que paient les offres et le registre de delegate.xyz. OpenSea a fermé ses testnets : une annonce n'y apparaît sur aucune marketplace, elle s'achète depuis la page. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xb707…5abC\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 0x0000…B395\nLes annonces (écrites comme OpenSea les affiche) 0x6b9C…8Fa6\nLe tableau des offres 0xADaE…FE59\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0x3c92…4395\nLe guichet qui achète depuis les poches 0x37e9…0430\nLes poches cUSDT 0x56ea…7aAe\nLes poches cWETH 0x4e8A…1350\nLes poches cZAMA 0x6D15…ceE2"
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport, le conduit d'OpenSea, le WETH que paient les offres et le registre de delegate.xyz. OpenSea a fermé ses testnets : une annonce n'y apparaît sur aucune marketplace, elle s'achète depuis la page. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xb707…5abC\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 0x0000…B395\nLes annonces (écrites comme OpenSea les affiche) 0x6b9C…8Fa6\nLe tableau des offres 0xADaE…FE59\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0x73F0…794C\nLe guichet qui achète depuis les poches 0x3BA5…4Aa3\nLes économies (le cUSDC d'une poche dans le coffre de Zama sur Morpho) 0xE84c…A670\nLes poches cUSDT 0xB586…c35D\nLes poches cWETH 0x731E…FAb5"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "Les poches cZAMA 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",
@@ -1137,7 +1143,7 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Para cobrar, da tu código. Cada acción nombra un grupo, no un bolsillo: los bolsillos forman por número grupos de tamaño fijo (cinco hoy: P-0 a P-4, P-5 a P-9…), y cada acción de un bolsillo nombra todo su grupo, siempre los mismos bolsillos. Un conjunto dice entonces qué grupo actuó, nunca qué bolsillo, por muchas acciones que se comparen; unos señuelos elegidos al azar no lo harían, porque el bolsillo real es el que está en todos los conjuntos. La página muestra tu grupo, cuántos de sus bolsillos existen (el último grupo se llena a medida que se abren bolsillos) y cuántas direcciones han puesto tokens en él. Enviar nombra tu grupo y el del destinatario; la bóveda comprueba tu llave bajo cifrado, toma el importe del bolsillo que abre y lo suma al bolsillo cuyo número coincide, también bajo cifrado. Nada público dice quién pagó a quién, ni cuánto. Una llave equivocada o un saldo corto no mueven nada, sin error. No hace falta ningún descifrado: una sola transacción, que no espera a nadie."
+     "text": "Para cobrar, da tu código. Cada acción nombra un grupo, no un bolsillo: los bolsillos forman por número grupos de tamaño fijo (diez en los bolsillos de hoy: P-0 a P-9, P-10 a P-19…; cinco en los anteriores), y cada acción de un bolsillo nombra todo su grupo, siempre los mismos bolsillos. Un conjunto dice entonces qué grupo actuó, nunca qué bolsillo, por muchas acciones que se comparen; unos señuelos elegidos al azar no lo harían, porque el bolsillo real es el que está en todos los conjuntos. La página muestra tu grupo, cuántos de sus bolsillos existen (el último grupo se llena a medida que se abren bolsillos) y cuántas direcciones han puesto tokens en él. Enviar nombra tu grupo y el del destinatario; la bóveda comprueba tu llave bajo cifrado, toma el importe del bolsillo que abre y lo suma al bolsillo cuyo número coincide, también bajo cifrado. Nada público dice quién pagó a quién, ni cuánto. Una llave equivocada o un saldo corto no mueven nada, sin error. No hace falta ningún descifrado: una sola transacción, que no espera a nadie."
     },
     {
      "id": "vault-pockets-3",
@@ -1155,7 +1161,7 @@
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Límites: un grupo es público, así que un bolsillo se esconde entre su grupo como mucho (cinco en los bolsillos de hoy; el tamaño se fija al desplegar los bolsillos, y los próximos están medidos para diez), y un depósito vincula la dirección que lo alimentó al grupo (no a un bolsillo): cuantas menos direcciones alimentan un grupo, más escasa es su cobertura, y un grupo que aún se llena esconde entre menos. Los bolsillos no tienen comisión propia. No están auditados."
+     "text": "Límites: un grupo es público, así que un bolsillo se esconde entre su grupo como mucho (diez en los bolsillos de hoy, cinco en los anteriores; el tamaño se fija al desplegar los bolsillos, y está medido hasta doce), y un depósito vincula la dirección que lo alimentó al grupo (no a un bolsillo): cuantas menos direcciones alimentan un grupo, más escasa es su cobertura, y un grupo que aún se llena esconde entre menos. Los bolsillos no tienen comisión propia. No están auditados."
     },
     {
      "id": "vault-pockets-6",
@@ -1257,7 +1263,13 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport real, el conduit de OpenSea, el WETH con el que pagan las ofertas y el registro de delegate.xyz. OpenSea cerró sus testnets: allí un anuncio no aparece en ningún marketplace, se compra desde la página. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xb707…5abC\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nLos anuncios (escritos como OpenSea los muestra) 0x6b9C…8Fa6\nEl tablón de ofertas 0xADaE…FE59\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0x3c92…4395\nLa ventanilla que compra desde los bolsillos 0x37e9…0430\nLos bolsillos de cUSDT 0x56ea…7aAe\nLos bolsillos de cWETH 0x4e8A…1350\nLos bolsillos de cZAMA 0x6D15…ceE2"
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport real, el conduit de OpenSea, el WETH con el que pagan las ofertas y el registro de delegate.xyz. OpenSea cerró sus testnets: allí un anuncio no aparece en ningún marketplace, se compra desde la página. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xb707…5abC\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nLos anuncios (escritos como OpenSea los muestra) 0x6b9C…8Fa6\nEl tablón de ofertas 0xADaE…FE59\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0x73F0…794C\nLa ventanilla que compra desde los bolsillos 0x3BA5…4Aa3\nLos ahorros (el cUSDC de un bolsillo en la bóveda de Zama en Morpho) 0xE84c…A670\nLos bolsillos de cUSDT 0xB586…c35D"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "Los bolsillos de cWETH 0x731E…FAb5\nLos bolsillos de cZAMA 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",
@@ -1587,7 +1599,7 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Per farti pagare, dai il tuo codice. Ogni azione nomina un gruppo, non una tasca: le tasche formano per numero gruppi di dimensione fissa (cinque oggi: P-0 a P-4, P-5 a P-9…), e ogni azione di una tasca nomina tutto il suo gruppo, sempre le stesse tasche. Un insieme dice allora quale gruppo ha agito, mai quale tasca, per quante azioni si confrontino; esche scelte a caso non lo farebbero, perché la tasca vera è quella presente in ogni insieme. La pagina mostra il tuo gruppo, quante delle sue tasche esistono (l'ultimo gruppo si riempie man mano che si aprono tasche) e quanti indirizzi vi hanno messo token. Inviare nomina il tuo gruppo e quello del destinatario; il caveau verifica la tua chiave sotto cifratura, prende l'importo dalla tasca che apre e lo aggiunge a quella il cui numero corrisponde, sempre sotto cifratura. Niente di pubblico dice chi ha pagato chi, né quanto. Una chiave sbagliata o un saldo insufficiente non spostano nulla, senza errore. Non serve alcuna decifratura: una sola transazione, che non aspetta nessuno."
+     "text": "Per farti pagare, dai il tuo codice. Ogni azione nomina un gruppo, non una tasca: le tasche formano per numero gruppi di dimensione fissa (dieci sulle tasche di oggi: P-0 a P-9, P-10 a P-19…; cinque sulle precedenti), e ogni azione di una tasca nomina tutto il suo gruppo, sempre le stesse tasche. Un insieme dice allora quale gruppo ha agito, mai quale tasca, per quante azioni si confrontino; esche scelte a caso non lo farebbero, perché la tasca vera è quella presente in ogni insieme. La pagina mostra il tuo gruppo, quante delle sue tasche esistono (l'ultimo gruppo si riempie man mano che si aprono tasche) e quanti indirizzi vi hanno messo token. Inviare nomina il tuo gruppo e quello del destinatario; il caveau verifica la tua chiave sotto cifratura, prende l'importo dalla tasca che apre e lo aggiunge a quella il cui numero corrisponde, sempre sotto cifratura. Niente di pubblico dice chi ha pagato chi, né quanto. Una chiave sbagliata o un saldo insufficiente non spostano nulla, senza errore. Non serve alcuna decifratura: una sola transazione, che non aspetta nessuno."
     },
     {
      "id": "vault-pockets-3",
@@ -1605,7 +1617,7 @@
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Limiti: un gruppo è pubblico, quindi una tasca si nasconde al massimo tra il suo gruppo (cinque sulle tasche di oggi; la dimensione è fissata al deploy delle tasche, e le prossime sono dimensionate per dieci), e un deposito lega l'indirizzo che l'ha alimentato al gruppo (non a una tasca): meno indirizzi alimentano un gruppo, più scarsa è la sua copertura, e un gruppo che si sta ancora riempiendo nasconde tra meno. Le tasche non hanno commissioni proprie. Non sono verificate da un audit."
+     "text": "Limiti: un gruppo è pubblico, quindi una tasca si nasconde al massimo tra il suo gruppo (dieci sulle tasche di oggi, cinque sulle precedenti; la dimensione è fissata al deploy delle tasche, e misurata fino a dodici), e un deposito lega l'indirizzo che l'ha alimentato al gruppo (non a una tasca): meno indirizzi alimentano un gruppo, più scarsa è la sua copertura, e un gruppo che si sta ancora riempiendo nasconde tra meno. Le tasche non hanno commissioni proprie. Non sono verificate da un audit."
     },
     {
      "id": "vault-pockets-6",
@@ -1707,7 +1719,7 @@
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport, il conduit di OpenSea, il WETH con cui pagano le offerte e il registro di delegate.xyz. OpenSea ha chiuso le sue testnet: lì un annuncio non compare su nessun marketplace, si compra dalla pagina. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xb707…5abC\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nGli annunci (scritti come OpenSea li mostra) 0x6b9C…8Fa6\nLa bacheca delle offerte 0xADaE…FE59\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0x3c92…4395\nLo sportello che compra dalle tasche 0x37e9…0430\nLe tasche cUSDT 0x56ea…7aAe\nLe tasche cWETH 0x4e8A…1350\nLe tasche cZAMA 0x6D15…ceE2"
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport, il conduit di OpenSea, il WETH con cui pagano le offerte e il registro di delegate.xyz. OpenSea ha chiuso le sue testnet: lì un annuncio non compare su nessun marketplace, si compra dalla pagina. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xb707…5abC\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nGli annunci (scritti come OpenSea li mostra) 0x6b9C…8Fa6\nLa bacheca delle offerte 0xADaE…FE59\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0x73F0…794C\nLo sportello che compra dalle tasche 0x3BA5…4Aa3\nI risparmi (il cUSDC di una tasca nel vault di Zama su Morpho) 0xE84c…A670\nLe tasche cUSDT 0xB586…c35D\nLe tasche cWETH 0x731E…FAb5\nLe tasche cZAMA 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",

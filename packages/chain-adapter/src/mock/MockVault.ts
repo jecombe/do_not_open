@@ -53,7 +53,7 @@ const SAVE_RATE = 980_000n;
 const UNSAVE_RATE = 1_020_000n;
 const SHARE_PRICE = 1_020_000n;
 const RATE_ONE = 1_000_000n;
-const POCKETS_MAX_SET = 5;
+const POCKETS_MAX_SET = 10;
 /** The demo's ERC-5564 announcer and ERC-6538 registry, and what a side address needs and gets as gas. */
 const MOCK_ANNOUNCER: Address = "0x55649E01B5Df198D18D95b5cc5051630cfD45564";
 const MOCK_STEALTH_REGISTRY: Address = "0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538";
@@ -244,7 +244,7 @@ export class MockVault implements VaultAdapter {
     this.listBox(this.all[0]!, ETH / 20n, Math.floor(host.now() / 1000) + 7 * 86_400);
     for (const token of MOCK_POCKET_TOKENS) this.books.push(token.desk ? this.cUsdcBook(token) : this.plainBook(token));
     // Strangers' pockets, so yours hides among others from the start, one of them the night
-    // shift's: eight in all, so yours (the ninth) lands in a group still filling.
+    // shift's: eight in all, so yours (the ninth) lands in a group of ten still filling.
     for (const book of this.books) {
       for (let i = 0; i < STRANGERS; i++) book.list.push({ owner: stranger(i), balance: 0n });
       book.list.push({ owner: night, balance: 500n * USD });

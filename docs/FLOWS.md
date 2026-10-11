@@ -1329,7 +1329,7 @@ Nothing is decrypted in public: a sale that went through and one that did not lo
 
 A pocket is cUSDC (or cUSDT, cWETH, cZAMA, each in its own pockets contract) under an encrypted
 key ([VAULT.md](VAULT.md#pockets)). Every action names a set of pockets of the same token, the
-real one's fixed group by number (`MAX_SET`, five on the pockets deployed so far), always the
+real one's fixed group by number (`MAX_SET`, ten on the live pockets, five on the earlier ones), always the
 same, so a set tells the group and never the pocket; nothing is decrypted in public. Only cUSDC
 pockets buy private sales.
 

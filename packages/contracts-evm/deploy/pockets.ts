@@ -14,7 +14,9 @@ import { STEALTH } from "../lib/stealth";
  * (lib/pocketTokens.ts: cUSDT, cWETH, cZAMA on Sepolia), without a desk. The pockets' exits go
  * to stealth addresses through ERC-5564's announcer and ERC-6538's registry (lib/stealth.ts),
  * deployed once for everyone on Sepolia and mainnet; a local network gets test ones.
- * Runs after the vault and redeploys nothing else: `--tags Pockets` adds them next to a live vault.
+ * Runs after the vault and redeploys nothing else: `KEEP_VAULT=1 ... --tags Pockets` adds them
+ * next to a live vault (without `KEEP_VAULT` the vault's script runs first and redeploys the
+ * vault when its bytecode changed).
  */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();

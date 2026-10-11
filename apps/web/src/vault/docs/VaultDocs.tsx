@@ -24,11 +24,12 @@ const CONTRACTS = [
   { key: "offers", address: "0xADaE32F03d6C1678127a8BEDF024FeF38dd4FE59" },
   { key: "weth", address: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9" },
   { key: "registry", address: "0x00000000000000447e69651d841bD8D104Bed493" },
-  { key: "pockets", address: "0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395" },
-  { key: "desk", address: "0x37e9D6b2180323D5a01a42e2FD911aE017F70430" },
-  { key: "pocketsUsdt", address: "0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe" },
-  { key: "pocketsWeth", address: "0x4e8A23DfD7a23677b023E069CB8D3A94993b1350" },
-  { key: "pocketsZama", address: "0x6D1585c58238DaADF748558051BF368DAA3eceE2" },
+  { key: "pockets", address: "0x73F0D595AFF826349bD33Bf8f31410C00b3C794C" },
+  { key: "desk", address: "0x3BA548e9f59b6D9Cb1e5D7bcc21E9c36cDaa4Aa3" },
+  { key: "savings", address: "0xE84ca130fb003d66678ec2dC5123E7b24373A670" },
+  { key: "pocketsUsdt", address: "0xB586883DaD0c0816d095B60c26A92fc97Ff0c35D" },
+  { key: "pocketsWeth", address: "0x731E34d80C2FD6f22394C38584e61B26BcECFAb5" },
+  { key: "pocketsZama", address: "0x0cf7E304348302fdC38eB99dE1Ef2E052Ee6Cf9a" },
 ] as const;
 
 /** The manual's animated flow of a withdrawal through the relayer. */

@@ -101,7 +101,7 @@ mainnet), **Not done** (a check nobody has run).
 | O51 | What is saved runs the Morpho vault's and Zama's batchers' risk (curator, liquidity, a paused batcher, a canceled batch) and waits on them: a save settles after Zama's batch (about an hour on Sepolia) and the keeper, so savings cannot pay a sale at once; the keeper is one hot key on the indexer, and anyone may run its three calls in its place. On mainnet the pockets' cUSDC must be Zama's own `cAsset` or no pocket can save | Low (availability, trust); a mainnet check | `PocketSavings.settle`, `lib/savings.ts` |
 | O52 | The pockets' stealth exits (ERC-5564) and entry addresses are keys the page derives from the pocket signature: whoever has that signature spends them too (as O46); a stealth address still shows as a withdrawal's address, the announcement's timing and an entry address's plain wrap correlate with a privacy pool's withdrawal, and the inbox scans only announcements the page's relayer or wallet sent | Medium (privacy, keys) | `EvmPocketDoors`, `stealth.ts` |
 | O53 | The relayer fuels a side address once (`POCKET_FUEL_WEI`), under two checks a chain observer can make (never sent a transaction and holds less than the fuel; paid by a pocket, or holding `POCKET_FUEL_MIN_USDC` of USDC): the team pays that ETH, and an attacker who funds fresh addresses with the minimum USDC drains it at that price, bounded by the relayer's daily cap and rate limit. Off by default | Low (cost); tune the minimum against the fuel on mainnet | `EthersVaultSender.sendFuel` |
-| O54 | A group's size (`MAX_SET`) is fixed at deployment, 2 to 12: larger hides better and costs more (a send between two full groups of 12 is 15.6M HCU of 20M). The pockets deployed so far are at 5, the next at 10; the savings' `save` names a group too and must stay under the limit at the chosen size | Low (cost, privacy); a deploy-time check | `SealedPockets` constructor, `POCKETS_MAX_SET`, `test/SealedPockets.ts` ("groups of 8 and 10") |
+| O54 | A group's size (`MAX_SET`) is fixed at deployment, 2 to 12: larger hides better and costs more (a send between two full groups of 12 is 15.6M HCU of 20M). The pockets of 2026-10-11 are at 10, the earlier ones at 5; the savings' `save` names a group too and must stay under the limit at the chosen size | Low (cost, privacy); a deploy-time check | `SealedPockets` constructor, `POCKETS_MAX_SET`, `test/SealedPockets.ts` ("groups of 8 and 10") |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -543,11 +543,11 @@ live one is read and filled through OpenSea's API on a fork with `opensea:fork`
 
 `SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
 buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). On Sepolia at
-`0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` and `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` since 2026-10-10, redeployed with the vault (the desk is bound to it); before them `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` the same day, `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` earlier that day, and `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
+`0x73F0D595AFF826349bD33Bf8f31410C00b3C794C` and `0x3BA548e9f59b6D9Cb1e5D7bcc21E9c36cDaa4Aa3` since 2026-10-11, redeployed with the savings in groups of 10 (`MAX_SET`); before them `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` and `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` since 2026-10-10, in groups of 5, redeployed with the vault (the desk is bound to it), `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` the same day, `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` earlier that day, and `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
 The same contract, unchanged and without a desk, holds cUSDT, cWETH and cZAMA
-([VAULT.md](VAULT.md#other-tokens)): `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`,
-`0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`
-since 2026-10-09.
+([VAULT.md](VAULT.md#other-tokens)): `0xB586883DaD0c0816d095B60c26A92fc97Ff0c35D`,
+`0x731E34d80C2FD6f22394C38584e61B26BcECFAb5` and `0x0cf7E304348302fdC38eB99dE1Ef2E052Ee6Cf9a`
+since 2026-10-11 (groups of 10; before them `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`, `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2` since 2026-10-09).
 47 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
 (itself on Seaport 1.5's and delegate.xyz's bytecode); the relayer's routes in
 `apps/api/test/vaultRelay.test.ts`; the adapter's `EvmPockets` (what the page runs) against the contracts in `test/PocketsAdapter.ts`, its doors (stealth exits, entry addresses, the relayer's fuel) against ERC-5564's and ERC-6538's test contracts there too; the stealth arithmetic in `packages/chain-adapter/test/stealth.test.ts`.
@@ -575,7 +575,7 @@ since 2026-10-09.
 
 `vault/PocketSavings.sol` puts a pocket's cUSDC to work in one of Zama's confidential vaults on
 Morpho, through its deposit and redeem batchers (`vault/IVaultBatcher.sol`), and brings it back
-(see [VAULT.md](VAULT.md#savings)). Not deployed yet. `SealedPockets` gained a second desk slot
+(see [VAULT.md](VAULT.md#savings)). On Sepolia at `0xE84ca130fb003d66678ec2dC5123E7b24373A670` since 2026-10-11 (block 11890629), on Steakhouse USDC Prime's batchers. `SealedPockets` gained a second desk slot
 for it (`setSavings`, owner, once; `_onlyDesk` lets the desk or the savings through `deskTake`,
 `deskCheck`, `deskGive`). 8 tests in `test/PocketSavings.ts`, on the FHEVM mock, against
 `TestVaultBatcher` (Zama's lifecycle: join, dispatch, the total's public decryption and its

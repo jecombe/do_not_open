@@ -361,8 +361,8 @@ left out), or null where it is not deployed. A pocket holds its token under a ke
 address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
 
 - `token`: the `PocketToken` it holds. `info()`: `address`, `desk` (null but for cUSDC), `count`
-  (pockets opened), `maxSet` (a group's size, read from the contract: 5 on the pockets deployed
-  so far, 10 by default on the next). `group(pocketId)`: its `PocketGroup`,
+  (pockets opened), `maxSet` (a group's size, read from the contract: 10 on the live pockets, 5 on
+  the earlier ones). `group(pocketId)`: its `PocketGroup`,
   `members` (the pockets its every action names, `pocketGroup(id, count, maxSet)`: groups of
   `maxSet` by number, the last one holding the pockets opened so far), `size` and `feeders`
   (wallets that deposited into the group: the ones anyone can tie to one of its pockets).

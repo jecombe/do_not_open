@@ -175,7 +175,7 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   vault's way (below). 8,909 bytes.
 - **`SealedPockets`** — the vault's pockets: cUSDC held under encrypted 256-bit keys rather than
   addresses (constructor `(cUsdc, owner, maxSet)`, `maxSet` a group's size, 2 to 12, fixed for
-  good: `POCKETS_MAX_SET` at deploy, 10 by default, 5 on the pockets deployed so far). `open(key, proof, viewer)`; `deposit(pockets[],
+  good: `POCKETS_MAX_SET` at deploy, 10 by default and on the live pockets, 5 on the earlier ones). `open(key, proof, viewer)`; `deposit(pockets[],
   target, amount, proof)` pulls the caller's cUSDC into the pocket of the set whose number is the
   encrypted target (the rest refunded); `send(from[], to[], input)` and `withdraw(from[], to,
   input)` take a `SpendInput` (amount and target under one proof, the key XOR `spendHash(...)`

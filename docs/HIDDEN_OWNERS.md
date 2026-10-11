@@ -221,7 +221,7 @@ The same idea for tokens. ERC-7984 already hides balances and amounts; `SealedPo
 the address graph too. A pocket is a number with an encrypted key and balance, read by a viewer
 address the holder's page derives from one signature, so no wallet is ever tied to it. Every
 deposit, send and withdrawal names a set of pockets (the real one's fixed group by number,
-`MAX_SET` apiece, fixed at deployment, five on the pockets deployed so far and ten on the next;
+`MAX_SET` apiece, fixed at deployment, ten on the live pockets and five on the earlier ones;
 the same every time, so comparing a pocket's sets tells its group and no more) and decides
 under encryption which one moves and by how much: no decryption, one transaction. What leaks:
 the address behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
@@ -243,7 +243,7 @@ showing. Zama's batchers already hide each participant's amount (only a batch's 
 decrypted), but they name each participant: joining with a pocket, or with the holder's wallet,
 would publish who saves. `PocketSavings` joins instead, as the one participant, with the
 encrypted total of a window: every save of the window, asked as a send is (the key bound to the
-side, the set and the amount, the real pocket among its group of five) and taken under
+side, the set and the amount, the real pocket among its group, ten on the live pockets) and taken under
 encryption by `deskTake`, zero from the decoys. When the batch settles, each pocket's part is
 `committed × rate / 1e6`, computed under encryption from the public rate and kept as an
 encrypted share balance only the pocket's viewer reads; the way back mirrors it. Nothing of
