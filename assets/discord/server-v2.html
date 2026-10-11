@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><style>@font-face{font-family:S;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+stardos-stencil@5.3.0/node_modules/@fontsource/stardos-stencil/files/stardos-stencil-latin-700-normal.woff2)}@font-face{font-family:B;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2)}@font-face{font-family:BM;src:url(file:///Users/jerem/do_not_open/node_modules/.pnpm/@fontsource+barlow-condensed@5.3.0/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-500-normal.woff2)}html,body{margin:0;background:#07090c}svg{display:block}.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace}</style>
+<!-- The Discord server's icon, 400×400 rendered at 1024: the X profile picture's drawing, the sealed box with a cat's eyes behind its lid. Discord crops it to a circle. -->
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><defs>
+ <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#141c24" stroke-width="1"/></pattern>
+ <radialGradient id="warm" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb454" stop-opacity=".28"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+ <linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d79a55"/><stop offset="1" stop-color="#b47439"/></linearGradient>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.22  0 0 0 0 0.1  0 0 0 0.22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="3"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="lift" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".6"/></filter>
+ <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#5be3c2" opacity=".7"/></marker>
+</defs>
+<radialGradient id="tealglow" cx="50%" cy="52%" r="55%"><stop offset="0" stop-color="#5be3c2" stop-opacity=".17"/><stop offset="1" stop-color="#5be3c2" stop-opacity="0"/></radialGradient>
+<rect width="400" height="400" fill="#07090c"/><rect width="400" height="400" fill="url(#grid)"/><rect width="400" height="400" fill="url(#tealglow)"/>
+<g transform="translate(71 168) scale(.82)">
+ <ellipse cx="158" cy="214" rx="230" ry="26" fill="url(#warm)"/>
+ <ellipse cx="158" cy="206" rx="185" ry="16" fill="#000" opacity=".55"/>
+ 
+ <g>
+  <path d="M70 -40 L 92 -118 L 132 -70 Q 160 -80 188 -70 L 228 -118 L 250 -40 Z" fill="#0b0f13" stroke="#5be3c2" stroke-width="1.5" stroke-opacity=".35"/>
+  <g filter="url(#glow)"><ellipse cx="128" cy="-58" rx="13" ry="10" fill="#ffd66b"/><ellipse cx="192" cy="-58" rx="13" ry="10" fill="#5be3c2"/>
+  <ellipse cx="128" cy="-58" rx="3" ry="9" fill="#07090c"/><ellipse cx="192" cy="-58" rx="3" ry="9" fill="#07090c"/></g>
+ </g>
+ <polygon points="0,0 260,0 315,-46 55,-46" fill="#e3ad6d" stroke="#5be3c2" stroke-width="2"/>
+ <polygon points="260,0 315,-46 315,150 260,196" fill="#9a6230" stroke="#5be3c2" stroke-width="2"/>
+ <rect width="260" height="196" fill="url(#front)"/>
+ <rect width="260" height="196" fill="#c08040" filter="url(#grain)" opacity=".8"/>
+ <rect width="260" height="196" fill="none" stroke="#5be3c2" stroke-width="2" filter="url(#glow)"/>
+ <polygon points="112,0 148,0 203,-46 167,-46" fill="#f0d79a" opacity=".85"/>
+ <rect x="112" y="0" width="36" height="56" fill="#f0d79a" opacity=".8"/>
+ <g transform="translate(107 34)" filter="url(#glow)">
+  <path d="M15 20 V13 a8 8 0 0 1 16 0 V20" fill="none" stroke="#5be3c2" stroke-width="3"/>
+  <rect x="9" y="20" width="28" height="22" rx="4" fill="#07090c" stroke="#5be3c2" stroke-width="2.5"/>
+  <circle cx="23" cy="29" r="3" fill="#5be3c2"/><rect x="21.5" y="30" width="3" height="7" fill="#5be3c2"/>
+ </g>
+ 
+ <g transform="translate(30 120) rotate(-6) scale(1.8)">
+  <rect width="108" height="26" fill="none" stroke="#c2261d" stroke-width="2.5" filter="url(#rough)" opacity=".9"/>
+  <text x="54" y="19" text-anchor="middle" font-family="S" font-size="16" fill="#c2261d" filter="url(#rough)" opacity=".9">DO NOT OPEN</text>
+ </g></g>
+<g fill="none" stroke="#5be3c2" stroke-width="2" opacity=".5"><circle cx="200" cy="200" r="190" stroke-dasharray="7 8"/></g>
+</svg>
