@@ -343,22 +343,6 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
               <dt>{t("vault.stat.pockets")}</dt>
               <dd>{pocketCount ?? "…"}</dd>
             </div>
-            <div>
-              <dt>{t("vault.stat.holders")}</dt>
-              <dd>
-                <Cipher length={4} />
-              </dd>
-            </div>
-            <div>
-              <dt>{t("vault.stat.amounts")}</dt>
-              <dd>
-                <Cipher length={4} />
-              </dd>
-            </div>
-            <div>
-              <dt>{t("vault.stat.token")}</dt>
-              <dd>cUSDC</dd>
-            </div>
           </dl>
         </div>
         <VaultBalances vault={vault} coin={coin} className="vault-balances-head" />

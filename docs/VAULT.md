@@ -826,8 +826,13 @@ pocket has its own viewer, so nothing on-chain ties a wallet's pockets of differ
 together; switching tokens on the page asks nothing more.
 
 **On the page.** A token picker, each with its logo, above "My pocket"; the pouch, the balance,
-the amounts and every action's scene wear the picked token's logo. On a test network, "Get test
-…" mints the ERC-20 and "Turn … into …" wraps it before the deposit.
+the amounts and every action's scene wear the picked token's logo. The pocket is one card (its
+code, its balance and its savings, read by the page as soon as the pocket is found: the viewer
+signs the decryption permit itself, so no wallet prompt) and one thing to do at a time under it
+(put in, send, take out, savings), the boxes sellers offered it, then folds a curious holder opens:
+its group, its fresh addresses, what shows on-chain. "Put in" chooses its source (the wallet's
+confidential token, or the plain one wrapped first, which shows); "Take out" chooses a fresh
+address of one's own or an address typed. On a test network, "Get test …" mints the ERC-20.
 
 **What it adds to what leaks.** Which token an action moves is public (each token's pockets are
 their own contract), and decoys are picked only among the same token's pockets: a token few

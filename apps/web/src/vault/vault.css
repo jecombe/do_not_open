@@ -1489,16 +1489,12 @@ a.vault-me:hover {
   opacity: 0.6;
 }
 
-/* The wallet's pocket: its code and balance, three small forms, the boxes offered to it. */
+/* The wallet's pocket: one card (code, balance, savings), one thing to do at a time, the boxes offered
+   to it, and folds for the rest. */
 .vault-pocket {
   display: grid;
   gap: 16px;
   max-width: 1080px;
-}
-
-.vault-pocket-lede {
-  margin: 0;
-  max-width: 70ch;
 }
 
 .vault-pocket-intro {
@@ -1576,50 +1572,17 @@ a.vault-me:hover {
   margin: 0;
 }
 
-.vault-pocket-forms {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.vault-pocket-form h4 {
-  margin: 0;
-  font: 700 16px/1.1 var(--stencil);
-  letter-spacing: 0.03em;
-}
-
 .vault-pocket-form {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.vault-pocket-form .vault-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  white-space: normal;
-  color: var(--muted);
-  font: 13px var(--sans);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.vault-pocket-form .vault-check input {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  padding: 0;
-  border: 0;
-  accent-color: var(--teal);
-}
-
-.vault-pocket-form .vault-check span {
-  min-width: 0;
 }
 
 .vault-pocket-form,
 .vault-pocket-card > * {
   min-width: 0;
+}
+
+.vault-pocket-form {
+  gap: 14px;
 }
 
 .vault-pocket-form > .sec-btn {
@@ -1729,11 +1692,6 @@ a.vault-me:hover {
   opacity: 0.6;
 }
 
-.vault-pocket-tokens .vault-meta {
-  flex-basis: 100%;
-  margin: 0;
-}
-
 /* The pouch's seal: the token's logo, stamped on when the token changes. */
 .vault-pouch-seal {
   transform-box: fill-box;
@@ -1763,17 +1721,6 @@ a.vault-me:hover {
   min-width: 0;
 }
 
-.vault-pocket-plain {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-}
-
-.vault-pocket-nodesk {
-  margin: 0;
-}
-
 .vault-pocket-sales h3 {
   margin: 0;
   font: 700 16px/1.1 var(--stencil);
@@ -1793,14 +1740,6 @@ a.vault-me:hover {
   font: 700 13px var(--mono);
 }
 
-.vault-pocket-public {
-  margin: 0;
-  padding: 12px 14px;
-  border-left: 3px solid var(--teal);
-  background: var(--teal-dim);
-  border-radius: 0 10px 10px 0;
-}
-
 .vault-pocket-boxhint {
   margin: 0 0 10px;
   padding: 8px 10px;
@@ -1808,48 +1747,20 @@ a.vault-me:hover {
   border-radius: 8px;
 }
 
-/* The pocket's savings: its sealed shares as what they are worth, what is on the way, the
-   put-aside and take-back forms, and two notes (how long a batch takes, what shows). */
+/* The pocket's savings, under the savings tab: what is on the way, then the put-aside or take-back form. */
 .vault-pocket-savings {
   display: grid;
-  gap: 14px;
-  min-width: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--line-2);
-  border-radius: 16px;
-  background: linear-gradient(300deg, rgb(201 154 99 / 0.1), transparent 55%), var(--panel);
+  gap: 12px;
+  padding: 16px 18px 0;
 }
 
-.vault-pocket-savings-head {
-  display: grid;
-  gap: 6px;
-}
-
-.vault-pocket-savings-head h3 {
-  margin: 0;
-  font: 700 18px/1.1 var(--stencil);
-  letter-spacing: 0.03em;
-}
-
-.vault-pocket-savings-head .vault-meta {
+.vault-pocket-savings-lede {
   max-width: 70ch;
   margin: 0;
 }
 
-.vault-pocket-savings-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px 28px;
-}
-
-.vault-pocket-savings .vault-pocket-balance .vault-balance {
-  justify-self: start;
-}
-
-.vault-pocket-shares {
-  color: var(--muted);
-  font: 500 12px var(--mono);
-  font-variant-numeric: tabular-nums;
+.vault-pocket-savings .vault-pocket-form {
+  padding-inline: 0;
 }
 
 .vault-pocket-pending {
@@ -1902,27 +1813,11 @@ a.vault-me:hover {
   font-size: 12px;
 }
 
-.vault-pocket-savings .vault-pocket-forms {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.vault-pocket-savings .vault-pocket-form {
-  background: rgb(7 9 12 / 0.35);
-}
-
 .vault-amount-all {
   flex: none;
   padding: 0;
   font-size: 12px;
   white-space: nowrap;
-}
-
-.vault-pocket-savings-note {
-  margin: 0;
-  padding: 10px 12px;
-  border-left: 3px solid var(--kraft);
-  border-radius: 0 10px 10px 0;
-  background: rgb(201 154 99 / 0.08);
 }
 
 /* Why the vault, then what shows and what does not. */
@@ -2462,21 +2357,12 @@ a.vault-me:hover {
   animation: none;
 }
 
-/* The pockets' doors: the wallet's stealth meta-address, what fresh addresses received, and the
-   entry address to feed the pocket from outside. */
+/* The pockets' doors, inside their fold: what fresh addresses received, the entry address to feed the
+   pocket from outside, and the wallet's stealth meta-address. */
 .vault-pocket-doors {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--line-2);
-  border-radius: 16px;
-  background: linear-gradient(120deg, rgb(43 170 150 / 0.08), transparent 55%), var(--panel);
-}
-
-.vault-pocket-doors h3 {
-  margin: 0;
-  font: 700 18px/1.1 var(--stencil);
 }
 
 .vault-pocket-doors h4 {
@@ -2490,6 +2376,8 @@ a.vault-me:hover {
 
 .vault-doors-row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 8px;
   padding: 12px 14px;
   border: 1px solid var(--line-2);
@@ -2506,6 +2394,8 @@ a.vault-me:hover {
 }
 
 .vault-doors-line code {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   max-width: 100%;
   text-overflow: ellipsis;
@@ -2539,4 +2429,265 @@ a.vault-me:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* The pocket's balance, read by the page as soon as the pocket is found: the amount, its token, a re-read. */
+.vault-pocket-amount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.vault-pocket-amount strong {
+  color: var(--teal);
+  font: 700 28px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.vault-pocket-symbol {
+  color: var(--muted);
+  font: 600 13px var(--mono);
+}
+
+.vault-pocket-reread {
+  padding-inline: 8px;
+}
+
+.vault-pocket-saved {
+  margin: 0;
+  color: var(--text);
+  font: 500 13px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* One thing to do at a time: a row of tabs, the form under it. */
+.vault-pocket-do {
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.vault-pocket-doings {
+  display: flex;
+  gap: 2px;
+  padding: 6px 6px 0;
+  border-bottom: 1px solid var(--line-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.vault-pocket-doings button {
+  flex: 1 0 auto;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: none;
+  color: var(--muted);
+  font: 600 14px var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.vault-pocket-doings button:hover {
+  color: var(--text);
+}
+
+.vault-pocket-doings button.on {
+  border-bottom-color: var(--teal);
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+.vault-pocket-do .vault-pocket-form {
+  max-width: 560px;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* A choice before the amount: where the tokens come from, where they go. */
+.vault-choice {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.vault-choice legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-choice label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  color: var(--text);
+  font: 500 14px var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.vault-choice label:has(input:checked) {
+  border-color: var(--teal);
+  background: var(--teal-dim);
+}
+
+.vault-choice input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  accent-color: var(--teal);
+}
+
+.vault-choice span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.vault-choice small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font: 12px var(--sans);
+}
+
+/* Put aside or take back: two small tabs inside the savings form. */
+.vault-pocket-sides {
+  display: inline-flex;
+  gap: 2px;
+  justify-self: start;
+  padding: 3px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.vault-pocket-sides button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: 600 13px var(--sans);
+  cursor: pointer;
+}
+
+.vault-pocket-sides button.on {
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+/* What a curious holder opens next: folds, closed by default, one line each. */
+.vault-pocket-more {
+  display: grid;
+  gap: 8px;
+}
+
+.vault-fold {
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.vault-fold summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.vault-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.vault-fold summary::before {
+  content: "+";
+  flex: none;
+  width: 18px;
+  color: var(--teal);
+  font: 700 16px/1 var(--mono);
+}
+
+.vault-fold[open] summary::before {
+  content: "−";
+}
+
+.vault-fold-title {
+  font: 700 14px var(--sans);
+}
+
+.vault-fold-sub {
+  color: var(--muted);
+  font: 13px var(--sans);
+}
+
+.vault-fold-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  padding: 0 14px 14px 44px;
+}
+
+.vault-fold-body > * {
+  min-width: 0;
+}
+
+.vault-fold-body .vault-meta {
+  margin: 0;
+}
+
+.vault-pocket-leaks {
+  display: grid;
+  gap: 8px;
+}
+
+.vault-pocket-docs {
+  justify-self: start;
+  font-size: 13px;
+}
+
+.vault-pocket-group {
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 600px) {
+  .vault-fold-body {
+    padding-left: 14px;
+  }
+
+  .vault-pocket-amount strong {
+    font-size: 24px;
+  }
+
+  .vault-pocket-do .vault-pocket-form {
+    padding: 14px;
+  }
 }
