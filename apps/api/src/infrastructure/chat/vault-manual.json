@@ -261,28 +261,34 @@
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Taking tokens out sends them, still confidential (cUSDC stays cUSDC), to any address, the amount still encrypted. The address shows. Leave the address empty and the page draws a stealth address for you instead: a fresh address nothing ties to anyone, that only your page finds and spends (see Fresh addresses below).\nWith the vault's boxes: a seller can offer a box privately to your pocket by typing your code. You read the price, then buy with your pocket: first a check under encryption that only says yes or no in public (so a stranger cannot spend the sale with a wrong key), then the purchase. The box then sits in the vault for a desk every pocket shares, with your key: take the NFT out, list it, accept an offer or delegate it, as for any box. It cannot be given or sold privately again from there. After selling a box privately, \"Into my pocket\" puts the price, less the fee, in your pocket."
+     "text": "Taking tokens out sends them, still confidential (cUSDC stays cUSDC), to any address, the amount still encrypted. The address shows. Pick \"A fresh address of mine\" (the form's first choice) and the page draws a stealth address for you instead: a fresh address nothing ties to anyone, that only your page finds and spends (see Fresh addresses below)."
     },
     {
      "id": "vault-pockets-4",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Limits: a group is public, so a pocket hides among its group at most (ten on today's pockets, five on the earlier ones; the size is fixed when the pockets are deployed, and measured up to twelve), and a deposit ties the address that fed it to the group (not to a pocket): the fewer addresses feed a group, the thinner its cover, and a group still filling hides among fewer. Pockets have no fee of their own. They are not audited."
+     "text": "With the vault's boxes: a seller can offer a box privately to your pocket by typing your code. You read the price, then buy with your pocket: first a check under encryption that only says yes or no in public (so a stranger cannot spend the sale with a wrong key), then the purchase. The box then sits in the vault for a desk every pocket shares, with your key: take the NFT out, list it, accept an offer or delegate it, as for any box. It cannot be given or sold privately again from there. After selling a box privately, \"Into my pocket\" puts the price, less the fee, in your pocket."
     },
     {
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Four tokens go in pockets: cUSDC, cUSDT, cWETH and cZAMA, Zama's confidential versions of USDC, USDT, WETH and ZAMA. Each has its own pockets: pick the token above your pocket, its logo shows on the pouch and on every action. The same signature opens your pocket of every token, each with its own code and its own reading address, so nothing on-chain ties them together. Which token an action moves is public, and a pocket hides among the pockets of its own token only. Boxes sell privately in cUSDC, so only the cUSDC pocket buys them. On Sepolia, the page mints test USDT, WETH and ZAMA (Zama's own test tokens, not the WETH offers pay in) and wraps them for you."
+     "text": "Limits: a group is public, so a pocket hides among its group at most (ten on today's pockets, five on the earlier ones; the size is fixed when the pockets are deployed, and measured up to twelve), and a deposit ties the address that fed it to the group (not to a pocket): the fewer addresses feed a group, the thinner its cover, and a group still filling hides among fewer. Pockets have no fee of their own. They are not audited."
     },
     {
      "id": "vault-pockets-6",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Fresh addresses, out: a withdrawal shows the address it pays, so paying your own wallet links the pocket's group to it. The page holds a stealth meta-address for you (ERC-5564, two keys made from the same signature as your pocket): leave the withdrawal's address empty and it draws a fresh address only you can spend, pays it, and has the relayer announce it (the public announcement carries a one-byte tag and a throwaway key; your page alone recognises its own). To pay someone else the same way, type their meta-address, or their wallet address once they have published it in the public registry (one transaction, which ties the meta-address to the wallet, never the addresses paid). \"Received on fresh addresses\" lists what landed on yours, read with their own keys. Each fresh address acts as itself: give it a little ETH (the relayer sends some once, to an address a pocket paid) and \"Into my pocket\" has it put what it holds in your pocket, a deposit that names the fresh address and never your wallet. Any other address typed is paid in the open, as before."
+     "text": "Four tokens go in pockets: cUSDC, cUSDT, cWETH and cZAMA, Zama's confidential versions of USDC, USDT, WETH and ZAMA. Each has its own pockets: pick the token above your pocket, its logo shows on the pouch and on every action. The same signature opens your pocket of every token, each with its own code and its own reading address, so nothing on-chain ties them together. Which token an action moves is public, and a pocket hides among the pockets of its own token only. Boxes sell privately in cUSDC, so only the cUSDC pocket buys them. On Sepolia, the page mints test USDT, WETH and ZAMA (Zama's own test tokens, not the WETH offers pay in) and wraps them for you."
     },
     {
      "id": "vault-pockets-7",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Fresh addresses, out: a withdrawal shows the address it pays, so paying your own wallet links the pocket's group to it. The page holds a stealth meta-address for you (ERC-5564, two keys made from the same signature as your pocket): pick \"A fresh address of mine\" on the withdrawal and it draws a fresh address only you can spend, pays it, and has the relayer announce it (the public announcement carries a one-byte tag and a throwaway key; your page alone recognises its own). To pay someone else the same way, type their meta-address, or their wallet address once they have published it in the public registry (one transaction, which ties the meta-address to the wallet, never the addresses paid). \"Received on fresh addresses\" lists what landed on yours, read with their own keys. Each fresh address acts as itself: give it a little ETH (the relayer sends some once, to an address a pocket paid) and \"Into my pocket\" has it put what it holds in your pocket, a deposit that names the fresh address and never your wallet. Any other address typed is paid in the open, as before."
+    },
+    {
+     "id": "vault-pockets-8",
      "section": "vault-pockets",
      "heading": null,
      "text": "Fresh addresses, in: a deposit from your wallet ties your wallet to your pocket's group. The entry address breaks that link: the page derives a fresh address from your signature (the first never used) and shows it; send USDC to it from somewhere that is not your wallet (a privacy pool such as Privacy Pools, an exchange, a friend), with a little ETH or the relayer's gas (it fuels an address holding USDC once), and \"Into my pocket\" wraps and deposits it as that address. Nothing on-chain says the address is yours. What still shows: the amount wrapped (USDC into cUSDC is public), and the timing, so round amounts and a pause after the pool's withdrawal hide best. Once used, the entry address is retired and the page shows the next one."
@@ -699,7 +705,7 @@
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Retirer envoie les jetons, toujours confidentiels (des cUSDC restent des cUSDC), vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit. Laisse l'adresse vide et la page tire à sa place une adresse furtive pour toi : une adresse neuve que rien ne relie à personne, que seule ta page retrouve et dépense (voir Adresses neuves plus bas)."
+     "text": "Retirer envoie les jetons, toujours confidentiels (des cUSDC restent des cUSDC), vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit. Choisis « Une adresse neuve à moi » (le premier choix du formulaire) et la page tire à sa place une adresse furtive pour toi : une adresse neuve que rien ne relie à personne, que seule ta page retrouve et dépense (voir Adresses neuves plus bas)."
     },
     {
      "id": "vault-pockets-4",
@@ -723,7 +729,7 @@
      "id": "vault-pockets-7",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Adresses neuves, en sortie : un retrait montre l'adresse qu'il paie, donc payer ton propre wallet relie le groupe de la poche à lui. La page détient pour toi une méta-adresse furtive (ERC-5564, deux clés tirées de la même signature que ta poche) : laisse vide l'adresse du retrait et elle tire une adresse neuve que toi seul peux dépenser, la paie, et fait annoncer ça par le relayer (l'annonce publique porte une étiquette d'un octet et une clé jetable ; seule ta page reconnaît les siennes). Pour payer quelqu'un d'autre de la même façon, tape sa méta-adresse, ou l'adresse de son wallet une fois qu'il l'a publiée dans le registre public (une transaction, qui relie la méta-adresse au wallet, jamais les adresses payées). « Reçu sur des adresses neuves » liste ce qui est arrivé sur les tiennes, lu avec leurs propres clés. Chaque adresse neuve agit en son nom : donne-lui un peu d'ETH (le relayer en envoie une fois, à une adresse qu'une poche a payée) et « Dans ma poche » lui fait mettre ce qu'elle détient dans ta poche, un dépôt qui nomme l'adresse neuve et jamais ton wallet. Toute autre adresse tapée est payée au grand jour, comme avant."
+     "text": "Adresses neuves, en sortie : un retrait montre l'adresse qu'il paie, donc payer ton propre wallet relie le groupe de la poche à lui. La page détient pour toi une méta-adresse furtive (ERC-5564, deux clés tirées de la même signature que ta poche) : choisis « Une adresse neuve à moi » sur le retrait et elle tire une adresse neuve que toi seul peux dépenser, la paie, et fait annoncer ça par le relayer (l'annonce publique porte une étiquette d'un octet et une clé jetable ; seule ta page reconnaît les siennes). Pour payer quelqu'un d'autre de la même façon, tape sa méta-adresse, ou l'adresse de son wallet une fois qu'il l'a publiée dans le registre public (une transaction, qui relie la méta-adresse au wallet, jamais les adresses payées). « Reçu sur des adresses neuves » liste ce qui est arrivé sur les tiennes, lu avec leurs propres clés. Chaque adresse neuve agit en son nom : donne-lui un peu d'ETH (le relayer en envoie une fois, à une adresse qu'une poche a payée) et « Dans ma poche » lui fait mettre ce qu'elle détient dans ta poche, un dépôt qui nomme l'adresse neuve et jamais ton wallet. Toute autre adresse tapée est payée au grand jour, comme avant."
     },
     {
      "id": "vault-pockets-8",
@@ -1149,7 +1155,7 @@
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Sacar tokens los envía, aún confidenciales (cUSDC sigue siendo cUSDC), a cualquier dirección, con el importe aún cifrado. La dirección se ve. Deja la dirección vacía y la página saca en su lugar una dirección sigilosa para ti: una dirección nueva que nada vincula a nadie, que solo tu página encuentra y gasta (ver Direcciones nuevas más abajo)."
+     "text": "Sacar tokens los envía, aún confidenciales (cUSDC sigue siendo cUSDC), a cualquier dirección, con el importe aún cifrado. La dirección se ve. Elige «Una dirección nueva mía» (la primera opción del formulario) y la página saca en su lugar una dirección sigilosa para ti: una dirección nueva que nada vincula a nadie, que solo tu página encuentra y gasta (ver Direcciones nuevas más abajo)."
     },
     {
      "id": "vault-pockets-4",
@@ -1173,7 +1179,7 @@
      "id": "vault-pockets-7",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Direcciones nuevas, de salida: un retiro muestra la dirección a la que paga, así que pagar a tu propio wallet vincula el grupo del bolsillo a él. La página guarda para ti una metadirección sigilosa (ERC-5564, dos llaves hechas con la misma firma que tu bolsillo): deja vacía la dirección del retiro y saca una dirección nueva que solo tú puedes gastar, le paga, y hace que el relayer lo anuncie (el anuncio público lleva una etiqueta de un byte y una llave desechable; solo tu página reconoce las suyas). Para pagar a otro de la misma forma, escribe su metadirección, o la dirección de su wallet una vez que la haya publicado en el registro público (una transacción, que vincula la metadirección al wallet, nunca las direcciones pagadas). «Recibido en direcciones nuevas» lista lo que cayó en las tuyas, leído con sus propias llaves. Cada dirección nueva actúa por sí misma: dale un poco de ETH (el relayer envía algo una vez, a una dirección a la que pagó un bolsillo) y «A mi bolsillo» hace que ponga lo que tiene en tu bolsillo, un depósito que nombra la dirección nueva y nunca tu wallet. Cualquier otra dirección escrita se paga a la vista, como antes."
+     "text": "Direcciones nuevas, de salida: un retiro muestra la dirección a la que paga, así que pagar a tu propio wallet vincula el grupo del bolsillo a él. La página guarda para ti una metadirección sigilosa (ERC-5564, dos llaves hechas con la misma firma que tu bolsillo): elige «Una dirección nueva mía» en el retiro y saca una dirección nueva que solo tú puedes gastar, le paga, y hace que el relayer lo anuncie (el anuncio público lleva una etiqueta de un byte y una llave desechable; solo tu página reconoce las suyas). Para pagar a otro de la misma forma, escribe su metadirección, o la dirección de su wallet una vez que la haya publicado en el registro público (una transacción, que vincula la metadirección al wallet, nunca las direcciones pagadas). «Recibido en direcciones nuevas» lista lo que cayó en las tuyas, leído con sus propias llaves. Cada dirección nueva actúa por sí misma: dale un poco de ETH (el relayer envía algo una vez, a una dirección a la que pagó un bolsillo) y «A mi bolsillo» hace que ponga lo que tiene en tu bolsillo, un depósito que nombra la dirección nueva y nunca tu wallet. Cualquier otra dirección escrita se paga a la vista, como antes."
     },
     {
      "id": "vault-pockets-8",
@@ -1605,7 +1611,7 @@
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Ritirare invia i token, ancora confidenziali (i cUSDC restano cUSDC), verso qualsiasi indirizzo, con l'importo ancora cifrato. L'indirizzo si vede. Lascia l'indirizzo vuoto e la pagina estrae al suo posto un indirizzo stealth per te: un indirizzo nuovo che niente collega a nessuno, che solo la tua pagina ritrova e spende (vedi Indirizzi nuovi più sotto)."
+     "text": "Ritirare invia i token, ancora confidenziali (i cUSDC restano cUSDC), verso qualsiasi indirizzo, con l'importo ancora cifrato. L'indirizzo si vede. Scegli «Un indirizzo nuovo mio» (la prima scelta del modulo) e la pagina estrae al suo posto un indirizzo stealth per te: un indirizzo nuovo che niente collega a nessuno, che solo la tua pagina ritrova e spende (vedi Indirizzi nuovi più sotto)."
     },
     {
      "id": "vault-pockets-4",
@@ -1629,7 +1635,7 @@
      "id": "vault-pockets-7",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Indirizzi nuovi, in uscita: un ritiro mostra l'indirizzo che paga, quindi pagare il tuo stesso wallet collega a lui il gruppo della tasca. La pagina custodisce per te un meta-indirizzo stealth (ERC-5564, due chiavi ricavate dalla stessa firma della tua tasca): lascia vuoto l'indirizzo del ritiro e lei estrae un indirizzo nuovo che solo tu puoi spendere, lo paga, e lo fa annunciare dal relayer (l'annuncio pubblico porta un'etichetta di un byte e una chiave usa e getta; solo la tua pagina riconosce i propri). Per pagare qualcun altro allo stesso modo, scrivi il suo meta-indirizzo, o l'indirizzo del suo wallet una volta che l'ha pubblicato nel registro pubblico (una transazione, che collega il meta-indirizzo al wallet, mai gli indirizzi pagati). «Ricevuto su indirizzi nuovi» elenca cosa è arrivato sui tuoi, letto con le loro chiavi. Ogni indirizzo nuovo agisce per sé: dagli un po' di ETH (il relayer ne invia una volta, a un indirizzo pagato da una tasca) e «Nella mia tasca» gli fa mettere ciò che possiede nella tua tasca, un deposito che nomina l'indirizzo nuovo e mai il tuo wallet. Qualsiasi altro indirizzo scritto viene pagato alla luce del sole, come prima."
+     "text": "Indirizzi nuovi, in uscita: un ritiro mostra l'indirizzo che paga, quindi pagare il tuo stesso wallet collega a lui il gruppo della tasca. La pagina custodisce per te un meta-indirizzo stealth (ERC-5564, due chiavi ricavate dalla stessa firma della tua tasca): scegli «Un indirizzo nuovo mio» sul ritiro e lei estrae un indirizzo nuovo che solo tu puoi spendere, lo paga, e lo fa annunciare dal relayer (l'annuncio pubblico porta un'etichetta di un byte e una chiave usa e getta; solo la tua pagina riconosce i propri). Per pagare qualcun altro allo stesso modo, scrivi il suo meta-indirizzo, o l'indirizzo del suo wallet una volta che l'ha pubblicato nel registro pubblico (una transazione, che collega il meta-indirizzo al wallet, mai gli indirizzi pagati). «Ricevuto su indirizzi nuovi» elenca cosa è arrivato sui tuoi, letto con le loro chiavi. Ogni indirizzo nuovo agisce per sé: dagli un po' di ETH (il relayer ne invia una volta, a un indirizzo pagato da una tasca) e «Nella mia tasca» gli fa mettere ciò che possiede nella tua tasca, un deposito che nomina l'indirizzo nuovo e mai il tuo wallet. Qualsiasi altro indirizzo scritto viene pagato alla luce del sole, come prima."
     },
     {
      "id": "vault-pockets-8",
