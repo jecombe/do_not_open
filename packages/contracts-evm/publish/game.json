@@ -12,6 +12,7 @@
     "contracts/mocks/*.sol",
     "!contracts/mocks/VaultTestNFT.sol",
     "!contracts/mocks/TestZone.sol",
+    "!contracts/mocks/TestStealth.sol",
     "test/*.ts",
     "!test/SealedVault.ts",
     "!test/SealedPockets.ts",
@@ -22,7 +23,9 @@
     "!deploy/pockets.ts",
     "lib/*.ts",
     "!lib/pocketTokens.ts",
-    "!lib/opensea.ts"
+    "!lib/savings.ts",
+    "!lib/opensea.ts",
+    "!lib/stealth.ts"
   ],
   "vendor": {
     "game-spec": [
