@@ -97,6 +97,8 @@ mainnet), **Not done** (a check nobody has run).
 | O47 | A box bought from a pocket is held by `PocketDesk`: it can be taken out, listed, sold to an offer and delegated with its key, but not given or sold privately again, and the reserved pocket of a desk sale is public | Low (UX, privacy) | `PocketDesk.reserve`, `buy` |
 | O48 | The free decryptions a day follow the network (`FREE_UNITS` in `apps/api/src/config.ts`): Sepolia gives 200 (100 to a newcomer), since Zama's testnet relayer costs the collection nothing; the mainnet row keeps 25 and 16, the figures the credit price was worked out for. Before mainnet: add the mainnet network to `NETWORK` with its row checked against Zama's plan and the credit price (on pay-as-you-go, newcomer 0 and fewer free units, see `docs/ZAMA_NOTES.md`), and change the manual's figures (`apps/web/src/docs/fees.tsx`), which show Sepolia's | Blocker for mainnet | `apps/api` config, relayer proxy |
 | O49 | Each token's pockets are a contract of their own (cUSDT, cWETH, cZAMA beside cUSDC): which token an action moves is public, and its decoys come only from that token's pockets, so a little-used token hides its pockets among few. The tokens are Zama's wrappers, trusted as the cUSDC is (on Sepolia, mocks anyone may mint) | Medium (privacy, trust) | `lib/pocketTokens.ts`, `SealedPockets_<symbol>` |
+| O50 | The pockets' savings join Zama's batches as one participant: the batch's decrypted total bounds the sum of a window's saves, and equals it when the window was the batch's only participant (the lone window). The keeper joins once per batch, late in it, to keep the window large and the batch shared; the sum is spread over every pocket of the window, decoys included, never one pocket's | Low (privacy) | `PocketSavings.join`, `savingsKeeper` |
+| O51 | What is saved runs the Morpho vault's and Zama's batchers' risk (curator, liquidity, a paused batcher, a canceled batch) and waits on them: a save settles after Zama's batch (about an hour on Sepolia) and the keeper, so savings cannot pay a sale at once; the keeper is one hot key on the indexer, and anyone may run its three calls in its place. On mainnet the pockets' cUSDC must be Zama's own `cAsset` or no pocket can save | Low (availability, trust); a mainnet check | `PocketSavings.settle`, `lib/savings.ts` |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -564,9 +566,41 @@ since 2026-10-09.
 | Every call fits the HCU limits | Pass | A send between two sets of five ~6.5M HCU, a desk purchase ~6.3M. Tests under "limits and costs" and "buys within the HCU limits" |
 | Another token's pockets are apart from the cUSDC ones | Pass | Its pocket's key and viewer hash the pockets' address in (`EvmPockets.keys`), so its viewer differs; it has no desk (`buy`, `offerSale` refuse); the relayer sends only to this vault's pockets (`EthersVaultSender.pocketsFor`). Test: "opens another token's pockets (no desk) from the same signature, with their own pocket and viewer" (`test/PocketsAdapter.ts`) |
 
+## 17. The pockets' savings: PocketSavings
+
+`vault/PocketSavings.sol` puts a pocket's cUSDC to work in one of Zama's confidential vaults on
+Morpho, through its deposit and redeem batchers (`vault/IVaultBatcher.sol`), and brings it back
+(see [VAULT.md](VAULT.md#savings)). Not deployed yet. `SealedPockets` gained a second desk slot
+for it (`setSavings`, owner, once; `_onlyDesk` lets the desk or the savings through `deskTake`,
+`deskCheck`, `deskGive`). 8 tests in `test/PocketSavings.ts`, on the FHEVM mock, against
+`TestVaultBatcher` (Zama's lifecycle: join, dispatch, the total's public decryption and its
+proof checked in the callback, claim, recover, a `cancel`), `TestConfidentialShare` and
+`TestYieldVault`; Zama's real batchers have not been called yet. The keeper's code in
+`apps/api/src/application/savingsKeeper.ts`.
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| A spend is bound to its terms and runs once | Pass | The bound key is `key XOR saveHash(side, set, amount handle)` (chain id and the contract's address in the hash); each bound key's handle is `spent` once, on either side; a changed set or amount makes the key miss and commits zero. Test: "runs a bound key once, and moves nothing when the relay changes the set or the amount" |
+| Sets as the pockets check them | Pass | `_checkSet`: 1 to `MAX_SET` pockets, strictly increasing, all opened (`BadSet`, `NotAPocket`). Same test |
+| Only the key's pocket is debited, only if it covers the amount | Pass | A save: `deskTake` per pocket (`select(eq(key) AND ge(balance, amount), amount, 0)`); an unsave: `deskCheck(pocket, key, 0) AND ge(shares, amount)`. Tests: "puts a pocket's cUSDC aside among decoys…", "saves nothing with a wrong key or a short balance, and asks nothing back beyond the shares, without a revert" |
+| Every pocket of a set gets a commitment, decoys included, readable by its viewer only | Pass | `_commit` allows the savings and `pockets.viewerOf(pocketId)`; the test decrypts each decoy's zero as its own viewer. Test: "puts a pocket's cUSDC aside among decoys…" |
+| One window per batch and side; the window's steps in order | Pass | `join` reverts `EmptyWindow` and `BatchAlreadyJoined` (`lastBatch[side]`); `settle` reverts `WindowNotJoined` and `BatchNotDone` (Pending or Dispatched); `settlePockets` reverts `WindowNotSettled` and `NotCommitted` (each pocket once, the commitment cleared first). Test: "joins one window per batch, and keeps the window's steps in order" |
+| Tokens are conserved through a batch | Pass | What the savings hold in cUSDC and shares is checked against the pockets' balances and the batcher's: nothing left in the savings after a round but rounding dust. Tests: "brings the savings back as cUSDC through the redeem batcher, at the batch's rate", "puts a pocket's cUSDC aside…" |
+| A canceled batch gives everything back, both sides | Pass | `settle` on `Canceled` calls `recover`; `settlePockets` then gives a save's cUSDC back with `deskGive` and an unsave's shares back to the balance. Test: "gives every pocket its commitment back when the batch is canceled, on both sides" |
+| 128-bit conversion, rounded down, no overflow | Pass | `_convert`: `asEuint64(div(mul(asEuint128(amount), rate), 1e6))`. The tests compute `amount × rate / 1e6` in bigint and compare; a `euint64` ceiling times the largest `uint64` rate fits 128 bits |
+| Dust is nobody's | Pass by reading | Per-pocket rounding stays under the savings' address with no claim on it; a window with one pocket leaves none (the test's `held(share)` equals the pocket's shares) |
+| Re-entrancy | Pass by reading | Every external entry is `nonReentrant`; state (`spent`, `lastBatch`, the window's state, the cleared commitment) is written before the batcher's or the token's calls |
+| Only the desk and the savings move a pocket's balance | Pass | `_onlyDesk` in `SealedPockets`; `setSavings` once, by the owner (`SavingsSet`, `ZeroAddress`). Tests: "wires the pockets' token…" (`SavingsSet`), "runs a bound key once…" (`OnlyDesk` from the relay) |
+| The route is checked at deployment | Pass | The constructor reverts `WrongRoute` unless the deposit batcher takes the pockets' token and gives the share, and the redeem batcher the reverse; it makes each batcher its operator. Test: "wires the pockets' token, the batchers' tokens and two open windows" |
+| Batcher trust | Pass by reading | The savings trust the batcher's `batchState`, `exchangeRate`, `claim` and `recover` as Zama's contracts: a batcher that paid less than the rate says would leave the last pockets settled short (the contract's balance, not the pockets', pays); a paused batcher refuses `join` and the window waits. Zama's batchers are audited OpenZeppelin code; our mock plays them, the real ones were not called yet |
+| Keeper failure modes | Pass by reading | A stopped keeper delays a save (the window waits open, or joined); anyone may `join`, `settle` and `settlePockets`. A window of zeros (every save refused) still joins, the batch cancels on a zero total and the zeros come back. Test: "saves nothing with a wrong key…" (the canceled window of zeros) |
+| Every call fits the HCU limits | Pass | A save over five ~7.2M HCU, settling five pockets at ~2.1M each. Test: "saves over a full set of five, and settles five pockets, within the HCU limits" |
+| What leaks | Open (O50) | The batch's total bounds a window's saves; one join per batch, late in it. [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md#5g-the-pockets-savings) |
+| The real batchers on Sepolia | Not done | Steakhouse USDC Prime's batchers (`lib/savings.ts`) have not been joined by the savings yet: deploy, save, wait for Zama's batch, settle |
+
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29, O32, O33, O38 to O44. Fix O3, O4, O7, O17 (small and
+1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29, O32, O33, O38 to O44, O50, O51. Fix O3, O4, O7, O17 (small and
    mechanical), and make room for O18.
 2. Set the relayer key and the credit price from Zama's plan (O9).
 3. Run the "Not done" rows of section 8.

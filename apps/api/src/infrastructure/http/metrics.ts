@@ -11,6 +11,7 @@ import type { SeatsView } from "../../application/seats";
 import type { XPass } from "../../application/xPass";
 import type { AllowListClaim } from "../../application/allowList";
 import type { VaultRelay } from "../../application/vaultRelay";
+import type { SavingsKeeper } from "../../application/savingsKeeper";
 import { summarizeVault, VAULT_ACTIONS, VAULT_BOX_STATES, type VaultSummary } from "../../domain/vault";
 
 export interface MetricsSources {
@@ -38,6 +39,8 @@ export interface MetricsSources {
   vault?: Pick<ReadStore, "vaultEvents">;
   /** The vault's relayer, on the API replicas that send for holders: its wallet, its day, its outcomes. */
   vaultRelay?: Pick<VaultRelay, "today" | "balance" | "outcomes">;
+  /** The pockets' savings keeper, on the indexer: what it joined and settled, and whether its last tick went through. */
+  savingsKeeper?: Pick<SavingsKeeper, "counts" | "lastTickOk">;
   /** Shown on `dno_info`; Prometheus adds the `network` and `role` labels to every series from its target. */
   info: { chain: string; collection: string; version: string; role: string };
 }
@@ -273,7 +276,7 @@ export class Metrics {
       gauge("dno_vault_relayer_daily_cap", "Transactions a replica's vault relayer may send per UTC day (VAULT_RELAY_PER_DAY)", (g) => g.set(relay.today().perDay));
       new Counter({
         name: "dno_vault_relays_total",
-        help: "Vault relays since the replica started, by transaction (request, finalize, pocketOpen, pocketSend, pocketWithdraw, deskAsk, deskBuy) and outcome (sent, reverted, daily-cap, failed)",
+        help: "Vault relays since the replica started, by transaction (request, finalize, pocketOpen, pocketSend, pocketWithdraw, pocketSave, pocketUnsave, deskAsk, deskBuy) and outcome (sent, reverted, daily-cap, failed)",
         labelNames: ["kind", "outcome"],
         registers: [r],
         collect() {
@@ -284,6 +287,23 @@ export class Metrics {
           }
         },
       });
+    }
+    if (s.savingsKeeper) {
+      const keeper = s.savingsKeeper;
+      new Counter({
+        name: "dno_savings_keeper_actions_total",
+        help: "What the savings keeper did since it started, by action (join: a window joined its batch; settle: a window's batch claimed or recovered; pocket: a pocket credited its part; failure: a call that threw)",
+        labelNames: ["action"],
+        registers: [r],
+        collect() {
+          this.reset();
+          this.inc({ action: "join" }, keeper.counts.joins);
+          this.inc({ action: "settle" }, keeper.counts.settles);
+          this.inc({ action: "pocket" }, keeper.counts.pocketSettlements);
+          this.inc({ action: "failure" }, keeper.counts.failures);
+        },
+      });
+      gauge("dno_savings_keeper_last_tick_ok", "1 when the savings keeper's last tick met no failure, 0 when one call threw (none yet: 0)", (g) => g.set(keeper.lastTickOk ? 1 : 0));
     }
     if (s.rats) {
       const rats = s.rats;

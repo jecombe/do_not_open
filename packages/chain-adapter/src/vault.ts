@@ -196,6 +196,8 @@ export interface PocketsInfo {
   /** Buys the vault's private sales out of pockets, and holds the boxes it bought. Null for a
    *  token other than the vault's cUSDC. */
   desk: Address | null;
+  /** Puts a pocket's cUSDC to work in a confidential vault. Null where there are no savings. */
+  savings: Address | null;
   /** Pockets opened in all: they make groups of `maxSet` by number. */
   count: number;
   /** The most pockets one side of an action may name, the real one included: a group's size. */
@@ -211,6 +213,82 @@ export interface PocketOptions extends ActionOptions {
 /** A private sale offered to the desk and reserved for a pocket. */
 export interface PocketSale extends VaultSale {
   pocketId: number;
+}
+
+/** The savings' two ways: cUSDC into the vault's shares, and shares back into cUSDC. */
+export type SavingsSide = "save" | "unsave";
+
+/** A savings window: `open` takes saves (or unsaves); `joined` sits in one of Zama's batches;
+ *  `settled` got the batch's shares (or cUSDC) and hands them to its pockets; `canceled` gives
+ *  the pockets their commitments back. */
+export type SavingsWindowState = "open" | "joined" | "settled" | "canceled";
+
+export interface SavingsWindow {
+  windowId: number;
+  side: SavingsSide;
+  state: SavingsWindowState;
+  /** Zama's batch it joined, null while open. */
+  batchId: number | null;
+  /** The batch's rate once settled: output units per input unit, times 1e6. Null before. */
+  rate: bigint | null;
+  /** Unix seconds. */
+  openedAt: number;
+  /** Pockets with a commitment in it, decoys included. */
+  pockets: number;
+  /** Of them, not settled yet. */
+  left: number;
+}
+
+/** The vault's confidential shares (Zama's `cShare`): what a pocket's savings are held in. */
+export type SavingsShare = Omit<PocketToken, "desk" | "faucet">;
+
+export interface SavingsInfo {
+  address: Address;
+  /** The Morpho vault (ERC-4626) behind Zama's batchers, and the batchers themselves. */
+  vault: Address;
+  depositBatcher: Address;
+  redeemBatcher: Address;
+  /** Seconds one of Zama's batches must age before it is dispatched: about how long a save
+   *  waits in a batch, once its window has joined one. */
+  minBatchAge: number;
+  /** The windows taking saves and unsaves now. */
+  open: { save: SavingsWindow; unsave: SavingsWindow };
+}
+
+/** What the wallet's pocket committed to a window that has not been settled for it yet. */
+export interface SavingsPending {
+  windowId: number;
+  side: SavingsSide;
+  state: SavingsWindowState;
+  /** cUSDC units for a save, share units for an unsave. */
+  amount: bigint;
+}
+
+/**
+ * The wallet's pocket's savings: its cUSDC put to work in one of Zama's confidential vaults on
+ * Morpho, through the pockets' savings contract. A save leaves the pocket at once and waits in
+ * the open window; the relayer joins the window to the vault's next batch, and once Zama has
+ * settled the batch, the pocket's shares appear here. The way back is the same, in batches too:
+ * savings are put aside, never paid with at once. Nothing public says which pocket saved, nor how
+ * much: the batcher sees one participant, the savings contract, with one encrypted total.
+ */
+export interface PocketSavingsAdapter {
+  readonly share: SavingsShare;
+  info(): Promise<SavingsInfo>;
+  /** The wallet's pocket's shares, decrypted, in the share's smallest unit. */
+  shares(opts?: ActionOptions): Promise<bigint>;
+  /** What `shares` are worth now in cUSDC units, at the Morpho vault's public price. */
+  value(shares: bigint): Promise<bigint>;
+  /** About what `amount` cUSDC gives in shares at the vault's price now: the batch's rate decides. */
+  toShares(amount: bigint): Promise<bigint>;
+  /** The pocket's commitments in windows not settled for it yet, oldest first. */
+  pending(opts?: ActionOptions): Promise<SavingsPending[]>;
+  /** Puts `amount` cUSDC of the wallet's pocket aside, among decoys. Moves nothing (no error)
+   *  when the balance is short: check `balance` first. */
+  save(amount: bigint, opts?: PocketOptions): Promise<void>;
+  /** Asks `shares` of the wallet's pocket's savings back as cUSDC, among decoys. Moves nothing
+   *  (no error) when the shares are short: check `shares` first. */
+  unsave(shares: bigint, opts?: PocketOptions): Promise<void>;
 }
 
 /**
@@ -260,6 +338,8 @@ export interface PocketsAdapter {
   buy(saleId: number, opts?: ActionOptions): Promise<boolean>;
   /** Boxes the wallet's pocket bought, still in the vault. */
   boxes(): Promise<number[]>;
+  /** The pocket's savings, where they are deployed: the vault's cUSDC pockets only. */
+  savings(): PocketSavingsAdapter | null;
 }
 
 export interface VaultAdapter {

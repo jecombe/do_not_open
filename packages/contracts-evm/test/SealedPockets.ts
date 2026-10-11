@@ -92,8 +92,12 @@ describe("SealedPockets", function () {
       expect(await pockets.viewerOf(id)).to.eq(viewers[0]!.address);
       expect(await pockets.pocketOf(viewers[0]!.address)).to.eq(1n);
       expect(await balance(id, 0)).to.eq(0n);
+      // A fresh pocket's zero is the protocol's one trivial zero handle, the same in every contract:
+      // a viewer allowed on it anywhere (another test file's pocket) reads it. Ask as a signer no
+      // test ever made a viewer.
+      const stranger = ((await ethers.getSigners()) as HardhatEthersSigner[])[19]!;
       let refused = false;
-      await fhevm.userDecryptEuint(FhevmType.euint64, await pockets.balanceOf(id), addr, viewers[1]!).catch(() => (refused = true));
+      await fhevm.userDecryptEuint(FhevmType.euint64, await pockets.balanceOf(id), addr, stranger).catch(() => (refused = true));
       expect(refused).to.eq(true);
     });
 

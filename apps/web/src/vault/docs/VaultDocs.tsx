@@ -7,7 +7,7 @@ import { REPO, SOURCE, SOURCE_VAULT } from "../../links";
 import { homePath, projectDocsPath, vaultPath } from "../../site";
 import { useT } from "./i18n";
 
-const SECTIONS = ["what", "seal", "key", "requests", "seaport", "offers", "bid", "private", "pockets", "give", "delegate", "relayer", "leaks", "testnet", "more"] as const;
+const SECTIONS = ["what", "seal", "key", "requests", "seaport", "offers", "bid", "private", "pockets", "savings", "give", "delegate", "relayer", "leaks", "testnet", "more"] as const;
 
 // The vault's fee is a deployment setting (VAULT_FEE_BPS, 250 by default), capped by
 // SealedVault's MAX_FEE_BPS (1,000): it is not in the game's spec.
@@ -34,8 +34,8 @@ const CONTRACTS = [
 /** The manual's animated flow of a withdrawal through the relayer. */
 const VAULT_FLOW = ["vault"] as const;
 
-const PUBLIC = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] as const;
-const HIDDEN = ["1", "2", "3", "4", "5", "6"] as const;
+const PUBLIC = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"] as const;
+const HIDDEN = ["1", "2", "3", "4", "5", "6", "7"] as const;
 
 /**
  * The sealed vault's documentation, at `/docs` on `vault.`: for holders and buyers, no code.
@@ -78,6 +78,11 @@ export function VaultDocs() {
     pockets: (
       <Prose>
         {[t("vaultDocs.pockets.p1"), t("vaultDocs.pockets.p2"), t("vaultDocs.pockets.p3"), t("vaultDocs.pockets.p4"), t("vaultDocs.pockets.p5"), t("vaultDocs.pockets.p6"), t("vaultDocs.pockets.p7"), t("vaultDocs.pockets.p8")]}
+      </Prose>
+    ),
+    savings: (
+      <Prose>
+        {[t("vaultDocs.savings.p1"), t("vaultDocs.savings.p2"), t("vaultDocs.savings.p3"), t("vaultDocs.savings.p4"), t("vaultDocs.savings.p5"), t("vaultDocs.savings.p6"), t("vaultDocs.savings.p7")]}
       </Prose>
     ),
     give: <Prose>{[t("vaultDocs.give.p1")]}</Prose>,

@@ -31,13 +31,26 @@ export interface PocketSpendInput {
   keyProof: string;
 }
 
-/** The pockets' and the desk's calls the relayer sends, by name. */
+/** A save's or an unsave's encrypted inputs, as `PocketSavings.SpendInput`: the amount in one
+ *  input, the key bound to its handle in another. */
+export interface SavingsSpendInput {
+  amount: string;
+  inputProof: string;
+  boundKey: string;
+  keyProof: string;
+}
+
+/** The pockets', the desk's and the savings' calls the relayer sends, by name. */
 export interface PocketTxs {
   /** Opens a pocket: its key encrypted for the pockets, and the address that reads its balance.
    *  `pockets` names another token's pockets contract (cUSDT, cWETH, cZAMA); the cUSDC ones when left out. */
   pocketOpen: { handle: string; inputProof: string; viewer: Address; pockets?: Address };
   pocketSend: { from: number[]; to: number[]; input: PocketSpendInput; pockets?: Address };
   pocketWithdraw: { from: number[]; to: Address; input: PocketSpendInput; pockets?: Address };
+  /** Puts cUSDC of one pocket of `from` (the real one among decoys) aside in the savings' open window. cUSDC pockets only. */
+  pocketSave: { from: number[]; input: SavingsSpendInput };
+  /** Asks shares of one pocket of `from` back, into the savings' open unsave window. */
+  pocketUnsave: { from: number[]; input: SavingsSpendInput };
   /** Step 1 of a purchase out of a pocket: the pocket's bound key, and the box key's handle. */
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   /** Step 2: the proof of the "ok" bit and the box's new key. */

@@ -211,6 +211,19 @@ const schema = z.object({
   /** Vault relays per minute per IP. */
   VAULT_RELAY_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
   /**
+   * The pockets' savings keeper, on the indexer with the same VAULT_RELAYER_KEY: how often it
+   * looks at the savings' windows (joins the open one to Zama's batch, settles the joined ones,
+   * credits their pockets), in seconds. It runs between the indexer's passes, so about one block
+   * late at most.
+   */
+  SAVINGS_KEEPER_INTERVAL: z.coerce.number().int().positive().default(60),
+  /**
+   * Seconds before a batch can be dispatched at which the open window joins it: late, when the
+   * batch holds the most other participants, with room for a slow transaction. Sepolia's batches
+   * last about an hour (`minBatchAge` 3480 s); a batcher with no minimum age is joined at once.
+   */
+  SAVINGS_JOIN_MARGIN: z.coerce.number().int().min(0).default(600),
+  /**
    * OpenSea's API key: the API reads the offers made on opensea.io for the NFTs in the vault,
    * and asks OpenSea the signed order that fills one, for the vault's page. Only where OpenSea
    * is (mainnet): nothing on Sepolia. Never sent to browsers.

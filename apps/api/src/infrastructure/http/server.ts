@@ -550,6 +550,7 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
     const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "32 bytes");
     const pocketSet = z.array(id).min(1).max(5);
     const spendInput = z.object({ amount: bytes32, target: bytes32, inputProof: hex, boundKey: bytes32, keyProof: hex });
+    const savingsInput = z.object({ amount: bytes32, inputProof: hex, boundKey: bytes32, keyProof: hex });
     const body = z.discriminatedUnion("call", [
       z.object({
         call: z.literal("request"),
@@ -571,6 +572,9 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       z.object({ call: z.literal("pocketOpen"), args: z.object({ handle: bytes32, inputProof: hex, viewer: address, pockets: address.optional() }) }),
       z.object({ call: z.literal("pocketSend"), args: z.object({ from: pocketSet, to: pocketSet, input: spendInput, pockets: address.optional() }) }),
       z.object({ call: z.literal("pocketWithdraw"), args: z.object({ from: pocketSet, to: address, input: spendInput, pockets: address.optional() }) }),
+      // The cUSDC pockets' savings: a set of pockets, the real one among decoys, as a send.
+      z.object({ call: z.literal("pocketSave"), args: z.object({ from: pocketSet, input: savingsInput }) }),
+      z.object({ call: z.literal("pocketUnsave"), args: z.object({ from: pocketSet, input: savingsInput }) }),
       z.object({ call: z.literal("deskAsk"), args: z.object({ saleId: id, handle: bytes32, keyProof: hex, boxKey: bytes32 }) }),
       z.object({ call: z.literal("deskBuy"), args: z.object({ askId: id, cleartexts: hex, proof: hex, boxKey: bytes32, boxKeyProof: hex }) }),
     ]);

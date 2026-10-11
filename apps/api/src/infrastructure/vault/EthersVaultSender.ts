@@ -1,6 +1,7 @@
-import { Contract, isError, NonceManager, Wallet, type Provider } from "ethers";
+import { Contract, NonceManager, Wallet, type Provider } from "ethers";
 import { VaultRelayRefused } from "../../application/vaultRelay";
-import type { PocketCall, PocketSpendInput, PocketTxs, VaultFinalizeTx, VaultRequestTx, VaultSender } from "../../application/ports/vault";
+import { revertReason, sendWithFreshNonce } from "./send";
+import type { PocketCall, PocketSpendInput, PocketTxs, SavingsSpendInput, VaultFinalizeTx, VaultRequestTx, VaultSender } from "../../application/ports/vault";
 import { normalizeAddress, type Address } from "../../domain/types";
 
 const VAULT_ABI = [
@@ -42,11 +43,21 @@ const DESK_ABI = [
   "error NotAPocket(uint256 pocketId)",
 ];
 
+const SAVINGS_INPUT = "(bytes32 amount, bytes inputProof, bytes32 boundKey, bytes keyProof)";
+const SAVINGS_ABI = [
+  `function save(uint256[] from, ${SAVINGS_INPUT} s)`,
+  `function unsave(uint256[] from, ${SAVINGS_INPUT} s)`,
+  "error NotAPocket(uint256 pocketId)",
+  "error BadSet()",
+  "error KeyUsed()",
+];
+
 const spendTuple = (i: PocketSpendInput) => [i.amount, i.target, i.inputProof, i.boundKey, i.keyProof];
+const savingsTuple = (i: SavingsSpendInput) => [i.amount, i.inputProof, i.boundKey, i.keyProof];
 
 /**
- * The relayer's wallet, sending to the SealedVault, and to its pockets and their desk where they
- * are deployed. Each call is estimated first, so what the
+ * The relayer's wallet, sending to the SealedVault, and to its pockets, their desk and their
+ * savings where they are deployed. Each call is estimated first, so what the
  * vault would refuse costs nothing. Replicas share the key: a nonce taken by another one is
  * retried with a fresh count.
  */
@@ -58,9 +69,10 @@ export class EthersVaultSender implements VaultSender {
   /** Every token's pockets by lowercase address, the cUSDC ones included. */
   private readonly pocketsByAddress = new Map<string, Contract>();
   private readonly desk: Contract | null;
+  private readonly savings: Contract | null;
   private readonly provider: Provider;
 
-  constructor(privateKey: string, vaultAddress: string, provider: Provider, pockets?: { address: string; desk: string | null; others?: string[] } | null) {
+  constructor(privateKey: string, vaultAddress: string, provider: Provider, pockets?: { address: string; desk: string | null; savings?: string | null; others?: string[] } | null) {
     this.provider = provider;
     const wallet = new Wallet(privateKey, provider);
     this.address = normalizeAddress(wallet.address);
@@ -68,6 +80,7 @@ export class EthersVaultSender implements VaultSender {
     this.vault = new Contract(vaultAddress, VAULT_ABI, this.signer);
     this.pocketsContract = pockets ? new Contract(pockets.address, POCKETS_ABI, this.signer) : null;
     this.desk = pockets?.desk ? new Contract(pockets.desk, DESK_ABI, this.signer) : null;
+    this.savings = pockets?.savings ? new Contract(pockets.savings, SAVINGS_ABI, this.signer) : null;
     for (const address of pockets ? [pockets.address, ...(pockets.others ?? [])] : []) {
       this.pocketsByAddress.set(address.toLowerCase(), new Contract(address, POCKETS_ABI, this.signer));
     }
@@ -76,6 +89,11 @@ export class EthersVaultSender implements VaultSender {
   private theDesk(): Contract {
     if (!this.desk) throw new VaultRelayRefused("reverted", "There is no pocket desk on this network.");
     return this.desk;
+  }
+
+  private theSavings(): Contract {
+    if (!this.savings) throw new VaultRelayRefused("reverted", "The pockets have no savings on this network.");
+    return this.savings;
   }
 
   /** The pockets a call names: the cUSDC ones when it names none; refused when it names one not deployed here. */
@@ -99,6 +117,14 @@ export class EthersVaultSender implements VaultSender {
       case "pocketWithdraw": {
         const t = tx as PocketTxs["pocketWithdraw"];
         return this.sendTo(this.pocketsFor(t.pockets), "withdraw", [t.from, t.to, spendTuple(t.input)]);
+      }
+      case "pocketSave": {
+        const t = tx as PocketTxs["pocketSave"];
+        return this.sendTo(this.theSavings(), "save", [t.from, savingsTuple(t.input)]);
+      }
+      case "pocketUnsave": {
+        const t = tx as PocketTxs["pocketUnsave"];
+        return this.sendTo(this.theSavings(), "unsave", [t.from, savingsTuple(t.input)]);
       }
       case "deskAsk": {
         const t = tx as PocketTxs["deskAsk"];
@@ -133,19 +159,8 @@ export class EthersVaultSender implements VaultSender {
     try {
       await fn.estimateGas(...args);
     } catch (error) {
-      const reason = isError(error, "CALL_EXCEPTION") ? (error.revert?.name ?? error.reason ?? "refused") : (error as Error).message;
-      throw new VaultRelayRefused("reverted", `The vault would refuse it: ${reason}.`);
+      throw new VaultRelayRefused("reverted", `The vault would refuse it: ${revertReason(error)}.`);
     }
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return (await fn(...args)).hash as string;
-      } catch (error) {
-        if (attempt < 2 && (isError(error, "NONCE_EXPIRED") || isError(error, "REPLACEMENT_UNDERPRICED"))) {
-          this.signer.reset();
-          continue;
-        }
-        throw error;
-      }
-    }
+    return (await sendWithFreshNonce(this.signer, () => fn(...args))).hash;
   }
 }

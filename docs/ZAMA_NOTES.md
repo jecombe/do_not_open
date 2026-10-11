@@ -896,7 +896,90 @@ specific to the protocol:
   10 contracts (`MAX_USER_DECRYPT_CONTRACT_ADDRESSES`), and the wallet's permit already names nine
   (the collection, cUSDC, cCROQ, the Pantry, the flea market, the vault, the pockets, the desk,
   the Rats). A pocket viewer's permit now names only the vault's contracts (the vault, every
-  token's pockets, the desk): the viewer reads nothing else.
+  token's pockets, the desk, and the savings, whose `sharesOf` and `committedOf` it reads): the
+  viewer reads nothing else.
+
+### The pockets' savings (2026-10-11)
+
+`PocketSavings` (`contracts/vault/PocketSavings.sol`) puts a pocket's cUSDC to work in one of
+Zama's confidential vaults and brings it back ([VAULT.md](VAULT.md#savings)). Not deployed yet:
+the cUSDC pockets and their desk will be redeployed with it (a pockets contract takes its
+savings once, `setSavings`).
+
+- **Zama's product.** The "Confidential Vault" (June 2026, with Morpho and Steakhouse; 16 vaults
+  since 2026-09-15; https://docs.zama.org/protocol/confidential-vault: architecture,
+  confidentiality, batcher-interface, addresses). Per Morpho vault, a
+  `DepositVaultBatcherConfidential` and a `RedeemVaultBatcherConfidential` (OpenZeppelin's
+  `BatcherConfidential`): participants `join` with an encrypted amount of the input token
+  (`cAsset` for a deposit, `cShare` for a redeem; the batcher pulls it as the participant's
+  operator), anyone dispatches once the batch is `minBatchAge` old, only the batch's total is
+  decrypted by the KMS (a public decryption, with its proof checked in the callback), the
+  batcher unwraps, deposits in or redeems from the ERC-4626 vault, wraps the result as a
+  confidential token (`cShare`, an `ERC7984ERC20Wrapper`; the `cAsset` back on a redeem),
+  publishes an exchange rate (output per input, times 1e6), and each participant's `claim`
+  computes its part under encryption. Some vaults carry a `WhitelistSendAssetsGate`, so only the
+  batcher deposits. Public per batch: the participants' addresses, the decrypted total, the
+  rate; private: each participant's amount. On Sepolia our cUSDC
+  (`0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639`) is exactly Zama's `cAsset` for its Sepolia USDC
+  vaults. The Steakhouse USDC Prime vault there: deposit batcher
+  `0xF66Fc55060DF981449Fa746e8F58bD003370bE28`, redeem batcher
+  `0x9f3cF93246cBf333C6BE65fb7277724eC0c38543`, `cShare` `0x3f07Ef5A0C1E633DDfDC59b96218f8ED5b1d6f71`
+  ("csteakcUSDC", 6 decimals, rate 1e12 to the 18-decimal share), the ERC-4626 vault
+  `0x3DEcCf4D7C98B573faBA29f695CA06f568E2801f`, batches about hourly (`minBatchAge` 3,480 s,
+  callback deadline 21,600 s). Mainnet Steakhouse USDC Prime: deposit batcher
+  `0x321C9AaB1390100f6e7fE1735a928ec0F16252f0`, redeem batcher
+  `0x807C367dA7B9228643b06390e199E33ccA7Cc533`, `cAsset` (Zama's cUSDC)
+  `0xe978F22157048E5DB8E5d07971376e86671672B2`. `lib/savings.ts` keeps the batchers per network;
+  `IVaultBatcher.sol` is the slice we call (`join`, `claim`, `recover`, `currentBatchId`,
+  `batchState`, `exchangeRate`, the tokens, `minBatchAge`, `paused`).
+- **One participant, not a wrapped share nor an index in the pockets.** The batcher names its
+  participants, so joining with each pocket (or each holder's wallet) would publish who saves,
+  and holding the `cShare` in wallets would name holders on every ERC-7984 transfer. Putting a
+  share balance in `SealedPockets` would have moved the vault's logic into a contract already
+  live. The savings contract joins as the one participant with the encrypted total of a window
+  (every save since the last join, decoys' zeros included), and keeps each pocket's part as an
+  encrypted share balance only its viewer reads. Each pocket's part is `committed × rate / 1e6`
+  from the batch's public rate, so nothing of ours is decrypted at any step: a save, a join, a
+  settlement and a pocket's settlement are each one transaction, with no request and no proof.
+  Zama's public decryption of the batch's total is Zama's, once per batch, not per save.
+- **Windows and one join per batch.** `join` sends the open window to `currentBatchId()` and
+  reverts if the side already joined that batch, so a save is tied to a batch, never to a join
+  of its own, and the batch's total mixes the window with the other participants'. The sum of a
+  window's saves is bounded by that total, and equals it when the window is the batch's only
+  participant: the keeper joins late in the batch (`SAVINGS_JOIN_MARGIN`, 600 s before it can be
+  dispatched), when the window has the most saves and the batch the most participants. The
+  trade-off is time: a save waits for its window, then for the batch (about an hour on Sepolia),
+  then for the keeper; savings cannot pay a sale at once.
+- **ACL.** `save` allows the key and the amount transiently to the pockets (`deskTake` compares
+  and debits there); `join` allows the window's total transiently to the batcher, which pulls it
+  with `confidentialTransferFrom` (the savings made each batcher its operator for good in the
+  constructor: `setOperator(batcher, type(uint48).max)`, as the gate wants the batcher to pull);
+  `_giveBack` allows the amount transiently to the token, then what was sent to the pockets for
+  `deskGive`. Durable grants go to the savings itself and to the pocket's viewer only, on each
+  commitment and each share balance (`FHE.allow(h, pockets.viewerOf(pocketId))`): the holder's
+  wallet is on no handle, as for the pockets. The batcher's `join` takes an already-allowed
+  handle with an empty proof (`externalEuint64.wrap(euint64.unwrap(total))`, `""`), the path
+  `BatcherConfidential` offers for contracts.
+- **128-bit arithmetic.** `FHE.mul(FHE.asEuint128(amount), rate)` then `FHE.div(…, 1e6)` and a
+  cast to `euint64`: a `euint64` commitment times a rate above 1e6 would overflow 64 bits, and
+  the div by a plaintext is cheap. Rounding dust stays in the contract, unowned.
+- **HCU.** A save over a full set of five is ~7.2M HCU (depth ~1.5M), a join ~0.6M, a settle
+  ~2.5M (depth ~2.3M: the batcher's own claim), settling three pockets ~6.2M (the 128-bit
+  multiply and divide per pocket, ~2.1M each, so the keeper settles 5 at most per transaction),
+  an unsave over five ~5.1M. All under the 20M limit; [VAULT.md](VAULT.md#cost).
+- **Contract size.** `PocketSavings` is 10,773 bytes, `SealedPockets` 9,393 with its second
+  desk slot (`_onlyDesk` lets the desk or the savings through `deskTake`, `deskCheck`,
+  `deskGive`). `SealedVault` and `PocketDesk` did not change.
+- **Mainnet decision.** The batcher's `fromToken()` must be the pockets' token, or the
+  constructor reverts `WrongRoute`: on mainnet the pockets' cUSDC has to be Zama's own wrapper
+  (`0xe978F22157048E5DB8E5d07971376e86671672B2`, the `cAsset` of its USDC vaults), not a wrapper
+  of ours, or a pocket could not save without a public unwrap and rewrap that would show the
+  amount. The game's mainnet cUSDC should be the same token.
+- **Tests.** `test/PocketSavings.ts` (8) runs the batcher's lifecycle on `TestVaultBatcher`
+  (join, dispatch, the total's public decryption through `fhevm.publicDecrypt` and its proof in
+  the callback with `FHE.checkSignatures`, claim, recover, a `cancel`), with
+  `TestConfidentialShare` as the `cShare` and `TestYieldVault` as the ERC-4626's public face;
+  the deploy stands the same three up on a local network, funded to pay their claims.
 
 ### Sepolia deployment (2026-10-08): free gift boxes
 

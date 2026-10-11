@@ -6,8 +6,13 @@ import type {
   PocketOptions,
   PocketSale,
   PocketsAdapter,
+  PocketSavingsAdapter,
   PocketsInfo,
   PocketToken,
+  SavingsPending,
+  SavingsSide,
+  SavingsWindow,
+  SavingsWindowState,
   VaultAdapter,
   VaultBox,
   VaultCollection,
@@ -31,6 +36,20 @@ const MOCK_REGISTRY: Address = "0x00000000000000447e69651d841bD8D104Bed493";
 export const MOCK_POCKETS: Address = "0x00000000000000000000000000000000000b0c55";
 /** The desk: buys private sales out of pockets and holds the boxes it bought. */
 export const MOCK_DESK: Address = "0x0000000000000000000000000000000000000de5";
+/** The savings: put a pocket's cUSDC to work in the demo's confidential vault, and hold its shares. */
+export const MOCK_SAVINGS: Address = "0x00000000000000000000000000000000005a71e5";
+const MOCK_MORPHO_VAULT: Address = "0x0000000000000000000000000000000000a0b9f0";
+const MOCK_DEPOSIT_BATCHER: Address = "0x00000000000000000000000000000000000ba7c1";
+const MOCK_REDEEM_BATCHER: Address = "0x00000000000000000000000000000000000ba7c2";
+/** The demo's batches: a save joins one and settles this long after it was asked, in mock milliseconds. */
+const SAVINGS_JOIN_AFTER_MS = 5_000;
+const SAVINGS_SETTLE_AFTER_MS = 15_000;
+const SAVINGS_MIN_BATCH_AGE = 3_480;
+/** The demo's rates, times 1e6: 1 cUSDC gives 0.98 share, 1 share gives 1.02 cUSDC, and a share is worth 1.02 cUSDC. */
+const SAVE_RATE = 980_000n;
+const UNSAVE_RATE = 1_020_000n;
+const SHARE_PRICE = 1_020_000n;
+const RATE_ONE = 1_000_000n;
 const POCKETS_MAX_SET = 5;
 /** Strangers who use the demo's vault: pockets of their own, and the decoys your deposits go to. */
 const STRANGERS = 7;
@@ -159,6 +178,17 @@ interface MockPocket {
   balance: bigint;
 }
 
+/** What a pocket committed to a savings window, until the demo's batch settles it. */
+interface MockSavingsEntry {
+  pocketId: number;
+  side: SavingsSide;
+  windowId: number;
+  /** cUSDC for a save, shares for an unsave: encrypted on a real chain. */
+  amount: bigint;
+  /** Mock milliseconds when it was asked. */
+  at: number;
+}
+
 /**
  * The sealed vault in memory, with the contract's rules: a wrong key settles refused and moves
  * nothing, a listed box stays put, a box that changes hands needs its new holder's key. The
@@ -177,6 +207,12 @@ export class MockVault implements VaultAdapter {
   private readonly buyerAt = new Map<number, number>();
   private readonly books: MockPocketBook[] = [];
   private readonly pocketsBy = new Map<string, PocketsAdapter>();
+  /** The cUSDC pockets' savings: shares by pocket, and what waits in a window. */
+  private readonly sharesOf = new Map<number, bigint>();
+  private readonly savingsPending: MockSavingsEntry[] = [];
+  private savingsWindows = 2;
+  /** Lands what the demo's batches have settled; set by the savings, read by the pockets' balance. */
+  private settleSavings: () => void = () => undefined;
   /** Public on a real chain: every wallet that acted on the vault in its own name. */
   private readonly actors = new Set<Address>();
 
@@ -557,7 +593,7 @@ export class MockVault implements VaultAdapter {
       return id;
     };
     const set = (real: number, opts?: PocketOptions) => pocketSet(real, list.length, POCKETS_MAX_SET, opts?.decoys);
-    const info = async (): Promise<PocketsInfo> => ({ address, desk: token.desk ? MOCK_DESK : null, count: list.length, maxSet: POCKETS_MAX_SET });
+    const info = async (): Promise<PocketsInfo> => ({ address, desk: token.desk ? MOCK_DESK : null, savings: token.desk ? MOCK_SAVINGS : null, count: list.length, maxSet: POCKETS_MAX_SET });
     const group = async (pocketId: number): Promise<PocketGroup> => {
       const members = pocketGroup(pocketId, list.length, POCKETS_MAX_SET);
       const feeders = new Set(book.fed.filter((d) => d.set.some((p) => members.includes(p))).map((d) => d.from));
@@ -569,6 +605,7 @@ export class MockVault implements VaultAdapter {
       return this.saleList.filter((s): s is MockSale & { pocketId: number } => s.pocketId !== undefined && s.pocketId === id && id >= 0);
     };
     const { pockets: _pockets, ...publicToken } = token;
+    const savings = token.desk ? this.makeSavings(list, myPocket, set) : null;
     return {
       token: publicToken,
       info,
@@ -595,6 +632,7 @@ export class MockVault implements VaultAdapter {
       },
       balance: async (opts) => {
         const id = myPocket();
+        this.settleSavings();
         await host.decrypting(opts);
         return list[id]!.balance;
       },
@@ -685,6 +723,101 @@ export class MockVault implements VaultAdapter {
         const id = mineOf(host.account());
         return this.all.flatMap((b, boxId) => (id >= 0 && b.holder === MOCK_DESK && b.pocket === id && !gone(b) ? [boxId] : []));
       },
+      savings: () => (token.desk ? savings : null),
+    };
+  }
+
+  /** The savings in memory: a save leaves the pocket at once, waits in a window, and becomes
+   *  shares a few seconds later, at the demo's rate; an unsave comes back as cUSDC the same way. */
+  private makeSavings(list: MockPocket[], myPocket: () => number, set: (real: number, opts?: PocketOptions) => number[]): PocketSavingsAdapter {
+    const host = this.host;
+    const age = (e: MockSavingsEntry) => host.now() - e.at;
+    const stateOf = (e: MockSavingsEntry): SavingsWindowState => (age(e) < SAVINGS_JOIN_AFTER_MS ? "open" : "joined");
+    /** The demo's batches settle on their own: what has waited long enough lands. */
+    const settle = () => {
+      for (const e of [...this.savingsPending]) {
+        if (age(e) < SAVINGS_SETTLE_AFTER_MS) continue;
+        this.savingsPending.splice(this.savingsPending.indexOf(e), 1);
+        if (e.side === "save") this.sharesOf.set(e.pocketId, (this.sharesOf.get(e.pocketId) ?? 0n) + (e.amount * SAVE_RATE) / RATE_ONE);
+        else list[e.pocketId]!.balance += (e.amount * UNSAVE_RATE) / RATE_ONE;
+      }
+    };
+    this.settleSavings = settle;
+    const openWindow = (side: SavingsSide): SavingsWindow => {
+      const waiting = this.savingsPending.filter((e) => e.side === side && stateOf(e) === "open");
+      return {
+        windowId: side === "save" ? 0 : 1,
+        side,
+        state: "open",
+        batchId: null,
+        rate: null,
+        openedAt: Math.floor((waiting[0]?.at ?? host.now()) / 1000),
+        pockets: waiting.length ? new Set(waiting.flatMap((e) => set(e.pocketId))).size : 0,
+        left: 0,
+      };
+    };
+    const spend = async (side: SavingsSide, amount: bigint, opts: PocketOptions | undefined, enough: (id: number) => boolean, take: (id: number) => void) => {
+      settle();
+      const id = myPocket();
+      set(id, opts);
+      opts?.onStep?.("wallet");
+      opts?.onStep?.("encrypting");
+      await host.send(opts, side);
+      if (!enough(id)) return;
+      take(id);
+      this.savingsPending.push({ pocketId: id, side, windowId: this.savingsWindows++, amount, at: host.now() });
+    };
+    return {
+      share: {
+        symbol: "csteakcUSDC",
+        name: "Confidential Steakhouse USDC Prime",
+        address: "0x00000000000000000000000000000000000c5ea7",
+        decimals: 6,
+        rate: RATE_18,
+        underlying: { address: MOCK_MORPHO_VAULT, symbol: "steakUSDC", decimals: 18 },
+      },
+      info: async () => ({
+        address: MOCK_SAVINGS,
+        vault: MOCK_MORPHO_VAULT,
+        depositBatcher: MOCK_DEPOSIT_BATCHER,
+        redeemBatcher: MOCK_REDEEM_BATCHER,
+        minBatchAge: SAVINGS_MIN_BATCH_AGE,
+        open: { save: openWindow("save"), unsave: openWindow("unsave") },
+      }),
+      shares: async (opts) => {
+        settle();
+        const id = myPocket();
+        await host.decrypting(opts);
+        return this.sharesOf.get(id) ?? 0n;
+      },
+      value: async (shares) => (shares * SHARE_PRICE) / RATE_ONE,
+      toShares: async (amount) => (amount * RATE_ONE) / SHARE_PRICE,
+      pending: async (opts) => {
+        settle();
+        const id = myPocket();
+        await host.decrypting(opts);
+        return this.savingsPending
+          .filter((e) => e.pocketId === id)
+          .map((e): SavingsPending => ({ windowId: e.windowId, side: e.side, state: stateOf(e), amount: e.amount }));
+      },
+      save: (amount, opts) =>
+        spend(
+          "save",
+          amount,
+          opts,
+          (id) => list[id]!.balance >= amount,
+          (id) => {
+            list[id]!.balance -= amount;
+          },
+        ),
+      unsave: (shares, opts) =>
+        spend(
+          "unsave",
+          shares,
+          opts,
+          (id) => (this.sharesOf.get(id) ?? 0n) >= shares,
+          (id) => this.sharesOf.set(id, this.sharesOf.get(id)! - shares),
+        ),
     };
   }
 

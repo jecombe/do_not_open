@@ -35,7 +35,9 @@ import {IERC7984} from "@openzeppelin/confidential-contracts/interfaces/IERC7984
 ///     and one that did not look the same. No decryption is needed, so nothing waits for a proof.
 ///
 ///  4. `desk` (`PocketDesk`) pays and is paid for the sealed vault's private sales out of pockets,
-///     through `deskTake` and `deskGive`; it is the only other contract allowed to move a balance.
+///     and `savings` (`PocketSavings`) puts a pocket's tokens to work in a confidential vault and
+///     brings them back, both through `deskTake` and `deskGive`; they are the only other contracts
+///     allowed to move a balance, each set once by the owner.
 ///
 ///  5. What is public: which wallet deposited into which set of pockets (not the amount when it
 ///     comes as cUSDC from a confidential balance), which sets each spend named, the address a
@@ -70,6 +72,8 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     IERC7984 public immutable token;
     /// @notice Pays and is paid for the vault's private sales out of pockets. Set once.
     address public desk;
+    /// @notice Puts a pocket's tokens to work and brings them back. Set once.
+    address public savings;
 
     uint256 public pocketCount;
     mapping(uint256 pocketId => Pocket) private _pockets;
@@ -85,6 +89,7 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     error KeyUsed();
     error OnlyDesk();
     error DeskSet();
+    error SavingsSet();
 
     event Opened(uint256 indexed pocketId, address indexed viewer);
     /// @notice `from` put tokens in one of `pockets`; which one, and how much, is encrypted.
@@ -94,6 +99,7 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     /// @notice A pocket of `from` may have paid `to`.
     event Withdrawn(uint256[] from, address indexed to);
     event DeskSetTo(address desk);
+    event SavingsSetTo(address savings);
 
     constructor(IERC7984 token_, address owner_) Ownable(owner_) {
         if (address(token_) == address(0)) revert ZeroAddress();
@@ -159,10 +165,10 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
 
     // ------------------------------------------------------------------- desk
 
-    /// @notice The desk takes `amount` out of `pocketId` if `key` is its key and the balance
-    ///         covers it, nothing otherwise, and receives what it took.
+    /// @notice The desk (or the savings) takes `amount` out of `pocketId` if `key` is its key and
+    ///         the balance covers it, nothing otherwise, and receives what it took.
     function deskTake(uint256 pocketId, euint256 key, euint64 amount) external returns (euint64 taken) {
-        if (msg.sender != desk) revert OnlyDesk();
+        _onlyDesk();
         Pocket storage p = _pocket(pocketId);
         ebool ok = FHE.and(FHE.eq(key, p.key), FHE.ge(p.balance, amount));
         taken = FHE.select(ok, amount, FHE.asEuint64(0));
@@ -172,17 +178,17 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     }
 
     /// @notice Whether `key` is `pocketId`'s key and its balance covers `amount`, for the desk to
-    ///         make public before a purchase.
+    ///         make public before a purchase (or, with a zero amount, for the savings to check a key).
     function deskCheck(uint256 pocketId, euint256 key, euint64 amount) external returns (ebool ok) {
-        if (msg.sender != desk) revert OnlyDesk();
+        _onlyDesk();
         Pocket storage p = _pocket(pocketId);
         ok = FHE.and(FHE.eq(key, p.key), FHE.ge(p.balance, amount));
         FHE.allowTransient(ok, msg.sender);
     }
 
-    /// @notice The desk pays `amount` into `pocketId`: it sends the tokens first.
+    /// @notice The desk (or the savings) pays `amount` into `pocketId`: it sends the tokens first.
     function deskGive(uint256 pocketId, euint64 amount) external {
-        if (msg.sender != desk) revert OnlyDesk();
+        _onlyDesk();
         Pocket storage p = _pocket(pocketId);
         _setBalance(p, FHE.add(p.balance, amount));
     }
@@ -192,6 +198,13 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
         if (desk_ == address(0)) revert ZeroAddress();
         desk = desk_;
         emit DeskSetTo(desk_);
+    }
+
+    function setSavings(address savings_) external onlyOwner {
+        if (savings != address(0)) revert SavingsSet();
+        if (savings_ == address(0)) revert ZeroAddress();
+        savings = savings_;
+        emit SavingsSetTo(savings_);
     }
 
     // ------------------------------------------------------------------ views
@@ -215,6 +228,10 @@ contract SealedPockets is ZamaEthereumConfig, Ownable, ReentrancyGuard {
     }
 
     // -------------------------------------------------------------- internals
+
+    function _onlyDesk() private view {
+        if (msg.sender != desk && msg.sender != savings) revert OnlyDesk();
+    }
 
     function _pocket(uint256 pocketId) private view returns (Pocket storage p) {
         if (pocketId >= pocketCount) revert NotAPocket(pocketId);

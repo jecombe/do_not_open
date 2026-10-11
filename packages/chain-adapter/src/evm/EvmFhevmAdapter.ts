@@ -2011,7 +2011,7 @@ export class EvmFhevmAdapter implements ChainAdapter {
     }
     if (!missing.length) return out;
     const values = await this.decrypting(opts, async (relayer) => {
-      const permit = await this.permitFor(relayer, signer, account, opts, !!as);
+      const permit = await this.permitFor(relayer, signer, account, opts, !!as, as ? contractAddress : undefined);
       return relayer.userDecrypt(
         missing.map((handle) => ({ handle, contractAddress })),
         permit.privateKey,
@@ -2223,10 +2223,11 @@ export class EvmFhevmAdapter implements ChainAdapter {
   private async permitContracts(viewer = false): Promise<string[]> {
     const pockets = this.opts.vault?.pockets;
     if (viewer) {
-      // A pocket's balance (any token's), which boxes its pocket bought, and the sale prices it reads.
+      // A pocket's balance (any token's), which boxes its pocket bought, the sale prices it reads,
+      // and its savings' shares and commitments.
       return [
         ...(this.opts.vault ? [this.opts.vault.address] : []),
-        ...(pockets ? [pockets.address, ...(pockets.desk ? [pockets.desk.address] : [])] : []),
+        ...(pockets ? [pockets.address, ...(pockets.desk ? [pockets.desk.address] : []), ...(pockets.savings ? [pockets.savings.address] : [])] : []),
         ...(this.opts.vault?.otherPockets ?? []).map((p) => p.address),
       ];
     }
@@ -2469,13 +2470,16 @@ export class EvmFhevmAdapter implements ChainAdapter {
    * page, whatever the account is already allowed to read on this contract. It is kept in
    * memory so the wallet prompts once per session, not once per shake.
    */
-  private async permitFor(relayer: Relayer, signer: Signer, account: Address, opts?: ActionOptions, viewer = false): Promise<Permit> {
+  /** `reading`: the contract a wallet of the page's own (a pocket's viewer, a side address) reads;
+   *  one outside the viewer's list (a token's balance, for a side address) gets a permit for it alone. */
+  private async permitFor(relayer: Relayer, signer: Signer, account: Address, opts?: ActionOptions, viewer = false, reading?: string): Promise<Permit> {
     const now = Math.floor(Date.now() / 1000);
     const p = this.permits.get(account.toLowerCase());
     if (p && now < p.start + PERMIT_DAYS * 86_400 - 600) return p;
 
     const keypair = relayer.generateKeypair();
-    const contracts = await this.permitContracts(viewer);
+    const usual = await this.permitContracts(viewer);
+    const contracts = reading && !usual.some((c) => c.toLowerCase() === reading.toLowerCase()) ? [reading] : usual;
     const eip712 = relayer.createEIP712(keypair.publicKey, contracts, now, PERMIT_DAYS);
     opts?.onStep?.("wallet");
     const signature = await signer.signTypedData(

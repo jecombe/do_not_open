@@ -1,8 +1,9 @@
 import { Contract, getAddress, hexlify, solidityPackedKeccak256, Wallet, type EventLog, type InterfaceAbi } from "ethers";
 import { pocketGroup, pocketSet } from "../pockets";
 import { ChainError, type ActionOptions, type Address } from "../types";
-import type { PocketGroup, PocketOptions, PocketSale, PocketsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
+import type { PocketGroup, PocketOptions, PocketSale, PocketsAdapter, PocketSavingsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
 import type { ContractTransactionReceipt } from "ethers";
+import { EvmSavings, type SavingsDeployment } from "./EvmSavings";
 import type { EvmVaultTools } from "./EvmVault";
 
 /** The vault's tools, with its way of sending through the relayer. */
@@ -33,10 +34,11 @@ export interface PocketTokenDeployment {
 }
 
 /** The pockets, as `dno:export` writes them inside the vault's deployment: the cUSDC ones with
- *  their desk, the other tokens' without. */
+ *  their desk and their savings, the other tokens' without. */
 export interface PocketsDeployment extends Deployed {
   desk?: Deployed | null;
   token?: PocketTokenDeployment;
+  savings?: SavingsDeployment | null;
 }
 
 /** What `faucet` mints on a test network, by underlying symbol, in whole tokens. */
@@ -109,6 +111,7 @@ export class EvmPockets implements PocketsAdapter {
   private readonly read: Contract;
   private readonly desk: Contract | null;
   private readonly vaultRead: Contract;
+  private readonly savingsAdapter: EvmSavings | null;
   private secret: { account: Address; key: bigint; viewer: Wallet } | null = null;
   /** The block of this page's last transaction: reads wait until the RPC has seen it. */
   private lastBlock = 0;
@@ -122,11 +125,36 @@ export class EvmPockets implements PocketsAdapter {
     this.read = new Contract(deployed.address, deployed.abi, t.readProvider);
     this.desk = deployed.desk ? new Contract(deployed.desk.address, deployed.desk.abi, t.readProvider) : null;
     this.vaultRead = new Contract(side.vault.address, side.vault.abi, t.readProvider);
+    this.savingsAdapter = deployed.savings
+      ? new EvmSavings(
+          deployed.savings,
+          {
+            pockets: deployed,
+            mine: (opts) => this.mineOrThrow(opts),
+            keys: (opts) => this.keys(opts),
+            set: (real, opts) => this.set(real, opts),
+            relayed: (opts, call, sendIt) => this.relayed(opts, call, sendIt),
+            sent: (opts, call) => this.sent(opts, call as never),
+            caughtUp: () => this.caughtUp(),
+          },
+          t,
+        )
+      : null;
   }
 
   async info(): Promise<PocketsInfo> {
     const [count, maxSet] = await Promise.all([this.t.reading(this.read.pocketCount!()), this.t.reading(this.read.MAX_SET!())]);
-    return { address: this.deployed.address as Address, desk: (this.deployed.desk?.address ?? null) as Address | null, count: Number(count), maxSet: Number(maxSet) };
+    return {
+      address: this.deployed.address as Address,
+      desk: (this.deployed.desk?.address ?? null) as Address | null,
+      savings: (this.deployed.savings?.address ?? null) as Address | null,
+      count: Number(count),
+      maxSet: Number(maxSet),
+    };
+  }
+
+  savings(): PocketSavingsAdapter | null {
+    return this.savingsAdapter;
   }
 
   async group(pocketId: number): Promise<PocketGroup> {

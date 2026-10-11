@@ -7,6 +7,19 @@ interface Deployed {
   abi: InterfaceAbi;
 }
 
+/**
+ * The cUSDC pockets' savings (`PocketSavings`), as `dno:export` writes them inside the pockets'
+ * deployment: the contract, Zama's two batchers it joins (deposit: cUSDC to shares; redeem: shares
+ * to cUSDC) and how long their batches last. The API's keeper joins and settles its windows.
+ */
+export interface SavingsDeployed extends Deployed {
+  deployBlock?: number | null;
+  depositBatcher: string;
+  redeemBatcher: string;
+  /** The batchers' `minBatchAge` at export, in seconds: a batch can be dispatched once that old. */
+  minBatchAge: number;
+}
+
 /** The contracts one network runs, as `export:sepolia` committed them. */
 export interface ProtocolDeployment {
   chainId: number;
@@ -34,7 +47,7 @@ export interface ProtocolDeployment {
   /** The flea market, where players sell to each other in cUSDC: wallets' permits name it. Null where none was deployed. */
   fleaMarket: Deployed | null;
   /** The sealed vault: its relayer sends holders' requests, and wallets' permits name it. Null where none was deployed. */
-  vault: (Deployed & { offers?: Deployed | null; pockets?: (Deployed & { desk?: Deployed | null }) | null; otherPockets?: { address: string }[] }) | null;
+  vault: (Deployed & { offers?: Deployed | null; pockets?: (Deployed & { desk?: Deployed | null; savings?: SavingsDeployed | null }) | null; otherPockets?: { address: string }[] }) | null;
   /** Zama's contracts on this network, as the Relayer SDK's preset names them. */
   fhevm: FhevmConfig;
   /** The Uniswap V3 CROQ/USDC pool and the locked position CROQ is sold from. */

@@ -351,7 +351,8 @@ decryptions.
 desk, for cUSDT, cWETH and cZAMA), each locked by a key rather than an address
 ([VAULT.md](VAULT.md#pockets)). A public counter (`pocketCount`), `pocketOf(viewer)` (the
 pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views `balanceOf`,
-`viewerOf`, `spendHash`. Its `desk` is set once.
+`viewerOf`, `spendHash`. Its `desk` and its `savings` are each set once; both may `deskTake`,
+`deskCheck` and `deskGive`.
 
 | Struct | Field | Type | Who can read it | Meaning |
 | --- | --- | --- | --- | --- |
@@ -371,9 +372,36 @@ pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views
 | owner (`ownerOf`) | | `euint32` | the desk, the viewers of the pockets that bought it | The pocket that holds a box the desk bought, + 1; 0 until a purchase moved it |
 
 Events: `Opened(pocketId, viewer)`, `Deposited(from, pockets[])`, `Sent(from[], to[])`,
-`Withdrawn(from[], to)`, `DeskSetTo(desk)`; on the desk `Reserved(saleId, pocketId)`,
+`Withdrawn(from[], to)`, `DeskSetTo(desk)`, `SavingsSetTo(savings)`; on the desk `Reserved(saleId, pocketId)`,
 `Asked(askId, saleId, pocketId)`, `AskSettled(askId, status)`, `Bought(saleId, boxId,
 pocketId)`. No amount and no balance in any of them. The API does not index them yet.
+
+#### Savings
+
+`PocketSavings` ([VAULT.md](VAULT.md#savings)) keeps windows (a public counter `windowCount`;
+`openWindow(side)` and `lastBatch(side)` per side, `Save` or `Unsave`), what each pocket
+committed to each window, each pocket's shares, and `spent(handle)` (bound keys already used);
+views `windowInfo`, `windowPockets`, `committedOf`, `sharesOf`, `saveHash`. The immutables
+`pockets`, `token` (cUSDC), `share` (the vault's `cShare`), `depositBatcher` and
+`redeemBatcher`. It holds the cUSDC of the open save windows and every pocket's shares, under
+its own address, in the tokens' confidential balances.
+
+| Struct | Field | Type | Who can read it | Meaning |
+| --- | --- | --- | --- | --- |
+| `Window` | `side`, `state` | `Save`/`Unsave`, `Open`/`Joined`/`Settled`/`Canceled` | public | Which way, and where it is: taking spends, in a batch, claimed (pockets to settle), or recovered |
+| | `batchId`, `rate` | `uint256`, `uint64` | public | Zama's batch it joined (0 until then) and the batch's rate once settled: output per input, times `RATE_ONE` (1e6) |
+| | `openedAt`, `pockets[]`, `left` | plain | public | When it opened; the pockets with a commitment in it, each once, decoys included; how many are not settled yet |
+| | `total` | `euint64` | the savings only | The sum of the window's commitments: what `join` hands the batcher, allowed to it transiently |
+| commitment (`_committed[window][pocket]`) | | `euint64` | the savings, the pocket's viewer | cUSDC put aside (a save) or shares asked back (an unsave), zero for a decoy; cleared when the pocket is settled |
+| shares (`_shares[pocket]`) | | `euint64` | the savings, the pocket's viewer | The pocket's savings, in the `cShare`'s units (6 decimals); zero handle before the first settlement |
+| `spent[handle]` | | `bool` | public | A bound key's handle, used once |
+
+Events: `Saved(windowId, from[])`, `Unsaved(windowId, from[])` (the set, not the pocket nor the
+amount), `WindowOpened(windowId, side)`, `WindowJoined(windowId, batchId)`,
+`WindowSettled(windowId, state, rate)`, `PocketSettled(windowId, pocketId)` (for every pocket
+of the window, decoys included). Zama's batcher logs the savings contract as a participant of
+the batch and the batch's decrypted total. The API's keeper reads the windows; it indexes
+nothing of them yet.
 
 | Fact | The holder | Anyone else | How |
 | --- | --- | --- | --- |
@@ -389,6 +417,11 @@ pocketId)`. No amount and no balance in any of them. The API does not index them
 | A box's delegate | Yes | Yes | `boxInfo`, `Delegated`, the registry |
 | A private sale's price | The seller and the buyer | No | User decryption; `SaleOffered` carries no price |
 | Whether a private sale moved the box | The seller and the buyer | No | `moved`; `SaleSettled` says only that it settled |
+| A pocket's balance, what a spend moved, which pocket of a set moved | The pocket's viewer | No | User decryption of the balance; every pocket named gets a new handle |
+| Which set a spend named, the wallet behind a deposit, a withdrawal's address | Yes | Yes | `Deposited`, `Sent`, `Withdrawn`, calldata |
+| A pocket's saved amount and its shares | The pocket's viewer | No | User decryption of `committedOf`, `sharesOf` |
+| Which set saved or unsaved, in which window; when a window joined, which batch, at what rate | Yes | Yes | `Saved`, `Unsaved`, `WindowJoined`, `WindowSettled`, `windowInfo` |
+| The sum of a window's saves | No, beyond their own | An upper bound: the batch's decrypted total (exact when the window was the batch's only participant) | Zama's batcher: the savings as a participant, the total it decrypts |
 
 ## Release forms
 
