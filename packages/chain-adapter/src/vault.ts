@@ -196,6 +196,8 @@ export interface PocketsInfo {
   /** Buys the vault's private sales out of pockets, and holds the boxes it bought. Null for a
    *  token other than the vault's cUSDC. */
   desk: Address | null;
+  /** Puts a pocket's cUSDC to work in a confidential vault. Null where there are no savings. */
+  savings: Address | null;
   /** Pockets opened in all: they make groups of `maxSet` by number. */
   count: number;
   /** The most pockets one side of an action may name, the real one included: a group's size. */
@@ -211,6 +213,149 @@ export interface PocketOptions extends ActionOptions {
 /** A private sale offered to the desk and reserved for a pocket. */
 export interface PocketSale extends VaultSale {
   pocketId: number;
+}
+
+/** The savings' two ways: cUSDC into the vault's shares, and shares back into cUSDC. */
+export type SavingsSide = "save" | "unsave";
+
+/** A savings window: `open` takes saves (or unsaves); `joined` sits in one of Zama's batches;
+ *  `settled` got the batch's shares (or cUSDC) and hands them to its pockets; `canceled` gives
+ *  the pockets their commitments back. */
+export type SavingsWindowState = "open" | "joined" | "settled" | "canceled";
+
+export interface SavingsWindow {
+  windowId: number;
+  side: SavingsSide;
+  state: SavingsWindowState;
+  /** Zama's batch it joined, null while open. */
+  batchId: number | null;
+  /** The batch's rate once settled: output units per input unit, times 1e6. Null before. */
+  rate: bigint | null;
+  /** Unix seconds. */
+  openedAt: number;
+  /** Pockets with a commitment in it, decoys included. */
+  pockets: number;
+  /** Of them, not settled yet. */
+  left: number;
+}
+
+/** The vault's confidential shares (Zama's `cShare`): what a pocket's savings are held in. */
+export type SavingsShare = Omit<PocketToken, "desk" | "faucet">;
+
+export interface SavingsInfo {
+  address: Address;
+  /** The Morpho vault (ERC-4626) behind Zama's batchers, and the batchers themselves. */
+  vault: Address;
+  depositBatcher: Address;
+  redeemBatcher: Address;
+  /** Seconds one of Zama's batches must age before it is dispatched: about how long a save
+   *  waits in a batch, once its window has joined one. */
+  minBatchAge: number;
+  /** The windows taking saves and unsaves now. */
+  open: { save: SavingsWindow; unsave: SavingsWindow };
+}
+
+/** What the wallet's pocket committed to a window that has not been settled for it yet. */
+export interface SavingsPending {
+  windowId: number;
+  side: SavingsSide;
+  state: SavingsWindowState;
+  /** cUSDC units for a save, share units for an unsave. */
+  amount: bigint;
+}
+
+/**
+ * The wallet's pocket's savings: its cUSDC put to work in one of Zama's confidential vaults on
+ * Morpho, through the pockets' savings contract. A save leaves the pocket at once and waits in
+ * the open window; the relayer joins the window to the vault's next batch, and once Zama has
+ * settled the batch, the pocket's shares appear here. The way back is the same, in batches too:
+ * savings are put aside, never paid with at once. Nothing public says which pocket saved, nor how
+ * much: the batcher sees one participant, the savings contract, with one encrypted total.
+ */
+export interface PocketSavingsAdapter {
+  readonly share: SavingsShare;
+  info(): Promise<SavingsInfo>;
+  /** The wallet's pocket's shares, decrypted, in the share's smallest unit. */
+  shares(opts?: ActionOptions): Promise<bigint>;
+  /** What `shares` are worth now in cUSDC units, at the Morpho vault's public price. */
+  value(shares: bigint): Promise<bigint>;
+  /** About what `amount` cUSDC gives in shares at the vault's price now: the batch's rate decides. */
+  toShares(amount: bigint): Promise<bigint>;
+  /** The pocket's commitments in windows not settled for it yet, oldest first. */
+  pending(opts?: ActionOptions): Promise<SavingsPending[]>;
+  /** Puts `amount` cUSDC of the wallet's pocket aside, among decoys. Moves nothing (no error)
+   *  when the balance is short: check `balance` first. */
+  save(amount: bigint, opts?: PocketOptions): Promise<void>;
+  /** Asks `shares` of the wallet's pocket's savings back as cUSDC, among decoys. Moves nothing
+   *  (no error) when the shares are short: check `shares` first. */
+  unsave(shares: bigint, opts?: PocketOptions): Promise<void>;
+}
+
+/**
+ * An address next to the wallet whose key the page holds and nothing on-chain ties to the wallet:
+ * a stealth address a pocket paid for the wallet's meta-address (ERC-5564), or the fresh address
+ * the wallet feeds its pocket from. Its balances are read with its own key.
+ */
+export interface SideAddress {
+  address: Address;
+  /** `stealth`: announced for the wallet's meta-address; `entry`: derived from the wallet's signature, to be funded from outside. */
+  kind: "stealth" | "entry";
+  /** The confidential token it holds, in the token's units. */
+  sealed: bigint;
+  /** The plain ERC-20 it holds (USDC for cUSDC), in the plain token's units: collected after a wrap. */
+  plain: bigint;
+  /** ETH in wei: what pays the transactions it sends itself. */
+  gas: bigint;
+  /** Whether `gas` covers a collect (`PocketDoorsInfo.gasNeeded`). */
+  fueled: boolean;
+  /** The entry address's index: the first one never used. */
+  index?: number;
+  /** The block the stealth payment was announced in. */
+  block?: number;
+}
+
+export interface PocketDoorsInfo {
+  /** ERC-5564's announcer and ERC-6538's registry on this chain. */
+  announcer: Address;
+  registry: Address;
+  /** ETH a side address needs to collect what it holds into the pocket, in wei, at today's gas price. */
+  gasNeeded: bigint;
+  /** What the API's relayer gives a side address once, in wei, so it can collect; null when it gives none. */
+  fuel: bigint | null;
+}
+
+/**
+ * The pockets' doors: the way out to a fresh address and the way in from one. A withdrawal pays
+ * a stealth address (ERC-5564): drawn for the wallet's own meta-address, or for a payee's, and
+ * announced so the payee's page finds it; the address shows, as any withdrawal's does, but
+ * nothing ties it to anyone. The way in is an entry address derived from the wallet's signature:
+ * funded from outside (a privacy pool such as Privacy Pools, an exchange) and emptied into the
+ * pocket as itself, so the deposit names an address that never was the wallet's. Both kinds are
+ * side addresses: the page derives their keys from the pocket signature, stores nothing, and
+ * finds them again on any device.
+ */
+export interface PocketDoorsAdapter {
+  info(): Promise<PocketDoorsInfo>;
+  /** The wallet's stealth meta-address (`st:eth:0x…`): what a payer makes stealth addresses from. One signature a session. */
+  metaAddress(opts?: ActionOptions): Promise<string>;
+  /** Whether the wallet published its meta-address in the registry, where a payer finds it by the wallet's address. */
+  published(opts?: ActionOptions): Promise<boolean>;
+  /** Publishes it: a wallet transaction, public (it ties the meta-address to the wallet, never the stealth addresses). */
+  publish(opts?: ActionOptions): Promise<void>;
+  /** A payee as typed: a meta-address, or a wallet address whose meta-address is in the registry. Null: nobody to pay stealthily. */
+  resolve(text: string): Promise<string | null>;
+  /** Takes `amount` out of the wallet's pocket to a fresh stealth address of `to` (the wallet's own when left out) and
+   *  announces it. Returns the address paid. Moves nothing (no error) when the balance is short. */
+  withdrawStealth(amount: bigint, to?: string | null, opts?: PocketOptions): Promise<Address>;
+  /** Stealth addresses announced for the wallet, newest first, with what they hold. */
+  inbox(opts?: ActionOptions): Promise<SideAddress[]>;
+  /** The wallet's current entry address: the first never used, with what it holds so far. */
+  entry(opts?: ActionOptions): Promise<SideAddress>;
+  /** Puts everything a side address holds into the wallet's pocket, as that address (wrapping the plain token first):
+   *  it needs `gasNeeded` of ETH there. Throws `insufficient-funds` otherwise. */
+  collect(address: Address, opts?: PocketOptions): Promise<void>;
+  /** Asks the relayer for `fuel` on a side address, once, so it can collect. Throws when there is no relayer or it gives none. */
+  fuel(address: Address, opts?: ActionOptions): Promise<void>;
 }
 
 /**
@@ -260,6 +405,10 @@ export interface PocketsAdapter {
   buy(saleId: number, opts?: ActionOptions): Promise<boolean>;
   /** Boxes the wallet's pocket bought, still in the vault. */
   boxes(): Promise<number[]>;
+  /** The pocket's savings, where they are deployed: the vault's cUSDC pockets only. */
+  savings(): PocketSavingsAdapter | null;
+  /** The pockets' doors (stealth exits, entry addresses), where ERC-5564's contracts are known. */
+  doors(): PocketDoorsAdapter | null;
 }
 
 export interface VaultAdapter {

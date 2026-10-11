@@ -1,5 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { formatAmount, shortAddress, type ActionOptions, type Address, type PocketGroup, type PocketSale, type PocketToken, type VaultAdapter, type VaultBox } from "@dno/chain-adapter";
+import {
+  formatAmount,
+  isStealthMeta,
+  shortAddress,
+  type ActionOptions,
+  type Address,
+  type PocketDoorsAdapter,
+  type PocketDoorsInfo,
+  type PocketGroup,
+  type PocketSale,
+  type PocketSavingsAdapter,
+  type PocketToken,
+  type SavingsInfo,
+  type SavingsPending,
+  type SideAddress,
+  type VaultAdapter,
+  type VaultBox,
+  type VaultLinks,
+} from "@dno/chain-adapter";
 import { useAction } from "../chain/ChainProvider";
 import { useT } from "./i18n";
 import { TokenIcon, tokenLogoUrl } from "../brand/logos";
@@ -46,6 +64,7 @@ function parseUnits(value: string, decimals: number): bigint | null {
  */
 export function PocketTab({
   vault,
+  links,
   account,
   act,
   busy,
@@ -56,6 +75,7 @@ export function PocketTab({
   onPocket,
 }: {
   vault: VaultAdapter;
+  links: VaultLinks;
   account: Address;
   act: Act;
   busy: boolean;
@@ -84,6 +104,12 @@ export function PocketTab({
   /** The pocket's group: what its every action names, and who is known to feed it. */
   const [group, setGroup] = useState<PocketGroup | null>(null);
   const [copied, setCopied] = useState(false);
+  /** The pocket's savings, where the cUSDC pockets have them; null elsewhere. */
+  const savings = useMemo(() => pockets.savings(), [pockets]);
+  /** The pockets' doors (stealth exits, the entry address), where ERC-5564's contracts are known. */
+  const doors = useMemo(() => pockets.doors(), [pockets]);
+  /** Bumped after every action: the savings card reads its shares and its pending list again. */
+  const [tick, setTick] = useState(0);
 
   const find = useCallback(
     async (opts?: ActionOptions) => {
@@ -134,6 +160,7 @@ export function PocketTab({
     readPlain();
     const mine = await find().catch(() => id ?? null);
     if (mine !== null && balance !== null) setBalance(await pockets.balance().catch(() => null));
+    setTick((n) => n + 1);
   };
 
   const run = async <T,>(name: string, task: (o: ActionOptions) => Promise<T>, message?: (r: T) => string) => {
@@ -265,24 +292,59 @@ export function PocketTab({
             void run("pocketSend", (o) => pockets.send(to as number, amount, o), () => t("vault.done.pocketSend", { id: pocketCode(to as number) }))
           }
         />
-        <AmountForm
-          key={`withdraw-${token.symbol}`}
-          title={t("vault.pocket.withdraw")}
-          hint={t("vault.pocket.withdrawHint", done)}
-          busy={busy}
-          token={token}
-          target={{ label: t("vault.form.to"), placeholder: "0x…", initial: account, parse: (v) => (ADDRESS.test(v.trim()) ? v.trim() : null), bad: t("vault.form.bad") }}
-          onSubmit={(amount, _shield, to) =>
-            void run(
-              "pocketWithdraw",
-              (o) => pockets.withdraw(to as Address, amount, o),
-              () => t("vault.done.pocketWithdraw", { address: shortAddress(to as Address) }),
-            )
-          }
-        />
+        {doors ? (
+          <AmountForm
+            key={`withdraw-${token.symbol}`}
+            title={t("vault.pocket.withdraw")}
+            hint={t("vault.pocket.withdrawDoorsHint")}
+            busy={busy}
+            token={token}
+            target={{
+              label: t("vault.pocket.withdrawTo"),
+              placeholder: "st:eth:… / 0x… / nothing",
+              parse: (v) => (v.trim() === "" || ADDRESS.test(v.trim()) || isStealthMeta(v) ? v.trim() : null),
+              bad: t("vault.pocket.badTo"),
+            }}
+            onSubmit={(amount, _shield, to) => {
+              const typed = String(to ?? "");
+              void run(
+                "pocketWithdraw",
+                async (o) => {
+                  // Empty: a fresh address of one's own. A meta-address, or a wallet that published
+                  // one: a fresh address of theirs. Any other address: in the open, as before.
+                  if (typed === "" || isStealthMeta(typed)) return { stealth: true, address: await doors.withdrawStealth(amount, typed || null, o) };
+                  if (await doors.resolve(typed)) return { stealth: true, address: await doors.withdrawStealth(amount, typed, o) };
+                  await pockets.withdraw(typed as Address, amount, o);
+                  return { stealth: false, address: typed as Address };
+                },
+                (r) => t(r.stealth ? "vault.done.pocketWithdrawStealth" : "vault.done.pocketWithdraw", { address: shortAddress(r.address) }),
+              );
+            }}
+          />
+        ) : (
+          <AmountForm
+            key={`withdraw-${token.symbol}`}
+            title={t("vault.pocket.withdraw")}
+            hint={t("vault.pocket.withdrawHint", done)}
+            busy={busy}
+            token={token}
+            target={{ label: t("vault.form.to"), placeholder: "0x…", initial: account, parse: (v) => (ADDRESS.test(v.trim()) ? v.trim() : null), bad: t("vault.form.bad") }}
+            onSubmit={(amount, _shield, to) =>
+              void run(
+                "pocketWithdraw",
+                (o) => pockets.withdraw(to as Address, amount, o),
+                () => t("vault.done.pocketWithdraw", { address: shortAddress(to as Address) }),
+              )
+            }
+          />
+        )}
       </div>
 
       {group && <GroupNote group={group} id={id} />}
+
+      {doors && <DoorsCard doors={doors} token={token} links={links} busy={busy || !!own.busy} tick={tick} run={run} />}
+
+      {savings && <SavingsCard savings={savings} token={token} balance={balance} busy={busy || !!own.busy} tick={tick} run={run} />}
 
       {!token.desk ? (
         <p className="vault-meta vault-pocket-nodesk">{t("vault.pocket.noDesk")}</p>
@@ -360,6 +422,377 @@ function GroupNote({ group, id }: { group: PocketGroup; id: number }) {
       {n > 1 && n < group.size && <p className="vault-meta vault-crowd-warn">{t("vault.pocket.groupFilling", { n, size: group.size })}</p>}
       <p className={`vault-meta${group.feeders <= 1 ? " vault-crowd-warn" : ""}`}>{t(fed, { n: group.feeders })}</p>
     </div>
+  );
+}
+
+/** Wei as ETH, four decimals at most, for the gas a fresh address holds or needs. */
+function ethText(wei: bigint): string {
+  const whole = wei / 10n ** 18n;
+  const frac = ((wei % 10n ** 18n) / 10n ** 14n).toString().padStart(4, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : String(whole);
+}
+
+/**
+ * The pockets' doors. Out: the wallet's stealth meta-address (what a payer draws fresh addresses
+ * from, published or handed over) and the fresh addresses paid to the wallet, each emptied into
+ * the pocket by itself once it has gas. In: the entry address, funded from outside (a privacy
+ * pool, an exchange), that feeds the pocket without the wallet ever appearing.
+ */
+function DoorsCard({
+  doors,
+  token,
+  links,
+  busy,
+  tick,
+  run,
+}: {
+  doors: PocketDoorsAdapter;
+  token: PocketToken;
+  links: VaultLinks;
+  busy: boolean;
+  /** Changes after every action of the pocket: what was read is read again. */
+  tick: number;
+  run: <T>(name: string, task: (o: ActionOptions) => Promise<T>, message?: (r: T) => string) => Promise<T | undefined>;
+}) {
+  const t = useT();
+  const own = useAction();
+  const [info, setInfo] = useState<PocketDoorsInfo | null>(null);
+  const [meta, setMeta] = useState<string | null>(null);
+  const [published, setPublished] = useState<boolean | null>(null);
+  /** null: not looked at yet. */
+  const [inbox, setInbox] = useState<SideAddress[] | null>(null);
+  const [entry, setEntry] = useState<SideAddress | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const looked = useRef(false);
+
+  const look = useCallback(
+    async (opts?: ActionOptions) => {
+      const [m, p, list, e] = await Promise.all([doors.metaAddress(opts), doors.published(opts), doors.inbox(opts), doors.entry(opts)]);
+      setMeta(m);
+      setPublished(p);
+      setInbox(list);
+      setEntry(e);
+      looked.current = true;
+    },
+    [doors],
+  );
+
+  useEffect(() => {
+    looked.current = false;
+    setMeta(null);
+    setPublished(null);
+    setInbox(null);
+    setEntry(null);
+    void doors.info().then(setInfo, () => setInfo(null));
+  }, [doors]);
+
+  useEffect(() => {
+    if (tick > 0 && looked.current) void look().catch(() => undefined);
+  }, [tick, look]);
+
+  const copy = (text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopied(text);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+  const sealed = (v: bigint) => formatAmount(v, token.decimals);
+  const plain = (v: bigint) => formatAmount(v, token.underlying.decimals);
+  const fuelEth = info?.fuel ? ethText(info.fuel) : null;
+  const needEth = info ? ethText(info.gasNeeded) : "…";
+  const held = (s: SideAddress) => s.sealed > 0n || s.plain > 0n;
+  const waiting = inbox?.filter(held) ?? [];
+  const emptied = inbox ? inbox.length - waiting.length : 0;
+
+  const addressLine = (s: SideAddress) => {
+    const href = links.address(s.address);
+    return (
+      <>
+        {href ? (
+          <a className="vault-ext" href={href} target="_blank" rel="noreferrer" title={s.address}>
+            {shortAddress(s.address)}
+          </a>
+        ) : (
+          <span title={s.address}>{shortAddress(s.address)}</span>
+        )}
+        <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" onClick={() => copy(s.address)}>
+          {copied === s.address ? t("vault.pocket.copied") : t("vault.pocket.copy")}
+        </button>
+      </>
+    );
+  };
+
+  const actions = (s: SideAddress) => (
+    <span className="vault-doors-actions">
+      {held(s) && s.fueled && (
+        <button type="button" className="sec-btn sec-btn-small" disabled={busy} onClick={() => void run("pocketCollect", (o) => doors.collect(s.address, o), () => t("vault.done.pocketCollect", { address: shortAddress(s.address) }))}>
+          {t("vault.pocket.doors.collect")}
+        </button>
+      )}
+      {held(s) && !s.fueled && fuelEth && (
+        <button type="button" className="sec-btn sec-btn-small" disabled={busy} onClick={() => void run("pocketFuel", (o) => doors.fuel(s.address, o), () => t("vault.done.pocketFuel", { address: shortAddress(s.address) }))}>
+          {t("vault.pocket.doors.fuel")}
+        </button>
+      )}
+    </span>
+  );
+
+  const gasNote = (s: SideAddress) =>
+    held(s) && !s.fueled ? (
+      <p className="vault-meta vault-crowd-warn">
+        {t("vault.pocket.doors.needsGas", { eth: needEth })} {fuelEth ? t("vault.pocket.doors.fuelHint", { eth: fuelEth }) : t("vault.pocket.doors.noFuel")}
+      </p>
+    ) : null;
+
+  return (
+    <section className="vault-pocket-doors" data-tour="doors">
+      <div>
+        <h3>{t("vault.pocket.doors.title")}</h3>
+        <p className="vault-meta">{t("vault.pocket.doors.lede")}</p>
+      </div>
+
+      {meta === null ? (
+        <div className="vault-doors-actions">
+          <button type="button" className="sec-btn sec-btn-small" disabled={busy || !!own.busy} onClick={() => void own.run("look", (o) => look(o))}>
+            {own.busy === "look" ? "…" : t("vault.pocket.doors.look")}
+          </button>
+          <p className="vault-meta">{t("vault.pocket.doors.inboxSealed")}</p>
+          {own.error && <p className="vault-error">{own.error.text}</p>}
+        </div>
+      ) : (
+        <>
+          <div className="vault-doors-row">
+            <h4>{t("vault.pocket.doors.meta")}</h4>
+            <p className="vault-doors-line">
+              <code title={meta}>{meta}</code>
+              <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" onClick={() => copy(meta)}>
+                {copied === meta ? t("vault.pocket.copied") : t("vault.pocket.copy")}
+              </button>
+              {published ? (
+                <span className="vault-chip">{t("vault.pocket.doors.published")}</span>
+              ) : (
+                <button type="button" className="sec-btn sec-btn-small" disabled={busy} onClick={() => void run("pocketPublish", (o) => doors.publish(o), () => t("vault.done.pocketPublish"))}>
+                  {t("vault.pocket.doors.publish")}
+                </button>
+              )}
+            </p>
+            <p className="vault-meta">{t("vault.pocket.doors.metaHint")}</p>
+            {!published && <p className="vault-meta">{t("vault.pocket.doors.publishHint")}</p>}
+          </div>
+
+          <div className="vault-doors-row">
+            <div className="vault-toolbar">
+              <h4>{t("vault.pocket.doors.inbox")}</h4>
+              <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" disabled={busy || !!own.busy} onClick={() => void own.run("look", (o) => look(o))}>
+                {own.busy === "look" ? "…" : t("vault.pocket.doors.refresh")}
+              </button>
+            </div>
+            {waiting.length === 0 ? (
+              <p className="vault-meta">{t("vault.pocket.doors.inboxEmpty")}</p>
+            ) : (
+              <ul className="vault-doors-list">
+                {waiting.map((s) => (
+                  <li key={s.address}>
+                    {addressLine(s)}
+                    <strong>
+                      {sealed(s.sealed)} {token.symbol}
+                    </strong>
+                    <span className="vault-meta">{t("vault.pocket.doors.gas", { eth: ethText(s.gas) })}</span>
+                    {actions(s)}
+                    {gasNote(s)}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {emptied > 0 && <p className="vault-meta">{t("vault.pocket.doors.collected", { n: emptied })}</p>}
+            <p className="vault-meta">{t("vault.pocket.doors.collectHint")}</p>
+            {own.error && <p className="vault-error">{own.error.text}</p>}
+          </div>
+
+          {entry && (
+            <div className="vault-doors-row">
+              <h4>{t("vault.pocket.doors.entry")}</h4>
+              <p className="vault-meta">{t("vault.pocket.doors.entryLede", { plain: token.underlying.symbol })}</p>
+              <p className="vault-doors-line">
+                <span className="vault-crowd-label">{t("vault.pocket.doors.entryAddress")}</span>
+                <code title={entry.address}>{entry.address}</code>
+                <button type="button" className="sec-btn sec-btn-ghost sec-btn-small" onClick={() => copy(entry.address)}>
+                  {copied === entry.address ? t("vault.pocket.copied") : t("vault.pocket.copy")}
+                </button>
+              </p>
+              <p className="vault-doors-line">
+                <strong>{t("vault.pocket.doors.holds", { plain: plain(entry.plain), plainSymbol: token.underlying.symbol, sealed: sealed(entry.sealed), symbol: token.symbol })}</strong>
+                <span className="vault-meta">{t("vault.pocket.doors.gas", { eth: ethText(entry.gas) })}</span>
+                {actions(entry)}
+                <a className="sec-link" href="https://privacypools.com" target="_blank" rel="noreferrer">
+                  {t("vault.pocket.doors.privacyPools")}&nbsp;↗
+                </a>
+              </p>
+              {gasNote(entry)}
+            </div>
+          )}
+          <p className="vault-meta vault-pocket-savings-note">{t("vault.pocket.doors.public")}</p>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** "{n} min" under an hour and a half, "{n} h" above: how long a batch ages before it is dispatched. */
+function waitText(t: ReturnType<typeof useT>, seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return minutes < 90 ? t("vault.pocket.savings.minutes", { n: minutes }) : t("vault.pocket.savings.hours", { n: Math.round(minutes / 60) });
+}
+
+/**
+ * The pocket's savings: part of its cUSDC put to work in one of Zama's confidential vaults on
+ * Morpho. The shares are sealed like the balance and read on demand, shown as what they are
+ * worth today; under them, what is on the way (a save or a take-back waits for a batch), then
+ * the two forms. A save leaves the pocket at once and comes back as shares once the batch
+ * settles; a take-back goes the same way, so savings never pay a sale at once.
+ */
+function SavingsCard({
+  savings,
+  token,
+  balance,
+  busy,
+  tick,
+  run,
+}: {
+  savings: PocketSavingsAdapter;
+  token: PocketToken;
+  /** The pocket's balance when it was read: a save is checked against it before anything is sent. */
+  balance: bigint | null;
+  busy: boolean;
+  /** Changes after every action of the pocket: the card reads its shares and its pending list again, if it had. */
+  tick: number;
+  run: <T>(name: string, task: (o: ActionOptions) => Promise<T>, message?: (r: T) => string) => Promise<T | undefined>;
+}) {
+  const t = useT();
+  const own = useAction();
+  const [info, setInfo] = useState<SavingsInfo | null>(null);
+  /** null: sealed, not read yet. */
+  const [shares, setShares] = useState<bigint | null>(null);
+  const [worth, setWorth] = useState<bigint | null>(null);
+  const [pending, setPending] = useState<SavingsPending[] | null>(null);
+  const read = useRef(false);
+
+  const reveal = useCallback(
+    async (opts?: ActionOptions) => {
+      const [s, p] = await Promise.all([savings.shares(opts), savings.pending(opts)]);
+      setShares(s);
+      setPending(p);
+      setWorth(await savings.value(s).catch(() => null));
+      read.current = true;
+    },
+    [savings],
+  );
+
+  useEffect(() => {
+    read.current = false;
+    setShares(null);
+    setWorth(null);
+    setPending(null);
+    void savings.info().then(setInfo, () => setInfo(null));
+  }, [savings]);
+
+  // After an action, what was read is read again; what was sealed stays sealed.
+  useEffect(() => {
+    if (tick > 0 && read.current) void reveal().catch(() => undefined);
+  }, [tick, reveal]);
+
+  const decimals = token.decimals;
+  const share = savings.share;
+  const usdc = (v: bigint) => formatAmount(v, decimals);
+  const amountOf = (p: SavingsPending) => (p.side === "save" ? `${usdc(p.amount)} ${token.symbol}` : `${formatAmount(p.amount, share.decimals)} ${share.symbol}`);
+
+  return (
+    <section className="vault-pocket-savings" data-tour="savings">
+      <div className="vault-pocket-savings-head">
+        <h3>{t("vault.pocket.savings.title")}</h3>
+        <p className="vault-meta">{t("vault.pocket.savings.lede")}</p>
+      </div>
+
+      <div className="vault-pocket-savings-row">
+        <div className="vault-pocket-balance">
+          <p className="vault-pocket-label">{t("vault.pocket.savings.balance")}</p>
+          <button
+            type="button"
+            className={`vault-balance vault-balance-sealed${shares === null ? " is-locked" : ""}`}
+            disabled={busy || !!own.busy}
+            onClick={() => void own.run("reveal", (o) => reveal(o))}
+            title={t("vault.pocket.savings.reveal")}
+          >
+            <span className="vault-balance-symbol">
+              <TokenIcon symbol={token.symbol} size={14} />
+              {token.symbol}
+            </span>
+            <strong className="vault-balance-value" aria-live="polite">
+              {own.busy === "reveal" ? "…" : shares === null ? "••••" : worth === null ? "?" : usdc(worth)}
+            </strong>
+          </button>
+          {shares !== null && <p className="vault-meta vault-pocket-shares">{t("vault.pocket.savings.shares", { shares: formatAmount(shares, share.decimals), symbol: share.symbol })}</p>}
+          <p className="vault-meta">{shares === null ? t("vault.pocket.savings.reveal") : t("vault.pocket.savings.balanceHint")}</p>
+          {own.error && <p className="vault-error">{own.error.text}</p>}
+        </div>
+
+        <div className="vault-pocket-pending">
+          <p className="vault-pocket-label">{t("vault.pocket.savings.pending")}</p>
+          {pending === null ? (
+            <p className="vault-meta">{t("vault.pocket.savings.pendingSealed")}</p>
+          ) : pending.length === 0 ? (
+            <p className="vault-meta">{t("vault.pocket.savings.pendingEmpty")}</p>
+          ) : (
+            <ul>
+              {pending.map((p) => (
+                <li key={`${p.side}-${p.windowId}`}>
+                  <span className="vault-pocket-pending-side">{t(`vault.pocket.savings.side.${p.side}`)}</span>
+                  <strong>{amountOf(p)}</strong>
+                  <span className="vault-pocket-pending-state">{t(`vault.pocket.savings.state.${p.state}`)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <div className="vault-pocket-forms">
+        <AmountForm
+          key={`save-${token.symbol}`}
+          title={t("vault.pocket.savings.save")}
+          hint={t("vault.pocket.savings.saveHint")}
+          busy={busy}
+          token={token}
+          check={(amount) => (balance !== null && balance < amount ? t("vault.pocket.savings.short", { held: usdc(balance), needed: usdc(amount), symbol: token.symbol }) : null)}
+          onSubmit={(amount) => void run("pocketSave", (o) => savings.save(amount, o), () => t("vault.done.pocketSave"))}
+        />
+        <AmountForm
+          key={`unsave-${token.symbol}`}
+          title={t("vault.pocket.savings.unsave")}
+          hint={t("vault.pocket.savings.unsaveHint", { symbol: share.symbol })}
+          busy={busy}
+          token={token}
+          fill={worth !== null && shares !== null && shares > 0n ? { label: t("vault.pocket.savings.all"), value: usdc(worth) } : undefined}
+          check={(amount) => (worth !== null && worth < amount ? t("vault.pocket.savings.shortShares", { held: usdc(worth), needed: usdc(amount), symbol: token.symbol }) : null)}
+          onSubmit={(amount, _shield, _to, all) =>
+            void run(
+              "pocketUnsave",
+              async (o) => {
+                // "All" asks the exact shares; an amount is converted at today's price, never
+                // past what the pocket holds (the estimate can round over it).
+                let asked = all && shares !== null ? shares : await savings.toShares(amount);
+                if (shares !== null && asked > shares) asked = shares;
+                await savings.unsave(asked, o);
+              },
+              () => t("vault.done.pocketUnsave"),
+            )
+          }
+        />
+      </div>
+
+      {info && <p className="vault-meta vault-pocket-savings-note">{t("vault.pocket.savings.timing", { wait: waitText(t, info.minBatchAge) })}</p>}
+      <p className="vault-meta vault-pocket-savings-note">{t("vault.pocket.savings.public")}</p>
+    </section>
   );
 }
 
@@ -444,6 +877,7 @@ function AmountForm({
   busy,
   token,
   target,
+  fill,
   extra,
   check,
   onSubmit,
@@ -453,10 +887,12 @@ function AmountForm({
   busy: boolean;
   token: PocketToken;
   target?: { label: string; placeholder: string; initial?: string; parse: (v: string) => number | string | null; bad: string };
+  /** A link that fills the amount with everything there is (`value`, as text); `onSubmit` then gets `all`. */
+  fill?: { label: string; value: string };
   extra?: (shield: boolean, setShield: (v: boolean) => void) => ReactNode;
   /** A problem to show before anything is sent, or null. */
   check?: (amount: bigint, shield: boolean) => string | null;
-  onSubmit: (amount: bigint, shield: boolean, to?: number | string) => void;
+  onSubmit: (amount: bigint, shield: boolean, to?: number | string, all?: boolean) => void;
 }) {
   const t = useT();
   // An 18-decimal token (WETH, ZAMA) is worth more a unit: its faucet gives 1 WETH.
@@ -464,6 +900,8 @@ function AmountForm({
   const [to, setTo] = useState(target?.initial ?? "");
   const [shield, setShield] = useState(false);
   const [bad, setBad] = useState<string | null>(null);
+  /** The amount was filled with everything and not edited since. */
+  const [all, setAll] = useState(false);
   return (
     <form
       className="vault-form vault-pocket-form"
@@ -476,7 +914,7 @@ function AmountForm({
         const problem = check?.(units, shield);
         if (problem) return setBad(problem);
         setBad(null);
-        onSubmit(units, shield, where ?? undefined);
+        onSubmit(units, shield, where ?? undefined, all && fill !== undefined && amount === fill.value);
       }}
     >
       <h4>{title}</h4>
@@ -490,7 +928,26 @@ function AmountForm({
         {t("vault.pocket.amount", { symbol: token.symbol })}
         <span className="vault-amount-input">
           <TokenIcon symbol={token.symbol} size={16} />
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+          <input
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setAll(false);
+            }}
+            inputMode="decimal"
+          />
+          {fill && (
+            <button
+              type="button"
+              className="sec-link vault-amount-all"
+              onClick={() => {
+                setAmount(fill.value);
+                setAll(true);
+              }}
+            >
+              {fill.label}
+            </button>
+          )}
         </span>
       </label>
       {extra?.(shield, setShield)}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ChainError, decoySends, MOCK_DESK, MOCK_NIGHT_SHIFT, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, mockCollector, pocketGroup, pocketSet, vaultLinks } from "../src";
+import { ChainError, decoySends, MOCK_DESK, MOCK_NIGHT_SHIFT, MOCK_SAVINGS, MOCK_VAULT_NFT, MOCK_YOU, MockAdapter, mockCollector, pocketGroup, pocketSet, vaultLinks } from "../src";
 
 const ETH = 10n ** 18n;
 const USD = 1_000_000n;
@@ -210,6 +210,70 @@ describe("MockVault pockets", () => {
     await pockets.offerSale(boxId, night, 10n * USD);
     expect(await vault.myBoxes()).toEqual([]);
     expect((await chain.confidentialUsdcBalance()) - before).toBe(10n * USD - (10n * USD * 250n) / 10_000n);
+  });
+});
+
+describe("MockVault savings", () => {
+  const withSavings = async () => {
+    let now = 1_000_000;
+    const { chain, vault } = await fresh(() => now);
+    const pockets = vault.pockets()!;
+    await pockets.open();
+    await pockets.deposit(10n * USD);
+    expect(await pockets.balance()).toBe(10n * USD);
+    return { chain, vault, pockets, savings: pockets.savings()!, tick: (ms: number) => (now += ms) };
+  };
+
+  it("exist for the cUSDC pockets only, with the demo's vault behind them", async () => {
+    const { pockets, savings } = await withSavings();
+    expect((await pockets.info()).savings).toBe(MOCK_SAVINGS);
+    const info = await savings.info();
+    expect(info.address).toBe(MOCK_SAVINGS);
+    expect(info.open.save).toMatchObject({ side: "save", state: "open", pockets: 0 });
+    expect(info.open.unsave).toMatchObject({ side: "unsave", state: "open" });
+    expect(savings.share.decimals).toBe(6);
+    const { vault } = await fresh();
+    expect(vault.pockets("cUSDT")!.savings()).toBeNull();
+    expect((await vault.pockets("cUSDT")!.info()).savings).toBeNull();
+  });
+
+  it("puts cUSDC aside at once, keeps it pending through the batch, then shows it as shares worth a little more", async () => {
+    const { pockets, savings, tick } = await withSavings();
+    await savings.save(4n * USD);
+    expect(await pockets.balance()).toBe(6n * USD);
+    expect(await savings.shares()).toBe(0n);
+    expect(await savings.pending()).toEqual([{ windowId: 2, side: "save", state: "open", amount: 4n * USD }]);
+    expect((await savings.info()).open.save.pockets).toBeGreaterThan(0);
+    tick(6_000);
+    expect((await savings.pending())[0]!.state).toBe("joined");
+    tick(10_000);
+    expect(await savings.pending()).toEqual([]);
+    const shares = (4n * USD * 980_000n) / 1_000_000n;
+    expect(await savings.shares()).toBe(shares);
+    expect(await savings.value(shares)).toBe((shares * 1_020_000n) / 1_000_000n);
+    expect(await savings.toShares(10n * USD)).toBe((10n * USD * 1_000_000n) / 1_020_000n);
+  });
+
+  it("brings shares back as cUSDC the same way, and moves nothing when short", async () => {
+    const { pockets, savings, tick } = await withSavings();
+    await savings.save(4n * USD);
+    tick(16_000);
+    const shares = await savings.shares();
+    await savings.unsave(shares / 2n);
+    expect(await savings.shares()).toBe(shares - shares / 2n);
+    expect(await savings.pending()).toEqual([{ windowId: 3, side: "unsave", state: "open", amount: shares / 2n }]);
+    tick(16_000);
+    expect(await pockets.balance()).toBe(6n * USD + ((shares / 2n) * 1_020_000n) / 1_000_000n);
+    // Short: nothing moves, no error.
+    await savings.save(1_000n * USD);
+    await savings.unsave(shares);
+    expect(await savings.pending()).toEqual([]);
+    expect(await savings.shares()).toBe(shares - shares / 2n);
+  });
+
+  it("asks for a pocket before saving", async () => {
+    const { vault } = await fresh();
+    expect(await code(vault.pockets()!.savings()!.save(1n))).toBe("not-yours");
   });
 });
 

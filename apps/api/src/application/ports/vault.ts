@@ -31,17 +31,34 @@ export interface PocketSpendInput {
   keyProof: string;
 }
 
-/** The pockets' and the desk's calls the relayer sends, by name. */
+/** A save's or an unsave's encrypted inputs, as `PocketSavings.SpendInput`: the amount in one
+ *  input, the key bound to its handle in another. */
+export interface SavingsSpendInput {
+  amount: string;
+  inputProof: string;
+  boundKey: string;
+  keyProof: string;
+}
+
+/** The pockets', the desk's and the savings' calls the relayer sends, by name. */
 export interface PocketTxs {
   /** Opens a pocket: its key encrypted for the pockets, and the address that reads its balance.
    *  `pockets` names another token's pockets contract (cUSDT, cWETH, cZAMA); the cUSDC ones when left out. */
   pocketOpen: { handle: string; inputProof: string; viewer: Address; pockets?: Address };
   pocketSend: { from: number[]; to: number[]; input: PocketSpendInput; pockets?: Address };
   pocketWithdraw: { from: number[]; to: Address; input: PocketSpendInput; pockets?: Address };
+  /** Puts cUSDC of one pocket of `from` (the real one among decoys) aside in the savings' open window. cUSDC pockets only. */
+  pocketSave: { from: number[]; input: SavingsSpendInput };
+  /** Asks shares of one pocket of `from` back, into the savings' open unsave window. */
+  pocketUnsave: { from: number[]; input: SavingsSpendInput };
   /** Step 1 of a purchase out of a pocket: the pocket's bound key, and the box key's handle. */
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   /** Step 2: the proof of the "ok" bit and the box's new key. */
   deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
+  /** A stealth payment's announcement (ERC-5564, scheme 1), so the payee's page finds the address a pocket paid. */
+  stealthAnnounce: { stealthAddress: Address; ephemeralPubKey: string; metadata: string };
+  /** A little ETH, once, for a side address a pocket paid or that holds the plain token, so it can collect. */
+  fuel: { to: Address };
 }
 export type PocketCall = keyof PocketTxs;
 
@@ -55,4 +72,6 @@ export interface VaultSender {
   pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string>;
   /** The wallet's balance in wei, for the monitoring: it pays every transaction's gas. */
   balance?(): Promise<bigint>;
+  /** What a `fuel` call gives, in wei; null when the relayer gives none. */
+  readonly fuel?: bigint | null;
 }

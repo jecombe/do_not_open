@@ -220,15 +220,43 @@ name them. See [VAULT.md](VAULT.md).
 The same idea for tokens. ERC-7984 already hides balances and amounts; `SealedPockets` hides
 the address graph too. A pocket is a number with an encrypted key and balance, read by a viewer
 address the holder's page derives from one signature, so no wallet is ever tied to it. Every
-deposit, send and withdrawal names a set of pockets (the real one's fixed group of five by
-number, the same every time, so comparing a pocket's sets tells its group and no more) and decides
+deposit, send and withdrawal names a set of pockets (the real one's fixed group by number,
+`MAX_SET` apiece, fixed at deployment, ten on the live pockets and five on the earlier ones;
+the same every time, so comparing a pocket's sets tells its group and no more) and decides
 under encryption which one moves and by how much: no decryption, one transaction. What leaks:
-the wallet behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
+the address behind a deposit and the pockets it named, the sets each spend names, a withdrawal's
 address, and for a box bought from a pocket (`PocketDesk`) the reserved pocket and the ask's yes
-or no. The box then sits with the desk, a holder all pockets share. cUSDT, cWETH and cZAMA have
+or no. The two addresses that remained a person's, a withdrawal's and a deposit's, have doors
+([VAULT.md](VAULT.md#doors-stealth-exits-and-entry-addresses)): a withdrawal pays a stealth
+address (ERC-5564) that only the payee's keys spend or recognise, announced by the relayer; a
+deposit comes from an entry address derived from the holder's signature and fed from outside (a
+privacy pool, an exchange), which empties itself into the pocket. Both are nobody's on-chain;
+the page derives their keys from the pocket signature and stores nothing. The box then sits with the desk, a holder all pockets share. cUSDT, cWETH and cZAMA have
 pockets of their own: which token an action moves is public, never whose pocket moved; a wallet's
 pockets of different tokens have different viewers, so nothing ties them together. See
 [VAULT.md](VAULT.md#pockets).
+
+## 5g. The pockets' savings
+
+A pocket's cUSDC can earn in one of Zama's confidential vaults on Morpho without the pocket
+showing. Zama's batchers already hide each participant's amount (only a batch's total is
+decrypted), but they name each participant: joining with a pocket, or with the holder's wallet,
+would publish who saves. `PocketSavings` joins instead, as the one participant, with the
+encrypted total of a window: every save of the window, asked as a send is (the key bound to the
+side, the set and the amount, the real pocket among its group, ten on the live pockets) and taken under
+encryption by `deskTake`, zero from the decoys. When the batch settles, each pocket's part is
+`committed × rate / 1e6`, computed under encryption from the public rate and kept as an
+encrypted share balance only the pocket's viewer reads; the way back mirrors it. Nothing of
+ours is decrypted, and no share ever reaches a wallet.
+
+What leaks: the set a save or an unsave named and the window it went into; when each window
+joined and which batch; each batch's rate; and, on Zama's side, the savings contract among the
+batch's participants and the batch's decrypted total. That total bounds the sum of a window's
+saves, and equals it when the window was the batch's only participant (the lone window): the
+sum is still spread over the pockets that saved in the window and their decoys, never one
+pocket's, and the keeper joins once per batch, late in it, so the window is as large and the
+batch as shared as they can be. Never public: a pocket's saved amount, its share balance, which
+pocket of a set moved, who holds a pocket. See [VAULT.md](VAULT.md#savings).
 
 ## 6. What still leaks
 
@@ -252,6 +280,8 @@ pockets of different tokens have different viewers, so nothing ties them togethe
 | Claiming a place on the mainnet allow list (off-chain, filed by the API) | that an address asked, and when. Its points come only from facts already public about it: the duels it fought as challenger or accepter (both parties of a valid duel proved holding their box) and the boxes it opened. Anyone can read any address's points (`GET /v1/allowlist/:address`), derived from those same public facts; nobody is ranked who did not claim |
 | A whitelist gift (`WhitelistGifts.claim`) | that the wallet is on the frozen list, its tier, the gift box's id (the wallet held it then: `BoxGifted` names it) and its rat. Not how many croquettes it drew |
 | The sealed vault (`SealedVault`) | the depositor of each NFT, the NFT in each box, Seaport listings (price, fees, end time; on OpenSea itself on mainnet) and their buyers, buyers' offers (`VaultOffers`) and an accepted one's buyer and amount, a box's delegate, a request's sender (the relayer, or the wallet without one), action and terms, whether its key matched, where an NFT or a sale's ETH went, `setKey`'s caller, a private sale's seller and buyer. Not who holds a box, its key, a private sale's price, nor whether a private sale or a transfer moved it |
+| The vault's pockets (`SealedPockets`, `PocketDesk`) | the wallet behind a deposit and the group it named, the sets each send or withdrawal names, a withdrawal's address, the reserved pocket of a desk sale and its ask's yes or no. Not a pocket's balance, an amount, which pocket of a group moved, nor who holds a pocket |
+| The pockets' savings (`PocketSavings`) | the set a save or an unsave named and its window, when the window joined and which of Zama's batches, the batch's rate, and on Zama's side the savings contract as a participant and the batch's decrypted total (which bounds the window's saves together, and equals them when the window was the only participant). Not a pocket's saved amount, its shares, nor which pocket of a set moved |
 | An X boarding pass (off-chain, filed by the API) | the boarding tweet itself, public on X: that this X account wants a place. The wallet a player chooses to link to it stays in the API, never shown; that link ties an X identity to the wallet's public facts (duels, openings), so the page says a game-only wallet keeps a player anonymous. The Discord account that ran `/board` is kept the same way, private: the server's members can see that someone ran a command, not the code nor the reply. The pass whose referral link a pass started from is kept by the API too, never public (the code itself is, in the boarding tweet), and no route ranks the referrers |
 
 An observer who follows an address can bound its holdings from above (ids it minted plus

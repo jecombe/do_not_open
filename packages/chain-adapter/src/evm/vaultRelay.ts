@@ -34,20 +34,36 @@ export interface PocketSpendInput {
   keyProof: string;
 }
 
-/** What the relayer sends for the pockets and their desk, by call. */
+/** A save's or an unsave's encrypted inputs, as `PocketSavings.SpendInput`. */
+export interface SavingsSpendInput {
+  amount: string;
+  inputProof: string;
+  boundKey: string;
+  keyProof: string;
+}
+
+/** What the relayer sends for the pockets, their desk and their savings, by call. */
 export interface PocketRelayCalls {
   /** `pockets`: another token's pockets contract; the cUSDC ones when left out. */
   pocketOpen: { handle: string; inputProof: string; viewer: string; pockets?: string };
   pocketSend: { from: number[]; to: number[]; input: PocketSpendInput; pockets?: string };
   pocketWithdraw: { from: number[]; to: string; input: PocketSpendInput; pockets?: string };
+  pocketSave: { from: number[]; input: SavingsSpendInput };
+  pocketUnsave: { from: number[]; input: SavingsSpendInput };
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
+  /** Publishes a stealth payment on ERC-5564's announcer, so the payee's page finds it; the relayer is its caller. */
+  stealthAnnounce: { stealthAddress: string; ephemeralPubKey: string; metadata: string };
+  /** A little ETH for a side address a pocket paid (or that holds the plain token), once, so it can collect. */
+  fuel: { to: string };
 }
 
 export class VaultRelay {
   constructor(
     private readonly base: string,
     readonly address: string,
+    /** What it gives a side address as gas, once, in wei; null when it gives none. */
+    readonly fuel: bigint | null = null,
   ) {}
 
   /** The relayer of `apiUrl`, or null when that API has none (or is down). */
@@ -57,8 +73,8 @@ export class VaultRelay {
       const res = await fetch(`${base}/v1/vault/relayer`);
       if (!res.ok) return null;
       // The API wraps its answers: { block, data }.
-      const { data } = (await res.json()) as { data?: { address?: string | null } };
-      return data?.address ? new VaultRelay(base, data.address) : null;
+      const { data } = (await res.json()) as { data?: { address?: string | null; fuel?: string | null } };
+      return data?.address ? new VaultRelay(base, data.address, data.fuel ? BigInt(data.fuel) : null) : null;
     } catch {
       return null;
     }
@@ -74,7 +90,7 @@ export class VaultRelay {
     return this.post("finalize", args);
   }
 
-  /** Sends a pocket's open or spend, or a desk purchase. Returns the transaction hash. */
+  /** Sends a pocket's open or spend, a desk purchase, a save, a stealth announcement or a side address's fuel. Returns the transaction hash. */
   pockets<C extends keyof PocketRelayCalls>(call: C, args: PocketRelayCalls[C]): Promise<string> {
     return this.post(call, args);
   }

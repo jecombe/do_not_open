@@ -34,10 +34,16 @@ export const SCENE_OF: Record<string, SceneKind> = {
   pocketSend: "pouches",
   pocketBuy: "trade",
   pocketOffer: "envelope",
+  pocketSave: "pouch",
+  pocketUnsave: "pouch",
+  pocketCollect: "pouch",
+  pocketFuel: "press",
+  pocketPublish: "badge",
 };
 
-/** Actions whose scene runs backwards: the listing sails home, the offer comes back. */
-const REVERSED = new Set(["unlist", "cancelOffer", "cancelSale", "pocketWithdraw"]);
+/** Actions whose scene runs backwards: the listing sails home, the offer comes back, the coins
+ *  put aside leave the pouch. */
+const REVERSED = new Set(["unlist", "cancelOffer", "cancelSale", "pocketWithdraw", "pocketSave"]);
 /** The pouch opening, rather than a coin going in or out. */
 const SEWING = new Set(["pocketOpen"]);
 

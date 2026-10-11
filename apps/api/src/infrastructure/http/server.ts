@@ -542,14 +542,18 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
   // --- the sealed vault's relayer ---
 
   // Asked by every vault page: null when there is none, so the page sends from the wallet.
-  app.get("/v1/vault/relayer", async (_req, reply) => send(reply, { address: deps.vaultRelay?.address ?? null }, "public, max-age=60"));
+  app.get("/v1/vault/relayer", async (_req, reply) =>
+    send(reply, { address: deps.vaultRelay?.address ?? null, fuel: deps.vaultRelay?.fuel?.toString() ?? null }, "public, max-age=60"),
+  );
 
   const vaultRelay = deps.vaultRelay;
   if (vaultRelay) {
     const hex = z.string().regex(/^0x[0-9a-fA-F]*$/, "hex").max(20_000);
     const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "32 bytes");
-    const pocketSet = z.array(id).min(1).max(5);
+    // A group's size is the pockets' (MAX_SET, 12 at most); the contract refuses a set past its own.
+    const pocketSet = z.array(id).min(1).max(12);
     const spendInput = z.object({ amount: bytes32, target: bytes32, inputProof: hex, boundKey: bytes32, keyProof: hex });
+    const savingsInput = z.object({ amount: bytes32, inputProof: hex, boundKey: bytes32, keyProof: hex });
     const body = z.discriminatedUnion("call", [
       z.object({
         call: z.literal("request"),
@@ -571,8 +575,14 @@ export async function buildServer(deps: HttpDeps): Promise<FastifyInstance> {
       z.object({ call: z.literal("pocketOpen"), args: z.object({ handle: bytes32, inputProof: hex, viewer: address, pockets: address.optional() }) }),
       z.object({ call: z.literal("pocketSend"), args: z.object({ from: pocketSet, to: pocketSet, input: spendInput, pockets: address.optional() }) }),
       z.object({ call: z.literal("pocketWithdraw"), args: z.object({ from: pocketSet, to: address, input: spendInput, pockets: address.optional() }) }),
+      // The cUSDC pockets' savings: a set of pockets, the real one among decoys, as a send.
+      z.object({ call: z.literal("pocketSave"), args: z.object({ from: pocketSet, input: savingsInput }) }),
+      z.object({ call: z.literal("pocketUnsave"), args: z.object({ from: pocketSet, input: savingsInput }) }),
       z.object({ call: z.literal("deskAsk"), args: z.object({ saleId: id, handle: bytes32, keyProof: hex, boxKey: bytes32 }) }),
       z.object({ call: z.literal("deskBuy"), args: z.object({ askId: id, cleartexts: hex, proof: hex, boxKey: bytes32, boxKeyProof: hex }) }),
+      // The pockets' doors: a stealth payment's announcement, and a side address's first gas.
+      z.object({ call: z.literal("stealthAnnounce"), args: z.object({ stealthAddress: address, ephemeralPubKey: z.string().regex(/^0x[0-9a-fA-F]{66}$/, "33 bytes"), metadata: hex.max(200) }) }),
+      z.object({ call: z.literal("fuel"), args: z.object({ to: address }) }),
     ]);
     app.post(
       "/v1/vault/relay",

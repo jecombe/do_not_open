@@ -1329,8 +1329,9 @@ Nothing is decrypted in public: a sale that went through and one that did not lo
 
 A pocket is cUSDC (or cUSDT, cWETH, cZAMA, each in its own pockets contract) under an encrypted
 key ([VAULT.md](VAULT.md#pockets)). Every action names a set of pockets of the same token, the
-real one's fixed group of five by number, always the same, so a set tells the group and never
-the pocket; nothing is decrypted in public. Only cUSDC pockets buy private sales.
+real one's fixed group by number (`MAX_SET`, ten on the live pockets, five on the earlier ones), always the
+same, so a set tells the group and never the pocket; nothing is decrypted in public. Only cUSDC
+pockets buy private sales.
 
 ```mermaid
 sequenceDiagram
@@ -1347,6 +1348,38 @@ sequenceDiagram
   P->>P: debit select(ok, amount, 0) from each; credit the total to the receiving pocket whose number = target
   P->>U: withdraw only: confidentialTransfer(to, the total)
   H->>H: the viewer user-decrypts the new balance
+```
+
+### Pockets: a stealth exit, and an entry address
+
+A withdrawal shows the address it pays and a deposit the wallet it comes from; the doors
+([VAULT.md](VAULT.md#doors-stealth-exits-and-entry-addresses)) make both addresses nobody's. Out:
+a stealth address (ERC-5564) drawn for the holder's own meta-address or a payee's, paid by a plain
+withdrawal and announced by the relayer; the payee's page finds it with its viewing key and
+reads its balance with the address's own key. In: an entry address derived from the signature,
+fed from outside and emptied into the pocket by itself. Either side address needs gas; the
+relayer fuels it once when a pocket paid it or it holds the plain token.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder's page
+  participant R as Relayer
+  participant P as SealedPockets
+  participant A as ERC-5564 announcer
+  participant U as cUSDC / USDC
+  H->>H: stealth address = spendingPub + keccak(ECDH(ephemeral, viewingPub)) × G
+  H->>R: withdraw(my group, stealth address, amount, key XOR spendHash)
+  R->>P: withdraw; Withdrawn(group, stealth address)
+  P->>U: confidentialTransfer(stealth address, amount)
+  H->>R: stealthAnnounce(stealth address, ephemeral public key, view tag + token)
+  R->>A: announce; Announcement(1, stealth address, relayer, ...)
+  Note over H: any device: Announcement logs by caller, view tag, then the viewing key: mine; balance read with the address's key
+  H->>R: fuel(stealth address): never sent, holds less than the fuel, paid by a pocket (or holds USDC)
+  R-->>H: ETH to the address, once
+  H->>U: as the address: (approve, wrap for an entry address) setOperator(pockets)
+  H->>P: as the address: deposit(my group, target, amount), encrypted with the wallet's permit for the address as caller
+  P->>P: Deposited(the side address, group): the wallet appears nowhere
 ```
 
 ### Pockets: buying a private sale
@@ -1376,6 +1409,83 @@ sequenceDiagram
     D->>D: ownerOf(box) = pocket + 1 if moved, readable by its viewer
   end
 ```
+
+### Pockets: savings
+
+A pocket's cUSDC put to work in one of Zama's confidential vaults on Morpho, through
+`PocketSavings` ([VAULT.md](VAULT.md#savings)). A save is asked like a send (the key bound to
+the side, the set and the amount's handle) and waits in the open window of its side; the
+window joins Zama's batch as one participant, once per batch; the batch's rate is public, and
+each pocket's part is computed from it under encryption. Nothing of ours is decrypted. An
+unsave mirrors it through the redeem batcher.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder's page
+  participant R as Relayer / keeper (API)
+  participant V as PocketSavings
+  participant P as SealedPockets
+  participant B as Zama's batcher (deposit or redeem)
+  participant K as Zama's KMS
+  H->>H: encrypt the amount, then key XOR saveHash(side, set, amount handle)
+  H->>R: POST /v1/vault/relay {call: "pocketSave" | "pocketUnsave", args}
+  R->>V: save(set, input) or unsave(set, input), from its own wallet
+  V->>V: refuse a bound key's handle already spent
+  alt save
+    V->>P: deskTake(pocket, key, amount) on each pocket of the set: amount from the key's pocket, 0 from the others
+  else unsave
+    V->>P: deskCheck(pocket, key, 0) on each; AND shares >= amount; shares -= select(ok, amount, 0)
+  end
+  V->>V: committed[window][pocket] += taken (readable by the viewer); the window's total += taken
+  V-->>H: Saved(window, set) or Unsaved(window, set)
+  Note over V: other saves pile up in the same window
+  R->>V: join(side), once per batch, late in the batch
+  V->>B: join(savings, the window's total) as one participant; the next window opens
+  V-->>H: WindowJoined(window, batch)
+  B->>K: dispatch: the batch's total made publicly decryptable
+  K-->>B: callback(total, proof): unwrap, Morpho deposit or redeem, wrap, rate = output per input × 1e6
+  R->>V: settle(window)
+  alt Finalized
+    V->>B: claim(batch, savings): the shares (or the cUSDC); rate kept
+  else Canceled
+    V->>B: recover(batch, savings): the commitments back
+  end
+  V-->>H: WindowSettled(window, state, rate)
+  R->>V: settlePockets(window, ids), 5 at a time, decoys included
+  V->>V: part = committed × rate / 1e6 on 128 bits (or the commitment itself when canceled)
+  alt save, settled
+    V->>V: shares[pocket] += part, readable by its viewer
+  else unsave, settled (or save, canceled)
+    V->>P: confidentialTransfer(pockets, part); deskGive(pocket, part)
+  else unsave, canceled
+    V->>V: shares[pocket] += committed
+  end
+  V-->>H: PocketSettled(window, pocket)
+  H->>H: the viewer user-decrypts sharesOf(pocket) and committedOf(window, pocket)
+```
+
+A window's life, per side (two windows are always open, one per side):
+
+```mermaid
+stateDiagram-v2
+  [*] --> Open: WindowOpened (at deployment, or when the previous window joined)
+  Open --> Open: save / unsave (commitments pile up)
+  Open --> Joined: join(side), when the batcher's current batch is not the one the side last joined
+  Joined --> Settled: settle, the batch Finalized (claim; rate kept)
+  Joined --> Canceled: settle, the batch Canceled (recover)
+  Settled --> Settled: settlePockets (left decreases)
+  Canceled --> Canceled: settlePockets (commitments back)
+  Settled --> [*]: left = 0
+  Canceled --> [*]: left = 0
+```
+
+`join` reverts on an empty window (`EmptyWindow`) and on a batch already joined
+(`BatchAlreadyJoined`); `settle` on a window not joined, or whose batch is still `Pending` or
+`Dispatched` (`BatchNotDone`); `settlePockets` on a pocket without a commitment in the window
+(`NotCommitted`), so each pocket is settled once. A wrong key or a short balance commits zero
+without a revert. In the adapter: `pockets().savings()`: `save`, `unsave`, `shares`, `pending`,
+`info`.
 
 ## Where the money goes
 

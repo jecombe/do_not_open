@@ -1808,6 +1808,123 @@ a.vault-me:hover {
   border-radius: 8px;
 }
 
+/* The pocket's savings: its sealed shares as what they are worth, what is on the way, the
+   put-aside and take-back forms, and two notes (how long a batch takes, what shows). */
+.vault-pocket-savings {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: linear-gradient(300deg, rgb(201 154 99 / 0.1), transparent 55%), var(--panel);
+}
+
+.vault-pocket-savings-head {
+  display: grid;
+  gap: 6px;
+}
+
+.vault-pocket-savings-head h3 {
+  margin: 0;
+  font: 700 18px/1.1 var(--stencil);
+  letter-spacing: 0.03em;
+}
+
+.vault-pocket-savings-head .vault-meta {
+  max-width: 70ch;
+  margin: 0;
+}
+
+.vault-pocket-savings-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px 28px;
+}
+
+.vault-pocket-savings .vault-pocket-balance .vault-balance {
+  justify-self: start;
+}
+
+.vault-pocket-shares {
+  color: var(--muted);
+  font: 500 12px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-pocket-pending {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vault-pocket-pending .vault-meta {
+  margin: 0;
+}
+
+.vault-pocket-pending ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-pocket-pending li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.vault-pocket-pending li strong {
+  font: 700 13px var(--mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.vault-pocket-pending-side {
+  color: var(--muted);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vault-pocket-pending-state {
+  flex-basis: 100%;
+  color: #ffd38a;
+  font-size: 12px;
+}
+
+.vault-pocket-savings .vault-pocket-forms {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.vault-pocket-savings .vault-pocket-form {
+  background: rgb(7 9 12 / 0.35);
+}
+
+.vault-amount-all {
+  flex: none;
+  padding: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.vault-pocket-savings-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--kraft);
+  border-radius: 0 10px 10px 0;
+  background: rgb(201 154 99 / 0.08);
+}
+
 /* Why the vault, then what shows and what does not. */
 .vault-leaks {
   display: grid;
@@ -2343,4 +2460,83 @@ a.vault-me:hover {
 .tour-vault.is-still .tour-spot,
 .tour-vault.is-still .tour-card {
   animation: none;
+}
+
+/* The pockets' doors: the wallet's stealth meta-address, what fresh addresses received, and the
+   entry address to feed the pocket from outside. */
+.vault-pocket-doors {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgb(43 170 150 / 0.08), transparent 55%), var(--panel);
+}
+
+.vault-pocket-doors h3 {
+  margin: 0;
+  font: 700 18px/1.1 var(--stencil);
+}
+
+.vault-pocket-doors h4 {
+  margin: 0;
+  font: 700 14px/1.2 var(--stencil);
+}
+
+.vault-pocket-doors .vault-meta {
+  margin: 0;
+}
+
+.vault-doors-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--panel-2, transparent);
+}
+
+.vault-doors-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+}
+
+.vault-doors-line code {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 12px var(--mono);
+}
+
+.vault-doors-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-doors-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+
+.vault-doors-list li .vault-meta {
+  flex-basis: 100%;
+}
+
+.vault-doors-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }

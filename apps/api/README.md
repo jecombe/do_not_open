@@ -145,10 +145,10 @@ routes, whose shapes are given in [The studio](#the-studio).
 | `GET /v1/gifts/:address` | A wallet's gift proof once the list is frozen: `{ tier, proof, root }`; `404 not-frozen` without `WHITELIST_GIFTS_TREE`, `404 not-on-list` for a wallet not in it. Cached 60 s |
 | `POST /v1/sync/nudge` | Asks the indexer to look now; an API replica passes it on over Postgres (`NOTIFY dno_nudge`) |
 | `GET /metadata/:id` · `/metadata/:id/image.svg` | ERC-721 metadata, live. Point the contract's base URI at `https://<api>/metadata/`. `image` is the picture on Arweave once it is stored there (below), this API's SVG until then. |
-| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`), the sealed vault's boxes, sales and requests (`dno_vault_*`) and its relayer's wallet and outcomes. Public facts only. Each process reports its own traffic and memory; the index's counts come from the indexer only, so a sum over replicas counts them once. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
+| `GET /metrics` | Prometheus metrics (`src/infrastructure/http/metrics.ts`): counts, pending proofs, the indexer's lag, the RPC pool, HTTP traffic by route, Arweave, Gemini, herald, the studio's jobs, spending, packs sold and USDC brought in (`dno_studio_*`), the rats adopted (`dno_rats_minted`), the sealed vault's boxes, sales and requests (`dno_vault_*`), its relayer's wallet and outcomes and its savings keeper (`dno_savings_keeper_*`). Public facts only. Each process reports its own traffic and memory; the index's counts come from the indexer only, so a sum over replicas counts them once. The edge proxy refuses it from outside; the monitoring stack reads it over the Docker network ([`deploy/README.md`](../../deploy/README.md#monitoring)) |
 | `POST /relayer/v2/{input-proof,user-decrypt,public-decrypt}` · `GET /relayer/v2/:op/:jobId` · `GET /relayer/v2/keyurl` | The relayer proxy (below): the Relayer SDK's `relayerUrl` is `https://<api>/relayer/v2` |
 | `GET /v1/relayer/allowance/:address` | Free decryptions left today, credits left, when the free ones come back |
-| `GET /v1/vault/relayer` · `POST /v1/vault/relay` | The sealed vault's relayer (below): its address, or null; sends a holder's request or proof, a pocket's open or spend, or a desk purchase from its own wallet |
+| `GET /v1/vault/relayer` · `POST /v1/vault/relay` | The sealed vault's relayer (below): its address and its fuel, or null; sends a holder's request or proof, a pocket's open, spend, save or unsave, a desk purchase, a stealth payment's announcement or a side address's first gas from its own wallet |
 | `GET /v1/vault/market` · `GET /v1/vault/offers/:collection/:tokenId` · `POST /v1/vault/offers/fulfillment` | OpenSea's offers for the vault's page (below, mainnet only): the marketplace read and the address it signs fills for (the vault); a token's live offers; the order that fills one, signed by OpenSea for the vault |
 | `GET /v1/studio` · `GET /v1/studio/credits` · `POST /v1/studio/sketches` · `POST /v1/studio/models` · `GET /v1/studio/jobs[/:id]` · `GET /v1/studio/jobs/:id/{image,model.glb}` | The studio (below): rats drawn by paid AI services out of packs bought on-chain |
 | `GET /v1/rats?owner=` · `GET /v1/rats/supply` · `GET /v1/rats/:id` · `GET /rats/:id` · `GET /rats/:id/image.svg` · `POST /v1/studio/jobs/:id/adopt` | The depot's rats (below): an owner's rats, one rat, its ERC-721 metadata and picture, and the adoption of an AI rat |
@@ -417,21 +417,57 @@ box's key, not with the holder's address, so any wallet can send the request. Wi
 `src/infrastructure/vault/`), so the holder's address appears in no transaction. The relayer
 learns nothing a chain observer would not: the key arrives encrypted for the vault and bound to
 the request's terms and the box's nonce, so it can neither read it, change the terms, nor reuse
-it. It pays the gas: fund its address with a little ETH. The indexer role never sends; nothing
-is stored.
+it. It pays the gas: fund its address with a little ETH. The indexer role relays nothing; with
+the same key it keeps the pockets' savings (below). Nothing is stored.
 
 | Route | Answer |
 | --- | --- |
-| `GET /v1/vault/relayer` | `{ data: { address } }`, the relayer's address or null (no key, or no vault in the deployment). Always served, cached 60 s: the vault page asks it to know whether to send from the wallet |
-| `POST /v1/vault/relay` | Only with `VAULT_RELAYER_KEY`. `{ call: "request", args: { boxId, action (0 to 5: withdraw, list, unlist, claim, acceptOffer, delegate), to, price (decimal string, wei), endTime, ref (bytes32, an offer's order hash; zero when left out), handle, inputProof } }` or `{ call: "finalize", args: { requestId, cleartexts, proof, offer? } }` → `{ hash }`; a `finalize` with `offer` (hex, the encoded order) is sent as `finalizeOffer`. Each call is estimated first, so what the vault would refuse is never sent: `400 { code: "reverted" }` with the contract's reason (`WrongState`, `BadEndTime`, `RequestNotPending`, `NeedsOrder`, `WrongOrder`, `OfferShort`...); `400` for a malformed body. The pockets and their desk, where they are deployed: `{ call: "pocketOpen", args: { handle, inputProof, viewer } }`, `{ call: "pocketSend", args: { from, to, input } }`, `{ call: "pocketWithdraw", args: { from, to, input } }` (`from` and `to` sets of 1 to 5 pocket numbers; `input`: `{ amount, target, inputProof, boundKey, keyProof }`; each may add `pockets`, the address of another token's pockets (cUSDT, cWETH, cZAMA: `vault.otherPockets` in the deployment), the cUSDC ones when left out, refused (`reverted`) when it is not one of this vault's), `{ call: "deskAsk", args: { saleId, handle, keyProof, boxKey } }` and `{ call: "deskBuy", args: { askId, cleartexts, proof, boxKey, boxKeyProof } }`, refused (`reverted`) where there are no pockets; `429 { code: "daily-cap" }` past `VAULT_RELAY_PER_DAY` (500) transactions a day on this replica. `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP; bodies up to 64 KB (an input carries its proof) |
+| `GET /v1/vault/relayer` | `{ data: { address, fuel } }`, the relayer's address or null (no key, or no vault in the deployment), and `fuel`, what it gives a side address as gas in wei (a decimal string; null when `POCKET_FUEL_WEI` is 0). Always served, cached 60 s: the vault page asks it to know whether to send from the wallet |
+| `POST /v1/vault/relay` | Only with `VAULT_RELAYER_KEY`. `{ call: "request", args: { boxId, action (0 to 5: withdraw, list, unlist, claim, acceptOffer, delegate), to, price (decimal string, wei), endTime, ref (bytes32, an offer's order hash; zero when left out), handle, inputProof } }` or `{ call: "finalize", args: { requestId, cleartexts, proof, offer? } }` → `{ hash }`; a `finalize` with `offer` (hex, the encoded order) is sent as `finalizeOffer`. Each call is estimated first, so what the vault would refuse is never sent: `400 { code: "reverted" }` with the contract's reason (`WrongState`, `BadEndTime`, `RequestNotPending`, `NeedsOrder`, `WrongOrder`, `OfferShort`...); `400` for a malformed body. The pockets and their desk, where they are deployed: `{ call: "pocketOpen", args: { handle, inputProof, viewer } }`, `{ call: "pocketSend", args: { from, to, input } }`, `{ call: "pocketWithdraw", args: { from, to, input } }` (`from` and `to` sets of 1 to 12 pocket numbers, the contract refusing a set past its `MAX_SET`; `input`: `{ amount, target, inputProof, boundKey, keyProof }`; each may add `pockets`, the address of another token's pockets (cUSDT, cWETH, cZAMA: `vault.otherPockets` in the deployment), the cUSDC ones when left out, refused (`reverted`) when it is not one of this vault's), `{ call: "deskAsk", args: { saleId, handle, keyProof, boxKey } }` and `{ call: "deskBuy", args: { askId, cleartexts, proof, boxKey, boxKeyProof } }`, refused (`reverted`) where there are no pockets; the cUSDC pockets' savings (`PocketSavings`, [`docs/VAULT.md`](../../docs/VAULT.md)): `{ call: "pocketSave", args: { from, input } }` and `{ call: "pocketUnsave", args: { from, input } }` (`from` a set of 1 to 5 pocket numbers, the real one among decoys; `input`: `{ amount, inputProof, boundKey, keyProof }`, the key XOR `saveHash` in its own input), refused (`reverted`) where the pockets have no savings; the pockets' doors ([`docs/VAULT.md`](../../docs/VAULT.md#doors-stealth-exits-and-entry-addresses)): `{ call: "stealthAnnounce", args: { stealthAddress, ephemeralPubKey (33 bytes), metadata } }`, sent to ERC-5564's announcer (`vault.stealth.announcer` in the deployment) with the relayer as caller, refused where none is known, and `{ call: "fuel", args: { to } }`, `POCKET_FUEL_WEI` of ETH to `to` once it never sent a transaction, holds less than the fuel, and either a `Withdrawn` to it exists on one of the pockets' contracts or it holds `POCKET_FUEL_MIN_USDC` (10) USDC, refused (`reverted`) otherwise or when `POCKET_FUEL_WEI` is 0; `429 { code: "daily-cap" }` past `VAULT_RELAY_PER_DAY` (500) transactions a day on this replica. `VAULT_RELAY_RATE_PER_MINUTE` (10) per IP; bodies up to 64 KB (an input carries its proof) |
 
 The encrypted input must be made for the relayer's address (an input is bound to the address
 that sends it), which the page reads from `GET /v1/vault/relayer`. Replicas share the key, so a
 nonce taken by another one is retried with a fresh count, twice at most. A refused or capped
 relay leaves the page its wallet. The relayer proxy also lets decryptions and inputs name the
-vault, its pockets (every token's) and their desk, and the index follows their public decryptions
+vault, its pockets (every token's), their desk and their savings, and the index follows their public decryptions
 (`AllowedForDecryption` with the vault or the desk as caller), so the "key matched" bits go
 through the proxy like the game's.
+
+### The savings keeper
+
+The cUSDC pockets' savings (`PocketSavings`) put a pocket's cUSDC to work in one of Zama's
+confidential vaults on Morpho through Zama's batchers. A holder's save or unsave is relayed like a
+send (above) and waits in the open window of its side; the contract leaves the rest to anyone,
+and the indexer does it from the relayer's wallet (`SavingsKeeper` in
+`src/application/savingsKeeper.ts` over the `SavingsChain` port, `EthersSavingsChain` in
+`src/infrastructure/vault/`), as a periodic task every `SAVINGS_KEEPER_INTERVAL` (60) seconds,
+between its passes. One tick:
+
+1. **Join.** For each side (save, unsave), the open window joins the batcher's current batch
+   when it has pockets, that batch is not the one a window of this side joined already (one
+   window per batch), the batcher is not paused, and the batch is within `SAVINGS_JOIN_MARGIN`
+   (600) seconds of being old enough to dispatch (`batchCreatedAt + batchMinBatchAge`): the
+   window joins late, as one participant among the most, so the batch's decrypted total says
+   the least about it. A batcher whose batches have no minimum age (a test chain) is joined at
+   once. Sepolia's batches last about an hour (`minBatchAge` 3480 s).
+2. **Settle.** Every joined window whose batch the batcher finalized or canceled is settled
+   (`settle`: the shares claimed, or the commitments recovered).
+3. **Credit.** Every settled or canceled window with pockets left gets them settled
+   (`settlePockets`), five per transaction (each pocket costs about 2.1M HCU of a 20M budget),
+   two transactions a tick, decoys included: a pocket settled alone would be the one that
+   moved. What is left is `windowPockets` minus the pockets whose `committedOf` is cleared
+   (what someone else settled is skipped). Writes wait to be mined, so a tick never resends
+   what the one before has in the pool.
+
+Windows are walked from a cursor kept in memory (0 at boot: scanning what is already settled
+costs a few reads), moved past those fully settled. A failing call is logged, counted and tried
+again next tick; it never stops the others. It runs on the process that indexes (`ROLE`
+`indexer` or `all`), never on an API replica, only with `VAULT_RELAYER_KEY` and a deployment
+whose `vault.pockets.savings` is set; the indexer shares the replicas' `.env`
+([`deploy/docker-compose.yml`](../../deploy/docker-compose.yml)), so the one key does both, and a
+nonce another process took is retried. Its last result is in `GET /health` (`indexer.tasks.savingsKeeper`);
+`dno_savings_keeper_actions_total{action}` (join, settle, pocket, failure) and
+`dno_savings_keeper_last_tick_ok` on `/metrics`.
 
 ### OpenSea's offers
 
@@ -476,7 +512,9 @@ skipped, only the vault's events are added.
 
 The relayer reports itself on each API replica: `dno_vault_relayer_balance_eth` (its wallet),
 `dno_vault_relayer_sent_today` against `dno_vault_relayer_daily_cap`, and
-`dno_vault_relays_total{kind, outcome}` (request or finalize; sent, reverted, daily-cap, failed).
+`dno_vault_relays_total{kind, outcome}` (request, finalize, the pockets', the desk's and the
+savings' calls; sent, reverted, daily-cap, failed). The savings keeper reports on the indexer
+(`dno_savings_keeper_*`, above).
 
 ## The studio
 
@@ -752,5 +790,5 @@ Configuration is environment variables, all optional in development: see `src/co
 `RELAYER_FREE_PER_DAY`, `RELAYER_NEWCOMER_PER_DAY`, `RELAYER_INPUT_UNITS`, `RELAYER_PUBLIC_UNITS`, `RELAYER_PUBLIC_PER_HANDLE`,
 `GEMINI_API_KEY`, `GEMINI_MODELS`, `CHAT_PER_IP_PER_DAY`, `CHAT_PER_DAY`, `HERALD_DISCORD`, `HERALD_LESSON_HOUR_UTC`, `HERALD_MANUAL_URL`,
 `DISCORD_WEBHOOK_URL`, `ACTIVITY_DISCORD_WEBHOOK_URL`, `ADMIN_PASSWORD`, `LISTS_SCHEMA`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_GUILD_ID`, `ARWEAVE_KEY`, `ARWEAVE_GATEWAY`, `ARCHIVE_PER_PASS`,
-`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `VAULT_RELAYER_KEY`, `VAULT_RELAY_PER_DAY`, `VAULT_RELAY_RATE_PER_MINUTE`, `OPENSEA_API_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`, `TEAM_WALLETS`, `TEAM_X_HANDLES`...). Deployment is in
+`FAL_KEY`, `STUDIO_DAILY_BUDGET_USD`, `STUDIO_ALLOWLIST`, `STUDIO_PAUSED`, `STUDIO_REFUNDS_PER_DAY`, `RATS_ATTESTER_KEY`, `VAULT_RELAYER_KEY`, `VAULT_RELAY_PER_DAY`, `VAULT_RELAY_RATE_PER_MINUTE`, `POCKET_FUEL_WEI`, `POCKET_FUEL_MIN_USDC`, `SAVINGS_KEEPER_INTERVAL`, `SAVINGS_JOIN_MARGIN`, `OPENSEA_API_KEY`, `SITE_URL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_ANNOUNCEMENT_ID`, `X_RETURN_ORIGINS`, `STUDIO_IMAGE_MODEL`, `STUDIO_3D_MODEL`, `ALLOW_LIST_PLACES`, `ALLOW_LIST_ADMIN_TOKEN`, `TEAM_WALLETS`, `TEAM_X_HANDLES`...). Deployment is in
 [`deploy/README.md`](../../deploy/README.md); load tests in [`loadtest/README.md`](../../loadtest/README.md).

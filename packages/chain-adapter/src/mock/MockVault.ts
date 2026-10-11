@@ -1,13 +1,20 @@
 import { ChainError, sameAddress, type ActionOptions, type Address } from "../types";
 import { decoySends } from "../decoys";
 import { pocketGroup, pocketSet } from "../pockets";
+import { isStealthMeta } from "../stealthMeta";
 import type {
+  PocketDoorsAdapter,
   PocketGroup,
   PocketOptions,
   PocketSale,
   PocketsAdapter,
+  PocketSavingsAdapter,
   PocketsInfo,
   PocketToken,
+  SavingsPending,
+  SavingsSide,
+  SavingsWindow,
+  SavingsWindowState,
   VaultAdapter,
   VaultBox,
   VaultCollection,
@@ -17,6 +24,7 @@ import type {
   VaultListing,
   VaultOffer,
   VaultSale,
+  SideAddress,
 } from "../vault";
 
 /** The vault's address in the demo: it holds the NFTs. */
@@ -31,7 +39,28 @@ const MOCK_REGISTRY: Address = "0x00000000000000447e69651d841bD8D104Bed493";
 export const MOCK_POCKETS: Address = "0x00000000000000000000000000000000000b0c55";
 /** The desk: buys private sales out of pockets and holds the boxes it bought. */
 export const MOCK_DESK: Address = "0x0000000000000000000000000000000000000de5";
-const POCKETS_MAX_SET = 5;
+/** The savings: put a pocket's cUSDC to work in the demo's confidential vault, and hold its shares. */
+export const MOCK_SAVINGS: Address = "0x00000000000000000000000000000000005a71e5";
+const MOCK_MORPHO_VAULT: Address = "0x0000000000000000000000000000000000a0b9f0";
+const MOCK_DEPOSIT_BATCHER: Address = "0x00000000000000000000000000000000000ba7c1";
+const MOCK_REDEEM_BATCHER: Address = "0x00000000000000000000000000000000000ba7c2";
+/** The demo's batches: a save joins one and settles this long after it was asked, in mock milliseconds. */
+const SAVINGS_JOIN_AFTER_MS = 5_000;
+const SAVINGS_SETTLE_AFTER_MS = 15_000;
+const SAVINGS_MIN_BATCH_AGE = 3_480;
+/** The demo's rates, times 1e6: 1 cUSDC gives 0.98 share, 1 share gives 1.02 cUSDC, and a share is worth 1.02 cUSDC. */
+const SAVE_RATE = 980_000n;
+const UNSAVE_RATE = 1_020_000n;
+const SHARE_PRICE = 1_020_000n;
+const RATE_ONE = 1_000_000n;
+const POCKETS_MAX_SET = 10;
+/** The demo's ERC-5564 announcer and ERC-6538 registry, and what a side address needs and gets as gas. */
+const MOCK_ANNOUNCER: Address = "0x55649E01B5Df198D18D95b5cc5051630cfD45564";
+const MOCK_STEALTH_REGISTRY: Address = "0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538";
+const DOORS_GAS_NEEDED = 2_000_000_000_000_000n;
+const DOORS_FUEL = 3_000_000_000_000_000n;
+/** What arrives on the demo's entry address once it has been shown: as if a privacy pool paid it. */
+const ENTRY_ARRIVAL = 20n * 1_000_000n;
 /** Strangers who use the demo's vault: pockets of their own, and the decoys your deposits go to. */
 const STRANGERS = 7;
 const stranger = (i: number): Address => `0x00000000000000000000000000000000000c0c${i.toString(16).padStart(2, "0")}` as Address;
@@ -159,6 +188,17 @@ interface MockPocket {
   balance: bigint;
 }
 
+/** What a pocket committed to a savings window, until the demo's batch settles it. */
+interface MockSavingsEntry {
+  pocketId: number;
+  side: SavingsSide;
+  windowId: number;
+  /** cUSDC for a save, shares for an unsave: encrypted on a real chain. */
+  amount: bigint;
+  /** Mock milliseconds when it was asked. */
+  at: number;
+}
+
 /**
  * The sealed vault in memory, with the contract's rules: a wrong key settles refused and moves
  * nothing, a listed box stays put, a box that changes hands needs its new holder's key. The
@@ -177,8 +217,20 @@ export class MockVault implements VaultAdapter {
   private readonly buyerAt = new Map<number, number>();
   private readonly books: MockPocketBook[] = [];
   private readonly pocketsBy = new Map<string, PocketsAdapter>();
+  /** The cUSDC pockets' savings: shares by pocket, and what waits in a window. */
+  private readonly sharesOf = new Map<number, bigint>();
+  private readonly savingsPending: MockSavingsEntry[] = [];
+  private savingsWindows = 2;
+  /** Lands what the demo's batches have settled; set by the savings, read by the pockets' balance. */
+  private settleSavings: () => void = () => undefined;
   /** Public on a real chain: every wallet that acted on the vault in its own name. */
   private readonly actors = new Set<Address>();
+  /** The pockets' doors in the demo: stealth addresses paid and the entry address, by token. */
+  private readonly sideAddresses = new Map<string, SideAddress[]>();
+  private readonly entryIndex = new Map<string, number>();
+  private readonly entrySeen = new Set<string>();
+  private readonly publishedMeta = new Set<Address>();
+  private sideCount = 0;
 
   constructor(private readonly host: MockVaultHost) {
     const night = host.nightShift;
@@ -192,7 +244,7 @@ export class MockVault implements VaultAdapter {
     this.listBox(this.all[0]!, ETH / 20n, Math.floor(host.now() / 1000) + 7 * 86_400);
     for (const token of MOCK_POCKET_TOKENS) this.books.push(token.desk ? this.cUsdcBook(token) : this.plainBook(token));
     // Strangers' pockets, so yours hides among others from the start, one of them the night
-    // shift's: eight in all, so yours (the ninth) lands in a group still filling.
+    // shift's: eight in all, so yours (the ninth) lands in a group of ten still filling.
     for (const book of this.books) {
       for (let i = 0; i < STRANGERS; i++) book.list.push({ owner: stranger(i), balance: 0n });
       book.list.push({ owner: night, balance: 500n * USD });
@@ -557,7 +609,7 @@ export class MockVault implements VaultAdapter {
       return id;
     };
     const set = (real: number, opts?: PocketOptions) => pocketSet(real, list.length, POCKETS_MAX_SET, opts?.decoys);
-    const info = async (): Promise<PocketsInfo> => ({ address, desk: token.desk ? MOCK_DESK : null, count: list.length, maxSet: POCKETS_MAX_SET });
+    const info = async (): Promise<PocketsInfo> => ({ address, desk: token.desk ? MOCK_DESK : null, savings: token.desk ? MOCK_SAVINGS : null, count: list.length, maxSet: POCKETS_MAX_SET });
     const group = async (pocketId: number): Promise<PocketGroup> => {
       const members = pocketGroup(pocketId, list.length, POCKETS_MAX_SET);
       const feeders = new Set(book.fed.filter((d) => d.set.some((p) => members.includes(p))).map((d) => d.from));
@@ -569,6 +621,8 @@ export class MockVault implements VaultAdapter {
       return this.saleList.filter((s): s is MockSale & { pocketId: number } => s.pocketId !== undefined && s.pocketId === id && id >= 0);
     };
     const { pockets: _pockets, ...publicToken } = token;
+    const savings = token.desk ? this.makeSavings(list, myPocket, set) : null;
+    const doors = this.makeDoors(book, myPocket, set);
     return {
       token: publicToken,
       info,
@@ -595,6 +649,7 @@ export class MockVault implements VaultAdapter {
       },
       balance: async (opts) => {
         const id = myPocket();
+        this.settleSavings();
         await host.decrypting(opts);
         return list[id]!.balance;
       },
@@ -685,6 +740,202 @@ export class MockVault implements VaultAdapter {
         const id = mineOf(host.account());
         return this.all.flatMap((b, boxId) => (id >= 0 && b.holder === MOCK_DESK && b.pocket === id && !gone(b) ? [boxId] : []));
       },
+      savings: () => (token.desk ? savings : null),
+      doors: () => doors,
+    };
+  }
+
+  /** The doors in memory: a stealth address is a fresh address nobody can tie to you, the entry
+   *  address gets paid "from outside" once shown, and a side address needs gas to collect. */
+  private makeDoors(book: MockPocketBook, myPocket: () => number, set: (real: number, opts?: PocketOptions) => number[]): PocketDoorsAdapter {
+    const host = this.host;
+    const { list, token } = book;
+    const sides = () => {
+      let l = this.sideAddresses.get(token.symbol);
+      if (!l) this.sideAddresses.set(token.symbol, (l = []));
+      return l;
+    };
+    const metaOf = (who: Address) => `st:eth:0x${(who.slice(2).repeat(4) + "0".repeat(132)).slice(0, 132)}`;
+    const fresh = (): Address => `0x${(++this.sideCount).toString(16).padStart(6, "0")}5ea17${"0".repeat(29)}`.slice(0, 42) as Address;
+    const entryAddress = (): Address => {
+      const me = this.signer();
+      const i = this.entryIndex.get(me) ?? 0;
+      return `0x${i.toString(16).padStart(4, "0")}e${me.slice(3, 38)}`.slice(0, 42) as Address;
+    };
+    const find = (address: Address) => sides().find((s) => sameAddress(s.address, address));
+    return {
+      info: async () => ({ announcer: MOCK_ANNOUNCER, registry: MOCK_STEALTH_REGISTRY, gasNeeded: DOORS_GAS_NEEDED, fuel: DOORS_FUEL }),
+      metaAddress: async () => metaOf(this.signer()),
+      published: async () => this.publishedMeta.has(this.signer()),
+      publish: async (opts) => {
+        const me = this.signer();
+        await host.send(opts, "registerKeys");
+        this.publishedMeta.add(me);
+      },
+      resolve: async (text) => {
+        const t = text.trim();
+        if (isStealthMeta(t)) return t.startsWith("st:eth:") ? t : `st:eth:${t}`;
+        const me = this.signer();
+        return /^0x[0-9a-fA-F]{40}$/.test(t) && sameAddress(t as Address, me) && this.publishedMeta.has(me) ? metaOf(me) : null;
+      },
+      withdrawStealth: async (amount, to, opts) => {
+        const id = myPocket();
+        set(id, opts);
+        if (to && !isStealthMeta(to) && !(await this.pockets(token.symbol)!.doors()!.resolve(to))) throw new ChainError("unknown", "That is neither a stealth meta-address nor a wallet that published one.");
+        opts?.onStep?.("wallet");
+        opts?.onStep?.("encrypting");
+        await host.send(opts, "withdraw");
+        await host.send(opts, "announce");
+        const address = fresh();
+        if (list[id]!.balance >= amount) {
+          list[id]!.balance -= amount;
+          // Paid to someone else: it leaves the demo. Paid to yourself: it lands in your inbox.
+          if (!to) sides().unshift({ address, kind: "stealth", sealed: amount, plain: 0n, gas: 0n, fueled: false, block: Math.floor(host.now() / 1000) });
+        }
+        return address;
+      },
+      inbox: async (opts) => {
+        await host.decrypting(opts);
+        return sides().filter((s) => s.kind === "stealth");
+      },
+      entry: async (opts) => {
+        const me = this.signer();
+        const address = entryAddress();
+        let e = find(address);
+        if (!e) {
+          e = { address, kind: "entry", sealed: 0n, plain: 0n, gas: 0n, fueled: false, index: this.entryIndex.get(me) ?? 0 };
+          sides().push(e);
+        } else if (!this.entrySeen.has(address) && e.plain === 0n && e.sealed === 0n) {
+          // Shown once already: the money from outside has arrived since.
+          e.plain = ENTRY_ARRIVAL * (token.rate > 1n ? 1n : 1n);
+        }
+        this.entrySeen.add(address);
+        await host.decrypting(opts);
+        return { ...e };
+      },
+      collect: async (address, opts) => {
+        const id = myPocket();
+        const e = find(address);
+        if (!e) throw new ChainError("not-yours", "This page holds no key for that address.");
+        if (e.gas < DOORS_GAS_NEEDED) throw new ChainError("insufficient-funds", "This address has no ETH for its transactions.", undefined, { held: e.gas, needed: DOORS_GAS_NEEDED });
+        set(id, opts);
+        if (e.plain > 0n) {
+          await host.send(opts, "approve");
+          await host.send(opts, "wrap");
+          e.sealed += e.plain / (token.rate > 1n ? token.rate : 1n);
+          e.plain = 0n;
+        }
+        if (e.sealed === 0n) throw new ChainError("unpaid", "This address holds nothing to collect.");
+        opts?.onStep?.("encrypting");
+        await host.send(opts, "setOperator");
+        await host.send(opts, "deposit");
+        list[id]!.balance += e.sealed;
+        book.fed.push({ from: e.address, set: set(id, opts) });
+        this.actors.add(e.address);
+        sides().splice(sides().indexOf(e), 1);
+        if (e.kind === "entry") this.entryIndex.set(this.signer(), (e.index ?? 0) + 1);
+      },
+      fuel: async (address, opts) => {
+        const e = find(address);
+        if (!e) throw new ChainError("not-yours", "This page holds no key for that address.");
+        await host.send(opts, "fuel");
+        e.gas += DOORS_FUEL;
+        e.fueled = e.gas >= DOORS_GAS_NEEDED;
+      },
+    };
+  }
+
+  /** The savings in memory: a save leaves the pocket at once, waits in a window, and becomes
+   *  shares a few seconds later, at the demo's rate; an unsave comes back as cUSDC the same way. */
+  private makeSavings(list: MockPocket[], myPocket: () => number, set: (real: number, opts?: PocketOptions) => number[]): PocketSavingsAdapter {
+    const host = this.host;
+    const age = (e: MockSavingsEntry) => host.now() - e.at;
+    const stateOf = (e: MockSavingsEntry): SavingsWindowState => (age(e) < SAVINGS_JOIN_AFTER_MS ? "open" : "joined");
+    /** The demo's batches settle on their own: what has waited long enough lands. */
+    const settle = () => {
+      for (const e of [...this.savingsPending]) {
+        if (age(e) < SAVINGS_SETTLE_AFTER_MS) continue;
+        this.savingsPending.splice(this.savingsPending.indexOf(e), 1);
+        if (e.side === "save") this.sharesOf.set(e.pocketId, (this.sharesOf.get(e.pocketId) ?? 0n) + (e.amount * SAVE_RATE) / RATE_ONE);
+        else list[e.pocketId]!.balance += (e.amount * UNSAVE_RATE) / RATE_ONE;
+      }
+    };
+    this.settleSavings = settle;
+    const openWindow = (side: SavingsSide): SavingsWindow => {
+      const waiting = this.savingsPending.filter((e) => e.side === side && stateOf(e) === "open");
+      return {
+        windowId: side === "save" ? 0 : 1,
+        side,
+        state: "open",
+        batchId: null,
+        rate: null,
+        openedAt: Math.floor((waiting[0]?.at ?? host.now()) / 1000),
+        pockets: waiting.length ? new Set(waiting.flatMap((e) => set(e.pocketId))).size : 0,
+        left: 0,
+      };
+    };
+    const spend = async (side: SavingsSide, amount: bigint, opts: PocketOptions | undefined, enough: (id: number) => boolean, take: (id: number) => void) => {
+      settle();
+      const id = myPocket();
+      set(id, opts);
+      opts?.onStep?.("wallet");
+      opts?.onStep?.("encrypting");
+      await host.send(opts, side);
+      if (!enough(id)) return;
+      take(id);
+      this.savingsPending.push({ pocketId: id, side, windowId: this.savingsWindows++, amount, at: host.now() });
+    };
+    return {
+      share: {
+        symbol: "csteakcUSDC",
+        name: "Confidential Steakhouse USDC Prime",
+        address: "0x00000000000000000000000000000000000c5ea7",
+        decimals: 6,
+        rate: RATE_18,
+        underlying: { address: MOCK_MORPHO_VAULT, symbol: "steakUSDC", decimals: 18 },
+      },
+      info: async () => ({
+        address: MOCK_SAVINGS,
+        vault: MOCK_MORPHO_VAULT,
+        depositBatcher: MOCK_DEPOSIT_BATCHER,
+        redeemBatcher: MOCK_REDEEM_BATCHER,
+        minBatchAge: SAVINGS_MIN_BATCH_AGE,
+        open: { save: openWindow("save"), unsave: openWindow("unsave") },
+      }),
+      shares: async (opts) => {
+        settle();
+        const id = myPocket();
+        await host.decrypting(opts);
+        return this.sharesOf.get(id) ?? 0n;
+      },
+      value: async (shares) => (shares * SHARE_PRICE) / RATE_ONE,
+      toShares: async (amount) => (amount * RATE_ONE) / SHARE_PRICE,
+      pending: async (opts) => {
+        settle();
+        const id = myPocket();
+        await host.decrypting(opts);
+        return this.savingsPending
+          .filter((e) => e.pocketId === id)
+          .map((e): SavingsPending => ({ windowId: e.windowId, side: e.side, state: stateOf(e), amount: e.amount }));
+      },
+      save: (amount, opts) =>
+        spend(
+          "save",
+          amount,
+          opts,
+          (id) => list[id]!.balance >= amount,
+          (id) => {
+            list[id]!.balance -= amount;
+          },
+        ),
+      unsave: (shares, opts) =>
+        spend(
+          "unsave",
+          shares,
+          opts,
+          (id) => (this.sharesOf.get(id) ?? 0n) >= shares,
+          (id) => this.sharesOf.set(id, this.sharesOf.get(id)! - shares),
+        ),
     };
   }
 

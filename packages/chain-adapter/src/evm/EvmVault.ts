@@ -54,6 +54,8 @@ export interface VaultDeployment extends Deployed {
   pockets?: PocketsDeployment | null;
   /** Pockets of Zama's other confidential tokens: the same contract and ABI, without a desk. */
   otherPockets?: { address: string; deployBlock?: number | null; token: PocketTokenDeployment }[];
+  /** ERC-5564's announcer and ERC-6538's registry, for the pockets' stealth exits; null where unknown. */
+  stealth?: { announcer: string; registry: string } | null;
 }
 
 type InputBuilder = { addBool(v: boolean): InputBuilder; add32(v: number): InputBuilder; add64(v: bigint): InputBuilder; add256(v: bigint): InputBuilder };
@@ -236,7 +238,7 @@ export class EvmVault implements VaultAdapter {
     if (!p) {
       p = new EvmPockets(
         deployed,
-        { vault: this.deployed, box: (boxId) => this.box(boxId), keyFor: (collection, tokenId, opts) => this.keyFor(collection, tokenId, opts) },
+        { vault: this.deployed, stealth: this.deployed.stealth ?? null, box: (boxId) => this.box(boxId), keyFor: (collection, tokenId, opts) => this.keyFor(collection, tokenId, opts) },
         {
           ...this.t,
           relayed: (opts, call, sendIt, announce) => this.relayed(opts, call, sendIt, announce),

@@ -15,3 +15,11 @@ export const POCKET_TOKENS: Record<string, { symbol: string; token: string }[]> 
 
 /** The deployment name of a token's pockets. */
 export const pocketsDeployment = (symbol: string) => `SealedPockets_${symbol}`;
+
+/**
+ * A group's size: the most pockets one side of an action names, the real one included
+ * (`SealedPockets.MAX_SET`, fixed at deployment). A pocket hides among its group, so larger hides
+ * better and costs more, about 0.7M HCU a pocket a side on a send (`REPORT_COSTS=1 pnpm test
+ * test/SealedPockets.ts` prints the table). `POCKETS_MAX_SET` overrides it at deploy time.
+ */
+export const POCKETS_MAX_SET = Number(process.env.POCKETS_MAX_SET || 5);

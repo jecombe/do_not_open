@@ -21,10 +21,12 @@ flowchart LR
 | `src/evm/EvmFhevmAdapter.ts` | Sepolia: transactions through ethers, decryptions through `@zama-fhe/relayer-sdk` |
 | `src/evm/wallet.ts` | Where signatures come from: an injected browser wallet, or a fixed signer in Node |
 | `src/evm/browser.ts`, `src/evm/node.ts` | The two ways to build the EVM adapter. They differ only in wallet and in which SDK build they load |
-| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport, `listings` (`VaultListings`' address and ABI; null for a vault from before it), `offers` (`VaultOffers`' address, ABI and deploy block), WETH, delegate.xyz's registry and collections; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
+| `src/evm/deployments/sepolia.json` | Address and ABI of `DoNotOpen`, and of the studio, the rats, the flea market (`market`, null until it is deployed) and the sealed vault (`vault`, with its Seaport, `listings` (`VaultListings`' address and ABI; null for a vault from before it), `offers` (`VaultOffers`' address, ABI and deploy block), WETH, delegate.xyz's registry and collections, `pockets` with its `desk`, its `token` and its `savings` (`PocketSavings`' address, ABI and deploy block, Zama's deposit and redeem batchers, the Morpho vault and its `minBatchAge`, the `share`; null until deployed), and `otherPockets`; absent until deployed), written by `pnpm --filter @dno/contracts-evm export:sepolia` |
 | `src/evm/deployments/sepolia-economy.json` | Addresses and ABIs of CROQ, cCROQ and the Pantry, and the Uniswap V3 market (pool, fee, locked position and its ticks, locker, position manager, `SwapRouter02`, `QuoterV2`, USDC), written by the same command |
-| `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`); the `PocketsAdapter` interface, its pockets' (`PocketsInfo`, `PocketSale`, `PocketOptions`) |
+| `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`); the `PocketsAdapter` interface, its pockets' (`PocketsInfo`, `PocketSale`, `PocketOptions`); the `PocketSavingsAdapter` interface, the pockets' savings' (`SavingsInfo`, `SavingsWindow`, `SavingsPending`, `SavingsShare`) |
+| `src/evm/EvmSavings.ts` | The pockets' savings on an EVM chain: `PocketSavings` in front of Zama's batchers, a save asked like a pocket send (relayed as `pocketSave` / `pocketUnsave`), the shares and the pending commitments read by the pocket's viewer, their value from the Morpho vault's `convertToAssets` |
 | `src/pockets.ts` | `pocketGroup`, `pocketSet`: a pocket's fixed group, the set its every action names, as the contract wants a set |
+| `src/evm/EvmPocketDoors.ts`, `src/evm/stealth.ts` | The pockets' doors on an EVM chain (`PocketDoorsAdapter`): stealth exits (ERC-5564, scheme 1: the meta-address, a fresh address per payment, the announcer, the inbox read with the viewing key), the entry address, a side address collecting into the pocket as itself, the relayer's fuel; `stealth.ts` is the secp256k1 arithmetic (ethers' `SigningKey`), `src/stealthMeta.ts` the meta-address's shape for the web app, without ethers |
 | `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultListings` (a listing's order, and whether OpenSea's zone gates it), `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`) for the version Seaport's `information()` reports, the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
 | `src/evm/vaultMarket.ts` | `VaultMarket`: finds the marketplace the API reads offers from (`GET /v1/vault/market`, OpenSea on mainnet), reads a token's offers (`GET /v1/vault/offers/:collection/:tokenId`) and asks the order that fills one, signed for the vault (`POST /v1/vault/offers/fulfillment`), right before `finalizeOffer` |
@@ -353,13 +355,14 @@ signature).
 
 `vault.pocketTokens()` lists the tokens pockets hold where they are deployed (`PocketToken`:
 `symbol`, `name`, `address`, `decimals`, `rate`, `underlying`, `desk`, `faucet`), the vault's cUSDC
-first, then cUSDT, cWETH and cZAMA on Sepolia (`sepolia.json`'s `vault.pockets.token` and
-`vault.otherPockets`). `vault.pockets(symbol?)` returns that token's `PocketsAdapter` (cUSDC's when
+first, then cUSDT, cWETH and cZAMA on Sepolia (`sepolia.json`'s `vault.pockets.token`, `vault.otherPockets` and `vault.stealth`,
+ERC-5564's announcer and ERC-6538's registry). `vault.pockets(symbol?)` returns that token's `PocketsAdapter` (cUSDC's when
 left out), or null where it is not deployed. A pocket holds its token under a key, not an
 address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
 
 - `token`: the `PocketToken` it holds. `info()`: `address`, `desk` (null but for cUSDC), `count`
-  (pockets opened), `maxSet` (5, a group's size). `group(pocketId)`: its `PocketGroup`,
+  (pockets opened), `maxSet` (a group's size, read from the contract: 10 on the live pockets, 5 on
+  the earlier ones). `group(pocketId)`: its `PocketGroup`,
   `members` (the pockets its every action names, `pocketGroup(id, count, maxSet)`: groups of
   `maxSet` by number, the last one holding the pockets opened so far), `size` and `feeders`
   (wallets that deposited into the group: the ones anyone can tie to one of its pockets).
@@ -388,13 +391,51 @@ address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
   `buy(saleId)` asks (the pocket's bound key for the desk, the box key encrypted for the vault
   with the desk as user), waits for the public "ok", then buys: throws `not-yours` when the key
   or the balance did not hold (the sale stays open), else returns whether the box moved.
+  `doors()` returns the `PocketDoorsAdapter` where ERC-5564's contracts are known
+  (`sepolia.json`'s `vault.stealth`; null elsewhere): `info()` (`announcer`, `registry`,
+  `gasNeeded` in wei at the day's fee, `fuel` the relayer gives or null); `metaAddress()` (the
+  wallet's `st:eth:0x…`, keys `keccak256(signature, "stealth-spend")` and `"stealth-view"` from the
+  pocket signature), `published()` / `publish()` (ERC-6538's registry, a wallet transaction),
+  `resolve(text)` (a meta-address, or a wallet address that published one, to a meta-address);
+  `withdrawStealth(amount, to?)` (a fresh stealth address for `to`'s meta-address, the wallet's
+  own when left out: a `withdraw` to it, then `stealthAnnounce` through the relayer; returns the
+  address); `inbox()` (`SideAddress[]`: the stealth addresses announced for the wallet by the
+  relayer or the wallet, each with `sealed` read by its own key, `plain`, `gas`, `fueled`);
+  `entry()` (the first entry address never used, `keccak256(signature, "entry:" + i)`, with what
+  it holds); `collect(address)` (the side address wraps its plain token, makes the pockets its
+  operator and deposits everything into the wallet's pocket, as itself: throws
+  `insufficient-funds` without the gas); `fuel(address)` (the relayer's ETH, once).
   `boxes()` lists the boxes the wallet's pocket bought (`ownerOf` on the desk, decrypted as the
   viewer); the vault's own requests work on them with the usual box key. These are cUSDC's only:
   elsewhere `sales()` and `boxes()` are empty and `offerSale`, `buy` throw.
+- `savings()` returns the pocket's `PocketSavingsAdapter`, or null where there are none (the
+  vault's cUSDC pockets only, once `PocketSavings` is deployed; `info().savings` is its address).
+  A pocket's cUSDC put to work in one of Zama's confidential vaults on Morpho
+  ([`docs/VAULT.md`](../../docs/VAULT.md#savings)): `share` (the vault's confidential shares,
+  `SavingsShare`: symbol, decimals, rate, underlying); `info()` (`SavingsInfo`: the contract, the
+  Morpho `vault`, the two batchers, `minBatchAge`, about how long a save sits in a batch once its
+  window joined, and the `open` save and unsave windows, each a `SavingsWindow`: `state` `open`,
+  `joined`, `settled` or `canceled`, its `batchId`, its `rate` once settled, output per input
+  times 1e6, its pockets and how many are left to settle); `shares()` user-decrypts the pocket's
+  share balance as its viewer; `value(shares)` prices it in cUSDC units at the Morpho vault's
+  public `convertToAssets`, `toShares(amount)` the reverse, both estimates (the batch's rate
+  decides); `pending()` lists the pocket's commitments in windows not settled for it yet
+  (`SavingsPending`: window, side, state, amount in cUSDC units for a save, share units for an
+  unsave), oldest first. `save(amount, { decoys? })` puts cUSDC of the wallet's pocket aside
+  among its group, `unsave(shares, { decoys? })` asks shares back as cUSDC: both encrypt the
+  amount, then the key XOR `saveHash(side, set, amount handle)` in a second input, and go
+  through the relayer (`pocketSave`, `pocketUnsave`), the pocket's own key and sets. A short
+  balance moves nothing and throws nothing: check `balance()` or `shares()` first. A save
+  leaves the pocket at once and settles into shares only after the relayer's keeper joined its
+  window to Zama's batch and the batch ran (about an hour on Sepolia); the way back is the same,
+  so savings never pay a sale at once. Nothing says which pocket saved, nor how much: Zama's
+  batcher sees one participant, the savings contract, with one encrypted total.
 
 The mock (`MockVault`) has the four tokens, each with four strangers' pockets and the night
 shift's, which buys any box offered to it; opening a cUSDC pocket brings an offer of one of the
-night shift's boxes for 5 cUSDC. `POCKET_TOKEN=cUSDT|cWETH|cZAMA pnpm smoke:pockets` runs the
+night shift's boxes for 5 cUSDC. In the mock a save settles into shares about 15 seconds later
+at 0.98 share per cUSDC, and an unsave into cUSDC at 1.02 cUSDC per share, the test batchers'
+rates. `POCKET_TOKEN=cUSDT|cWETH|cZAMA pnpm smoke:pockets` runs the
 Sepolia smoke test on another token's pockets.
 
 `connect(walletId?, { chooseAccount })`: with `chooseAccount`, a browser extension shows its

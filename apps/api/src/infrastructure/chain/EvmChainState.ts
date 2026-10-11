@@ -109,8 +109,9 @@ export class EvmChainState implements ChainState {
         // a trick's trait is an encrypted input for RatTricks.
         this.d.ratTricks ? this.d.rats?.address : undefined, this.d.ratTricks?.address,
         // The sealed vault: its receipts, private sale prices and box keys; its pockets (balances,
-        // spends) and the desk that buys from them (asks, the boxes a pocket bought).
-        this.d.vault?.address, this.d.vault?.pockets?.address, this.d.vault?.pockets?.desk?.address,
+        // spends), the desk that buys from them (asks, the boxes a pocket bought) and their
+        // savings (a save's amount and bound key, a pocket's shares and commitments).
+        this.d.vault?.address, this.d.vault?.pockets?.address, this.d.vault?.pockets?.desk?.address, this.d.vault?.pockets?.savings?.address,
         // The other tokens' pockets (cUSDT, cWETH, cZAMA): balances and spends, like the cUSDC ones.
         ...(this.d.vault?.otherPockets ?? []).map((p) => p.address)].filter((a): a is string => !!a).map(normalizeAddress);
     });

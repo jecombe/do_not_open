@@ -8,7 +8,9 @@ import { VaultRelay, VaultRelayRefused } from "../src/application/vaultRelay";
 import type { PocketCall, PocketTxs, VaultFinalizeTx, VaultRequestTx, VaultSender } from "../src/application/ports/vault";
 import { ethersVerifier, HmacSessions } from "../src/infrastructure/auth/crypto";
 import { buildServer } from "../src/infrastructure/http/server";
+import { EthersVaultSender } from "../src/infrastructure/vault/EthersVaultSender";
 import { MemoryStore } from "../src/infrastructure/memory/MemoryStore";
+import { JsonRpcProvider } from "ethers";
 import { FakeChainState } from "./fixtures";
 
 const RELAYER = "0x00000000000000000000000000000000000a11e0";
@@ -17,6 +19,7 @@ const HANDLE = "0x" + "ab".repeat(32);
 /** Records what it would send; a box id of 666 is one the vault refuses. */
 class FakeSender implements VaultSender {
   readonly address = RELAYER;
+  readonly fuel = 3_000_000_000_000_000n;
   readonly sent: (VaultRequestTx | VaultFinalizeTx | { call: PocketCall; tx: unknown })[] = [];
   async request(tx: VaultRequestTx): Promise<string> {
     if (tx.boxId === 666) throw new VaultRelayRefused("reverted", "The vault would refuse it: BoxBusy.");
@@ -78,9 +81,9 @@ describe("vault relay routes", () => {
     await bare.close();
   });
 
-  it("names the relayer, or none", async () => {
-    expect((await app.inject({ url: "/v1/vault/relayer" })).json().data).toEqual({ address: RELAYER });
-    expect((await bare.inject({ url: "/v1/vault/relayer" })).json().data).toEqual({ address: null });
+  it("names the relayer and its fuel, or none", async () => {
+    expect((await app.inject({ url: "/v1/vault/relayer" })).json().data).toEqual({ address: RELAYER, fuel: "3000000000000000" });
+    expect((await bare.inject({ url: "/v1/vault/relayer" })).json().data).toEqual({ address: null, fuel: null });
     expect((await bare.inject({ method: "POST", url: "/v1/vault/relay", payload: {} })).statusCode).toBe(404);
   });
 
@@ -127,6 +130,19 @@ describe("vault relay routes", () => {
     expect(bad.statusCode).toBe(400);
   });
 
+  it("relays a pocket's save and unsave as given, a set of pockets and the savings' inputs", async () => {
+    const input = { amount: HANDLE, inputProof: "0xbeef", boundKey: HANDLE, keyProof: "0xcafe" };
+    for (const call of ["pocketSave", "pocketUnsave"] as const) {
+      const payload = { call, args: { from: [2, 5, 6], input } };
+      const res = await app.inject({ method: "POST", url: "/v1/vault/relay", payload });
+      expect(res.statusCode).toBe(200);
+      expect(sender.sent.at(-1)).toEqual({ call, tx: payload.args });
+    }
+    // An input short of its key proof is refused, as is a long set.
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketSave", args: { from: [1], input: { amount: HANDLE, inputProof: "0x", boundKey: HANDLE } } } })).statusCode).toBe(400);
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketUnsave", args: { from: Array.from({ length: 13 }, (_, i) => i), input } } })).statusCode).toBe(400);
+  });
+
   it("relays the desk's ask and purchase", async () => {
     const ask = { saleId: 5, handle: HANDLE, keyProof: "0xdead", boxKey: HANDLE };
     expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "deskAsk", args: ask } })).statusCode).toBe(200);
@@ -136,8 +152,19 @@ describe("vault relay routes", () => {
     expect(sender.sent.at(-1)).toEqual({ call: "deskBuy", tx: buy });
   });
 
-  it("refuses pocket sets that are empty or longer than five, and says why the pockets would refuse", async () => {
-    for (const from of [[], [1, 2, 3, 4, 5, 6]]) {
+  it("relays a stealth announcement and a side address's fuel as given", async () => {
+    const announce = { stealthAddress: RELAYER, ephemeralPubKey: "0x02" + "ab".repeat(32), metadata: "0x1fa9059cbb" + "00".repeat(52) };
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "stealthAnnounce", args: announce } })).statusCode).toBe(200);
+    expect(sender.sent.at(-1)).toEqual({ call: "stealthAnnounce", tx: announce });
+    expect((await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "fuel", args: { to: RELAYER } } })).statusCode).toBe(200);
+    expect(sender.sent.at(-1)).toEqual({ call: "fuel", tx: { to: RELAYER } });
+    // An ephemeral key is a compressed point, 33 bytes.
+    const bad = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "stealthAnnounce", args: { ...announce, ephemeralPubKey: "0x1234" } } });
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it("refuses pocket sets that are empty or longer than twelve, and says why the pockets would refuse", async () => {
+    for (const from of [[], Array.from({ length: 13 }, (_, i) => i)]) {
       const res = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "pocketSend", args: { from, to: [0], input: spend } } });
       expect(res.statusCode).toBe(400);
     }
@@ -155,5 +182,32 @@ describe("vault relay routes", () => {
     const refused = await app.inject({ method: "POST", url: "/v1/vault/relay", payload: { call: "request", args } });
     expect(refused.statusCode).toBe(400);
     expect(refused.json().code).toBe("reverted");
+  });
+});
+
+describe("EthersVaultSender", () => {
+  const KEY = "0x" + "11".repeat(32);
+  const VAULT = "0x00000000000000000000000000000000000000a1";
+  const POCKETS = "0x00000000000000000000000000000000000000a2";
+  const provider = new JsonRpcProvider("http://127.0.0.1:1", 1, { staticNetwork: true });
+  const input = { amount: HANDLE, inputProof: "0x", boundKey: HANDLE, keyProof: "0x" };
+
+  it("refuses a save where the pockets have no savings, and the pockets' calls where there are no pockets, without touching the chain", async () => {
+    const noSavings = new EthersVaultSender(KEY, VAULT, provider, { address: POCKETS, desk: null });
+    await expect(noSavings.pockets("pocketSave", { from: [1], input })).rejects.toMatchObject({ code: "reverted", message: /no savings/ });
+    await expect(noSavings.pockets("pocketUnsave", { from: [1], input })).rejects.toMatchObject({ code: "reverted", message: /no savings/ });
+    const noPockets = new EthersVaultSender(KEY, VAULT, provider, null);
+    await expect(noPockets.pockets("pocketSave", { from: [1], input })).rejects.toMatchObject({ code: "reverted", message: /no pockets/ });
+  });
+
+  it("gives no fuel and announces nothing where it was given no policy or no announcer, without touching the chain", async () => {
+    const plain = new EthersVaultSender(KEY, VAULT, provider, { address: POCKETS, desk: null });
+    expect(plain.fuel).toBe(null);
+    await expect(plain.pockets("fuel", { to: POCKETS })).rejects.toMatchObject({ code: "reverted", message: /no gas/ });
+    await expect(plain.pockets("stealthAnnounce", { stealthAddress: POCKETS, ephemeralPubKey: "0x02" + "ab".repeat(32), metadata: "0x00" })).rejects.toMatchObject({ code: "reverted", message: /no stealth announcer/ });
+    const fueled = new EthersVaultSender(KEY, VAULT, provider, { address: POCKETS, desk: null }, { wei: 5n, minPlain: 1n });
+    expect(fueled.fuel).toBe(5n);
+    const off = new EthersVaultSender(KEY, VAULT, provider, { address: POCKETS, desk: null }, { wei: 0n, minPlain: 1n });
+    expect(off.fuel).toBe(null);
   });
 });

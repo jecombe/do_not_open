@@ -1,8 +1,10 @@
 import { Contract, getAddress, hexlify, solidityPackedKeccak256, Wallet, type EventLog, type InterfaceAbi } from "ethers";
 import { pocketGroup, pocketSet } from "../pockets";
 import { ChainError, type ActionOptions, type Address } from "../types";
-import type { PocketGroup, PocketOptions, PocketSale, PocketsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
+import type { PocketDoorsAdapter, PocketGroup, PocketOptions, PocketSale, PocketsAdapter, PocketSavingsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
+import { EvmPocketDoors } from "./EvmPocketDoors";
 import type { ContractTransactionReceipt } from "ethers";
+import { EvmSavings, type SavingsDeployment } from "./EvmSavings";
 import type { EvmVaultTools } from "./EvmVault";
 
 /** The vault's tools, with its way of sending through the relayer. */
@@ -33,10 +35,11 @@ export interface PocketTokenDeployment {
 }
 
 /** The pockets, as `dno:export` writes them inside the vault's deployment: the cUSDC ones with
- *  their desk, the other tokens' without. */
+ *  their desk and their savings, the other tokens' without. */
 export interface PocketsDeployment extends Deployed {
   desk?: Deployed | null;
   token?: PocketTokenDeployment;
+  savings?: SavingsDeployment | null;
 }
 
 /** What `faucet` mints on a test network, by underlying symbol, in whole tokens. */
@@ -81,6 +84,8 @@ const ERC20_ABI = [
 /** What the pockets borrow from the vault next to them: its contract, its boxes and its box keys. */
 export interface PocketsVaultSide {
   vault: Deployed;
+  /** ERC-5564's announcer and ERC-6538's registry, for the pockets' doors; null where unknown. */
+  stealth?: { announcer: string; registry: string } | null;
   box(boxId: number): Promise<VaultBox>;
   keyFor(collection: string, tokenId: bigint, opts?: ActionOptions): Promise<bigint>;
 }
@@ -109,7 +114,9 @@ export class EvmPockets implements PocketsAdapter {
   private readonly read: Contract;
   private readonly desk: Contract | null;
   private readonly vaultRead: Contract;
-  private secret: { account: Address; key: bigint; viewer: Wallet } | null = null;
+  private readonly savingsAdapter: EvmSavings | null;
+  private readonly doorsAdapter: EvmPocketDoors | null;
+  private secret: { account: Address; key: bigint; viewer: Wallet; signature: string } | null = null;
   /** The block of this page's last transaction: reads wait until the RPC has seen it. */
   private lastBlock = 0;
 
@@ -122,11 +129,56 @@ export class EvmPockets implements PocketsAdapter {
     this.read = new Contract(deployed.address, deployed.abi, t.readProvider);
     this.desk = deployed.desk ? new Contract(deployed.desk.address, deployed.desk.abi, t.readProvider) : null;
     this.vaultRead = new Contract(side.vault.address, side.vault.abi, t.readProvider);
+    this.savingsAdapter = deployed.savings
+      ? new EvmSavings(
+          deployed.savings,
+          {
+            pockets: deployed,
+            mine: (opts) => this.mineOrThrow(opts),
+            keys: (opts) => this.keys(opts),
+            set: (real, opts) => this.set(real, opts),
+            relayed: (opts, call, sendIt) => this.relayed(opts, call, sendIt),
+            sent: (opts, call) => this.sent(opts, call as never),
+            caughtUp: () => this.caughtUp(),
+          },
+          t,
+        )
+      : null;
+    this.doorsAdapter = side.stealth
+      ? new EvmPocketDoors(
+          side.stealth,
+          {
+            pockets: deployed,
+            token: this.token,
+            tokenAddress: async () => (await this.tokenContract()).address,
+            signature: async (opts) => (await this.keys(opts)).signature,
+            mine: (opts) => this.mineOrThrow(opts),
+            set: (real, opts) => this.set(real, opts),
+            withdraw: (to, amount, opts) => this.withdraw(to, amount, opts),
+            caughtUp: () => this.caughtUp(),
+          },
+          t,
+        )
+      : null;
+  }
+
+  doors(): PocketDoorsAdapter | null {
+    return this.doorsAdapter;
   }
 
   async info(): Promise<PocketsInfo> {
     const [count, maxSet] = await Promise.all([this.t.reading(this.read.pocketCount!()), this.t.reading(this.read.MAX_SET!())]);
-    return { address: this.deployed.address as Address, desk: (this.deployed.desk?.address ?? null) as Address | null, count: Number(count), maxSet: Number(maxSet) };
+    return {
+      address: this.deployed.address as Address,
+      desk: (this.deployed.desk?.address ?? null) as Address | null,
+      savings: (this.deployed.savings?.address ?? null) as Address | null,
+      count: Number(count),
+      maxSet: Number(maxSet),
+    };
+  }
+
+  savings(): PocketSavingsAdapter | null {
+    return this.savingsAdapter;
   }
 
   async group(pocketId: number): Promise<PocketGroup> {
@@ -337,7 +389,7 @@ export class EvmPockets implements PocketsAdapter {
   /** The pocket's key and viewer, from one signature a session. The cUSDC pockets (the ones with
    *  the desk) derive theirs as they always did; another token's add its pockets' address, so its
    *  pocket and viewer are tied to none of the wallet's other pockets. */
-  private async keys(opts?: ActionOptions): Promise<{ key: bigint; viewer: Wallet }> {
+  private async keys(opts?: ActionOptions): Promise<{ key: bigint; viewer: Wallet; signature: string }> {
     const account = await this.t.account();
     if (this.secret?.account !== account) {
       let signature: string;
@@ -349,7 +401,7 @@ export class EvmPockets implements PocketsAdapter {
       const tag = this.deployed.desk ? "" : `:${this.deployed.address.toLowerCase()}`;
       const key = BigInt(solidityPackedKeccak256(["bytes", "string"], [signature, `key${tag}`]));
       const viewer = new Wallet(solidityPackedKeccak256(["bytes", "string"], [signature, `viewer${tag}`]));
-      this.secret = { account, key, viewer };
+      this.secret = { account, key, viewer, signature };
     }
     return this.secret;
   }

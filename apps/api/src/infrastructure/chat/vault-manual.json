@@ -49,6 +49,11 @@
      "part": "manual"
     },
     {
+     "id": "vault-savings",
+     "title": "Savings: cUSDC put to work",
+     "part": "manual"
+    },
+    {
      "id": "vault-give",
      "title": "Giving a box",
      "part": "manual"
@@ -250,25 +255,73 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "To be paid, give your code. Every action names a group, not a pocket: pockets make groups of five by number (P-0 to P-4, P-5 to P-9...), and every action of a pocket names its whole group, always the same pockets. A set then says which group acted, never which pocket, however many actions are compared; decoys picked at random would not, since the real pocket is the one in every set. The page shows your group, how many of its five pockets exist (the last group fills as pockets open) and how many wallets have put tokens into it. Sending names your group and the receiver's; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody."
+     "text": "To be paid, give your code. Every action names a group, not a pocket: pockets make groups of a fixed size by number (ten on today's pockets: P-0 to P-9, P-10 to P-19...; five on the earlier ones), and every action of a pocket names its whole group, always the same pockets. A set then says which group acted, never which pocket, however many actions are compared; decoys picked at random would not, since the real pocket is the one in every set. The page shows your group, how many of its pockets exist (the last group fills as pockets open) and how many addresses have put tokens into it. Sending names your group and the receiver's; the vault checks your key under encryption, takes the amount from the pocket it opens and adds it to the pocket whose number matches, also under encryption. Nothing public says who paid whom, or how much. A wrong key or a short balance moves nothing, without an error. No decryption is needed, so it takes one transaction and waits for nobody."
     },
     {
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Taking tokens out sends them, still confidential (cUSDC stays cUSDC), to any address, the amount still encrypted. The address shows: pick a fresh one and nothing links it to you.\nWith the vault's boxes: a seller can offer a box privately to your pocket by typing your code. You read the price, then buy with your pocket: first a check under encryption that only says yes or no in public (so a stranger cannot spend the sale with a wrong key), then the purchase. The box then sits in the vault for a desk every pocket shares, with your key: take the NFT out, list it, accept an offer or delegate it, as for any box. It cannot be given or sold privately again from there. After selling a box privately, \"Into my pocket\" puts the price, less the fee, in your pocket."
+     "text": "Taking tokens out sends them, still confidential (cUSDC stays cUSDC), to any address, the amount still encrypted. The address shows. Leave the address empty and the page draws a stealth address for you instead: a fresh address nothing ties to anyone, that only your page finds and spends (see Fresh addresses below).\nWith the vault's boxes: a seller can offer a box privately to your pocket by typing your code. You read the price, then buy with your pocket: first a check under encryption that only says yes or no in public (so a stranger cannot spend the sale with a wrong key), then the purchase. The box then sits in the vault for a desk every pocket shares, with your key: take the NFT out, list it, accept an offer or delegate it, as for any box. It cannot be given or sold privately again from there. After selling a box privately, \"Into my pocket\" puts the price, less the fee, in your pocket."
     },
     {
      "id": "vault-pockets-4",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Limits: a group is public, so a pocket hides among its group's five at most, and a deposit ties your wallet to the group (not to a pocket): the fewer wallets feed a group, the thinner its cover, and a group still filling hides among fewer. Pockets have no fee of their own. They are not audited."
+     "text": "Limits: a group is public, so a pocket hides among its group at most (ten on today's pockets, five on the earlier ones; the size is fixed when the pockets are deployed, and measured up to twelve), and a deposit ties the address that fed it to the group (not to a pocket): the fewer addresses feed a group, the thinner its cover, and a group still filling hides among fewer. Pockets have no fee of their own. They are not audited."
     },
     {
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
      "text": "Four tokens go in pockets: cUSDC, cUSDT, cWETH and cZAMA, Zama's confidential versions of USDC, USDT, WETH and ZAMA. Each has its own pockets: pick the token above your pocket, its logo shows on the pouch and on every action. The same signature opens your pocket of every token, each with its own code and its own reading address, so nothing on-chain ties them together. Which token an action moves is public, and a pocket hides among the pockets of its own token only. Boxes sell privately in cUSDC, so only the cUSDC pocket buys them. On Sepolia, the page mints test USDT, WETH and ZAMA (Zama's own test tokens, not the WETH offers pay in) and wraps them for you."
+    },
+    {
+     "id": "vault-pockets-6",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Fresh addresses, out: a withdrawal shows the address it pays, so paying your own wallet links the pocket's group to it. The page holds a stealth meta-address for you (ERC-5564, two keys made from the same signature as your pocket): leave the withdrawal's address empty and it draws a fresh address only you can spend, pays it, and has the relayer announce it (the public announcement carries a one-byte tag and a throwaway key; your page alone recognises its own). To pay someone else the same way, type their meta-address, or their wallet address once they have published it in the public registry (one transaction, which ties the meta-address to the wallet, never the addresses paid). \"Received on fresh addresses\" lists what landed on yours, read with their own keys. Each fresh address acts as itself: give it a little ETH (the relayer sends some once, to an address a pocket paid) and \"Into my pocket\" has it put what it holds in your pocket, a deposit that names the fresh address and never your wallet. Any other address typed is paid in the open, as before."
+    },
+    {
+     "id": "vault-pockets-7",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Fresh addresses, in: a deposit from your wallet ties your wallet to your pocket's group. The entry address breaks that link: the page derives a fresh address from your signature (the first never used) and shows it; send USDC to it from somewhere that is not your wallet (a privacy pool such as Privacy Pools, an exchange, a friend), with a little ETH or the relayer's gas (it fuels an address holding USDC once), and \"Into my pocket\" wraps and deposits it as that address. Nothing on-chain says the address is yours. What still shows: the amount wrapped (USDC into cUSDC is public), and the timing, so round amounts and a pause after the pool's withdrawal hide best. Once used, the entry address is retired and the page shows the next one."
+    },
+    {
+     "id": "vault-savings-0",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Savings put part of your cUSDC pocket to work in one of Zama's confidential vaults on Morpho (Steakhouse USDC Prime, a lending vault), through a savings contract next to the pockets. Where it is deployed, a “Savings” card shows under your cUSDC pocket, and nowhere else: the other tokens' pockets have none. What you put aside earns that vault's yield, and comes back to your pocket when you ask."
+    },
+    {
+     "id": "vault-savings-1",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "A save travels in four steps. It leaves your pocket at once, like a send: the action names your group, the vault checks your key under encryption and takes the amount from the pocket it opens. The cUSDC then waits in the open window, held by the savings contract. The relayer joins the window to Zama's next batch; Zama's batcher takes the batch's total to Morpho and brings back shares of the vault, confidential too. Once the batch has settled, the window hands each pocket its shares in proportion, under encryption: your savings then show as shares, worth their value at the vault's public price, which grows with the yield."
+    },
+    {
+     "id": "vault-savings-2",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "So a save takes time. A window joins a batch when the next one is made (about one an hour on Sepolia), and the batch is dispatched once it is old enough: the card says how long, in minutes or hours. Until then the page lists what is on the way: waiting for the next batch, in a batch, or being handed back once settled. A batch Zama cancels hands the pockets their cUSDC back the same way. Meanwhile the amount is neither in your pocket nor in your savings.\nTaking back goes the same way, in reverse. You ask an amount in cUSDC; the page converts it to shares at today's price (or “All of it”, which asks your exact shares), the shares leave at once and wait in the take-back window, which joins the next batch of redemptions. Once settled, the cUSDC lands in your pocket's balance. The batch's rate decides what comes back exactly; today's price is an estimate."
+    },
+    {
+     "id": "vault-savings-3",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Savings are put aside, not spendable. A private sale is paid from the pocket's balance, never from its savings: to buy a box with money you put aside, take it back first, wait for the batch, then buy. Plan a purchase around the batch."
+    },
+    {
+     "id": "vault-savings-4",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Nothing public says which pocket saved, nor how much. Zama's batcher sees one participant, the savings contract, with one encrypted total for the window; that is how the batch keeps every pocket out of sight. The chain shows what a send shows, the group named, plus the window a save went to and when the window joined a batch, and once settled the batch's decrypted total and rate. That total bounds what all the window's pockets saved together, never one pocket's share. Two caveats: when no other participant is in Zama's batch, the batch's total is exactly the sum of the window's saves; and when one group alone saved in that window, it is the sum of that group's saves. The more pockets save in the same window, the better each hides."
+    },
+    {
+     "id": "vault-savings-5",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "The yield is the Morpho vault's, and so is the risk: what you put aside is lent through that vault, with its curator and its contracts, and a loss there is a loss on your savings only. The cUSDC you leave in your pocket is not exposed: it never leaves the pockets contract. The savings are not audited."
     },
     {
      "id": "vault-give-0",
@@ -303,14 +356,20 @@
     {
      "id": "vault-leaks-1",
      "section": "vault-leaks",
+     "heading": "Public",
+     "text": "A save's or a take-back's window, when it joined one of Zama's batches, the group it names, and the batch's decrypted total and rate, for every pocket together\nA stealth address a pocket paid (as any withdrawal's address) and its announcement on ERC-5564's announcer, sent by the relayer; a published meta-address and the wallet that published it; the entry address that fed a group, and the amount it wrapped from plain USDC"
+    },
+    {
+     "id": "vault-leaks-2",
+     "section": "vault-leaks",
      "heading": "Never public",
-     "text": "Who holds a box\nThe box's key\nA private sale's price, and whether it went through\nWhether a transfer moved anything\nWho asked for a listing, a withdrawal, a payout, an accepted offer or a delegate, when the relayer sends it\nA pocket's balance, the amounts it moves, which pocket of a group moved, and who holds a pocket\nIn practice: take NFTs and ETH out to an address with no history, name a fresh wallet as the delegate, let the relayer send your requests, and know that timing can still give hints (a \"Make the key mine\" right after a transfer to the same address, say)."
+     "text": "Who holds a box\nThe box's key\nA private sale's price, and whether it went through\nWhether a transfer moved anything\nWho asked for a listing, a withdrawal, a payout, an accepted offer or a delegate, when the relayer sends it\nA pocket's balance, the amounts it moves, which pocket of a group moved, and who holds a pocket\nWhich pocket saved or took back, how much, and what each pocket's savings are worth\nWhose a stealth address or an entry address is: which wallet's page holds its key\nIn practice: take NFTs and ETH out to an address with no history, name a fresh wallet as the delegate, let the relayer send your requests, and know that timing can still give hints (a \"Make the key mine\" right after a transfer to the same address, say)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport, OpenSea's conduit, the WETH offers pay in and delegate.xyz's registry. OpenSea closed its testnets, so a listing shows on no marketplace site there: it is bought from the page. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xb707…5abC\nThe free test collection 0xf72E…6f9b\nSeaport 0x0000…B395\nThe listings (written the way OpenSea shows them) 0x6b9C…8Fa6\nThe offer board 0xADaE…FE59\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0x3c92…4395\nThe desk that buys from pockets 0x37e9…0430\nThe cUSDT pockets 0x56ea…7aAe\nThe cWETH pockets 0x4e8A…1350\nThe cZAMA pockets 0x6D15…ceE2"
+     "text": "The vault runs on Sepolia, Ethereum's test network, with the real Seaport, OpenSea's conduit, the WETH offers pay in and delegate.xyz's registry. OpenSea closed its testnets, so a listing shows on no marketplace site there: it is bought from the page. Its fee is 2.5%. The test collection is free to mint from the vault's page; nothing here is worth money.\nThe sealed vault 0xb707…5abC\nThe free test collection 0xf72E…6f9b\nSeaport 0x0000…B395\nThe listings (written the way OpenSea shows them) 0x6b9C…8Fa6\nThe offer board 0xADaE…FE59\nWETH, what offers pay in 0x7b79…E7f9\ndelegate.xyz's registry 0x0000…d493\nThe pockets 0x73F0…794C\nThe desk that buys from pockets 0x3BA5…4Aa3\nThe savings (a pocket's cUSDC in Zama's vault on Morpho) 0xE84c…A670\nThe cUSDT pockets 0xB586…c35D\nThe cWETH pockets 0x731E…FAb5\nThe cZAMA pockets 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",
@@ -419,6 +478,11 @@
     {
      "id": "vault-pockets",
      "title": "Les poches : des jetons que personne ne trace",
+     "part": "manual"
+    },
+    {
+     "id": "vault-savings",
+     "title": "L'épargne : des cUSDC mis au travail",
      "part": "manual"
     },
     {
@@ -629,25 +693,79 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Pour être payé, donne ton code. Chaque action nomme un groupe, pas une poche : les poches forment des groupes de cinq par numéro (P-0 à P-4, P-5 à P-9…), et chaque action d'une poche nomme tout son groupe, toujours les mêmes poches. Un ensemble dit alors quel groupe a agi, jamais quelle poche, quel que soit le nombre d'actions comparées ; des leurres tirés au hasard ne le feraient pas, puisque la vraie poche est celle présente dans chaque ensemble. La page montre ton groupe, combien de ses cinq poches existent (le dernier groupe se remplit à mesure que des poches s'ouvrent) et combien de wallets y ont mis des jetons. Envoyer nomme ton groupe et celui du destinataire ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne."
+     "text": "Pour être payé, donne ton code. Chaque action nomme un groupe, pas une poche : les poches forment par numéro des groupes de taille fixe (dix sur les poches d'aujourd'hui : P-0 à P-9, P-10 à P-19… ; cinq sur les précédentes), et chaque action d'une poche nomme tout son groupe, toujours les mêmes poches. Un ensemble dit alors quel groupe a agi, jamais quelle poche, quel que soit le nombre d'actions comparées ; des leurres tirés au hasard ne le feraient pas, puisque la vraie poche est celle présente dans chaque ensemble. La page montre ton groupe, combien de ses poches existent (le dernier groupe se remplit à mesure que des poches s'ouvrent) et combien d'adresses y ont mis des jetons. Envoyer nomme ton groupe et celui du destinataire ; le coffre vérifie ta clé sous chiffrement, prend le montant dans la poche qu'elle ouvre et l'ajoute à celle dont le numéro correspond, toujours sous chiffrement. Rien de public ne dit qui a payé qui, ni combien. Une mauvaise clé ou un solde insuffisant ne déplacent rien, sans erreur. Aucun déchiffrement n'est nécessaire : une seule transaction, qui n'attend personne."
     },
     {
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Retirer envoie les jetons, toujours confidentiels (des cUSDC restent des cUSDC), vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit : prends-en une neuve et rien ne la relie à toi.\nAvec les boîtes du coffre : un vendeur peut proposer une boîte en privé à ta poche en tapant ton code. Tu lis le prix, puis tu achètes avec ta poche : d'abord une vérification sous chiffrement qui ne dit en public que oui ou non (pour qu'un inconnu ne puisse pas gâcher la vente avec une mauvaise clé), puis l'achat. La boîte reste ensuite dans le coffre pour un guichet que toutes les poches partagent, avec ta clé : sors le NFT, mets-le en vente, accepte une offre ou délègue-le, comme pour n'importe quelle boîte. Elle ne peut plus être donnée ni revendue en privé de là. Après une vente privée, « Dans ma poche » met le prix, moins les frais, dans ta poche."
+     "text": "Retirer envoie les jetons, toujours confidentiels (des cUSDC restent des cUSDC), vers n'importe quelle adresse, le montant toujours chiffré. L'adresse se voit. Laisse l'adresse vide et la page tire à sa place une adresse furtive pour toi : une adresse neuve que rien ne relie à personne, que seule ta page retrouve et dépense (voir Adresses neuves plus bas)."
     },
     {
      "id": "vault-pockets-4",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Limites : un groupe est public, donc une poche se cache parmi les cinq de son groupe au plus, et un dépôt relie ton wallet au groupe (pas à une poche) : moins de wallets alimentent un groupe, plus sa couverture est mince, et un groupe encore en train de se remplir cache parmi moins. Les poches n'ont pas de frais propres. Elles ne sont pas auditées."
+     "text": "Avec les boîtes du coffre : un vendeur peut proposer une boîte en privé à ta poche en tapant ton code. Tu lis le prix, puis tu achètes avec ta poche : d'abord une vérification sous chiffrement qui ne dit en public que oui ou non (pour qu'un inconnu ne puisse pas gâcher la vente avec une mauvaise clé), puis l'achat. La boîte reste ensuite dans le coffre pour un guichet que toutes les poches partagent, avec ta clé : sors le NFT, mets-le en vente, accepte une offre ou délègue-le, comme pour n'importe quelle boîte. Elle ne peut plus être donnée ni revendue en privé de là. Après une vente privée, « Dans ma poche » met le prix, moins les frais, dans ta poche."
     },
     {
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
+     "text": "Limites : un groupe est public, donc une poche se cache parmi son groupe au plus (dix sur les poches d'aujourd'hui, cinq sur les précédentes ; la taille est fixée au déploiement des poches, et mesurée jusqu'à douze), et un dépôt relie l'adresse qui l'a alimenté au groupe (pas à une poche) : moins d'adresses alimentent un groupe, plus sa couverture est mince, et un groupe encore en train de se remplir cache parmi moins. Les poches n'ont pas de frais propres. Elles ne sont pas auditées."
+    },
+    {
+     "id": "vault-pockets-6",
+     "section": "vault-pockets",
+     "heading": null,
      "text": "Quatre jetons vont dans les poches : cUSDC, cUSDT, cWETH et cZAMA, les versions confidentielles par Zama d'USDC, USDT, WETH et ZAMA. Chacun a ses propres poches : choisis le jeton au-dessus de ta poche, son logo s'affiche sur la bourse et sur chaque action. La même signature ouvre ta poche de chaque jeton, chacune avec son propre code et sa propre adresse de lecture, donc rien on-chain ne les relie. Le jeton que déplace une action est public, et une poche ne se cache que parmi les poches de son propre jeton. Les boîtes se vendent en privé en cUSDC, donc seule la poche cUSDC les achète. Sur Sepolia, la page frappe de l'USDT, du WETH et du ZAMA de test (les jetons de test de Zama, pas le WETH des offres) et les convertit pour toi."
+    },
+    {
+     "id": "vault-pockets-7",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Adresses neuves, en sortie : un retrait montre l'adresse qu'il paie, donc payer ton propre wallet relie le groupe de la poche à lui. La page détient pour toi une méta-adresse furtive (ERC-5564, deux clés tirées de la même signature que ta poche) : laisse vide l'adresse du retrait et elle tire une adresse neuve que toi seul peux dépenser, la paie, et fait annoncer ça par le relayer (l'annonce publique porte une étiquette d'un octet et une clé jetable ; seule ta page reconnaît les siennes). Pour payer quelqu'un d'autre de la même façon, tape sa méta-adresse, ou l'adresse de son wallet une fois qu'il l'a publiée dans le registre public (une transaction, qui relie la méta-adresse au wallet, jamais les adresses payées). « Reçu sur des adresses neuves » liste ce qui est arrivé sur les tiennes, lu avec leurs propres clés. Chaque adresse neuve agit en son nom : donne-lui un peu d'ETH (le relayer en envoie une fois, à une adresse qu'une poche a payée) et « Dans ma poche » lui fait mettre ce qu'elle détient dans ta poche, un dépôt qui nomme l'adresse neuve et jamais ton wallet. Toute autre adresse tapée est payée au grand jour, comme avant."
+    },
+    {
+     "id": "vault-pockets-8",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Adresses neuves, en entrée : un dépôt depuis ton wallet relie ton wallet au groupe de ta poche. L'adresse d'entrée casse ce lien : la page dérive une adresse neuve de ta signature (la première jamais utilisée) et la montre ; envoie-y des USDC depuis un endroit qui n'est pas ton wallet (un pool de confidentialité comme Privacy Pools, un exchange, un ami), avec un peu d'ETH ou le gas du relayer (il alimente une fois une adresse qui détient des USDC), et « Dans ma poche » les convertit et les dépose en tant que cette adresse. Rien on-chain ne dit que l'adresse est à toi. Ce qui se voit encore : le montant converti (de l'USDC en cUSDC est public), et le moment, donc des montants ronds et une pause après le retrait du pool cachent le mieux. Une fois utilisée, l'adresse d'entrée est retirée et la page montre la suivante."
+    },
+    {
+     "id": "vault-savings-0",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "L'épargne met une partie de ta poche cUSDC au travail dans l'un des coffres confidentiels de Zama sur Morpho (Steakhouse USDC Prime, un coffre de prêt), par un contrat d'épargne à côté des poches. Là où il est déployé, une carte « Épargne » s'affiche sous ta poche cUSDC, et nulle part ailleurs : les poches des autres jetons n'en ont pas. Ce que tu mets de côté gagne le rendement de ce coffre, et revient dans ta poche quand tu le demandes."
+    },
+    {
+     "id": "vault-savings-1",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Une mise de côté voyage en quatre étapes. Elle quitte ta poche tout de suite, comme un envoi : l'action nomme ton groupe, le coffre vérifie ta clé sous chiffrement et prend le montant dans la poche qu'elle ouvre. Les cUSDC attendent ensuite dans la fenêtre ouverte, tenus par le contrat d'épargne. Le relayeur joint la fenêtre au prochain lot de Zama ; le batcher de Zama porte le total du lot à Morpho et rapporte des parts du coffre, confidentielles elles aussi. Une fois le lot réglé, la fenêtre remet à chaque poche ses parts au prorata, sous chiffrement : ton épargne s'affiche alors en parts, qui valent leur prix public au coffre, et ce prix monte avec le rendement."
+    },
+    {
+     "id": "vault-savings-2",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Une mise de côté prend donc du temps. Une fenêtre rejoint un lot quand le suivant se forme (environ un par heure sur Sepolia), et le lot part une fois assez âgé : la carte dit combien de temps, en minutes ou en heures. D'ici là, la page liste ce qui est en route : attend le prochain lot, dans un lot, ou en cours de remise une fois réglé. Un lot que Zama annule rend leurs cUSDC aux poches de la même façon. Entre-temps, le montant n'est ni dans ta poche ni dans ton épargne."
+    },
+    {
+     "id": "vault-savings-3",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Reprendre va de la même façon, à l'envers. Tu demandes un montant en cUSDC ; la page le convertit en parts au prix du jour (ou « Tout », qui demande tes parts exactes), les parts partent tout de suite et attendent dans la fenêtre de reprise, qui rejoint le prochain lot de rachats. Une fois réglé, les cUSDC arrivent dans le solde de ta poche. Le taux du lot décide de ce qui revient exactement ; le prix du jour est une estimation.\nL'épargne est mise de côté, pas dépensable. Une vente privée se paie avec le solde de la poche, jamais avec son épargne : pour acheter une boîte avec de l'argent mis de côté, reprends-le d'abord, attends le lot, puis achète. Prévois un achat autour du lot."
+    },
+    {
+     "id": "vault-savings-4",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Rien de public ne dit quelle poche a épargné, ni combien. Le batcher de Zama voit un seul participant, le contrat d'épargne, avec un seul total chiffré pour la fenêtre : c'est ainsi que le lot garde chaque poche hors de vue. La chaîne montre ce qu'un envoi montre, le groupe nommé, plus la fenêtre où une mise de côté est allée et quand la fenêtre a rejoint un lot, et une fois réglé le total et le taux déchiffrés du lot. Ce total borne ce que toutes les poches de la fenêtre ont épargné ensemble, jamais la part d'une poche. Deux réserves : quand aucun autre participant n'est dans le lot de Zama, le total du lot est exactement la somme des mises de côté de la fenêtre ; et quand un seul groupe a épargné dans cette fenêtre, c'est la somme des mises de côté de ce groupe. Plus de poches épargnent dans la même fenêtre, mieux chacune se cache."
+    },
+    {
+     "id": "vault-savings-5",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Le rendement est celui du coffre Morpho, et le risque aussi : ce que tu mets de côté est prêté via ce coffre, avec son curateur et ses contrats, et une perte là-bas est une perte sur ton épargne seulement. Les cUSDC que tu laisses dans ta poche ne sont pas exposés : ils ne quittent jamais le contrat des poches. L'épargne n'est pas auditée."
     },
     {
      "id": "vault-give-0",
@@ -683,19 +801,25 @@
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Public",
-     "text": "Le jeton que déplace chaque action de poche (cUSDC, cUSDT, cWETH ou cZAMA) : chacun a ses propres poches"
+     "text": "Le jeton que déplace chaque action de poche (cUSDC, cUSDT, cWETH ou cZAMA) : chacun a ses propres poches\nLa fenêtre d'une mise de côté ou d'une reprise, quand elle a rejoint un lot de Zama, le groupe qu'elle nomme, et le total et le taux déchiffrés du lot, pour toutes les poches ensemble\nUne adresse furtive qu'une poche a payée (comme l'adresse de tout retrait) et son annonce sur l'annonceur d'ERC-5564, envoyée par le relayer ; une méta-adresse publiée et le wallet qui l'a publiée ; l'adresse d'entrée qui a alimenté un groupe, et le montant qu'elle a converti depuis de l'USDC ordinaire"
     },
     {
      "id": "vault-leaks-2",
      "section": "vault-leaks",
      "heading": "Jamais public",
-     "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie\nLe solde d'une poche, les montants qu'elle déplace, la poche d'un groupe qui a bougé, et qui détient une poche\nEn pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
+     "text": "Qui détient une boîte\nLa clé de la boîte\nLe prix d'une vente privée, et si elle a abouti\nSi un transfert a déplacé quelque chose\nQui a demandé une annonce, un retrait, un encaissement, une offre acceptée ou un délégué, quand le relayer l'envoie\nLe solde d'une poche, les montants qu'elle déplace, la poche d'un groupe qui a bougé, et qui détient une poche\nQuelle poche a épargné ou repris, combien, et ce que vaut l'épargne de chaque poche\nÀ qui est une adresse furtive ou une adresse d'entrée : la page de quel wallet détient sa clé\nEn pratique : sors NFT et ETH vers une adresse sans historique, désigne un wallet neuf comme délégué, laisse le relayer envoyer tes demandes, et sache que le moment choisi peut encore donner des indices (un « Prendre la clé » juste après un transfert vers la même adresse, par exemple)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport, le conduit d'OpenSea, le WETH que paient les offres et le registre de delegate.xyz. OpenSea a fermé ses testnets : une annonce n'y apparaît sur aucune marketplace, elle s'achète depuis la page. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xb707…5abC\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 0x0000…B395\nLes annonces (écrites comme OpenSea les affiche) 0x6b9C…8Fa6\nLe tableau des offres 0xADaE…FE59\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0x3c92…4395\nLe guichet qui achète depuis les poches 0x37e9…0430\nLes poches cUSDT 0x56ea…7aAe\nLes poches cWETH 0x4e8A…1350\nLes poches cZAMA 0x6D15…ceE2"
+     "text": "Le coffre tourne sur Sepolia, le réseau de test d'Ethereum, avec le vrai Seaport, le conduit d'OpenSea, le WETH que paient les offres et le registre de delegate.xyz. OpenSea a fermé ses testnets : une annonce n'y apparaît sur aucune marketplace, elle s'achète depuis la page. Ses frais sont de 2,5 %. La collection de test se mint gratuitement depuis la page du coffre ; rien ici ne vaut de l'argent.\nLe coffre scellé 0xb707…5abC\nLa collection de test gratuite 0xf72E…6f9b\nSeaport 0x0000…B395\nLes annonces (écrites comme OpenSea les affiche) 0x6b9C…8Fa6\nLe tableau des offres 0xADaE…FE59\nWETH, ce en quoi les offres paient 0x7b79…E7f9\nLe registre de delegate.xyz 0x0000…d493\nLes poches 0x73F0…794C\nLe guichet qui achète depuis les poches 0x3BA5…4Aa3\nLes économies (le cUSDC d'une poche dans le coffre de Zama sur Morpho) 0xE84c…A670\nLes poches cUSDT 0xB586…c35D\nLes poches cWETH 0x731E…FAb5"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "Les poches cZAMA 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",
@@ -804,6 +928,11 @@
     {
      "id": "vault-pockets",
      "title": "Los bolsillos: tokens que nadie rastrea",
+     "part": "manual"
+    },
+    {
+     "id": "vault-savings",
+     "title": "Ahorros: cUSDC puestos a trabajar",
      "part": "manual"
     },
     {
@@ -1014,25 +1143,79 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Para cobrar, da tu código. Cada acción nombra un grupo, no un bolsillo: los bolsillos forman grupos de cinco por número (P-0 a P-4, P-5 a P-9…), y cada acción de un bolsillo nombra todo su grupo, siempre los mismos bolsillos. Un conjunto dice entonces qué grupo actuó, nunca qué bolsillo, por muchas acciones que se comparen; unos señuelos elegidos al azar no lo harían, porque el bolsillo real es el que está en todos los conjuntos. La página muestra tu grupo, cuántos de sus cinco bolsillos existen (el último grupo se llena a medida que se abren bolsillos) y cuántos wallets han puesto tokens en él. Enviar nombra tu grupo y el del destinatario; la bóveda comprueba tu llave bajo cifrado, toma el importe del bolsillo que abre y lo suma al bolsillo cuyo número coincide, también bajo cifrado. Nada público dice quién pagó a quién, ni cuánto. Una llave equivocada o un saldo corto no mueven nada, sin error. No hace falta ningún descifrado: una sola transacción, que no espera a nadie."
+     "text": "Para cobrar, da tu código. Cada acción nombra un grupo, no un bolsillo: los bolsillos forman por número grupos de tamaño fijo (diez en los bolsillos de hoy: P-0 a P-9, P-10 a P-19…; cinco en los anteriores), y cada acción de un bolsillo nombra todo su grupo, siempre los mismos bolsillos. Un conjunto dice entonces qué grupo actuó, nunca qué bolsillo, por muchas acciones que se comparen; unos señuelos elegidos al azar no lo harían, porque el bolsillo real es el que está en todos los conjuntos. La página muestra tu grupo, cuántos de sus bolsillos existen (el último grupo se llena a medida que se abren bolsillos) y cuántas direcciones han puesto tokens en él. Enviar nombra tu grupo y el del destinatario; la bóveda comprueba tu llave bajo cifrado, toma el importe del bolsillo que abre y lo suma al bolsillo cuyo número coincide, también bajo cifrado. Nada público dice quién pagó a quién, ni cuánto. Una llave equivocada o un saldo corto no mueven nada, sin error. No hace falta ningún descifrado: una sola transacción, que no espera a nadie."
     },
     {
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Sacar tokens los envía, aún confidenciales (cUSDC sigue siendo cUSDC), a cualquier dirección, con el importe aún cifrado. La dirección se ve: elige una nueva y nada la vincula contigo.\nCon las cajas de la bóveda: un vendedor puede ofrecer una caja en privado a tu bolsillo escribiendo tu código. Lees el precio y compras con tu bolsillo: primero una comprobación bajo cifrado que en público solo dice sí o no (para que un desconocido no pueda gastar la venta con una llave equivocada), luego la compra. La caja queda en la bóveda para una ventanilla que comparten todos los bolsillos, con tu llave: saca el NFT, ponlo en venta, acepta una oferta o delégalo, como cualquier caja. Desde ahí ya no se puede regalar ni revender en privado. Tras una venta privada, «A mi bolsillo» pone el precio, menos la comisión, en tu bolsillo."
+     "text": "Sacar tokens los envía, aún confidenciales (cUSDC sigue siendo cUSDC), a cualquier dirección, con el importe aún cifrado. La dirección se ve. Deja la dirección vacía y la página saca en su lugar una dirección sigilosa para ti: una dirección nueva que nada vincula a nadie, que solo tu página encuentra y gasta (ver Direcciones nuevas más abajo)."
     },
     {
      "id": "vault-pockets-4",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Límites: un grupo es público, así que un bolsillo se esconde entre los cinco de su grupo como mucho, y un depósito vincula tu wallet al grupo (no a un bolsillo): cuantos menos wallets alimentan un grupo, más escasa es su cobertura, y un grupo que aún se llena esconde entre menos. Los bolsillos no tienen comisión propia. No están auditados."
+     "text": "Con las cajas de la bóveda: un vendedor puede ofrecer una caja en privado a tu bolsillo escribiendo tu código. Lees el precio y compras con tu bolsillo: primero una comprobación bajo cifrado que en público solo dice sí o no (para que un desconocido no pueda gastar la venta con una llave equivocada), luego la compra. La caja queda en la bóveda para una ventanilla que comparten todos los bolsillos, con tu llave: saca el NFT, ponlo en venta, acepta una oferta o delégalo, como cualquier caja. Desde ahí ya no se puede regalar ni revender en privado. Tras una venta privada, «A mi bolsillo» pone el precio, menos la comisión, en tu bolsillo."
     },
     {
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
+     "text": "Límites: un grupo es público, así que un bolsillo se esconde entre su grupo como mucho (diez en los bolsillos de hoy, cinco en los anteriores; el tamaño se fija al desplegar los bolsillos, y está medido hasta doce), y un depósito vincula la dirección que lo alimentó al grupo (no a un bolsillo): cuantas menos direcciones alimentan un grupo, más escasa es su cobertura, y un grupo que aún se llena esconde entre menos. Los bolsillos no tienen comisión propia. No están auditados."
+    },
+    {
+     "id": "vault-pockets-6",
+     "section": "vault-pockets",
+     "heading": null,
      "text": "Cuatro tokens van en bolsillos: cUSDC, cUSDT, cWETH y cZAMA, las versiones confidenciales de Zama de USDC, USDT, WETH y ZAMA. Cada uno tiene sus propios bolsillos: elige el token encima de tu bolsillo, su logo aparece en la bolsa y en cada acción. La misma firma abre tu bolsillo de cada token, cada uno con su propio código y su propia dirección de lectura, así que nada on-chain los vincula. Qué token mueve una acción es público, y un bolsillo solo se esconde entre los bolsillos de su propio token. Las cajas se venden en privado en cUSDC, así que solo el bolsillo de cUSDC las compra. En Sepolia, la página acuña USDT, WETH y ZAMA de prueba (los tokens de prueba de Zama, no el WETH de las ofertas) y los convierte por ti."
+    },
+    {
+     "id": "vault-pockets-7",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Direcciones nuevas, de salida: un retiro muestra la dirección a la que paga, así que pagar a tu propio wallet vincula el grupo del bolsillo a él. La página guarda para ti una metadirección sigilosa (ERC-5564, dos llaves hechas con la misma firma que tu bolsillo): deja vacía la dirección del retiro y saca una dirección nueva que solo tú puedes gastar, le paga, y hace que el relayer lo anuncie (el anuncio público lleva una etiqueta de un byte y una llave desechable; solo tu página reconoce las suyas). Para pagar a otro de la misma forma, escribe su metadirección, o la dirección de su wallet una vez que la haya publicado en el registro público (una transacción, que vincula la metadirección al wallet, nunca las direcciones pagadas). «Recibido en direcciones nuevas» lista lo que cayó en las tuyas, leído con sus propias llaves. Cada dirección nueva actúa por sí misma: dale un poco de ETH (el relayer envía algo una vez, a una dirección a la que pagó un bolsillo) y «A mi bolsillo» hace que ponga lo que tiene en tu bolsillo, un depósito que nombra la dirección nueva y nunca tu wallet. Cualquier otra dirección escrita se paga a la vista, como antes."
+    },
+    {
+     "id": "vault-pockets-8",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Direcciones nuevas, de entrada: un depósito desde tu wallet vincula tu wallet al grupo de tu bolsillo. La dirección de entrada rompe ese vínculo: la página deriva una dirección nueva de tu firma (la primera nunca usada) y la muestra; envíale USDC desde un lugar que no sea tu wallet (un pool de privacidad como Privacy Pools, un exchange, un amigo), con un poco de ETH o el gas del relayer (alimenta una vez una dirección que tiene USDC), y «A mi bolsillo» los convierte y los deposita como esa dirección. Nada on-chain dice que la dirección es tuya. Lo que aún se ve: el importe convertido (USDC en cUSDC es público), y el momento, así que los importes redondos y una pausa tras el retiro del pool esconden mejor. Una vez usada, la dirección de entrada se retira y la página muestra la siguiente."
+    },
+    {
+     "id": "vault-savings-0",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Los ahorros ponen parte de tu bolsillo de cUSDC a trabajar en una de las bóvedas confidenciales de Zama en Morpho (Steakhouse USDC Prime, una bóveda de préstamo), a través de un contrato de ahorros junto a los bolsillos. Donde está desplegado, una tarjeta “Ahorros” aparece bajo tu bolsillo de cUSDC, y en ningún otro sitio: los bolsillos de los demás tokens no la tienen. Lo que apartas gana el rendimiento de esa bóveda, y vuelve a tu bolsillo cuando lo pides."
+    },
+    {
+     "id": "vault-savings-1",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Un apartado viaja en cuatro pasos. Sale de tu bolsillo al momento, como un envío: la acción nombra tu grupo, la bóveda comprueba tu clave bajo cifrado y toma el importe del bolsillo que abre. Los cUSDC esperan luego en la ventana abierta, en manos del contrato de ahorros. El relayer une la ventana al próximo lote de Zama; el batcher de Zama lleva el total del lote a Morpho y trae participaciones de la bóveda, también confidenciales. Liquidado el lote, la ventana entrega a cada bolsillo sus participaciones en proporción, bajo cifrado: tus ahorros aparecen entonces como participaciones, que valen su precio público en la bóveda, y ese precio sube con el rendimiento."
+    },
+    {
+     "id": "vault-savings-2",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Así que un apartado lleva tiempo. Una ventana se une a un lote cuando se forma el siguiente (más o menos uno por hora en Sepolia), y el lote se despacha cuando tiene edad suficiente: la tarjeta dice cuánto, en minutos u horas. Hasta entonces la página lista lo que está en camino: espera al próximo lote, en un lote, o en entrega una vez liquidado. Un lote que Zama cancela devuelve sus cUSDC a los bolsillos del mismo modo. Mientras tanto el importe no está ni en tu bolsillo ni en tus ahorros."
+    },
+    {
+     "id": "vault-savings-3",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Recuperar va del mismo modo, al revés. Pides un importe en cUSDC; la página lo convierte en participaciones al precio de hoy (o “Todo”, que pide tus participaciones exactas), las participaciones salen al momento y esperan en la ventana de recuperación, que se une al próximo lote de reembolsos. Liquidado, los cUSDC llegan al saldo de tu bolsillo. La tasa del lote decide lo que vuelve exactamente; el precio de hoy es una estimación.\nLos ahorros están apartados, no se gastan. Una venta privada se paga con el saldo del bolsillo, nunca con sus ahorros: para comprar una caja con dinero apartado, recupéralo primero, espera al lote y luego compra. Planea una compra en torno al lote."
+    },
+    {
+     "id": "vault-savings-4",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Nada público dice qué bolsillo ahorró, ni cuánto. El batcher de Zama ve un solo participante, el contrato de ahorros, con un solo total cifrado para la ventana: así el lote mantiene cada bolsillo fuera de la vista. La cadena muestra lo que muestra un envío, el grupo nombrado, más la ventana a la que fue un apartado y cuándo la ventana se unió a un lote, y una vez liquidado el total y la tasa descifrados del lote. Ese total acota lo que todos los bolsillos de la ventana ahorraron juntos, nunca la parte de un bolsillo. Dos salvedades: cuando ningún otro participante está en el lote de Zama, el total del lote es exactamente la suma de los apartados de la ventana; y cuando un solo grupo ahorró en esa ventana, es la suma de los apartados de ese grupo. Cuantos más bolsillos ahorran en la misma ventana, mejor se esconde cada uno."
+    },
+    {
+     "id": "vault-savings-5",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "El rendimiento es el de la bóveda de Morpho, y el riesgo también: lo que apartas se presta a través de esa bóveda, con su curador y sus contratos, y una pérdida allí es una pérdida solo sobre tus ahorros. Los cUSDC que dejas en tu bolsillo no están expuestos: nunca salen del contrato de los bolsillos. Los ahorros no están auditados."
     },
     {
      "id": "vault-give-0",
@@ -1068,19 +1251,25 @@
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Público",
-     "text": "Qué token mueve cada acción de bolsillo (cUSDC, cUSDT, cWETH o cZAMA): cada uno tiene sus propios bolsillos"
+     "text": "Qué token mueve cada acción de bolsillo (cUSDC, cUSDT, cWETH o cZAMA): cada uno tiene sus propios bolsillos\nLa ventana de un apartado o de una recuperación, cuándo se unió a un lote de Zama, el grupo que nombra, y el total y la tasa descifrados del lote, para todos los bolsillos juntos\nUna dirección sigilosa a la que pagó un bolsillo (como la dirección de cualquier retiro) y su anuncio en el anunciador de ERC-5564, enviado por el relayer; una metadirección publicada y el wallet que la publicó; la dirección de entrada que alimentó un grupo, y el importe que convirtió desde USDC normal"
     },
     {
      "id": "vault-leaks-2",
      "section": "vault-leaks",
      "heading": "Nunca público",
-     "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer\nEl saldo de un bolsillo, los importes que mueve, qué bolsillo de un grupo se movió, y quién tiene un bolsillo\nEn la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
+     "text": "Quién tiene una caja\nLa llave de la caja\nEl precio de una venta privada, y si se hizo\nSi una transferencia movió algo\nQuién pidió un anuncio, una retirada, un cobro, una oferta aceptada o un delegado, cuando lo envía el relayer\nEl saldo de un bolsillo, los importes que mueve, qué bolsillo de un grupo se movió, y quién tiene un bolsillo\nQué bolsillo ahorró o recuperó, cuánto, y lo que valen los ahorros de cada bolsillo\nDe quién es una dirección sigilosa o una dirección de entrada: la página de qué wallet guarda su llave\nEn la práctica: saca NFT y ETH a una dirección sin historial, nombra un wallet nuevo como delegado, deja que el relayer envíe tus solicitudes, y ten en cuenta que los tiempos aún pueden dar pistas (un «Quedarme la llave» justo después de una transferencia a la misma dirección, por ejemplo)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport real, el conduit de OpenSea, el WETH con el que pagan las ofertas y el registro de delegate.xyz. OpenSea cerró sus testnets: allí un anuncio no aparece en ningún marketplace, se compra desde la página. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xb707…5abC\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nLos anuncios (escritos como OpenSea los muestra) 0x6b9C…8Fa6\nEl tablón de ofertas 0xADaE…FE59\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0x3c92…4395\nLa ventanilla que compra desde los bolsillos 0x37e9…0430\nLos bolsillos de cUSDT 0x56ea…7aAe\nLos bolsillos de cWETH 0x4e8A…1350\nLos bolsillos de cZAMA 0x6D15…ceE2"
+     "text": "La bóveda funciona en Sepolia, la red de prueba de Ethereum, con el Seaport real, el conduit de OpenSea, el WETH con el que pagan las ofertas y el registro de delegate.xyz. OpenSea cerró sus testnets: allí un anuncio no aparece en ningún marketplace, se compra desde la página. Su comisión es del 2,5%. La colección de prueba se mintea gratis desde la página de la bóveda; nada de esto vale dinero.\nLa bóveda sellada 0xb707…5abC\nLa colección de prueba gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nLos anuncios (escritos como OpenSea los muestra) 0x6b9C…8Fa6\nEl tablón de ofertas 0xADaE…FE59\nWETH, en lo que pagan las ofertas 0x7b79…E7f9\nEl registro de delegate.xyz 0x0000…d493\nLos bolsillos 0x73F0…794C\nLa ventanilla que compra desde los bolsillos 0x3BA5…4Aa3\nLos ahorros (el cUSDC de un bolsillo en la bóveda de Zama en Morpho) 0xE84c…A670\nLos bolsillos de cUSDT 0xB586…c35D"
+    },
+    {
+     "id": "vault-testnet-1",
+     "section": "vault-testnet",
+     "heading": null,
+     "text": "Los bolsillos de cWETH 0x731E…FAb5\nLos bolsillos de cZAMA 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",
@@ -1189,6 +1378,11 @@
     {
      "id": "vault-pockets",
      "title": "Le tasche: token che nessuno traccia",
+     "part": "manual"
+    },
+    {
+     "id": "vault-savings",
+     "title": "I risparmi: cUSDC messi al lavoro",
      "part": "manual"
     },
     {
@@ -1405,25 +1599,79 @@
      "id": "vault-pockets-2",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Per farti pagare, dai il tuo codice. Ogni azione nomina un gruppo, non una tasca: le tasche formano gruppi di cinque per numero (P-0 a P-4, P-5 a P-9…), e ogni azione di una tasca nomina tutto il suo gruppo, sempre le stesse tasche. Un insieme dice allora quale gruppo ha agito, mai quale tasca, per quante azioni si confrontino; esche scelte a caso non lo farebbero, perché la tasca vera è quella presente in ogni insieme. La pagina mostra il tuo gruppo, quante delle sue cinque tasche esistono (l'ultimo gruppo si riempie man mano che si aprono tasche) e quanti wallet vi hanno messo token. Inviare nomina il tuo gruppo e quello del destinatario; il caveau verifica la tua chiave sotto cifratura, prende l'importo dalla tasca che apre e lo aggiunge a quella il cui numero corrisponde, sempre sotto cifratura. Niente di pubblico dice chi ha pagato chi, né quanto. Una chiave sbagliata o un saldo insufficiente non spostano nulla, senza errore. Non serve alcuna decifratura: una sola transazione, che non aspetta nessuno."
+     "text": "Per farti pagare, dai il tuo codice. Ogni azione nomina un gruppo, non una tasca: le tasche formano per numero gruppi di dimensione fissa (dieci sulle tasche di oggi: P-0 a P-9, P-10 a P-19…; cinque sulle precedenti), e ogni azione di una tasca nomina tutto il suo gruppo, sempre le stesse tasche. Un insieme dice allora quale gruppo ha agito, mai quale tasca, per quante azioni si confrontino; esche scelte a caso non lo farebbero, perché la tasca vera è quella presente in ogni insieme. La pagina mostra il tuo gruppo, quante delle sue tasche esistono (l'ultimo gruppo si riempie man mano che si aprono tasche) e quanti indirizzi vi hanno messo token. Inviare nomina il tuo gruppo e quello del destinatario; il caveau verifica la tua chiave sotto cifratura, prende l'importo dalla tasca che apre e lo aggiunge a quella il cui numero corrisponde, sempre sotto cifratura. Niente di pubblico dice chi ha pagato chi, né quanto. Una chiave sbagliata o un saldo insufficiente non spostano nulla, senza errore. Non serve alcuna decifratura: una sola transazione, che non aspetta nessuno."
     },
     {
      "id": "vault-pockets-3",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Ritirare invia i token, ancora confidenziali (i cUSDC restano cUSDC), verso qualsiasi indirizzo, con l'importo ancora cifrato. L'indirizzo si vede: scegline uno nuovo e niente lo collega a te.\nCon le scatole del caveau: un venditore può offrire in privato una scatola alla tua tasca scrivendo il tuo codice. Leggi il prezzo, poi compri con la tua tasca: prima una verifica sotto cifratura che in pubblico dice solo sì o no (così uno sconosciuto non può bruciare la vendita con una chiave sbagliata), poi l'acquisto. La scatola resta poi nel caveau per uno sportello che tutte le tasche condividono, con la tua chiave: ritira l'NFT, mettilo in vendita, accetta un'offerta o delegalo, come per qualsiasi scatola. Da lì non si può più regalare né rivendere in privato. Dopo una vendita privata, «Nella mia tasca» mette il prezzo, meno la commissione, nella tua tasca."
+     "text": "Ritirare invia i token, ancora confidenziali (i cUSDC restano cUSDC), verso qualsiasi indirizzo, con l'importo ancora cifrato. L'indirizzo si vede. Lascia l'indirizzo vuoto e la pagina estrae al suo posto un indirizzo stealth per te: un indirizzo nuovo che niente collega a nessuno, che solo la tua pagina ritrova e spende (vedi Indirizzi nuovi più sotto)."
     },
     {
      "id": "vault-pockets-4",
      "section": "vault-pockets",
      "heading": null,
-     "text": "Limiti: un gruppo è pubblico, quindi una tasca si nasconde al massimo tra le cinque del suo gruppo, e un deposito lega il tuo wallet al gruppo (non a una tasca): meno wallet alimentano un gruppo, più scarsa è la sua copertura, e un gruppo che si sta ancora riempiendo nasconde tra meno. Le tasche non hanno commissioni proprie. Non sono verificate da un audit."
+     "text": "Con le scatole del caveau: un venditore può offrire in privato una scatola alla tua tasca scrivendo il tuo codice. Leggi il prezzo, poi compri con la tua tasca: prima una verifica sotto cifratura che in pubblico dice solo sì o no (così uno sconosciuto non può bruciare la vendita con una chiave sbagliata), poi l'acquisto. La scatola resta poi nel caveau per uno sportello che tutte le tasche condividono, con la tua chiave: ritira l'NFT, mettilo in vendita, accetta un'offerta o delegalo, come per qualsiasi scatola. Da lì non si può più regalare né rivendere in privato. Dopo una vendita privata, «Nella mia tasca» mette il prezzo, meno la commissione, nella tua tasca."
     },
     {
      "id": "vault-pockets-5",
      "section": "vault-pockets",
      "heading": null,
+     "text": "Limiti: un gruppo è pubblico, quindi una tasca si nasconde al massimo tra il suo gruppo (dieci sulle tasche di oggi, cinque sulle precedenti; la dimensione è fissata al deploy delle tasche, e misurata fino a dodici), e un deposito lega l'indirizzo che l'ha alimentato al gruppo (non a una tasca): meno indirizzi alimentano un gruppo, più scarsa è la sua copertura, e un gruppo che si sta ancora riempiendo nasconde tra meno. Le tasche non hanno commissioni proprie. Non sono verificate da un audit."
+    },
+    {
+     "id": "vault-pockets-6",
+     "section": "vault-pockets",
+     "heading": null,
      "text": "Quattro token vanno nelle tasche: cUSDC, cUSDT, cWETH e cZAMA, le versioni confidenziali di Zama di USDC, USDT, WETH e ZAMA. Ognuno ha le sue tasche: scegli il token sopra la tua tasca, il suo logo appare sul sacchetto e su ogni azione. La stessa firma apre la tua tasca di ogni token, ognuna con il suo codice e il suo indirizzo di lettura, quindi niente on-chain le collega. Quale token muove un'azione è pubblico, e una tasca si nasconde solo tra le tasche del suo token. Le scatole si vendono in privato in cUSDC, quindi solo la tasca cUSDC le compra. Su Sepolia, la pagina conia USDT, WETH e ZAMA di prova (i token di prova di Zama, non il WETH delle offerte) e li converte per te."
+    },
+    {
+     "id": "vault-pockets-7",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Indirizzi nuovi, in uscita: un ritiro mostra l'indirizzo che paga, quindi pagare il tuo stesso wallet collega a lui il gruppo della tasca. La pagina custodisce per te un meta-indirizzo stealth (ERC-5564, due chiavi ricavate dalla stessa firma della tua tasca): lascia vuoto l'indirizzo del ritiro e lei estrae un indirizzo nuovo che solo tu puoi spendere, lo paga, e lo fa annunciare dal relayer (l'annuncio pubblico porta un'etichetta di un byte e una chiave usa e getta; solo la tua pagina riconosce i propri). Per pagare qualcun altro allo stesso modo, scrivi il suo meta-indirizzo, o l'indirizzo del suo wallet una volta che l'ha pubblicato nel registro pubblico (una transazione, che collega il meta-indirizzo al wallet, mai gli indirizzi pagati). «Ricevuto su indirizzi nuovi» elenca cosa è arrivato sui tuoi, letto con le loro chiavi. Ogni indirizzo nuovo agisce per sé: dagli un po' di ETH (il relayer ne invia una volta, a un indirizzo pagato da una tasca) e «Nella mia tasca» gli fa mettere ciò che possiede nella tua tasca, un deposito che nomina l'indirizzo nuovo e mai il tuo wallet. Qualsiasi altro indirizzo scritto viene pagato alla luce del sole, come prima."
+    },
+    {
+     "id": "vault-pockets-8",
+     "section": "vault-pockets",
+     "heading": null,
+     "text": "Indirizzi nuovi, in entrata: un deposito dal tuo wallet collega il tuo wallet al gruppo della tua tasca. L'indirizzo d'ingresso spezza quel legame: la pagina deriva un indirizzo nuovo dalla tua firma (il primo mai usato) e lo mostra; inviagli USDC da un posto che non sia il tuo wallet (un pool di privacy come Privacy Pools, un exchange, un amico), con un po' di ETH o il gas del relayer (rifornisce una volta un indirizzo che possiede USDC), e «Nella mia tasca» li converte e li deposita come quell'indirizzo. Niente on-chain dice che l'indirizzo è tuo. Cosa si vede ancora: l'importo convertito (USDC in cUSDC è pubblico), e il momento, quindi importi tondi e una pausa dopo il ritiro dal pool nascondono meglio. Una volta usato, l'indirizzo d'ingresso viene ritirato e la pagina mostra il successivo."
+    },
+    {
+     "id": "vault-savings-0",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "I risparmi mettono una parte della tua tasca cUSDC al lavoro in uno dei vault confidenziali di Zama su Morpho (Steakhouse USDC Prime, un vault di prestito), tramite un contratto dei risparmi accanto alle tasche. Dove è distribuito, una scheda “Risparmi” appare sotto la tua tasca cUSDC, e in nessun altro posto: le tasche degli altri token non ce l'hanno. Ciò che metti da parte guadagna il rendimento di quel vault, e torna nella tua tasca quando lo chiedi."
+    },
+    {
+     "id": "vault-savings-1",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Una messa da parte viaggia in quattro passi. Lascia subito la tua tasca, come un invio: l'azione nomina il tuo gruppo, il vault controlla la tua chiave sotto cifratura e prende l'importo dalla tasca che apre. I cUSDC aspettano poi nella finestra aperta, tenuti dal contratto dei risparmi. Il relayer unisce la finestra al prossimo lotto di Zama; il batcher di Zama porta il totale del lotto a Morpho e riporta quote del vault, anch'esse confidenziali. Regolato il lotto, la finestra consegna a ogni tasca le sue quote in proporzione, sotto cifratura: i tuoi risparmi appaiono allora come quote, che valgono il loro prezzo pubblico nel vault, e quel prezzo sale con il rendimento."
+    },
+    {
+     "id": "vault-savings-2",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Una messa da parte richiede quindi tempo. Una finestra entra in un lotto quando si forma il prossimo (circa uno all'ora su Sepolia), e il lotto parte quando è abbastanza vecchio: la scheda dice quanto, in minuti o ore. Fino ad allora la pagina elenca cosa è in viaggio: aspetta il prossimo lotto, in un lotto, o in consegna una volta regolato. Un lotto che Zama annulla restituisce i cUSDC alle tasche allo stesso modo. Nel frattempo l'importo non è né nella tua tasca né nei tuoi risparmi.\nRiprendere va allo stesso modo, al contrario. Chiedi un importo in cUSDC; la pagina lo converte in quote al prezzo di oggi (o «Tutto», che chiede le tue quote esatte), le quote partono subito e aspettano nella finestra di ripresa, che entra nel prossimo lotto di rimborsi. Regolato, i cUSDC arrivano nel saldo della tua tasca. Il tasso del lotto decide cosa torna esattamente; il prezzo di oggi è una stima."
+    },
+    {
+     "id": "vault-savings-3",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "I risparmi sono messi da parte, non spendibili. Una vendita privata si paga con il saldo della tasca, mai con i suoi risparmi: per comprare una scatola con denaro messo da parte, riprendilo prima, aspetta il lotto, poi compra. Pianifica un acquisto intorno al lotto."
+    },
+    {
+     "id": "vault-savings-4",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Niente di pubblico dice quale tasca ha risparmiato, né quanto. Il batcher di Zama vede un solo partecipante, il contratto dei risparmi, con un solo totale cifrato per la finestra: è così che il lotto tiene ogni tasca fuori dalla vista. La catena mostra ciò che mostra un invio, il gruppo nominato, più la finestra in cui è andata una messa da parte e quando la finestra è entrata in un lotto, e una volta regolato il totale e il tasso decifrati del lotto. Quel totale limita ciò che tutte le tasche della finestra hanno risparmiato insieme, mai la parte di una tasca. Due riserve: quando nessun altro partecipante è nel lotto di Zama, il totale del lotto è esattamente la somma delle messe da parte della finestra; e quando un solo gruppo ha risparmiato in quella finestra, è la somma delle messe da parte di quel gruppo. Più tasche risparmiano nella stessa finestra, meglio ognuna si nasconde."
+    },
+    {
+     "id": "vault-savings-5",
+     "section": "vault-savings",
+     "heading": null,
+     "text": "Il rendimento è quello del vault di Morpho, e così il rischio: ciò che metti da parte è prestato tramite quel vault, con il suo curatore e i suoi contratti, e una perdita lì è una perdita solo sui tuoi risparmi. I cUSDC che lasci nella tasca non sono esposti: non lasciano mai il contratto delle tasche. I risparmi non sono verificati da un audit."
     },
     {
      "id": "vault-give-0",
@@ -1459,19 +1707,19 @@
      "id": "vault-leaks-1",
      "section": "vault-leaks",
      "heading": "Pubblico",
-     "text": "Quale token muove ogni azione di tasca (cUSDC, cUSDT, cWETH o cZAMA): ognuno ha le sue tasche"
+     "text": "Quale token muove ogni azione di tasca (cUSDC, cUSDT, cWETH o cZAMA): ognuno ha le sue tasche\nLa finestra di una messa da parte o di una ripresa, quando è entrata in un lotto di Zama, il gruppo che nomina, e il totale e il tasso decifrati del lotto, per tutte le tasche insieme\nUn indirizzo stealth pagato da una tasca (come l'indirizzo di ogni ritiro) e il suo annuncio sull'annunciatore di ERC-5564, inviato dal relayer; un meta-indirizzo pubblicato e il wallet che l'ha pubblicato; l'indirizzo d'ingresso che ha alimentato un gruppo, e l'importo che ha convertito da USDC normale"
     },
     {
      "id": "vault-leaks-2",
      "section": "vault-leaks",
      "heading": "Mai pubblico",
-     "text": "Chi detiene una scatola\nLa chiave della scatola\nIl prezzo di una vendita privata, e se è andata in porto\nSe un trasferimento ha spostato qualcosa\nChi ha chiesto un annuncio, un ritiro, un incasso, un'offerta accettata o un delegato, quando lo invia il relayer\nIl saldo di una tasca, gli importi che sposta, quale tasca di un gruppo si è mossa, e chi possiede una tasca\nIn pratica: tira fuori NFT ed ETH verso un indirizzo senza storia, nomina un wallet nuovo come delegato, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio)."
+     "text": "Chi detiene una scatola\nLa chiave della scatola\nIl prezzo di una vendita privata, e se è andata in porto\nSe un trasferimento ha spostato qualcosa\nChi ha chiesto un annuncio, un ritiro, un incasso, un'offerta accettata o un delegato, quando lo invia il relayer\nIl saldo di una tasca, gli importi che sposta, quale tasca di un gruppo si è mossa, e chi possiede una tasca\nQuale tasca ha risparmiato o ripreso, quanto, e quanto valgono i risparmi di ogni tasca\nDi chi è un indirizzo stealth o un indirizzo d'ingresso: la pagina di quale wallet ne custodisce la chiave\nIn pratica: tira fuori NFT ed ETH verso un indirizzo senza storia, nomina un wallet nuovo come delegato, lascia che il relayer invii le tue richieste, e sappi che i tempi possono ancora dare indizi (un «Prendi la chiave» subito dopo un trasferimento verso lo stesso indirizzo, per esempio)."
     },
     {
      "id": "vault-testnet-0",
      "section": "vault-testnet",
      "heading": null,
-     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport, il conduit di OpenSea, il WETH con cui pagano le offerte e il registro di delegate.xyz. OpenSea ha chiuso le sue testnet: lì un annuncio non compare su nessun marketplace, si compra dalla pagina. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xb707…5abC\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nGli annunci (scritti come OpenSea li mostra) 0x6b9C…8Fa6\nLa bacheca delle offerte 0xADaE…FE59\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0x3c92…4395\nLo sportello che compra dalle tasche 0x37e9…0430\nLe tasche cUSDT 0x56ea…7aAe\nLe tasche cWETH 0x4e8A…1350\nLe tasche cZAMA 0x6D15…ceE2"
+     "text": "Il caveau gira su Sepolia, la rete di prova di Ethereum, con il vero Seaport, il conduit di OpenSea, il WETH con cui pagano le offerte e il registro di delegate.xyz. OpenSea ha chiuso le sue testnet: lì un annuncio non compare su nessun marketplace, si compra dalla pagina. La sua commissione è del 2,5%. La collezione di prova si conia gratis dalla pagina del caveau; niente qui vale denaro.\nIl caveau sigillato 0xb707…5abC\nLa collezione di prova gratuita 0xf72E…6f9b\nSeaport 0x0000…B395\nGli annunci (scritti come OpenSea li mostra) 0x6b9C…8Fa6\nLa bacheca delle offerte 0xADaE…FE59\nWETH, in cui pagano le offerte 0x7b79…E7f9\nIl registro di delegate.xyz 0x0000…d493\nLe tasche 0x73F0…794C\nLo sportello che compra dalle tasche 0x3BA5…4Aa3\nI risparmi (il cUSDC di una tasca nel vault di Zama su Morpho) 0xE84c…A670\nLe tasche cUSDT 0xB586…c35D\nLe tasche cWETH 0x731E…FAb5\nLe tasche cZAMA 0x0cf7…Cf9a"
     },
     {
      "id": "vault-more-0",

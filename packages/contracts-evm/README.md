@@ -174,22 +174,50 @@ Hardhat project built on the official Zama template. Its contracts, and a reusab
   WETH fee) fill this way unchanged: `dno:opensea-replay` replays a real mainnet fill the
   vault's way (below). 8,909 bytes.
 - **`SealedPockets`** — the vault's pockets: cUSDC held under encrypted 256-bit keys rather than
-  addresses (constructor `(cUsdc, owner)`). `open(key, proof, viewer)`; `deposit(pockets[],
+  addresses (constructor `(cUsdc, owner, maxSet)`, `maxSet` a group's size, 2 to 12, fixed for
+  good: `POCKETS_MAX_SET` at deploy, 10 by default and on the live pockets, 5 on the earlier ones). `open(key, proof, viewer)`; `deposit(pockets[],
   target, amount, proof)` pulls the caller's cUSDC into the pocket of the set whose number is the
   encrypted target (the rest refunded); `send(from[], to[], input)` and `withdraw(from[], to,
   input)` take a `SpendInput` (amount and target under one proof, the key XOR `spendHash(...)`
   under another) and move `select(key matches and balance covers, amount, 0)`, with no
-  decryption. Sets of 1 to 5 pockets, increasing; a bound key's handle is `spent` once. `desk`
-  (set once by the owner) may `deskCheck`, `deskTake` and `deskGive`. The same contract also
+  decryption. Sets of 1 to `MAX_SET` pockets, increasing; a bound key's handle is `spent` once. `desk`
+  and `savings` (each set once by the owner) may `deskCheck`, `deskTake` and `deskGive`. The same contract also
   holds Zama's other confidential tokens, one instance each and no desk (`SealedPockets_cUSDT`,
-  `_cWETH`, `_cZAMA` on Sepolia, from `lib/pocketTokens.ts`). See
-  [`docs/VAULT.md`](../../docs/VAULT.md#pockets).
+  `_cWETH`, `_cZAMA` on Sepolia, from `lib/pocketTokens.ts`). The pockets' doors (stealth exits
+  and entry addresses) use ERC-5564's announcer and ERC-6538's registry as deployed for everyone
+  (`vault/IStealth.sol`, `lib/stealth.ts`; `mocks/TestStealth.sol` stands in on a local network):
+  no contract of ours. See [`docs/VAULT.md`](../../docs/VAULT.md#pockets).
 - **`PocketDesk`** (`contracts/vault/`) — buys the vault's private sales out of pockets
   (constructor `(pockets, vault)`; it makes the vault its cUSDC operator). The seller offers a
   box to the desk and `reserve(saleId, pocket)`s it; the buyer `ask`s (the key and the balance
   checked under encryption, one bit made public), then `buy(askId, cleartexts, proof, boxKey,
   boxKeyProof)`: the price taken from the pocket, `acceptSale` on the vault, any refund handed
   back. Holds the boxes it bought (`ownerOf(box)`, encrypted pocket + 1), never sells.
+- **`PocketSavings`** (`contracts/vault/`) — the pockets' savings: a pocket's cUSDC put to work
+  in one of Zama's confidential vaults on Morpho and brought back (constructor `(pockets,
+  depositBatcher, redeemBatcher)`; it checks the route, cUSDC to the vault's `cShare` and back,
+  and makes each batcher its operator). `save(from[], input)` and `unsave(from[], input)` take a
+  `SpendInput` (the amount under one proof, the key XOR `saveHash(side, from, amount handle)`
+  under another) and commit, to the open window of their side, `deskTake`'s result from each
+  pocket of the set (a save) or the shares the key's pocket covers (an unsave): zero for the
+  decoys, a wrong key or a short balance. `join(side)` sends the window's encrypted total to the
+  batcher's current batch as one participant, once per batch, and opens the next window;
+  `settle(windowId)` claims a `Finalized` batch (the rate kept) or recovers a `Canceled` one;
+  `settlePockets(windowId, ids[])` gives each pocket `committed × rate / 1e6` (on 128 bits) as
+  shares (`sharesOf`, readable by the pocket's viewer) or as cUSDC back in the pocket through
+  `deskGive`, or its commitment back when canceled. All three are open to anyone (the API's
+  keeper sends them). No decryption of ours; shares never leave the contract. 10,773 bytes. See
+  [`docs/VAULT.md`](../../docs/VAULT.md#savings).
+- **`IVaultBatcher`** (`contracts/vault/`) — the slice of Zama's `DepositVaultBatcherConfidential`
+  / `RedeemVaultBatcherConfidential` (OpenZeppelin's `BatcherConfidential`) the savings call:
+  `join`, `claim`, `recover`, `currentBatchId`, `batchState`, `exchangeRate`, `fromToken`,
+  `toToken`, `vault`, `minBatchAge`, `paused`.
+- **`TestVaultBatcher`**, **`TestConfidentialShare`**, **`TestYieldVault`** (`contracts/mocks/`)
+  — local networks only: one of Zama's batchers with its lifecycle (`join`, `dispatchBatch`, the
+  decrypted total's `dispatchBatchCallback` checked with `FHE.checkSignatures`, `claim`,
+  `recover`, and a `cancel` that plays a refused batch), paying its claims from its own balance
+  at `nextRate`; the vault's confidential shares (`cShare`, 6 decimals, anyone mints); the public
+  face of an ERC-4626 vault (`convertToAssets`, `convertToShares`, `setPrice`).
 - **`VaultTestNFT`** (`contracts/mocks/`) — test networks only: an ERC-721 anyone mints for free,
   its picture an SVG drawn on-chain, to try the vault with. **`TestWETH`** (`contracts/mocks/`):
   local networks only, WETH as WETH9 does it.
@@ -222,6 +250,8 @@ The economy is specified in [`docs/CROQ.md`](../../docs/CROQ.md).
 | A pocket's balance, and what a spend moved | `euint64` in `SealedPockets` | The pocket's viewer |
 | A desk purchase's "ok" | `ebool` in `PocketDesk` | Everyone, once asked |
 | Which pocket holds a box the desk bought | `euint32` in `PocketDesk` | The viewers of the pockets that bought it |
+| What a pocket committed to a savings window, and its shares | `euint64`s in `PocketSavings` | The pocket's viewer |
+| A savings window's total | `euint64` in `PocketSavings` | Nobody; handed to Zama's batcher, which decrypts only the batch's total |
 
 ## Cost per function
 
@@ -264,7 +294,12 @@ number means in dollars, is in [`docs/HIDDEN_OWNERS.md`](../../docs/HIDDEN_OWNER
 | `SealedPockets.deposit` (set of 1 / 3 / 5) | ~835k / ~1.03M / ~1.24M | ~1.63M / ~2.56M / ~3.48M |
 | `SealedPockets.send` (1 / 3 / 5 pockets a side) | ~541k / ~1.08M / ~1.61M | ~1.32M / ~3.92M / ~6.52M (depth ~1.97M) |
 | `SealedPockets.withdraw` (set of 1 / 3 / 5) | ~696k / ~970k / ~1.27M | ~1.36M / ~2.82M / ~4.29M |
+| `SealedPockets.deposit` / `send` / `withdraw`, full groups of 10 | ~1.78M / ~2.96M / ~2.01M | ~5.78M / ~13.0M (depth ~3.67M) / ~7.96M; groups of 12: ~6.70M / ~15.6M (depth ~4.37M) / ~9.42M |
 | `PocketDesk.ask` / `buy` | ~432k / ~2.68M | ~0.37M / ~6.28M (depth ~3.28M) |
+| `PocketSavings.save` (set of 1 / 3 / 5) | ~855k / ~1.81M / ~2.76M | ~1.33M / ~4.25M / ~7.16M (depth ~0.64M / ~1.07M / ~1.51M) |
+| `PocketSavings.join` / `settle` | ~547k / ~454k | ~0.59M / ~2.51M (depth ~0.37M / ~2.29M) |
+| `PocketSavings.settlePockets` (1 / 3 pockets) | ~197k / ~478k | ~2.08M / ~6.25M (depth ~2.08M) |
+| `PocketSavings.unsave` (set of 1 / 3 / 5) | ~573k / ~1.08M / ~1.56M | ~0.92M / ~3.02M / ~5.11M (depth ~0.46M / ~0.94M / ~1.27M) |
 | `SealedVault.confidentialTransfer` (with a new random key) | ~209k to ~266k | ~338k |
 | `SealedVault.setKey` | ~185k | ~225k |
 | `SealedVault.offerSale` | ~304k | ~150k |
@@ -280,13 +315,16 @@ test/SealedVault.ts`, HCU from `fhevm.computeTransactionHCU` on the same calls, 
 1.5's, Seaport 1.6's (with OpenSea's conduit) and delegate.xyz's bytecode; the HCU did not
 change with `VaultListings`. A buyer's Seaport `fulfillOrder` of an open vault listing on 1.5
 takes ~97k gas; the vault ~5.18M to deploy (~5.5M before `VaultListings`), `VaultListings`
-~1.45M, `VaultOffers` ~1.9M.
+~1.45M, `VaultOffers` ~1.9M. The `SealedPockets` and `PocketDesk` rows come from `REPORT_COSTS=1
+pnpm test test/SealedPockets.ts`, the `PocketSavings` ones from `REPORT_COSTS=1 pnpm test
+test/PocketSavings.ts` (against the test batchers).
 
 Deployed size: `DoNotOpen` 24,442 bytes (limit 24,576; the token URIs live in `BoxMetadata`, 1,861, and the rules' views in `DoNotOpenConfig`, 2,968), `WhitelistGifts` 4,876, `Rats` 12,191 (with the encrypted powers), `RatTricks` 8,265, `Pantry` about 14,000, `FleaMarket`
 12,377, `SealedVault` 23,795 (781 under the limit, at the default optimizer; 22,712 before it
 sent the offers' fills itself, 24,322 and 254 under before the listings' orders moved out: the
 next feature moves logic out first, as accepting offers did into `VaultOffers`, 8,909, and the
-listings into `VaultListings`, 6,388). To stay under
+listings into `VaultListings`, 6,388), `SealedPockets` 9,393 (with its second desk slot for the
+savings), `PocketSavings` 10,773. To stay under
 the limit, `DoNotOpen` alone is compiled with the optimizer at 1 run, for size (a per-file
 override in `hardhat.config.ts`; every other contract runs at 200), and `onlySealed` calls
 `_requireSealed` rather than inlining its check.
@@ -295,7 +333,7 @@ override in `hardhat.config.ts`; every other contract runs at 200), and `onlySea
 
 ```bash
 pnpm compile
-pnpm test                 # 344 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's, Seaport 1.6's with OpenSea's conduit, and delegate.xyz's bytecode) and its pockets
+pnpm test                 # 361 tests on the local FHEVM mock: the standard, the boxes, the Pantry, the ramp, the credits, the studio packs, the rats, the locker, the flea market, the sealed vault (against Seaport 1.5's, Seaport 1.6's with OpenSea's conduit, and delegate.xyz's bytecode), its pockets and their savings (against test batchers that play Zama's)
 
 # Local walkthrough
 pnpm chain                # terminal 1
@@ -413,13 +451,24 @@ version Seaport's `information()` reports; its fresh addresses are the kept test
 "ciphertext not ready"; the whole run (offer and delegation included) passes on a local node.
 
 `deploy/pockets.ts` (tag `Pockets`, after `Vault`) deploys `SealedPockets` on the vault's cUSDC
-and `PocketDesk`, sets the desk and hands the pockets to `COLLECTION_OWNER`; then one more
+and `PocketDesk`, sets the desk, then `PocketSavings` and sets it (`setSavings`, once, as the
+desk), and hands the pockets to `COLLECTION_OWNER`; then one more
 `SealedPockets` per token of `lib/pocketTokens.ts` on that network (cUSDT, cWETH, cZAMA on
 Sepolia: Zama's ERC-7984 wrappers from its Confidential Token Wrappers Registry), deployed as
-`SealedPockets_<symbol>`, without a desk. It runs the vault's script first: check its constructor
+`SealedPockets_<symbol>`, without a desk or savings. The savings take Zama's batchers from
+`SAVINGS_BATCHERS` in `lib/savings.ts` (Steakhouse USDC Prime's deposit and redeem batchers on
+Sepolia and mainnet; the pockets' cUSDC must be the batcher's `fromToken`, Zama's `cAsset`, or
+the constructor reverts `WrongRoute`); where the network has none, the script stands up
+`TestYieldVault`, `TestConfidentialShare`, `TestVaultBatcher_deposit` and `TestVaultBatcher_redeem`
+(`TEST_DEPOSIT_RATE` 0.98 share per USDC, `TEST_REDEEM_RATE` 1.02 USDC per share,
+`TEST_SHARE_PRICE`) and funds the batchers to pay their claims (shares to the deposit one, cUSDC
+to the redeem one). A pockets contract takes its savings once, so new savings need new pockets.
+It runs the vault's script first: check its constructor
 arguments (`STUDIO_TREASURY`, `COLLECTION_OWNER`) match the live ones, or `SealedVault` is
 redeployed. `dno:export` writes the cUSDC pockets under `vault.pockets` (with `token`: the
-confidential token, its ERC-20, decimals and rate, read from the chain) and the others under
+confidential token, its ERC-20, decimals and rate, read from the chain, and `savings`: the
+savings' address, ABI and deploy block, the two batchers, the Morpho vault and its `minBatchAge`,
+and the `share` as a token entry, all read from the chain; null until deployed) and the others under
 `vault.otherPockets` (address, deploy block, token; they share the cUSDC pockets' ABI).
 
 `deploy/tricks.ts` (tag `Tricks`) deploys `RatTricks` with the paid shake's fee, the spec's
@@ -463,7 +512,10 @@ node publish/publish.mjs --dry-run --only vault
 ```
 
 A new contract, test or deploy script reaches GitLab only once its manifest lists it (the game's
-takes `contracts/*.sol`, `test/*.ts` and `deploy/*.ts` but the vault's files).
+takes `contracts/*.sol`, `test/*.ts` and `deploy/*.ts` but the vault's files). The vault's lists
+`contracts/vault/**` (so `PocketSavings` and `IVaultBatcher` go with it), the savings' three
+mocks, `test/PocketSavings.ts`, `lib/savings.ts` and the `PocketSavings` and test batcher
+deployments.
 
 ## Two-step public decryption
 

@@ -63,6 +63,8 @@ import { VaultRelay } from "./application/vaultRelay";
 import { VaultMarket } from "./application/vaultMarket";
 import { OPENSEA_CHAINS, OpenSeaOffers } from "@dno/chain-adapter/opensea";
 import { EthersVaultSender } from "./infrastructure/vault/EthersVaultSender";
+import { EthersSavingsChain } from "./infrastructure/vault/EthersSavingsChain";
+import { SavingsKeeper } from "./application/savingsKeeper";
 import { ServiceFileFetcher } from "./infrastructure/rats/ServiceFileFetcher";
 
 /** The composition root: the one place that knows every concrete class. */
@@ -98,7 +100,12 @@ async function main() {
   // Gemini, on its free tier: answers the manual's chat and words the herald's daily lesson.
   const model = config.GEMINI_API_KEY ? new GeminiModel({ apiKey: config.GEMINI_API_KEY, models: config.GEMINI_MODELS, timeoutMs: config.GEMINI_TIMEOUT_MS, log }) : null;
 
+  const clock = { now: () => Math.floor(Date.now() / 1000) };
+  // The vault's relayer and the savings' keeper send from one wallet, through the first RPC endpoint.
+  const relayerProvider = () => new JsonRpcProvider(config.RPC_URLS[0], deployment.chainId, { staticNetwork: true });
+
   let indexer: Indexer | undefined;
+  let savingsKeeper: SavingsKeeper | undefined;
   let stopListening: (() => Promise<void>) | undefined;
   if (config.ROLE !== "api") {
     const source = new EvmChainSource(rpc, deployment, log);
@@ -122,6 +129,14 @@ async function main() {
       const archiver = new ArchiveImages(store, store, storage, config.ARCHIVE_PER_PASS, log);
       tasks.push({ name: "archiveImages", everyMs: config.ARCHIVE_EVERY_MS, run: () => archiver.run() });
     } else log.info("ARWEAVE_KEY is not set: token images are served by the API only");
+    // The pockets' savings: their windows join Zama's batches and settle from the relayer's wallet.
+    const savings = deployment.vault?.pockets?.savings;
+    if (savings && config.VAULT_RELAYER_KEY) {
+      const chain = new EthersSavingsChain(config.VAULT_RELAYER_KEY, savings, relayerProvider());
+      savingsKeeper = new SavingsKeeper(chain, clock, { joinMarginS: config.SAVINGS_JOIN_MARGIN }, log);
+      tasks.push({ name: "savingsKeeper", everyMs: config.SAVINGS_KEEPER_INTERVAL * 1000, run: () => savingsKeeper!.tick() });
+      log.info({ savings: savings.address, keeper: chain.address, everyS: config.SAVINGS_KEEPER_INTERVAL, joinMarginS: config.SAVINGS_JOIN_MARGIN }, "the savings keeper joins and settles the pockets' savings");
+    } else if (savings) log.info("VAULT_RELAYER_KEY is not set: the pockets' savings wait for another keeper to join and settle their windows");
     indexer = new Indexer(sync, { pollMs: config.POLL_INTERVAL_MS, minGapMs: config.MIN_PASS_GAP_MS, maxBackoffMs: 5 * 60_000 }, log, undefined, undefined, tasks);
     indexer.start();
     // API replicas (ROLE=api) nudge it over Postgres after a transaction is mined.
@@ -136,7 +151,6 @@ async function main() {
   if (!config.SESSION_SECRET) log.warn("SESSION_SECRET is not set: sessions end when the process restarts");
   const signIn = new SignIn(store, ethersVerifier, new HmacSessions(secret), { now: () => Math.floor(Date.now() / 1000) }, config.SIGN_IN_DOMAIN, randomNonce);
 
-  const clock = { now: () => Math.floor(Date.now() / 1000) };
   const relayer = new RelayerGate(
     store,
     new HttpRelayerUpstream(config.RELAYER_URL ?? deployment.fhevm.relayerUrl, config.RELAYER_API_KEY, config.RELAYER_TIMEOUT_MS),
@@ -269,13 +283,21 @@ async function main() {
       ? new VaultRelay(new EthersVaultSender(
             config.VAULT_RELAYER_KEY,
             deployment.vault.address,
-            new JsonRpcProvider(config.RPC_URLS[0], deployment.chainId, { staticNetwork: true }),
+            relayerProvider(),
             deployment.vault.pockets
-              ? { address: deployment.vault.pockets.address, desk: deployment.vault.pockets.desk?.address ?? null, others: (deployment.vault.otherPockets ?? []).map((p) => p.address) }
+              ? {
+                  address: deployment.vault.pockets.address,
+                  desk: deployment.vault.pockets.desk?.address ?? null,
+                  savings: deployment.vault.pockets.savings?.address ?? null,
+                  others: (deployment.vault.otherPockets ?? []).map((p) => p.address),
+                  announcer: deployment.vault.stealth?.announcer ?? null,
+                  underlying: deployment.vault.pockets.token?.underlying.address ?? null,
+                }
               : null,
+            { wei: config.POCKET_FUEL_WEI, minPlain: BigInt(config.POCKET_FUEL_MIN_USDC) * 1_000_000n },
           ), clock, config.VAULT_RELAY_PER_DAY)
       : undefined;
-  if (vaultRelay) log.info({ address: vaultRelay.address }, "the vault relayer sends holders' requests");
+  if (vaultRelay) log.info({ address: vaultRelay.address, fuelWei: vaultRelay.fuel?.toString() ?? null }, "the vault relayer sends holders' requests");
 
   // The marketplace's offers for the vault's page: OpenSea's, where OpenSea is (mainnet; it closed its testnets).
   const openSeaChain = OPENSEA_CHAINS[config.NETWORK];
@@ -308,6 +330,7 @@ async function main() {
       vault: store,
     }),
     ...(vaultRelay && { vaultRelay }),
+    ...(savingsKeeper && { savingsKeeper }),
     indexer,
     rpcStatus: () => rpc.status(),
     info: { chain: config.NETWORK, collection: deployment.collection.address, version: config.API_IMAGE?.split(":").pop() ?? "dev", role: config.ROLE },

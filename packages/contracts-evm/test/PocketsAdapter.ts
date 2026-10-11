@@ -5,7 +5,7 @@ import { Contract, hexlify, type InterfaceAbi, type Signer, type Wallet } from "
 import { ethers, fhevm } from "hardhat";
 import { EvmPockets, type EvmPocketsTools } from "../../chain-adapter/src/evm/EvmPockets";
 import type { VaultBox } from "../../chain-adapter/src/vault";
-import { PocketDesk, SealedPockets, SealedVault, TestConfidentialUSDC, TestERC721, TestUSDC } from "../types";
+import { PocketDesk, PocketSavings, SealedPockets, SealedVault, TestConfidentialShare, TestConfidentialUSDC, TestERC721, TestStealthAnnouncer, TestStealthRegistry, TestUSDC, TestVaultBatcher, TestYieldVault } from "../types";
 import { confidentialUsdcOf, usd } from "./helpers";
 import { deployOpenListings, installDelegateRegistry, installSeaport } from "./seaport";
 
@@ -28,8 +28,17 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
   let cUsdc: TestConfidentialUSDC;
   let pockets: SealedPockets;
   let desk: PocketDesk;
+  let savings: PocketSavings;
+  let share: TestConfidentialShare;
+  let depositBatcher: TestVaultBatcher;
+  let redeemBatcher: TestVaultBatcher;
   let vault: SealedVault;
   let nft: TestERC721;
+  let usdc: TestUSDC;
+  let announcer: TestStealthAnnouncer;
+  let stealthRegistry: TestStealthRegistry;
+  /** What the relay gives a side address as its first gas. */
+  const FUEL = ethers.parseEther("0.01");
 
   const deployed = (c: { target: unknown; interface: { formatJson(): string } }) => ({ address: String(c.target), abi: JSON.parse(c.interface.formatJson()) as InterfaceAbi });
 
@@ -39,7 +48,7 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     const userDecrypt = async (signer: Signer, handles: string[], contractAddress: string) => {
       const account = await signer.getAddress();
       let p = permits.get(account);
-      const contracts = [String(pockets.target), String(desk.target), String(vault.target), String(cUsdc.target), ...extraPermit];
+      const contracts = [String(pockets.target), String(desk.target), String(savings.target), String(vault.target), String(cUsdc.target), ...extraPermit];
       if (!p) {
         const keypair = fhevm.generateKeypair();
         // The mock checks the permit against the wall clock, which the chain may run ahead of.
@@ -63,13 +72,18 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     // The API's relayer, as `EthersVaultSender` sends: the same calls, from its own wallet.
     const relay = {
       address: relaySigner.address,
+      fuel: FUEL,
       pockets: async (call: string, args: Record<string, unknown>) => {
         // Another token's pockets, when the call names them.
         const p = (args.pockets ? (pockets.attach(String(args.pockets)) as SealedPockets) : pockets).connect(relaySigner);
         const d = desk.connect(relaySigner);
+        const sv = savings.connect(relaySigner);
         const a = args as never as Record<string, never>;
         const input = a.input as never as Record<string, string>;
         const spend = input && { amount: input.amount, target: input.target, inputProof: input.inputProof, boundKey: input.boundKey, keyProof: input.keyProof };
+        const saving = input && { amount: input.amount, inputProof: input.inputProof, boundKey: input.boundKey, keyProof: input.keyProof };
+        if (call === "stealthAnnounce") return (await announcer.connect(relaySigner).announce(1, a.stealthAddress, a.ephemeralPubKey, a.metadata)).hash;
+        if (call === "fuel") return (await relaySigner.sendTransaction({ to: String(a.to), value: FUEL })).hash;
         const tx =
           call === "pocketOpen"
             ? await p.open(a.handle, a.inputProof, a.viewer)
@@ -77,9 +91,13 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
               ? await p.send(a.from, a.to, spend!)
               : call === "pocketWithdraw"
                 ? await p.withdraw(a.from, a.to, spend!)
-                : call === "deskAsk"
-                  ? await d.ask(a.saleId, a.handle, a.keyProof, a.boxKey)
-                  : await d.buy(a.askId, a.cleartexts, a.proof, a.boxKey, a.boxKeyProof);
+                : call === "pocketSave"
+                  ? await sv.save(a.from, saving!)
+                  : call === "pocketUnsave"
+                    ? await sv.unsave(a.from, saving!)
+                    : call === "deskAsk"
+                      ? await d.ask(a.saleId, a.handle, a.keyProof, a.boxKey)
+                      : await d.buy(a.askId, a.cleartexts, a.proof, a.boxKey, a.boxKeyProof);
         return tx.hash;
       },
     };
@@ -114,15 +132,24 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     };
   }
   let chainId: number;
+  let yieldVault: TestYieldVault;
   /** Contracts the test's permits also name: another token's pockets. */
   let extraPermit: string[] = [];
 
   /** One wallet's pockets adapter, as the page makes it. The box key is a fixed secret per NFT, as `keyFor` derives one. */
   function adapter(wallet: HardhatEthersSigner, relayed = true) {
+    const shareToken = { address: String(share.target), symbol: "ctyUSDC", name: "Confidential Test Yield USDC", decimals: 6, rate: String(10n ** 12n), underlying: { address: String(yieldVault.target), symbol: "tyUSDC", decimals: 18 } };
     return new EvmPockets(
-      { ...deployed(pockets), deployBlock: 0, desk: { ...deployed(desk), deployBlock: 0 } },
+      {
+        ...deployed(pockets),
+        deployBlock: 0,
+        token: { address: String(cUsdc.target), symbol: "cUSDC", name: "Confidential USDC", decimals: 6, rate: "1", underlying: { address: String(usdc.target), symbol: "USDC", decimals: 6 } },
+        desk: { ...deployed(desk), deployBlock: 0 },
+        savings: { ...deployed(savings), deployBlock: 0, depositBatcher: String(depositBatcher.target), redeemBatcher: String(redeemBatcher.target), vault: String(yieldVault.target), minBatchAge: 0, share: shareToken },
+      },
       {
         vault: deployed(vault),
+        stealth: { announcer: String(announcer.target), registry: String(stealthRegistry.target) },
         box: async (boxId) => {
           const b = await vault.boxInfo(boxId);
           return {
@@ -147,7 +174,9 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
   beforeEach(async function () {
     [deployer, alice, bob, relaySigner, fresh] = (await ethers.getSigners()) as HardhatEthersSigner[] as [HardhatEthersSigner, HardhatEthersSigner, HardhatEthersSigner, HardhatEthersSigner, HardhatEthersSigner];
     chainId = Number((await ethers.provider.getNetwork()).chainId);
-    const usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
+    usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
+    announcer = (await (await ethers.getContractFactory("TestStealthAnnouncer")).deploy()) as unknown as TestStealthAnnouncer;
+    stealthRegistry = (await (await ethers.getContractFactory("TestStealthRegistry")).deploy()) as unknown as TestStealthRegistry;
     cUsdc = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(await usdc.getAddress())) as unknown as TestConfidentialUSDC;
     const seaport = await installSeaport();
     const registry = await installDelegateRegistry();
@@ -157,9 +186,21 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     vault = (await (await ethers.getContractFactory("SealedVault")).deploy(
       await (await deployOpenListings(seaport)).getAddress(), await cUsdc.getAddress(), await offers.getAddress(), await registry.getAddress(), deployer.address, deployer.address, 250,
     )) as unknown as SealedVault;
-    pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address)) as unknown as SealedPockets;
+    pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address, 5)) as unknown as SealedPockets;
     desk = (await (await ethers.getContractFactory("PocketDesk")).deploy(await pockets.getAddress(), await vault.getAddress())) as unknown as PocketDesk;
     await (await pockets.setDesk(await desk.getAddress())).wait();
+    // The savings, on test batchers that pay their claims from their own balances (1 cUSDC gives 0.98 share, 1 share gives 1.02 cUSDC).
+    yieldVault = (await (await ethers.getContractFactory("TestYieldVault")).deploy(await usdc.getAddress(), 1_020_000n)) as unknown as TestYieldVault;
+    share = (await (await ethers.getContractFactory("TestConfidentialShare")).deploy(await yieldVault.getAddress())) as unknown as TestConfidentialShare;
+    const Batcher = await ethers.getContractFactory("TestVaultBatcher");
+    depositBatcher = (await Batcher.deploy(await yieldVault.getAddress(), await cUsdc.getAddress(), await share.getAddress(), 980_000n, 0)) as unknown as TestVaultBatcher;
+    redeemBatcher = (await Batcher.deploy(await yieldVault.getAddress(), await share.getAddress(), await cUsdc.getAddress(), 1_020_000n, 0)) as unknown as TestVaultBatcher;
+    savings = (await (await ethers.getContractFactory("PocketSavings")).deploy(await pockets.getAddress(), await depositBatcher.getAddress(), await redeemBatcher.getAddress())) as unknown as PocketSavings;
+    await (await pockets.setSavings(await savings.getAddress())).wait();
+    await (await share.mint(await depositBatcher.getAddress(), usd("100000"))).wait();
+    await (await usdc.mint(deployer.address, usd("100000"))).wait();
+    await (await usdc.approve(await cUsdc.getAddress(), usd("100000"))).wait();
+    await (await cUsdc.wrap(await redeemBatcher.getAddress(), usd("100000"))).wait();
     for (const who of [alice, bob]) {
       await (await usdc.mint(who.address, usd("100"))).wait();
       await (await usdc.connect(who).approve(await cUsdc.getAddress(), usd("100"))).wait();
@@ -200,6 +241,88 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     // A short balance moves nothing, and says nothing.
     await a.send(pb, usd("26"));
     expect(await a.balance()).to.eq(usd("25"));
+  });
+
+  it("takes cUSDC out to a stealth address of one's own, finds it in the inbox, fuels it and collects it back into the pocket", async function () {
+    const a = adapter(alice);
+    await a.open();
+    await a.deposit(usd("40"));
+    const doors = a.doors()!;
+    expect((await doors.info()).fuel).to.eq(FUEL);
+    expect(await doors.metaAddress()).to.match(/^st:eth:0x[0-9a-f]{132}$/);
+
+    const paid = await doors.withdrawStealth(usd("12"));
+    expect(await a.balance()).to.eq(usd("28"));
+    // The withdrawal and the announcement both went out from the relay, to an address that never was alice's.
+    const withdrawn = await pockets.queryFilter(pockets.filters.Withdrawn(undefined, paid));
+    expect(withdrawn).to.have.length(1);
+    expect((await withdrawn[0]!.getTransaction()).from).to.eq(relaySigner.address);
+    const announced = await announcer.queryFilter(announcer.filters.Announcement(1, paid));
+    expect(announced).to.have.length(1);
+    expect(announced[0]!.args.caller).to.eq(relaySigner.address);
+
+    // A fresh page (same signature) finds the payment in its inbox, with its balance read by the address's own key.
+    const again = adapter(alice).doors()!;
+    const inbox = await again.inbox();
+    expect(inbox.map((s) => [s.address, s.kind, s.sealed, s.gas, s.fueled])).to.deep.eq([[paid, "stealth", usd("12"), 0n, false]]);
+    // Bob's page sees nothing of it.
+    expect(await adapter(bob).doors()!.inbox()).to.deep.eq([]);
+
+    // Without gas the address cannot collect; the relay fuels it once.
+    let message = "";
+    await again.collect(paid).catch((e: Error) => (message = e.message));
+    expect(message).to.match(/no ETH/);
+    await again.fuel(paid);
+    expect((await again.inbox())[0]!.fueled).to.eq(true);
+    await again.collect(paid);
+    expect(await adapter(alice).balance()).to.eq(usd("40"));
+    expect(await again.inbox()).to.have.length(1);
+    expect((await again.inbox())[0]!.sealed).to.eq(0n);
+    // The deposit named the stealth address, never alice.
+    const fed = await pockets.queryFilter(pockets.filters.Deposited(paid));
+    expect(fed).to.have.length(1);
+  });
+
+  it("pays a stealth address of someone who published their meta-address, found by their wallet address", async function () {
+    const a = adapter(alice);
+    const b = adapter(bob);
+    await a.open();
+    await b.open();
+    await a.deposit(usd("20"));
+    expect(await b.doors()!.published()).to.eq(false);
+    expect(await a.doors()!.resolve(bob.address)).to.eq(null);
+    await b.doors()!.publish();
+    expect(await b.doors()!.published()).to.eq(true);
+    expect(await a.doors()!.resolve(bob.address)).to.eq(await b.doors()!.metaAddress());
+    expect(await a.doors()!.resolve("st:eth:0x" + "00".repeat(66))).to.eq(null);
+
+    const paid = await a.doors()!.withdrawStealth(usd("7"), bob.address);
+    const inbox = await b.doors()!.inbox();
+    expect(inbox.map((s) => [s.address, s.sealed])).to.deep.eq([[paid, usd("7")]]);
+    expect(await a.doors()!.inbox()).to.deep.eq([]);
+    let message = "";
+    await a.doors()!.withdrawStealth(usd("1"), fresh.address).catch((e: Error) => (message = e.message));
+    expect(message).to.match(/neither a stealth meta-address/);
+  });
+
+  it("feeds the pocket from an entry address funded from outside, in USDC, and moves on to the next one", async function () {
+    const a = adapter(alice);
+    await a.open();
+    const doors = a.doors()!;
+    const entry = await doors.entry();
+    expect(entry).to.include({ kind: "entry", index: 0, sealed: 0n, plain: 0n, gas: 0n, fueled: false });
+    // Money arrives from outside: plain USDC, as a privacy pool pays it; the relay fuels it as it holds USDC.
+    await (await usdc.mint(entry.address, usd("30"))).wait();
+    expect((await doors.entry()).plain).to.eq(usd("30"));
+    await doors.fuel(entry.address);
+    await doors.collect(entry.address);
+    expect(await a.balance()).to.eq(usd("30"));
+    expect(await usdc.balanceOf(entry.address)).to.eq(0n);
+    // The next entry is a new address: the used one sent its own transactions.
+    const next = await doors.entry();
+    expect(next.index).to.eq(1);
+    expect(next.address).to.not.eq(entry.address);
+    expect(await ethers.provider.getTransactionCount(entry.address)).to.be.greaterThan(0);
   });
 
   it("works from the wallet when there is no relayer", async function () {
@@ -261,11 +384,66 @@ describe("EvmPockets (the adapter, on the local FHEVM)", function () {
     expect((await vault.saleInfo(saleId)).status).to.eq(1n);
     expect(await buyer.balance()).to.eq(usd("5"));
   });
+  it("puts cUSDC aside through the relay, shows it pending, then as shares once the keeper's round settled, and brings it back", async function () {
+    const a = adapter(alice);
+    const b = adapter(bob);
+    const pa = await a.open();
+    await b.open();
+    await a.deposit(usd("50"));
+    const s = a.savings()!;
+    expect((await a.info()).savings).to.eq(String(savings.target));
+    expect(s.share.symbol).to.eq("ctyUSDC");
+    expect(await s.shares()).to.eq(0n);
+    expect(await s.pending()).to.deep.eq([]);
+
+    await s.save(usd("20"), { decoys: 2 });
+    expect(await a.balance()).to.eq(usd("30"));
+    expect(await s.pending()).to.deep.eq([{ windowId: 0, side: "save", state: "open", amount: usd("20") }]);
+    const saved = await savings.queryFilter(savings.filters.Saved());
+    expect((await saved[0]!.getTransaction()).from).to.eq(relaySigner.address);
+    expect((saved[0]!.args.from as bigint[]).length).to.eq(3);
+    // Bob's pocket was named as a decoy, or not: either way his page shows nothing pending of his.
+    expect(await b.savings()!.pending()).to.deep.eq([]);
+
+    // The keeper's round: join, Zama's batch, settle, settle the pockets.
+    const round = async (side: number, batcher: TestVaultBatcher) => {
+      const windowId = await savings.openWindow(side);
+      await (await savings.connect(relaySigner).join(side)).wait();
+      const { batchId } = await savings.windowInfo(windowId);
+      await (await batcher.dispatchBatch()).wait();
+      const d = await fhevm.publicDecrypt([await batcher.totalDeposits(batchId)]);
+      const [clear] = ethers.AbiCoder.defaultAbiCoder().decode(["uint64"], d.abiEncodedClearValues);
+      await (await batcher.dispatchBatchCallback(batchId, clear, d.decryptionProof)).wait();
+      await (await savings.connect(relaySigner).settle(windowId)).wait();
+      await (await savings.connect(relaySigner).settlePockets(windowId, [...(await savings.windowPockets(windowId))])).wait();
+    };
+    const info = await s.info();
+    expect(info.open.save).to.include({ windowId: 0, side: "save", state: "open", pockets: 3 });
+    await round(0, depositBatcher);
+    const shares = (usd("20") * 980_000n) / 1_000_000n;
+    expect(await s.shares()).to.eq(shares);
+    expect(await s.pending()).to.deep.eq([]);
+    expect(await s.value(shares)).to.eq((shares * 1_020_000n) / 1_000_000n);
+    expect(await s.toShares(usd("10"))).to.eq((usd("10") * 1_000_000n) / 1_020_000n);
+    expect((await s.info()).open.save.windowId).to.eq(2);
+
+    await s.unsave(shares / 2n);
+    expect(await s.shares()).to.eq(shares - shares / 2n);
+    expect(await s.pending()).to.deep.eq([{ windowId: 1, side: "unsave", state: "open", amount: shares / 2n }]);
+    await round(1, redeemBatcher);
+    expect(await a.balance()).to.eq(usd("30") + ((shares / 2n) * 1_020_000n) / 1_000_000n);
+    expect(await s.pending()).to.deep.eq([]);
+    // A short balance saves nothing, and says nothing.
+    await s.save(usd("1000"));
+    expect(await a.balance()).to.eq(usd("30") + ((shares / 2n) * 1_020_000n) / 1_000_000n);
+    expect(pa).to.be.greaterThan(2);
+  });
+
   it("opens another token's pockets (no desk) from the same signature, with their own pocket and viewer", async function () {
     // A second confidential token and its pockets, as cUSDT's on Sepolia: the same contract, no desk.
     const usdt = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     const cUsdt = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(await usdt.getAddress())) as unknown as TestConfidentialUSDC;
-    const other = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdt.getAddress(), deployer.address)) as unknown as SealedPockets;
+    const other = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdt.getAddress(), deployer.address, 5)) as unknown as SealedPockets;
     extraPermit = [String(other.target), String(cUsdt.target)];
     const input = await fhevm.createEncryptedInput(await other.getAddress(), deployer.address).add256(BigInt(hexlify(ethers.randomBytes(32)))).encrypt();
     await (await other.open(input.handles[0]!, input.inputProof, ethers.Wallet.createRandom().address)).wait();

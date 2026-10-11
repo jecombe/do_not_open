@@ -97,6 +97,11 @@ mainnet), **Not done** (a check nobody has run).
 | O47 | A box bought from a pocket is held by `PocketDesk`: it can be taken out, listed, sold to an offer and delegated with its key, but not given or sold privately again, and the reserved pocket of a desk sale is public | Low (UX, privacy) | `PocketDesk.reserve`, `buy` |
 | O48 | The free decryptions a day follow the network (`FREE_UNITS` in `apps/api/src/config.ts`): Sepolia gives 200 (100 to a newcomer), since Zama's testnet relayer costs the collection nothing; the mainnet row keeps 25 and 16, the figures the credit price was worked out for. Before mainnet: add the mainnet network to `NETWORK` with its row checked against Zama's plan and the credit price (on pay-as-you-go, newcomer 0 and fewer free units, see `docs/ZAMA_NOTES.md`), and change the manual's figures (`apps/web/src/docs/fees.tsx`), which show Sepolia's | Blocker for mainnet | `apps/api` config, relayer proxy |
 | O49 | Each token's pockets are a contract of their own (cUSDT, cWETH, cZAMA beside cUSDC): which token an action moves is public, and its decoys come only from that token's pockets, so a little-used token hides its pockets among few. The tokens are Zama's wrappers, trusted as the cUSDC is (on Sepolia, mocks anyone may mint) | Medium (privacy, trust) | `lib/pocketTokens.ts`, `SealedPockets_<symbol>` |
+| O50 | The pockets' savings join Zama's batches as one participant: the batch's decrypted total bounds the sum of a window's saves, and equals it when the window was the batch's only participant (the lone window). The keeper joins once per batch, late in it, to keep the window large and the batch shared; the sum is spread over every pocket of the window, decoys included, never one pocket's | Low (privacy) | `PocketSavings.join`, `savingsKeeper` |
+| O51 | What is saved runs the Morpho vault's and Zama's batchers' risk (curator, liquidity, a paused batcher, a canceled batch) and waits on them: a save settles after Zama's batch (about an hour on Sepolia) and the keeper, so savings cannot pay a sale at once; the keeper is one hot key on the indexer, and anyone may run its three calls in its place. On mainnet the pockets' cUSDC must be Zama's own `cAsset` or no pocket can save | Low (availability, trust); a mainnet check | `PocketSavings.settle`, `lib/savings.ts` |
+| O52 | The pockets' stealth exits (ERC-5564) and entry addresses are keys the page derives from the pocket signature: whoever has that signature spends them too (as O46); a stealth address still shows as a withdrawal's address, the announcement's timing and an entry address's plain wrap correlate with a privacy pool's withdrawal, and the inbox scans only announcements the page's relayer or wallet sent | Medium (privacy, keys) | `EvmPocketDoors`, `stealth.ts` |
+| O53 | The relayer fuels a side address once (`POCKET_FUEL_WEI`), under two checks a chain observer can make (never sent a transaction and holds less than the fuel; paid by a pocket, or holding `POCKET_FUEL_MIN_USDC` of USDC): the team pays that ETH, and an attacker who funds fresh addresses with the minimum USDC drains it at that price, bounded by the relayer's daily cap and rate limit. Off by default | Low (cost); tune the minimum against the fuel on mainnet | `EthersVaultSender.sendFuel` |
+| O54 | A group's size (`MAX_SET`) is fixed at deployment, 2 to 12: larger hides better and costs more (a send between two full groups of 12 is 15.6M HCU of 20M). The pockets of 2026-10-11 are at 10, the earlier ones at 5; the savings' `save` names a group too and must stay under the limit at the chosen size | Low (cost, privacy); a deploy-time check | `SealedPockets` constructor, `POCKETS_MAX_SET`, `test/SealedPockets.ts` ("groups of 8 and 10") |
 | O26 | Studio units are spent off-chain by the API: a buyer trusts it to honour the pack, and nothing on-chain refunds a pack the services never deliver | Medium (trust) | `StudioPacks`, `apps/api` |
 
 Fixed after the review of 2026-10-03 (section 11): free empty ids draining the Pantry
@@ -538,14 +543,14 @@ live one is read and filled through OpenSea's API on a fork with `opensea:fork`
 
 `SealedPockets.sol` holds cUSDC in pockets locked by an encrypted key; `vault/PocketDesk.sol`
 buys the vault's private sales out of them (see [VAULT.md](VAULT.md#pockets)). On Sepolia at
-`0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` and `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` since 2026-10-10, redeployed with the vault (the desk is bound to it); before them `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` the same day, `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` earlier that day, and `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
+`0x73F0D595AFF826349bD33Bf8f31410C00b3C794C` and `0x3BA548e9f59b6D9Cb1e5D7bcc21E9c36cDaa4Aa3` since 2026-10-11, redeployed with the savings in groups of 10 (`MAX_SET`); before them `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` and `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` since 2026-10-10, in groups of 5, redeployed with the vault (the desk is bound to it), `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` the same day, `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` earlier that day, and `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b` since 2026-10-09.
 The same contract, unchanged and without a desk, holds cUSDT, cWETH and cZAMA
-([VAULT.md](VAULT.md#other-tokens)): `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`,
-`0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`
-since 2026-10-09.
-45 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
+([VAULT.md](VAULT.md#other-tokens)): `0xB586883DaD0c0816d095B60c26A92fc97Ff0c35D`,
+`0x731E34d80C2FD6f22394C38584e61B26BcECFAb5` and `0x0cf7E304348302fdC38eB99dE1Ef2E052Ee6Cf9a`
+since 2026-10-11 (groups of 10; before them `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`, `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2` since 2026-10-09).
+47 tests in `test/SealedPockets.ts`, on the FHEVM mock, the desk against the real `SealedVault`
 (itself on Seaport 1.5's and delegate.xyz's bytecode); the relayer's routes in
-`apps/api/test/vaultRelay.test.ts`; the adapter's `EvmPockets` (what the page runs) against the contracts in `test/PocketsAdapter.ts`.
+`apps/api/test/vaultRelay.test.ts`; the adapter's `EvmPockets` (what the page runs) against the contracts in `test/PocketsAdapter.ts`, its doors (stealth exits, entry addresses, the relayer's fuel) against ERC-5564's and ERC-6538's test contracts there too; the stealth arithmetic in `packages/chain-adapter/test/stealth.test.ts`.
 
 | Check | Status | Evidence |
 | --- | --- | --- |
@@ -553,6 +558,8 @@ since 2026-10-09.
 | Only the key's pocket pays, only if it covers the amount | Pass | `_debit`: `select(eq(key, k) AND ge(balance, amount) AND go, amount, 0)` per pocket, summed. Tests: "moves the amount from the key's pocket…", "moves nothing with a wrong key", "moves nothing when the balance is short", "debits only the pocket whose key it is…", "pays nothing with a wrong key or a short balance" |
 | Nothing is lost to a missing target | Pass | A send debits only if the target is in the receiving set (`_inSet`); a deposit refunds what found no pocket. Tests: "moves nothing when the target is not in the receiving set", "gives the tokens back when the target is not in the set" |
 | A pocket is paid once per action | Pass | `_checkSet`: 1 to `MAX_SET` pockets, strictly increasing, all opened. Test: "refuses sets out of order, repeated, too long or naming no pocket" |
+| A group's size is bounded and fits the HCU limits | Pass | The constructor refuses `MAX_SET` outside 2 to 12 (`BadMaxSet`); full groups of 8 and 10 move within 20M HCU and 5M depth. Tests: "takes its group size from the deployment, within bounds", "moves between full groups of 8 and 10 within the HCU limits" |
+| A stealth exit is found by its payee alone, and collected by the address itself | Pass | The payment goes out from the relayer, the announcement too; another wallet's inbox is empty; the address cannot collect without gas, is fueled once and deposits in its own name. Tests (`test/PocketsAdapter.ts`): "takes cUSDC out to a stealth address of one's own…", "pays a stealth address of someone who published their meta-address…", "feeds the pocket from an entry address funded from outside…" |
 | The relayer cannot change a spend or replay it | Pass | The bound key hashes the action, both sets, the destination and the handles of the encrypted amount and target; each bound key's handle is spent once; inputs are bound to their sender. Tests: "moves nothing when the relay changes the receiving set", "moves nothing when the relay changes the paying set or the amount", "pays nothing when the relay changes where it goes", "runs a bound key once…", "refuses a bound key the relay replays in another kind of spend", "refuses inputs encrypted for another sender" |
 | Only the viewer reads a balance; nobody reads a key | Pass | `_setBalance` allows the pockets and the viewer; the key is `allowThis` only. Test: "opens a pocket with a zero balance only its viewer reads" |
 | Only the desk moves balances outside a spend | Pass | `deskTake`, `deskCheck`, `deskGive` revert `OnlyDesk`; `setDesk` is the owner's, once. Tests: "refuses a desk move from anyone but the desk", "leaves the desk unset until the owner sets it, once" |
@@ -564,9 +571,41 @@ since 2026-10-09.
 | Every call fits the HCU limits | Pass | A send between two sets of five ~6.5M HCU, a desk purchase ~6.3M. Tests under "limits and costs" and "buys within the HCU limits" |
 | Another token's pockets are apart from the cUSDC ones | Pass | Its pocket's key and viewer hash the pockets' address in (`EvmPockets.keys`), so its viewer differs; it has no desk (`buy`, `offerSale` refuse); the relayer sends only to this vault's pockets (`EthersVaultSender.pocketsFor`). Test: "opens another token's pockets (no desk) from the same signature, with their own pocket and viewer" (`test/PocketsAdapter.ts`) |
 
+## 17. The pockets' savings: PocketSavings
+
+`vault/PocketSavings.sol` puts a pocket's cUSDC to work in one of Zama's confidential vaults on
+Morpho, through its deposit and redeem batchers (`vault/IVaultBatcher.sol`), and brings it back
+(see [VAULT.md](VAULT.md#savings)). On Sepolia at `0xE84ca130fb003d66678ec2dC5123E7b24373A670` since 2026-10-11 (block 11890629), on Steakhouse USDC Prime's batchers. `SealedPockets` gained a second desk slot
+for it (`setSavings`, owner, once; `_onlyDesk` lets the desk or the savings through `deskTake`,
+`deskCheck`, `deskGive`). 8 tests in `test/PocketSavings.ts`, on the FHEVM mock, against
+`TestVaultBatcher` (Zama's lifecycle: join, dispatch, the total's public decryption and its
+proof checked in the callback, claim, recover, a `cancel`), `TestConfidentialShare` and
+`TestYieldVault`; Zama's real batchers have not been called yet. The keeper's code in
+`apps/api/src/application/savingsKeeper.ts`.
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| A spend is bound to its terms and runs once | Pass | The bound key is `key XOR saveHash(side, set, amount handle)` (chain id and the contract's address in the hash); each bound key's handle is `spent` once, on either side; a changed set or amount makes the key miss and commits zero. Test: "runs a bound key once, and moves nothing when the relay changes the set or the amount" |
+| Sets as the pockets check them | Pass | `_checkSet`: 1 to `MAX_SET` pockets, strictly increasing, all opened (`BadSet`, `NotAPocket`). Same test |
+| Only the key's pocket is debited, only if it covers the amount | Pass | A save: `deskTake` per pocket (`select(eq(key) AND ge(balance, amount), amount, 0)`); an unsave: `deskCheck(pocket, key, 0) AND ge(shares, amount)`. Tests: "puts a pocket's cUSDC aside among decoys…", "saves nothing with a wrong key or a short balance, and asks nothing back beyond the shares, without a revert" |
+| Every pocket of a set gets a commitment, decoys included, readable by its viewer only | Pass | `_commit` allows the savings and `pockets.viewerOf(pocketId)`; the test decrypts each decoy's zero as its own viewer. Test: "puts a pocket's cUSDC aside among decoys…" |
+| One window per batch and side; the window's steps in order | Pass | `join` reverts `EmptyWindow` and `BatchAlreadyJoined` (`lastBatch[side]`); `settle` reverts `WindowNotJoined` and `BatchNotDone` (Pending or Dispatched); `settlePockets` reverts `WindowNotSettled` and `NotCommitted` (each pocket once, the commitment cleared first). Test: "joins one window per batch, and keeps the window's steps in order" |
+| Tokens are conserved through a batch | Pass | What the savings hold in cUSDC and shares is checked against the pockets' balances and the batcher's: nothing left in the savings after a round but rounding dust. Tests: "brings the savings back as cUSDC through the redeem batcher, at the batch's rate", "puts a pocket's cUSDC aside…" |
+| A canceled batch gives everything back, both sides | Pass | `settle` on `Canceled` calls `recover`; `settlePockets` then gives a save's cUSDC back with `deskGive` and an unsave's shares back to the balance. Test: "gives every pocket its commitment back when the batch is canceled, on both sides" |
+| 128-bit conversion, rounded down, no overflow | Pass | `_convert`: `asEuint64(div(mul(asEuint128(amount), rate), 1e6))`. The tests compute `amount × rate / 1e6` in bigint and compare; a `euint64` ceiling times the largest `uint64` rate fits 128 bits |
+| Dust is nobody's | Pass by reading | Per-pocket rounding stays under the savings' address with no claim on it; a window with one pocket leaves none (the test's `held(share)` equals the pocket's shares) |
+| Re-entrancy | Pass by reading | Every external entry is `nonReentrant`; state (`spent`, `lastBatch`, the window's state, the cleared commitment) is written before the batcher's or the token's calls |
+| Only the desk and the savings move a pocket's balance | Pass | `_onlyDesk` in `SealedPockets`; `setSavings` once, by the owner (`SavingsSet`, `ZeroAddress`). Tests: "wires the pockets' token…" (`SavingsSet`), "runs a bound key once…" (`OnlyDesk` from the relay) |
+| The route is checked at deployment | Pass | The constructor reverts `WrongRoute` unless the deposit batcher takes the pockets' token and gives the share, and the redeem batcher the reverse; it makes each batcher its operator. Test: "wires the pockets' token, the batchers' tokens and two open windows" |
+| Batcher trust | Pass by reading | The savings trust the batcher's `batchState`, `exchangeRate`, `claim` and `recover` as Zama's contracts: a batcher that paid less than the rate says would leave the last pockets settled short (the contract's balance, not the pockets', pays); a paused batcher refuses `join` and the window waits. Zama's batchers are audited OpenZeppelin code; our mock plays them, the real ones were not called yet |
+| Keeper failure modes | Pass by reading | A stopped keeper delays a save (the window waits open, or joined); anyone may `join`, `settle` and `settlePockets`. A window of zeros (every save refused) still joins, the batch cancels on a zero total and the zeros come back. Test: "saves nothing with a wrong key…" (the canceled window of zeros) |
+| Every call fits the HCU limits | Pass | A save over five ~7.2M HCU, settling five pockets at ~2.1M each. Test: "saves over a full set of five, and settles five pockets, within the HCU limits" |
+| What leaks | Open (O50) | The batch's total bounds a window's saves; one join per batch, late in it. [HIDDEN_OWNERS.md](HIDDEN_OWNERS.md#5g-the-pockets-savings) |
+| The real batchers on Sepolia | Not done | Steakhouse USDC Prime's batchers (`lib/savings.ts`) have not been joined by the savings yet: deploy, save, wait for Zama's batch, settle |
+
 ## Before mainnet
 
-1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29, O32, O33, O38 to O44. Fix O3, O4, O7, O17 (small and
+1. Decide O1, O2, O5, O6, O11 to O16, O20 to O25, O29, O32, O33, O38 to O44, O50, O51. Fix O3, O4, O7, O17 (small and
    mechanical), and make room for O18.
 2. Set the relayer key and the credit price from Zama's plan (O9).
 3. Run the "Not done" rows of section 8.
