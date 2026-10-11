@@ -351,8 +351,11 @@ decryptions.
 desk, for cUSDT, cWETH and cZAMA), each locked by a key rather than an address
 ([VAULT.md](VAULT.md#pockets)). A public counter (`pocketCount`), `pocketOf(viewer)` (the
 pocket a viewer reads, + 1) and `spent(handle)` (bound keys already used); views `balanceOf`,
-`viewerOf`, `spendHash`. Its `desk` and its `savings` are each set once; both may `deskTake`,
-`deskCheck` and `deskGive`.
+`viewerOf`, `spendHash`; `MAX_SET`, a group's size, an immutable of the constructor (2 to 12).
+Its `desk` and its `savings` are each set once; both may `deskTake`, `deskCheck` and `deskGive`.
+The pockets' doors keep nothing on-chain of ours: a stealth payment is an `Announcement` on
+ERC-5564's announcer, a published meta-address an entry in ERC-6538's registry, both deployed
+for everyone ([VAULT.md](VAULT.md#doors-stealth-exits-and-entry-addresses)).
 
 | Struct | Field | Type | Who can read it | Meaning |
 | --- | --- | --- | --- | --- |

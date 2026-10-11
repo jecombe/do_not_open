@@ -849,8 +849,9 @@ per call is in [VAULT.md](VAULT.md#cost): ~83k a deposit, ~191k a request, ~225k
 
 `SealedPockets` holds cUSDC in pockets locked by a `euint256` key, and `PocketDesk` buys the
 vault's private sales out of them ([VAULT.md](VAULT.md#pockets)). On Sepolia since 2026-10-09,
-redeployed with the vault three times on 2026-10-10: `SealedPockets` `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395`
-(block 11885991), `PocketDesk` `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` (block 11885992); before them
+redeployed with the vault three times on 2026-10-10 and once more on 2026-10-11 with their savings, in
+groups of 10: `SealedPockets` `0x73F0D595AFF826349bD33Bf8f31410C00b3C794C` (block 11890626), `PocketDesk` `0x3BA548e9f59b6D9Cb1e5D7bcc21E9c36cDaa4Aa3` (block 11890627);
+before them `0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395` (block 11885991) and `0x37e9D6b2180323D5a01a42e2FD911aE017F70430` (block 11885992),
 `0xd693433e9E2556bafC6A5B48E37f9994E99bE752` (block 11885664) and `0x5CB63624d9216E19C155771a3123b6aa9B716e4B` (block 11885665),
 `0x62E0A7C3f7B59F3BAc3a93210F62e3dD0A12A17f` (block 11885014) and `0x06c082C599eF4eDa4fd1a93dBB8f9B348Ef43D61` (block 11885017), then
 `0xAfEc56C76B8682A5FcDCf061fD3e703fD75Be00C` (block 11877902) and `0x0939D713429FCD1c5AF9589b121a8F77C49F759b`
@@ -881,12 +882,28 @@ specific to the protocol:
 - **HCU.** A send between two full sets of five is ~6.5M HCU (depth ~2M), a deposit into five
   ~3.5M, a withdrawal from five ~4.3M; a desk purchase ~6.3M (depth ~3.3M), most of it the
   vault's own `acceptSale`. All under the 20M limit; see [VAULT.md](VAULT.md#cost).
+- **A group's size, measured (2026-10-11).** `MAX_SET` is a constructor immutable now (2 to 12).
+  Every pocket named costs about 0.65M HCU a side on a send (one `eq` on a `euint256`, one `ge`,
+  two `and`s, a `select`, a `sub`, an `add`), 0.46M on a deposit, 0.64M on a withdrawal. Full
+  groups of 8 / 10 / 12: a send 10.4M / 13.0M / 15.6M HCU (depth 3.0M / 3.7M / 4.4M), a deposit
+  4.9M / 5.8M / 6.7M, a withdrawal 6.5M / 8.0M / 9.4M. Twelve is the ceiling under 20M (and 5M
+  depth) with room for the savings' `save` (about 1.4M a pocket); the pockets of 2026-10-11 take ten.
+- **Side addresses read their own balance.** A stealth or entry address
+  ([VAULT.md](VAULT.md#doors-stealth-exits-and-entry-addresses)) reads its cUSDC balance with
+  its own key, as any holder of an ERC-7984 token may: the adapter signs a user-decryption permit
+  as that wallet naming the token alone (`permitFor(..., reading)`), since the viewer's list of
+  the vault's contracts does not include the tokens and a permit takes 10 at most. Its deposit
+  into the pocket is encrypted in the page with the wallet's permit (and credits) for the side
+  address as the contract's caller: `createEncryptedInput(pockets, sideAddress)`, the same way
+  a desk purchase encrypts for the desk. Nothing of the stealth scheme touches the FHE: the
+  addresses are secp256k1 arithmetic in the page, the announcements plain events.
 - **Other confidential tokens.** cUSDT, cWETH and cZAMA, Zama's ERC-7984 wrappers from its
   Confidential Token Wrappers Registry (`0x2f0750Bbb0A246059d80e94c454586a7F27a128e` on
   Sepolia), each have a `SealedPockets` of their own, without a desk: `SealedPockets_cUSDT`
-  `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`, `SealedPockets_cWETH`
-  `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350`, `SealedPockets_cZAMA`
-  `0x6D1585c58238DaADF748558051BF368DAA3eceE2` (2026-10-09, blocks 11878756 to 11878758). Every
+  `0xB586883DaD0c0816d095B60c26A92fc97Ff0c35D`, `SealedPockets_cWETH`
+  `0x731E34d80C2FD6f22394C38584e61B26BcECFAb5`, `SealedPockets_cZAMA`
+  `0x0cf7E304348302fdC38eB99dE1Ef2E052Ee6Cf9a` (2026-10-11, blocks 11890631 to 11890633, in groups of 10; before them
+  `0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe`, `0x4e8A23DfD7a23677b023E069CB8D3A94993b1350` and `0x6D1585c58238DaADF748558051BF368DAA3eceE2`, 2026-10-09, blocks 11878756 to 11878758, in groups of 5). Every
   wrapper has 6 decimals, so amounts fit the pockets' `euint64`; cWETH and cZAMA wrap 18-decimal
   ERC-20s at a rate of 10^12. One signature derives every token's pocket, each with its own
   viewer (`"key:"`/`"viewer:"` + the pockets' address for any token but cUSDC). Which token an
@@ -902,9 +919,7 @@ specific to the protocol:
 ### The pockets' savings (2026-10-11)
 
 `PocketSavings` (`contracts/vault/PocketSavings.sol`) puts a pocket's cUSDC to work in one of
-Zama's confidential vaults and brings it back ([VAULT.md](VAULT.md#savings)). Not deployed yet:
-the cUSDC pockets and their desk will be redeployed with it (a pockets contract takes its
-savings once, `setSavings`).
+Zama's confidential vaults and brings it back ([VAULT.md](VAULT.md#savings)). On Sepolia since 2026-10-11 at `0xE84ca130fb003d66678ec2dC5123E7b24373A670` (block 11890629), on Steakhouse USDC Prime's batchers, next to the cUSDC pockets redeployed with it.
 
 - **Zama's product.** The "Confidential Vault" (June 2026, with Morpho and Steakhouse; 16 vaults
   since 2026-09-15; https://docs.zama.org/protocol/confidential-vault: architecture,

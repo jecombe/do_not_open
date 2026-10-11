@@ -221,6 +221,11 @@ box program:
   and viewer derived with the pool's address mixed in. The desk
   becomes an instruction of that program calling the vault program's private-sale accept, its
   public "ok" bit read the same way as the vault's requests.
+- **The pockets' doors.** The stealth exits are ERC-5564 (secp256k1 ECDH, one announcer contract
+  for everyone); Solana has no such shared announcer, and ed25519 wallets would need a scheme of
+  their own (Curve25519 Diffie-Hellman over the wallet's key, an announcement account or memo).
+  The entry address (a keypair derived from the signature, funded from outside, collecting as
+  itself) ports as is; the relayer's fuel becomes the fee payer's airdrop of a little SOL.
 - **Savings.** `PocketSavings` depends on Zama's confidential vault batchers (OpenZeppelin's
   `BatcherConfidential` in front of a Morpho vault), which exist on Ethereum only: the port waits
   for a confidential batcher, or a confidential yield vault, on Solana. The shape carries over:

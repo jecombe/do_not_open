@@ -55,6 +55,10 @@ export interface PocketTxs {
   deskAsk: { saleId: number; handle: string; keyProof: string; boxKey: string };
   /** Step 2: the proof of the "ok" bit and the box's new key. */
   deskBuy: { askId: number; cleartexts: string; proof: string; boxKey: string; boxKeyProof: string };
+  /** A stealth payment's announcement (ERC-5564, scheme 1), so the payee's page finds the address a pocket paid. */
+  stealthAnnounce: { stealthAddress: Address; ephemeralPubKey: string; metadata: string };
+  /** A little ETH, once, for a side address a pocket paid or that holds the plain token, so it can collect. */
+  fuel: { to: Address };
 }
 export type PocketCall = keyof PocketTxs;
 
@@ -68,4 +72,6 @@ export interface VaultSender {
   pockets<C extends PocketCall>(call: C, tx: PocketTxs[C]): Promise<string>;
   /** The wallet's balance in wei, for the monitoring: it pays every transaction's gas. */
   balance?(): Promise<bigint>;
+  /** What a `fuel` call gives, in wei; null when the relayer gives none. */
+  readonly fuel?: bigint | null;
 }

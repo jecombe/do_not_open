@@ -10,6 +10,7 @@ export * from "./standings";
 export { CLAIM_WINDOW, claimWindows } from "./claims";
 export { decoyPlan, decoySends, type Send } from "./decoys";
 export { pocketGroup, pocketSet } from "./pockets";
+export { isStealthMeta } from "./stealthMeta";
 export { ratJob } from "./rats";
 export { MockAdapter, mockRatPower, mockSeedForToken, mockWeighIn, MOCK_YOU, MOCK_NIGHT_SHIFT, MOCK_MARKET, type MockOptions } from "./mock/MockAdapter";
 

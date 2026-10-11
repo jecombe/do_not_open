@@ -36,6 +36,9 @@ export const SCENE_OF: Record<string, SceneKind> = {
   pocketOffer: "envelope",
   pocketSave: "pouch",
   pocketUnsave: "pouch",
+  pocketCollect: "pouch",
+  pocketFuel: "press",
+  pocketPublish: "badge",
 };
 
 /** Actions whose scene runs backwards: the listing sails home, the offer comes back, the coins

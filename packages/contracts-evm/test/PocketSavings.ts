@@ -115,7 +115,7 @@ describe("PocketSavings", function () {
     viewers = signers.slice(10, 16);
     usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     cUsdc = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(await usdc.getAddress())) as unknown as TestConfidentialUSDC;
-    pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address)) as unknown as SealedPockets;
+    pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address, 5)) as unknown as SealedPockets;
     pocketsAddr = await pockets.getAddress();
     yieldVault = (await (await ethers.getContractFactory("TestYieldVault")).deploy(await usdc.getAddress(), 1_020_000n)) as unknown as TestYieldVault;
     share = (await (await ethers.getContractFactory("TestConfidentialShare")).deploy(await yieldVault.getAddress())) as unknown as TestConfidentialShare;

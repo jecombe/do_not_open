@@ -80,7 +80,7 @@ describe("SealedPockets", function () {
     viewers = signers.slice(10, 16);
     usdc = (await (await ethers.getContractFactory("TestUSDC")).deploy()) as unknown as TestUSDC;
     cUsdc = (await (await ethers.getContractFactory("TestConfidentialUSDC")).deploy(await usdc.getAddress())) as unknown as TestConfidentialUSDC;
-    pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address)) as unknown as SealedPockets;
+    pockets = (await (await ethers.getContractFactory("SealedPockets")).deploy(await cUsdc.getAddress(), deployer.address, 5)) as unknown as SealedPockets;
     addr = await pockets.getAddress();
     await giveCusdc(alice, usd("1000"), [addr]);
   });
@@ -275,6 +275,72 @@ describe("SealedPockets", function () {
       const wr = (await (await pockets.connect(relay).withdraw(ids, fresh.address, w)).wait())!;
       expect(fhevm.computeTransactionHCU(wr).globalHCU).to.be.below(HCU_LIMIT);
       expect(await confidentialUsdcOf(cUsdc, fresh)).to.eq(usd("10"));
+    });
+
+    it("takes its group size from the deployment, within bounds", async function () {
+      expect(await pockets.MAX_SET()).to.eq(5n);
+      const Pockets = await ethers.getContractFactory("SealedPockets");
+      const eight = await Pockets.deploy(await cUsdc.getAddress(), deployer.address, 8);
+      expect(await eight.MAX_SET()).to.eq(8n);
+      await expect(Pockets.deploy(await cUsdc.getAddress(), deployer.address, 1)).to.be.revertedWithCustomError(pockets, "BadMaxSet");
+      await expect(Pockets.deploy(await cUsdc.getAddress(), deployer.address, 13)).to.be.revertedWithCustomError(pockets, "BadMaxSet");
+    });
+
+    /** A full group of `n` on every side: what a deposit, a send and a withdrawal cost at that
+     *  size, against the HCU limits. Prints the table with REPORT_COSTS=1; the largest group
+     *  within the limits is the one `POCKETS_MAX_SET` may be set to. */
+    async function measureGroup(n: number) {
+      const Pockets = await ethers.getContractFactory("SealedPockets");
+      const p = (await Pockets.deploy(await cUsdc.getAddress(), deployer.address, n)) as unknown as SealedPockets;
+      const pAddr = await p.getAddress();
+      await (await cUsdc.connect(alice).setOperator(pAddr, (await time.latest()) + 365 * 86_400)).wait();
+      const keys = Array.from({ length: n + 1 }, randomKey);
+      const ids: bigint[] = [];
+      for (let i = 0; i <= n; i++) {
+        const input = await fhevm.createEncryptedInput(pAddr, relay.address).add256(keys[i]!).encrypt();
+        ids.push(await p.pocketCount());
+        await (await p.connect(relay).open(input.handles[0]!, input.inputProof, i === 0 ? viewers[0]!.address : ethers.Wallet.createRandom().address)).wait();
+      }
+      const rows: { action: string; gas: number; hcu: number; depth: number }[] = [];
+      const measure = async (action: string, tx: Promise<{ wait: () => Promise<unknown> }>) => {
+        const r = (await (await tx).wait()) as Parameters<typeof fhevm.computeTransactionHCU>[0] & { gasUsed: bigint };
+        const h = fhevm.computeTransactionHCU(r);
+        rows.push({ action, gas: Number(r.gasUsed), hcu: h.globalHCU, depth: h.maxHCUDepth });
+      };
+      const set = ids.slice(0, n);
+      const d = await fhevm.createEncryptedInput(pAddr, alice.address).add32(Number(ids[0])).add64(usd("50")).encrypt();
+      await measure(`deposit (set of ${n})`, p.connect(alice).deposit(set, d.handles[0]!, d.handles[1]!, d.inputProof));
+      const to = ids.slice(1, n + 1);
+      const values = await fhevm.createEncryptedInput(pAddr, relay.address).add64(usd("20")).add32(Number(ids[n])).encrypt();
+      const [a, t] = [ethers.hexlify(values.handles[0]!), ethers.hexlify(values.handles[1]!)];
+      const sendHash = await p.spendHash(SPEND.Send, set, to, ethers.ZeroAddress, a, t);
+      const sendBound = await fhevm.createEncryptedInput(pAddr, relay.address).add256(keys[0]! ^ sendHash).encrypt();
+      await measure(`send (${n} a side)`, p.connect(relay).send(set, to, { amount: a, target: t, inputProof: values.inputProof, boundKey: sendBound.handles[0]!, keyProof: sendBound.inputProof }));
+      const w = await fhevm.createEncryptedInput(pAddr, relay.address).add64(usd("10")).add32(0).encrypt();
+      const wa = ethers.hexlify(w.handles[0]!);
+      const withdrawHash = await p.spendHash(SPEND.Withdraw, set, [], fresh.address, wa, ethers.ZeroHash);
+      const wBound = await fhevm.createEncryptedInput(pAddr, relay.address).add256(keys[0]! ^ withdrawHash).encrypt();
+      await measure(`withdraw (set of ${n})`, p.connect(relay).withdraw(set, fresh.address, { amount: wa, target: ethers.hexlify(w.handles[1]!), inputProof: w.inputProof, boundKey: wBound.handles[0]!, keyProof: wBound.inputProof }));
+      expect(await fhevm.userDecryptEuint(FhevmType.euint64, await p.balanceOf(ids[0]!), pAddr, viewers[0]!)).to.eq(usd("20"));
+      return rows;
+    }
+
+    it("moves between full groups of 8 and 10 within the HCU limits", async function () {
+      this.timeout(600_000);
+      for (const n of [8, 10]) {
+        for (const row of await measureGroup(n)) {
+          expect(row.hcu, row.action).to.be.below(HCU_LIMIT);
+          expect(row.depth, row.action).to.be.below(HCU_DEPTH_LIMIT);
+        }
+      }
+    });
+
+    it("prints gas and HCU per group size (REPORT_COSTS=1)", async function () {
+      if (!process.env.REPORT_COSTS) this.skip();
+      this.timeout(1_200_000);
+      const rows = [];
+      for (const n of [5, 8, 10, 12]) rows.push(...(await measureGroup(n)));
+      console.table(rows);
     });
 
     it("prints gas and HCU per action (REPORT_COSTS=1)", async function () {

@@ -1,7 +1,8 @@
 import { Contract, getAddress, hexlify, solidityPackedKeccak256, Wallet, type EventLog, type InterfaceAbi } from "ethers";
 import { pocketGroup, pocketSet } from "../pockets";
 import { ChainError, type ActionOptions, type Address } from "../types";
-import type { PocketGroup, PocketOptions, PocketSale, PocketsAdapter, PocketSavingsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
+import type { PocketDoorsAdapter, PocketGroup, PocketOptions, PocketSale, PocketsAdapter, PocketSavingsAdapter, PocketsInfo, PocketToken, VaultBox, VaultSaleStatus } from "../vault";
+import { EvmPocketDoors } from "./EvmPocketDoors";
 import type { ContractTransactionReceipt } from "ethers";
 import { EvmSavings, type SavingsDeployment } from "./EvmSavings";
 import type { EvmVaultTools } from "./EvmVault";
@@ -83,6 +84,8 @@ const ERC20_ABI = [
 /** What the pockets borrow from the vault next to them: its contract, its boxes and its box keys. */
 export interface PocketsVaultSide {
   vault: Deployed;
+  /** ERC-5564's announcer and ERC-6538's registry, for the pockets' doors; null where unknown. */
+  stealth?: { announcer: string; registry: string } | null;
   box(boxId: number): Promise<VaultBox>;
   keyFor(collection: string, tokenId: bigint, opts?: ActionOptions): Promise<bigint>;
 }
@@ -112,7 +115,8 @@ export class EvmPockets implements PocketsAdapter {
   private readonly desk: Contract | null;
   private readonly vaultRead: Contract;
   private readonly savingsAdapter: EvmSavings | null;
-  private secret: { account: Address; key: bigint; viewer: Wallet } | null = null;
+  private readonly doorsAdapter: EvmPocketDoors | null;
+  private secret: { account: Address; key: bigint; viewer: Wallet; signature: string } | null = null;
   /** The block of this page's last transaction: reads wait until the RPC has seen it. */
   private lastBlock = 0;
 
@@ -140,6 +144,26 @@ export class EvmPockets implements PocketsAdapter {
           t,
         )
       : null;
+    this.doorsAdapter = side.stealth
+      ? new EvmPocketDoors(
+          side.stealth,
+          {
+            pockets: deployed,
+            token: this.token,
+            tokenAddress: async () => (await this.tokenContract()).address,
+            signature: async (opts) => (await this.keys(opts)).signature,
+            mine: (opts) => this.mineOrThrow(opts),
+            set: (real, opts) => this.set(real, opts),
+            withdraw: (to, amount, opts) => this.withdraw(to, amount, opts),
+            caughtUp: () => this.caughtUp(),
+          },
+          t,
+        )
+      : null;
+  }
+
+  doors(): PocketDoorsAdapter | null {
+    return this.doorsAdapter;
   }
 
   async info(): Promise<PocketsInfo> {
@@ -365,7 +389,7 @@ export class EvmPockets implements PocketsAdapter {
   /** The pocket's key and viewer, from one signature a session. The cUSDC pockets (the ones with
    *  the desk) derive theirs as they always did; another token's add its pockets' address, so its
    *  pocket and viewer are tied to none of the wallet's other pockets. */
-  private async keys(opts?: ActionOptions): Promise<{ key: bigint; viewer: Wallet }> {
+  private async keys(opts?: ActionOptions): Promise<{ key: bigint; viewer: Wallet; signature: string }> {
     const account = await this.t.account();
     if (this.secret?.account !== account) {
       let signature: string;
@@ -377,7 +401,7 @@ export class EvmPockets implements PocketsAdapter {
       const tag = this.deployed.desk ? "" : `:${this.deployed.address.toLowerCase()}`;
       const key = BigInt(solidityPackedKeccak256(["bytes", "string"], [signature, `key${tag}`]));
       const viewer = new Wallet(solidityPackedKeccak256(["bytes", "string"], [signature, `viewer${tag}`]));
-      this.secret = { account, key, viewer };
+      this.secret = { account, key, viewer, signature };
     }
     return this.secret;
   }

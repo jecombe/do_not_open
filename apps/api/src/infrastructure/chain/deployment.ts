@@ -47,7 +47,15 @@ export interface ProtocolDeployment {
   /** The flea market, where players sell to each other in cUSDC: wallets' permits name it. Null where none was deployed. */
   fleaMarket: Deployed | null;
   /** The sealed vault: its relayer sends holders' requests, and wallets' permits name it. Null where none was deployed. */
-  vault: (Deployed & { offers?: Deployed | null; pockets?: (Deployed & { desk?: Deployed | null; savings?: SavingsDeployed | null }) | null; otherPockets?: { address: string }[] }) | null;
+  vault:
+    | (Deployed & {
+        offers?: Deployed | null;
+        pockets?: (Deployed & { desk?: Deployed | null; savings?: SavingsDeployed | null; token?: { underlying: { address: string } } }) | null;
+        otherPockets?: { address: string }[];
+        /** ERC-5564's announcer and ERC-6538's registry, for the pockets' stealth exits. */
+        stealth?: { announcer: string; registry: string } | null;
+      })
+    | null;
   /** Zama's contracts on this network, as the Relayer SDK's preset names them. */
   fhevm: FhevmConfig;
   /** The Uniswap V3 CROQ/USDC pool and the locked position CROQ is sold from. */

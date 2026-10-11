@@ -290,11 +290,14 @@ async function main() {
                   desk: deployment.vault.pockets.desk?.address ?? null,
                   savings: deployment.vault.pockets.savings?.address ?? null,
                   others: (deployment.vault.otherPockets ?? []).map((p) => p.address),
+                  announcer: deployment.vault.stealth?.announcer ?? null,
+                  underlying: deployment.vault.pockets.token?.underlying.address ?? null,
                 }
               : null,
+            { wei: config.POCKET_FUEL_WEI, minPlain: BigInt(config.POCKET_FUEL_MIN_USDC) * 1_000_000n },
           ), clock, config.VAULT_RELAY_PER_DAY)
       : undefined;
-  if (vaultRelay) log.info({ address: vaultRelay.address }, "the vault relayer sends holders' requests");
+  if (vaultRelay) log.info({ address: vaultRelay.address, fuelWei: vaultRelay.fuel?.toString() ?? null }, "the vault relayer sends holders' requests");
 
   // The marketplace's offers for the vault's page: OpenSea's, where OpenSea is (mainnet; it closed its testnets).
   const openSeaChain = OPENSEA_CHAINS[config.NETWORK];

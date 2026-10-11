@@ -9862,7 +9862,7 @@
       }
     ],
     "pockets": {
-      "address": "0x3c925f9AB849ABbcb47EC12Be0D9BDB4d9EA4395",
+      "address": "0x73F0D595AFF826349bD33Bf8f31410C00b3C794C",
       "abi": [
         {
           "inputs": [
@@ -9875,10 +9875,26 @@
               "internalType": "address",
               "name": "owner_",
               "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "maxSet_",
+              "type": "uint256"
             }
           ],
           "stateMutability": "nonpayable",
           "type": "constructor"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "maxSet",
+              "type": "uint256"
+            }
+          ],
+          "name": "BadMaxSet",
+          "type": "error"
         },
         {
           "inputs": [],
@@ -9936,6 +9952,11 @@
         {
           "inputs": [],
           "name": "ReentrancyGuardReentrantCall",
+          "type": "error"
+        },
+        {
+          "inputs": [],
+          "name": "SavingsSet",
           "type": "error"
         },
         {
@@ -10050,6 +10071,19 @@
           "inputs": [
             {
               "indexed": false,
+              "internalType": "address",
+              "name": "savings",
+              "type": "address"
+            }
+          ],
+          "name": "SavingsSetTo",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": false,
               "internalType": "uint256[]",
               "name": "from",
               "type": "uint256[]"
@@ -10085,7 +10119,33 @@
         },
         {
           "inputs": [],
+          "name": "MAX_MAX_SET",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
           "name": "MAX_SET",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "MIN_MAX_SET",
           "outputs": [
             {
               "internalType": "uint256",
@@ -10327,6 +10387,19 @@
           "type": "function"
         },
         {
+          "inputs": [],
+          "name": "savings",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
           "inputs": [
             {
               "internalType": "uint256[]",
@@ -10385,6 +10458,19 @@
             }
           ],
           "name": "setDesk",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "savings_",
+              "type": "address"
+            }
+          ],
+          "name": "setSavings",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -10548,9 +10634,9 @@
           "type": "function"
         }
       ],
-      "deployBlock": 11885991,
+      "deployBlock": 11890626,
       "desk": {
-        "address": "0x37e9D6b2180323D5a01a42e2FD911aE017F70430",
+        "address": "0x3BA548e9f59b6D9Cb1e5D7bcc21E9c36cDaa4Aa3",
         "abi": [
           {
             "inputs": [
@@ -11024,7 +11110,7 @@
             "type": "function"
           }
         ],
-        "deployBlock": 11885992
+        "deployBlock": 11890627
       },
       "token": {
         "address": "0x7c5BF43B851c1dff1a4feE8dB225b87f2C223639",
@@ -11037,12 +11123,742 @@
           "symbol": "USDC",
           "decimals": 6
         }
+      },
+      "savings": {
+        "address": "0xE84ca130fb003d66678ec2dC5123E7b24373A670",
+        "abi": [
+          {
+            "inputs": [
+              {
+                "internalType": "contract SealedPockets",
+                "name": "pockets_",
+                "type": "address"
+              },
+              {
+                "internalType": "contract IVaultBatcher",
+                "name": "depositBatcher_",
+                "type": "address"
+              },
+              {
+                "internalType": "contract IVaultBatcher",
+                "name": "redeemBatcher_",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "nonpayable",
+            "type": "constructor"
+          },
+          {
+            "inputs": [],
+            "name": "BadSet",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "batchId",
+                "type": "uint256"
+              }
+            ],
+            "name": "BatchAlreadyJoined",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint8",
+                "name": "state",
+                "type": "uint8"
+              }
+            ],
+            "name": "BatchNotDone",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "EmptyWindow",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "KeyUsed",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              }
+            ],
+            "name": "NoWindow",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "NotAPocket",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "NotCommitted",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "ReentrancyGuardReentrantCall",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "bytes32",
+                "name": "handle",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+              }
+            ],
+            "name": "SenderNotAllowedToUseHandle",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              }
+            ],
+            "name": "WindowNotJoined",
+            "type": "error"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              }
+            ],
+            "name": "WindowNotSettled",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "WrongRoute",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "ZamaProtocolUnsupported",
+            "type": "error"
+          },
+          {
+            "inputs": [],
+            "name": "ZeroAddress",
+            "type": "error"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "PocketSettled",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "indexed": false,
+                "internalType": "uint256[]",
+                "name": "from",
+                "type": "uint256[]"
+              }
+            ],
+            "name": "Saved",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "indexed": false,
+                "internalType": "uint256[]",
+                "name": "from",
+                "type": "uint256[]"
+              }
+            ],
+            "name": "Unsaved",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "batchId",
+                "type": "uint256"
+              }
+            ],
+            "name": "WindowJoined",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "indexed": false,
+                "internalType": "enum PocketSavings.Side",
+                "name": "side",
+                "type": "uint8"
+              }
+            ],
+            "name": "WindowOpened",
+            "type": "event"
+          },
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "indexed": false,
+                "internalType": "enum PocketSavings.WindowState",
+                "name": "state",
+                "type": "uint8"
+              },
+              {
+                "indexed": false,
+                "internalType": "uint64",
+                "name": "rate",
+                "type": "uint64"
+              }
+            ],
+            "name": "WindowSettled",
+            "type": "event"
+          },
+          {
+            "inputs": [],
+            "name": "RATE_ONE",
+            "outputs": [
+              {
+                "internalType": "uint64",
+                "name": "",
+                "type": "uint64"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "committedOf",
+            "outputs": [
+              {
+                "internalType": "euint64",
+                "name": "",
+                "type": "bytes32"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "confidentialProtocolId",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "depositBatcher",
+            "outputs": [
+              {
+                "internalType": "contract IVaultBatcher",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "enum PocketSavings.Side",
+                "name": "side",
+                "type": "uint8"
+              }
+            ],
+            "name": "join",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "enum PocketSavings.Side",
+                "name": "",
+                "type": "uint8"
+              }
+            ],
+            "name": "lastBatch",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "enum PocketSavings.Side",
+                "name": "",
+                "type": "uint8"
+              }
+            ],
+            "name": "openWindow",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "pockets",
+            "outputs": [
+              {
+                "internalType": "contract SealedPockets",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "redeemBatcher",
+            "outputs": [
+              {
+                "internalType": "contract IVaultBatcher",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256[]",
+                "name": "from",
+                "type": "uint256[]"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "externalEuint64",
+                    "name": "amount",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "inputProof",
+                    "type": "bytes"
+                  },
+                  {
+                    "internalType": "externalEuint256",
+                    "name": "boundKey",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "keyProof",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct PocketSavings.SpendInput",
+                "name": "s",
+                "type": "tuple"
+              }
+            ],
+            "name": "save",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "enum PocketSavings.Side",
+                "name": "side",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256[]",
+                "name": "from",
+                "type": "uint256[]"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "amount",
+                "type": "bytes32"
+              }
+            ],
+            "name": "saveHash",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              }
+            ],
+            "name": "settle",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256[]",
+                "name": "ids",
+                "type": "uint256[]"
+              }
+            ],
+            "name": "settlePockets",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "share",
+            "outputs": [
+              {
+                "internalType": "contract IERC7984",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "pocketId",
+                "type": "uint256"
+              }
+            ],
+            "name": "sharesOf",
+            "outputs": [
+              {
+                "internalType": "euint64",
+                "name": "",
+                "type": "bytes32"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "bytes32",
+                "name": "handle",
+                "type": "bytes32"
+              }
+            ],
+            "name": "spent",
+            "outputs": [
+              {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "token",
+            "outputs": [
+              {
+                "internalType": "contract IERC7984",
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256[]",
+                "name": "from",
+                "type": "uint256[]"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "externalEuint64",
+                    "name": "amount",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "inputProof",
+                    "type": "bytes"
+                  },
+                  {
+                    "internalType": "externalEuint256",
+                    "name": "boundKey",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "bytes",
+                    "name": "keyProof",
+                    "type": "bytes"
+                  }
+                ],
+                "internalType": "struct PocketSavings.SpendInput",
+                "name": "s",
+                "type": "tuple"
+              }
+            ],
+            "name": "unsave",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          },
+          {
+            "inputs": [],
+            "name": "windowCount",
+            "outputs": [
+              {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              }
+            ],
+            "name": "windowInfo",
+            "outputs": [
+              {
+                "internalType": "enum PocketSavings.Side",
+                "name": "side",
+                "type": "uint8"
+              },
+              {
+                "internalType": "enum PocketSavings.WindowState",
+                "name": "state",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint256",
+                "name": "batchId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "rate",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint256",
+                "name": "openedAt",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "pocketCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "left",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "internalType": "uint256",
+                "name": "windowId",
+                "type": "uint256"
+              }
+            ],
+            "name": "windowPockets",
+            "outputs": [
+              {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+          }
+        ],
+        "deployBlock": 11890629,
+        "depositBatcher": "0xF66Fc55060DF981449Fa746e8F58bD003370bE28",
+        "redeemBatcher": "0x9f3cF93246cBf333C6BE65fb7277724eC0c38543",
+        "vault": "0x3DEcCf4D7C98B573faBA29f695CA06f568E2801f",
+        "minBatchAge": 3480,
+        "share": {
+          "address": "0x3f07Ef5A0C1E633DDfDC59b96218f8ED5b1d6f71",
+          "symbol": "csteakcUSDC",
+          "name": "Confidential steakcUSDC",
+          "decimals": 6,
+          "rate": "1000000000000",
+          "underlying": {
+            "address": "0x3DEcCf4D7C98B573faBA29f695CA06f568E2801f",
+            "symbol": "steakcUSDC",
+            "decimals": 18
+          }
+        }
       }
+    },
+    "stealth": {
+      "announcer": "0x55649E01B5Df198D18D95b5cc5051630cfD45564",
+      "registry": "0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538"
     },
     "otherPockets": [
       {
-        "address": "0x56ea8016aE3a392E7E1bdf0c7C457a3786047aAe",
-        "deployBlock": 11878756,
+        "address": "0xB586883DaD0c0816d095B60c26A92fc97Ff0c35D",
+        "deployBlock": 11890631,
         "token": {
           "address": "0x4E7B06D78965594eB5EF5414c357ca21E1554491",
           "symbol": "cUSDT",
@@ -11057,8 +11873,8 @@
         }
       },
       {
-        "address": "0x4e8A23DfD7a23677b023E069CB8D3A94993b1350",
-        "deployBlock": 11878757,
+        "address": "0x731E34d80C2FD6f22394C38584e61B26BcECFAb5",
+        "deployBlock": 11890632,
         "token": {
           "address": "0x46208622DA27d91db4f0393733C8BA082ed83158",
           "symbol": "cWETH",
@@ -11073,8 +11889,8 @@
         }
       },
       {
-        "address": "0x6D1585c58238DaADF748558051BF368DAA3eceE2",
-        "deployBlock": 11878758,
+        "address": "0x0cf7E304348302fdC38eB99dE1Ef2E052Ee6Cf9a",
+        "deployBlock": 11890633,
         "token": {
           "address": "0xf2D628d2598aF4eAF94CB76a437Ff86CA78FfbFB",
           "symbol": "cZAMA",

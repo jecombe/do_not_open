@@ -1329,8 +1329,9 @@ Nothing is decrypted in public: a sale that went through and one that did not lo
 
 A pocket is cUSDC (or cUSDT, cWETH, cZAMA, each in its own pockets contract) under an encrypted
 key ([VAULT.md](VAULT.md#pockets)). Every action names a set of pockets of the same token, the
-real one's fixed group of five by number, always the same, so a set tells the group and never
-the pocket; nothing is decrypted in public. Only cUSDC pockets buy private sales.
+real one's fixed group by number (`MAX_SET`, ten on the live pockets, five on the earlier ones), always the
+same, so a set tells the group and never the pocket; nothing is decrypted in public. Only cUSDC
+pockets buy private sales.
 
 ```mermaid
 sequenceDiagram
@@ -1347,6 +1348,38 @@ sequenceDiagram
   P->>P: debit select(ok, amount, 0) from each; credit the total to the receiving pocket whose number = target
   P->>U: withdraw only: confidentialTransfer(to, the total)
   H->>H: the viewer user-decrypts the new balance
+```
+
+### Pockets: a stealth exit, and an entry address
+
+A withdrawal shows the address it pays and a deposit the wallet it comes from; the doors
+([VAULT.md](VAULT.md#doors-stealth-exits-and-entry-addresses)) make both addresses nobody's. Out:
+a stealth address (ERC-5564) drawn for the holder's own meta-address or a payee's, paid by a plain
+withdrawal and announced by the relayer; the payee's page finds it with its viewing key and
+reads its balance with the address's own key. In: an entry address derived from the signature,
+fed from outside and emptied into the pocket by itself. Either side address needs gas; the
+relayer fuels it once when a pocket paid it or it holds the plain token.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor H as Holder's page
+  participant R as Relayer
+  participant P as SealedPockets
+  participant A as ERC-5564 announcer
+  participant U as cUSDC / USDC
+  H->>H: stealth address = spendingPub + keccak(ECDH(ephemeral, viewingPub)) × G
+  H->>R: withdraw(my group, stealth address, amount, key XOR spendHash)
+  R->>P: withdraw; Withdrawn(group, stealth address)
+  P->>U: confidentialTransfer(stealth address, amount)
+  H->>R: stealthAnnounce(stealth address, ephemeral public key, view tag + token)
+  R->>A: announce; Announcement(1, stealth address, relayer, ...)
+  Note over H: any device: Announcement logs by caller, view tag, then the viewing key: mine; balance read with the address's key
+  H->>R: fuel(stealth address): never sent, holds less than the fuel, paid by a pocket (or holds USDC)
+  R-->>H: ETH to the address, once
+  H->>U: as the address: (approve, wrap for an entry address) setOperator(pockets)
+  H->>P: as the address: deposit(my group, target, amount), encrypted with the wallet's permit for the address as caller
+  P->>P: Deposited(the side address, group): the wallet appears nowhere
 ```
 
 ### Pockets: buying a private sale

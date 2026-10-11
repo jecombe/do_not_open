@@ -211,6 +211,15 @@ const schema = z.object({
   /** Vault relays per minute per IP. */
   VAULT_RELAY_RATE_PER_MINUTE: z.coerce.number().int().positive().default(10),
   /**
+   * What the vault relayer gives a side address (a stealth address a pocket paid, or an entry
+   * address holding USDC) as its first gas, in wei, once per address, so it can collect into a
+   * pocket. 0: it gives none, and the page says to send ETH oneself. About 2.6M gas at the
+   * day's price covers a collect; on Sepolia 3000000000000000 (0.003 ETH) is plenty.
+   */
+  POCKET_FUEL_WEI: z.string().regex(/^\d{1,30}$/).default("0").transform(BigInt),
+  /** USDC (6 decimals) an entry address must hold to be fueled, so fuel cannot be farmed with fresh addresses. */
+  POCKET_FUEL_MIN_USDC: z.coerce.number().int().min(0).default(10),
+  /**
    * The pockets' savings keeper, on the indexer with the same VAULT_RELAYER_KEY: how often it
    * looks at the savings' windows (joins the open one to Zama's batch, settles the joined ones,
    * credits their pockets), in seconds. It runs between the indexer's passes, so about one block

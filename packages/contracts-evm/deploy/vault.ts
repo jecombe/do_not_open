@@ -76,4 +76,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 export default func;
 func.id = "deploy_vault";
 func.tags = ["Vault"];
+/** `KEEP_VAULT=1` leaves a deployed vault as it is: `--tags Pockets` then adds or redeploys the pockets next to it, touching nothing else. */
+func.skip = async (hre) => !!process.env.KEEP_VAULT && !!(await hre.deployments.getOrNull("SealedVault"));
 func.runAtTheEnd = true;

@@ -691,6 +691,7 @@ function VaultMarket({ vault, demo }: { vault: VaultAdapter; demo: boolean }) {
             ) : (
               <PocketTab
                 vault={vault}
+                links={links}
                 account={account}
                 act={act}
                 busy={!!action.busy}

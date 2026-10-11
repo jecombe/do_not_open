@@ -516,6 +516,15 @@ task("dno:export", "Writes the address and ABI of this network's deployment wher
               savings: savingsOut,
             };
           }),
+          // Where the pockets' exits announce stealth payments (ERC-5564) and wallets publish
+          // their stealth meta-address (ERC-6538): the canonical contracts, or a local network's test ones.
+          stealth: await (async () => {
+            const { STEALTH } = await import("../lib/stealth");
+            if (STEALTH[hre.network.name]) return STEALTH[hre.network.name];
+            const announcer = await hre.deployments.getOrNull("TestStealthAnnouncer");
+            const registry = await hre.deployments.getOrNull("TestStealthRegistry");
+            return announcer && registry ? { announcer: announcer.address, registry: registry.address } : null;
+          })(),
           // Pockets of Zama's other confidential tokens (cUSDT, cWETH, cZAMA): the same contract
           // and ABI as the pockets above, without a desk.
           otherPockets: await (async () => {

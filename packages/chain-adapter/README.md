@@ -26,6 +26,7 @@ flowchart LR
 | `src/vault.ts` | The `VaultAdapter` interface, the sealed vault's, and its data types (`VaultInfo`, `VaultBox`, `VaultListing`, `VaultOffer`, `VaultSale`); the `PocketsAdapter` interface, its pockets' (`PocketsInfo`, `PocketSale`, `PocketOptions`); the `PocketSavingsAdapter` interface, the pockets' savings' (`SavingsInfo`, `SavingsWindow`, `SavingsPending`, `SavingsShare`) |
 | `src/evm/EvmSavings.ts` | The pockets' savings on an EVM chain: `PocketSavings` in front of Zama's batchers, a save asked like a pocket send (relayed as `pocketSave` / `pocketUnsave`), the shares and the pending commitments read by the pocket's viewer, their value from the Morpho vault's `convertToAssets` |
 | `src/pockets.ts` | `pocketGroup`, `pocketSet`: a pocket's fixed group, the set its every action names, as the contract wants a set |
+| `src/evm/EvmPocketDoors.ts`, `src/evm/stealth.ts` | The pockets' doors on an EVM chain (`PocketDoorsAdapter`): stealth exits (ERC-5564, scheme 1: the meta-address, a fresh address per payment, the announcer, the inbox read with the viewing key), the entry address, a side address collecting into the pocket as itself, the relayer's fuel; `stealth.ts` is the secp256k1 arithmetic (ethers' `SigningKey`), `src/stealthMeta.ts` the meta-address's shape for the web app, without ethers |
 | `src/evm/EvmVault.ts` | The vault on an EVM chain: `SealedVault`, `VaultListings` (a listing's order, and whether OpenSea's zone gates it), `VaultOffers` (the offer board) and Seaport through ethers, buyers' offers signed with EIP-712 (`signTypedData`) for the version Seaport's `information()` reports, the box keys derived from one signature (`vaultKeyMessage`), requests sent through the API's relayer when there is one |
 | `src/evm/vaultRelay.ts` | `VaultRelay`: finds the API's vault relayer (`GET /v1/vault/relayer`) and posts requests and proofs to it |
 | `src/evm/vaultMarket.ts` | `VaultMarket`: finds the marketplace the API reads offers from (`GET /v1/vault/market`, OpenSea on mainnet), reads a token's offers (`GET /v1/vault/offers/:collection/:tokenId`) and asks the order that fills one, signed for the vault (`POST /v1/vault/offers/fulfillment`), right before `finalizeOffer` |
@@ -354,13 +355,14 @@ signature).
 
 `vault.pocketTokens()` lists the tokens pockets hold where they are deployed (`PocketToken`:
 `symbol`, `name`, `address`, `decimals`, `rate`, `underlying`, `desk`, `faucet`), the vault's cUSDC
-first, then cUSDT, cWETH and cZAMA on Sepolia (`sepolia.json`'s `vault.pockets.token` and
-`vault.otherPockets`). `vault.pockets(symbol?)` returns that token's `PocketsAdapter` (cUSDC's when
+first, then cUSDT, cWETH and cZAMA on Sepolia (`sepolia.json`'s `vault.pockets.token`, `vault.otherPockets` and `vault.stealth`,
+ERC-5564's announcer and ERC-6538's registry). `vault.pockets(symbol?)` returns that token's `PocketsAdapter` (cUSDC's when
 left out), or null where it is not deployed. A pocket holds its token under a key, not an
 address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
 
 - `token`: the `PocketToken` it holds. `info()`: `address`, `desk` (null but for cUSDC), `count`
-  (pockets opened), `maxSet` (5, a group's size). `group(pocketId)`: its `PocketGroup`,
+  (pockets opened), `maxSet` (a group's size, read from the contract: 10 on the live pockets, 5 on
+  the earlier ones). `group(pocketId)`: its `PocketGroup`,
   `members` (the pockets its every action names, `pocketGroup(id, count, maxSet)`: groups of
   `maxSet` by number, the last one holding the pockets opened so far), `size` and `feeders`
   (wallets that deposited into the group: the ones anyone can tie to one of its pockets).
@@ -389,6 +391,20 @@ address ([`docs/VAULT.md`](../../docs/VAULT.md#pockets)):
   `buy(saleId)` asks (the pocket's bound key for the desk, the box key encrypted for the vault
   with the desk as user), waits for the public "ok", then buys: throws `not-yours` when the key
   or the balance did not hold (the sale stays open), else returns whether the box moved.
+  `doors()` returns the `PocketDoorsAdapter` where ERC-5564's contracts are known
+  (`sepolia.json`'s `vault.stealth`; null elsewhere): `info()` (`announcer`, `registry`,
+  `gasNeeded` in wei at the day's fee, `fuel` the relayer gives or null); `metaAddress()` (the
+  wallet's `st:eth:0x…`, keys `keccak256(signature, "stealth-spend")` and `"stealth-view"` from the
+  pocket signature), `published()` / `publish()` (ERC-6538's registry, a wallet transaction),
+  `resolve(text)` (a meta-address, or a wallet address that published one, to a meta-address);
+  `withdrawStealth(amount, to?)` (a fresh stealth address for `to`'s meta-address, the wallet's
+  own when left out: a `withdraw` to it, then `stealthAnnounce` through the relayer; returns the
+  address); `inbox()` (`SideAddress[]`: the stealth addresses announced for the wallet by the
+  relayer or the wallet, each with `sealed` read by its own key, `plain`, `gas`, `fueled`);
+  `entry()` (the first entry address never used, `keccak256(signature, "entry:" + i)`, with what
+  it holds); `collect(address)` (the side address wraps its plain token, makes the pockets its
+  operator and deposits everything into the wallet's pocket, as itself: throws
+  `insufficient-funds` without the gas); `fuel(address)` (the relayer's ETH, once).
   `boxes()` lists the boxes the wallet's pocket bought (`ownerOf` on the desk, decrypted as the
   viewer); the vault's own requests work on them with the usual box key. These are cUSDC's only:
   elsewhere `sales()` and `boxes()` are empty and `offerSale`, `buy` throw.
