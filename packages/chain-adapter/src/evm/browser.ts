@@ -1,6 +1,6 @@
-import { JsonRpcProvider } from "ethers";
 import { SEPOLIA, SEPOLIA_DEPLOYMENT, SEPOLIA_ECONOMY } from "./chains";
 import { LocalStorageDecryptCache } from "./decryptCache";
+import { ReadProvider } from "./readProvider";
 import { EvmFhevmAdapter } from "./EvmFhevmAdapter";
 import { IndexerClient } from "./indexer";
 import { InjectedWallet } from "./wallet";
@@ -61,7 +61,7 @@ export function createSepoliaBrowserAdapter(opts: BrowserEvmOptions = {}): EvmFh
     decryptCache: new LocalStorageDecryptCache(`dno:decrypted:${(opts.address || SEPOLIA_DEPLOYMENT.address).toLowerCase()}`),
     // A rat adopted in the studio is in "my rats" on the next page, before the API indexes it.
     lastTxBlock: storedBlock(`dno:last-tx:${(opts.address || SEPOLIA_DEPLOYMENT.address).toLowerCase()}`),
-    readProvider: new JsonRpcProvider(chain.rpcUrl, chain.chainId, { staticNetwork: true }),
+    readProvider: new ReadProvider(chain.rpcUrl, chain.chainId, chain.historyRpcUrl),
     wallet: new InjectedWallet(ethereum, chain, opts.walletConnectProjectId || undefined),
     loadRelayer: async () => {
       // Several megabytes of WASM: loaded on the first decryption, never before.
