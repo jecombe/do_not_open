@@ -3,7 +3,7 @@ import { useChain } from "../chain/ChainProvider";
 import { gasFaucet } from "../chain/copy";
 import { useT } from "../i18n/app";
 import { useLocale } from "../i18n/locale";
-import { applyPath } from "../site";
+import { applyPath, BOARDING_OPEN } from "../site";
 import { openExchange } from "../views/exchangeLink";
 import { setGateUp } from "./terms";
 
@@ -105,9 +105,11 @@ export function TestnetNotice() {
             <button ref={ok} type="button" className="stamp-button" onClick={close}>
               {t("notice.ok")}
             </button>
-            <a className="link" href={applyPath(locale)}>
-              {t("notice.board")}&nbsp;→
-            </a>
+            {BOARDING_OPEN && (
+              <a className="link" href={applyPath(locale)}>
+                {t("notice.board")}&nbsp;→
+              </a>
+            )}
           </p>
         </div>
       </section>

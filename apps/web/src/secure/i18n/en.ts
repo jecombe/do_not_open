@@ -9,6 +9,7 @@ export const secureEn = {
   "secure.nav.leaks": "Leaks",
   "secure.nav.docs": "Docs",
   "secure.nav.apply": "Apply",
+  "secure.nav.soon": "Opening soon",
   "secure.nav.open": "Open the vault",
   "secure.nav.home": "Home",
   "secure.nav.tour": "Guided tour",

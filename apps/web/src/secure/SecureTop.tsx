@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { LangSwitch } from "../i18n/LangSwitch";
 import { useLocale } from "../i18n/locale";
-import { applyPath, homePath, vaultDocsPath, vaultPath } from "../site";
+import { applyPath, BOARDING_OPEN, homePath, vaultDocsPath, vaultPath } from "../site";
 import { TxDock } from "../vault/tx/VaultTx";
 import { useT } from "./i18n";
 
@@ -48,7 +48,13 @@ export function SecureTop({ here = "home", onTour }: { here?: "home" | "vault" |
               <a href="#ledger">{t("secure.nav.ledger")}</a>
               <a href="#leaks">{t("secure.nav.leaks")}</a>
               <a href={vaultDocsPath(locale)}>{t("secure.nav.docs")}</a>
-              <a href={applyPath(locale)}>{t("secure.nav.apply")}</a>
+              {BOARDING_OPEN ? (
+                <a href={applyPath(locale)}>{t("secure.nav.apply")}</a>
+              ) : (
+                <span className="sec-nav-off" aria-disabled="true" title={t("secure.nav.soon")}>
+                  {t("secure.nav.apply")}
+                </span>
+              )}
               {/* The game, kept apart: a quiet link at the end down to its corner of the page, the vault comes first. */}
               <a className="sec-nav-fun" href="#game">
                 {t("secure.nav.fun")}
