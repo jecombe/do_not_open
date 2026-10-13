@@ -34,6 +34,8 @@ export const SEPOLIA: ChainParams = {
   chainId: 11155111,
   name: "Sepolia",
   rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
+  // publicnode keeps about 10,000 blocks of logs; Tenderly's gateway keeps them all and allows CORS.
+  historyRpcUrl: "https://sepolia.gateway.tenderly.co",
   explorerUrl: "https://sepolia.etherscan.io",
   // OpenSea closed its testnets; on mainnet this is "https://opensea.io/item/ethereum".
   marketplaceUrl: null,
