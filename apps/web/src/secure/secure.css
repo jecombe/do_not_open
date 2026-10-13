@@ -110,6 +110,14 @@ a {
   color: var(--text);
 }
 
+/* A link that is not open yet (boarding): greyed out, not clickable. */
+.sec-top nav .sec-nav-off {
+  color: var(--muted);
+  opacity: 0.4;
+  white-space: nowrap;
+  cursor: not-allowed;
+}
+
 .sec-top-end {
   display: flex;
   align-items: center;
@@ -1091,7 +1099,8 @@ button.sec-btn {
     background: var(--bg);
     font-size: 16px;
   }
-  .sec-top nav.is-open a {
+  .sec-top nav.is-open a,
+  .sec-top nav.is-open .sec-nav-off {
     padding: 12px 0;
     border-bottom: 1px solid var(--line);
   }

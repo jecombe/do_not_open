@@ -54,6 +54,12 @@ export const vaultDocsPath = (locale: Locale): string => link("vaultDocs", local
 /** The studio, where anyone draws a cat. */
 export const studioPath = (locale: Locale): string => link("studio", locale);
 
+/**
+ * Whether boarding is open yet. While it is not, every link to it is drawn greyed out and cannot be
+ * followed; the page itself still answers at its address, so the team can try it.
+ */
+export const BOARDING_OPEN = false;
+
 /** The boarding page: Sign in with X, the tasks on X, the mainnet list. */
 export const applyPath = (locale: Locale): string => link("apply", locale);
 

@@ -10,6 +10,7 @@ export const secureIt: Record<SecureKey, string> = {
   "secure.nav.leaks": "Fughe",
   "secure.nav.docs": "Docs",
   "secure.nav.apply": "Imbarcati",
+  "secure.nav.soon": "Apre presto",
   "secure.nav.open": "Apri il caveau",
   "secure.nav.home": "Home",
   "secure.nav.tour": "Visita guidata",
