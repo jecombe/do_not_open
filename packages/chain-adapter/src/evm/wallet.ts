@@ -29,6 +29,8 @@ export interface ChainParams {
   chainId: number;
   name: string;
   rpcUrl: string;
+  /** Where event queries go when `rpcUrl` refuses them (a node that prunes old logs). */
+  historyRpcUrl?: string | null;
   explorerUrl: string | null;
   /** Where an NFT's page is on a marketplace, `${marketplaceUrl}/<collection>/<tokenId>`. Null where none shows the chain. */
   marketplaceUrl?: string | null;
